@@ -110,6 +110,9 @@
       },
       "default": []
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -150,6 +153,10 @@
     "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "followers": {
       "description": "Followers of this entity.",

@@ -26,14 +26,14 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
   PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 const GlossaryTermReferences = () => {

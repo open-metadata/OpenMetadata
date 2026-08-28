@@ -16,7 +16,7 @@ import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
 export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
@@ -38,6 +38,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
           i18nKey="message.refer-to-our-doc"
           renderElement={
             <a
+              aria-label={t('label.documentation')}
               href={DATA_INSIGHT_DOCS}
               rel="noreferrer"
               target="_blank"

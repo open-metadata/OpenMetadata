@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -51,29 +51,29 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import {
-  getColumnSorter,
-  getEntityBulkEditPath,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityBulkEditPath } from '../../../../utils/EntityPureUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../utils/StringUtils';
 import {
+  certificationTableObject,
   dataProductTableObject,
   descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
+  tierTableObject,
 } from '../../../../utils/TableColumn.util';
-import { getUsagePercentile } from '../../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
@@ -287,6 +287,8 @@ export const DatabaseSchemaTable = ({
       ...domainTableObject<DatabaseSchema>(),
       ...dataProductTableObject<DatabaseSchema>(),
       ...tagTableObject<DatabaseSchema>(),
+      ...tierTableObject<DatabaseSchema>(),
+      ...certificationTableObject<DatabaseSchema>(),
       ...(viewUsagePermission
         ? [
             {

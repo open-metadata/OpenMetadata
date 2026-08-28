@@ -23,7 +23,7 @@ import {
   SearchResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
-import { getQueryWithSlash } from '../utils/SearchUtils';
+import { getQueryWithSlash } from '../utils/StringUtils';
 import APIClient from './index';
 
 const getSearchIndexParam: (
@@ -171,6 +171,7 @@ export const rawSearchQuery = <
     postFilter,
     fetchSource,
     filters,
+    explain,
   } = req;
 
   const queryWithSlash = getQueryWithSlash(query || '');
@@ -202,6 +203,7 @@ export const rawSearchQuery = <
       sort_field: sortField,
       sort_order: sortOrder,
       track_total_hits: trackTotalHits,
+      explain,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
       exclude_source_fields: req.excludeSourceFields,
@@ -248,7 +250,17 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
 };
 
 export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
-  const { pageNumber = 1, pageSize = 10, query, searchIndex } = payload;
+  const {
+    pageNumber = 1,
+    pageSize = 10,
+    query,
+    searchIndex,
+    sortField,
+    sortOrder,
+    queryFilter,
+  } = payload;
+  const includeDeletedParam =
+    'includeDeleted' in payload ? payload.includeDeleted : false;
 
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
     '/hybrid/nlq/search',
@@ -258,6 +270,10 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
         index: searchIndex,
         size: pageSize,
         from: (pageNumber - 1) * pageSize,
+        deleted: includeDeletedParam,
+        sort_field: sortField,
+        sort_order: sortOrder,
+        query_filter: JSON.stringify(queryFilter),
       },
     }
   );
@@ -362,6 +378,51 @@ export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
   const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
     '/search/stats/orphan'
   );
+
+  return response.data;
+};
+
+export interface SearchExportAsyncResponse {
+  jobId: string;
+  message: string;
+}
+
+// Queues the export as a background job; the CSV is downloaded from
+// /csvAsyncJobs/{jobId}/result via the Background jobs tray when it completes.
+export const exportSearchResultsAsync = async (params: {
+  q?: string;
+  index?: string;
+  deleted?: boolean;
+  query_filter?: string;
+  post_filter?: string;
+  sort_field?: string;
+  sort_order?: string;
+  size?: number;
+  from?: number;
+}): Promise<SearchExportAsyncResponse> => {
+  const response = await APIClient.get<SearchExportAsyncResponse>(
+    '/search/export/async',
+    { params }
+  );
+
+  return response.data;
+};
+
+export const exportSearchResultsCsvStream = async (params: {
+  q?: string;
+  index?: string;
+  deleted?: boolean;
+  query_filter?: string;
+  post_filter?: string;
+  sort_field?: string;
+  sort_order?: string;
+  size?: number;
+  from?: number;
+}): Promise<Blob> => {
+  const response = await APIClient.get<Blob>('/search/export', {
+    params,
+    responseType: 'blob',
+  });
 
   return response.data;
 };

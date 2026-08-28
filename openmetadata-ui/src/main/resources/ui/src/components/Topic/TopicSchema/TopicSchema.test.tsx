@@ -31,6 +31,10 @@ import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
 const mockProps: TopicSchemaFieldsProps = {};
 
+jest.mock('../../AppRouter/withSuspenseFallback', () =>
+  jest.requireActual('../../AppRouter/withSuspenseFallback.tsx')
+);
+
 jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   jest.fn().mockImplementation(({ onClick, isReadOnly }) => (
     <div data-testid="table-description">
@@ -44,8 +48,8 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   ))
 );
 
-jest.mock('../../../utils/TableUtils', () => {
-  const actual = jest.requireActual('../../../utils/TableUtils');
+jest.mock('../../../utils/TablePureUtils', () => {
+  const actual = jest.requireActual('../../../utils/TablePureUtils');
   const flattenColumnsMock = (items: Column[]): Column[] => {
     if (!items || items.length === 0) {
       return [];
@@ -64,26 +68,27 @@ jest.mock('../../../utils/TableUtils', () => {
   return {
     ...actual,
     flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
-    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
-      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
-        expandable ? (
-          <button
-            data-testid="expand-icon"
-            onClick={(e) => onExpand(record, e)}
-          >
-            ExpandIcon
-          </button>
-        ) : null
-      ),
-    })),
-    getTableColumnConfigSelections: jest
-      .fn()
-      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-    handleUpdateTableColumnSelections: jest
-      .fn()
-      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
   };
 });
+
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
+    ),
+  })),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  handleUpdateTableColumnSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+}));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
@@ -129,11 +134,9 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="schema-editor">SchemaEditor</div>
-    ))
+  jest.fn().mockImplementation(() => {
+    throw new Promise(() => undefined);
+  })
 );
 
 const mockOnUpdate = jest.fn();
@@ -155,7 +158,7 @@ const mockTopicDetails = {
   messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTopicDetails,
     isVersionView: false,
@@ -181,6 +184,19 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 describe('Topic Schema', () => {
+  it('Should render a large skeleton while the schema editor loads', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('label.text'));
+    await screen.findByTestId('entity-detail-widget-skeleton');
+
+    expect(container.querySelectorAll('.tw\\:animate-pulse')).toHaveLength(5);
+  });
+
   it('Should render the schema component', async () => {
     render(
       <MemoryRouter>

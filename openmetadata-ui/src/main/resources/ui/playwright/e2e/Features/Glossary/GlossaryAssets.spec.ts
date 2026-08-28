@@ -507,7 +507,7 @@ test.describe('Glossary Asset Operations', () => {
         await addAssetsButton.click();
 
         // Wait for dropdown to appear
-        await page.waitForSelector('.ant-dropdown', { timeout: 3000 });
+        await page.locator('.ant-dropdown').waitFor({ timeout: 3000 });
 
         // Click on the option to add assets
         const addOption = page.locator('.ant-dropdown-menu-item').first();
@@ -516,9 +516,9 @@ test.describe('Glossary Asset Operations', () => {
           await addOption.click();
 
           // Wait for asset selection modal
-          await page.waitForSelector('[data-testid="asset-selection-modal"]', {
-            timeout: 5000,
-          });
+          await page
+            .getByTestId('asset-selection-modal')
+            .waitFor({ timeout: 5000 });
 
           // Search for asset
           const searchResponse = page.waitForResponse(

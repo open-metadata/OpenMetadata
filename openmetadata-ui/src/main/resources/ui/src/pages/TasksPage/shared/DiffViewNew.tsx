@@ -17,20 +17,14 @@ import { Change } from 'diff';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
-import {
-  Thread,
-  ThreadTaskStatus,
-} from '../../../generated/entity/feed/thread';
 
 export const DiffViewNew = ({
   diffArr,
   showDescTitle = false,
-  task,
 }: {
   diffArr: Change[];
   className?: string;
   showDescTitle?: boolean;
-  task?: Thread;
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -44,14 +38,18 @@ export const DiffViewNew = ({
         const lineHeight = parseInt(computedStyle.lineHeight, 10);
 
         // Force the content to be unclamped temporarily for measurement
-        (contentRef.current.style as any)['-webkit-line-clamp'] = 'none';
+        (contentRef.current.style as unknown as Record<string, string>)[
+          '-webkit-line-clamp'
+        ] = 'none';
         contentRef.current.style.maxHeight = 'none';
 
         // Get the full height
         const fullHeight = contentRef.current.scrollHeight;
 
         // Reset the styles
-        (contentRef.current.style as any)['-webkit-line-clamp'] = '';
+        (contentRef.current.style as unknown as Record<string, string>)[
+          '-webkit-line-clamp'
+        ] = '';
         contentRef.current.style.maxHeight = '';
 
         // Calculate max height based on number of lines
@@ -157,13 +155,6 @@ export const DiffViewNew = ({
               background: 'white',
               margin: '16px 0px',
             }),
-        ...(task?.task?.status === ThreadTaskStatus.Closed &&
-          !showDescTitle && {
-            margin: '16px 0px',
-          }),
-        ...(task?.task?.status === ThreadTaskStatus.Open && {
-          borderRadius: '8px',
-        }),
       }}>
       {showDescTitle && (
         <span className="task-tab-description-header">

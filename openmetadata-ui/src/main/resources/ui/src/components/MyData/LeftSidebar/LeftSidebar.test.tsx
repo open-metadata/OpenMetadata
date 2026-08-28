@@ -21,6 +21,14 @@ jest.mock(
   })
 );
 
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    navigation: null,
+    isLoading: false,
+  }),
+}));
+
 describe('LeftSidebar', () => {
   it('renders sidebar links correctly', () => {
     render(
@@ -32,7 +40,7 @@ describe('LeftSidebar', () => {
     expect(screen.getByTestId('image')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-explore')).toBeInTheDocument();
     expect(screen.getByTestId('observability')).toBeInTheDocument();
-    expect(screen.getByTestId('domains-section')).toBeInTheDocument();
+    expect(screen.getByTestId('data-marketplace-section')).toBeInTheDocument();
     expect(screen.getByTestId('governance')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-logout')).toBeInTheDocument();

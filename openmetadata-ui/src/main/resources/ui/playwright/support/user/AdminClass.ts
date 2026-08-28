@@ -12,14 +12,19 @@
  */
 import { Page } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../../constant/user';
-import { UserClass } from './UserClass';
+import { UserClass, UserData } from './UserClass';
 
 export class AdminClass extends UserClass {
+  constructor(data?: UserData) {
+    super(data, true);
+  }
+
   async login(
     page: Page,
     userName = DEFAULT_ADMIN_USER.userName,
-    password = DEFAULT_ADMIN_USER.password
+    password = DEFAULT_ADMIN_USER.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
   ) {
-    await super.login(page, userName, password);
+    await super.login(page, userName, password, options);
   }
 }

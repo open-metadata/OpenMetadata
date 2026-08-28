@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/forkAIGovernanceFrameworkResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ForkAIGovernanceFrameworkResponse",
+  "description": "Response returned after forking an AI Governance Framework.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkResponse",
+  "definitions": {
+    "copiedAIFrameworkControl": {
+      "javaType": "org.openmetadata.schema.api.ai.CopiedAIFrameworkControl",
+      "description": "Summary of a framework control copied into the forked framework.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Stable short code for the copied control."
+        },
+        "name": {
+          "$ref": "../../type/basic.json#/definitions/entityName"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "framework": {
+      "$ref": "../../entity/ai/aiGovernanceFramework.json",
+      "description": "The newly-created forked framework."
+    },
+    "copiedControlsCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of controls copied into the forked framework."
+    },
+    "copiedControls": {
+      "type": "array",
+      "description": "Summaries of controls copied into the forked framework.",
+      "items": {
+        "$ref": "#/definitions/copiedAIFrameworkControl"
+      },
+      "default": []
+    }
+  },
+  "required": ["framework", "copiedControlsCount", "copiedControls"],
+  "additionalProperties": false
+}

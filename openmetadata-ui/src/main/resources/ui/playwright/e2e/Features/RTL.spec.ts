@@ -11,89 +11,70 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
   followEntity,
   validateFollowedEntityToWidget,
 } from '../../utils/entity';
+import { test } from './../../e2e/fixtures/pages';
 
-const user = new UserClass();
+test.describe('Verify RTL Layout for landing page', () => {
+  const table = EntityDataClass.table1;
 
-export const test = base.extend<{ adminPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await user.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+
+    await page.getByTestId('language-selector-button').click();
+    await Promise.all([
+      page.waitForEvent('load'),
+      page.locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]').click(),
+    ]);
+    await expect(page.getByTestId('domain-selector')).toBeVisible();
+    // wait for translation to reflect in the UI
+    await expect(page.getByTestId('domain-selector')).toHaveText(
+      'כל הדומיינים',
+      { timeout: 30_000 }
+    );
+  });
+
+  test('Verify DataAssets widget functionality', async ({ page }) => {
+    test.slow();
+    const serviceType = toLower(table.service.serviceType);
+
+    await clickOutside(page);
+    const quickFilterResponse = page.waitForResponse(
+      `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
+    );
+
+    await page
+      .locator(`[data-testid="data-asset-service-${serviceType}"]`)
+      .click();
+
+    await quickFilterResponse;
+
+    await expect(
+      page.getByRole('button', { name: 'סוג השירות : (1)' })
+    ).toBeAttached();
+
+    await expect(
+      page
+        .getByTestId('explore-tree')
+        .locator('span')
+        .filter({ hasText: serviceType })
+        .first()
+    ).toHaveClass(/ant-tree-node-selected/);
+  });
+
+  test('Verify Following widget functionality', async ({ page }) => {
+    test.slow();
+    await table.visitEntityPage(page);
+
+    const entityName = table.entityResponseData?.['displayName'];
+
+    await followEntity(page, table.endpoint, 'בטל מעקב');
+    await validateFollowedEntityToWidget(page, entityName ?? '', true);
+  });
 });
-
-test.describe(
-  'Verify RTL Layout for landing page',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  () => {
-    const table = EntityDataClass.table1;
-
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await user.create(apiContext);
-      await user.setAdminRole(apiContext);
-      await afterAction();
-    });
-
-    test.beforeEach(async ({ adminPage: page }) => {
-      await redirectToHomePage(page);
-
-      await page.getByTestId('language-selector-button').click();
-      await page
-        .locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]')
-        .click();
-      await page.waitForLoadState('domcontentloaded');
-    });
-
-    test('Verify DataAssets widget functionality', async ({
-      adminPage: page,
-    }) => {
-      const serviceType = toLower(table.service.serviceType);
-
-      await clickOutside(page);
-      const quickFilterResponse = page.waitForResponse(
-        `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
-      );
-
-      await page
-        .locator(`[data-testid="data-asset-service-${serviceType}"]`)
-        .click();
-
-      await quickFilterResponse;
-
-      await expect(
-        page.getByRole('button', { name: `סוג השירות : ${serviceType}` })
-      ).toBeAttached();
-
-      await expect(
-        page
-          .getByTestId('explore-tree')
-          .locator('span')
-          .filter({ hasText: serviceType })
-          .first()
-      ).toHaveClass(/ant-tree-node-selected/);
-    });
-
-    test('Verify Following widget functionality', async ({ adminPage }) => {
-      await table.visitEntityPage(adminPage);
-
-      const entityName = table.entityResponseData?.['displayName'];
-
-      await followEntity(adminPage, table.endpoint, 'בטל מעקב');
-      await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
-    });
-  }
-);

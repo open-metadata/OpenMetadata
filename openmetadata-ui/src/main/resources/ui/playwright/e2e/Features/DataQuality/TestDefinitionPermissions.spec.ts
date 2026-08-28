@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -86,9 +86,11 @@ const test = base.extend<{
   viewOnlyPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -220,12 +222,9 @@ test.describe(
       await viewOnlyPage.goto('/test-library');
 
       // Wait for table to load
-      await viewOnlyPage.waitForSelector(
-        '[data-testid="test-definition-table"]',
-        {
-          state: 'visible',
-        }
-      );
+      await viewOnlyPage
+        .getByTestId('test-definition-table')
+        .waitFor({ state: 'visible' });
 
       // Verify user can view the table
       await expect(
@@ -250,12 +249,9 @@ test.describe(
       await dataConsumerPage.goto('/test-library');
 
       // Wait for table to load
-      await dataConsumerPage.waitForSelector(
-        '[data-testid="test-definition-table"]',
-        {
-          state: 'visible',
-        }
-      );
+      await dataConsumerPage
+        .getByTestId('test-definition-table')
+        .waitFor({ state: 'visible' });
 
       // Verify user can view the table
       await expect(
@@ -293,12 +289,9 @@ test.describe(
       await dataStewardPage.goto('/test-library');
 
       // Wait for table to load
-      await dataStewardPage.waitForSelector(
-        '[data-testid="test-definition-table"]',
-        {
-          state: 'visible',
-        }
-      );
+      await dataStewardPage
+        .getByTestId('test-definition-table')
+        .waitFor({ state: 'visible' });
 
       // Verify user can view the table
       await expect(
@@ -371,10 +364,9 @@ test.describe(
       await expect(editButton).toBeDisabled();
 
       // Verify enabled switch exists and can be toggled
-      const row = dataStewardPage.locator(
-        `[data-row-key="${systemTestDef.id}"]`
+      const enabledSwitch = dataStewardPage.getByTestId(
+        `enable-switch-${systemTestDef.name}`
       );
-      const enabledSwitch = row.getByRole('switch');
 
       await expect(enabledSwitch).toBeVisible();
       await expect(enabledSwitch).toBeEnabled();

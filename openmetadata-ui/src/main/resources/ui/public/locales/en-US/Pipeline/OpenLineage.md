@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the OpenLineage connect
 
 ## Requirements
 
-We ingest OpenLineage metadata by reading OpenLineage events from kafka topic 
+We ingest OpenLineage metadata by reading OpenLineage events from a Kafka topic or an AWS Kinesis Data Stream. Select the broker type and fill in the corresponding fields below.
 
 ## Connection Details
 
@@ -35,25 +35,25 @@ This should be specified as consumer group name string . E.g., `openmetadata-ope
 $$
 
 $$section
-### Kafka initial consumer offsets $(id="consumerOffsets")
-When new kafka consumer group is created an initial offset information is required.
+### Initial consumer offsets $(id="consumerOffsets")
+The initial offset to start reading events from when no committed offset exists.
 
-This should be specified as `earliest` or `latest` .
+For **Kafka**, this should be specified as `earliest` or `latest`.
+
+For **Kinesis**, this should be specified as `TRIM_HORIZON` (start from the oldest available record) or `LATEST` (read only new records).
 $$
 $$section
-### Kafka single pool timeout $(id="poolTimeout")
-This setting indicates how long connector should wait for new messages in single pool cal.
+### Single poll timeout $(id="poolTimeout")
+This setting indicates how long the connector should wait for new messages in a single poll call (Kafka) or between read calls (Kinesis).
 
-This should be specified as number of seconds represented as decimal number . E.g., `1.0`
+This should be specified as a number of seconds represented as a decimal number. E.g., `1.0`.
 $$
 
 $$section
-### Kafka session timeout  $(id="sessionTimeout")
-This setting indicates how long connector should wait for new messages in kafka session.
-After kafka session timeout is reached connector assumes that there is no new messages to be processed
-and successfully ends an ingestion process .
+### Session timeout  $(id="sessionTimeout")
+This setting indicates how long the connector should wait for new messages before assuming there are no more messages to be processed and successfully ending the ingestion process.
 
-This should be specified as number of seconds represented as integer number . E.g., `30` .
+This should be specified as a number of seconds represented as an integer number. E.g., `30` .
 $$
 $$section
 ### Kafka securityProtocol $(id="securityProtocol")
@@ -103,4 +103,70 @@ When Kafka security protocol is set to `SSL` or `SASL_SSL` then path to SSL CA i
 CA have to be in PEM format  
 
 This should be specified path to pem file . E.g., `/path/to/kafka/CA.pem` .
+$$
+
+## Kinesis Connection Details
+
+These fields apply when the broker type is set to **Kinesis**. OpenMetadata reads OpenLineage events from an AWS Kinesis Data Stream.
+
+$$section
+### Kinesis Data Stream name $(id="streamName")
+The name of the AWS Kinesis Data Stream that OpenLineage events are published to.
+
+This should be specified as a stream name string. E.g., `openlineage-events`.
+$$
+
+$$section
+### AWS Access Key ID $(id="awsAccessKeyId")
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+
+Access keys consist of two parts:
+- An access key ID (e.g., `AKIAIOSFODNN7EXAMPLE`)
+- A secret access key (e.g., `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`)
+
+You must use both together to authenticate your requests. Enter the access key ID here.
+$$
+
+$$section
+### AWS Secret Access Key $(id="awsSecretAccessKey")
+The secret access key paired with the access key ID above. Treat it as a secret and do not share it.
+$$
+
+$$section
+### AWS Region $(id="awsRegion")
+Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
+
+This is the region where your Kinesis Data Stream lives. E.g., `us-east-2`.
+
+This is a **required** field for Kinesis, even if other credential values are sourced from the environment.
+$$
+
+$$section
+### AWS Session Token $(id="awsSessionToken")
+If you are using temporary (STS) credentials, supply the session token that pairs with the access key ID and secret access key. Leave it empty when using long-lived credentials. See the AWS docs on [temporary security credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+$$
+
+$$section
+### Endpoint URL $(id="endPointURL")
+The AWS service endpoint URL to connect to. Leave empty to use the default Kinesis endpoint for the selected region; set it only when targeting a custom or VPC endpoint.
+$$
+
+$$section
+### Profile Name $(id="profileName")
+The name of a profile from your local AWS configuration to use with the boto session. Leave empty to use the default credentials chain.
+$$
+
+$$section
+### Assume Role ARN $(id="assumeRoleArn")
+The Amazon Resource Name (ARN) of the role to assume. Provide this to read the stream through an assumed IAM role. E.g., `arn:aws:iam::123456789012:role/openlineage-reader`.
+$$
+
+$$section
+### Assume Role Session Name $(id="assumeRoleSessionName")
+An identifier for the assumed role session. Used to uniquely identify a session when the same role is assumed by different principals or for different reasons. Only used when **Assume Role ARN** is set.
+$$
+
+$$section
+### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
+The source identity to set when assuming the role. Used to monitor and control access of the assumed-role session. Only used when **Assume Role ARN** is set.
 $$

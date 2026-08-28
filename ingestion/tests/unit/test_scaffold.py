@@ -11,6 +11,7 @@
 """
 Tests for the connector scaffold CLI tool.
 """
+
 import argparse
 import json
 from unittest.mock import patch
@@ -309,9 +310,7 @@ class TestGenerateConnectionSchema:
 
 class TestGenerateTestConnectionJson:
     @staticmethod
-    def _make_profile(
-        name="test_db", service_type="database", capabilities=None
-    ) -> ConnectorProfile:
+    def _make_profile(name="test_db", service_type="database", capabilities=None) -> ConnectorProfile:
         p = ConnectorProfile()
         p.name = name
         p.service_type = service_type
@@ -445,7 +444,7 @@ class TestPromptEofHandling:
         assert result == "fallback"
 
     def test_prompt_eof_without_default_exits(self):
-        with patch("builtins.input", side_effect=EOFError):
+        with patch("builtins.input", side_effect=EOFError):  # noqa: SIM117
             with pytest.raises(SystemExit):
                 _prompt("Test")
 
@@ -455,7 +454,7 @@ class TestPromptEofHandling:
         assert result == "fallback"
 
     def test_prompt_keyboard_interrupt_without_default_exits(self):
-        with patch("builtins.input", side_effect=KeyboardInterrupt):
+        with patch("builtins.input", side_effect=KeyboardInterrupt):  # noqa: SIM117
             with pytest.raises(SystemExit):
                 _prompt("Test")
 
@@ -465,7 +464,7 @@ class TestPromptEofHandling:
         assert result == ["a"]
 
     def test_prompt_multi_eof_without_defaults_exits(self):
-        with patch("builtins.input", side_effect=EOFError):
+        with patch("builtins.input", side_effect=EOFError):  # noqa: SIM117
             with pytest.raises(SystemExit):
                 _prompt_multi("Test", ["a", "b"])
 

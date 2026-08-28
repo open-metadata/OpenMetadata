@@ -335,14 +335,8 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         properties: visibleProperties,
         showDivider: false,
       });
-    } else if (isLDAPConfig) {
-      // LDAP configuration - all fields in a single group without extra grouping
-      groups.push({
-        properties: visibleProperties,
-        showDivider: false,
-      });
-    } else if (isSAMLConfig) {
-      // SAML configuration - all fields in a single group without extra grouping
+    } else if (isLDAPConfig || isSAMLConfig) {
+      // LDAP/SAML configuration - all fields in a single group without extra grouping
       groups.push({
         properties: visibleProperties,
         showDivider: false,
@@ -361,6 +355,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     <Fragment>
       {title && title.trim() !== '' && (
         <Space className="w-full justify-between header-title-wrapper">
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- field-group title caption, not a form control */}
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
@@ -422,14 +417,14 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
               // Default for non-grouped only
               'default-object-field': !shouldApplyGrouping,
             })}
-            key={`group-${groupIndex}`}>
+            key={`group-${group.title}`}>
             {/* Render properties */}
-            {group.properties.map((element, index) => (
+            {group.properties.map((element) => (
               <div
                 className={classNames('property-wrapper', {
                   'additional-fields': schema.additionalProperties,
                 })}
-                key={`${element.content.key}-${index}`}>
+                key={element.content.key}>
                 {element.content}
               </div>
             ))}
@@ -450,12 +445,12 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
                 'sso-field-group-box': shouldApplyGrouping,
                 'default-object-field': !shouldApplyGrouping,
               })}>
-              {advancedProperties.map((element, index) => (
+              {advancedProperties.map((element) => (
                 <div
                   className={classNames('property-wrapper', {
                     'additional-fields': schema.additionalProperties,
                   })}
-                  key={`${element.content.key}-${index}`}>
+                  key={element.content.key}>
                   {element.content}
                 </div>
               ))}

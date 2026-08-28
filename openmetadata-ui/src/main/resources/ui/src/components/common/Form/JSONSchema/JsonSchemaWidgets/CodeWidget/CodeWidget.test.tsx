@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  FieldErrorProps,
-  RJSFSchema,
-  TemplatesType,
-  WidgetProps,
-} from '@rjsf/utils';
+import { FieldErrorProps, TemplatesType, WidgetProps } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import CodeWidget from './CodeWidget';
 
@@ -32,9 +27,7 @@ describe('CodeWidget', () => {
     schema: { mode: 'sql' },
     disabled: false,
     name: '',
-    options: {} as Partial<
-      Omit<TemplatesType<any, RJSFSchema, any>, 'ButtonTemplates'>
-    >,
+    options: {} as Partial<Omit<TemplatesType, 'ButtonTemplates'>>,
     onBlur: jest.fn(),
     label: '',
     registry: {} as FieldErrorProps['registry'],
@@ -44,9 +37,9 @@ describe('CodeWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('should render SchemaEditor with correct props', () => {
+  it('should render SchemaEditor with correct props', async () => {
     render(<CodeWidget {...mockProps} />);
 
-    expect(screen.getByText('SchemaEditor')).toBeInTheDocument();
+    expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();
   });
 });

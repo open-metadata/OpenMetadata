@@ -14,6 +14,7 @@ import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -57,17 +58,15 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
 
     await page.getByPlaceholder('Search Services').fill(serviceName);
     await searchServiceResponse;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
 
     await page.click(`[data-testid="service-name-${serviceName}"]`);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
 
-    const headerText = await page.textContent(
-      `[data-testid="entity-header-name"]`
+    await expect(page.locator('[data-testid="entity-header-name"]')).toHaveText(
+      serviceName
     );
-
-    expect(headerText).toBe(serviceName);
 
     const schemaResponse = page.waitForResponse('/api/v1/databaseSchemas?**');
     await page.click('[data-testid="databases"]');
@@ -78,7 +77,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     await schemaResponse;
 
     const searchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&index=database_schema_search_index**'
+      '/api/v1/search/query?q=**&index=databaseSchema**'
     );
 
     await page.fill('[data-testid="searchbar"]', schemaName);

@@ -11,25 +11,15 @@
  *  limitations under the License.
  */
 
-import { styled } from '@mui/material/styles';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import {
-  CSSProperties,
-  FC,
-  Fragment,
-  HTMLAttributes,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import { useAlertStore } from '../../hooks/useAlertStore';
-import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
+
+export type PageLayoutVariant = 'default' | 'compact';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
@@ -37,45 +27,11 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   center?: boolean;
   pageTitle: string;
   mainContainerClassName?: string;
-  pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
   leftPanelWidth?: number;
   fullHeight?: boolean;
+  variant?: PageLayoutVariant;
 }
-
-export const pageContainerStyles: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 0,
-  marginLeft: 0,
-  marginRight: 0,
-  overflow: 'hidden',
-};
-
-const FullHeightWrapper = styled('div')<{ $wrapperClassName?: string }>(
-  ({ $wrapperClassName }) => ({
-    [`& .page-layout-v1-vertical-scroll.${$wrapperClassName}`]: {
-      overflow: 'hidden',
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} > .ant-row`]: {
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col`]: {
-      flex: 'none',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col:last-child`]: {
-      minHeight: 0,
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-  })
-);
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
@@ -87,12 +43,15 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanelWidth = 230,
   rightPanelWidth = 284,
   mainContainerClassName = '',
-  pageContainerStyle = {},
   fullHeight = false,
+  variant = 'default',
 }: PageLayoutProp) => {
-  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
-  const [prevPath, setPrevPath] = useState<string | undefined>();
+
+  // `compact` (uniform 8px) is for pages whose header is a HeaderShell —
+  // the calling component decides. Everything else gets the default 16px
+  // horizontal gutter.
+  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'tw:px-4';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -106,53 +65,30 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
-  const finalPageContainerStyle = useMemo(() => {
-    if (fullHeight && !pageContainerStyle.height) {
-      return {
-        height: 'calc(100vh - 64px)',
-        overflow: 'hidden',
-        ...pageContainerStyle,
-      };
-    }
-
-    return pageContainerStyle;
-  }, [fullHeight, pageContainerStyle]);
-
-  useEffect(() => {
-    if (prevPath !== location.pathname) {
-      if (isErrorTimeOut) {
-        resetAlert();
-      }
-    }
-  }, [location.pathname, resetAlert, isErrorTimeOut]);
-
   const isFullScreen = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
 
     return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   }, [location.search]);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setPrevPath(location.pathname);
-    }, 3000);
-  }, [location.pathname]);
-
-  const content = (
+  return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames('p-x-box', className)}
+        className={classNames(
+          'page-layout-v1',
+          paddingClassName,
+          { 'page-layout-v1-full-height': fullHeight },
+          className
+        )}
         data-testid="page-layout-v1"
-        style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
-        wrap={false}
-      >
+        data-variant={variant}
+        wrap={false}>
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"
             flex={leftPanelWidth + 'px'}
-            id="left-panelV1"
-          >
+            id="left-panelV1">
             {leftPanel}
           </Col>
         )}
@@ -167,14 +103,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           )}
           flex={contentWidth}
           offset={center ? 3 : 0}
-          span={center ? 18 : 24}
-        >
+          span={center ? 18 : 24}>
           <Row>
-            {alert && (
-              <Col id="page-alert" span={24}>
-                <AlertBar message={alert.message} type={alert.type} />
-              </Col>
-            )}
             <Col span={24}>{children}</Col>
           </Row>
         </Col>
@@ -182,21 +112,12 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           <Col
             className="page-layout-rightpanel page-layout-v1-vertical-scroll"
             flex={rightPanelWidth + 'px'}
-            id="right-panelV1"
-          >
+            id="right-panelV1">
             {rightPanel}
           </Col>
         )}
       </Row>
     </Fragment>
-  );
-
-  return fullHeight ? (
-    <FullHeightWrapper $wrapperClassName={mainContainerClassName}>
-      {content}
-    </FullHeightWrapper>
-  ) : (
-    content
   );
 };
 

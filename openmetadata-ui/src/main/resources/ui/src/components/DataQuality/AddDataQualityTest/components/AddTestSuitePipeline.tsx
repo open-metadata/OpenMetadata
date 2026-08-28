@@ -12,7 +12,7 @@
  */
 import { Col, Form, Row } from 'antd';
 import { FormProviderProps } from 'antd/lib/form/context';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,6 @@ import {
   DEFAULT_SCHEDULE_CRON_DAILY,
   SCHEDULAR_OPTIONS,
 } from '../../../../constants/Schedular.constants';
-import { TestCase } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -29,12 +28,14 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
+import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
-import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
+import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import {
   AddTestSuitePipelineProps,
   TestSuiteIngestionDataType,
@@ -51,7 +52,7 @@ const AddTestSuitePipeline = ({
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { fqn, ingestionFQN } = useFqn();
+  const { ingestionFQN } = useFqn();
   const location = useCustomLocation();
 
   const testSuiteId = useMemo(() => {
@@ -63,7 +64,33 @@ const AddTestSuitePipeline = ({
       testSuite?.id ?? (searchData as { testSuiteId: string }).testSuiteId;
 
     return testSuite?.basic ? undefined : testSuiteIdData;
-  }, [location.search]);
+  }, [location.search, testSuite?.basic, testSuite?.id]);
+
+  const tableFqnForFilters = useMemo(() => {
+    if (
+      testSuite?.basic &&
+      testSuite.basicEntityReference?.fullyQualifiedName &&
+      testSuite.basicEntityReference.type === 'table'
+    ) {
+      return testSuite.basicEntityReference.fullyQualifiedName;
+    }
+
+    return undefined;
+  }, [testSuite?.basic, testSuite?.basicEntityReference]);
+
+  // The picker's `q` is free text: the endpoint parses it as a literal term rather than as a
+  // Lucene expression, so the suite scope travels as first-class filter params. A basic suite owns
+  // exactly its table's test cases, so scoping by the table's entityLink is equivalent.
+  const testCasePickerScope = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      testSuiteId,
+      ...(tableFqnForFilters && {
+        entityLink: `<#E::table::${tableFqnForFilters}>`,
+        includeAllTests: true,
+      }),
+    }),
+    [testSuiteId, tableFqnForFilters]
+  );
 
   const [selectAllTestCases, setSelectAllTestCases] = useState(
     initialData?.selectAllTestCases
@@ -117,14 +144,14 @@ const AddTestSuitePipeline = ({
       selectAllTestCases,
       raiseOnError,
     } = values;
+    const testCaseNames = normalizeSelectedTestProp(testCases);
+
     onSubmit({
       cron,
       enableDebugLog,
       name,
       selectAllTestCases,
-      testCases: testCases?.map((testCase: TestCase | string) =>
-        isString(testCase) ? testCase : testCase.name
-      ),
+      testCases: testCaseNames.length > 0 ? testCaseNames : undefined,
       raiseOnError,
     });
   };
@@ -134,6 +161,9 @@ const AddTestSuitePipeline = ({
     { forms }
   ) => {
     const form = forms['schedular-form'];
+    if (!form) {
+      return;
+    }
     const value = form.getFieldValue('selectAllTestCases');
     setSelectAllTestCases(value);
     if (value) {
@@ -197,15 +227,16 @@ const AddTestSuitePipeline = ({
                   ]}
                   valuePropName="selectedTest">
                   <AddTestCaseList
-                    filters={
-                      !testSuiteId
-                        ? `testSuite.fullyQualifiedName:"${escapeESReservedCharacters(
-                            testSuite?.fullyQualifiedName ?? fqn
+                    columnFilters={
+                      tableFqnForFilters
+                        ? `fullyQualifiedName:"${escapeESReservedCharacters(
+                            tableFqnForFilters
                           )}"`
                         : undefined
                     }
+                    hideTableFilter={Boolean(tableFqnForFilters)}
                     showButton={false}
-                    testCaseParams={{ testSuiteId }}
+                    testCaseParams={testCasePickerScope}
                   />
                 </Form.Item>
               </Col>

@@ -28,11 +28,13 @@ import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certifi
 import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
-import { getEntityName } from '../../utils/EntityUtils';
-import { getTagImageSrc } from '../../utils/IconUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { isImageUrl } from '../../utils/IconUtils';
+import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
+import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
+import { Icon } from '../common/Icon/Icon';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
@@ -150,31 +152,44 @@ const Certification = ({
     return (
       <div
         className="h-max-100 overflow-y-auto overflow-x-hidden"
-        onScroll={handleScroll}
-      >
+        onScroll={handleScroll}>
         <Radio.Group className="w-full" value={selectedCertification}>
           {certifications.map((certificate) => {
-            const tagSrc = getTagImageSrc(certificate.style?.iconURL ?? '');
+            const iconURL = certificate.style?.iconURL;
             const title = getEntityName(certificate);
             const { id, fullyQualifiedName, description } = certificate;
+
+            const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
+            const renderedIcon = iconURL ? (
+              <Icon
+                alt={title}
+                fallback={<CertificationIcon height={28} width={28} />}
+                iconValue={iconURL}
+                size={28}
+              />
+            ) : null;
 
             return (
               <div
                 className="certification-card-item cursor-pointer"
                 key={id}
+                role="presentation"
                 style={{ cursor: 'pointer' }}
                 onClick={() => {
                   setSelectedCertification(fullyQualifiedName ?? '');
-                }}
-              >
+                }}>
                 <Radio
                   className="certification-radio-top-right"
                   data-testid={`radio-btn-${fullyQualifiedName}`}
                   value={fullyQualifiedName}
                 />
                 <div className="certification-card-content">
-                  {tagSrc ? (
-                    <img alt={title} src={tagSrc} />
+                  {renderedIcon ? (
+                    isIcon ? (
+                      <div className="certification-icon">{renderedIcon}</div>
+                    ) : (
+                      renderedIcon
+                    )
                   ) : (
                     <div className="certification-icon">
                       <CertificationIcon height={28} width={28} />
@@ -261,36 +276,28 @@ const Certification = ({
                   data-testid="clear-certification"
                   tabIndex={0}
                   onClick={() => updateCertificationData()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      updateCertificationData();
-                    }
-                  }}
-                >
+                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
                   {t('label.clear')}
                 </Typography.Text>
               </Space>
-            }
-          >
+            }>
             <Spin
               indicator={<Loader size="small" />}
-              spinning={isLoadingCertificationData}
-            >
+              spinning={isLoadingCertificationData}>
               {certificationCardData}
               <div className="flex justify-end text-lg gap-2 mt-4">
                 <Button
                   data-testid="close-certification"
                   type="default"
-                  onClick={handleCloseCertification}
-                >
+                  onClick={handleCloseCertification}>
                   <CloseOutlined />
                 </Button>
                 <Button
                   data-testid="update-certification"
                   type="primary"
-                  onClick={() => updateCertificationData(selectedCertification)}
-                >
+                  onClick={() =>
+                    updateCertificationData(selectedCertification)
+                  }>
                   <CheckOutlined />
                 </Button>
               </div>
@@ -304,8 +311,7 @@ const Certification = ({
       showArrow={false}
       trigger="click"
       onOpenChange={onOpenChange}
-      {...popoverProps}
-    >
+      {...popoverProps}>
       {children}
     </Popover>
   );

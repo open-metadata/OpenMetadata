@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/adminOpsConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AdminOpsConfiguration",
+  "description": "Configuration for the Admin Operations API that allows SaaS Hypervisor to trigger administrative operations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.AdminOpsConfiguration",
+  "definitions": {
+    "adminOpsMtlsConfiguration": {
+      "title": "Admin Ops mTLS Configuration",
+      "description": "Mutual TLS authentication configuration for the Admin Ops API.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.AdminOpsMtlsConfiguration",
+      "properties": {
+        "enabled": {
+          "description": "Enable mTLS client certificate authentication.",
+          "type": "boolean",
+          "default": false
+        },
+        "requireClientCert": {
+          "description": "Require client certificate when mTLS is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "allowedCNs": {
+          "description": "List of allowed certificate Common Names.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowedSANs": {
+          "description": "List of allowed Subject Alternative Names.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowedIssuers": {
+          "description": "List of allowed certificate issuer DNs.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "enabled": {
+      "title": "Enabled",
+      "description": "Whether the Admin Ops API is enabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "mtls": {
+      "$ref": "#/definitions/adminOpsMtlsConfiguration"
+    }
+  },
+  "additionalProperties": false
+}

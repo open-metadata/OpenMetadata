@@ -1,0 +1,390 @@
+{
+  "settings": {
+    "index": {
+      "max_ngram_diff": 17
+    },
+    "analysis": {
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
+      },
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "word_delimiter_filter",
+            "lowercase",
+            "asciifolding",
+            "russian_stop",
+            "russian_snowball",
+            "english_stop",
+            "om_kstem"
+          ]
+        },
+        "om_ngram": {
+          "type": "custom",
+          "tokenizer": "n_gram_tokenizer",
+          "filter": [
+            "lowercase"
+          ]
+        },
+        "om_compound_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "compound_word_delimiter_graph",
+            "lowercase",
+            "flatten_graph"
+          ]
+        }
+      },
+      "filter": {
+        "word_delimiter_filter": {
+          "type": "word_delimiter",
+          "preserve_original": true
+        },
+        "compound_word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true,
+          "catenate_words": false,
+          "catenate_numbers": false,
+          "catenate_all": false,
+          "preserve_original": true,
+          "stem_english_possessive": true
+        },
+        "russian_stop": {
+          "type": "stop",
+          "stopwords": "_russian_"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "russian_snowball": {
+          "name": "russian",
+          "type": "stemmer"
+        },
+        "om_kstem": {
+          "type": "kstem"
+        },
+        "asciifolding": {
+          "type": "asciifolding"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "@timestamp": {
+        "type": "date"
+      },
+      "endTimestamp": {
+        "type": "date"
+      },
+      "durationMs": {
+        "type": "float"
+      },
+      "status": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "executedBy": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "sessionId": {
+        "type": "keyword"
+      },
+      "serverId": {
+        "type": "keyword"
+      },
+      "server": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "serverType": {
+            "type": "keyword"
+          },
+          "transportType": {
+            "type": "keyword"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "owners": {
+            "type": "nested",
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              },
+              "displayName": {
+                "type": "keyword"
+              }
+            }
+          },
+          "tags": {
+            "type": "nested",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "domain": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          }
+        }
+      },
+      "applicationContext": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          },
+          "displayName": {
+            "type": "keyword"
+          }
+        }
+      },
+      "toolCalls": {
+        "type": "nested",
+        "properties": {
+          "toolName": {
+            "type": "keyword"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "latencyMs": {
+            "type": "float"
+          },
+          "timestamp": {
+            "type": "date"
+          },
+          "errorMessage": {
+            "type": "text"
+          }
+        }
+      },
+      "resourceAccesses": {
+        "type": "nested",
+        "properties": {
+          "resourceUri": {
+            "type": "keyword"
+          },
+          "accessType": {
+            "type": "keyword"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": "date"
+          }
+        }
+      },
+      "promptUses": {
+        "type": "nested",
+        "properties": {
+          "promptName": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "date"
+          },
+          "tokensGenerated": {
+            "type": "integer"
+          }
+        }
+      },
+      "dataAccessed": {
+        "type": "nested",
+        "properties": {
+          "accessType": {
+            "type": "keyword"
+          },
+          "recordCount": {
+            "type": "integer"
+          },
+          "piiAccessed": {
+            "type": "boolean"
+          },
+          "sensitivityLevel": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "date"
+          }
+        }
+      },
+      "complianceChecks": {
+        "type": "nested",
+        "properties": {
+          "checkName": {
+            "type": "keyword"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "severity": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "date"
+          }
+        }
+      },
+      "metrics": {
+        "properties": {
+          "totalToolCalls": {
+            "type": "integer"
+          },
+          "successfulToolCalls": {
+            "type": "integer"
+          },
+          "totalResourceAccesses": {
+            "type": "integer"
+          },
+          "totalPromptUses": {
+            "type": "integer"
+          },
+          "piiDataAccessed": {
+            "type": "boolean"
+          },
+          "highSensitivityDataAccessed": {
+            "type": "boolean"
+          },
+          "highRiskOperations": {
+            "type": "integer"
+          },
+          "complianceViolations": {
+            "type": "integer"
+          }
+        }
+      },
+      "errorMessage": {
+        "type": "text"
+      },
+      "environment": {
+        "type": "keyword"
+      },
+      "serverVersion": {
+        "type": "keyword"
+      },
+      "protocolVersion": {
+        "type": "keyword"
+      },
+      "deleted": {
+        "type": "boolean"
+      }
+    }
+  }
+}

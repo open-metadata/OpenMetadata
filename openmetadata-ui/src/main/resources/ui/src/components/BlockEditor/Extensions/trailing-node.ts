@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 import { Extension } from '@tiptap/core';
+import { Node as ProseMirrorNode, NodeType } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 
-function nodeEqualsType({ types, node }: any) {
+interface NodeEqualsTypeArgs {
+  types: NodeType | NodeType[];
+  node: ProseMirrorNode | null;
+}
+
+function nodeEqualsType({ types, node }: NodeEqualsTypeArgs) {
   return (
-    (Array.isArray(types) && types.includes(node.type)) || node.type === types
+    node &&
+    ((Array.isArray(types) && types.includes(node.type)) || node.type === types)
   );
 }
 

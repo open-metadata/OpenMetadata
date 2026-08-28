@@ -20,6 +20,7 @@ import {
   updateDefaultDataConsumerPolicy,
   updateDefaultOrganizationPolicy,
 } from './permission';
+import { setRemoteRunnerAsDefault } from './serviceIngestion';
 import { removeOrganizationPolicyAndRole } from './team';
 
 const initialSetup = async (page: Page) => {
@@ -38,12 +39,18 @@ const initialSetup = async (page: Page) => {
     await enableDisableAutoPilotApplication(apiContext, false);
   }
 
+  if (!process.env.PLAYWRIGHT_IS_OSS) {
+    await setRemoteRunnerAsDefault(apiContext);
+  }
+
   await afterAction();
 };
 
 export const loginAsAdmin = async (page: Page, admin: AdminClass) => {
   await admin.login(page);
-  await page.waitForURL('**/my-data');
+  await page.waitForURL(
+    (url) => url.pathname === '/' || url.pathname === '/my-data'
+  );
 
   // Setup policy and increase the token expiry time
   await initialSetup(page);

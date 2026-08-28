@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test as base, Browser, Page } from '@playwright/test';
+import { Browser, expect, Page, test as base } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 
 const test = base.extend<{ germanLocalePage: Page }>({
@@ -37,20 +37,21 @@ test.describe('Language Override Tests', () => {
       .getByTestId('language-selector-button')
       .waitFor({ state: 'visible' });
     await germanLocalePage.getByTestId('language-selector-button').click();
-    await germanLocalePage.waitForSelector(
-      '.ant-dropdown:not(.ant-dropdown-hidden)',
-      { state: 'visible' }
-    );
+    await germanLocalePage
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .waitFor({ state: 'visible' });
     await germanLocalePage.getByText('English - EN').click();
 
     // navigate(0) triggers a full page reload when language changes
     await germanLocalePage.waitForLoadState('load');
-    await germanLocalePage.getByTestId('language-selector-button').waitFor({ state: 'visible' });
+    await germanLocalePage
+      .getByTestId('language-selector-button')
+      .waitFor({ state: 'visible' });
 
     await germanLocalePage.locator('[data-testid="dropdown-profile"]').click();
-    await germanLocalePage.waitForSelector('[role="menu"].profile-dropdown', {
-      state: 'visible',
-    });
+    await germanLocalePage
+      .locator('[role="menu"].profile-dropdown')
+      .waitFor({ state: 'visible' });
 
     const profileDropdown = germanLocalePage.locator(
       '[role="menu"].profile-dropdown'

@@ -11,10 +11,12 @@
 """
 Kill all not finished runs
 """
+
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.kill_all import kill_all
@@ -33,6 +35,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -42,17 +45,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
     if not is_airflow_3_or_higher():
         from airflow.www.app import csrf
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/kill", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def kill() -> Response:
         """
         Given a DAG ID, mark all running tasks as FAILED

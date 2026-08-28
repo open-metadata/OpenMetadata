@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +22,12 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { columnSorter } from '../../../utils/EntitySortUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import './custom-property-table.less';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';

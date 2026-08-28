@@ -15,6 +15,7 @@ import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -32,20 +33,17 @@ const navigateToDataInsightPage = async (
   page: Page,
   waitOnLatestKPI = false
 ) => {
-  const promises = [
-    page.waitForResponse(
-      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
-    ),
-  ];
-  if (waitOnLatestKPI) {
-    promises.push(
-      page.waitForResponse(
+  const descriptionChartPromise = page.waitForResponse(
+    '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+  );
+  const latestKpiPromise = waitOnLatestKPI
+    ? page.waitForResponse(
         '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
       )
-    );
-  }
+    : undefined;
   await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-  await Promise.all(promises);
+  await descriptionChartPromise;
+  if (latestKpiPromise) await latestKpiPromise;
 };
 
 test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
@@ -133,10 +131,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       await expect(
         metricEntityContainer.getByTestId('entity-value')
       ).toBeVisible();
-      const percentageValue = await metricEntityContainer
-        .getByTestId('entity-value')
-        .textContent();
-      expect(percentageValue).toBeTruthy();
+      await expect(
+        metricEntityContainer.getByTestId('entity-value')
+      ).not.toHaveText('');
     });
   });
 
@@ -179,10 +176,11 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       "descriptionStatus = 'INCOMPLETE'"
     );
 
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.waitForResponse(
+    const descriptionChartResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await descriptionChartResponse;
 
     await page.getByTestId('explore-asset-with-no-owner').click();
     await page.waitForURL('/explore/tables?*');
@@ -269,19 +267,17 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    const kpiResponse = page.waitForResponse(
-      'api/v1/kpi?fields=dataInsightChart'
+    await redirectToHomePage(page);
+
+    // `kpi-widget` is a child of the KPI widget, not its layout key. The landing-page helper
+    // keys off the layout key — the testid the widget renders on its wrapper and the one its
+    // DeferredWidget slot is named after — so an inner testid reveals nothing.
+    const kpiWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.KPI'
     );
 
-    // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
-    await redirectToHomePage(page, false);
-
-    await kpiResponse;
-
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-
-    expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+    await expect(kpiWidget.getByTestId('kpi-widget')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {
@@ -299,7 +295,6 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     for (const data of KPI_DATA) {
       await page.getByTestId(`delete-action-${data.displayName}`).click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       const deleteResponse = page.waitForResponse(
         `/api/v1/kpi/*?hardDelete=true&recursive=false`
       );

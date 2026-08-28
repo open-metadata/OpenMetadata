@@ -46,7 +46,7 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',
@@ -63,15 +63,21 @@ jest.mock('../../common/Table/Table', () => {
     loading,
     rowSelection,
     rowKey,
-  }: any) {
+  }: {
+    columns?: unknown[];
+    dataSource?: Array<{ id: string; name: string; [key: string]: unknown }>;
+    loading?: boolean;
+    rowSelection?: { onChange?: (keys: string[]) => void };
+    rowKey: string;
+  }) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Row Selection: {rowSelection ? 'enabled' : 'disabled'}</div>
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
-        {dataSource?.map((item: any) => (
-          <div data-testid={`table-row-${item.id}`} key={item[rowKey]}>
+        {dataSource?.map((item) => (
+          <div data-testid={`table-row-${item.id}`} key={String(item[rowKey])}>
             <button
               data-testid={`select-row-${item.id}`}
               onClick={() => rowSelection?.onChange?.([item.id])}>
@@ -85,20 +91,24 @@ jest.mock('../../common/Table/Table', () => {
 });
 
 jest.mock(
-  '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1',
+  '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => {
-    return function MockTestCaseFormV1({
-      drawerProps,
-      onCancel,
+    return function MockTestCaseFormDrawer({
+      open,
+      onClose,
       onFormSubmit,
-    }: any) {
-      if (!drawerProps.open) {
+    }: {
+      open: boolean;
+      onClose: () => void;
+      onFormSubmit: () => void;
+    }) {
+      if (!open) {
         return null;
       }
 
       return (
         <div data-testid="test-case-form">
-          <button data-testid="cancel-test-form" onClick={onCancel}>
+          <button data-testid="cancel-test-form" onClick={onClose}>
             Cancel
           </button>
           <button data-testid="submit-test-form" onClick={onFormSubmit}>
@@ -147,7 +157,7 @@ const commonProps = {
   },
 };
 
-const mockTestCases: TestCase[] = [
+const mockTestCases = [
   {
     id: 'test-1',
     name: 'Test Case 1',
@@ -155,9 +165,9 @@ const mockTestCases: TestCase[] = [
     fullyQualifiedName: 'test.case.1',
     updatedAt: 1640995200000,
     testCaseResult: {
-      result: 'Success' as any,
+      result: 'Success',
       timestamp: 1640995200000,
-    } as any,
+    },
   },
   {
     id: 'test-2',
@@ -166,11 +176,11 @@ const mockTestCases: TestCase[] = [
     fullyQualifiedName: 'test.case.2',
     updatedAt: 1640995200000,
     testCaseResult: {
-      result: 'Failed' as any,
+      result: 'Failed',
       timestamp: 1640995200000,
-    } as any,
+    },
   },
-] as any;
+] as unknown as TestCase[];
 
 describe('ContractQualityFormTab', () => {
   beforeEach(() => {
@@ -246,7 +256,7 @@ describe('ContractQualityFormTab', () => {
 
     it('should not fetch data when table FQN is missing', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValueOnce({
         data: { fullyQualifiedName: undefined },
@@ -428,7 +438,7 @@ describe('ContractQualityFormTab', () => {
   describe('Error Handling', () => {
     it('should handle missing table context', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValue({ data: undefined });
 

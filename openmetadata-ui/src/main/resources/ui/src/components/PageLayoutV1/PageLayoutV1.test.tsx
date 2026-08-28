@@ -33,8 +33,7 @@ describe('PageLayoutV1', () => {
         center
         leftPanel={<div>{leftPanelText}</div>}
         pageTitle="Test Page"
-        rightPanel={<div>{rightPanelText}</div>}
-      >
+        rightPanel={<div>{rightPanelText}</div>}>
         {centerText}
       </PageLayoutV1>
     );
@@ -73,8 +72,7 @@ describe('PageLayoutV1', () => {
       <PageLayoutV1
         fullHeight
         mainContainerClassName="test-full-height"
-        pageTitle="Test Page"
-      >
+        pageTitle="Test Page">
         {centerText}
       </PageLayoutV1>
     );
@@ -85,7 +83,7 @@ describe('PageLayoutV1', () => {
     ).toBeInTheDocument();
   });
 
-  it('Should apply default height when fullHeight is true and no pageContainerStyle.height is provided', () => {
+  it('Should apply the base and full-height classes when fullHeight is true', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(
       <PageLayoutV1 fullHeight pageTitle="Test Page">
@@ -95,29 +93,11 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
-    expect(pageLayout).toHaveStyle({ height: 'calc(100vh - 64px)' });
-    expect(pageLayout).toHaveStyle({ overflow: 'hidden' });
+    expect(pageLayout).toHaveClass('page-layout-v1');
+    expect(pageLayout).toHaveClass('page-layout-v1-full-height');
   });
 
-  it('Should not override pageContainerStyle.height when fullHeight is true and height is already provided', () => {
-    const centerText = 'Center content';
-    const customHeight = '500px';
-    const { getByTestId } = render(
-      <PageLayoutV1
-        fullHeight
-        pageContainerStyle={{ height: customHeight }}
-        pageTitle="Test Page"
-      >
-        {centerText}
-      </PageLayoutV1>
-    );
-
-    const pageLayout = getByTestId('page-layout-v1');
-
-    expect(pageLayout).toHaveStyle({ height: customHeight });
-  });
-
-  it('Should not apply fullHeight styles when fullHeight is false', () => {
+  it('Should not apply the full-height class when fullHeight is false', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(
       <PageLayoutV1 pageTitle="Test Page">{centerText}</PageLayoutV1>
@@ -125,27 +105,48 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
-    expect(pageLayout).not.toHaveStyle({ height: 'calc(100vh - 64px)' });
+    expect(pageLayout).toHaveClass('page-layout-v1');
+    expect(pageLayout).not.toHaveClass('page-layout-v1-full-height');
   });
 
-  it('Should merge custom pageContainerStyle with fullHeight styles', () => {
+  it('Should apply the default 16px horizontal padding class when no variant is provided', () => {
+    const { getByTestId } = render(
+      <PageLayoutV1 pageTitle="Test Page">Center content</PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveClass('tw:px-4');
+    expect(pageLayout).not.toHaveClass('tw:p-2');
+    expect(pageLayout).toHaveAttribute('data-variant', 'default');
+  });
+
+  it('Should apply the compact 8px padding class when variant is compact', () => {
+    const { getByTestId } = render(
+      <PageLayoutV1 pageTitle="Test Page" variant="compact">
+        Center content
+      </PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveClass('tw:p-2');
+    expect(pageLayout).not.toHaveClass('tw:px-4');
+    expect(pageLayout).toHaveAttribute('data-variant', 'compact');
+  });
+
+  it('Should append the consumer className after the base classes', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(
-      <PageLayoutV1
-        fullHeight
-        pageContainerStyle={{ backgroundColor: 'red' }}
-        pageTitle="Test Page"
-      >
+      <PageLayoutV1 fullHeight className="tw:!h-auto" pageTitle="Test Page">
         {centerText}
       </PageLayoutV1>
     );
 
     const pageLayout = getByTestId('page-layout-v1');
 
-    expect(pageLayout).toHaveStyle({
-      height: 'calc(100vh - 64px)',
-      overflow: 'hidden',
-      backgroundColor: 'red',
-    });
+    expect(pageLayout).toHaveClass('page-layout-v1');
+    expect(pageLayout).toHaveClass('page-layout-v1-full-height');
+    expect(pageLayout).toHaveClass('tw:!h-auto');
   });
 });

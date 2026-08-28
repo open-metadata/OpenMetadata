@@ -43,15 +43,6 @@ jest.mock('js-yaml', () => ({
   dump: jest.fn((data) => JSON.stringify(data)),
 }));
 
-jest.mock('../i18next/LocalUtil', () => ({
-  __esModule: true,
-  default: {
-    t: jest.fn((key: string) => key),
-  },
-  t: jest.fn((key: string) => key),
-  detectBrowserLanguage: jest.fn(() => 'en-US'),
-}));
-
 // Import after mocks are set up
 import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
 import { DataContract } from '../../generated/entity/data/dataContract';

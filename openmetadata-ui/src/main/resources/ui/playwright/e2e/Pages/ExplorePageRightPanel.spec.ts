@@ -11,41 +11,45 @@
  *  limitations under the License.
  */
 
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import { Domain } from '../../support/domain/Domain';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test as baseTest } from '../../support/fixtures/userPages';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import { uuid, waitForDeletionFromSearchIndex } from '../../utils/common';
+import { getCurrentMillis } from '../../utils/dateTime';
+import {
+  getEntityDisplayName,
+  openColumnDetailPanel,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
+import { getEntityFqn } from '../../utils/entityPanel';
+import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
-import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
-import { TableClass } from '../../support/entity/TableClass';
-import { ClassificationClass } from '../../support/tag/ClassificationClass';
-import { TagClass } from '../../support/tag/TagClass';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { uuid } from '../../utils/common';
-import { performAdminLogin } from '../../utils/admin';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { TopicClass } from '../../support/entity/TopicClass';
-import { PipelineClass } from '../../support/entity/PipelineClass';
-import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
-import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
-import { MlModelClass } from '../../support/entity/MlModelClass';
-import { ContainerClass } from '../../support/entity/ContainerClass';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { Domain } from '../../support/domain/Domain';
-import { UserClass } from '../../support/user/UserClass';
-import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { getEntityFqn } from '../../utils/entityPanel';
-import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
-import { getCurrentMillis } from '../../utils/dateTime';
-import { PolicyClass } from '../../support/access-control/PoliciesClass';
-import { RolesClass } from '../../support/access-control/RolesClass';
 import {
-  openColumnDetailPanel,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+  RightPanelPageObject,
+  RIGHT_PANEL_TAB,
+} from '../PageObject/Explore/RightPanelPageObject';
+import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 
 const domainEntity = new Domain();
 const user1 = new UserClass();
@@ -106,12 +110,16 @@ const glossaryTermToUpdate =
 const tagToUpdate =
   testTag.responseData?.displayName ?? testTag.data.displayName;
 const testTier = 'Tier1';
-const customPropertyData: Record<string, { property: { name: string } }> = {};
 
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.slow(true); // 5 minutes
+    // Explicit hook budget for the 9 sequential entity creations. Do NOT
+    // use test.slow(true) here: combined with the (now removed) suite-wide
+    // beforeEach slow, stacked tripled budgets let a single failing attempt
+    // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
+    // 3m — run 32500973433) instead of failing fast.
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -127,11 +135,6 @@ test.describe('Right Panel Test Suite', () => {
     } finally {
       await afterAction();
     }
-  });
-
-  // No need for explicit beforeEach instantiation as fixtures handle it
-  test.beforeEach(async () => {
-    test.slow(true);
   });
 
   // Cleanup test data
@@ -155,6 +158,13 @@ test.describe('Right Panel Test Suite', () => {
 
   test.describe('Explore page right panel tests', () => {
     test.describe('Overview panel CRUD and Removal operations', () => {
+      // Nightly EKS/RDS infra runs every test body in this group at 72-84 s
+      // (run 32560604531 in openmetadata-nightly; PR infra ~45 s) — genuine
+      // remote-server latency, uniform across all 10 tests. Budget for that
+      // infra explicitly instead of the old suite-wide test.slow(true),
+      // which tripled EVERY test in the file and let failures grind for
+      // minutes. Applies to all tests in this describe only.
+      test.setTimeout(120_000);
       const crudEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
@@ -199,12 +209,12 @@ test.describe('Right Panel Test Suite', () => {
           const fqn = getEntityFqn(entityInstance);
 
           await test.step('Navigate to entity', async () => {
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
@@ -253,12 +263,12 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeTag([tagToUpdate]);
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
@@ -273,12 +283,12 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeTier();
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
@@ -293,12 +303,12 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeGlossaryTerm([glossaryTermToUpdate]);
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
@@ -315,12 +325,12 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeDomain(domainToUpdate);
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
@@ -335,12 +345,12 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeOwner([user1.getUserDisplayName()], 'Users');
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
@@ -369,32 +379,13 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
             Object.values(entityMap).map((e) => e.create(apiContext))
           );
-          for (const [entityType, entityInstance] of Object.entries(
-            entityMap
-          )) {
-            try {
-              await entityInstance.prepareCustomProperty(apiContext);
-              const firstProperty = Object.values(
-                entityInstance.customPropertyValue
-              )[0];
-              if (firstProperty) {
-                customPropertyData[entityType] = {
-                  property: firstProperty.property,
-                };
-              }
-            } catch (error) {
-              console.warn(
-                `Failed to create custom property for ${entityType}:`,
-                error
-              );
-            }
-          }
         } finally {
           await afterAction();
         }
@@ -412,110 +403,110 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.describe('Schema panel tests', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should display and verify schema fields for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            schema,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('schema'),
-              `Schema tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
+        Object.entries(entityMap)
+          .filter(([, e]) =>
+            RightPanelPageObject.isTabAvailableForEntity(
+              e,
+              RIGHT_PANEL_TAB.SCHEMA
+            )
+          )
+          .forEach(([entityType, entityInstance]) => {
+            test(`Should display and verify schema fields for ${entityType}`, async ({
               adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await schema.navigateToSchemaTab();
-            await schema.shouldBeVisible();
+              rightPanel,
+              schema,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            // Extract fields from DOM to test search dynamically
-            const fieldCards = adminPage.locator(
-              '.schema-field-cards-container .field-card'
-            );
-            if ((await fieldCards.count()) === 0) {
-              // Wait for fields to render
-              await fieldCards
-                .first()
-                .waitFor({ state: 'visible', timeout: 5000 })
-                .catch(() => null);
-            }
-            const count = await fieldCards.count();
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelVisible();
+              await schema.navigateToSchemaTab();
+              await schema.shouldBeVisible();
 
-            if (count >= 2) {
-              const firstCardId = await fieldCards
-                .nth(0)
-                .getAttribute('data-testid');
-              const secondCardId = await fieldCards
-                .nth(1)
-                .getAttribute('data-testid');
-
-              const firstField = firstCardId?.replace('field-card-', '');
-              const secondField = secondCardId?.replace('field-card-', '');
-
-              // Entities that use server-side schema search
-              const usesServerSideSearch = [
-                'table',
-                'dashboardDataModel',
-              ].includes(entityType);
-
-              if (firstField && secondField) {
-                // 1. Search for first field
-                let searchRes;
-                if (usesServerSideSearch) {
-                  searchRes = adminPage.waitForResponse(
-                    (res) =>
-                      res.url().includes('columns/search?offset=') &&
-                      res.url().includes('q=') &&
-                      res.status() === 200
-                  );
-                }
-                await schema.searchFor(firstField);
-                if (searchRes) await searchRes;
-
-                await schema.shouldShowFieldByName(firstField);
-                await schema.shouldNotShowFieldByName(secondField);
-
-                // 2. Clear search
-                let clearRes;
-                if (usesServerSideSearch) {
-                  clearRes = adminPage.waitForResponse(
-                    (res) =>
-                      res.url().includes('/columns?offset=') &&
-                      res.status() === 200
-                  );
-                }
-                await schema.clearSearch();
-                if (clearRes) await clearRes;
-
-                await schema.shouldShowFieldByName(firstField);
-                await schema.shouldShowFieldByName(secondField);
-
-                // 3. Search for non-existent field
-                let noMatchRes;
-                if (usesServerSideSearch) {
-                  noMatchRes = adminPage.waitForResponse(
-                    (res) =>
-                      res.url().includes('columns/search?offset=') &&
-                      res.url().includes('q=') &&
-                      res.status() === 200
-                  );
-                }
-                await schema.searchFor('zzz_no_match_xyz');
-                if (noMatchRes) await noMatchRes;
-
-                await schema.shouldNotShowFieldByName(firstField);
-                await schema.shouldShowNoResults();
+              // Extract fields from DOM to test search dynamically
+              const fieldCards = adminPage.locator(
+                '.schema-field-cards-container .field-card'
+              );
+              if ((await fieldCards.count()) === 0) {
+                // Wait for fields to render
+                await fieldCards
+                  .first()
+                  .waitFor({ state: 'visible', timeout: 5000 })
+                  .catch(() => null);
               }
-            }
+              const count = await fieldCards.count();
+
+              if (count >= 2) {
+                const firstCardId = await fieldCards
+                  .nth(0)
+                  .getAttribute('data-testid');
+                const secondCardId = await fieldCards
+                  .nth(1)
+                  .getAttribute('data-testid');
+
+                const firstField = firstCardId?.replace('field-card-', '');
+                const secondField = secondCardId?.replace('field-card-', '');
+
+                // Entities that use server-side schema search
+                const usesServerSideSearch = [
+                  'table',
+                  'dashboardDataModel',
+                ].includes(entityType);
+
+                if (firstField && secondField) {
+                  // 1. Search for first field
+                  const searchRes = usesServerSideSearch
+                    ? adminPage.waitForResponse(
+                        (res) =>
+                          res.url().includes('columns/search?offset=') &&
+                          res.url().includes('q=') &&
+                          res.status() === 200
+                      )
+                    : undefined;
+                  await schema.searchFor(firstField);
+                  if (searchRes) await searchRes;
+
+                  await schema.shouldShowFieldByName(firstField);
+                  await schema.shouldNotShowFieldByName(secondField);
+
+                  // 2. Clear search
+                  const clearRes = usesServerSideSearch
+                    ? adminPage.waitForResponse(
+                        (res) =>
+                          res.url().includes('/columns?offset=') &&
+                          res.status() === 200
+                      )
+                    : undefined;
+                  await schema.clearSearch();
+                  if (clearRes) await clearRes;
+
+                  await schema.shouldShowFieldByName(firstField);
+                  await schema.shouldShowFieldByName(secondField);
+
+                  // 3. Search for non-existent field
+                  const noMatchRes = usesServerSideSearch
+                    ? adminPage.waitForResponse(
+                        (res) =>
+                          res.url().includes('columns/search?offset=') &&
+                          res.url().includes('q=') &&
+                          res.status() === 200
+                      )
+                    : undefined;
+                  await schema.searchFor('zzz_no_match_xyz');
+                  if (noMatchRes) await noMatchRes;
+
+                  await schema.shouldNotShowFieldByName(firstField);
+                  await schema.shouldShowNoResults();
+                }
+              }
+            });
           });
-        });
       });
 
       test.describe('Right panel validation by asset type', () => {
@@ -525,12 +516,12 @@ test.describe('Right Panel Test Suite', () => {
             rightPanel,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
             await rightPanel.waitForPanelLoaded();
             await rightPanel.validateRightPanelForAsset(entityType);
           });
@@ -538,63 +529,62 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.describe('Lineage - Navigation and Expansion', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should navigate to lineage and test controls for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            lineage,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('lineage'),
-              `Lineage tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
+        Object.entries(entityMap)
+          .filter(([, e]) =>
+            RightPanelPageObject.isTabAvailableForEntity(
+              e,
+              RIGHT_PANEL_TAB.LINEAGE
+            )
+          )
+          .forEach(([entityType, entityInstance]) => {
+            test(`Should navigate to lineage and test controls for ${entityType}`, async ({
               adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await lineage.navigateToLineageTab();
-            await lineage.shouldBeVisible();
-            await lineage.shouldShowLineageControls();
-          });
+              rightPanel,
+              lineage,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-          test(`Should handle lineage expansion buttons for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            lineage,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('lineage'),
-              `Lineage tab not available for ${entityType}`
-            );
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelVisible();
+              await lineage.navigateToLineageTab();
+              await lineage.shouldBeVisible();
+              await lineage.shouldShowLineageControls();
+            });
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
+            test(`Should handle lineage expansion buttons for ${entityType}`, async ({
               adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await lineage.navigateToLineageTab();
-            const hasUpstreamButton = await lineage.hasUpstreamButton();
-            if (hasUpstreamButton) {
-              await lineage.clickUpstreamButton();
-            }
+              rightPanel,
+              lineage,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const hasDownstreamButton = await lineage.hasDownstreamButton();
-            if (hasDownstreamButton) {
-              await lineage.clickDownstreamButton();
-            }
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await lineage.navigateToLineageTab();
+              const hasUpstreamButton = await lineage.hasUpstreamButton();
+              if (hasUpstreamButton) {
+                await lineage.clickUpstreamButton();
+              }
+
+              const hasDownstreamButton = await lineage.hasDownstreamButton();
+              if (hasDownstreamButton) {
+                await lineage.clickDownstreamButton();
+              }
+            });
           });
-        });
       });
 
       test.describe('Lineage - With real upstream and downstream data', () => {
@@ -627,12 +617,12 @@ test.describe('Right Panel Test Suite', () => {
             );
 
             const fqn = getEntityFqn(testTable);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              testTable.entity.name,
-              testTable.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: testTable.entity.name,
+              endpoint: testTable.endpoint,
+              fullyQualifiedName: fqn,
+            });
 
             const rightPanel = new RightPanelPageObject(adminPage, testTable);
             const localLineage = new LineagePageObject(rightPanel);
@@ -679,82 +669,77 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.describe('DataQuality - Comprehensive UI Verification', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should navigate to data quality and verify tab structure for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            dataQuality,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('data quality'),
-              `Data Quality tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
+        Object.entries(entityMap)
+          .filter(([, e]) =>
+            RightPanelPageObject.isTabAvailableForEntity(
+              e,
+              RIGHT_PANEL_TAB.DATA_QUALITY
+            )
+          )
+          .forEach(([entityType, entityInstance]) => {
+            test(`Should navigate to data quality and verify tab structure for ${entityType}`, async ({
               adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await dataQuality.navigateToDataQualityTab();
-            await dataQuality.shouldBeVisible();
-          });
+              rightPanel,
+              dataQuality,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-          test(`Should display incidents tab for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            dataQuality,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('data quality'),
-              `Data Quality tab not available for ${entityType}`
-            );
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await dataQuality.navigateToDataQualityTab();
+              await dataQuality.shouldBeVisible();
+            });
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
+            test(`Should display incidents tab for ${entityType}`, async ({
               adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await dataQuality.navigateToDataQualityTab();
-            await dataQuality.shouldBeVisible();
-            await dataQuality.navigateToIncidentsTab();
-            await dataQuality.shouldShowIncidentsTab();
-          });
+              rightPanel,
+              dataQuality,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-          test(`Should verify empty state when no test cases for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            dataQuality,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('data quality'),
-              `Data Quality tab not available for ${entityType}`
-            );
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await dataQuality.navigateToDataQualityTab();
+              await dataQuality.shouldBeVisible();
+              await dataQuality.navigateToIncidentsTab();
+              await dataQuality.shouldShowIncidentsTab();
+            });
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
+            test(`Should verify empty state when no test cases for ${entityType}`, async ({
               adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await dataQuality.navigateToDataQualityTab();
-            await dataQuality.shouldBeVisible();
-            await dataQuality.shouldShowTestCaseCardsCount(0);
+              rightPanel,
+              dataQuality,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
+
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await dataQuality.navigateToDataQualityTab();
+              await dataQuality.shouldBeVisible();
+              await dataQuality.shouldShowTestCaseCardsCount(0);
+            });
           });
-        });
       });
 
       test.describe('DataQuality - With real test data and incidents', () => {
@@ -816,12 +801,12 @@ test.describe('Right Panel Test Suite', () => {
             );
 
             const fqn = getEntityFqn(testTable);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              testTable.entity.name,
-              testTable.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: testTable.entity.name,
+              endpoint: testTable.endpoint,
+              fullyQualifiedName: fqn,
+            });
             const rightPanel = new RightPanelPageObject(adminPage);
             const localDQ = new DataQualityPageObject(rightPanel);
             await rightPanel.waitForPanelLoaded();
@@ -904,12 +889,12 @@ test.describe('Right Panel Test Suite', () => {
             );
 
             const fqn = getEntityFqn(testTable);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              testTable.entity.name,
-              testTable.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: testTable.entity.name,
+              endpoint: testTable.endpoint,
+              fullyQualifiedName: fqn,
+            });
             const rightPanel = new RightPanelPageObject(adminPage);
             const localDQ = new DataQualityPageObject(rightPanel);
             await rightPanel.waitForPanelLoaded();
@@ -988,12 +973,12 @@ test.describe('Right Panel Test Suite', () => {
             );
 
             const fqn = getEntityFqn(testTable);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              testTable.entity.name,
-              testTable.endpoint,
-              fqn
-            );
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: testTable.entity.name,
+              endpoint: testTable.endpoint,
+              fullyQualifiedName: fqn,
+            });
             const rightPanel = new RightPanelPageObject(adminPage);
             const localDQ = new DataQualityPageObject(rightPanel);
             await rightPanel.waitForPanelLoaded();
@@ -1022,179 +1007,11 @@ test.describe('Right Panel Test Suite', () => {
           }
         });
       });
-
-      test.describe('CustomProperties - Comprehensive Testing', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should navigate to custom properties and show interface for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-          });
-
-          test(`Should display custom properties for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.shouldShowCustomProperty(propertyName);
-            }
-          });
-
-          test(`Should search custom properties for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.searchCustomProperties(propertyName);
-              await customProperties.shouldShowCustomProperty(propertyName);
-            }
-          });
-
-          test(`Should clear search and show all properties for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.searchCustomProperties(propertyName);
-              await customProperties.shouldShowCustomProperty(propertyName);
-
-              await customProperties.clearSearch();
-              await customProperties.shouldShowCustomPropertiesContainer();
-            }
-          });
-          // TODO: Remove skip once the we have search support for custom properties to avoid flakiness
-          test.skip(`Should show no results for invalid search for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            rightPanel.setEntityConfig(entityInstance);
-
-            if (rightPanel.isTabAvailable('custom property')) {
-              await customProperties.navigateToCustomPropertiesTab();
-              await customProperties.shouldShowCustomPropertiesContainer();
-
-              await customProperties.searchCustomProperties(
-                'nonexistent_property_xyz123'
-              );
-              await customProperties.shouldShowEmptyCustomPropertiesContainer();
-            }
-          });
-
-          test(`Should verify property name is visible for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              adminPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.verifyPropertyType(propertyName);
-            }
-          });
-        });
-      });
     }); // end: Entity validation with shared read-only entities
 
     test.describe('Overview panel - Deleted entity verification', () => {
+      test.describe.configure({ mode: 'default' });
+
       const deletedEntityVerificationEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
@@ -1251,12 +1068,12 @@ test.describe('Right Panel Test Suite', () => {
               await deletedUser.create(apiContext);
 
               const fqn = getEntityFqn(entityInstance);
-              await navigateToExploreAndSelectEntity(
-                adminPage,
-                entityInstance.entity.name,
-                entityInstance.endpoint,
-                fqn
-              );
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
               await rightPanel.waitForPanelVisible();
               rightPanel.setEntityConfig(entityInstance);
 
@@ -1266,6 +1083,18 @@ test.describe('Right Panel Test Suite', () => {
               await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
               await deletedUser.delete(apiContext);
+              // The owner dropdown is search-backed and index deletion is
+              // eventually consistent — gate on the index before asserting
+              // absence, or the dropdown can still return the deleted user.
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedUser.getUserDisplayName(),
+                'user',
+                [
+                  deletedUser.getUserDisplayName(),
+                  deletedUser.responseData.name,
+                ]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1303,12 +1132,12 @@ test.describe('Right Panel Test Suite', () => {
                 deletedTag.data.displayName;
 
               const fqn = getEntityFqn(entityInstance);
-              await navigateToExploreAndSelectEntity(
-                adminPage,
-                entityInstance.entity.name,
-                entityInstance.endpoint,
-                fqn
-              );
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
               await rightPanel.waitForPanelVisible();
               rightPanel.setEntityConfig(entityInstance);
 
@@ -1317,6 +1146,14 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedTag.delete(apiContext);
               await deletedClassification.delete(apiContext);
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed tag dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTagDisplayName,
+                'tag',
+                [deletedTagDisplayName]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1351,12 +1188,12 @@ test.describe('Right Panel Test Suite', () => {
                 deletedGlossaryTerm.data.displayName;
 
               const fqn = getEntityFqn(entityInstance);
-              await navigateToExploreAndSelectEntity(
-                adminPage,
-                entityInstance.entity.name,
-                entityInstance.endpoint,
-                fqn
-              );
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
               await rightPanel.waitForPanelVisible();
               rightPanel.setEntityConfig(entityInstance);
 
@@ -1365,6 +1202,14 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedGlossaryTerm.delete(apiContext);
               await deletedGlossary.delete(apiContext);
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed term dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTermDisplayName,
+                'glossaryTerm',
+                [deletedTermDisplayName]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1423,18 +1268,17 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1452,18 +1296,17 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1480,18 +1323,17 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1506,18 +1348,17 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1532,18 +1373,17 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1558,18 +1398,17 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1606,16 +1445,15 @@ test.describe('Right Panel Test Suite', () => {
             dataStewardPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataStewardPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              { state: 'visible' }
-            );
+            await navigateToExploreAndSelectEntity({
+              page: dataStewardPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({ state: 'visible' });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1646,7 +1484,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -1654,14 +1493,6 @@ test.describe('Right Panel Test Suite', () => {
               e.create(apiContext)
             )
           );
-          for (const entityInstance of Object.values(dataConsumerEntityMap)) {
-            try {
-              await entityInstance.prepareCustomProperty(apiContext);
-            } catch {
-              // Custom property type may already exist from another describe block;
-              // continue so remaining entity types still get registered.
-            }
-          }
         } finally {
           await afterAction();
         }
@@ -1686,18 +1517,17 @@ test.describe('Right Panel Test Suite', () => {
             dataConsumerPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataConsumerPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataConsumerPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1715,18 +1545,17 @@ test.describe('Right Panel Test Suite', () => {
             dataConsumerPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataConsumerPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataConsumerPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1741,18 +1570,17 @@ test.describe('Right Panel Test Suite', () => {
             dataConsumerPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataConsumerPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataConsumerPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1767,18 +1595,17 @@ test.describe('Right Panel Test Suite', () => {
             dataConsumerPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataConsumerPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataConsumerPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1793,18 +1620,17 @@ test.describe('Right Panel Test Suite', () => {
             dataConsumerPage,
           }) => {
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataConsumerPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              {
+            await navigateToExploreAndSelectEntity({
+              page: dataConsumerPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1845,16 +1671,15 @@ test.describe('Right Panel Test Suite', () => {
             // which would grant elevated permissions and make domain buttons
             // visible unexpectedly. The fixture user is never set as owner.
             const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity(
-              dataConsumerPage,
-              entityInstance.entity.name,
-              entityInstance.endpoint,
-              fqn
-            );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
-              { state: 'visible' }
-            );
+            await navigateToExploreAndSelectEntity({
+              page: dataConsumerPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({ state: 'visible' });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1886,16 +1711,15 @@ test.describe('Right Panel Test Suite', () => {
         // When an entity has an owner, EditOwners is no longer granted to all
         // users — DataConsumer (which lacks EditOwners / EditAll) cannot see
         // the edit-owners button.
-        await navigateToExploreAndSelectEntity(
-          adminPage,
-          dcOwnerTestTable.entity.name,
-          dcOwnerTestTable.endpoint,
-          fqn
-        );
-        await adminPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await navigateToExploreAndSelectEntity({
+          page: adminPage,
+          entityName: dcOwnerTestTable.entity.name,
+          endpoint: dcOwnerTestTable.endpoint,
+          fullyQualifiedName: fqn,
+        });
+        await adminPage
+          .getByTestId('entity-summary-panel-container')
+          .waitFor({ state: 'visible' });
         const adminRightPanel = new RightPanelPageObject(adminPage);
         adminRightPanel.setEntityConfig(dcOwnerTestTable);
         const adminOverview = new OverviewPageObject(adminRightPanel);
@@ -1907,16 +1731,15 @@ test.describe('Right Panel Test Suite', () => {
         // The pre-configured DataConsumer fixture user (NOT user1, NOT the owner)
         // navigates to the same entity and verifies that edit-owners is NOT
         // visible (restricted by role when the entity already has an owner).
-        await navigateToExploreAndSelectEntity(
-          dataConsumerPage,
-          dcOwnerTestTable.entity.name,
-          dcOwnerTestTable.endpoint,
-          fqn
-        );
-        await dataConsumerPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
-          { state: 'visible' }
-        );
+        await navigateToExploreAndSelectEntity({
+          page: dataConsumerPage,
+          entityName: dcOwnerTestTable.entity.name,
+          endpoint: dcOwnerTestTable.endpoint,
+          fullyQualifiedName: fqn,
+        });
+        await dataConsumerPage
+          .getByTestId('entity-summary-panel-container')
+          .waitFor({ state: 'visible' });
         const dcSummaryPanel = dataConsumerPage.locator(
           '.entity-summary-panel-container'
         );
@@ -1941,12 +1764,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -1975,12 +1798,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2009,12 +1832,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2048,12 +1871,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2084,12 +1907,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2122,12 +1945,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2153,12 +1976,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            adminPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: adminPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2218,19 +2041,21 @@ test.describe('Right Panel Test Suite', () => {
             adminPage,
           }) => {
             const { page: authenticatedPage, afterAction } =
-              await performAdminLogin(adminPage.context().browser()!);
+              await performAdminLogin(adminPage.context().browser()!, {
+                navigate: true,
+              });
             const rightPanel = new RightPanelPageObject(authenticatedPage);
             const localOverview = new OverviewPageObject(rightPanel);
 
             // Use the shared entity instance from entityMap which is already created in beforeAll
             try {
               const fqn = getEntityFqn(entityInstance);
-              await navigateToExploreAndSelectEntity(
-                authenticatedPage,
-                entityInstance.entity.name,
-                entityInstance.endpoint,
-                fqn
-              );
+              await navigateToExploreAndSelectEntity({
+                page: authenticatedPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
               await rightPanel.waitForPanelVisible();
               rightPanel.setEntityConfig(entityInstance);
 
@@ -2247,12 +2072,12 @@ test.describe('Right Panel Test Suite', () => {
               // Reload the entity panel and verify description is gone.
               // waitForPanelLoaded waits for panel loaders to finish, ensuring the
               // entity data (description) has been fetched from the server before asserting.
-              await navigateToExploreAndSelectEntity(
-                authenticatedPage,
-                entityInstance.entity.name,
-                entityInstance.endpoint,
-                fqn
-              );
+              await navigateToExploreAndSelectEntity({
+                page: authenticatedPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
               await rightPanel.waitForPanelLoaded();
 
               // The description text should no longer be present
@@ -2296,18 +2121,20 @@ test.describe('Right Panel Test Suite', () => {
         adminPage,
       }) => {
         const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!);
+          await performAdminLogin(adminPage.context().browser()!, {
+            navigate: true,
+          });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
         try {
           const tableFqn = getEntityFqn(entitySwitchTable);
-          await navigateToExploreAndSelectEntity(
-            authenticatedPage,
-            entitySwitchTable.entity.displayName,
-            entitySwitchTable.endpoint,
-            tableFqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: authenticatedPage,
+            entityName: entitySwitchTable.entity.displayName,
+            endpoint: entitySwitchTable.endpoint,
+            fullyQualifiedName: tableFqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(entitySwitchTable);
           await localOverview.navigateToOverviewTab();
@@ -2323,12 +2150,12 @@ test.describe('Right Panel Test Suite', () => {
           await expect(tableNameInPanel).toBeVisible();
 
           const dashboardFqn = getEntityFqn(entitySwitchDashboard);
-          await navigateToExploreAndSelectEntity(
-            authenticatedPage,
-            entitySwitchDashboard.entity.displayName,
-            entitySwitchDashboard.endpoint,
-            dashboardFqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: authenticatedPage,
+            entityName: entitySwitchDashboard.entity.displayName,
+            endpoint: entitySwitchDashboard.endpoint,
+            fullyQualifiedName: dashboardFqn,
+          });
           await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(entitySwitchDashboard);
@@ -2360,7 +2187,9 @@ test.describe('Right Panel Test Suite', () => {
           page: authenticatedPage,
           apiContext,
           afterAction,
-        } = await performAdminLogin(adminPage.context().browser()!);
+        } = await performAdminLogin(adminPage.context().browser()!, {
+          navigate: true,
+        });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
@@ -2368,12 +2197,12 @@ test.describe('Right Panel Test Suite', () => {
           await testEntity.create(apiContext);
 
           const fqn = getEntityFqn(testEntity);
-          await navigateToExploreAndSelectEntity(
-            authenticatedPage,
-            testEntity.entity.name,
-            testEntity.endpoint,
-            fqn
-          );
+          await navigateToExploreAndSelectEntity({
+            page: authenticatedPage,
+            entityName: testEntity.entity.name,
+            endpoint: testEntity.endpoint,
+            fullyQualifiedName: fqn,
+          });
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(testEntity);
 
@@ -2519,7 +2348,6 @@ test.describe('Right Panel Test Suite', () => {
             columnNameTestId: 'column-name',
             entityType: 'table',
           });
-
 
           expect(forbiddenUrls).toHaveLength(0);
         } finally {

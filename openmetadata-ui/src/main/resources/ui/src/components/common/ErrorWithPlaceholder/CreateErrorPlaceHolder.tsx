@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { Transi18next } from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 import { CreatePlaceholderProps } from './placeholder.interface';
 
@@ -71,6 +71,7 @@ const CreateErrorPlaceHolder = ({
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
                   <a
+                    aria-label={t('label.documentation')}
                     href={doc}
                     rel="noreferrer"
                     style={{ color: theme.primaryColor }}

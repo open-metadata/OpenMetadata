@@ -25,7 +25,9 @@ import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.sv
 import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
+import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -34,11 +36,10 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
-import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
+import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
-
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -160,8 +161,13 @@ export const UserProfileIcon = () => {
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
+          role="button"
+          tabIndex={0}
           onClick={() => handleSelectedPersonaChange(item)}
-        >
+          onKeyDown={handleKeyboardActivation(
+            () => handleSelectedPersonaChange(item),
+            true
+          )}>
           <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
@@ -170,8 +176,7 @@ export const UserProfileIcon = () => {
             {isDefaultPersona && (
               <Tag
                 className="m-l-xs default-persona-tag"
-                data-testid="default-persona-tag"
-              >
+                data-testid="default-persona-tag">
                 {t('label.default')}
               </Tag>
             )}
@@ -188,8 +193,7 @@ export const UserProfileIcon = () => {
     (item: EntityReference) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        to={getTeamAndUserDetailsPath(item.name as string)}
-      >
+        to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
       </Link>
     ),
@@ -204,15 +208,13 @@ export const UserProfileIcon = () => {
           onClick={(e) => {
             e.stopPropagation();
             setShowAllPersona(true);
-          }}
-        >
+          }}>
           {count} {t('label.more')}
         </Typography.Text>
       ) : (
         <Link
           className="more-teams-pill"
-          to={getUserPath(currentUser?.name as string)}
-        >
+          to={getUserPath(currentUser?.name as string)}>
           {count} {t('label.more')}
         </Link>
       ),
@@ -264,12 +266,10 @@ export const UserProfileIcon = () => {
           <Link
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}
-            onClick={handleCloseDropdown}
-          >
+            onClick={handleCloseDropdown}>
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}
-            >
+              ellipsis={{ rows: 1, tooltip: true }}>
               {t('label.view-entity', { entity: t('label.profile') })}
             </Typography.Paragraph>
           </Link>
@@ -350,9 +350,6 @@ export const UserProfileIcon = () => {
         type: 'divider',
       },
       {
-        type: 'divider',
-      },
-      {
         key: 'teams',
         icon: '',
         children: renderLimitedListMenuItem({
@@ -372,6 +369,7 @@ export const UserProfileIcon = () => {
         ),
         type: 'group',
       },
+      ...navbarUtilClassBase.getUserProfileExtraItems(),
       {
         type: 'divider',
       },
@@ -382,8 +380,7 @@ export const UserProfileIcon = () => {
           <Button
             className="text-primary d-flex items-center gap-2 p-0 font-medium"
             type="text"
-            onClick={onLogoutHandler}
-          >
+            onClick={onLogoutHandler}>
             <LogoutIcon height={20} width={20} />
             {t('label.logout')}
           </Button>
@@ -415,13 +412,13 @@ export const UserProfileIcon = () => {
       open={isDropdownOpen}
       overlayClassName="user-profile-dropdown-overlay"
       trigger={['click']}
-      onOpenChange={setIsDropdownOpen}
-    >
+      onOpenChange={setIsDropdownOpen}>
       <Button
         className="user-profile-btn flex-center"
         data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
             <img
               alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"
@@ -439,22 +436,19 @@ export const UserProfileIcon = () => {
           )
         }
         size="large"
-        type="text"
-      >
+        type="text">
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography.Text
               className="font-semibold"
-              data-testid="nav-user-name"
-            >
+              data-testid="nav-user-name">
               {getEntityName(currentUser)}
             </Typography.Text>
           </Tooltip>
 
           <Typography.Text
             data-testid="default-persona"
-            ellipsis={{ tooltip: true }}
-          >
+            ellipsis={{ tooltip: true }}>
             {isEmpty(selectedPersona)
               ? t('label.default')
               : getEntityName(selectedPersona)}

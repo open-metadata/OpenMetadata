@@ -1,6 +1,5 @@
 package org.openmetadata.service.config.web;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collections;
 import java.util.Map;
 import lombok.Getter;
@@ -16,14 +15,12 @@ public class ContentTypeOptionsHeaderFactory extends HeaderFactory {
 
   public static final String CONTENT_TYPE_OPTIONS_HEADER = "X-Content-Type-Options";
 
-  @JsonProperty("enabled")
-  private boolean enabled = true;
+  public ContentTypeOptionsHeaderFactory() {
+    setEnabled(true);
+  }
 
   @Override
   protected Map<String, String> buildHeaders() {
-    if (enabled) {
-      return Collections.singletonMap(CONTENT_TYPE_OPTIONS_HEADER, "nosniff");
-    }
-    return Collections.emptyMap();
+    return Collections.singletonMap(CONTENT_TYPE_OPTIONS_HEADER, "nosniff");
   }
 }

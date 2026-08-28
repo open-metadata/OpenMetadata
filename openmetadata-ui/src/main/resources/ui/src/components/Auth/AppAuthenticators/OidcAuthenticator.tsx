@@ -17,6 +17,8 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -137,10 +139,19 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     // Performs silent signIn and returns with IDToken
-    const signInSilently = async () => {
-      // For OIDC token will be coming as silent-callback as an IFram hence not returning new token here
-      await userManager.signinSilent();
-    };
+    const signInSilently = useCallback(async () => {
+      try {
+        // Token will be coming as silent-callback via an iframe
+        await userManager.signinSilent();
+      } catch (error) {
+        // Silent iframe renewal failed (e.g., Safari ITP blocking third-party cookies)
+        // Fall back to popup which is a visible first-party navigation
+        const user = await userManager.signinPopup();
+        await setOidcToken(user.id_token);
+        updateAxiosInterceptors();
+        TokenService.getInstance().clearRefreshInProgress();
+      }
+    }, [userManager, updateAxiosInterceptors]);
 
     const handleSilentSignInSuccess = async (user: User) => {
       // On success update token in store and update axios interceptors
@@ -169,6 +180,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       renewIdToken: signInSilently,
     }));
 
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Google / CustomOidc / AwsCognito public-client flows.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(signInSilently);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [signInSilently]);
+
     const AppWithAuth = getAuthenticator(
       childComponentType,
       userManager
@@ -177,19 +198,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     return (
       <>
         <Routes>
-          {/* render sign in page if user is not authenticated and not signing up
-           * else redirect to my data page as user is authenticated and not signing up
-           */}
-          <Route
-            element={
-              !isAuthenticated && !isSigningUp ? (
-                <Navigate to={ROUTES.SIGNIN} />
-              ) : (
-                <Navigate to={ROUTES.MY_DATA} />
-              )
-            }
-            path={ROUTES.HOME}
-          />
           {/* render the sign in route only if user is not signing up */}
           <Route
             element={isSigningUp ? <AppWithAuth /> : <SignInPage />}

@@ -31,11 +31,15 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
 import {
   addAssetsToDomain,
+  addAssetToDomainViaApi,
   checkAssetsCount,
   selectDataProduct,
   selectDomain,
   setupAssetsForDomain,
+  waitForDomainAssetsRemoveCommit,
+  waitForDomainAssetsRemoveDryRun,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin } from '../../utils/user';
 
@@ -43,9 +47,11 @@ const test = base.extend<{
   page: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
 });
 
@@ -154,11 +160,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain1.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain1.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -178,11 +186,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'replace',
-            path: '/domains/0',
-            value: {
-              id: domain2.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain2.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -226,11 +236,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -240,11 +252,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'replace',
-            path: '/domains/0',
-            value: {
-              id: subDomain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: subDomain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -254,9 +268,7 @@ test.describe('Move Assets Between Domains', () => {
           table.entityResponseData.fullyQualifiedName
         )}`
       );
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const domainLinks = page.locator('[data-testid="domain-link"]');
       const count = await domainLinks.count();
@@ -309,7 +321,7 @@ test.describe('Subdomain Permissions', () => {
         resources: ['All'],
         operations: ['ViewAll', 'EditDescription'],
         effect: 'allow',
-        condition: `hasDomain('${domain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -396,9 +408,7 @@ test.describe('Subdomain Permissions', () => {
     const subDomainFqn =
       testResources.subDomain.responseData.fullyQualifiedName;
     await userPage.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(
       userPage.getByTestId('entity-header-display-name')
@@ -432,7 +442,7 @@ test.describe('Domain Version History', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await page.waitForSelector('[data-testid="version-button"]', {
+      await page.getByTestId('version-button').waitFor({
         state: 'visible',
       });
 
@@ -475,7 +485,7 @@ test.describe('Domain Version History', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.responseData);
 
-      await page.waitForSelector('[data-testid="version-button"]', {
+      await page.getByTestId('version-button').waitFor({
         state: 'visible',
       });
 
@@ -511,7 +521,6 @@ test.describe('Domain Description Editing', () => {
       await page.getByTestId('save').click();
       await saveRes;
 
-
       await expect(
         page.locator('.om-block-editor[contenteditable="false"]')
       ).toContainText('Updated domain description via UI');
@@ -542,7 +551,6 @@ test.describe('Domain Description Editing', () => {
       const saveRes = page.waitForResponse('/api/v1/dataProducts/*');
       await page.getByTestId('save').click();
       await saveRes;
-
 
       await expect(
         page.locator('.om-block-editor[contenteditable="false"]')
@@ -647,11 +655,13 @@ test.describe('Cross-Domain Access Denial', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: accessibleDomain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: accessibleDomain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -661,11 +671,13 @@ test.describe('Cross-Domain Access Denial', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: inaccessibleDomain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: inaccessibleDomain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -678,7 +690,7 @@ test.describe('Cross-Domain Access Denial', () => {
         resources: ['All'],
         operations: ['ViewAll'],
         effect: 'allow',
-        condition: `hasDomain('${accessibleDomain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -751,9 +763,7 @@ test.describe('Cross-Domain Access Denial', () => {
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
     await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(
       userPage.getByTestId('permission-error-placeholder')
@@ -774,9 +784,7 @@ test.describe('Cross-Domain Access Denial', () => {
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
     await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
 
@@ -803,9 +811,9 @@ test.describe('Domain Type Behavior', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await expect(
-        page.getByTestId('domain-type-label').locator('div')
-      ).toContainText('Source-aligned');
+      await expect(page.getByTestId('domain-type-label')).toContainText(
+        'Source-aligned'
+      );
     } finally {
       await domain.delete(apiContext);
       await afterAction();
@@ -828,9 +836,9 @@ test.describe('Domain Type Behavior', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await expect(
-        page.getByTestId('domain-type-label').locator('div')
-      ).toContainText('Consumer-aligned');
+      await expect(page.getByTestId('domain-type-label')).toContainText(
+        'Consumer-aligned'
+      );
     } finally {
       await domain.delete(apiContext);
       await afterAction();
@@ -859,11 +867,13 @@ test.describe('Data Product Asset Management', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -872,9 +882,7 @@ test.describe('Data Product Asset Management', () => {
       await selectDataProduct(page, dataProduct1.responseData);
       await page.getByTestId('assets').click();
       await page.getByTestId('data-product-details-add-button').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const tableName = table.entityResponseData.name;
       const tableFqn = table.entityResponseData.fullyQualifiedName;
@@ -931,15 +939,14 @@ test.describe('Domain Search and Filter', () => {
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
 
+      const domainSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=domain*'
+      );
       await searchBox.fill(`SearchTestDomain_${uniqueId}`);
 
-      await page.waitForResponse(
-        '/api/v1/search/query?q=*&index=domain_search_index*'
-      );
+      await domainSearchResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByTestId(domain.data.name)).toBeVisible();
     } finally {
@@ -962,11 +969,13 @@ test.describe('Domain Search and Filter', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -988,6 +997,222 @@ test.describe('Domain Search and Filter', () => {
       }
     } finally {
       await table.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+});
+
+test.describe('Domain asset dryRun — remove confirmation', () => {
+  test.slow(true);
+
+  const navigateToDomainAssets = async (page: Page, domain: Domain) => {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
+    await page.getByTestId('assets').click();
+    await waitForAllLoadersToDisappear(page);
+  };
+
+  const selectAssetCardCheckbox = async (page: Page, table: TableClass) => {
+    const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  };
+
+  test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domain = new Domain();
+    const table = new TableClass();
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await Promise.all([domain.create(apiContext), table.create(apiContext)]);
+      await addAssetToDomainViaApi(apiContext, domain, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+      await dataProduct.create(apiContext);
+      await dataProduct.addAssets(apiContext, [
+        {
+          id: table.entityResponseData.id ?? '',
+          type: 'table',
+        },
+      ]);
+
+      await navigateToDomainAssets(page, domain);
+      await selectAssetCardCheckbox(page, table);
+
+      const dryRunPromise = waitForDomainAssetsRemoveDryRun(page);
+      await page.getByTestId('delete-all-button').click();
+      const dryRunResponse = await dryRunPromise;
+      const dryRunBody = JSON.parse(
+        dryRunResponse.request().postData() ?? '{}'
+      );
+
+      expect(dryRunBody.dryRun).toBe(true);
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).toBeVisible();
+
+      const warnings = warningModal.getByTestId('remove-dry-run-warnings');
+
+      await expect(warnings).toContainText(
+        'data product relationships will also be removed'
+      );
+      await expect(warnings).toContainText(
+        dataProduct.responseData.fullyQualifiedName ?? ''
+      );
+
+      const commitPromise = waitForDomainAssetsRemoveCommit(page);
+      await warningModal.getByTestId('save-button').click();
+      const commitResponse = await commitPromise;
+      const commitBody = JSON.parse(
+        commitResponse.request().postData() ?? '{}'
+      );
+
+      expect(commitBody.dryRun).not.toBe(true);
+      await expect(warningModal).not.toBeVisible();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 0);
+    } finally {
+      await dataProduct.delete(apiContext);
+      await table.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('cancel on remove warning modal keeps the asset in the domain', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domain = new Domain();
+    const table = new TableClass();
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await Promise.all([domain.create(apiContext), table.create(apiContext)]);
+      await addAssetToDomainViaApi(apiContext, domain, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+      await dataProduct.create(apiContext);
+      await dataProduct.addAssets(apiContext, [
+        {
+          id: table.entityResponseData.id ?? '',
+          type: 'table',
+        },
+      ]);
+
+      await navigateToDomainAssets(page, domain);
+      await selectAssetCardCheckbox(page, table);
+
+      const dryRunPromise = waitForDomainAssetsRemoveDryRun(page);
+      const commitOnCancel = page
+        .waitForRequest(
+          (req) => {
+            if (
+              req.method() !== 'PUT' ||
+              !/\/api\/v1\/domains\/[^/]+\/assets\/remove$/.test(req.url())
+            ) {
+              return false;
+            }
+            const body = JSON.parse(req.postData() ?? '{}');
+
+            return body.dryRun !== true;
+          },
+          { timeout: 2000 }
+        )
+        .catch(() => null);
+
+      await page.getByTestId('delete-all-button').click();
+      await dryRunPromise;
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).toBeVisible();
+      await warningModal.getByTestId('cancel').click();
+      await expect(warningModal).not.toBeVisible();
+
+      expect(await commitOnCancel).toBeNull();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 1);
+    } finally {
+      await dataProduct.delete(apiContext);
+      await table.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('bulk remove with linked data product shows preview and commits on Remove Anyway', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domain = new Domain();
+    const tableA = new TableClass();
+    const tableB = new TableClass();
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await Promise.all([
+        domain.create(apiContext),
+        tableA.create(apiContext),
+        tableB.create(apiContext),
+      ]);
+      await Promise.all([
+        addAssetToDomainViaApi(apiContext, domain, {
+          id: tableA.entityResponseData.id ?? '',
+          type: 'table',
+        }),
+        addAssetToDomainViaApi(apiContext, domain, {
+          id: tableB.entityResponseData.id ?? '',
+          type: 'table',
+        }),
+      ]);
+      await dataProduct.create(apiContext);
+      await dataProduct.addAssets(apiContext, [
+        {
+          id: tableA.entityResponseData.id ?? '',
+          type: 'table',
+        },
+      ]);
+
+      await navigateToDomainAssets(page, domain);
+      await selectAssetCardCheckbox(page, tableA);
+      await selectAssetCardCheckbox(page, tableB);
+
+      const dryRunPromise = waitForDomainAssetsRemoveDryRun(page);
+      await page.getByTestId('delete-all-button').click();
+      await dryRunPromise;
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+      const warnings = warningModal.getByTestId('remove-dry-run-warnings');
+
+      await expect(warnings).toContainText(
+        'data product relationships will also be removed'
+      );
+      await expect(warnings).toContainText(
+        dataProduct.responseData.fullyQualifiedName ?? ''
+      );
+
+      const commitPromise = waitForDomainAssetsRemoveCommit(page);
+      await warningModal.getByTestId('save-button').click();
+      await commitPromise;
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 0);
+    } finally {
+      await dataProduct.delete(apiContext);
+      await tableA.delete(apiContext);
+      await tableB.delete(apiContext);
       await domain.delete(apiContext);
       await afterAction();
     }

@@ -13,10 +13,40 @@
 import { Col, Grid, Layout, Row } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
-import { ReactNode } from 'react';
-import LoginCarousel from '../../../pages/LoginPage/LoginCarousel';
+import { lazy, ReactNode } from 'react';
+import loginClassBase from '../../../constants/LoginClassBase';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import './carousel-layout.less';
+
+const LoginCarousel = withSuspenseFallback(
+  lazy(() => import('../../../pages/LoginPage/LoginCarousel'))
+);
+
+const LOGIN_SPLIT_LAYOUT_CLASSES =
+  'tw:flex tw:h-screen tw:min-h-screen tw:w-full tw:overflow-hidden tw:bg-white';
+
+const LOGIN_VIDEO_PANEL_CLASSES =
+  'tw:relative tw:flex tw:flex-[1_1_52%] tw:min-w-0 tw:items-center ' +
+  'tw:justify-center tw:overflow-hidden tw:max-[1000px]:hidden ' +
+  'tw:bg-[linear-gradient(165deg,#f8f7fc_0%,#f3effc_55%,#ece5fb_100%)]';
+
+const LOGIN_VIDEO_INSET_CLASSES =
+  'tw:flex tw:box-border tw:h-full tw:w-full tw:items-center tw:justify-center ' +
+  'tw:p-[clamp(16px,2.8vw,48px)] tw:[container-type:size]';
+
+const LOGIN_VIDEO_CARD_CLASSES =
+  'tw:relative tw:aspect-[2024/2160] tw:max-h-full tw:max-w-full ' +
+  'tw:w-[min(100cqw,93.7cqh)] tw:overflow-hidden tw:rounded-[max(22px,4.8%)] ' +
+  'tw:bg-[linear-gradient(180deg,#f2f1f5_0%,#e3d9f8_55%,#8a5cf0_100%)] ' +
+  'tw:shadow-[0_32px_80px_-28px_rgba(86,54,205,0.38),0_6px_20px_-6px_rgba(38,24,90,0.12)] ' +
+  'tw:[transform:translateZ(0)]';
+
+const LOGIN_FORM_PANEL_CLASSES =
+  'tw:flex tw:flex-[1_1_48%] tw:min-w-0 tw:flex-col tw:overflow-y-auto ' +
+  'tw:bg-white tw:max-[1000px]:flex-[1_1_100%] ' +
+  'tw:[&_.login-form-container]:h-auto tw:[&_.login-form-container]:m-auto ' +
+  'tw:[&_.login-form-container]:w-full';
 
 export const CarouselLayout = ({
   pageTitle,
@@ -28,26 +58,49 @@ export const CarouselLayout = ({
   carouselClassName?: string;
 }) => {
   const { xl } = Grid.useBreakpoint();
+  const hasLoginVideo = Boolean(loginClassBase.getLoginVideo());
+
+  if (hasLoginVideo) {
+    return (
+      <Layout>
+        <DocumentTitle title={pageTitle} />
+        <Content
+          className={classNames(LOGIN_SPLIT_LAYOUT_CLASSES, carouselClassName)}
+          data-testid="signin-page">
+          <div className={LOGIN_VIDEO_PANEL_CLASSES}>
+            <div className={LOGIN_VIDEO_INSET_CLASSES}>
+              <div className={LOGIN_VIDEO_CARD_CLASSES}>
+                <LoginCarousel />
+              </div>
+            </div>
+          </div>
+          <div className={LOGIN_FORM_PANEL_CLASSES}>{children}</div>
+        </Content>
+      </Layout>
+    );
+  }
+
+  const formColumn = (
+    <Col className="carousel-left-side-container" span={xl ? 10 : 24}>
+      {children}
+    </Col>
+  );
+
+  const mediaColumn = xl && (
+    <Col span={14}>
+      <div className={classNames('form-carousel-container', carouselClassName)}>
+        <LoginCarousel />
+      </div>
+    </Col>
+  );
 
   return (
-    <Layout>
+    <Layout className="tw:bg-primary">
       <DocumentTitle title={pageTitle} />
       <Content className="p-md">
         <Row data-testid="signin-page" gutter={[48, 0]} wrap={false}>
-          <Col className="carousel-left-side-container" span={xl ? 10 : 24}>
-            {children}
-          </Col>
-          {xl && (
-            <Col span={14}>
-              <div
-                className={classNames(
-                  'form-carousel-container',
-                  carouselClassName
-                )}>
-                <LoginCarousel />
-              </div>
-            </Col>
-          )}
+          {formColumn}
+          {mediaColumn}
         </Row>
       </Content>
     </Layout>

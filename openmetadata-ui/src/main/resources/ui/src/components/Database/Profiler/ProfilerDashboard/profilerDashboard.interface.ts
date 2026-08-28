@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
@@ -74,6 +76,10 @@ export interface DataQualityTabProps {
   isEditAllowed?: boolean;
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
+  enableBulkActions?: boolean;
+  editVariant?: 'drawer' | 'modal';
+  hasActiveFilters?: boolean;
+  emptyStateAction?: EmptyPlaceholderAction;
 }
 
 export interface TestSummaryProps {
@@ -94,12 +100,11 @@ export type TestCaseAction = {
 
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
-  data: Record<string, string | number | undefined | Thread | number[]>[];
+  data: Record<
+    string,
+    string | number | undefined | Task | Thread | number[]
+  >[];
 };
-
-export interface LineChartRef {
-  container: HTMLElement;
-}
 
 export type TestCasePermission = OperationPermission & {
   fullyQualifiedName?: string;

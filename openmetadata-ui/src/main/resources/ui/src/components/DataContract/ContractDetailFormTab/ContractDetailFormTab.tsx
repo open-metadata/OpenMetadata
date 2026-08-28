@@ -19,7 +19,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import './contract-detail-form-tab.less';
 

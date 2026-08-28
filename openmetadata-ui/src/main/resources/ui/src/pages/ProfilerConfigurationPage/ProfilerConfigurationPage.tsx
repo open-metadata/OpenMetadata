@@ -20,6 +20,7 @@ import {
   Select,
   Switch,
   TreeSelect,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
@@ -43,7 +44,7 @@ import {
   MetricType,
   ProfilerConfiguration,
 } from '../../generated/configuration/profilerConfiguration';
-import { SettingType } from '../../generated/settings/settings';
+import { Settings, SettingType } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -102,7 +103,6 @@ const ProfilerConfigurationPage = () => {
       if (isEqual(item.metrics, ['all'])) {
         return {
           ...item,
-          // If all metrics are selected, then we will send full array of metrics
           metrics: values(MetricType),
         };
       }
@@ -114,7 +114,8 @@ const ProfilerConfigurationPage = () => {
         config_type: SettingType.ProfilerConfiguration,
         config_value: {
           metricConfiguration,
-        },
+          sampleDataConfig: data.sampleDataConfig,
+        } as Settings['config_value'],
       });
       showSuccessToast(
         t('server.update-entity-success', {
@@ -135,11 +136,18 @@ const ProfilerConfigurationPage = () => {
         SettingType.ProfilerConfiguration
       );
 
-      form.setFieldsValue(
-        isEmpty(data?.config_value?.metricConfiguration)
-          ? DEFAULT_PROFILER_CONFIG_VALUE
-          : data?.config_value
-      );
+      const configValue = data?.config_value as
+        | ProfilerConfiguration
+        | undefined;
+
+      form.setFieldsValue({
+        metricConfiguration: isEmpty(configValue?.metricConfiguration)
+          ? DEFAULT_PROFILER_CONFIG_VALUE.metricConfiguration
+          : configValue?.metricConfiguration,
+        sampleDataConfig:
+          configValue?.sampleDataConfig ??
+          DEFAULT_PROFILER_CONFIG_VALUE.sampleDataConfig,
+      });
     } catch {
       // do nothing
     } finally {
@@ -160,41 +168,41 @@ const ProfilerConfigurationPage = () => {
       <div className="m-b-mlg">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </div>
-      <Row className="profiler-configuration-page-container" gutter={[0, 24]}>
-        <Col span={24}>
-          <PageHeader
-            data={{
-              header: t('label.profiler-configuration'),
-              subHeader: t(
-                'message.page-sub-header-for-profiler-configuration'
-              ),
-            }}
-            learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
-            title={t('label.profiler-configuration')}
-          />
-        </Col>
-        <Col span={24}>
-          <Collapse
-            className="profiler-configuration-collapse"
-            defaultActiveKey={['profileConfig']}
-            expandIconPosition="right">
-            <Collapse.Panel
-              header={
-                <PageHeader
-                  data={{
-                    header: t('label.metric-configuration'),
-                    subHeader: t('message.metric-configuration-description'),
-                  }}
-                />
-              }
-              key="profileConfig">
-              <Form<ProfilerConfiguration>
-                className="new-form-style"
-                data-testid="profiler-config-form"
-                form={form}
-                id="profiler-config"
-                layout="vertical"
-                onFinish={handleSubmit}>
+      <Form<ProfilerConfiguration>
+        className="new-form-style"
+        data-testid="profiler-config-form"
+        form={form}
+        id="profiler-config"
+        layout="vertical"
+        onFinish={handleSubmit}>
+        <Row className="profiler-configuration-page-container" gutter={[0, 24]}>
+          <Col span={24}>
+            <PageHeader
+              data={{
+                header: t('label.profiler-configuration'),
+                subHeader: t(
+                  'message.page-sub-header-for-profiler-configuration'
+                ),
+              }}
+              learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
+              title={t('label.profiler-configuration')}
+            />
+          </Col>
+          <Col span={24}>
+            <Collapse
+              className="profiler-configuration-collapse"
+              defaultActiveKey={['profileConfig']}
+              expandIconPosition="right">
+              <Collapse.Panel
+                header={
+                  <PageHeader
+                    data={{
+                      header: t('label.metric-configuration'),
+                      subHeader: t('message.metric-configuration-description'),
+                    }}
+                  />
+                }
+                key="profileConfig">
                 <Form.List name="metricConfiguration">
                   {(fields, { add, remove }) => {
                     return (
@@ -297,34 +305,107 @@ const ProfilerConfigurationPage = () => {
                               onClick={() => add()}>
                               {t('label.add-new-field')}
                             </Button>
-                            <div className="d-flex justify-end gap-2">
-                              <Button
-                                data-testid="cancel-button"
-                                onClick={() => navigate(-1)}>
-                                {t('label.cancel')}
-                              </Button>
-                              <Button
-                                data-testid="save-button"
-                                form="profiler-config"
-                                htmlType="submit"
-                                loading={isFormSubmitting}
-                                type="primary">
-                                {t('label.save')}
-                              </Button>
-                            </div>
                           </div>
                         </Col>
                       </Row>
                     );
                   }}
                 </Form.List>
-              </Form>
-            </Collapse.Panel>
-          </Collapse>
-        </Col>
+              </Collapse.Panel>
+            </Collapse>
+          </Col>
 
-        {sparkAgentConfigComponent}
-      </Row>
+          <Col span={24}>
+            <Collapse
+              className="profiler-configuration-collapse"
+              defaultActiveKey={['sampleDataConfig']}
+              expandIconPosition="right">
+              <Collapse.Panel
+                header={
+                  <PageHeader
+                    data={{
+                      header: t('label.sample-data-ingestion-configuration'),
+                      subHeader: t(
+                        'message.sample-data-ingestion-config-description'
+                      ),
+                    }}
+                  />
+                }
+                key="sampleDataConfig">
+                <Row
+                  data-testid="sample-data-ingestion-config"
+                  gutter={[0, 24]}>
+                  <Col span={24}>
+                    <Row align="middle" justify="space-between" wrap={false}>
+                      <Col flex="auto">
+                        <Typography.Text strong>
+                          {t('label.enable-storing-of-sample-data')}
+                        </Typography.Text>
+                        <Typography.Paragraph className="text-grey-muted m-b-0">
+                          {t('message.enable-storing-sample-data-description')}
+                        </Typography.Paragraph>
+                      </Col>
+                      <Col className="p-l-lg" flex="none">
+                        <Form.Item
+                          name={['sampleDataConfig', 'storeSampleData']}
+                          valuePropName="checked">
+                          <Switch
+                            data-testid="store-sample-data-switch"
+                            onChange={(checked) => {
+                              if (checked) {
+                                form.setFieldValue(
+                                  ['sampleDataConfig', 'readSampleData'],
+                                  true
+                                );
+                              }
+                            }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Col>
+                  <Col span={24}>
+                    <Row align="middle" justify="space-between" wrap={false}>
+                      <Col flex="auto">
+                        <Typography.Text strong>
+                          {t('label.enable-reading-of-sample-data')}
+                        </Typography.Text>
+                        <Typography.Paragraph className="text-grey-muted m-b-0">
+                          {t('message.enable-reading-sample-data-description')}
+                        </Typography.Paragraph>
+                      </Col>
+                      <Col className="p-l-lg" flex="none">
+                        <Form.Item
+                          name={['sampleDataConfig', 'readSampleData']}
+                          valuePropName="checked">
+                          <Switch data-testid="read-sample-data-switch" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
+              </Collapse.Panel>
+            </Collapse>
+          </Col>
+
+          <Col span={24}>
+            <div className="d-flex justify-end gap-2">
+              <Button data-testid="cancel-button" onClick={() => navigate(-1)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="save-button"
+                htmlType="submit"
+                loading={isFormSubmitting}
+                type="primary">
+                {t('label.save')}
+              </Button>
+            </div>
+          </Col>
+
+          {sparkAgentConfigComponent}
+        </Row>
+      </Form>
     </PageLayoutV1>
   );
 };

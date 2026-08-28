@@ -29,6 +29,7 @@ import { Page } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
 import {
   getAddWidgetHandler,
@@ -36,10 +37,10 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
-  getWidgetFromKey,
-} from '../../../../utils/CustomizableLandingPageUtils';
+} from '../../../../utils/CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
@@ -48,7 +49,6 @@ import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseL
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
@@ -61,11 +61,13 @@ function CustomizeMyData({
   onBackgroundColorUpdate,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
+  const { currentPageType } = useCustomizeStore();
+
+  const defaultLayout = customizeMyDataPageClassBase.defaultLayout;
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ??
-        customizeMyDataPageClassBase.defaultLayout
+      (initialPageData?.layout as WidgetConfig[]) ?? defaultLayout
     )
   );
 
@@ -105,7 +107,9 @@ function CustomizeMyData({
           newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          customizeMyDataPageClassBase.landingPageMaxGridSize
+          customizeMyDataPageClassBase.landingPageMaxGridSize,
+          (widgetName) =>
+            customizeMyDataPageClassBase.getWidgetHeight(widgetName)
         )
       );
       setIsWidgetModalOpen(false);
@@ -162,7 +166,7 @@ function CustomizeMyData({
     await onSaveLayout({
       ...(initialPageData ??
         ({
-          pageType: PageType.LandingPage,
+          pageType: currentPageType ?? PageType.LandingPage,
         } as Page)),
       layout: getUniqueFilteredLayout(updatedLayout ?? layout),
     });
@@ -205,14 +209,12 @@ function CustomizeMyData({
   };
 
   const handleReset = useCallback(async () => {
-    // Get default layout with the empty widget added at the end
-    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout
-    );
+    const newMainPanelLayout =
+      getLandingPageLayoutWithEmptyWidgetPlaceholder(defaultLayout);
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
     await onSaveLayout();
-  }, [handleBackgroundColorUpdate, onSaveLayout]);
+  }, [defaultLayout, handleBackgroundColorUpdate, onSaveLayout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

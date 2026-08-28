@@ -1,13 +1,3 @@
-import { DateRangeObject } from 'Models';
-import { SVGAttributes } from 'react';
-import { LinkProps } from 'react-router-dom';
-import { TestCaseType } from '../../enums/TestSuite.enum';
-import { TestCaseStatus } from '../../generated/tests/testCase';
-import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
-import { TestPlatform } from '../../generated/tests/testDefinition';
-import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
-import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
-
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +10,16 @@ import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { DateRangeObject } from 'Models';
+import { SVGAttributes } from 'react';
+import type { LinkProps, NavigateFunction } from 'react-router-dom';
+import { TestCaseType } from '../../enums/TestSuite.enum';
+import { TestCaseStatus } from '../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
+import { TestPlatform } from '../../generated/tests/testDefinition';
+import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
+import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
 
 export enum IncidentTimeMetricsType {
   TIME_TO_RESPONSE = 'timeToResponse',
@@ -37,13 +37,14 @@ export type TestCaseSearchParams = {
   searchValue?: string;
   tableFqn?: string;
   testPlatforms?: TestPlatform[];
-  testCaseStatus?: TestCaseStatus;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
   testCaseType?: TestCaseType;
   lastRunRange?: DateRangeObject;
   tier?: string;
   tags?: string;
   serviceName?: string;
   dataQualityDimension?: string;
+  dataProductFqn?: string;
 };
 
 export type DataQualityPageParams = TestCaseSearchParams & {
@@ -59,6 +60,7 @@ export interface IncidentTypeAreaChartWidgetProps {
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
   redirectPath?: LinkProps['to'];
+  height?: number;
 }
 
 export interface IncidentTimeChartWidgetProps {
@@ -69,6 +71,7 @@ export interface IncidentTimeChartWidgetProps {
   height?: number;
   redirectPath?: LinkProps['to'];
 }
+
 export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
   testCaseStatus: TestCaseStatus;
@@ -77,21 +80,31 @@ export interface TestCaseStatusAreaChartWidgetProps {
   chartFilter?: DataQualityDashboardChartFilters;
   height?: number;
   redirectPath?: LinkProps['to'];
+  showIcon?: boolean;
+  className?: string;
+  footerWhenEmpty?: React.ReactNode;
 }
 
 export interface PieChartWidgetCommonProps {
   className?: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  navigate?: NavigateFunction;
+  redirectPath?: string;
 }
 
 export interface DataStatisticWidgetProps {
   name: string;
-  title: string;
+  title: string | React.ReactNode;
   icon: SvgComponent;
-  dataLabel: string;
-  countValue: number;
-  redirectPath: LinkProps['to'];
-  linkLabel: string;
+  dataLabel?: string;
+  countValue: number | string;
+  redirectPath?: LinkProps['to'];
+  linkLabel?: string;
+  footer?: React.ReactNode;
   isLoading?: boolean;
   iconProps?: SVGAttributes<SVGElement>;
+  styleType?: Lowercase<TestCaseStatus>;
+  titleClassName?: string;
+  countValueClassName?: string;
+  className?: string;
 }

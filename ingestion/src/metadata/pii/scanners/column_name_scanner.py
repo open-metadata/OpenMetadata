@@ -11,6 +11,7 @@
 """
 Regex scanner for column names
 """
+
 import re
 from typing import Optional
 
@@ -24,7 +25,7 @@ from metadata.utils import fqn
 class ColumnNameScanner(BaseScanner):
     """Column Name Scanner to scan column name"""
 
-    sensitive_regex = {
+    sensitive_regex = {  # noqa: RUF012
         "PASSWORD": re.compile("^.*password.*$", re.IGNORECASE),
         "US_SSN": re.compile("^.*(ssn|social).*$", re.IGNORECASE),
         "CREDIT_CARD": re.compile("^.*(credit).*(card).*$", re.IGNORECASE),
@@ -36,23 +37,21 @@ class ColumnNameScanner(BaseScanner):
             re.IGNORECASE,
         ),
     }
-    non_sensitive_regex = {
+    non_sensitive_regex = {  # noqa: RUF012
         "BIRTH_DATE": re.compile(
-            "^.*(date_of_birth|dateofbirth|dob|"
-            "birthday|date_of_death|dateofdeath).*$",
+            "^.*(date_of_birth|dateofbirth|dob|birthday|date_of_death|dateofdeath).*$",
             re.IGNORECASE,
         ),
         "GENDER": re.compile("^.*(gender).*$", re.IGNORECASE),
         "NATIONALITY": re.compile("^.*(nationality).*$", re.IGNORECASE),
         "ADDRESS": re.compile(
-            "^.*(address|city|state|county|country|"
-            "zipcode|zip|postal|zone|borough).*$",
+            "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
             re.IGNORECASE,
         ),
         "PHONE_NUMBER": re.compile("^.*(phone).*$", re.IGNORECASE),
     }
 
-    def scan(self, data: str) -> Optional[TagAndConfidence]:
+    def scan(self, data: str) -> Optional[TagAndConfidence]:  # noqa: UP045
         """
         Check the column name against the regex patterns and prepare the
         sensitive or non-sensitive tag

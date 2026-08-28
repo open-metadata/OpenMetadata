@@ -1,0 +1,126 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# This workflow runs the Playwright visual-regression suite
+# (openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression) against a MySQL-backed
+# OpenMetadata server. The environment-bootstrap steps (checkout, Java/Node setup, server build +
+# start, sample-data seeding) mirror .github/workflows/playwright-mysql-e2e.yml verbatim, minus the
+# pull_request_target-only labeling/gating steps and the shard matrix, which don't apply to a single
+# fast (~18 spec) suite triggered on regular `pull_request`.
+#
+# Rendering parity with the baselines: the VisualRegression snapshots were captured using the
+# mcr.microsoft.com/playwright:v1.57.0-jammy image (pinned to the @playwright/test version in
+# package.json). The e2e workflow installs Chromium on the bare ubuntu-latest runner and runs tests
+# there directly - fine for functional assertions, but font hinting/anti-aliasing on the bare runner
+# image differs enough from the official Playwright container to make pixel-diff assertions flaky or
+# outright wrong. So only the test-execution step below runs inside that exact container (via
+# `docker run --network host`, reaching the host-run server at localhost:8585); the
+# bootstrap/build/seed steps still run directly on the runner exactly as in the e2e workflow.
+name: playwright-visual-regression
+
+on:
+  pull_request:
+    paths:
+      - "openmetadata-ui/**"
+  workflow_dispatch:
+
+concurrency:
+  group: playwright-visual-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  playwright-visual-regression:
+    name: playwright-visual-regression
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d mysql"
+          ingestion_dependency: "all"
+          install-test-dependencies: "false"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      # Runs inside the same Playwright image the baselines were generated with (see header
+      # comment) instead of on the bare runner. `--network host` lets the container reach the
+      # OpenMetadata server that the bootstrap step above already started on localhost:8585.
+      # `--ipc host` follows Playwright's own Docker guidance to avoid Chromium running out of
+      # shared memory. node_modules were installed on the host above and are bind-mounted in, so
+      # only `npx` (bundled with the container's Node) is needed - no dependency on yarn/corepack
+      # being set up inside the image.
+      - name: Run visual regression suite
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          PLAYWRIGHT_TEST_BASE_URL: http://localhost:8585
+        run: |
+          docker run --rm \
+            --network host \
+            --ipc host \
+            -e CI=true \
+            -e PLAYWRIGHT_TEST_BASE_URL \
+            -v "$PWD:/work" \
+            -w /work \
+            mcr.microsoft.com/playwright:v1.57.0-jammy \
+            npx playwright test --project=visual-regression
+
+      - name: Upload visual diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/test-results/**
+            openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/__snapshots__/**
+          retention-days: 14
+
+      - name: Clean Up
+        if: always()
+        continue-on-error: true
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf "${PWD}/docker-volume"

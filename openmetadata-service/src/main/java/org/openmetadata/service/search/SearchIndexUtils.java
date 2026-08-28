@@ -3,24 +3,29 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -32,23 +37,219 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.util.Utilities;
 
 @Slf4j
 public final class SearchIndexUtils {
 
-  // Keeping the bots list static so we can call this from anywhere in the codebase
+  // Keeping the bots list static so we can call this from anywhere in the codebase.
+  // Bots whose changes count as AI-generated. The agent-app bots are still listed because
+  // fields they changed carry their name.
   public static final List<String> AI_BOTS =
-      List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
+      List.of(
+          "aiautomationapplicationbot",
+          "collateaiapplicationbot",
+          "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
+
+  /**
+   * Deduplicates identical SQL queries across lineage edges in-place.
+   *
+   * <p>Each unique SQL text is assigned a sequential integer key ("1", "2", …). Every edge that
+   * carries that SQL has its {@code sqlQuery} cleared and {@code sqlQueryKey} set to the shared
+   * key. The returned map contains {@code key → sqlText} for all unique SQLs found.
+   *
+   * <p>Edges with no SQL are left untouched.
+   */
+  public static Map<String, String> deduplicateSqlAcrossEdges(List<EsLineageData> edges) {
+    Map<String, String> sqlTextToKey = new LinkedHashMap<>();
+    Map<String, String> sqlQueries = new LinkedHashMap<>();
+    int[] counter = {0};
+
+    for (EsLineageData edge : edges) {
+      String sql = edge.getSqlQuery();
+      if (sql != null && !sql.isEmpty()) {
+        String key =
+            sqlTextToKey.computeIfAbsent(
+                sql,
+                k -> {
+                  String newKey = String.valueOf(++counter[0]);
+                  sqlQueries.put(newKey, sql);
+                  return newKey;
+                });
+        edge.setSqlQueryKey(key);
+        edge.setSqlQuery(null);
+      }
+    }
+
+    return sqlQueries;
+  }
+
+  /**
+   * Progressively strips oversized fields from a search document JSON to bring it under maxBytes.
+   *
+   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage, then — if
+   * still oversized — the nested column tree (column {@code children} plus the derived {@code
+   * columnNames}/{@code columnNamesFuzzy}) via {@link #stripColumnTreeForSize}. Returns the
+   * (possibly stripped) JSON — caller must re-check size and handle the still-oversized case.
+   */
+  public static String stripLineageForSize(
+      String json, long maxBytes, String docId, String entityType) {
+    int size = json.getBytes(StandardCharsets.UTF_8).length;
+    if (size <= maxBytes) {
+      return json;
+    }
+    TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
+    Map<String, Object> doc = JsonUtils.readValue(json, mapType);
+    if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
+      json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) too large, stripped lineageSqlQueries (size now {} bytes)",
+          docId,
+          entityType,
+          size);
+      if (size <= maxBytes) {
+        return json;
+      }
+    }
+    if (doc.remove("upstreamLineage") != null) {
+      json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
+          docId,
+          entityType,
+          size);
+    }
+    if (size > maxBytes) {
+      stripColumnTreeForSize(doc);
+      json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) still too large, stripped column children, columnNames and columnNamesFuzzy (size now {} bytes)",
+          docId,
+          entityType,
+          size);
+    }
+    return json;
+  }
+
+  public static Map<String, Object> stripDocMapIfOversized(
+      Map<String, Object> doc, long maxBytes, String docId, String entityType) {
+    int size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+    if (size <= maxBytes) {
+      return doc;
+    }
+    if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
+          docId,
+          entityType,
+          size);
+      if (size <= maxBytes) {
+        return doc;
+      }
+    }
+    if (doc.remove("upstreamLineage") != null) {
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
+          docId,
+          entityType,
+          size);
+    }
+    if (size > maxBytes) {
+      stripColumnTreeForSize(doc);
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped column children, columnNames and columnNamesFuzzy ({} bytes)",
+          docId,
+          entityType,
+          size);
+    }
+    return doc;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripSqlQueryKeysFromEdges(Map<String, Object> doc) {
+    Object lineage = doc.get("upstreamLineage");
+    if (lineage instanceof List<?> edges) {
+      for (Object edge : edges) {
+        if (edge instanceof Map<?, ?> edgeMap) {
+          ((Map<String, Object>) edgeMap).remove("sqlQueryKey");
+        }
+      }
+    }
+  }
+
+  /**
+   * Last-resort size reduction for pathological column schemas. Drops the nested column {@code
+   * children} (mapped {@code enabled:false} — stored in _source but never indexed/searchable) and
+   * the flattened {@code columnNames}/{@code columnNamesFuzzy} derived from them. Reached only after
+   * lineage stripping leaves the doc still over the cap — e.g. a container whose columns each carry
+   * tens of thousands of children, where the column tree dwarfs the rest of the document and would
+   * otherwise OOM the serializer on read. Top-level columns are kept, so column search and the
+   * column grid still work; the full schema remains available via the entity API.
+   */
+  @SuppressWarnings("unchecked")
+  static void stripColumnTreeForSize(Map<String, Object> doc) {
+    stripChildrenFromColumns(doc.get("columns"));
+    if (doc.get("dataModel") instanceof Map<?, ?> dataModel) {
+      stripChildrenFromColumns(((Map<String, Object>) dataModel).get("columns"));
+    }
+    doc.remove("columnNames");
+    doc.remove("columnNamesFuzzy");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripChildrenFromColumns(Object columns) {
+    if (columns instanceof List<?> columnList) {
+      for (Object column : columnList) {
+        if (column instanceof Map<?, ?> columnMap) {
+          ((Map<String, Object>) columnMap).remove("children");
+        }
+      }
+    }
+  }
 
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {
       return Collections.emptyList();
     }
     return followersRef.stream().map(item -> item.getId().toString()).toList();
+  }
+
+  /**
+   * Search documents store {@code followers} as a flat list of user-id strings (see {@link
+   * #parseFollowers}). When a search hit is converted back into an entity, that string list cannot
+   * be deserialized into the entity's {@code List<EntityReference> followers} field. This rebuilds
+   * each id into a user {@link EntityReference} so the entity deserializes cleanly.
+   */
+  public static void normalizeFollowers(Map<String, Object> sourceAsMap) {
+    Object followers = sourceAsMap.get(EntityBuilderConstant.FIELD_FOLLOWERS);
+    if (followers instanceof List<?> followerList && !followerList.isEmpty()) {
+      sourceAsMap.put(EntityBuilderConstant.FIELD_FOLLOWERS, expandFollowerIds(followerList));
+    }
+  }
+
+  private static List<Object> expandFollowerIds(List<?> followerList) {
+    List<Object> followers = new ArrayList<>();
+    for (Object follower : followerList) {
+      if (follower instanceof String followerId) {
+        followers.add(
+            new EntityReference().withId(UUID.fromString(followerId)).withType(Entity.USER));
+      } else {
+        followers.add(follower);
+      }
+    }
+    return followers;
   }
 
   public static List<String> parseOwners(List<EntityReference> ownersRef) {
@@ -89,6 +290,10 @@ public final class SearchIndexUtils {
 
   public static void removeFieldByPath(Map<String, Object> jsonMap, String path) {
     String[] pathElements = path.split("\\.");
+    if (pathElements.length == 1) {
+      jsonMap.remove(pathElements[0]);
+      return;
+    }
     Map<String, Object> currentMap = jsonMap;
 
     String key = pathElements[0];
@@ -98,7 +303,9 @@ public final class SearchIndexUtils {
     } else if (value instanceof List) {
       List<?> list = (List<Map<String, Object>>) value;
       for (Object obj : list) {
-        Map<String, Object> item = JsonUtils.getMap(obj);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> item =
+            obj instanceof Map ? (Map<String, Object>) obj : JsonUtils.getMap(obj);
         removeFieldByPath(
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
@@ -207,8 +414,7 @@ public final class SearchIndexUtils {
                       val.ifPresentOrElse(
                           s -> {
                             switch (s.getValueType()) {
-                              case NUMBER -> nodeData.put(
-                                  dimensions.get(0), String.valueOf((JsonNumber) s));
+                              case NUMBER -> nodeData.put(dimensions.get(0), String.valueOf(s));
                               default -> nodeData.put(
                                   dimensions.get(0), ((JsonString) s).getString());
                             }
@@ -345,26 +551,37 @@ public final class SearchIndexUtils {
 
   private static void processTagAndTierSources(
       List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
-    Optional.ofNullable(tagList)
-        .ifPresent(
-            tags ->
-                tags.forEach(
-                    tag -> {
-                      String tagSource = tag.getLabelType().value();
-                      if (tag.getTagFQN().startsWith("Tier.")) {
-                        tagAndTierSources
-                            .getTierSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                      } else {
-                        tagAndTierSources
-                            .getTagSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                      }
-                    }));
+    if (tagList == null) {
+      return;
+    }
+    for (TagLabel tag : tagList) {
+      // Defensive: tags deserialized from historical entity_extension rows may have null
+      // labelType or null tagFQN. Skip the malformed tag entirely.
+      if (tag == null) {
+        continue;
+      }
+      String tagFQN = tag.getTagFQN();
+      TagLabel.LabelType labelType = tag.getLabelType();
+      if (tagFQN == null || labelType == null) {
+        continue;
+      }
+      String tagSource = resolveTagSource(tag, labelType);
+      Map<String, Integer> bucket =
+          tagFQN.startsWith("Tier.")
+              ? tagAndTierSources.getTierSources()
+              : tagAndTierSources.getTagSources();
+      bucket.merge(tagSource, 1, Integer::sum);
+    }
+  }
+
+  // AI-bot-applied tags count as Generated regardless of labelType, mirroring
+  // getDescriptionSource. Applier is recorded per-tag in appliedBy (set server-side).
+  private static String resolveTagSource(TagLabel tag, TagLabel.LabelType labelType) {
+    String tagSource = labelType.value();
+    if (tag.getAppliedBy() != null && AI_BOTS.contains(tag.getAppliedBy())) {
+      tagSource = TagLabel.LabelType.GENERATED.value();
+    }
+    return tagSource;
   }
 
   private static void processEntityTagSources(
@@ -462,12 +679,10 @@ public final class SearchIndexUtils {
     if (value instanceof Number || value instanceof Boolean) {
       return value.toString();
     }
-    if (value instanceof List) {
-      List<?> list = (List<?>) value;
+    if (value instanceof List<?> list) {
       return list.stream().map(SearchIndexUtils::flattenValue).collect(Collectors.joining(" "));
     }
-    if (value instanceof Map) {
-      Map<?, ?> map = (Map<?, ?>) value;
+    if (value instanceof Map<?, ?> map) {
       return flattenMapValue(map);
     }
     return value.toString();

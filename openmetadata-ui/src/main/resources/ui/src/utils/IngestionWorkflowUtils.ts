@@ -27,11 +27,13 @@ import databaseUsagePipeline from '../jsons/ingestionSchemas/databaseServiceQuer
 import dataInsightPipeline from '../jsons/ingestionSchemas/dataInsightPipeline.json';
 import dbtPipeline from '../jsons/ingestionSchemas/dbtPipeline.json';
 import driveMetadataPipeline from '../jsons/ingestionSchemas/driveServiceMetadataPipeline.json';
+import messagingAutoClassificationPipeline from '../jsons/ingestionSchemas/messagingServiceAutoClassificationPipeline.json';
 import messagingMetadataPipeline from '../jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
 import metadataToElasticSearchPipeline from '../jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
 import mlModelMetadataPipeline from '../jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
 import pipelineMetadataPipeline from '../jsons/ingestionSchemas/pipelineServiceMetadataPipeline.json';
 import searchMetadataPipeline from '../jsons/ingestionSchemas/searchServiceMetadataPipeline.json';
+import storageAutoClassificationPipeline from '../jsons/ingestionSchemas/storageServiceAutoClassificationPipeline.json';
 import storageMetadataPipeline from '../jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
 import testSuitePipeline from '../jsons/ingestionSchemas/testSuitePipeline.json';
 import ProfilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
@@ -127,9 +129,13 @@ export const getSchemaByWorkflowType = (
 
       break;
     case WorkflowType.AutoClassification:
-      schema = {
-        ...databaseAutoClassificationPipeline,
-      };
+      if (serviceCategory === ServiceCategory.STORAGE_SERVICES) {
+        schema = { ...storageAutoClassificationPipeline };
+      } else if (serviceCategory === ServiceCategory.MESSAGING_SERVICES) {
+        schema = { ...messagingAutoClassificationPipeline };
+      } else {
+        schema = { ...databaseAutoClassificationPipeline };
+      }
 
       break;
     case WorkflowType.Usage:
@@ -206,11 +212,11 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
       value &&
       typeof value === 'object' &&
       'excludes' in value &&
-      'includes' in value
+      'includes' in value &&
+      isEmpty(value.excludes) &&
+      isEmpty(value.includes)
     ) {
-      if (isEmpty(value.excludes) && isEmpty(value.includes)) {
-        delete cleanedWorkFlowData[key as keyof Pipeline];
-      }
+      delete cleanedWorkFlowData[key as keyof Pipeline];
     }
   });
 

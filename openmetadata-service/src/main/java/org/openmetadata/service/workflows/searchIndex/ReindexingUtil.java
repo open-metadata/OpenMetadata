@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
+import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes.TIME_SERIES_ENTITIES;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,24 +21,37 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -52,6 +65,104 @@ public class ReindexingUtil {
   public static final String TARGET_INDEX_KEY = "targetIndex";
   public static final String RECREATE_CONTEXT = "recreateContext";
 
+  /**
+   * Batch-prefetches per-entity {@link DocBuildContext} for {@code entities} and stuffs the
+   * resulting {@code Map<UUID, DocBuildContext>} into {@code contextData} under {@link
+   * BulkSink#DOC_BUILD_CONTEXT_KEY}. The sink reads that map, hands the per-entity entry to {@code
+   * buildSearchIndexDoc(ctx)}, and stays ignorant of what the context carries — keeping the sink
+   * transport-only. No-op when the batch is empty or the entity type does not benefit from
+   * prefetch.
+   */
+  public static void populateDocBuildContext(
+      Map<String, Object> contextData,
+      String entityType,
+      List<? extends EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> prefetchedLineage = null;
+    Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
+    Map<UUID, Long> prefetchedRelationshipRevisions = null;
+    try {
+      prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
+      prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
+      if (Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType)) {
+        List<UUID> revisionedEntityIds =
+            entities.stream()
+                .filter(
+                    entity ->
+                        Entity.TEST_CASE.equals(entityType)
+                            || entity instanceof TestSuite testSuite
+                                && Boolean.FALSE.equals(testSuite.getBasic()))
+                .map(EntityInterface::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        @SuppressWarnings("unchecked")
+        Map<UUID, Long> suppliedRevisions =
+            (Map<UUID, Long>)
+                contextData.getOrDefault(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, Map.of());
+        List<UUID> missingRevisionIds =
+            revisionedEntityIds.stream().filter(id -> !suppliedRevisions.containsKey(id)).toList();
+        Map<UUID, Long> storedRevisions =
+            missingRevisionIds.isEmpty()
+                ? Map.of()
+                : Entity.TEST_CASE.equals(entityType)
+                    ? TestCaseRepository.getTestSuiteRelationshipRevisions(missingRevisionIds)
+                    : TestSuiteRepository.getTestsRelationshipRevisions(missingRevisionIds);
+        prefetchedRelationshipRevisions = new HashMap<>(revisionedEntityIds.size());
+        for (UUID entityId : revisionedEntityIds) {
+          prefetchedRelationshipRevisions.put(
+              entityId,
+              suppliedRevisions.getOrDefault(entityId, storedRevisions.getOrDefault(entityId, 0L)));
+        }
+      }
+    } catch (Exception | LinkageError t) {
+      // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
+      // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
+      // per-entity DB lookup path, which is the original pre-PR behaviour. LinkageError covers
+      // NoClassDefFoundError (not an Exception); fatal errors like OutOfMemoryError /
+      // StackOverflowError still propagate.
+      LOG.warn(
+          "Skipping doc-build context prefetch for type '{}'; doc-build will fall back to per-entity DB lookups",
+          entityType,
+          t);
+    }
+    if (prefetchedLineage != null
+        || prefetchedServiceStyles != null
+        || prefetchedRelationshipRevisions != null) {
+      int contextSize =
+          Math.max(
+              Math.max(
+                  prefetchedLineage != null ? prefetchedLineage.size() : 0,
+                  prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0),
+              prefetchedRelationshipRevisions != null ? prefetchedRelationshipRevisions.size() : 0);
+      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
+      for (EntityInterface entity : entities) {
+        UUID entityId = entity.getId();
+        if (entityId == null) {
+          continue;
+        }
+        List<EsLineageData> lineage =
+            prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
+        boolean hasStyle =
+            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId);
+        Long relationshipRevision =
+            prefetchedRelationshipRevisions != null
+                ? prefetchedRelationshipRevisions.get(entityId)
+                : null;
+        // No prefetched data: an entry would equal empty(), the sink's fallback on a miss.
+        if (lineage == null && !hasStyle && relationshipRevision == null) {
+          continue;
+        }
+        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
+            hasStyle
+                ? DocBuildContext.ServiceStylePrefetch.prefetched(
+                    prefetchedServiceStyles.get(entityId))
+                : DocBuildContext.ServiceStylePrefetch.notPrefetched();
+        docBuildContexts.put(
+            entityId, DocBuildContext.of(lineage, serviceStylePrefetch, relationshipRevision));
+      }
+      contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
+    }
+  }
+
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
     stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
@@ -63,6 +174,66 @@ public class ReindexingUtil {
     stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
     stats.setWarningRecords(
         (stats.getWarningRecords() != null ? stats.getWarningRecords() : 0) + currentWarnings);
+  }
+
+  /**
+   * Returns true when an EntityError represents a stale reference — either a missing entity
+   * (canonical {@code EntityNotFoundException}) or a missing entity_relationship row (raised by
+   * {@code EntityRepository.ensureSingleRelationship} as "does not have expected relationship
+   * ..."). Both are expected during reindexing of long-lived records: e.g. a
+   * {@code testCaseResolutionStatus} migrated without a corresponding {@code parentOf} row, or
+   * an entity hard-deleted out-of-band leaving its relationship rows behind. Such records
+   * cannot be meaningfully indexed and are reported as warnings rather than failing the entire
+   * batch.
+   *
+   * <p>The patterns are deliberately specific so we do not misclassify unrelated errors that
+   * happen to contain {@code "not found"} (e.g. {@code "Column 'foo' not found in result set"}
+   * or {@code "SSL certificate not found"}). They cover every {@code EntityNotFoundException}
+   * factory message ({@code byId}, {@code byName}, {@code byFilter}, {@code byVersion},
+   * {@code byParserSchema}) plus the legacy {@code CatalogExceptionMessage.entityNotFound}
+   * format and the relationship-not-found shape.
+   */
+  public static boolean isStaleReferenceError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    return isStaleReferenceMessage(error.getMessage());
+  }
+
+  public static boolean isStaleReferenceMessage(String errorMessage) {
+    if (errorMessage == null) {
+      return false;
+    }
+    String message = errorMessage.toLowerCase(java.util.Locale.ROOT);
+    return message.contains("instance for")
+        || message.contains("entity not found")
+        || message.contains("entity with id")
+        || message.contains("entity with name")
+        || message.contains("parser schema not found")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception")
+        || message.contains("expected relationship");
+  }
+
+  /**
+   * Splits {@code errors} into stale-relationship warnings (appended to {@code warningsOut}) and
+   * real failures (returned). Both lists must be mutable; {@code warningsOut} must be non-null.
+   */
+  public static List<EntityError> partitionErrors(
+      List<EntityError> errors, List<EntityError> warningsOut) {
+    Objects.requireNonNull(warningsOut, "warningsOut must not be null");
+    if (CommonUtil.nullOrEmpty(errors)) {
+      return new ArrayList<>();
+    }
+    List<EntityError> realErrors = new ArrayList<>(errors.size());
+    for (EntityError error : errors) {
+      if (isStaleReferenceError(error)) {
+        warningsOut.add(error);
+      } else {
+        realErrors.add(error);
+      }
+    }
+    return realErrors;
   }
 
   public static boolean isDataInsightIndex(String entityType) {
@@ -171,6 +342,43 @@ public class ReindexingUtil {
     }
 
     return entities;
+  }
+
+  public static List<String> getSearchIndexFields(String entityType) {
+    if (TIME_SERIES_ENTITIES.contains(entityType)) {
+      return List.of();
+    }
+    org.openmetadata.service.search.SearchRepository repo =
+        org.openmetadata.service.Entity.getSearchRepository();
+    if (repo == null || repo.getSearchIndexFactory() == null) {
+      // Search subsystem isn't bootstrapped (e.g. unit tests that exercise the reader without the
+      // full Entity registry). Behaves the same as the pre-selective-fields code path.
+      return List.of("*");
+    }
+    List<String> allFields;
+    try {
+      allFields = new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to look up reindex fields for {}: {}; falling back to all-fields wildcard",
+          entityType,
+          e.getMessage());
+      return List.of("*");
+    }
+    try {
+      return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
+    } catch (Exception e) {
+      // Filtering failed (typically because the EntityRepository isn't registered yet —
+      // happens during boot or in tests). Fall back to the unfiltered required set rather than
+      // "*": this keeps the per-entity intent intact and lets PaginatedEntitiesSource surface
+      // any drift loudly instead of silently sending every field.
+      LOG.warn(
+          "Could not filter reindex fields for {} against EntityRepository.allowedFields ({}); "
+              + "returning unfiltered required set",
+          entityType,
+          e.getMessage());
+      return allFields;
+    }
   }
 
   public static String escapeDoubleQuotes(String str) {

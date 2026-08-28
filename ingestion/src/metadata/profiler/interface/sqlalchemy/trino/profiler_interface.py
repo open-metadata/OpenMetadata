@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 
 from sqlalchemy import func
 from sqlalchemy.exc import ProgrammingError
@@ -44,7 +44,7 @@ class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
@@ -66,18 +66,12 @@ class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource
         try:
             runner_kwargs = {}
             if column.type in FLOAT_SET:
-                runner_kwargs = {
-                    "query_filter_": {"filters": [(func.is_nan(column), "eq", False)]}
-                }
-            row = runner.select_first_from_sample(
-                *[metric(column).fn() for metric in metrics], **runner_kwargs
-            )
+                runner_kwargs = {"query_filter_": {"filters": [(func.is_nan(column), "eq", False)]}}
+            row = runner.select_first_from_sample(*[metric(column).fn() for metric in metrics], **runner_kwargs)
             if row:
                 return row._asdict()
         except ProgrammingError as err:
-            logger.info(
-                f"Skipping window metrics for {runner.table_name}.{column.name} due to {err}"
-            )
+            logger.info(f"Skipping window metrics for {runner.table_name}.{column.name} due to {err}")
             return None
 
         except Exception as exc:

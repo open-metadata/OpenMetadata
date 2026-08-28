@@ -46,6 +46,7 @@ import { PipelineService } from '../../../generated/entity/services/pipelineServ
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
+import { Style } from '../../../generated/type/schema';
 import { ServicesType } from '../../../interface/service.interface';
 import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -158,7 +159,9 @@ export type DataAssetsHeaderProps = {
   afterTriggerAction?: VoidFunction;
   isAutoPilotWorkflowStatusLoading?: boolean;
   onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
+  onStyleUpdate?: (style: Style | null) => Promise<void>;
   disableRunAgentsButtonMessage?: string;
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
 } & (
   | DataAssetTable
   | DataAssetTopic

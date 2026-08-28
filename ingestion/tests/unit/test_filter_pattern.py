@@ -12,23 +12,24 @@
 """
 Validate filter patterns
 """
+
 import pytest
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.utils.filters import (
     InvalidPatternException,
     _filter,
+    filter_by_classifications,
     filter_by_dashboard,
     filter_by_fqn,
+    filter_pattern_enabled,
     validate_regex,
 )
 
 
 def test_filter():
     """Validate main filter logic"""
-    filter_pattern_both = FilterPattern(
-        includes=["^.*potato.*$"], excludes=["^.*tomato.*$"]
-    )
+    filter_pattern_both = FilterPattern(includes=["^.*potato.*$"], excludes=["^.*tomato.*$"])
     filter_pattern_inc = FilterPattern(includes=["^.*potato.*$"])
     filter_pattern_exc = FilterPattern(excludes=["^.*tomato.*$"])
 
@@ -43,6 +44,43 @@ def test_filter():
     # If we have both includes and excludes, we will check both "include" and "exclude"
     # This was not filter if we only check includes, but is filtered if we check both
     assert _filter(filter_pattern_both, "potato_tomato")
+
+
+def test_filter_pattern_enabled():
+    """A pattern is enabled only when includes or excludes are configured"""
+    assert filter_pattern_enabled(None) is False
+    assert filter_pattern_enabled(FilterPattern()) is False
+    assert filter_pattern_enabled(FilterPattern(includes=[])) is False
+    assert filter_pattern_enabled(FilterPattern(excludes=[])) is False
+    assert filter_pattern_enabled(FilterPattern(includes=["^keep$"])) is True
+    assert filter_pattern_enabled(FilterPattern(excludes=["^skip$"])) is True
+
+
+def test_filter_by_classifications():
+    """An entity is matched against the full set of its tags: a single matching
+    include tag keeps it, a single matching exclude tag drops it, and exclude
+    takes precedence over include."""
+    include_tier = FilterPattern(includes=["Tier.*"])
+    exclude_pii = FilterPattern(excludes=["PII.*"])
+    both = FilterPattern(includes=["Tier.*"], excludes=["PII.*"])
+
+    # One matching include tag is enough to keep, despite other non-matching tags
+    assert not filter_by_classifications(include_tier, ["Tier1", "Finance", "PII"])
+    # No tag matches the include -> filtered out
+    assert filter_by_classifications(include_tier, ["Finance", "PII"])
+
+    # A matching exclude tag drops the entity; no excluded tag keeps it
+    assert filter_by_classifications(exclude_pii, ["PII", "Finance"])
+    assert not filter_by_classifications(exclude_pii, ["Tier1", "Finance"])
+
+    # Exclude takes precedence: matches both include and exclude -> filtered out
+    assert filter_by_classifications(both, ["Tier1", "PII"])
+
+    # No pattern, or no tags with only excludes -> kept
+    assert not filter_by_classifications(None, ["PII"])
+    assert not filter_by_classifications(exclude_pii, [])
+    # No tags but includes set -> filtered out
+    assert filter_by_classifications(include_tier, [])
 
 
 def test_validate_regex():

@@ -32,9 +32,6 @@ export interface CreateTableProfile {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -259,8 +256,7 @@ export interface TableProfile {
     /**
      * No.of rows in the table. This is always executed on the whole table.
      */
-    rowCount?:           number;
-    samplingMethodType?: SamplingMethodType;
+    rowCount?: number;
     /**
      * Table size in GB
      */
@@ -277,12 +273,4 @@ export interface TableProfile {
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
 }

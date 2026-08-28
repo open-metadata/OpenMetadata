@@ -26,17 +26,13 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class TableColumnNameToExistValidator(
-    BaseTableColumnNameToExistValidator, SQAValidatorMixin
-):
+class TableColumnNameToExistValidator(BaseTableColumnNameToExistValidator, SQAValidatorMixin):
     """Validator for table column nanme to exist test case"""
 
     def _run_results(self):
         """compute result of the test case"""
         names = inspect(self.runner.table).c
         if not names:
-            raise ValueError(
-                f"Column names for test case {self.test_case.name} returned None"
-            )
+            raise ValueError(f"Column names for test case {self.test_case.name} returned None")
 
         return names

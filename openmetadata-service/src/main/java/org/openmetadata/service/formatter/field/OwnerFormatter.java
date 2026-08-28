@@ -18,24 +18,24 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.OwnerFeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 public class OwnerFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s the owner for %s %s";
 
   public OwnerFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     super(messageDecorator, thread, fieldChange);
   }
 
   @Override
   public String formatAddedField() {
     String message = super.formatAddedField();
-    populateOwnerFeedInfo(Thread.FieldOperation.ADDED, message);
+    populateOwnerFeedInfo(FormattedMessage.FieldOperation.ADDED, message);
     return message;
   }
 
@@ -68,18 +68,19 @@ public class OwnerFormatter extends DefaultFieldFormatter {
           String.format(
               "Updated %s: %s", this.getMessageDecorator().bold(this.getFieldChangeName()), diff);
     }
-    populateOwnerFeedInfo(Thread.FieldOperation.UPDATED, diff);
+    populateOwnerFeedInfo(FormattedMessage.FieldOperation.UPDATED, diff);
     return diff;
   }
 
   @Override
   public String formatDeletedField() {
     String message = super.formatDeletedField();
-    populateOwnerFeedInfo(Thread.FieldOperation.DELETED, message);
+    populateOwnerFeedInfo(FormattedMessage.FieldOperation.DELETED, message);
     return message;
   }
 
-  private void populateOwnerFeedInfo(Thread.FieldOperation operation, String threadMessage) {
+  private void populateOwnerFeedInfo(
+      FormattedMessage.FieldOperation operation, String threadMessage) {
     OwnerFeedInfo ownerFeedInfo =
         new OwnerFeedInfo()
             .withPreviousOwner(
@@ -91,7 +92,8 @@ public class OwnerFormatter extends DefaultFieldFormatter {
             .withHeaderMessage(getHeaderForOwnerUpdate(operation.value()))
             .withFieldName(FIELD_OWNERS)
             .withEntitySpecificInfo(ownerFeedInfo);
-    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.OWNER, operation, feedInfo);
+    populateThreadFeedInfo(
+        thread, threadMessage, FormattedMessage.CardStyle.OWNER, operation, feedInfo);
   }
 
   private String getHeaderForOwnerUpdate(String eventTypeMessage) {

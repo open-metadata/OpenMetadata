@@ -21,8 +21,9 @@ import {
 } from '../../../src/generated/entity/data/container';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -124,6 +125,33 @@ export class ContainerClass extends EntityClass {
             tags: [],
             ordinalPosition: 3,
           },
+          {
+            name: `details${uuid()}`,
+            dataType: DataType.Struct,
+            dataTypeDisplay: 'struct',
+            description: 'Nested details for container.',
+            tags: [],
+            ordinalPosition: 4,
+            children: [
+              {
+                name: `address${uuid()}`,
+                dataType: DataType.Struct,
+                dataTypeDisplay: 'struct',
+                description: 'Address details.',
+                tags: [],
+                children: [
+                  {
+                    name: 'street',
+                    dataType: DataType.Varchar,
+                    dataLength: 200,
+                    dataTypeDisplay: 'varchar',
+                    description: 'Street name.',
+                    tags: [],
+                  },
+                ],
+              },
+            ],
+          },
         ],
       },
     };
@@ -154,8 +182,14 @@ export class ContainerClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'ContainerClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'ContainerClass.create'
+    );
 
     if (isUndefined(customChildContainer)) {
       const childContainer = {
@@ -170,7 +204,10 @@ export class ContainerClass extends EntityClass {
         data: childContainer,
       });
 
-      this.childResponseData = await childResponse.json();
+      this.childResponseData = await okJson(
+        childResponse,
+        'ContainerClass.create'
+      );
     } else {
       const childArrayResponseData: ResponseDataType[] = [];
       for (const child of customChildContainer) {
@@ -186,7 +223,9 @@ export class ContainerClass extends EntityClass {
           data: childContainer,
         });
 
-        childArrayResponseData.push(await childResponse.json());
+        childArrayResponseData.push(
+          await okJson(childResponse, 'ContainerClass.create')
+        );
       }
       this.childArrayResponseData = childArrayResponseData;
     }
@@ -207,17 +246,19 @@ export class ContainerClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/containers/name/${this.entityResponseData?.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/containers/name/${this.entityResponseData?.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'ContainerClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -237,12 +278,10 @@ export class ContainerClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

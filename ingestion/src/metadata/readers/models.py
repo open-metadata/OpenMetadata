@@ -12,6 +12,7 @@
 """
 Generic types to use for readers
 """
+
 from typing import Union
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -27,4 +28,4 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     LocalConfig,
 )
 
-ConfigSource = Union[LocalConfig, AzureConfig, GCSConfig, S3Config]
+ConfigSource = Union[LocalConfig, AzureConfig, GCSConfig, S3Config]  # noqa: UP007

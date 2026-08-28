@@ -31,6 +31,7 @@
         "Spline",
         "Spark",
         "OpenLineage",
+        "Prefect",
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
@@ -40,7 +41,8 @@
         "SSIS",
         "Snowplow",
         "Mulesoft",
-        "MicrosoftFabricPipeline"
+        "MicrosoftFabricPipeline",
+        "SapBw4HanaPipeline"
       ],
       "javaEnums": [
         {
@@ -86,6 +88,9 @@
           "name": "OpenLineage"
         },
         {
+          "name": "Prefect"
+        },
+        {
           "name": "KafkaConnect"
         },
         {
@@ -114,6 +119,9 @@
         },
         {
           "name": "MicrosoftFabricPipeline"
+        },
+        {
+          "name": "SapBw4HanaPipeline"
         }
       ]
     },
@@ -177,6 +185,9 @@
               "$ref": "./connections/pipeline/openLineageConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/prefectConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
             },
             {
@@ -199,6 +210,9 @@
             },
             {
               "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"
             }
           ]
         }
@@ -259,6 +273,9 @@
       },
       "default": []
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
       "$ref": "../../type/entityReferenceList.json"
@@ -294,6 +311,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "followers": {
       "description": "Followers of this entity.",

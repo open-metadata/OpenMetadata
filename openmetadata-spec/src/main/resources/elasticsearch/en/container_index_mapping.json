@@ -25,9 +25,10 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
@@ -40,8 +41,8 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
@@ -66,6 +67,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     },
@@ -73,8 +78,20 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
-        "type": "keyword"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -257,6 +274,29 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
           }
         }
       },
@@ -364,7 +404,8 @@
                 "type": "integer"
               },
               "extension": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               },
               "customPropertiesTyped": {
                 "type": "nested",
@@ -407,6 +448,10 @@
                     "type": "keyword"
                   }
                 }
+              },
+              "children": {
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -514,7 +559,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "children": {
         "properties": {
@@ -713,6 +759,10 @@
                 "type": "long"
               }
             }
+          },
+          "date": {
+            "type": "date",
+            "format": "strict_date_optional_time||yyyy-MM-dd HH:mm:ss||epoch_millis"
           }
         }
       },
@@ -778,6 +828,10 @@
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "serviceType": {
         "type": "keyword",
@@ -901,6 +955,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -920,6 +977,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

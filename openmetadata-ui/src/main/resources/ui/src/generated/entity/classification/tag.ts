@@ -38,6 +38,10 @@ export interface Tag {
      */
     classification?: EntityReference;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -220,6 +224,8 @@ export interface FieldChange {
  *
  * Reference to the classification that this tag is part of.
  *
+ * Reference to the data contract for this entity.
+ *
  * Reference to the parent tag. When null, the term is at the root of the Classification.
  *
  * User who added this exception
@@ -275,6 +281,7 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",

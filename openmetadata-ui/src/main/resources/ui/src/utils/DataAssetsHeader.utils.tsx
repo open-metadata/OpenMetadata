@@ -12,10 +12,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Divider, Tooltip, Typography } from 'antd';
+import {
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
@@ -25,10 +27,7 @@ import {
   DataAssetsType,
   DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -63,16 +62,27 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { EntityReference } from '../generated/type/entityReference';
 import { formatDateTime } from './date-time/DateTimeUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForEntityWithParent,
   getBreadcrumbForTable,
-  getEntityBreadcrumbs,
-} from './EntityUtils';
+} from './EntityDataBreadcrumbUtils';
+import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
-import { bytesToSize } from './StringsUtils';
-import { getUsagePercentile } from './TableUtils';
+import { bytesToSize } from './StringUtils';
+import { getUsagePercentile } from './TablePureUtils';
+
+const { t } = i18n;
+
+export const HeaderDotSeparator = () => (
+  <span
+    aria-hidden
+    className="tw:mx-1 tw:inline-block tw:size-1 tw:shrink-0 tw:self-center tw:rounded-full tw:bg-fg-quaternary"
+  />
+);
 
 export const ExtraInfoLabel = ({
   label,
@@ -88,36 +98,42 @@ export const ExtraInfoLabel = ({
   if (inlineLayout) {
     return (
       <>
-        <Divider className="self-center" type="vertical" />
-        <Typography.Text
-          className="self-center text-xs whitespace-nowrap"
-          data-testid={dataTestId}>
+        <HeaderDotSeparator />
+        <Typography
+          as="span"
+          className="tw:self-center tw:whitespace-nowrap tw:text-xs"
+          data-testid={dataTestId}
+          size="text-xs">
           {!isEmpty(label) && (
-            <span className="text-grey-muted">{`${label}: `}</span>
+            <span className="tw:text-tertiary">{`${label}: `}</span>
           )}
-          <span className="font-medium">{value}</span>
-        </Typography.Text>
+          <span className="tw:font-medium tw:text-primary">{value}</span>
+        </Typography>
       </>
     );
   }
 
   return (
-    <div className="d-flex align-start extra-info-container">
-      <Typography.Text
-        className="whitespace-nowrap text-sm d-flex flex-col gap-2 w-full"
-        data-testid={dataTestId}>
-        {!isEmpty(label) && (
-          <span className="extra-info-label-heading">{label}</span>
-        )}
-
-        <Typography.Text
-          className={classNames('font-medium extra-info-value')}
-          ellipsis={{
-            tooltip: true,
-          }}>
-          {value ?? NO_DATA_PLACEHOLDER}
-        </Typography.Text>
-      </Typography.Text>
+    <div className="tw:flex tw:flex-col tw:gap-1.5 extra-info-container header-extra-info-field">
+      {!isEmpty(label) && (
+        <Typography
+          as="span"
+          className="tw:whitespace-nowrap tw:text-secondary"
+          data-testid={dataTestId ? `${dataTestId}-label` : undefined}
+          size="text-sm"
+          weight="medium">
+          {label}
+        </Typography>
+      )}
+      <Typography
+        as="span"
+        className="tw:whitespace-nowrap tw:text-primary"
+        data-testid={dataTestId}
+        ellipsis={{ tooltip: true }}
+        size="text-sm"
+        weight="medium">
+        {value ?? NO_DATA_PLACEHOLDER}
+      </Typography>
     </div>
   );
 };
@@ -136,27 +152,35 @@ export const ExtraInfoLink = ({
   ellipsis?: boolean;
 }) => (
   <div
-    className={classNames('d-flex  text-sm  flex-col gap-2', {
-      'w-48': ellipsis,
+    className={classNames('tw:flex tw:flex-col tw:gap-1.5', {
+      'tw:w-48': ellipsis,
     })}>
     {!isEmpty(label) && (
-      <span className="extra-info-label-heading  m-r-xss">{label}</span>
+      <Typography
+        as="span"
+        className="tw:text-secondary"
+        ellipsis={ellipsis ? { tooltip: true } : undefined}
+        size="text-xs"
+        weight="medium">
+        {label}
+      </Typography>
     )}
-    <div className="d-flex items-center gap-1">
-      <Tooltip title={value}>
-        <Typography.Link
-          ellipsis
-          className="extra-info-link"
-          href={href}
-          rel={newTab ? 'noopener noreferrer' : undefined}
-          target={newTab ? '_blank' : undefined}>
-          {value}
-        </Typography.Link>
+    <div className="tw:flex tw:items-center tw:gap-1">
+      <Tooltip placement="top" title={value}>
+        <TooltipTrigger className="tw:max-w-full tw:truncate">
+          <a
+            className="tw:truncate tw:text-sm tw:font-medium tw:text-brand-secondary tw:hover:text-brand-secondary_hover"
+            href={href}
+            rel={newTab ? 'noopener noreferrer' : undefined}
+            target={newTab ? '_blank' : undefined}>
+            {value}
+          </a>
+        </TooltipTrigger>
       </Tooltip>
-      <Icon
-        className="m-l-xs"
-        component={IconExternalLink}
-        style={DATA_ASSET_ICON_DIMENSION}
+      <IconExternalLink
+        className="tw:text-fg-quaternary"
+        height={18}
+        width={18}
       />
     </div>
   </div>
@@ -166,7 +190,7 @@ export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
   dataAsset: DataAssetsHeaderProps['dataAsset'],
   entityName: string,
-  parentContainers: Container[]
+  parentContainers: EntityReference[]
 ) => {
   const returnData: DataAssetHeaderInfo = {
     extraInfo: <></>,
@@ -181,10 +205,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {topicDetails?.partitions ? (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.partition-plural')}
                 value={topicDetails.partitions}
@@ -193,10 +214,7 @@ export const getDataAssetsHeaderInfo = (
           ) : null}
           {topicDetails?.replicationFactor && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.replication-factor')}
                 value={topicDetails.replicationFactor}
@@ -215,10 +233,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {dashboardDetails.dashboardType && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.entity-type-plural', {
                   entity: t('label.dashboard'),
@@ -229,10 +244,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {dashboardDetails.project && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.project')}
                 value={dashboardDetails.project}
@@ -241,10 +253,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {dashboardDetails?.usageSummary && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -268,10 +277,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {pipelineDetails.state && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.state')}
                 value={pipelineDetails.state}
@@ -281,10 +287,7 @@ export const getDataAssetsHeaderInfo = (
 
           {pipelineDetails?.usageSummary && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -308,10 +311,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {mlModelDetail.algorithm && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.algorithm')}
                 value={mlModelDetail.algorithm}
@@ -320,10 +320,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.target && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.target')}
                 value={mlModelDetail.target}
@@ -332,10 +329,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.server && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLink
                 newTab
                 href={mlModelDetail.server}
@@ -346,10 +340,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.dashboard && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLink
                 href={getEntityDetailsPath(
                   EntityType.DASHBOARD,
@@ -362,10 +353,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail?.usageSummary && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -389,10 +377,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label=""
                 value={
@@ -405,10 +390,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {!isUndefined(containerDetails.numberOfObjects) && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.number-of-object-plural')}
                 value={containerDetails.numberOfObjects}
@@ -417,10 +399,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {!isUndefined(containerDetails.size) && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.size')}
                 value={bytesToSize(containerDetails.size)}
@@ -445,10 +424,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {dataModelDetails.dataModelType && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.data-model-type')}
                 value={dataModelDetails.dataModelType}
@@ -457,10 +433,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {dataModelDetails.project && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.project')}
                 value={dataModelDetails.project}
@@ -490,8 +463,7 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.breadcrumbs = getEntityBreadcrumbs(
         databaseSchemaDetails,
-        EntityType.DATABASE_SCHEMA,
-        true
+        EntityType.DATABASE_SCHEMA
       );
 
       break;
@@ -619,10 +591,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {isObject(storedProcedureDetails.storedProcedureCode) && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.language')}
                 value={
@@ -648,25 +617,6 @@ export const getDataAssetsHeaderInfo = (
         EntityType.API_COLLECTION
       );
 
-      returnData.extraInfo = (
-        <>
-          {apiCollection.endpointURL && (
-            <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
-              <ExtraInfoLink
-                newTab
-                href={apiCollection.endpointURL}
-                label={t('label.source-url')}
-                value={apiCollection.endpointURL}
-              />
-            </>
-          )}
-        </>
-      );
-
       break;
     }
     case EntityType.API_ENDPOINT: {
@@ -681,28 +631,11 @@ export const getDataAssetsHeaderInfo = (
         <>
           {apiEndpoint.requestMethod && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 dataTestId="api-endpoint-request-method"
                 label={t('label.request-method')}
                 value={apiEndpoint.requestMethod}
-              />
-            </>
-          )}
-          {apiEndpoint.endpointURL && (
-            <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
-              <ExtraInfoLink
-                newTab
-                href={apiEndpoint.endpointURL}
-                label={t('label.source-url')}
-                value={apiEndpoint.endpointURL}
               />
             </>
           )}
@@ -737,10 +670,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {directory.directoryType && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.type')}
                 value={directory.directoryType}
@@ -749,10 +679,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {directory.numberOfFiles !== undefined && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.file-plural')}
                 value={directory.numberOfFiles}
@@ -761,10 +688,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {directory.numberOfSubDirectories !== undefined && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.subdirectory-plural')}
                 value={directory.numberOfSubDirectories}
@@ -785,19 +709,13 @@ export const getDataAssetsHeaderInfo = (
         <>
           {file.fileType && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
             </>
           )}
           {file.fileExtension !== undefined && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.extension')}
                 value={file.fileExtension}
@@ -806,10 +724,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {file.fileVersion !== undefined && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.version')}
                 value={file.fileVersion}
@@ -834,28 +749,25 @@ export const getDataAssetsHeaderInfo = (
         <>
           {spreadsheet.mimeType && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.mime-type')}
                 value={
-                  <Tooltip title={spreadsheet.mimeType}>
-                    <Typography.Text ellipsis className="w-full">
-                      {spreadsheet.mimeType}
-                    </Typography.Text>
-                  </Tooltip>
+                  <Typography
+                    as="span"
+                    className="tw:text-primary"
+                    ellipsis={{ tooltip: spreadsheet.mimeType }}
+                    size="text-sm"
+                    weight="medium">
+                    {spreadsheet.mimeType}
+                  </Typography>
                 }
               />
             </>
           )}
           {spreadsheet.createdTime !== undefined && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.created-time')}
                 value={formatDateTime(spreadsheet.createdTime)}
@@ -864,10 +776,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {spreadsheet.modifiedTime !== undefined && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.modified-time')}
                 value={formatDateTime(spreadsheet.modifiedTime)}
@@ -891,10 +800,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {worksheet.rowCount && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.row-count')}
                 value={worksheet.rowCount}
@@ -915,10 +821,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {tableDetails.tableType && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.type')}
                 value={tableDetails.tableType}
@@ -927,10 +830,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {tableDetails?.usageSummary && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -942,10 +842,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {tableDetails?.profile?.columnCount && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.column-plural')}
                 value={tableDetails.profile?.columnCount}
@@ -954,10 +851,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {tableDetails?.profile?.rowCount && (
             <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
+              <HeaderDotSeparator />
               <ExtraInfoLabel
                 label={t('label.row-plural')}
                 value={tableDetails.profile?.rowCount}
@@ -982,11 +876,8 @@ export const isDataAssetsWithServiceField = (
 };
 
 export const getEntityExtraInfoLength = (element: ReactNode): number => {
-  if (React.isValidElement(element)) {
-    if (isArray(element.props.children)) {
-      return element.props.children?.filter((child?: ReactNode) => child)
-        .length;
-    }
+  if (React.isValidElement(element) && isArray(element.props.children)) {
+    return element.props.children?.filter((child?: ReactNode) => child).length;
   }
 
   return 0;

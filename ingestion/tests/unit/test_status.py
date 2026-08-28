@@ -11,6 +11,7 @@
 """
 Tests for metadata.ingestion.api.status.Status
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -40,7 +41,7 @@ class TestStatus(TestCase):
         output = self.status.as_string()
         for item in items:
             self.assertIn(item, output)
-        self.assertNotIn("total items", output)
+        self.assertNotIn("_total_items", output)
 
     def test_as_string_large_list_is_truncated(self):
         """Lists exceeding MAX_STATUS_DISPLAY_ITEMS should be truncated."""
@@ -48,8 +49,7 @@ class TestStatus(TestCase):
         self.status.records = [f"record_{i}" for i in range(total)]
 
         output = self.status.as_string()
-        self.assertIn(f"{total} total items", output)
-        self.assertIn(f"showing first {MAX_STATUS_DISPLAY_ITEMS}", output)
+        self.assertIn(f"'records_total_items': {total}", output)
         self.assertIn("record_0", output)
         self.assertNotIn(f"record_{total - 1}", output)
 
@@ -58,7 +58,7 @@ class TestStatus(TestCase):
         self.status.records = [f"record_{i}" for i in range(MAX_STATUS_DISPLAY_ITEMS)]
 
         output = self.status.as_string()
-        self.assertNotIn("total items", output)
+        self.assertNotIn("_total_items", output)
         self.assertIn("record_0", output)
         self.assertIn(f"record_{MAX_STATUS_DISPLAY_ITEMS - 1}", output)
 
@@ -69,7 +69,7 @@ class TestStatus(TestCase):
         self.status.warnings = [{f"warn_{i}": "reason"} for i in range(total)]
 
         output = self.status.as_string()
-        self.assertEqual(output.count("total items"), 2)
+        self.assertEqual(output.count("_total_items"), 2)
 
     def test_as_string_non_list_fields_unchanged(self):
         """Non-list fields like record_count should render normally."""
@@ -80,9 +80,7 @@ class TestStatus(TestCase):
 
     def test_as_string_no_escaped_newlines(self):
         """Truncated output should not contain escaped newline characters."""
-        self.status.records = [
-            f"record_{i}" for i in range(MAX_STATUS_DISPLAY_ITEMS + 10)
-        ]
+        self.status.records = [f"record_{i}" for i in range(MAX_STATUS_DISPLAY_ITEMS + 10)]
 
         output = self.status.as_string()
         self.assertNotIn("\\n", output)
@@ -90,19 +88,14 @@ class TestStatus(TestCase):
     # ── failed / fail_all ────────────────────────────────────────────
 
     def test_failed_appends_to_failures(self):
-        error = StackTraceError(
-            name="test", error="something broke", stackTrace="traceback..."
-        )
+        error = StackTraceError(name="test", error="something broke", stackTrace="traceback...")
         self.status.failed(error)
 
         self.assertEqual(len(self.status.failures), 1)
         self.assertEqual(self.status.failures[0].error, "something broke")
 
     def test_fail_all_extends_failures(self):
-        errors = [
-            StackTraceError(name=f"e{i}", error=f"err_{i}", stackTrace="tb")
-            for i in range(3)
-        ]
+        errors = [StackTraceError(name=f"e{i}", error=f"err_{i}", stackTrace="tb") for i in range(3)]
         self.status.fail_all(errors)
 
         self.assertEqual(len(self.status.failures), 3)

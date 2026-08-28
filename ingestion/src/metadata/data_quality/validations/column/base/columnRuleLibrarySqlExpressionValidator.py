@@ -12,7 +12,8 @@
 """
 Validator for column value rule library SQL expression
 """
-from typing import Dict
+
+from typing import Dict  # noqa: UP035
 
 from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
@@ -44,7 +45,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def _get_user_params(self) -> Dict[str, str]:
+    def _get_user_params(self) -> Dict[str, str]:  # noqa: UP006
         """Extract user-defined parameters from test case parameterValues.
 
         Returns:
@@ -53,7 +54,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
         params = {}
         if self.test_case.parameterValues:
             for param in self.test_case.parameterValues:
-                if param.name and param.value and param.name not in RESERVED_PARAMS:
+                if param.name and param.value and param.name not in RESERVED_PARAMS:  # noqa: SIM102
                     if not param.name.endswith("RuntimeParameters"):
                         params[param.name] = param.value
         return params
@@ -90,13 +91,10 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
             template = Template(sql_template.root, undefined=StrictUndefined)
             return template.render(**params)
         except TemplateSyntaxError as e:
-            raise ValueError(
-                f"Invalid Jinja2 syntax in SQL expression: {e.message}"
-            ) from e
+            raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
         except UndefinedError as e:
             raise ValueError(
-                f"Undefined variable in SQL expression: {e.message}. "
-                f"Available parameters: {list(params.keys())}"
+                f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
             ) from e
 
     def _run_results(self, sql_expression: str) -> int:
@@ -160,9 +158,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
         Returns:
             TestCaseResult: The test case result for the overall validation
         """
-        self.runtime_params = self.get_runtime_parameters(
-            RuleLibrarySqlExpressionRuntimeParameters
-        )
+        self.runtime_params = self.get_runtime_parameters(RuleLibrarySqlExpressionRuntimeParameters)
 
         column_name = self.get_column_name()
         table_name = self.get_table_name()
@@ -170,8 +166,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
         count: int = self._run_results(sql_expression)
 
         result_message = (
-            f"Column '{column_name}' in table '{table_name}' "
-            f"has {count} rows matching the condition. Expected 0."
+            f"Column '{column_name}' in table '{table_name}' has {count} rows matching the condition. Expected 0."
         )
 
         return self.get_test_case_result_object(

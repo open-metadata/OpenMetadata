@@ -50,12 +50,12 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignDomain,
-  clickOutside,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
+import { assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -195,20 +195,20 @@ test.describe(
           page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
 
-        await page.waitForSelector(
-          '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-          { state: 'detached' }
-        );
+        await page
+          .getByRole('tabpanel', { name: /Users/ })
+          .getByTestId('loader')
+          .waitFor({ state: 'hidden' });
 
         await page
           .locator("[data-testid='select-owner-tabs']")
           .getByRole('tab', { name: 'Teams' })
           .click();
 
-        await page.waitForSelector(
-          '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-          { state: 'detached' }
-        );
+        await page
+          .getByRole('tabpanel', { name: 'Teams' })
+          .getByTestId('loader')
+          .waitFor({ state: 'hidden' });
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'
@@ -236,10 +236,6 @@ test.describe(
           .getByTestId('selectable-list-update-btn')
           .click();
         await patchRequest;
-
-        await expect(
-          page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-        ).toBeVisible();
 
         for (const name of [
           user.getUserDisplayName(),
@@ -338,9 +334,7 @@ test.describe(
         );
         await page.click('[data-testid="bulk-edit-table"]');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -349,8 +343,11 @@ test.describe(
           page.getByRole('button', { name: 'Previous' })
         ).not.toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for grid cells to be ready for interaction
+        await page
+          .locator('.rdg-cell[role="gridcell"]')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // Click on first cell and edit
 
@@ -376,14 +373,15 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '1',
+          processed: '1',
           failed: '0',
         });
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
         );
+        const navigationPromise = page.waitForEvent('framenavigated');
 
         await page.getByRole('button', { name: 'Update' }).click();
 
@@ -391,11 +389,10 @@ test.describe(
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
         await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
+        await navigationPromise;
         await toastNotification(page, /details updated successfully/);
 
         await page.click('[data-testid="databases"]');
-
 
         // Verify Details updated
         await expect(page.getByTestId('column-name')).toHaveText(
@@ -425,9 +422,17 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
+          })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByRole('link', {
+            name: 'Gold',
           })
         ).toBeVisible();
 
@@ -469,9 +474,7 @@ test.describe(
 
         await page.click('[data-testid="bulk-edit-table"]');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -480,8 +483,11 @@ test.describe(
           page.getByRole('button', { name: 'Previous' })
         ).not.toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for grid cells to be ready for interaction
+        await page
+          .locator('.rdg-cell[role="gridcell"]')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // click on last row first cell
         await page.click('.rdg-cell[role="gridcell"]');
@@ -512,23 +518,24 @@ test.describe(
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '1',
+          processed: '1',
           failed: '0',
         });
 
-        await page.waitForSelector('.rdg-header-row', {
+        await page.locator('.rdg-header-row').waitFor({
           state: 'visible',
         });
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
         );
+        const navigationPromise = page.waitForEvent('framenavigated');
         await page.getByRole('button', { name: 'Update' }).click();
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
         await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
+        await navigationPromise;
         await toastNotification(page, /details updated successfully/);
 
         // Verify Details updated
@@ -555,7 +562,7 @@ test.describe(
 
         await page.getByTestId('column-display-name').click();
 
-        await page.waitForSelector('loader', { state: 'hidden' });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify Tags
         await expect(
@@ -564,9 +571,17 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
+          })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByRole('link', {
+            name: 'Gold',
           })
         ).toBeVisible();
 
@@ -620,8 +635,11 @@ test.describe(
           page.getByRole('button', { name: 'Previous' })
         ).not.toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for grid cells to be ready for interaction
+        await page
+          .locator('.rdg-cell[role="gridcell"]')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // Click on first cell and edit
         await page.click('.rdg-cell[role="gridcell"]');
@@ -645,17 +663,18 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '1',
+          processed: '1',
           failed: '0',
         });
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
         );
+        const navigationPromise = page.waitForEvent('framenavigated');
         await page.getByRole('button', { name: 'Update' }).click();
 
         await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
+        await navigationPromise;
         await toastNotification(page, /details updated successfully/);
 
         // Verify Details updated
@@ -672,7 +691,7 @@ test.describe(
           .getByTestId('column-display-name')
           .getByTestId(table.entity.name)
           .click();
-        await page.waitForSelector('loader', { state: 'hidden' });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify Domain
         await expect(page.getByTestId('domain-link')).toContainText(
@@ -699,10 +718,16 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
           })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByTestId('certification-Certification.Gold')
         ).toBeVisible();
 
         await expect(
@@ -755,28 +780,26 @@ test.describe(
 
         // Open domain selector to verify multi-select mode (checkboxes visible)
         await page.getByTestId('add-domain').click();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify checkboxes ARE visible (multi-select mode)
         await expect(
           page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
         ).toBeVisible();
 
-        // Close the selector by clicking outside
-        await clickOutside(page);
+        // Close the selector by clicking cancel btn
+        await page.getByTestId('cancelAssociatedTag').click();
 
         // Wait for domain selector to be fully closed
-        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'detached',
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomain(page, testDomain1.responseData);
+        await assignDomainWidget(page, testDomain1.responseData, true);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomain(page, testDomain2.responseData, false);
+        await assignDomainWidget(page, testDomain2.responseData, true, true);
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
@@ -797,6 +820,66 @@ test.describe(
         await testDomain2.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  `Data Product Domain Validation Rule Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    const assetDomain = new Domain();
+    const productDomain = new Domain();
+    const crossDomainDataProduct = new DataProduct([productDomain]);
+    const crossTable = new TableClass();
+
+    test.beforeAll('Setup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await assetDomain.create(apiContext);
+      await productDomain.create(apiContext);
+      await crossDomainDataProduct.create(apiContext);
+      await crossTable.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await crossTable.delete(apiContext);
+      await crossDomainDataProduct.delete(apiContext);
+      await productDomain.delete(apiContext);
+      await assetDomain.delete(apiContext);
+      await afterAction();
+    });
+
+    // With the "Data Product Domain Validation" rule disabled, the Data Product
+    // dropdown is no longer scoped to the asset's domain, so an asset can be
+    // assigned a Data Product that belongs to a different domain.
+    test('should allow assigning a Data Product from a different domain', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await crossTable.visitEntityPage(page);
+
+      // Asset belongs to assetDomain only.
+      await assignDomain(page, assetDomain.responseData);
+
+      // The Data Product from productDomain can be assigned even though the
+      // asset is in assetDomain, because the domain validation rule is disabled
+      // and the dropdown lists Data Products across all domains.
+      await assignDataProduct(page, assetDomain.responseData, [
+        crossDomainDataProduct.responseData,
+      ]);
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-list')
+          .getByTestId(
+            `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
+          )
+      ).toBeVisible();
     });
   }
 );

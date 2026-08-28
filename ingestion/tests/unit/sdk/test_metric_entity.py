@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Metric entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -62,9 +63,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.assertEqual(str(result.id), self.metric_id)
         self.assertIsNotNone(result.metricExpression)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=MetricEntity, entity_id=self.metric_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=MetricEntity, entity_id=self.metric_id, fields=None)
 
     def test_retrieve_metric_with_fields(self):
         """Test retrieving a metric with specific fields"""
@@ -107,9 +106,7 @@ class TestMetricEntity(unittest.TestCase):
         result = Metrics.retrieve_by_name(self.metric_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.metric_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=MetricEntity, fqn=self.metric_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=MetricEntity, fqn=self.metric_fqn, fields=None)
 
     def test_update_metric(self):
         """Test updating a metric"""
@@ -120,11 +117,7 @@ class TestMetricEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(metric_to_update))
-        current_entity.id = (
-            metric_to_update.id
-            if hasattr(metric_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = metric_to_update.id if hasattr(metric_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
@@ -233,9 +226,7 @@ class TestMetricEntity(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(str(result.id.root), self.metric_id)
         self.assertFalse(result.deleted)
-        self.mock_ometa.client.put.assert_called_once_with(
-            "/metrics/restore", json={"id": self.metric_id}
-        )
+        self.mock_ometa.client.put.assert_called_once_with("/metrics/restore", json={"id": self.metric_id})
 
     def test_add_related_metrics(self):
         """Test adding related metrics"""
@@ -279,9 +270,7 @@ class TestMetricEntity(unittest.TestCase):
         result = exporter.execute()
 
         self.assertEqual(result, csv_data)
-        self.mock_ometa.export_csv.assert_called_once_with(
-            entity=MetricEntity, name="metric_export"
-        )
+        self.mock_ometa.export_csv.assert_called_once_with(entity=MetricEntity, name="metric_export")
 
     def test_import_metrics_csv(self):
         """Test importing metrics from CSV"""

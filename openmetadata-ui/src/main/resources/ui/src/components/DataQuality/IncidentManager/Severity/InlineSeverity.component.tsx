@@ -12,17 +12,38 @@
  */
 
 import { Dropdown, Typography } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown as ArrowDownIcon,
-  ChevronUp as ArrowUpIcon,
-} from '@untitledui/icons';
-import classNames from 'classnames';
-import { startCase, toLower } from 'lodash';
-import { useCallback, useState } from 'react';
+import { startCase } from 'lodash';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import { ChipTrigger } from '../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component';
 import { InlineSeverityProps } from './Severity.interface';
+
+const SELECTED_ITEM_CLASS =
+  'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
+
+/**
+ * Budget for the Severity column, not for chips in general (issue #30522).
+ *
+ * Issue #30522 exposed why this needs a bound: the former ru-RU placeholder was
+ * 218px of rendered text against 67px for English "No Severity". Unbounded, the
+ * chip reached 258px and widened the column to 306px, pushing the Assignee
+ * column's right edge to 1508px at a 1440px viewport. The translation has since
+ * been corrected, but locale updates must not be able to reintroduce the layout
+ * overflow.
+ *
+ * 176px is the widest Tailwind step that keeps Assignee on screen: measured on
+ * the live pill at 1440px with the nav expanded, 176px lands the edge at 1430px
+ * and 184px at 1438px, while 188px already overruns at 1442px and `max-w-48`
+ * (192px) at 1446px. It also cleared every other shipped severity placeholder
+ * when the bound was introduced (widest 168.6px, pt-BR).
+ *
+ * All widths measured in-DOM at Inter 12px/500 across the 20 shipped locales. An
+ * off-DOM probe under-reports Cyrillic by ~6px because the `unicode-range`
+ * subset is not active for glyphs it never paints; do not size this from one.
+ */
+const SEVERITY_CHIP_MAX_WIDTH = 'tw:max-w-44';
 
 const InlineSeverity = ({
   severity,
@@ -30,21 +51,26 @@ const InlineSeverity = ({
   onSubmit,
 }: InlineSeverityProps) => {
   const { t } = useTranslation();
+  const chipRef = useRef<HTMLButtonElement>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const severityKey = severity ?? 'NoSeverity';
   const severityColor =
     SEVERITY_COLORS[severityKey] ?? SEVERITY_COLORS['NoSeverity'];
-  const label = severity
-    ? startCase(severity)
-    : t('label.no-entity', { entity: t('label.severity') });
+  const noSeverityLabel = t('label.no-entity', { entity: t('label.severity') });
+  const label = severity ? startCase(severity) : noSeverityLabel;
+
+  const palette = {
+    bg: severityColor.bg,
+    border: severityColor.color,
+    color: severityColor.color,
+  };
 
   const handleSeverityChange = useCallback(
     async (newSeverity: Severities | undefined) => {
       setShowMenu(false);
       setIsLoading(true);
-
       try {
         await onSubmit?.(newSeverity);
       } finally {
@@ -54,43 +80,28 @@ const InlineSeverity = ({
     [onSubmit]
   );
 
-  const chipButton = (
-    <button
-      className={classNames(
-        'severity tw:inline-flex tw:items-center tw:gap-1 tw:rounded-2xl tw:border tw:px-2 tw:py-0.5',
-        severity && toLower(severity)
-      )}
-      data-testid="severity-chip"
-      disabled={!hasEditPermission || isLoading}
-      style={{
-        backgroundColor: severityColor.bg,
-        borderColor: severityColor.color,
-        color: severityColor.color,
-        cursor: hasEditPermission && !isLoading ? 'pointer' : 'default',
-      }}
-      type="button"
-    >
-      <Typography as="span" className="tw:px-0.5 tw:text-xs tw:font-medium">
-        {label}
-      </Typography>
-      {hasEditPermission &&
-        (showMenu ? (
-          <ArrowUpIcon className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ArrowDownIcon className="tw:size-4 tw:shrink-0" />
-        ))}
-    </button>
+  const chipTrigger = (
+    <ChipTrigger
+      attachPressHandler={false}
+      chipLabel={label}
+      chipRef={chipRef}
+      dataTestId="severity-chip"
+      hasEditPermission={hasEditPermission && !isLoading}
+      maxChipWidth={SEVERITY_CHIP_MAX_WIDTH}
+      overlayOpen={showMenu}
+      palette={palette}
+    />
   );
 
   if (!hasEditPermission) {
-    return <div className="tw:inline-flex tw:items-center">{chipButton}</div>;
+    return <div className="tw:inline-flex tw:items-center">{chipTrigger}</div>;
   }
 
   return (
     <div className="tw:inline-flex tw:items-center">
       <Dropdown.Root onOpenChange={setShowMenu}>
-        {chipButton}
-        <Dropdown.Popover className="tw:w-max">
+        {chipTrigger}
+        <Dropdown.Popover className="tw:w-max" placement="top">
           <Dropdown.Menu
             selectedKeys={severity ? [severity] : ['none']}
             selectionMode="single"
@@ -98,15 +109,26 @@ const InlineSeverity = ({
               handleSeverityChange(
                 key === 'none' ? undefined : (key as Severities)
               )
-            }
-          >
+            }>
             <Dropdown.Item
+              className={SELECTED_ITEM_CLASS}
               id="none"
-              label={t('label.no-entity', { entity: t('label.severity') })}
-            />
+              textValue={noSeverityLabel}>
+              <Typography as="span" size="text-sm" weight="regular">
+                {noSeverityLabel}
+              </Typography>
+            </Dropdown.Item>
             <Dropdown.Separator />
             {Object.values(Severities).map((sev) => (
-              <Dropdown.Item id={sev} key={sev} label={startCase(sev)} />
+              <Dropdown.Item
+                className={SELECTED_ITEM_CLASS}
+                id={sev}
+                key={sev}
+                textValue={startCase(sev)}>
+                <Typography as="span" size="text-sm" weight="regular">
+                  {startCase(sev)}
+                </Typography>
+              </Dropdown.Item>
             ))}
           </Dropdown.Menu>
         </Dropdown.Popover>

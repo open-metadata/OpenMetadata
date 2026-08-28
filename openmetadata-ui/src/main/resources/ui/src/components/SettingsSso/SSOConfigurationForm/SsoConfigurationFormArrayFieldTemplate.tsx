@@ -21,10 +21,9 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import { splitCSV } from '../../../utils/CSV/CSV.utils';
+import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
-
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;
 

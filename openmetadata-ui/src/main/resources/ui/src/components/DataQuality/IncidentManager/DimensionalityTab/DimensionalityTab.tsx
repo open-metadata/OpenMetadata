@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
-import { ColumnsType } from 'antd/lib/table';
-import { format } from 'date-fns';
+import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
 import { isEmpty, split, toLower } from 'lodash';
+import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import type { ComponentType, ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans as ReactI18nextTrans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   DEFAULT_RANGE_DATA,
@@ -26,30 +25,32 @@ import {
 } from '../../../../constants/profiler.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
-import {
-  getEndOfDayInMillis,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getEntityDetailsPath,
   getTestCaseDimensionsDetailPagePath,
 } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
+import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import NoDataPlaceholderNew from '../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew';
-import MuiDatePickerMenu from '../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
 
+const TransWithComponents = ReactI18nextTrans as unknown as ComponentType<{
+  components: Record<number, ReactElement>;
+  i18nKey: string;
+}>;
+
 const DimensionalityTab = () => {
   const { t } = useTranslation();
+  const location = useCustomLocation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const { testCase } = useTestCaseStore();
   const [dateRange, setDateRange] = useState(DEFAULT_RANGE_DATA);
@@ -90,8 +91,8 @@ const DimensionalityTab = () => {
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     setDateRange({
-      startTs: getStartOfDayInMillis(value.startTs),
-      endTs: getEndOfDayInMillis(value.endTs),
+      startTs: value.startTs,
+      endTs: value.endTs,
     });
   };
 
@@ -143,13 +144,17 @@ const DimensionalityTab = () => {
         return;
       }
 
-      const resultDate = format(new Date(result.timestamp), 'yyyy-MM-dd');
+      const resultDate = DateTime.fromJSDate(
+        new Date(result.timestamp)
+      ).toFormat('yyyy-MM-dd');
       const existing = dimensionMap.get(dimensionValue);
 
       if (!existing || !existing.timestamp) {
         dimensionMap.set(dimensionValue, result);
       } else {
-        const existingDate = format(new Date(existing.timestamp), 'yyyy-MM-dd');
+        const existingDate = DateTime.fromJSDate(
+          new Date(existing.timestamp)
+        ).toFormat('yyyy-MM-dd');
         const existingTime = existing.timestamp;
         const currentTime = result.timestamp;
 
@@ -176,86 +181,66 @@ const DimensionalityTab = () => {
       });
   }, [dimensionData]);
 
-  const tableColumns: ColumnsType<{
-    key: string;
-    dimensionValue: string;
-    result: DimensionResultWithTimestamp;
-  }> = [
-    {
-      title: t('label.status'),
-      dataIndex: 'result',
-      key: 'status',
-      width: 120,
-      render: (result: DimensionResultWithTimestamp) => {
-        return result?.testCaseStatus ? (
-          <StatusBadge
-            dataTestId="status-badge"
-            label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
-            status={toLower(result.testCaseStatus) as StatusType}
-          />
-        ) : (
-          <span className="tw:text-sm">--</span>
-        );
+  const dimensionTableColumns = useMemo(
+    () => [
+      { id: 'status', label: t('label.status') },
+      {
+        id: 'impactScore',
+        label: t('label.impact-score'),
+        tooltip: t('message.impact-score-helper'),
       },
+      { id: 'dimensionValue', label: t('label.dimension') },
+      { id: 'lastRun', label: t('label.last-run') },
+    ],
+    [t]
+  );
+
+  const renderCell = useCallback(
+    (
+      col: { id: string },
+      row: (typeof getLatestResultPerDimension)[number]
+    ) => {
+      switch (col.id) {
+        case 'status':
+          return row.result?.testCaseStatus ? (
+            <StatusBadge
+              dataTestId="status-badge"
+              label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
+              status={toLower(row.result.testCaseStatus) as StatusType}
+            />
+          ) : (
+            <span className="tw:text-sm">--</span>
+          );
+        case 'impactScore':
+          return (
+            <span className="tw:text-sm">
+              {row.result?.impactScore ?? '--'}
+            </span>
+          );
+        case 'dimensionValue':
+          return (
+            <Link
+              className="tw:text-text-brand-secondary"
+              state={location.state}
+              to={getTestCaseDimensionsDetailPagePath(
+                testCase?.fullyQualifiedName || '',
+                row.result.dimensionKey || ''
+              )}>
+              {row.dimensionValue}
+            </Link>
+          );
+        case 'lastRun':
+          return row.result?.timestamp ? (
+            <DateTimeDisplay size="compact" timestamp={row.result.timestamp} />
+          ) : (
+            <span className="tw:text-sm">--</span>
+          );
+        default:
+          return null;
+      }
     },
-    {
-      title: (
-        <div className="tw:flex tw:items-center tw:gap-2">
-          {t('label.impact-score')}
-          <Tooltip
-            placement="top"
-            title={
-              <span className="tw:text-xs">
-                {t('message.impact-score-helper')}
-              </span>
-            }
-          >
-            <HelpCircle height={16} width={16} />
-          </Tooltip>
-        </div>
-      ),
-      dataIndex: 'result',
-      key: 'impactScore',
-      width: 120,
-      render: (result: DimensionResultWithTimestamp) => {
-        return (
-          <span className="tw:text-sm">{result?.impactScore ?? '--'}</span>
-        );
-      },
-    },
-    {
-      title: t('label.dimension'),
-      dataIndex: 'dimensionValue',
-      key: 'dimensionValue',
-      width: 200,
-      render: (dimensionValue: string, record) => {
-        return (
-          <Link
-            className="tw:text-text-brand-secondary"
-            to={getTestCaseDimensionsDetailPagePath(
-              testCase?.fullyQualifiedName || '',
-              record.result.dimensionKey || ''
-            )}
-          >
-            {dimensionValue}
-          </Link>
-        );
-      },
-    },
-    {
-      title: t('label.last-run'),
-      dataIndex: 'result',
-      key: 'lastRun',
-      width: 200,
-      render: (result: DimensionResultWithTimestamp) => {
-        return result?.timestamp ? (
-          <DateTimeDisplay timestamp={result.timestamp} />
-        ) : (
-          <span className="tw:text-sm">--</span>
-        );
-      },
-    },
-  ];
+    [location.state, testCase?.fullyQualifiedName]
+  );
 
   const noDataPlaceholder = useMemo(() => {
     if (isLoading) {
@@ -269,7 +254,7 @@ const DimensionalityTab = () => {
 
     return (
       <NoDataPlaceholderNew size={SIZE.LARGE}>
-        <Trans
+        <TransWithComponents
           components={{
             0: <span className="tw:text-sm" />,
             1: <span className="tw:text-sm" />,
@@ -285,27 +270,27 @@ const DimensionalityTab = () => {
     <div className="tw:flex tw:flex-col tw:p-5 tw:gap-6">
       <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-7.5">
         <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
-          <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
+          <p className="tw:m-0 tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.select-dimension')}:`}
           </p>
           <Select
-            className="tw:min-w-37.5"
+            className="tw:min-w-37.5 tw:h-8"
             data-testid="dimension-select"
+            fontSize="xs"
             items={dimensionColumnsOptions}
             size="sm"
             value={selectedDimension ?? null}
-            onChange={handleDimensionChange}
-          >
+            onChange={handleDimensionChange}>
             {(item) => (
               <Select.Item id={item.id} key={item.id} label={item.label} />
             )}
           </Select>
         </div>
         <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
-          <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
+          <p className="tw:m-0 tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.date')}:`}
           </p>
-          <MuiDatePickerMenu
+          <DatePickerMenu
             showSelectedCustomRange
             defaultDateRange={DEFAULT_SELECTED_RANGE}
             handleDateRangeChange={handleDateRangeChange}
@@ -332,13 +317,34 @@ const DimensionalityTab = () => {
                 entityText: selectedDimension || '',
               })}
             </p>
-            <Table
-              bordered
-              columns={tableColumns}
-              dataSource={getLatestResultPerDimension}
-              loading={isLoading}
-              pagination={false}
-            />
+            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary">
+              <Table aria-label={selectedDimension ?? ''}>
+                <Table.Header columns={dimensionTableColumns}>
+                  {(col) => (
+                    <Table.Head
+                      id={col.id}
+                      key={col.id}
+                      label={col.label}
+                      tooltip={col.tooltip}
+                    />
+                  )}
+                </Table.Header>
+                <Table.Body items={getLatestResultPerDimension}>
+                  {(row) => (
+                    <Table.Row
+                      columns={dimensionTableColumns}
+                      id={row.key}
+                      key={row.key}>
+                      {(col) => (
+                        <Table.Cell key={col.id}>
+                          {renderCell(col, row)}
+                        </Table.Cell>
+                      )}
+                    </Table.Row>
+                  )}
+                </Table.Body>
+              </Table>
+            </div>
           </div>
         </>
       )}

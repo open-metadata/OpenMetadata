@@ -2,24 +2,39 @@ package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
+import org.openmetadata.schema.utils.VersionUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.IndexMappingHashException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
 
 @Slf4j
 public class IndexMappingVersionTracker {
+  public static final String SYSTEM_UPDATED_BY = "system";
+  private static final String VERSION_RESOURCE_PATH = "/catalog/VERSION";
+
+  // Server version and mappers are immutable for the process lifetime; resolve once instead of
+  // re-reading /catalog/VERSION and re-allocating an ObjectMapper on every per-entity stamp.
+  private static final String SERVER_VERSION = currentServerVersion();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper CANONICAL_MAPPER =
+      new ObjectMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+
   private final IndexMappingVersionDAO indexMappingVersionDAO;
   private final String updatedBy;
   private final String version;
@@ -32,14 +47,28 @@ public class IndexMappingVersionTracker {
     this.updatedBy = updatedBy;
   }
 
+  public static IndexMappingVersionTracker create(CollectionDAO daoCollection) {
+    return new IndexMappingVersionTracker(daoCollection, SERVER_VERSION, SYSTEM_UPDATED_BY);
+  }
+
+  private static String currentServerVersion() {
+    return VersionUtils.getOpenMetadataServerVersion(VERSION_RESOURCE_PATH).getVersion();
+  }
+
+  public enum MappingDriftState {
+    CURRENT,
+    STALE,
+    UNTRACKED
+  }
+
   public List<String> getChangedMappings() throws IOException {
     List<String> changedMappings = new ArrayList<>();
     Map<String, String> storedHashes = getStoredMappingHashes();
-    Map<String, String> currentHashes = computeCurrentMappingHashes();
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
 
-    for (Map.Entry<String, String> entry : currentHashes.entrySet()) {
+    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String entityType = entry.getKey();
-      String currentHash = entry.getValue();
+      String currentHash = entry.getValue().hash();
       String storedHash = storedHashes.get(entityType);
 
       if (storedHash == null || !storedHash.equals(currentHash)) {
@@ -57,24 +86,110 @@ public class IndexMappingVersionTracker {
     return changedMappings;
   }
 
+  public Map<String, MappingDriftState> computeDrift() throws IOException {
+    Map<String, String> storedHashes = getStoredMappingHashes();
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    Map<String, MappingDriftState> drift = new HashMap<>();
+    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
+      String storedHash = storedHashes.get(entry.getKey());
+      drift.put(entry.getKey(), classifyState(storedHash, entry.getValue().hash()));
+    }
+    return Collections.unmodifiableMap(drift);
+  }
+
+  private MappingDriftState classifyState(String storedHash, String currentHash) {
+    MappingDriftState state;
+    if (storedHash == null) {
+      state = MappingDriftState.UNTRACKED;
+    } else if (Objects.equals(storedHash, currentHash)) {
+      state = MappingDriftState.CURRENT;
+    } else {
+      state = MappingDriftState.STALE;
+    }
+    return state;
+  }
+
+  /**
+   * Returns {@code true} when the indexes were last built at a different major/minor release than
+   * the version currently running. A patch-level bump (e.g. {@code 1.12.8 -> 1.12.9}) returns
+   * {@code false} so smart reindexing only touches changed mappings, whereas a major/minor bump
+   * (e.g. {@code 1.12.8 -> 1.13.0} or {@code 1.12.8 -> 2.0.0}) returns {@code true} so every index
+   * is recreated and fully reindexed. A fresh install with no stored versions returns
+   * {@code false} because every mapping is already reported as changed.
+   */
+  public boolean requiresFullReindexForVersionUpgrade() {
+    String previousVersion = findStoredVersionWithDifferentMajorMinor();
+    boolean requiresFullReindex = previousVersion != null;
+    if (requiresFullReindex) {
+      LOG.info(
+          "Index mapping version change {} -> {} crosses a major/minor release - full reindex required",
+          previousVersion,
+          version);
+    }
+    return requiresFullReindex;
+  }
+
+  private String findStoredVersionWithDifferentMajorMinor() {
+    String currentMajorMinor = VersionUtils.getMajorMinorVersion(version);
+    String mismatchedVersion = null;
+    for (String storedVersion : indexMappingVersionDAO.getDistinctMappingVersions()) {
+      if (!currentMajorMinor.equals(VersionUtils.getMajorMinorVersion(storedVersion))) {
+        mismatchedVersion = storedVersion;
+      }
+    }
+    return mismatchedVersion;
+  }
+
   public void updateMappingVersions() throws IOException {
-    Map<String, String> currentHashes = computeCurrentMappingHashes();
+    persistMappingVersions(computeCurrentMappings());
+  }
+
+  /**
+   * Persists the version/hash only for the entities that were actually reindexed. Stamping every
+   * entity (as the no-arg overload does) would mask entities that still need a reindex when only a
+   * subset was run - on a later major/minor upgrade those skipped entities would wrongly look
+   * up-to-date and never be recreated.
+   */
+  public void updateMappingVersions(Collection<String> reindexedEntities) throws IOException {
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    Map<String, MappingEntry> reindexedMappings = new HashMap<>();
+    for (String entityType : reindexedEntities) {
+      MappingEntry mappingEntry = currentMappings.get(entityType);
+      if (mappingEntry != null) {
+        reindexedMappings.put(entityType, mappingEntry);
+      }
+    }
+    persistMappingVersions(reindexedMappings);
+  }
+
+  /**
+   * Stamps the version/hash for a single entity. Used by the index promotion path ({@code
+   * DefaultRecreateHandler}) so each entity is recorded the moment its staged index is promoted,
+   * instead of blanket-stamping at job end. Hashes only that entity's mapping to avoid rehashing
+   * every entity on every promotion.
+   */
+  public void updateMappingVersion(String entityType) throws IOException {
+    MappingEntry mappingEntry = computeMappingForEntity(entityType);
+    if (mappingEntry == null) {
+      LOG.warn("No index mapping found for entity '{}'; skipping version stamp", entityType);
+    } else {
+      persistMappingVersions(Map.of(entityType, mappingEntry));
+    }
+  }
+
+  private void persistMappingVersions(Map<String, MappingEntry> mappings) {
     long updatedAt = System.currentTimeMillis();
-
-    for (Map.Entry<String, String> entry : currentHashes.entrySet()) {
-      String entityType = entry.getKey();
-      String mappingHash = entry.getValue();
-      JsonNode mappingJson = loadMappingForEntity(entityType);
-
+    for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
+      MappingEntry mappingEntry = entry.getValue();
       indexMappingVersionDAO.upsertIndexMappingVersion(
-          entityType,
-          mappingHash,
-          JsonUtils.pojoToJson(mappingJson),
+          entry.getKey(),
+          mappingEntry.hash(),
+          JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentHashes.size());
+    LOG.info("Updated index mapping versions for {} entities", mappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {
@@ -87,71 +202,82 @@ public class IndexMappingVersionTracker {
     return hashes;
   }
 
-  private Map<String, String> computeCurrentMappingHashes() throws IOException {
-    Map<String, String> hashes = new HashMap<>();
+  private record MappingEntry(String hash, JsonNode json) {}
 
-    // Get all entity types
-    Set<String> entityTypes = Entity.getEntityList();
-
-    for (String entityType : entityTypes) {
-      JsonNode mapping = loadMappingForEntity(entityType);
-      if (mapping != null) {
-        try {
-          String hash = computeHash(mapping);
-          hashes.put(entityType, hash);
-        } catch (IndexMappingHashException e) {
-          LOG.error("Failed to compute hash for entity type: {}", entityType, e);
-          throw new IOException("Failed to compute mapping hash for " + entityType, e);
-        }
+  /**
+   * Drift is computed against the field-safety-hardened bundled mapping (all languages) each index is
+   * actually built from — the same {@link SearchIndexSettings#harden} pass {@code
+   * SearchRepository.readIndexMapping} applies at index-creation time — so both a shipped mapping
+   * change and a change to the configured {@link SearchFieldLimits} surface as a reindex-required
+   * drift until the entity is reindexed. {@link IndexMappingLoader} is the source of truth for entity
+   * types and file paths, covering camelCase types (e.g. {@code glossaryTerm}) without hand-built
+   * paths.
+   */
+  private Map<String, MappingEntry> computeCurrentMappings() throws IOException {
+    Map<String, MappingEntry> mappings = new HashMap<>();
+    Map<String, IndexMapping> indexMappings = IndexMappingLoader.getInstance().getIndexMapping();
+    for (Map.Entry<String, IndexMapping> entry : indexMappings.entrySet()) {
+      MappingEntry mappingEntry = toMappingEntry(entry.getKey(), entry.getValue());
+      if (mappingEntry != null) {
+        mappings.put(entry.getKey(), mappingEntry);
       }
     }
-
-    return hashes;
+    return mappings;
   }
 
-  private JsonNode loadMappingForEntity(String entityType) throws IOException {
+  private MappingEntry computeMappingForEntity(String entityType) throws IOException {
+    IndexMapping indexMapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
+    MappingEntry result = null;
+    if (indexMapping != null) {
+      result = toMappingEntry(entityType, indexMapping);
+    }
+    return result;
+  }
+
+  private MappingEntry toMappingEntry(String entityType, IndexMapping indexMapping)
+      throws IOException {
+    JsonNode mapping = loadMappingForEntity(entityType, indexMapping);
+    MappingEntry result = null;
+    if (mapping != null) {
+      try {
+        result = new MappingEntry(computeHash(mapping), mapping);
+      } catch (IndexMappingHashException e) {
+        LOG.error("Failed to compute hash for entity type: {}", entityType, e);
+        throw new IOException("Failed to compute mapping hash for " + entityType, e);
+      }
+    }
+    return result;
+  }
+
+  private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
+    JsonNode result = null;
     try {
-      ObjectMapper mapper = new ObjectMapper();
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
       String[] languages = {"en", "jp", "ru", "zh"};
-
       for (String lang : languages) {
-        String mappingPath =
-            String.format(
-                "/elasticsearch/%s/%s_index_mapping.json", lang, entityType.toLowerCase());
+        String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
         try (var stream = getClass().getResourceAsStream(mappingPath)) {
           if (stream != null) {
             String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            allLanguageMappings.put(lang, mapper.readTree(mappingContent));
+            String hardened =
+                SearchIndexSettings.harden(mappingContent, SearchFieldLimits.active());
+            allLanguageMappings.put(lang, MAPPER.readTree(hardened));
           }
         }
       }
-
-      String mappingPath =
-          String.format("/elasticsearch/%s_index_mapping.json", entityType.toLowerCase());
-      try (var stream = getClass().getResourceAsStream(mappingPath)) {
-        if (stream != null) {
-          String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-          allLanguageMappings.put("default", mapper.readTree(mappingContent));
-        }
-      }
-
       if (!allLanguageMappings.isEmpty()) {
-        return mapper.valueToTree(allLanguageMappings);
+        result = MAPPER.valueToTree(allLanguageMappings);
       }
     } catch (Exception e) {
       LOG.debug("Could not load mapping for entity: {}", entityType, e);
     }
-    return null;
+    return result;
   }
 
   private String computeHash(JsonNode mapping) throws IOException, IndexMappingHashException {
     try {
       MessageDigest digest = MessageDigest.getInstance("MD5");
-      ObjectMapper mapper = new ObjectMapper();
-      mapper.configure(
-          com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
-      String canonicalJson = mapper.writeValueAsString(mapping);
+      String canonicalJson = CANONICAL_MAPPER.writeValueAsString(mapping);
       byte[] hash = digest.digest(canonicalJson.getBytes(StandardCharsets.UTF_8));
       return bytesToHex(hash);
     } catch (NoSuchAlgorithmException e) {

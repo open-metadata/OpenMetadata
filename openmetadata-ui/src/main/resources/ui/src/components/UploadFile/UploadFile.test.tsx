@@ -28,12 +28,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockReturnValue('message.drag-and-drop-or-browse-csv-files-here'),
-}));
-
 describe('UploadFile Component', () => {
   const defaultProps: UploadFileProps = {
     fileType: '.csv',
@@ -44,13 +38,13 @@ describe('UploadFile Component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render the upload component with correct props', () => {
+  it('should render the upload component with correct props', async () => {
     render(<UploadFile {...defaultProps} />);
 
     expect(screen.getByTestId('upload-file-widget')).toBeInTheDocument();
     expect(screen.getByTestId('import-icon')).toBeInTheDocument();
     expect(
-      screen.getByText('message.drag-and-drop-or-browse-csv-files-here')
+      await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
     ).toBeInTheDocument();
   });
 
@@ -113,12 +107,15 @@ describe('UploadFile Component', () => {
 
     // Mock FileReader to throw an error
     const originalFileReader = global.FileReader;
-    global.FileReader = jest.fn().mockImplementation(() => ({
-      readAsText: jest.fn(() => {
-        throw new Error('File read error');
-      }),
-      onerror: null,
-    })) as any;
+    global.FileReader = jest.fn().mockImplementation(
+      () =>
+        ({
+          readAsText: jest.fn(() => {
+            throw new Error('File read error');
+          }),
+          onerror: null,
+        } as unknown as FileReader)
+    ) as unknown as typeof FileReader;
 
     fireEvent.drop(uploadWidget, {
       dataTransfer: {
@@ -204,11 +201,29 @@ describe('UploadFile Component', () => {
     });
   });
 
-  it('should render browse text correctly', () => {
+  it('should render browse text correctly', async () => {
     render(<UploadFile {...defaultProps} />);
 
     expect(
-      screen.getByText('message.drag-and-drop-or-browse-csv-files-here')
+      await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
     ).toBeInTheDocument();
+  });
+
+  it('should render compact upload variant', async () => {
+    const { container } = render(
+      <UploadFile
+        {...defaultProps}
+        acceptedFileDescription="Accepts .csv up to 10 MB"
+        variant="compact"
+      />
+    );
+
+    expect(
+      container.querySelector('.file-dragger-wrapper-compact')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/message.drop-csv-or-browse/)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Accepts .csv up to 10 MB')).toBeInTheDocument();
   });
 });

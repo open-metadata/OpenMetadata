@@ -11,14 +11,15 @@
 """
 System table profiler
 """
+
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Type, Union
+from typing import Any, Dict, List, Optional, Set, Type, Union  # noqa: UP035
 
 from more_itertools import partition
 from pydantic import field_validator
 from sqlalchemy import Table, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine  # noqa: TC002
 
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import (
@@ -40,12 +41,12 @@ logger = profiler_logger()
 class ColumnStats(BaseModel):
     """Based on https://trino.io/docs/current/sql/show-stats.html"""
 
-    column_name: Optional[str] = None
-    data_size: Optional[int] = None
-    distinct_values_count: Optional[int] = None
-    nulls_fraction: Optional[float] = None
-    low_value: Optional[Union[int, float, datetime, Decimal]] = None
-    high_value: Optional[Union[int, float, datetime, Decimal]] = None
+    column_name: Optional[str] = None  # noqa: UP045
+    data_size: Optional[int] = None  # noqa: UP045
+    distinct_values_count: Optional[int] = None  # noqa: UP045
+    nulls_fraction: Optional[float] = None  # noqa: UP045
+    low_value: Optional[Union[int, float, datetime, Decimal]] = None  # noqa: UP007, UP045
+    high_value: Optional[Union[int, float, datetime, Decimal]] = None  # noqa: UP007, UP045
 
     @field_validator("data_size", mode="before")
     @classmethod
@@ -61,18 +62,18 @@ class ColumnStats(BaseModel):
 
 
 class TableStats(BaseModel):
-    row_count: Optional[int] = None
-    columns: Dict[str, ColumnStats] = {}
+    row_count: Optional[int] = None  # noqa: UP045
+    columns: Dict[str, ColumnStats] = {}  # noqa: RUF012, UP006
 
 
 @inject_class_attributes
 class TrinoStoredStatisticsSource(StoredStatisticsSource):
     """Trino system profile source"""
 
-    metrics: Inject[Type[MetricRegistry]]
+    metrics: Inject[Type[MetricRegistry]]  # noqa: UP006
 
     @classmethod
-    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:
+    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:  # noqa: UP006
         return {
             cls.metrics.nullProportion: "nulls_fractions",
             cls.metrics.distinctCount: "distinct_values_count",
@@ -82,10 +83,10 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
         }
 
     @classmethod
-    def get_metric_stats_by_name(cls) -> Dict[str, str]:
+    def get_metric_stats_by_name(cls) -> Dict[str, str]:  # noqa: UP006
         return {k.name: v for k, v in cls.get_metric_stats_map().items()}
 
-    def get_statistics_metrics(self) -> Set[MetricRegistry]:
+    def get_statistics_metrics(self) -> Set[MetricRegistry]:  # noqa: UP006
         return set(self.get_metric_stats_map().keys())
 
     def __init__(self, **kwargs):
@@ -95,40 +96,33 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
         self.stats_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     def get_column_statistics(
-        self, metric: List[Metric], schema: str, table_name: Table, column: str
-    ) -> Dict[str, Any]:
+        self,
+        metric: list[Metric],
+        schema: str,
+        table_name: Table,
+        column: str,
+    ) -> Dict[str, Any]:  # noqa: UP006
         table_stats = self._get_cached_stats(schema, table_name)
         try:
             column_stats = table_stats.columns[column]
         except KeyError:
-            raise RuntimeError(
+            raise RuntimeError(  # noqa: B904
                 f"Column {column} not found in table {table_name}. Statistics might be stale or missing."
             )
-        result = {
-            m.name(): getattr(column_stats, self.get_metric_stats_by_name()[m.name()])
-            for m in metric
-        }
+        result = {m.name(): getattr(column_stats, self.get_metric_stats_by_name()[m.name()]) for m in metric}
         result.update(self.get_hybrid_statistics(table_stats, column_stats))
         self.warn_for_missing_stats(schema, table_name, column_stats)
         return result
 
-    def get_table_statistics(
-        self, metric: List[Metric], schema: str, table_name: Table
-    ) -> dict:
+    def get_table_statistics(self, metric: List[Metric], schema: str, table_name: Table) -> dict:  # noqa: UP006
         table_stats = self._get_cached_stats(schema, table_name)
-        return {
-            m.name(): getattr(table_stats, self.get_metric_stats_by_name()[m.name()])
-            for m in metric
-        }
+        return {m.name(): getattr(table_stats, self.get_metric_stats_by_name()[m.name()]) for m in metric}
 
     def warn_for_missing_stats(self, schema: str, table: str, stats: BaseModel):
-        if (
-            isinstance(stats, ColumnStats)
-            and all(map(lambda x: x is None, stats.model_dump().values()))
-        ) or (
+        if (isinstance(stats, ColumnStats) and all(map(lambda x: x is None, stats.model_dump().values()))) or (  # noqa: C417
             isinstance(stats, TableStats)
             and all(
-                map(
+                map(  # noqa: C417
                     lambda x: x is None,
                     [v for k, v in stats.model_dump().items() if k != "columns"],
                 )
@@ -155,18 +149,12 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
             partition(lambda row: row.get("column_name"), (r._asdict() for r in rows)),
         )
         if len(table_rows) != 1:
-            raise RuntimeError(
-                f"Expected one row for table {table}, got {len(table_rows)}"
-            )
+            raise RuntimeError(f"Expected one row for table {table}, got {len(table_rows)}")
         table = table_rows[0]
-        columns_dict = {
-            row.get("column_name"): ColumnStats(**row) for row in column_rows
-        }
+        columns_dict = {row.get("column_name"): ColumnStats(**row) for row in column_rows}
         return TableStats(row_count=table["row_count"], columns=columns_dict)
 
-    def get_hybrid_statistics(
-        self, table_stats: TableStats, column_stats: ColumnStats
-    ) -> Dict[str, Any]:
+    def get_hybrid_statistics(self, table_stats: TableStats, column_stats: ColumnStats) -> Dict[str, Any]:  # noqa: UP006
         return {
             # trino stats are in fractions, so we need to convert them to counts (unlike our default profiler)
             self.metrics.nullCount.name: (

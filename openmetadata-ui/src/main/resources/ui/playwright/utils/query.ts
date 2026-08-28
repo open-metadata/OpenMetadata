@@ -57,7 +57,7 @@ export const queryFilters = async ({
   await page.hover(`[data-testid="search-dropdown-${key}"]`);
   await page.click(`[data-testid="drop-down-menu"] [title="${filter}"]`);
   const queryResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index*'
+    '/api/v1/search/query?q=*&index=query*'
   );
   await page.click('[data-testid="update-btn"]');
   await queryResponse;

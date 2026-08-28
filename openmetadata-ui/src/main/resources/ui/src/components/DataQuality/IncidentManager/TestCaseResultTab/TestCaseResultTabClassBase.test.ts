@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TestCase } from '../../../../generated/tests/testCase';
+import FailedTestCaseSampleData from '../FailedTestCaseSampleData/FailedTestCaseSampleData.component';
 import testCaseResultTabClassBase, {
   AdditionalComponentInterface,
   TestCaseResultTabClassBase,
@@ -70,33 +71,37 @@ describe('TestCaseResultTabClassBase', () => {
   });
 
   describe('getAdditionalComponents', () => {
-    it('should return an empty array by default', () => {
+    const expectedComponents = [
+      { id: 'failed-sample-data', Component: FailedTestCaseSampleData },
+    ];
+
+    it('should return FailedTestCaseSampleData component by default', () => {
       const result = testCaseResultTabClassBase.getAdditionalComponents();
 
-      expect(result).toEqual([]);
+      expect(result).toEqual(expectedComponents);
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(0);
+      expect(result.length).toBe(1);
     });
 
-    it('should return an empty array when testCaseData is undefined', () => {
+    it('should return FailedTestCaseSampleData component when testCaseData is undefined', () => {
       const result =
         testCaseResultTabClassBase.getAdditionalComponents(undefined);
 
-      expect(result).toEqual([]);
+      expect(result).toEqual(expectedComponents);
     });
 
-    it('should return an empty array when testCaseData is provided', () => {
+    it('should return FailedTestCaseSampleData component when testCaseData is provided', () => {
       const result =
         testCaseResultTabClassBase.getAdditionalComponents(mockTestCase);
 
-      expect(result).toEqual([]);
+      expect(result).toEqual(expectedComponents);
     });
 
     it('should return an array that matches AdditionalComponentInterface type', () => {
       const result: Array<AdditionalComponentInterface> =
         testCaseResultTabClassBase.getAdditionalComponents(mockTestCase);
 
-      expect(result).toEqual([]);
+      expect(result).toEqual(expectedComponents);
     });
   });
 

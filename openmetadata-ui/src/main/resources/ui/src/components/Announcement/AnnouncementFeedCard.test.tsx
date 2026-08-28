@@ -10,47 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import {
-  MOCK_ANNOUNCEMENT_DATA,
-  MOCK_ANNOUNCEMENT_FEED_DATA,
-} from '../../mocks/Announcement.mock';
-import { getFeedById } from '../../rest/feedsAPI';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import AnnouncementFeedCard from './AnnouncementFeedCard.component';
-
-jest.mock('../../rest/feedsAPI', () => ({
-  getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
 
 jest.mock('./AnnouncementFeedCardBody.component', () =>
   jest
     .fn()
-    .mockImplementation(
-      ({ showReplyThread, updateThreadHandler, onConfirmation, onReply }) => (
-        <>
-          <p>AnnouncementFeedCardBody</p>
-          <button onClick={showReplyThread}>ShowReplyThreadButton</button>
-          <button
-            onClick={() =>
-              updateThreadHandler('threadId', 'postId', true, 'data')
-            }>
-            UpdateThreadHandlerButton
-          </button>
-          <button onClick={onConfirmation}>ConfirmationButton</button>
-          <button onClick={onReply}>ReplyButton</button>
-        </>
-      )
-    )
+    .mockImplementation(({ updateAnnouncementHandler, onConfirmation }) => (
+      <>
+        <p>AnnouncementFeedCardBody</p>
+        <button
+          onClick={() => updateAnnouncementHandler('announcementId', 'data')}>
+          UpdateAnnouncementHandlerButton
+        </button>
+        <button onClick={onConfirmation}>ConfirmationButton</button>
+      </>
+    ))
 );
-
-jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor', () => {
-  return jest.fn().mockImplementation(({ onSave }) => (
-    <>
-      <p>ActivityFeedEditor</p>
-      <button onClick={() => onSave('changesValue')}>onSaveReply</button>
-    </>
-  ));
-});
 
 jest.mock('../ActivityFeed/Shared/AnnouncementBadge', () => {
   return jest.fn().mockReturnValue(<p>AnnouncementBadge</p>);
@@ -65,18 +42,10 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 const mockProps = {
-  feed: {
-    message: 'Cypress announcement',
-    postTs: 1714026576902,
-    from: 'admin',
-    id: '36ea94c9-7f12-489c-94df-56cbefe14b2f',
-    reactions: [],
-  },
-  task: MOCK_ANNOUNCEMENT_DATA.data[0],
+  announcement: MOCK_ANNOUNCEMENT_DATA.data[0],
   editPermission: true,
-  postFeed: jest.fn(),
   onConfirmation: jest.fn(),
-  updateThreadHandler: jest.fn(),
+  updateAnnouncementHandler: jest.fn(),
 };
 
 describe('Test AnnouncementFeedCard Component', () => {
@@ -95,70 +64,14 @@ describe('Test AnnouncementFeedCard Component', () => {
     expect(mockProps.onConfirmation).toHaveBeenCalled();
   });
 
-  it('should trigger updateThreadHandler without fetchAnnouncementThreadData when replyThread is closed', () => {
+  it('should trigger updateAnnouncementHandler', () => {
     render(<AnnouncementFeedCard {...mockProps} />);
 
-    fireEvent.click(screen.getByText('UpdateThreadHandlerButton'));
+    fireEvent.click(screen.getByText('UpdateAnnouncementHandlerButton'));
 
-    expect(mockProps.updateThreadHandler).toHaveBeenCalledWith(
-      'threadId',
-      'postId',
-      true,
+    expect(mockProps.updateAnnouncementHandler).toHaveBeenCalledWith(
+      'announcementId',
       'data'
     );
-    expect(getFeedById).not.toHaveBeenCalled();
-  });
-
-  it('should trigger updateThreadHandler with fetchAnnouncementThreadData when replyThread is open', () => {
-    render(<AnnouncementFeedCard {...mockProps} />);
-
-    act(() => {
-      fireEvent.click(screen.getByText('ShowReplyThreadButton'));
-    });
-
-    expect(getFeedById).toHaveBeenCalledWith(MOCK_ANNOUNCEMENT_DATA.data[0].id);
-
-    fireEvent.click(screen.getByText('UpdateThreadHandlerButton'));
-
-    expect(mockProps.updateThreadHandler).toHaveBeenCalledWith(
-      'threadId',
-      'postId',
-      true,
-      'data'
-    );
-    expect(getFeedById).toHaveBeenCalledWith(MOCK_ANNOUNCEMENT_DATA.data[0].id);
-  });
-
-  it('should trigger onReply with fetchAnnouncementThreadData', async () => {
-    (getFeedById as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ANNOUNCEMENT_FEED_DATA })
-    );
-
-    await act(async () => {
-      render(<AnnouncementFeedCard {...mockProps} />);
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('ReplyButton'));
-    });
-
-    expect(getFeedById).toHaveBeenCalledWith(MOCK_ANNOUNCEMENT_DATA.data[0].id);
-
-    expect(screen.getByTestId('replies')).toBeInTheDocument();
-
-    expect(screen.getAllByText('AnnouncementFeedCardBody')).toHaveLength(5);
-
-    expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
-
-    expect(screen.getByText('ActivityFeedEditor')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('onSaveReply'));
-
-    expect(mockProps.postFeed).toHaveBeenCalledWith(
-      'changesValue',
-      '36ea94c9-7f12-489c-94df-56cbefe14b2f'
-    );
-
-    expect(getFeedById).toHaveBeenCalledWith(MOCK_ANNOUNCEMENT_DATA.data[0].id);
   });
 });

@@ -12,6 +12,7 @@
 """
 Type adapter for Trino to handle NamedRowTuple serialization
 """
+
 from typing import Any
 
 from sqlalchemy import ARRAY
@@ -30,11 +31,8 @@ class TrinoTypesMixin:
 
         def _convert_value(obj: Any) -> Any:
             if isinstance(obj, NamedRowTuple):
-                return {
-                    k: _convert_value(getattr(obj, k))
-                    for k in obj.__annotations__["names"]
-                }
-            elif isinstance(obj, (list, tuple)):
+                return {k: _convert_value(getattr(obj, k)) for k in obj.__annotations__["names"]}
+            elif isinstance(obj, (list, tuple)):  # noqa: RET505
                 return type(obj)(_convert_value(v) for v in obj)
             elif isinstance(obj, dict):
                 return {k: _convert_value(v) for k, v in obj.items()}

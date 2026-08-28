@@ -11,51 +11,10 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { TaskType, ThreadType } from '../../../generated/api/feed/createThread';
+import { MOCK_ANNOUNCEMENT_DATA } from '../../../mocks/Announcement.mock';
 import AnnouncementsWidget from './AnnouncementsWidget';
 
-const mockAnnouncementData = [
-  {
-    id: 'f0761441-478e-4373-919e-70b8f587c43f',
-    type: ThreadType.Announcement,
-    href: 'http://localhost:8585/api/v1/feed/f0761441-478e-4373-919e-70b8f587c43f',
-    threadTs: 1707475672423,
-    about: '<#E::tableu>',
-    entityId: '07f9dc02-9cbd-447c-9fc9-988c419a45e0',
-    updatedAt: 1707475792808,
-    resolved: true,
-    message: 'wertyui',
-    announcement: {
-      description: 'description',
-      startTime: 1707475665,
-      endTime: 1707648467,
-    },
-    task: {
-      id: 1,
-      assignees: [
-        {
-          id: '1',
-          type: 'user',
-        },
-      ],
-      type: TaskType.RequestDescription,
-    },
-  },
-];
-
-jest.mock(
-  '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1',
-  () => {
-    return jest.fn().mockImplementation(() => <div>FeedCardBodyV1</div>);
-  }
-);
-
-jest.mock(
-  '../../ActivityFeed/ActivityFeedCardV2/FeedCardHeader/FeedCardHeaderV2',
-  () => {
-    return jest.fn().mockImplementation(() => <div>FeedCardHeaderV2</div>);
-  }
-);
+const mockAnnouncementData = [MOCK_ANNOUNCEMENT_DATA.data[0]];
 
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
@@ -63,6 +22,10 @@ jest.mock('../../common/Loader/Loader', () =>
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
 describe('AnnouncementsWidget', () => {
@@ -94,8 +57,9 @@ describe('AnnouncementsWidget', () => {
       );
     });
 
-    expect(screen.getByText('FeedCardBodyV1')).toBeInTheDocument();
-    expect(screen.getByText('FeedCardHeaderV2')).toBeInTheDocument();
+    expect(
+      screen.getByText('Cypress announcement description')
+    ).toBeInTheDocument();
     expect(screen.getByText('label.announcement')).toBeInTheDocument();
   });
 });

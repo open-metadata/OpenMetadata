@@ -12,7 +12,7 @@
 Impala source methods.
 """
 
-import re
+import re  # noqa: I001
 from typing import Optional
 
 from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
@@ -62,40 +62,30 @@ def get_impala_table_or_view_names(connection, schema=None, target_type="table")
 
         for result in list(results):
             data = result
-            if data[0].strip() == "Table Type:":
+            if data[0].strip() == "Table Type:":  # noqa: SIM102
                 if target_type.lower() in data[1].lower():
                     retvalue.append(table_view)
     return retvalue
 
 
-def get_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     results = get_impala_table_or_view_names(connection, schema, "view")
-    return results
+    return results  # noqa: RET504
 
 
-def get_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     results = get_impala_table_or_view_names(connection, schema, "table")
-    return results
+    return results  # noqa: RET504
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema_name, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema_name, **kw):  # pylint: disable=unused-argument
     """
     Gets the table comment from the describe formatted query result under the Table Parameters section.
     """
-    full_table_name = (
-        f"{schema_name}.{table_name}" if schema_name is not None else table_name
-    )
+    full_table_name = f"{schema_name}.{table_name}" if schema_name is not None else table_name
     split_name = full_table_name.split(".")
-    query = IMPALA_GET_COMMENTS.format(
-        schema_name=split_name[0], table_name=split_name[1]
-    )
+    query = IMPALA_GET_COMMENTS.format(schema_name=split_name[0], table_name=split_name[1])
     cursor = connection.execute(text(query))
     results = cursor.fetchall()
 
@@ -114,9 +104,7 @@ def get_table_comment(
     return {"text": None}
 
 
-def get_columns(
-    self, connection, table_name, schema=None, **kwargs
-):  # pylint: disable=unused-argument
+def get_columns(self, connection, table_name, schema=None, **kwargs):  # pylint: disable=unused-argument
     # pylint: disable=too-many-locals
     """
     Extracted from the Impala Dialect. We'll tune the implementation.
@@ -181,15 +169,11 @@ class ImpalaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: ImpalaConnection = config.serviceConnection.root.config
         if not isinstance(connection, ImpalaConnection):
-            raise InvalidSourceException(
-                f"Expected ImpalaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected ImpalaConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):

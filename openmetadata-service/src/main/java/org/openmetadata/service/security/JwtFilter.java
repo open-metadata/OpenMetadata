@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.security;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
 import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
@@ -49,12 +49,12 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -63,15 +63,21 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -84,6 +90,10 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
+  public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
+  public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
+  private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
+      Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -109,9 +119,11 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public static void invalidateResolvedEmailIdentity(String email) {
     if (email != null) {
-      EMAIL_TO_USERNAME_CACHE.invalidate(email.toLowerCase());
+      EMAIL_TO_USERNAME_CACHE.invalidate(email.toLowerCase(Locale.ROOT));
     }
   }
+
+  private record ResolvedIdentity(String userName, String email, boolean usedEmailFirstFlow) {}
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -129,12 +141,10 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/password/reset",
           "v1/users/login",
           "v1/users/refresh",
-          "v1/collate/apps/support/login");
+          "v1/collate/apps/support/redeem-code");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
-
-  private record ResolvedIdentity(String userName, String email, boolean usedEmailFirstFlow) {}
 
   @SneakyThrows
   public JwtFilter(
@@ -144,9 +154,7 @@ public class JwtFilter implements ContainerRequestFilter {
     // Cannot remove  Principal Claims listing since that is , breaking change for existing users
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
     this.jwtPrincipalClaimsMapping =
-        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
-            .map(s -> s.split(":"))
-            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+        buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
     this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 
@@ -197,10 +205,21 @@ public class JwtFilter implements ContainerRequestFilter {
       List<String> jwtPrincipalClaims,
       String principalDomain,
       boolean enforcePrincipalDomain) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain, null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      AuthProvider providerType) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.providerType = providerType;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
@@ -244,19 +263,22 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
-    // Ensure stale thread-local state from a prior request is not reused on early failures.
     ImpersonationContext.clear();
+    ActivePersonaContext.clear();
+
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
-      LOG.debug("Token from header:{}", tokenFromHeader);
-
-      Map<String, Claim> claims = validateJwtAndGetClaims(tokenFromHeader);
+      LOG.debug("Authorization header present: {}", !nullOrEmpty(tokenFromHeader));
+      DecodedJWT decodedJwt = decodeAndVerify(tokenFromHeader);
+      String tokenKeyId = decodedJwt.getKeyId();
+      Map<String, Claim> claims = extractClaims(decodedJwt);
       boolean isBotUser = isBot(claims);
       ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
       String userName = resolvedIdentity.userName();
       String email = resolvedIdentity.email();
 
-      String impersonateUser = requestContext.getHeaderString("X-Impersonate-User");
+      String impersonateUser = requestContext.getHeaderString(IMPERSONATE_USER_HEADER);
+      String activePersona = requestContext.getHeaderString(ACTIVE_PERSONA_HEADER);
       String impersonatedBy = null;
 
       if (impersonateUser != null && !impersonateUser.isEmpty()) {
@@ -264,12 +286,22 @@ public class JwtFilter implements ContainerRequestFilter {
           throw new AuthorizationException("Only bot users can impersonate other users");
         }
         impersonatedBy = userName;
-        userName = impersonateUser;
+        try {
+          User impersonatedUser =
+              Entity.getEntityByName(Entity.USER, impersonateUser, "", Include.NON_DELETED);
+          userName = impersonatedUser.getName();
+          email = impersonatedUser.getEmail();
+        } catch (Exception e) {
+          LOG.warn("Impersonation target user not found: {}", impersonateUser);
+          throw new AuthenticationException(
+              "Cannot impersonate non-existent user: " + impersonateUser);
+        }
       }
 
       checkValidationsForToken(
           claims,
           tokenFromHeader,
+          tokenKeyId,
           userName,
           email,
           impersonatedBy,
@@ -284,7 +316,8 @@ public class JwtFilter implements ContainerRequestFilter {
               SecurityContext.DIGEST_AUTH,
               getUserRolesFromClaims(claims, isBotUser),
               isBotUser,
-              impersonatedBy);
+              impersonatedBy,
+              activePersona);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -293,6 +326,11 @@ public class JwtFilter implements ContainerRequestFilter {
       } else {
         ImpersonationContext.clear();
       }
+      ActivePersonaContext.setActivePersona(activePersona);
+    } catch (Throwable t) {
+      ImpersonationContext.clear();
+      ActivePersonaContext.clear();
+      throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
     }
@@ -300,19 +338,27 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public void checkValidationsForToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName, String impersonatedBy) {
+    String tokenKeyId = null;
+    try {
+      tokenKeyId = JWT.decode(tokenFromHeader).getKeyId();
+    } catch (JWTDecodeException e) {
+      LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
+    }
     ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims));
     checkValidationsForToken(
         claims,
         tokenFromHeader,
+        tokenKeyId,
         userName,
         resolvedIdentity.email(),
         impersonatedBy,
         resolvedIdentity.usedEmailFirstFlow());
   }
 
-  public void checkValidationsForToken(
+  private void checkValidationsForToken(
       Map<String, Claim> claims,
       String tokenFromHeader,
+      String tokenKeyId,
       String userName,
       String email,
       String impersonatedBy,
@@ -320,16 +366,22 @@ public class JwtFilter implements ContainerRequestFilter {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
-    boolean isBotUser = isBot(claims);
+    // OM-issued tokens (PATs, session tokens, user tokens) set preferred_username to the bare
+    // username without an @domain suffix, which causes getFirstMatchJwtClaim-based domain
+    // extraction to return an empty domain and fail enforcement. Since OM owns the user identity
+    // these tokens are trusted and domain enforcement is skipped — consistent with how bot tokens
+    // are already handled (validateDomainEnforcement returns early for isBot=true tokens).
+    // The isInternallyIssuedToken check is guarded by enforcePrincipalDomain to avoid the
+    // singleton lookup on deployments where enforcement is disabled.
     if (usedEmailFirstFlow) {
       // OM-issued tokens (sessions, PATs) carry emails that predate any allowedEmailDomains
       // config; enforcing the domain list on them would lock out the seeded admin and
       // grandfathered users. Domain restrictions apply to IdP-issued tokens only.
-      if (!isOmIssuedToken(tokenFromHeader, claims)) {
+      if (!isInternallyIssuedToken(claims, tokenKeyId)) {
         validateConfiguredEmailDomain(
             email, allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain);
       }
-    } else {
+    } else if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
           jwtPrincipalClaims,
@@ -342,24 +394,14 @@ public class JwtFilter implements ContainerRequestFilter {
     // Validate Bot token matches what was created in OM
     // Skip validation for impersonation tokens - they are generated dynamically and not stored in
     // cache
-    if (impersonatedBy == null && isBotUser) {
+    if (impersonatedBy == null && isBot(claims)) {
       validateBotToken(tokenFromHeader, userName);
     }
 
     // validate personal access token
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
-  }
 
-  private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
-    Set<String> userRoles = new HashSet<>();
-    // Re-sync user roles from token
-    if (useRolesFromProvider && !isBot && claims.containsKey(ROLES_CLAIM)) {
-      List<String> roles = claims.get(ROLES_CLAIM).asList(String.class);
-      if (!nullOrEmpty(roles)) {
-        userRoles = new HashSet<>(claims.get(ROLES_CLAIM).asList(String.class));
-      }
-    }
-    return userRoles;
+    validateSessionBoundToken(claims, userName);
   }
 
   private ResolvedIdentity resolveIdentity(Map<String, Claim> claims, boolean isBotUser) {
@@ -380,7 +422,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (cached != null) {
       return cached;
     }
-    var userRepository = Entity.getUserRepository();
+    UserRepository userRepository = Entity.getUserRepository();
     try {
       String username =
           userRepository.getActiveUserByEmailForAuth(email, new Fields(Set.of("name"))).getName();
@@ -399,26 +441,31 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
-  private boolean isOmIssuedToken(String token, Map<String, Claim> claims) {
-    try {
-      JWTTokenGenerator generator = JWTTokenGenerator.getInstance();
-      String omIssuer = generator.getIssuer();
-      String omKid = generator.getKid();
-      if (nullOrEmpty(omIssuer) || nullOrEmpty(omKid)) {
-        return false;
+  private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {
+    JWTTokenGenerator tokenGenerator = JWTTokenGenerator.getInstance();
+    return SecurityUtil.isOpenMetadataIssuedToken(
+        claims, tokenKeyId, tokenGenerator.getIssuer(), tokenGenerator.getKid());
+  }
+
+  private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
+    Set<String> userRoles = new HashSet<>();
+    // Re-sync user roles from token
+    if (useRolesFromProvider && !isBot && claims.containsKey(ROLES_CLAIM)) {
+      List<String> roles = claims.get(ROLES_CLAIM).asList(String.class);
+      if (!nullOrEmpty(roles)) {
+        userRoles = new HashSet<>(claims.get(ROLES_CLAIM).asList(String.class));
       }
-      Claim issuerClaim = claims.get("iss");
-      return issuerClaim != null
-          && omIssuer.equals(issuerClaim.asString())
-          && omKid.equals(JWT.decode(token).getKeyId());
-    } catch (RuntimeException e) {
-      return false;
     }
+    return userRoles;
   }
 
   @SneakyThrows
   public Map<String, Claim> validateJwtAndGetClaims(String token) {
-    // Decode JWT Token
+    return extractClaims(decodeAndVerify(token));
+  }
+
+  @SneakyThrows
+  private DecodedJWT decodeAndVerify(String token) {
     DecodedJWT jwt;
     try {
       jwt = JWT.decode(token);
@@ -426,14 +473,11 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException("Invalid token.");
     }
 
-    // Check if expired
-    // If expiresAt is set to null, treat it as never expiring token
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw AuthenticationException.getExpiredTokenException();
     }
 
-    // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
     Algorithm algorithm = createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
     try {
@@ -443,20 +487,21 @@ public class JwtFilter implements ContainerRequestFilter {
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
 
+    return jwt;
+  }
+
+  private static Map<String, Claim> extractClaims(DecodedJWT jwt) {
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getClaims());
-
     return claims;
   }
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
     return extractTokenFromString(source);
   }
 
   public static String extractToken(String tokenFromHeader) {
-    LOG.debug("Request Token:{}", tokenFromHeader);
     return extractTokenFromString(tokenFromHeader);
   }
 
@@ -497,7 +542,9 @@ public class JwtFilter implements ContainerRequestFilter {
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {
     // Only OMD generated Tokens
-    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.equals(providerType)) {
+    if (AuthProvider.BASIC.equals(providerType)
+        || AuthProvider.OPENMETADATA.equals(providerType)
+        || AuthProvider.SAML.equals(providerType)) {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
@@ -506,11 +553,87 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
+  private void validateSessionBoundToken(Map<String, Claim> claims, String userName) {
+    Claim sessionClaim = claims.get(JWTTokenGenerator.SESSION_ID_CLAIM);
+    String sessionId = sessionClaim == null ? null : sessionClaim.asString();
+    if (nullOrEmpty(sessionId)) {
+      return;
+    }
+
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null) {
+      throw AuthenticationException.getInvalidTokenException("Session service is not available.");
+    }
+
+    UserSession session =
+        sessionService
+            .getFreshSessionById(sessionId)
+            .orElseThrow(
+                () -> AuthenticationException.getInvalidTokenException("Invalid session."));
+    if (session.getStatus() != SessionStatus.ACTIVE
+        || session.isExpired(System.currentTimeMillis())
+        || nullOrEmpty(session.getUsername())
+        || !session.getUsername().equalsIgnoreCase(userName)) {
+      throw AuthenticationException.getInvalidTokenException("Invalid session.");
+    }
+    validateSessionProviderIsCurrent(session);
+    try {
+      sessionService.recordSessionAccess(session);
+    } catch (Exception e) {
+      LOG.warn("Failed to record session access for session {}", session.getId(), e);
+    }
+  }
+
+  /**
+   * Sessions record the provider that authenticated them. Swapping {@code AUTHENTICATION_PROVIDER}
+   * decommissions that provider, so sessions minted under it must stop working immediately instead of
+   * living on until natural expiry — otherwise off-boarding a user by moving IdPs leaves their old
+   * token valid for up to a week. Checked per request against this pod's current config, so it holds
+   * on every pod without a session sweep.
+   */
+  private void validateSessionProviderIsCurrent(UserSession session) {
+    String sessionProvider = session.getProvider();
+    if (nullOrEmpty(sessionProvider) || providerType == null) {
+      return;
+    }
+    if (!isSameProvider(sessionProvider, providerType.value())) {
+      LOG.warn(
+          "Rejecting session {} issued by provider {} — the configured provider is now {}",
+          SessionService.truncateId(session.getId()),
+          sessionProvider,
+          providerType.value());
+      throw AuthenticationException.getInvalidTokenException(
+          "Session was issued by a provider that is no longer configured.");
+    }
+  }
+
+  /**
+   * {@code basic} and {@code openmetadata} are two historical names for the same native-password
+   * authenticator — {@code SecurityConfigurationManager.isNativePasswordProvider} treats them
+   * interchangeably and one servlet handler serves both. Renaming one to the other is not a provider
+   * swap and must not log the whole deployment out.
+   */
+  private static boolean isSameProvider(String sessionProvider, String configuredProvider) {
+    return sessionProvider.equalsIgnoreCase(configuredProvider)
+        || (isNativePasswordProviderValue(sessionProvider)
+            && isNativePasswordProviderValue(configuredProvider));
+  }
+
+  private static boolean isNativePasswordProviderValue(String provider) {
+    return NATIVE_PASSWORD_PROVIDER_VALUES.contains(provider.toLowerCase(Locale.ROOT));
+  }
+
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     boolean isBotUser = isBot(claims);
     ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
-    if (resolvedIdentity.usedEmailFirstFlow() && !isOmIssuedToken(token, claims)) {
+    String tokenKeyId = null;
+    try {
+      tokenKeyId = JWT.decode(token).getKeyId();
+    } catch (JWTDecodeException e) {
+      LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
+    }
+    if (resolvedIdentity.usedEmailFirstFlow() && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateConfiguredEmailDomain(
           resolvedIdentity.email(),
           allowedEmailDomains,
@@ -518,7 +641,6 @@ public class JwtFilter implements ContainerRequestFilter {
           allowedDomains,
           enforcePrincipalDomain);
     }
-
     CatalogPrincipal catalogPrincipal =
         new CatalogPrincipal(resolvedIdentity.userName(), resolvedIdentity.email());
     return new CatalogSecurityContext(

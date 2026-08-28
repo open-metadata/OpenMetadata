@@ -67,8 +67,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
@@ -166,14 +166,19 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   // Default values
   private static final String DEFAULT_CRON_SCHEDULE = "0 0 * * *";
-  private static final String DEFAULT_TASK_KEY = "ingestion_task";
   private static final String POD_PREFIX = "Pod: ";
   private static final String NAMESPACE_PREFIX = " in namespace: ";
   private static final String KUBERNETES_CLUSTER_PREFIX = "Kubernetes cluster - namespace: ";
+  private static final int KUBERNETES_NAME_MAX_LENGTH = 63;
   private static final String KUBERNETES_CLUSTER = "Kubernetes cluster";
   private static final String NO_LOGS_MESSAGE = "No logs available for pod: ";
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
   private static final String FAILED_LOGS_MESSAGE = "Failed to retrieve logs: ";
+  private static final String K8S_LOGS_DESERIALIZATION_MESSAGE =
+      "Kubernetes pod status is incompatible with the bundled client";
+  private static final String K8S_STATUS_DESERIALIZATION_WARNING =
+      "Pod/job status details are unavailable because the bundled Kubernetes client could not "
+          + "parse fields returned by the Kubernetes cluster";
 
   // Error messages
   private static final String NAMESPACE_NOT_EXISTS_ERROR =
@@ -240,7 +245,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   // K8s API clients
   private BatchV1Api batchApi;
   private CoreV1Api coreApi;
-  private CustomObjectsApi customObjectsApi;
+  private final CustomObjectsApi customObjectsApi;
 
   // Configuration
   private final K8sPipelineClientConfig k8sConfig;
@@ -602,7 +607,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             correlationId);
       }
       return buildSuccessResponse(
-          "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName));
+              "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName))
+          .withRunId(runId);
 
     } catch (ApiException e) {
       LOG.error(
@@ -886,70 +892,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
+  /**
+   * Returns nothing on purpose. This client mints the run ID when triggering (see {@link
+   * #runPipeline}) and reports it back on the response, so the server persists the {@code queued}
+   * status itself. Listing Jobs here on every run-history read would cost an API server round trip
+   * for state we already hold.
+   */
   @Override
   public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
-    // READ-ONLY: Check for queued K8s jobs without storing anything
-    String pipelineName = sanitizeName(ingestionPipeline.getName());
-    List<PipelineStatus> queuedStatuses = new ArrayList<>();
-
-    try {
-      String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-      V1JobList jobs =
-          batchApi
-              .listNamespacedJob(k8sConfig.getNamespace())
-              .labelSelector(labelSelector)
-              .execute();
-
-      for (V1Job job : jobs.getItems()) {
-        // Only return jobs that are QUEUED (created but not started)
-        if (isJobQueued(job)) {
-          String runId =
-              job.getMetadata().getLabels() != null
-                  ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
-                  : job.getMetadata().getName();
-
-          Long startTime =
-              job.getMetadata().getCreationTimestamp() != null
-                  ? job.getMetadata().getCreationTimestamp().toInstant().toEpochMilli()
-                  : null;
-
-          // Create READ-ONLY status object (not persisted)
-          PipelineStatus queuedStatus =
-              new PipelineStatus()
-                  .withRunId(runId)
-                  .withPipelineState(PipelineStatusType.QUEUED)
-                  .withStartDate(startTime)
-                  .withTimestamp(startTime);
-
-          queuedStatuses.add(queuedStatus);
-        }
-      }
-
-    } catch (ApiException e) {
-      LOG.error("Failed to check queued pipeline status: {}", e.getResponseBody());
-    }
-
-    return queuedStatuses;
-  }
-
-  private boolean isJobQueued(V1Job job) {
-    if (job.getStatus() == null) {
-      return true; // Job created but status not yet set = queued
-    }
-
-    Integer active = job.getStatus().getActive();
-    Integer succeeded = job.getStatus().getSucceeded();
-    Integer failed = job.getStatus().getFailed();
-
-    // Check if job is being deleted (has deletion timestamp)
-    if (job.getMetadata() != null && job.getMetadata().getDeletionTimestamp() != null) {
-      return false; // Job is being terminated, not queued
-    }
-
-    // Queued = no active pods, no completed pods, no failed pods, and not being deleted
-    return (active == null || active == 0)
-        && (succeeded == null || succeeded == 0)
-        && (failed == null || failed == 0);
+    return List.of();
   }
 
   @Override
@@ -958,9 +909,35 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String serviceAccount = k8sConfig.getServiceAccountName();
 
     try {
+      boolean statusDetailsUnavailable = false;
+
       // Test basic namespace access
-      coreApi.listNamespacedPod(namespace).limit(1).execute();
-      batchApi.listNamespacedJob(namespace).limit(1).execute();
+      try {
+        coreApi.listNamespacedPod(namespace).limit(1).execute();
+      } catch (IllegalArgumentException e) {
+        if (!isUnknownFieldDeserializationError(e)) {
+          throw e;
+        }
+        statusDetailsUnavailable = true;
+        LOG.warn(
+            "Kubernetes namespace {} is reachable but pod status could not be deserialized "
+                + "(client-java models likely lag the cluster's Kubernetes version): {}",
+            namespace,
+            e.getMessage());
+      }
+      try {
+        batchApi.listNamespacedJob(namespace).limit(1).execute();
+      } catch (IllegalArgumentException e) {
+        if (!isUnknownFieldDeserializationError(e)) {
+          throw e;
+        }
+        statusDetailsUnavailable = true;
+        LOG.warn(
+            "Kubernetes namespace {} is reachable but job status could not be deserialized "
+                + "(client-java models likely lag the cluster's Kubernetes version): {}",
+            namespace,
+            e.getMessage());
+      }
 
       // Test ConfigMap permissions (required for pipeline configuration)
       try {
@@ -985,9 +962,19 @@ public class K8sPipelineClient extends PipelineServiceClient {
       }
 
       String message = String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount);
+      if (statusDetailsUnavailable) {
+        message = message + ". " + K8S_STATUS_DESERIALIZATION_WARNING;
+      }
 
-      return buildHealthyStatus(getKubernetesVersion()).withPlatform(message);
+      return buildHealthyStatus(getKubernetesVersion()).withReason(message);
 
+    } catch (IllegalArgumentException e) {
+      String error =
+          String.format(
+              "Failed to parse Kubernetes pod/job status (namespace: %s, service account: %s)",
+              namespace, serviceAccount);
+      LOG.error(error, e);
+      return buildUnhealthyStatus(error);
     } catch (ApiException e) {
       String error =
           String.format(
@@ -1006,7 +993,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
     String workflowName = sanitizeName(workflow.getName());
     String runId = UUID.randomUUID().toString();
-    String jobName = "om-automation-" + workflowName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName("om-automation-", workflow.getName(), "-" + runId.substring(0, 8));
 
     LOG.info("Running automation workflow: {} with runId: {}", workflowName, runId);
 
@@ -1028,7 +1016,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   public PipelineServiceClientResponse runApplicationFlow(App application) {
     String appName = sanitizeName(application.getName());
     String runId = UUID.randomUUID().toString();
-    String jobName = "om-app-" + appName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName("om-app-", application.getName(), "-" + runId.substring(0, 8));
 
     LOG.info("Running application: {} with runId: {}", appName, runId);
 
@@ -1076,11 +1065,28 @@ public class K8sPipelineClient extends PipelineServiceClient {
       Map<String, String> labelSelectorMap = new HashMap<>();
       labelSelectorMap.put(LABEL_PIPELINE, pipelineName);
 
-      V1PodList pods =
-          coreApi
-              .listNamespacedPod(k8sConfig.getNamespace())
-              .labelSelector(buildLabelSelector(labelSelectorMap))
-              .execute();
+      V1PodList pods;
+      try {
+        pods =
+            coreApi
+                .listNamespacedPod(k8sConfig.getNamespace())
+                .labelSelector(buildLabelSelector(labelSelectorMap))
+                .execute();
+      } catch (IllegalArgumentException e) {
+        if (!isUnknownFieldDeserializationError(e)) {
+          throw e;
+        }
+        // client-java cannot deserialize a pod returned by a newer Kubernetes version when the
+        // response contains a field that is not present in the bundled client models.
+        LOG.warn(
+            "Could not deserialize pod while fetching logs for pipeline {} (client-java models "
+                + "likely lag the cluster's Kubernetes version)",
+            pipelineName,
+            e);
+        return Map.of(
+            PipelineServiceClientInterface.LOGS_ERROR_KEY,
+            FAILED_LOGS_MESSAGE + K8S_LOGS_DESERIALIZATION_MESSAGE);
+      }
 
       // Early return if no pods found - avoid processing empty lists
       if (pods.getItems().isEmpty()) {
@@ -1113,16 +1119,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
         return Map.of("logs", NO_LOGS_MESSAGE + podName);
       }
 
-      String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
-      if (taskKey == null) {
-        taskKey = DEFAULT_TASK_KEY;
-      }
+      String taskKey =
+          PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().value());
 
       return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 
     } catch (ApiException e) {
-      LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
-      return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
+      LOG.error("Failed to get logs for pipeline {}", pipelineName, e);
+      return Map.of(
+          PipelineServiceClientInterface.LOGS_ERROR_KEY,
+          FAILED_LOGS_MESSAGE + "Kubernetes API request failed");
     }
   }
 
@@ -1217,7 +1223,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1ConfigMap buildConfigMap(IngestionPipeline pipeline, ServiceEntityInterface service) {
-    String name = CONFIG_MAP_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(CONFIG_MAP_PREFIX, pipeline.getName());
     String workflowConfig = buildWorkflowConfig(pipeline, service);
 
     return new V1ConfigMap()
@@ -1230,7 +1236,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1Secret buildSecret(IngestionPipeline pipeline) {
-    String name = SECRET_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(SECRET_PREFIX, pipeline.getName());
 
     Map<String, byte[]> secretData = new HashMap<>();
 
@@ -1251,7 +1257,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1CronJob buildCronJob(IngestionPipeline pipeline) {
-    String name = CRONJOB_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(CRONJOB_PREFIX, pipeline.getName());
     String schedule = convertToCronSchedule(pipeline.getAirflowConfig().getScheduleInterval());
 
     return new V1CronJob()
@@ -1277,10 +1283,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   @VisibleForTesting
   CronOMJob buildCronOMJob(IngestionPipeline pipeline) {
-    String name = CRONOMJOB_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(CRONOMJOB_PREFIX, pipeline.getName());
     String schedule = convertToCronSchedule(pipeline.getAirflowConfig().getScheduleInterval());
     String pipelineName = sanitizeName(pipeline.getName());
-    String configMapName = CONFIG_MAP_PREFIX + pipelineName;
+    String configMapName = buildKubernetesName(CONFIG_MAP_PREFIX, pipeline.getName());
     Map<String, String> labels = buildLabels(pipeline, "scheduled");
     // Use dynamic placeholder for pipelineRunId that will be replaced by CronOMJobReconciler at
     // runtime
@@ -1342,6 +1348,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             k8sConfig.getNodeSelector().isEmpty()
                                 ? null
                                 : k8sConfig.getNodeSelector())
+                        .tolerations(
+                            k8sConfig.getTolerations().isEmpty()
+                                ? null
+                                : k8sConfig.getTolerations())
                         .securityContext(buildPodSecurityContext())
                         .containers(
                             List.of(
@@ -1440,6 +1450,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     .limits(k8sConfig.getResourceLimits()))
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -1459,6 +1470,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -1477,8 +1489,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String runId,
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
-    String pipelineName = sanitizeName(pipeline.getName());
-    String jobName = JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
 
     return new V1Job()
         .metadata(
@@ -1521,6 +1533,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             k8sConfig.getNodeSelector().isEmpty()
                                 ? null
                                 : k8sConfig.getNodeSelector())
+                        .tolerations(
+                            k8sConfig.getTolerations().isEmpty()
+                                ? null
+                                : k8sConfig.getTolerations())
                         .securityContext(buildPodSecurityContext())
                         .containers(
                             List.of(
@@ -1547,8 +1563,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
 
-    String pipelineName = sanitizeName(pipeline.getName());
-    String jobName = JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
 
     return OMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1612,11 +1628,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String runId,
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
-    List<V1EnvVar> envVars =
-        new ArrayList<>(
-            buildCommonIngestionEnvVars(pipeline, runId, configOverride, service, true));
-
-    return envVars;
+    return new ArrayList<>(
+        buildCommonIngestionEnvVars(pipeline, runId, configOverride, service, true));
   }
 
   private List<V1EnvVar> buildCommonIngestionEnvVars(
@@ -1644,7 +1657,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
     envVars.add(
         new V1EnvVar()
             .name(ENV_JOB_NAME)
-            .value(JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8)));
+            .value(
+                buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8))));
     envVars.add(new V1EnvVar().name(ENV_NAMESPACE).value(k8sConfig.getNamespace()));
 
     addExtraEnvVars(envVars);
@@ -1786,6 +1800,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     .limits(k8sConfig.getResourceLimits()))
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -1804,6 +1819,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -2229,6 +2245,28 @@ public class K8sPipelineClient extends PipelineServiceClient {
     return sanitized;
   }
 
+  private String buildKubernetesName(String prefix, String name) {
+    return buildKubernetesName(prefix, name, "");
+  }
+
+  private String buildKubernetesName(String prefix, String name, String suffix) {
+    String sanitized = sanitizeName(name);
+    int maxBaseLength = KUBERNETES_NAME_MAX_LENGTH - prefix.length() - suffix.length();
+    if (maxBaseLength < 1) {
+      throw new IllegalArgumentException("Kubernetes name prefix/suffix leaves no room for base");
+    }
+
+    if (sanitized.length() > maxBaseLength) {
+      sanitized = sanitized.substring(0, maxBaseLength).replaceAll("-+$", "");
+    }
+
+    if (sanitized.isEmpty()) {
+      sanitized = "p";
+    }
+
+    return prefix + sanitized + suffix;
+  }
+
   private String getKubernetesVersion() {
     try {
       io.kubernetes.client.openapi.apis.VersionApi versionApi =
@@ -2237,6 +2275,14 @@ public class K8sPipelineClient extends PipelineServiceClient {
     } catch (Exception e) {
       return "kubernetes";
     }
+  }
+
+  // Matches the wording io.kubernetes:client-java's generated models use for a field the bundled
+  // schema does not know about; the version is pinned in this module's pom.xml. An upgrade that
+  // changes this wording needs a matching update here and in the tests that hardcode it.
+  private boolean isUnknownFieldDeserializationError(IllegalArgumentException exception) {
+    String message = exception.getMessage();
+    return message != null && message.contains("is not defined in the `");
   }
 
   private String getStringParam(Map<String, Object> params, String key, String defaultValue) {

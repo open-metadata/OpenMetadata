@@ -14,6 +14,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -22,6 +23,9 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -47,6 +51,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.slf4j.LoggerFactory;
 
 public class SubjectContextTest {
   private static List<Role> team1Roles;
@@ -173,6 +178,113 @@ public class SubjectContextTest {
   }
 
   @Test
+  void testActivePersonaMatchesAssignedPersonaIdentifiersCaseInsensitively() {
+    EntityReference assignedPersona = personaReference("DataSteward", "persona.DataSteward");
+    EntityReference defaultPersona = personaReference("Default", "persona.Default");
+    User personaUser =
+        new User()
+            .withName("persona-user")
+            .withPersonas(List.of(assignedPersona))
+            .withDefaultPersona(defaultPersona);
+
+    assertEquals(
+        assignedPersona, new SubjectContext(personaUser, null, "datasteward").getActivePersona());
+    assertEquals(
+        assignedPersona,
+        new SubjectContext(personaUser, null, "PERSONA.DATASTEWARD").getActivePersona());
+    assertEquals(
+        assignedPersona,
+        new SubjectContext(personaUser, null, assignedPersona.getId().toString().toUpperCase())
+            .getActivePersona());
+  }
+
+  @Test
+  void testActivePersonaMatchesInheritedPersonaAndFallsBackToDefault() {
+    EntityReference inheritedPersona = personaReference("Analyst", "persona.Analyst");
+    EntityReference defaultPersona = personaReference("Default", "persona.Default");
+    User personaUser =
+        new User()
+            .withName("persona-user")
+            .withInheritedPersonas(List.of(inheritedPersona))
+            .withDefaultPersona(defaultPersona);
+
+    assertEquals(
+        inheritedPersona,
+        new SubjectContext(personaUser, null, inheritedPersona.getId().toString())
+            .getActivePersona());
+    assertEquals(
+        defaultPersona,
+        new SubjectContext(personaUser, null, "unassigned-persona").getActivePersona());
+    assertEquals(defaultPersona, new SubjectContext(personaUser, null).getActivePersona());
+  }
+
+  @Test
+  void testActivePersonaReturnsNullWithoutAssignedOrDefaultPersona() {
+    User personaUser = new User().withName("persona-user");
+
+    assertNull(new SubjectContext(personaUser, null, "missing").getActivePersona());
+    assertFalse(new SubjectContext(personaUser, null).hasPersona(UUID.randomUUID()));
+  }
+
+  @Test
+  void testActivePersonaDoesNotMatchNullReferenceId() {
+    EntityReference invalidPersona =
+        new EntityReference()
+            .withType(Entity.PERSONA)
+            .withName("invalid")
+            .withFullyQualifiedName("persona.invalid");
+    EntityReference defaultPersona = personaReference("Default", "persona.Default");
+    User personaUser =
+        new User()
+            .withName("persona-user")
+            .withPersonas(List.of(invalidPersona))
+            .withDefaultPersona(defaultPersona);
+
+    assertEquals(defaultPersona, new SubjectContext(personaUser, null, "null").getActivePersona());
+  }
+
+  @Test
+  void testInvalidActivePersonaLogValueIsSanitizedAndBounded() {
+    Logger logger = (Logger) LoggerFactory.getLogger(SubjectContext.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      String requestedPersona = "persona\r\n\t\u2028\u2029\u202E" + "x".repeat(100);
+      User personaUser = new User().withName("persona-user");
+
+      new SubjectContext(personaUser, null, requestedPersona).getActivePersona();
+
+      String loggedPersona = (String) appender.list.get(0).getArgumentArray()[0];
+      assertEquals(64, loggedPersona.codePointCount(0, loggedPersona.length()));
+      assertEquals("persona" + "x".repeat(57), loggedPersona);
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void testHasPersonaUsesCachedDirectInheritedAndDefaultAssignments() {
+    EntityReference directPersona = personaReference("Direct", "persona.Direct");
+    EntityReference inheritedPersona = personaReference("Inherited", "persona.Inherited");
+    EntityReference defaultPersona = personaReference("Default", "persona.Default");
+    User personaUser =
+        new User()
+            .withName("persona-user")
+            .withPersonas(List.of(directPersona))
+            .withInheritedPersonas(List.of(inheritedPersona))
+            .withDefaultPersona(defaultPersona);
+    SubjectContext subjectContext = new SubjectContext(personaUser, null);
+
+    assertTrue(subjectContext.hasPersona(directPersona.getId()));
+    assertTrue(subjectContext.hasPersona(inheritedPersona.getId()));
+    assertTrue(subjectContext.hasPersona(defaultPersona.getId()));
+    assertFalse(subjectContext.hasPersona(UUID.randomUUID()));
+  }
+
+  @Test
   void testPolicyIterator() {
     // Check iteration order of the policies without resourceOwner
     SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
@@ -245,6 +357,25 @@ public class SubjectContextTest {
     assertTrue(subjectContext.isTeamAsset("team12", List.of(teamOwner)));
     assertTrue(subjectContext.isTeamAsset("team1", List.of(teamOwner)));
     assertFalse(subjectContext.isTeamAsset("team13", List.of(teamOwner)));
+
+    //
+    // Multi-owner OR semantics: isTeamAsset must evaluate ALL owners, not short-circuit on the
+    // first. team13 is not under team11 but team111 (teamOwner) is — a matching owner that is not
+    // the first element must still win.
+    //
+    EntityReference team13Owner =
+        new EntityReference().withId(team13.getId()).withType(Entity.TEAM);
+    assertTrue(subjectContext.isTeamAsset("team11", List.of(team13Owner, teamOwner)));
+    assertFalse(subjectContext.isTeamAsset("team13", List.of(teamOwner, userOwner)));
+
+    //
+    // A deleted/unresolved earlier owner must not abort the scan. getSubjectContext(name) fails for
+    // an owner whose user no longer resolves; isOwnerUnderTeam swallows that so the matching later
+    // team owner still grants access (without the guard the exception aborts the whole evaluation).
+    //
+    EntityReference deletedUserOwner =
+        new EntityReference().withName("deleted_ghost_user").withType(Entity.USER);
+    assertTrue(subjectContext.isTeamAsset("team11", List.of(deletedUserOwner, teamOwner)));
   }
 
   private static List<Role> getRoles(String prefix) {
@@ -466,5 +597,13 @@ public class SubjectContextTest {
     assertTrue(
         policyCount < maxPolicies,
         "Policy iteration should terminate without infinite loop with circular dependency");
+  }
+
+  private static EntityReference personaReference(String name, String fullyQualifiedName) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.PERSONA)
+        .withName(name)
+        .withFullyQualifiedName(fullyQualifiedName);
   }
 }

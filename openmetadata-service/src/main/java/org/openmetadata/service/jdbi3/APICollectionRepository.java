@@ -47,6 +47,11 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         "",
         "");
     supportsSearch = true;
+    // Covered by the parent API service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by the root
+    // cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -258,15 +263,14 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
   }
 }

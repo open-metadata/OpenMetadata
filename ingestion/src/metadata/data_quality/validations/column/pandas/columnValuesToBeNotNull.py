@@ -14,7 +14,7 @@ Validator for column values to be not null test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -27,10 +27,17 @@ from metadata.data_quality.validations.column.base.columnValuesToBeNotNull impor
     BaseColumnValuesToBeNotNullValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
@@ -40,11 +47,14 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToBeNotNullValidator(
-    BaseColumnValuesToBeNotNullValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeNotNullValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column values to be not null test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -60,7 +70,7 @@ class ColumnValuesToBeNotNullValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -97,33 +107,25 @@ class ColumnValuesToBeNotNullValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.nullCount.name
-                    ] = null_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.nullCount.name] = null_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.nullCount.name],
                         group_df,
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                null_count = null_count_impl.aggregate_accumulator(
-                    agg[Metrics.nullCount.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                null_count = null_count_impl.aggregate_accumulator(agg[Metrics.nullCount.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 results_data.append(
                     {
@@ -173,3 +175,10 @@ class ColumnValuesToBeNotNullValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        return f"{self.get_column().name}.isnull()"
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

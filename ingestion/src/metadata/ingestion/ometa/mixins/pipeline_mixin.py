@@ -13,7 +13,8 @@ Mixin class containing Pipeline specific methods
 
 To be used by OpenMetadata class
 """
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -39,9 +40,7 @@ class OMetaPipelineMixin:
 
     client: REST
 
-    def add_bulk_pipeline_status(
-        self, fqn: str, statuses: List[PipelineStatus]
-    ) -> Pipeline:
+    def add_bulk_pipeline_status(self, fqn: str, statuses: List[PipelineStatus]) -> Pipeline:  # noqa: UP006
         """
         Send multiple PipelineStatus records to the Pipeline Entity
         in a single bulk request
@@ -85,8 +84,8 @@ class OMetaPipelineMixin:
         fqn: str,
         start_ts: int,
         end_ts: int,
-        limit: Optional[int] = None,
-    ) -> List[PipelineStatus]:
+        limit: Optional[int] = None,  # noqa: UP045
+    ) -> List[PipelineStatus]:  # noqa: UP006
         """
         List PipelineStatus records for a Pipeline within a time range.
         """
@@ -129,9 +128,7 @@ class OMetaPipelineMixin:
         # Check which tasks are currently in the pipeline but not being updated
         not_updated_tasks = []
         if pipeline.tasks:
-            not_updated_tasks = [
-                task for task in pipeline.tasks if task.name not in updated_tasks_names
-            ]
+            not_updated_tasks = [task for task in pipeline.tasks if task.name not in updated_tasks_names]
 
         # All tasks are the union of the incoming tasks & the not updated tasks
         all_tasks = [*tasks, *not_updated_tasks]
@@ -153,7 +150,7 @@ class OMetaPipelineMixin:
 
         return self.create_or_update(updated_pipeline)
 
-    def clean_pipeline_tasks(self, pipeline: Pipeline, task_ids: List[str]) -> Pipeline:
+    def clean_pipeline_tasks(self, pipeline: Pipeline, task_ids: List[str]) -> Pipeline:  # noqa: UP006
         """
         Given a list of tasks, remove from the
         Pipeline Entity those that are not received
@@ -181,9 +178,7 @@ class OMetaPipelineMixin:
 
         return self.create_or_update(updated_pipeline)
 
-    def publish_pipeline_usage(
-        self, pipeline: Pipeline, pipeline_usage_request: UsageRequest
-    ) -> None:
+    def publish_pipeline_usage(self, pipeline: Pipeline, pipeline_usage_request: UsageRequest) -> None:
         """
         POST usage details for a Pipeline
 

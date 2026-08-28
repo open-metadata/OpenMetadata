@@ -12,10 +12,19 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
@@ -23,18 +32,24 @@ import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
+  private static final String PIPELINES_FIELD = "pipelines";
+
   @Getter private final Class<S> serviceConnectionClass;
   @Getter private final ServiceType serviceType;
 
@@ -52,15 +67,89 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors = new ArrayList<>();
+    for (PropagationDescriptor desc : super.getSearchPropagationDescriptors()) {
+      if (!desc.fieldName().equals(FIELD_DISPLAY_NAME)) {
+        descriptors.add(desc);
+      }
+    }
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME,
+            PropagationDescriptor.PropagationType.NESTED_FIELD,
+            "service.displayName"));
+    if (supportsStyle) {
+      descriptors.add(
+          new PropagationDescriptor(
+              FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    }
+    return descriptors;
+  }
+
+  @Override
   public void setFields(T entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
+    entity.setPipelines(fields.contains(PIPELINES_FIELD) ? getIngestionPipelines(entity) : null);
   }
 
   @Override
   public void clearFields(T entity, EntityUtil.Fields fields) {
-    if (!fields.contains("pipelines")) {
+    if (!fields.contains(PIPELINES_FIELD)) {
       entity.setPipelines(null);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<T> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    fetchAndSetPipelines(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (T entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetPipelines(List<T> services, EntityUtil.Fields fields) {
+    if (!fields.contains(PIPELINES_FIELD)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> pipelinesMap = batchFetchPipelines(services);
+    for (T service : services) {
+      service.setPipelines(pipelinesMap.getOrDefault(service.getId(), new ArrayList<>()));
+    }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchPipelines(List<T> services) {
+    Map<UUID, List<EntityReference>> pipelinesMap = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(services),
+                Relationship.CONTAINS.ordinal(),
+                INGESTION_PIPELINE,
+                Include.NON_DELETED);
+    Map<UUID, EntityReference> pipelineRefs = batchFetchPipelineRefs(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID serviceId = UUID.fromString(record.getFromId());
+      EntityReference ref = pipelineRefs.get(UUID.fromString(record.getToId()));
+      if (ref != null) {
+        pipelinesMap.computeIfAbsent(serviceId, id -> new ArrayList<>()).add(ref);
+      }
+    }
+    return pipelinesMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchPipelineRefs(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    List<UUID> pipelineIds =
+        records.stream().map(record -> UUID.fromString(record.getToId())).distinct().toList();
+    return Entity.getEntityReferencesByIds(INGESTION_PIPELINE, pipelineIds, Include.NON_DELETED)
+        .stream()
+        .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (left, right) -> left));
   }
 
   @Override
@@ -76,6 +165,21 @@ public abstract class ServiceEntityRepository<
                       service.getName(),
                       serviceType));
     }
+  }
+
+  @Override
+  protected T restorePatchSecrets(T original, T updated) {
+    if (original.getConnection() != null && updated.getConnection() != null) {
+      Object restoredConfig =
+          EntityMaskerFactory.getEntityMasker()
+              .unmaskServiceConnectionConfig(
+                  updated.getConnection().getConfig(),
+                  original.getConnection().getConfig(),
+                  updated.getServiceType().value(),
+                  serviceType);
+      updated.getConnection().setConfig(restoredConfig);
+    }
+    return updated;
   }
 
   @Override
@@ -103,6 +207,9 @@ public abstract class ServiceEntityRepository<
     T service = find(serviceId, Include.NON_DELETED);
     service.setTestConnectionResult(testConnectionResult);
     dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
+    // Direct dao.update skips invalidateCachesAfterStore, so the next read would serve the
+    // pre-test-connection JSON from cache. Drop every cached variant for this service.
+    invalidateCacheForEntity(entityType, serviceId, service.getFullyQualifiedName());
     return service;
   }
 
@@ -136,16 +243,8 @@ public abstract class ServiceEntityRepository<
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "connection",
-          () -> {
-            updateConnection();
-          });
-      compareAndUpdate(
-          "ingestionRunner",
-          () -> {
-            updateIngestionRunner();
-          });
+      compareAndUpdate("connection", this::updateConnection);
+      compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
     }
 
     private void updateConnection() {
@@ -187,6 +286,14 @@ public abstract class ServiceEntityRepository<
       UUID updatedAgentId =
           updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
       if (!Objects.equals(originalAgentId, updatedAgentId)) {
+        if (originalAgentId != null) {
+          deleteRelationship(
+              updated.getId(),
+              entityType,
+              originalAgentId,
+              original.getIngestionRunner().getType(),
+              Relationship.USES);
+        }
         addIngestionRunnerRelationship(updated);
         recordChange("ingestionRunner", originalAgentId, updatedAgentId, true);
       }

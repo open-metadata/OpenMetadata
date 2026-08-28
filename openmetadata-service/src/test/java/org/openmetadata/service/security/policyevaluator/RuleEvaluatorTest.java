@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -80,7 +81,7 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    TeamRepository teamRepository = mock(TeamRepository.class);
+    TeamRepository teamRepository = stubIndexingPolicy(mock(TeamRepository.class));
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
     Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
         .thenAnswer(
@@ -126,24 +127,25 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
-    tableRepository = mock(TableRepository.class);
+    tableRepository = stubIndexingPolicy(mock(TableRepository.class));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
     Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
 
-    DatabaseRepository databaseRepository = mock(DatabaseRepository.class);
+    DatabaseRepository databaseRepository = stubIndexingPolicy(mock(DatabaseRepository.class));
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
     Mockito.when(databaseRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(Database.class, Entity.DATABASE, databaseRepository);
 
-    DatabaseSchemaRepository databaseSchemaRepository = mock(DatabaseSchemaRepository.class);
+    DatabaseSchemaRepository databaseSchemaRepository =
+        stubIndexingPolicy(mock(DatabaseSchemaRepository.class));
     Mockito.when(databaseSchemaRepository.getEntityType()).thenReturn(Entity.DATABASE_SCHEMA);
     Mockito.when(databaseSchemaRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DatabaseSchema.class, Entity.DATABASE_SCHEMA, databaseSchemaRepository);
 
-    DomainRepository domainRepository = mock(DomainRepository.class);
+    DomainRepository domainRepository = stubIndexingPolicy(mock(DomainRepository.class));
     Mockito.when(domainRepository.getEntityType()).thenReturn(Entity.DOMAIN);
     Mockito.when(domainRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(Domain.class, Entity.DOMAIN, domainRepository);
@@ -155,7 +157,8 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.DOMAIN, i.getArgument(1))),
                     Domain.class));
 
-    DataProductRepository dataProductRepository = mock(DataProductRepository.class);
+    DataProductRepository dataProductRepository =
+        stubIndexingPolicy(mock(DataProductRepository.class));
     Mockito.when(dataProductRepository.getEntityType()).thenReturn(Entity.DATA_PRODUCT);
     Mockito.when(dataProductRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DataProduct.class, Entity.DATA_PRODUCT, dataProductRepository);
@@ -187,12 +190,10 @@ class RuleEvaluatorTest {
               DatabaseSchema cachedSchema = i.getArgument(0);
               EntityReference dbRef = cachedSchema.getDatabase();
               if (dbRef == null) return null;
-              Database db =
-                  JsonUtils.readValue(
-                      EntityRepository.CACHE_WITH_ID.get(
-                          new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
-                      Database.class);
-              return db;
+              return JsonUtils.readValue(
+                  EntityRepository.CACHE_WITH_ID.get(
+                      new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
+                  Database.class);
             });
     createResourceContextSchema =
         Mockito.spy(new CreateResourceContext<>(Entity.DATABASE_SCHEMA, schema));
@@ -345,7 +346,7 @@ class RuleEvaluatorTest {
 
   @Test
   void test_isReviewer() {
-    GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
+    GlossaryRepository glossaryRepository = stubIndexingPolicy(mock(GlossaryRepository.class));
     Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
 
     User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
@@ -383,6 +384,19 @@ class RuleEvaluatorTest {
     assertFalse(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Non-reviewer user should return false for isReviewer()");
+
+    Glossary createGlossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("createGlossary")
+            .withReviewers(List.of(reviewerRef));
+    CreateResourceContext<Glossary> createResourceContext =
+        new CreateResourceContext<>(Entity.GLOSSARY, createGlossary);
+    ruleEvaluator = new RuleEvaluator(null, subjectContext, createResourceContext);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertFalse(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Self-assigned reviewer on CREATE should return false for isReviewer()");
   }
 
   @Test
@@ -485,6 +499,35 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_matchAnyCertification_nullEntity() {
+    ResourceContextInterface nullEntityContext = mock(ResourceContextInterface.class);
+    Mockito.when(nullEntityContext.getEntity()).thenReturn(null);
+
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, nullEntityContext);
+    EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
+
+    assertFalse(
+        parseExpression("matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_matchAnyCertification_nullResourceContext() {
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, null);
+    EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
+
+    assertFalse(
+        parseExpression("matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+  }
+
+  @Test
   void test_matchTeam() {
     // Create a team hierarchy
     Team team1 = createTeam("team1", null);
@@ -578,6 +621,144 @@ class RuleEvaluatorTest {
     for (String role : listOf("user", "team1")) {
       assertTrue(evaluateExpression(String.format("hasAnyRole('%s')", role)));
     }
+  }
+
+  @Test
+  void test_isTaskFiler() {
+    User filer = new User().withId(UUID.randomUUID()).withName("filer");
+    User other = new User().withId(UUID.randomUUID()).withName("other");
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName("test-task")
+            .withFullyQualifiedName("test-task")
+            .withCreatedBy(filer.getEntityReference().withType(Entity.USER).withName("filer"));
+
+    TaskResourceContext taskContext = new TaskResourceContext(task);
+
+    // Filer sees themselves as the task filer
+    SubjectContext filerSubject = new SubjectContext(filer, null);
+    RuleEvaluator evaluator = new RuleEvaluator(null, filerSubject, taskContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+
+    // Another user does not match the filer
+    SubjectContext otherSubject = new SubjectContext(other, null);
+    evaluator = new RuleEvaluator(null, otherSubject, taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+
+    // Task with no createdBy is not filed by anyone
+    Task unowned = new Task().withId(UUID.randomUUID()).withName("unowned");
+    TaskResourceContext unownedContext = new TaskResourceContext(unowned);
+    evaluator = new RuleEvaluator(null, filerSubject, unownedContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isTaskAssignee_directAndTeam() {
+    Team team = createTeam("approvers", null);
+    User assignee = new User().withId(UUID.randomUUID()).withName("assignee");
+    User teamMember =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("teamMember")
+            .withTeams(List.of(team.getEntityReference()));
+    User outsider = new User().withId(UUID.randomUUID()).withName("outsider");
+
+    EntityReference assigneeRef = assignee.getEntityReference().withType(Entity.USER);
+    EntityReference teamRef = team.getEntityReference().withType(Entity.TEAM);
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName("assign-task")
+            .withAssignees(List.of(assigneeRef, teamRef));
+
+    TaskResourceContext taskContext = new TaskResourceContext(task);
+
+    RuleEvaluator evaluator =
+        new RuleEvaluator(null, new SubjectContext(assignee, null), taskContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+
+    evaluator = new RuleEvaluator(null, new SubjectContext(teamMember, null), taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+
+    evaluator = new RuleEvaluator(null, new SubjectContext(outsider, null), taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isTaskReviewer() {
+    User reviewer = new User().withId(UUID.randomUUID()).withName("reviewer");
+    User other = new User().withId(UUID.randomUUID()).withName("notReviewer");
+    EntityReference reviewerRef = reviewer.getEntityReference().withType(Entity.USER);
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName("review-task")
+            .withReviewers(List.of(reviewerRef));
+
+    TaskResourceContext taskContext = new TaskResourceContext(task);
+
+    RuleEvaluator evaluator =
+        new RuleEvaluator(null, new SubjectContext(reviewer, null), taskContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
+
+    evaluator = new RuleEvaluator(null, new SubjectContext(other, null), taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_taskSpecificConditionsReturnFalseForNonTaskResources() {
+    // Each of the three task conditions must be safely false when the resource is not a task.
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, resourceContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isAdminUser() {
+    User adminTarget =
+        new User().withId(UUID.randomUUID()).withName("admin-target").withIsAdmin(true);
+    User regularTarget = new User().withId(UUID.randomUUID()).withName("regular-target");
+
+    assertTrue(evaluateUserResourceCondition(adminTarget, "isAdminUser()"));
+    assertFalse(evaluateUserResourceCondition(adminTarget, "!isAdminUser()"));
+    assertFalse(evaluateUserResourceCondition(regularTarget, "isAdminUser()"));
+    assertTrue(evaluateUserResourceCondition(regularTarget, "!isAdminUser()"));
+  }
+
+  @Test
+  void test_isBotUser() {
+    User botTarget = new User().withId(UUID.randomUUID()).withName("bot-target").withIsBot(true);
+    User regularTarget = new User().withId(UUID.randomUUID()).withName("regular-target");
+
+    assertTrue(evaluateUserResourceCondition(botTarget, "isBotUser()"));
+    assertFalse(evaluateUserResourceCondition(botTarget, "isAdminUser()"));
+    assertFalse(evaluateUserResourceCondition(regularTarget, "isBotUser()"));
+  }
+
+  @Test
+  void test_userSpecificConditionsReturnFalseForNonUserResources() {
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, resourceContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isAdminUser()").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("isBotUser()").getValue(ctx, Boolean.class));
+  }
+
+  private Boolean evaluateUserResourceCondition(User target, String condition) {
+    ResourceContext<User> userResourceContext = new ResourceContext<>(Entity.USER, target, null);
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, userResourceContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    return parseExpression(condition).getValue(ctx, Boolean.class);
   }
 
   private Boolean evaluateExpression(String condition) {
@@ -1058,5 +1239,17 @@ class RuleEvaluatorTest {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     LOG.info("Context reset to default state after test completion.");
+  }
+
+  /**
+   * These repository registrations are global and never torn down, so each stand-in has to answer
+   * the indexing policy hooks the way a real repository does. A bare mock answers false, which
+   * would make {@link Entity#isSearchIndexable} report every entity of that type as non-indexable
+   * for the rest of the JVM and break unrelated tests that run later.
+   */
+  private static <T extends EntityRepository<?>> T stubIndexingPolicy(T repository) {
+    Mockito.doReturn(true).when(repository).isSearchIndexable(any());
+    Mockito.doReturn(true).when(repository).isVectorEmbeddable(any());
+    return repository;
   }
 }

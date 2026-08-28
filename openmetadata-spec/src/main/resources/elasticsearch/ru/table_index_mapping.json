@@ -94,6 +94,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
         "type": "text",
         "fields": {
@@ -174,6 +180,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "tableType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -245,7 +254,8 @@
             "type": "integer"
           },
           "extension": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           },
           "customPropertiesTyped": {
             "type": "nested",
@@ -288,11 +298,19 @@
                 "type": "keyword"
               }
             }
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "databaseSchema": {
         "properties": {
@@ -549,7 +567,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "dataProducts": {
         "properties": {
@@ -580,7 +599,8 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 256
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
               }
             }
           },
@@ -673,6 +693,10 @@
                 "type": "long"
               }
             }
+          },
+          "date": {
+            "type": "date",
+            "format": "strict_date_optional_time||yyyy-MM-dd HH:mm:ss||epoch_millis"
           }
         }
       },
@@ -694,7 +718,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -842,6 +867,29 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
           }
         }
       },
@@ -1013,6 +1061,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -1032,6 +1083,17 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContext": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContextForeignKeyTargets": {
+        "type": "keyword"
       }
     }
   }

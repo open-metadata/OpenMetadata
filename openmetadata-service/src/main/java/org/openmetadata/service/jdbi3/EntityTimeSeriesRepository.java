@@ -37,6 +37,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -112,6 +113,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   protected void setInheritedFields(T recordEntity) {
     // Nothing to do in the default implementation
+  }
+
+  /**
+   * Allow specific repositories to skip malformed/orphaned search results instead of failing the
+   * entire listing.
+   */
+  protected boolean shouldSkipSearchResultOnInheritedFieldError(
+      RuntimeException exception, T entity) {
+    return false;
   }
 
   protected T setFieldsInternal(T recordEntity, EntityUtil.Fields fields) {
@@ -226,7 +236,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       Long endTs,
       boolean latest,
       boolean skipErrors) {
-    int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
+    // Mirror the data query's branching in listWithOffsetInternal: without a time range the
+    // ranged count would evaluate `timestamp BETWEEN NULL AND NULL`, reporting total = 0 for a
+    // non-empty listing and suppressing the after-cursor.
+    int total =
+        (startTs != null && endTs != null)
+            ? timeSeriesDao.listCount(filter, startTs, endTs, latest)
+            : timeSeriesDao.listCount(filter);
     return listWithOffsetInternal(
         offset, filter, limitParam, startTs, endTs, latest, skipErrors, total);
   }
@@ -379,18 +395,22 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  public boolean existsById(UUID id) {
+    return timeSeriesDao.existsById(id);
+  }
+
+  @Transaction
   public void deleteById(UUID id, boolean hardDelete) {
-    if (!hardDelete) {
-      // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
-      // and they should be immutable) thought they can be contained inside entities that can be
-      // soft deleted
-      return;
+    // time series entities by definition cannot be soft deleted
+    if (hardDelete) {
+      String jsonRecord = timeSeriesDao.getById(id);
+      T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+      if (entityRecord != null) {
+        daoCollection.relationshipDAO().deleteAll(id, entityType);
+        timeSeriesDao.deleteById(id);
+        postDelete(entityRecord, hardDelete);
+      }
     }
-    T entityRecord = getById(id);
-    if (entityRecord == null) {
-      return;
-    }
-    timeSeriesDao.deleteById(id);
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
@@ -443,6 +463,28 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String q,
       String queryString)
       throws IOException {
+    return listFromSearchWithOffset(
+        fields, searchListFilter, limit, offset, searchSortFilter, q, queryString, null);
+  }
+
+  /**
+   * Same as {@link #listFromSearchWithOffset(EntityUtil.Fields, SearchListFilter, int, int,
+   * SearchSortFilter, String, String)} but evaluates the caller's policies against the search query,
+   * so a listing cannot return time series documents the caller may not read. Domain conditions such
+   * as {@code hasDomain()} can only be enforced here: {@code RuleEvaluator#hasDomain} short-circuits
+   * to {@code true} for list operations because no single resource is in scope, and relies on this
+   * search-side filtering instead. Passing a {@code null} subject keeps the unfiltered behaviour.
+   */
+  public ResultList<T> listFromSearchWithOffset(
+      EntityUtil.Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
     long total;
 
@@ -451,11 +493,30 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (limit > 0) {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
-        setInheritedFields(entity);
+        T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
+        try {
+          setInheritedFields(entity);
+        } catch (RuntimeException e) {
+          if (shouldSkipSearchResultOnInheritedFieldError(e, entity)) {
+            LOG.warn(
+                "Skipping orphaned {} search result {} while hydrating inherited fields: {}",
+                entityType,
+                entity != null ? entity.getId() : null,
+                e.getMessage());
+            continue;
+          }
+          throw e;
+        }
         clearFieldsInternal(entity, fields);
         entityList.add(entity);
       }
@@ -463,7 +524,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     } else {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, (int) total);
     }
@@ -480,6 +548,27 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortField,
       String sortType)
       throws IOException {
+    return listLatestFromSearch(
+        fields, contentFilter, groupBy, q, limit, offset, sortField, sortType, null);
+  }
+
+  /**
+   * Subject-aware variant of {@link #listLatestFromSearch(EntityUtil.Fields, SearchListFilter,
+   * String, String, Integer, Integer, String, String)}. The aggregation that picks the latest
+   * document per group must be filtered by the caller's policies too, otherwise {@code latest=true}
+   * bypasses the filtering applied to the plain listing.
+   */
+  public ResultList<T> listLatestFromSearch(
+      EntityUtil.Fields fields,
+      SearchListFilter contentFilter,
+      String groupBy,
+      String q,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
+      SubjectContext subjectContext)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
     SearchListFilter searchListFilter = new SearchListFilter();
     setIncludeSearchFields(searchListFilter);
@@ -488,7 +577,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchAggregation searchAggregation =
         buildComplexAggregation(groupBy, contentFilter, limit, offset, sortField, sortType);
     JsonObject jsonObjResults =
-        searchRepository.aggregate(q, entityType, searchAggregation, searchListFilter);
+        searchRepository.aggregate(
+            q, entityType, searchAggregation, searchListFilter, subjectContext);
 
     Optional<List> jsonObjects =
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
@@ -503,11 +593,21 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                 hitList -> {
                   for (Map<String, Object> hit : (List<Map<String, Object>>) hitList) {
                     Map<String, Object> source = extractAndFilterSource(hit);
-                    T entity =
-                        setFieldsInternal(
-                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                    T entity = setFieldsInternal(readTimeSeriesSource(source), fields);
                     if (entity != null) {
-                      setInheritedFields(entity);
+                      try {
+                        setInheritedFields(entity);
+                      } catch (RuntimeException e) {
+                        if (shouldSkipSearchResultOnInheritedFieldError(e, entity)) {
+                          LOG.warn(
+                              "Skipping orphaned {} search result {} while hydrating inherited fields: {}",
+                              entityType,
+                              entity.getId(),
+                              e.getMessage());
+                          continue;
+                        }
+                        throw e;
+                      }
                       clearFieldsInternal(entity, fields);
                       entityList.add(entity);
                     }
@@ -651,7 +751,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
-      T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+      T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
       setInheritedFields(entity);
       clearFieldsInternal(entity, fields);
       return entity;
@@ -661,6 +761,24 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
     // Nothing to do in the default implementation
+  }
+
+  /**
+   * Deserializes a search hit source into the time-series entity type. Strict by default so any
+   * genuine schema drift fails loudly. Targeted scrub of the legacy {@code deleted} field — the
+   * one known-pollution field stamped onto time-series docs by the soft-delete script before
+   * the Phase 1 fix — keeps that specific case from breaking reads, without the blanket
+   * unknown-field tolerance that {@link JsonUtils#readOrConvertValueLenient} would impose.
+   * Once a recreate-style reindex has cleaned the index, the scrub is a no-op.
+   */
+  @SuppressWarnings("unchecked")
+  private T readTimeSeriesSource(Object source) {
+    if (source instanceof Map<?, ?> mapSource && mapSource.containsKey(Entity.FIELD_DELETED)) {
+      Map<String, Object> scrubbed = new HashMap<>((Map<String, Object>) mapSource);
+      scrubbed.remove(Entity.FIELD_DELETED);
+      return JsonUtils.readOrConvertValue(scrubbed, entityClass);
+    }
+    return JsonUtils.readOrConvertValue(source, entityClass);
   }
 
   protected void setExcludeSearchFields(SearchListFilter searchListFilter) {

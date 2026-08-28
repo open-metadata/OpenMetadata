@@ -11,11 +11,12 @@
 """
 Add methods to the workflows for updating the IngestionPipeline status
 """
+
 import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -36,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import Map, Timestamp
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
 
@@ -56,13 +58,13 @@ class WorkflowStatusMixin:
     """
 
     config: OpenMetadataWorkflowConfig
-    _run_id: Optional[str] = None
+    _run_id: Optional[str] = None  # noqa: UP045
     metadata: OpenMetadata
     _start_ts: int
-    ingestion_pipeline: Optional[IngestionPipeline]
+    ingestion_pipeline: Optional[IngestionPipeline]  # noqa: UP045
 
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]
+    steps: Tuple[Step, ...]  # noqa: UP006
 
     @property
     def run_id(self) -> str:
@@ -87,9 +89,7 @@ class WorkflowStatusMixin:
             timestamp=Timestamp(self._start_ts),
         )  # type: ignore
 
-    def update_pipeline_status_metadata(
-        self, pipeline_status: PipelineStatus
-    ) -> PipelineStatus:
+    def update_pipeline_status_metadata(self, pipeline_status: PipelineStatus) -> PipelineStatus:
         """
         Update the pipeline status metadata with the context manager data.
         """
@@ -101,7 +101,9 @@ class WorkflowStatusMixin:
         return pipeline_status
 
     def set_ingestion_pipeline_status(
-        self, state: PipelineState, ingestion_status: Optional[IngestionStatus] = None
+        self,
+        state: PipelineState,
+        ingestion_status: Optional[IngestionStatus] = None,  # noqa: UP045
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -122,14 +124,10 @@ class WorkflowStatusMixin:
                     pipeline_status = self._new_pipeline_status(state)
                 else:
                     # if workflow is ended then update the end date in status
-                    pipeline_status.endDate = Timestamp(
-                        int(datetime.now().timestamp() * 1000)
-                    )
+                    pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
                     pipeline_status.pipelineState = state
 
-                pipeline_status.status = (
-                    ingestion_status if ingestion_status else pipeline_status.status
-                )
+                pipeline_status.status = ingestion_status if ingestion_status else pipeline_status.status
                 # committing configurations can be a burden on resources,
                 # we dump a subset to be mindful of the payload size
                 pipeline_status.config = Map(
@@ -146,9 +144,7 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unhandled error trying to update Ingestion Pipeline status [{err}]"
-            )
+            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -164,7 +160,7 @@ class WorkflowStatusMixin:
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
-    def build_ingestion_status(self) -> Optional[IngestionStatus]:
+    def build_ingestion_status(self) -> Optional[IngestionStatus]:  # noqa: UP045
         """
         Get the results from the steps and prep the payload
         we'll send to the API
@@ -177,29 +173,48 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def send_progress_update(
-        self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING
-    ) -> None:
+    def _find_progress_registry(self) -> Optional[ProgressRegistry]:  # noqa: UP045
+        """Registry of the first workflow step that tracked progress. Reads the
+        backing attribute so we never create an empty registry on a step that
+        never tracked progress."""
+        result = None
+        for step in self.workflow_steps():  # pyright: ignore[reportAttributeAccessIssue]
+            tracking = getattr(step, "_progress_tracking", None)
+            if tracking is not None:
+                result = tracking.registry
+                break
+        return result
+
+    def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
         Send a progress update to the OpenMetadata server via SSE endpoint.
         Called periodically during workflow execution.
         """
         try:
-            from metadata.utils.progress_tracker import ProgressTrackerState
-
             if (
                 self.config.ingestionPipelineFQN
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                progress_tracker = ProgressTrackerState()
-                progress_data = progress_tracker.get_progress_as_dict()
+                registry = self._find_progress_registry()
+                progress_data = registry.sse_payload() if registry is not None else None
+                counters = registry.global_counters() if registry is not None else []
+                eta_seconds = registry.eta_seconds() if registry is not None else None
+                total_assets = registry.assets_ingested() if registry is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
                     timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
                     updateType=update_type,
-                    progress=progress_data if progress_data else None,
+                    progress=progress_data if progress_data else None,  # pyright: ignore[reportArgumentType]
+                    globalCounters=[  # pyright: ignore[reportArgumentType]
+                        {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
+                    ],
+                    estimatedSecondsRemaining=eta_seconds,
+                    totalAssetsIngested=total_assets,
+                    stepName=None,
+                    currentEntity=None,
+                    message=None,
                 )
 
                 self.metadata.send_progress_update(
@@ -209,3 +224,9 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(f"Failed to send progress update: {err}")
+
+    def terminal_progress_update_type(self, pipeline_state: PipelineState) -> ProgressUpdateType:
+        if pipeline_state is PipelineState.failed:
+            return ProgressUpdateType.ERROR
+
+        return ProgressUpdateType.PIPELINE_COMPLETE

@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -29,6 +30,8 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -36,6 +39,12 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -47,10 +56,14 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -332,6 +345,52 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void list_databaseServiceWithPipelinesField_populatesPipelines(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("svc_pipe_dom"))
+                    .withDescription("Isolates list query for pipelines-field test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    CreateDatabaseService createRequest =
+        createMinimalRequest(ns)
+            .withName(ns.prefix("svc_pipe"))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = createEntity(createRequest);
+
+    CreateIngestionPipeline pipelineRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("ingestion_pipe"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
+            .withAirflowConfig(new AirflowConfig());
+    IngestionPipeline pipeline =
+        SdkClients.adminClient().ingestionPipelines().create(pipelineRequest);
+
+    ListParams params = new ListParams().withDomain(domain.getFullyQualifiedName()).withLimit(1000);
+    params.setFields("pipelines");
+    ListResponse<DatabaseService> response = listEntities(params);
+
+    DatabaseService listed =
+        response.getData().stream()
+            .filter(s -> s.getId().equals(service.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listed, "Created service should be present in list response");
+    assertNotNull(
+        listed.getPipelines(), "fields=pipelines must populate pipelines on the service endpoint");
+    assertTrue(
+        listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
+        "Service should include the ingestion pipeline when fields=pipelines");
+  }
+
+  @Test
   void post_validDatabaseService_as_admin_200_ok(TestNamespace ns) {
     CreateDatabaseService request1 = createMinimalRequest(ns);
     request1.setName(ns.prefix("service_1"));
@@ -463,6 +522,50 @@ public class DatabaseServiceResourceIT
         storedService.getTestConnectionResult(), "Test connection result should be persisted");
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
+  }
+
+  /**
+   * Builds service → database → schema → table so the shared recursive-hard-delete regression
+   * ({@link BaseServiceIT#recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean}) can
+   * verify the bulk-delete optimization for the database hierarchy (Table / DatabaseSchema /
+   * Database carry {@code descendantsCoveredByAncestorCascade=true}).
+   */
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("del_subtree_svc")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("s1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("t1"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
+    // The column_search_index cleanup on recursive hard delete is covered by the unit test
+    // SearchRepositoryBehaviorTest and the scale IT ServiceDeleteSearchCleanupScaleIT. It is not
+    // asserted here: under the full concurrent IT suite the per-delete column delete-by-query
+    // contends on the shared column_search_index, delaying visibility of a freshly indexed column
+    // doc past the precondition timeout and flaking this otherwise-unrelated regression.
+    return new DeletableSubtree(
+        service.getId().toString(),
+        List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
+        List.of(new SearchDoc("table_search_index", table.getId().toString())));
   }
 
   @Test
@@ -692,6 +795,250 @@ public class DatabaseServiceResourceIT
         "Street column should STILL have glossary term (not removed)");
   }
 
+  @Test
+  void test_importExportRecursive_preservesTableConstraints(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_constraints_service");
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    // Referenced table for the FOREIGN_KEY (exercises the table-to-table RELATED_TO edge path).
+    Table refTable =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("ref_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column().withName("ref_id").withDataType(ColumnDataType.BIGINT))));
+    String refIdFqn = refTable.getFullyQualifiedName() + ".ref_id";
+
+    List<TableConstraint> constraints =
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+                .withColumns(List.of("id")),
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("email")),
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("ref_fk"))
+                .withReferredColumns(List.of(refIdFqn)));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("constrained_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                            new Column()
+                                .withName("email")
+                                .withDataType(ColumnDataType.VARCHAR)
+                                .withDataLength(255),
+                            new Column().withName("ref_fk").withDataType(ColumnDataType.BIGINT)))
+                    .withTableConstraints(constraints));
+
+    assertEquals(
+        3, table.getTableConstraints().size(), "Table should start with 3 table constraints");
+
+    // Recursive export then re-import unchanged: this is the whole-tree path the UI uses when
+    // importing at service/database/schema level. The recursive CSV has no column for table
+    // constraints, so a round trip must not drop them.
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table reloaded =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tableConstraints");
+    assertNotNull(
+        reloaded.getTableConstraints(),
+        "Table constraints must survive a recursive CSV round trip");
+    assertEquals(
+        3,
+        reloaded.getTableConstraints().size(),
+        "PRIMARY_KEY, UNIQUE and FOREIGN_KEY constraints must all be preserved after recursive import");
+    assertTrue(
+        reloaded.getTableConstraints().stream()
+            .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY),
+        "PRIMARY_KEY constraint must be preserved after a recursive import");
+    assertTrue(
+        reloaded.getTableConstraints().stream()
+            .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE),
+        "UNIQUE constraint must be preserved after a recursive import");
+    // FOREIGN_KEY carries the referenced-table linkage (referredColumns); it must survive intact.
+    TableConstraint fk =
+        reloaded.getTableConstraints().stream()
+            .filter(c -> c.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(fk, "FOREIGN_KEY constraint must be preserved after a recursive import");
+    assertEquals(
+        List.of(refIdFqn),
+        fk.getReferredColumns(),
+        "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
+  }
+
+  @Test
+  void test_importExportRecursive_preservesColumnCustomProperties(TestNamespace ns)
+      throws Exception {
+    String serviceName = ns.prefix("import_export_recursive_col_ext_service");
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    // A table-level custom property is defined and set alongside column-level custom properties.
+    // This is the realistic governance scenario AND the regression trigger: the bulk import update
+    // path used to blanket-delete every entity_extension row for a table that carried table-level
+    // extension, which also wiped the column-level custom properties.
+    OpenMetadataClient client = SdkClients.adminClient();
+    String tableProp = "csvRoundTripGovOwner";
+    addStringCustomPropertyToEntityType(client, "table", tableProp);
+
+    // Columns carry free-form custom properties (column.extension).
+    Column idColumn =
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.BIGINT)
+            .withExtension(Map.of("colGovOwner", "id-col@example.com"));
+    Column emailColumn =
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withExtension(Map.of("colGovOwner", "email-col@example.com"));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("col_ext_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(idColumn, emailColumn))
+                    .withExtension(Map.of(tableProp, "table-gov-owner@example.com")));
+
+    // Precondition: table-level and column-level custom properties persisted on create.
+    Table created =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,extension");
+    assertNotNull(created.getExtension(), "Table custom property should persist on create");
+    assertNotNull(
+        columnByName(created, "id").getExtension(),
+        "Column custom properties should persist on create");
+
+    // Recursive export then re-import unchanged (the whole-tree path the UI uses at
+    // service/database/schema level). The recursive CSV has no column for column custom
+    // properties, so a round trip must not drop them.
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table reloaded =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,extension");
+    // Table-level custom property must survive (and must not take column-level ones down with it).
+    assertNotNull(
+        reloaded.getExtension(), "Table custom property must survive a recursive CSV round trip");
+    assertTrue(
+        reloaded.getExtension().toString().contains("table-gov-owner@example.com"),
+        "Table custom property value must be preserved after a recursive import");
+    assertNotNull(
+        columnByName(reloaded, "id").getExtension(),
+        "Column 'id' custom properties must survive a recursive CSV round trip");
+    assertTrue(
+        columnByName(reloaded, "id").getExtension().toString().contains("id-col@example.com"),
+        "Column 'id' custom property value must be preserved after a recursive import");
+    assertNotNull(
+        columnByName(reloaded, "email").getExtension(),
+        "Column 'email' custom properties must survive a recursive CSV round trip");
+    assertTrue(
+        columnByName(reloaded, "email").getExtension().toString().contains("email-col@example.com"),
+        "Column 'email' custom property value must be preserved after a recursive import");
+  }
+
+  private Column columnByName(Table table, String name) {
+    return table.getColumns().stream()
+        .filter(c -> name.equals(c.getName()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Column not found: " + name));
+  }
+
+  /** Idempotently defines a String custom property on an entity type (e.g. "table"). */
+  private void addStringCustomPropertyToEntityType(
+      OpenMetadataClient client, String entityTypeName, String propertyName) throws Exception {
+    Type stringType =
+        JsonUtils.readValue(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/metadata/types/name/string", null),
+            Type.class);
+    Type entityType =
+        JsonUtils.readValue(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET, "/v1/metadata/types/name/" + entityTypeName, null),
+            Type.class);
+    CustomProperty customProperty =
+        new CustomProperty()
+            .withName(propertyName)
+            .withDescription("CSV round-trip test custom property: " + propertyName)
+            .withPropertyType(stringType.getEntityReference());
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + entityType.getId().toString(),
+            customProperty,
+            Type.class);
+  }
+
   private String addColumnTags(String csvLine, String tagFQN) {
     String[] parts = splitCsvRow(csvLine);
     if (parts.length >= 5) {
@@ -803,11 +1150,8 @@ public class DatabaseServiceResourceIT
   void test_csvImportEntityRuleValidation(TestNamespace ns)
       throws IOException, InterruptedException {
 
-    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
-
     // Check if rule is currently enabled and store original state
-    boolean originalRuleState =
-        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(SdkClients.adminClient());
 
     try {
       // Enable the multi-domain rule for testing
@@ -984,5 +1328,263 @@ public class DatabaseServiceResourceIT
   private String[] splitCsvRow(String row) {
     // Split on commas not enclosed in quotes.
     return row.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+  }
+
+  @Test
+  void test_recursiveImportCustomPropertyExtension(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String propName = ns.prefix("potato");
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    HttpClient client = HttpClient.newHttpClient();
+
+    HttpRequest getStringTypeReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + "/v1/metadata/types/name/string"))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> stringTypeResp =
+        client.send(getStringTypeReq, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, stringTypeResp.statusCode(), "Should fetch string type");
+
+    HttpRequest getTableTypeReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + "/v1/metadata/types/name/table"))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> tableTypeResp =
+        client.send(getTableTypeReq, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, tableTypeResp.statusCode(), "Should fetch table type");
+
+    com.fasterxml.jackson.databind.JsonNode stringTypeNode = mapper.readTree(stringTypeResp.body());
+    com.fasterxml.jackson.databind.JsonNode tableTypeNode = mapper.readTree(tableTypeResp.body());
+    String tableTypeId = tableTypeNode.get("id").asText();
+
+    java.util.Map<String, Object> propertyTypeRef =
+        java.util.Map.of(
+            "id", stringTypeNode.get("id").asText(),
+            "type", "type",
+            "name", stringTypeNode.get("name").asText(),
+            "fullyQualifiedName", stringTypeNode.get("fullyQualifiedName").asText());
+    String customPropertyBody =
+        mapper.writeValueAsString(
+            java.util.Map.of(
+                "name",
+                propName,
+                "description",
+                "Test extension property for recursive import",
+                "propertyType",
+                propertyTypeRef));
+
+    HttpRequest registerPropReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + "/v1/metadata/types/" + tableTypeId))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(customPropertyBody))
+            .build();
+    HttpResponse<String> registerResp =
+        client.send(registerPropReq, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, registerResp.statusCode(), "Should register custom property on table type");
+
+    try {
+      DatabaseService service =
+          createEntity(createMinimalRequest(ns).withName(ns.prefix("ext_svc")));
+      Database database =
+          SdkClients.adminClient()
+              .databases()
+              .create(
+                  new CreateDatabase()
+                      .withName(ns.prefix("ext_db"))
+                      .withService(service.getFullyQualifiedName()));
+      DatabaseSchema schema =
+          SdkClients.adminClient()
+              .databaseSchemas()
+              .create(
+                  new CreateDatabaseSchema()
+                      .withName(ns.prefix("ext_schema"))
+                      .withDatabase(database.getFullyQualifiedName()));
+
+      String tableName = ns.prefix("ext_tbl");
+      String tableFqn = schema.getFullyQualifiedName() + "." + tableName;
+
+      // Positive case: registered custom property on table row → should succeed
+      String validCsv =
+          buildRecursiveCsv(
+              database, schema, tableName, tableFqn, "", propName + ":s3://bucket/file.csv");
+      CsvImportResult validResult =
+          importCsvRecursive(service.getFullyQualifiedName(), validCsv, true);
+      assertEquals(ApiStatus.SUCCESS, validResult.getStatus(), validResult.getImportResultsCsv());
+      assertEquals(0, validResult.getNumberOfRowsFailed());
+      assertEquals(3, validResult.getNumberOfRowsProcessed());
+      assertEquals(3, validResult.getNumberOfRowsPassed());
+
+      // Negative case: unknown custom property on table row → 1 failed row
+      String badExtCsv =
+          buildRecursiveCsv(
+              database, schema, tableName, tableFqn, "", "unknown_prop_xyz_test:somevalue");
+      CsvImportResult badResult =
+          importCsvRecursive(service.getFullyQualifiedName(), badExtCsv, true);
+      assertEquals(ApiStatus.PARTIAL_SUCCESS, badResult.getStatus());
+      assertEquals(1, badResult.getNumberOfRowsFailed());
+      assertEquals(3, badResult.getNumberOfRowsProcessed());
+      assertEquals(2, badResult.getNumberOfRowsPassed());
+
+      // Dedup case: malformed owner AND unknown extension on same row → failed=1, not 2
+      String dedupCsv =
+          buildRecursiveCsv(
+              database,
+              schema,
+              tableName,
+              tableFqn,
+              "invalidownerformat",
+              "unknown_prop_xyz_test:somevalue");
+      CsvImportResult dedupResult =
+          importCsvRecursive(service.getFullyQualifiedName(), dedupCsv, true);
+      assertEquals(
+          1,
+          dedupResult.getNumberOfRowsFailed(),
+          "Multi-field failure on one row must count as 1 failed row");
+
+    } finally {
+      removeCustomPropertyFromType(tableTypeId, propName, token);
+    }
+  }
+
+  private String buildRecursiveCsv(
+      Database database,
+      DatabaseSchema schema,
+      String tableName,
+      String tableFqn,
+      String tableOwner,
+      String tableExtension) {
+    String header =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,"
+            + "retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName,"
+            + "column.dataTypeDisplay,column.dataType,column.arrayDataType,column.dataLength,"
+            + "storedProcedure.code,storedProcedure.language";
+    String dbRow =
+        csvRow(
+            database.getName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "database",
+            database.getFullyQualifiedName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "");
+    String schemaRow =
+        csvRow(
+            schema.getName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "databaseSchema",
+            schema.getFullyQualifiedName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "");
+    String tableRow =
+        csvRow(
+            tableName,
+            "",
+            "",
+            tableOwner,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            tableExtension,
+            "table",
+            tableFqn,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "");
+    return header + "\n" + dbRow + "\n" + schemaRow + "\n" + tableRow + "\n";
+  }
+
+  private void removeCustomPropertyFromType(String typeId, String propName, String token)
+      throws IOException, InterruptedException {
+    com.fasterxml.jackson.databind.ObjectMapper localMapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    HttpClient client = HttpClient.newHttpClient();
+    String baseUrl = SdkClients.getServerUrl();
+    String getUrl = baseUrl + "/v1/metadata/types/" + typeId + "?fields=customProperties";
+    HttpRequest getReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getUrl))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> getResp = client.send(getReq, HttpResponse.BodyHandlers.ofString());
+    if (getResp.statusCode() != 200) {
+      return;
+    }
+    com.fasterxml.jackson.databind.JsonNode typeNode = localMapper.readTree(getResp.body());
+    com.fasterxml.jackson.databind.JsonNode customProps = typeNode.get("customProperties");
+    if (customProps == null || !customProps.isArray()) {
+      return;
+    }
+    for (int i = 0; i < customProps.size(); i++) {
+      if (propName.equals(customProps.get(i).path("name").asText())) {
+        String patchBody = "[{\"op\":\"remove\",\"path\":\"/customProperties/" + i + "\"}]";
+        HttpRequest patchReq =
+            HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/metadata/types/" + typeId))
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json-patch+json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(patchBody))
+                .build();
+        client.send(patchReq, HttpResponse.BodyHandlers.ofString());
+        break;
+      }
+    }
+  }
+
+  private String csvRow(String... fields) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < fields.length; i++) {
+      if (i > 0) sb.append(",");
+      String field = fields[i];
+      if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+        sb.append('"').append(field.replace("\"", "\"\"")).append('"');
+      } else {
+        sb.append(field);
+      }
+    }
+    return sb.toString();
   }
 }

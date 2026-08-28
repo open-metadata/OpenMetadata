@@ -20,6 +20,10 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
  * - Column filters (affects column-level lineage)
  * - Path preservation flag (affects intermediate nodes)
  * - Direction and connection filters
+ * - Pagination parameters (from, size) for entity count queries
+ * - Node depth filter for entity count queries
+ * - Edge time window (startTime, endTime in epoch millis) so windowed lineage
+ *   queries occupy distinct cache slots
  */
 @Value
 @EqualsAndHashCode
@@ -33,6 +37,14 @@ public class LineageCacheKey {
   Boolean preservePaths;
   String direction;
   Boolean isConnectedVia;
+  int from;
+  int size;
+  int nodeDepth;
+  Boolean includePaginationInfo;
+  int paginationUpstreamDepth;
+  int paginationDownstreamDepth;
+  Long startTime;
+  Long endTime;
 
   /**
    * Creates cache key from lineage request.
@@ -54,7 +66,15 @@ public class LineageCacheKey {
         request.getColumnFilter() != null ? request.getColumnFilter() : "",
         request.getPreservePaths() != null ? request.getPreservePaths() : Boolean.TRUE,
         request.getDirection() != null ? request.getDirection().value() : "",
-        request.getIsConnectedVia() != null ? request.getIsConnectedVia() : Boolean.FALSE);
+        request.getIsConnectedVia() != null ? request.getIsConnectedVia() : Boolean.FALSE,
+        0,
+        0,
+        0,
+        Boolean.FALSE,
+        0,
+        0,
+        request.getStartTime(),
+        request.getEndTime());
   }
 
   /**
@@ -66,7 +86,25 @@ public class LineageCacheKey {
   @Override
   public String toString() {
     return String.format(
-        "LineageCacheKey{fqn='%s', up=%d, down=%d, queryFilter='%s', columnFilter='%s', preservePaths=%b}",
-        fqn, upstreamDepth, downstreamDepth, queryFilter, columnFilter, preservePaths);
+        "LineageCacheKey{fqn='%s', up=%d, down=%d, queryFilter='%s', columnFilter='%s',"
+            + " preservePaths=%b, direction='%s', isConnectedVia=%b, from=%d, size=%d,"
+            + " nodeDepth=%d, includePaginationInfo=%b, paginationUpstreamDepth=%d,"
+            + " paginationDownstreamDepth=%d, startTime=%s, endTime=%s}",
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        columnFilter,
+        preservePaths,
+        direction,
+        isConnectedVia,
+        from,
+        size,
+        nodeDepth,
+        includePaginationInfo,
+        paginationUpstreamDepth,
+        paginationDownstreamDepth,
+        startTime,
+        endTime);
   }
 }

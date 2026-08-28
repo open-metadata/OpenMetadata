@@ -18,7 +18,7 @@ ensuring memory-efficient streaming and proper processing.
 import unittest
 import uuid
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator  # noqa: UP035
 from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.entity.data.storedProcedure import (
@@ -72,9 +72,7 @@ class TestableStoredProcedureMixin(StoredProcedureLineageMixin):
     def get_stored_procedure_sql_statement(self):
         return "SELECT * FROM procedure_log"
 
-    def generate_lineage_with_processes(
-        self, producer_fn, processor_fn, args, **kwargs
-    ):
+    def generate_lineage_with_processes(self, producer_fn, processor_fn, args, **kwargs):
         """Mock implementation for testing"""
         return iter([])
 
@@ -127,12 +125,8 @@ class TestStoredProcedureStreaming(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db1"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema1"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema1"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         proc2 = StoredProcedure(
@@ -144,12 +138,8 @@ class TestStoredProcedureStreaming(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db1"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema1"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema1"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         # Mock paginate_es to return procedures
@@ -171,9 +161,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             mock_row.keys.return_value = list(row_data.keys())
             query_results.append(mock_row)
 
-        self.mixin.engine._mock_conn.execute.return_value.all.return_value = (
-            query_results
-        )
+        self.mixin.engine._mock_conn.execute.return_value.all.return_value = query_results
 
         # Get the producer
         results = list(self.mixin.procedure_lineage_producer())
@@ -202,9 +190,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             mock_row.keys.return_value = list(row_data.keys())
             large_query_results.append(mock_row)
 
-        self.mixin.engine._mock_conn.execute.return_value.all.return_value = (
-            large_query_results
-        )
+        self.mixin.engine._mock_conn.execute.return_value.all.return_value = large_query_results
 
         # The generator should not load all into memory at once
         queries_gen = self.mixin.yield_stored_procedure_queries()
@@ -233,12 +219,8 @@ class TestStoredProcedureStreaming(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db1"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema1"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema1"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         proc2 = StoredProcedure(
@@ -249,15 +231,9 @@ class TestStoredProcedureStreaming(unittest.TestCase):
                 code="CREATE PROCEDURE FilteredProc() BEGIN SELECT 2; END",
                 language="SQL",
             ),
-            database=EntityReference(
-                id=uuid.uuid4(), type="database", name="filtered_db"
-            ),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema1"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            database=EntityReference(id=uuid.uuid4(), type="database", name="filtered_db"),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema1"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         # Mock paginate_es
@@ -269,9 +245,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         self.mixin.source_config.databaseFilterPattern.excludes = ["filtered_db"]
 
         # Mock filter functions
-        with patch(
-            "metadata.utils.filters.filter_by_database", side_effect=[False, True]
-        ):
+        with patch("metadata.utils.filters.filter_by_database", side_effect=[False, True]):
             # Mock query results
             row_data = {
                 "PROCEDURE_NAME": "IncludedProc",
@@ -285,9 +259,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             mock_row._asdict.return_value = row_data
             mock_row.keys.return_value = list(row_data.keys())
 
-            self.mixin.engine._mock_conn.execute.return_value.all.return_value = [
-                mock_row
-            ]
+            self.mixin.engine._mock_conn.execute.return_value.all.return_value = [mock_row]
 
             # Get results
             results = list(self.mixin.procedure_lineage_producer())
@@ -297,9 +269,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             self.assertEqual(results[0].procedure.name.root, "IncludedProc")
 
             # Verify filter was called
-            self.mixin.status.filter.assert_called_once_with(
-                "FilteredProc", "Stored Procedure Filtered Out"
-            )
+            self.mixin.status.filter.assert_called_once_with("FilteredProc", "Stored Procedure Filtered Out")
 
 
 class TestStoredProcedureProcessing(unittest.TestCase):
@@ -324,9 +294,7 @@ class TestStoredProcedureProcessing(unittest.TestCase):
         query_by_proc = QueryByProcedure.model_validate(query_data)
 
         self.assertEqual(query_by_proc.procedure_name, "TestProc")
-        self.assertEqual(
-            query_by_proc.query_text, "INSERT INTO target SELECT * FROM source"
-        )
+        self.assertEqual(query_by_proc.query_text, "INSERT INTO target SELECT * FROM source")
         self.assertEqual(query_by_proc.query_type, "INSERT")
         self.assertEqual(query_by_proc.query_database_name, "test_db")
         self.assertEqual(query_by_proc.query_duration, 1.5)
@@ -343,7 +311,7 @@ class TestStoredProcedureProcessing(unittest.TestCase):
         ]
 
         for call_text, expected_name in test_cases:
-            with self.subTest(call=call_text):
+            with self.subTest(call=call_text):  # noqa: SIM117
                 # Note: This assumes get_procedure_name_from_call exists
                 # You may need to implement or mock this function
                 with patch(
@@ -375,12 +343,8 @@ class TestIntegration(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="test_db"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="test_schema"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="test_schema"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         mixin.metadata.paginate_es.return_value = iter([proc])
@@ -450,12 +414,8 @@ class TestTempTableLineage(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         self.test_query = QueryByProcedure(
@@ -542,9 +502,7 @@ class TestTempTableLineage(unittest.TestCase):
 
         procedure_graph_map = {}
 
-        with patch(
-            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
-        ) as mock_lineage:
+        with patch("metadata.ingestion.source.database.lineage_processors.get_lineage_by_query") as mock_lineage:
             mock_lineage.return_value = [Mock()]
 
             list(
@@ -582,9 +540,7 @@ class TestLineageQueryValidation(unittest.TestCase):
         # Test queries that should be identified as lineage queries
         self.assertTrue(is_lineage_query("MERGE", "MERGE INTO target USING source"))
         self.assertTrue(is_lineage_query("UPDATE", "UPDATE table SET col = val"))
-        self.assertTrue(
-            is_lineage_query("CREATE_TABLE_AS_SELECT", "CREATE TABLE AS SELECT")
-        )
+        self.assertTrue(is_lineage_query("CREATE_TABLE_AS_SELECT", "CREATE TABLE AS SELECT"))
         self.assertTrue(is_lineage_query("INSERT", "INSERT INTO t SELECT * FROM s"))
 
         # Test queries that should NOT be identified as lineage queries
@@ -614,11 +570,7 @@ class TestProcedureGraphProcessing(unittest.TestCase):
         )
 
         mock_metadata = Mock()
-        result = list(
-            get_lineage_by_procedure_graph(
-                procedure_graph_map={}, metadata=mock_metadata
-            )
-        )
+        result = list(get_lineage_by_procedure_graph(procedure_graph_map={}, metadata=mock_metadata))
 
         # Should return empty when no graphs
         self.assertEqual(len(result), 0)
@@ -639,12 +591,8 @@ class TestProcedureGraphProcessing(unittest.TestCase):
                 language="SQL",
             ),
             database=EntityReference(id=uuid.uuid4(), type="database", name="db"),
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(), type="databaseSchema", name="schema"
-            ),
-            service=EntityReference(
-                id=uuid.uuid4(), type="databaseService", name="service"
-            ),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name="schema"),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
         )
 
         query1 = QueryByProcedure(
@@ -687,9 +635,7 @@ class TestProcedureGraphProcessing(unittest.TestCase):
             )
 
             # Capture the graph reference
-            first_graph = procedure_graph_map[
-                test_procedure.fullyQualifiedName.root
-            ].graph
+            first_graph = procedure_graph_map[test_procedure.fullyQualifiedName.root].graph
 
             # Process second query
             list(
@@ -709,7 +655,114 @@ class TestProcedureGraphProcessing(unittest.TestCase):
             )
 
             # Verify same graph is reused
-            second_graph = procedure_graph_map[
-                test_procedure.fullyQualifiedName.root
-            ].graph
+            second_graph = procedure_graph_map[test_procedure.fullyQualifiedName.root].graph
             self.assertIs(first_graph, second_graph)
+
+
+class TestMatchProcedureDisambiguation:
+    """Cross-database matching of stored procedures when a name collides.
+
+    On an ingest-all run the same procedure name can exist in several databases
+    or schemas, so the match must use the database and schema the query reported.
+    """
+
+    @staticmethod
+    def _procedure(name, database, schema):
+        return StoredProcedure(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=f"service.{database}.{schema}.{name}",
+            storedProcedureCode=StoredProcedureCode(code=f"CREATE PROCEDURE {name}", language="SQL"),
+            database=EntityReference(id=uuid.uuid4(), type="database", name=database),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name=schema),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
+        )
+
+    @staticmethod
+    def _query(procedure_name, database=None, schema=None):
+        return QueryByProcedure(
+            procedure_name=procedure_name,
+            query_type="INSERT",
+            query_text="INSERT INTO t_sp SELECT id, val FROM src1",
+            procedure_text=f"CALL {procedure_name}()",
+            procedure_start_time=datetime(2026, 7, 6),
+            procedure_end_time=datetime(2026, 7, 6),
+            query_database_name=database,
+            query_schema_name=schema,
+        )
+
+    def test_single_candidate_matches_regardless_of_context(self):
+        procedure = self._procedure("usp_load", "db_a", "dbo")
+
+        assert StoredProcedureLineageMixin._match_procedure([procedure], self._query("usp_load")) is procedure
+
+    def test_same_name_disambiguated_by_database(self):
+        procedure_a = self._procedure("usp_load", "hyb_qs_a", "dbo")
+        procedure_b = self._procedure("usp_load", "hyb_qs_b", "dbo")
+        candidates = [procedure_a, procedure_b]
+
+        assert (
+            StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load", "hyb_qs_b", "dbo"))
+            is procedure_b
+        )
+        assert (
+            StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load", "hyb_qs_a", "dbo"))
+            is procedure_a
+        )
+
+    def test_same_name_disambiguated_by_schema(self):
+        procedure_dbo = self._procedure("usp_load", "db_a", "dbo")
+        procedure_sales = self._procedure("usp_load", "db_a", "sales")
+        candidates = [procedure_dbo, procedure_sales]
+
+        result = StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load", "db_a", "sales"))
+
+        assert result is procedure_sales
+
+    def test_ambiguous_without_context_returns_none(self):
+        candidates = [
+            self._procedure("usp_load", "db_a", "dbo"),
+            self._procedure("usp_load", "db_b", "dbo"),
+        ]
+
+        assert StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load")) is None
+
+    def test_no_candidates_returns_none(self):
+        assert StoredProcedureLineageMixin._match_procedure(None, self._query("usp_load")) is None
+        assert StoredProcedureLineageMixin._match_procedure([], self._query("usp_load")) is None
+
+    @staticmethod
+    def _row(procedure_name, database, schema="dbo"):
+        row = {
+            "PROCEDURE_NAME": procedure_name,
+            "QUERY_TYPE": "INSERT",
+            "QUERY_TEXT": "INSERT INTO t_sp SELECT id, val FROM src1",
+            "QUERY_DATABASE_NAME": database,
+            "QUERY_SCHEMA_NAME": schema,
+            "PROCEDURE_TEXT": f"CALL {procedure_name}()",
+            "PROCEDURE_START_TIME": datetime(2026, 7, 6),
+            "PROCEDURE_END_TIME": datetime(2026, 7, 6),
+        }
+        mock_row = Mock()
+        mock_row._asdict.return_value = row
+        mock_row.keys.return_value = list(row.keys())
+        return mock_row
+
+    def test_producer_attributes_collided_names_by_reporting_database(self):
+        """End-to-end producer flow: three databases each own a usp_load, and each
+        query row is attributed to the procedure in the database it reported."""
+        mixin = TestableStoredProcedureMixin()
+        mixin.metadata.paginate_es.return_value = iter(
+            [self._procedure("usp_load", database, "dbo") for database in ("db_a", "db_b", "db_c")]
+        )
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+            self._row("usp_load", "db_c"),
+            self._row("usp_load", "db_a"),
+        ]
+
+        results = list(mixin.procedure_lineage_producer())
+
+        attributed = {
+            result.query_by_procedure.query_database_name: result.procedure.database.name for result in results
+        }
+        assert attributed == {"db_c": "db_c", "db_a": "db_a"}

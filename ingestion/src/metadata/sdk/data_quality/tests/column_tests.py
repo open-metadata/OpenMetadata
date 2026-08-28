@@ -10,7 +10,8 @@
 #  limitations under the License.
 
 """Column-level test definitions for DQ as Code API."""
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.sdk.data_quality.tests.base_tests import ColumnTest
@@ -37,10 +38,10 @@ class ColumnValuesToBeInSet(ColumnTest):
     def __init__(
         self,
         column: str,
-        allowed_values: List[str],
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        allowed_values: List[str],  # noqa: UP006
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeInSet",
@@ -50,9 +51,7 @@ class ColumnValuesToBeInSet(ColumnTest):
             description=description
             or f"Validates that all values in column '{column}' are within the allowed set: {allowed_values}",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="allowedValues", value=str(allowed_values))
-        )
+        self.parameters.append(TestCaseParameterValue(name="allowedValues", value=str(allowed_values)))
 
 
 class ColumnValuesToBeNotInSet(ColumnTest):
@@ -76,10 +75,10 @@ class ColumnValuesToBeNotInSet(ColumnTest):
     def __init__(
         self,
         column: str,
-        forbidden_values: List[str],
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        forbidden_values: List[str],  # noqa: UP006
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeNotInSet",
@@ -89,9 +88,7 @@ class ColumnValuesToBeNotInSet(ColumnTest):
             description=description
             or f"Validates that no values in column '{column}' are in the forbidden set: {forbidden_values}",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="forbiddenValues", value=str(forbidden_values))
-        )
+        self.parameters.append(TestCaseParameterValue(name="forbiddenValues", value=str(forbidden_values)))
 
 
 class ColumnValuesToBeNotNull(ColumnTest):
@@ -114,17 +111,16 @@ class ColumnValuesToBeNotNull(ColumnTest):
     def __init__(
         self,
         column: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeNotNull",
             column=column,
             name=name or f"{column}_not_null",
             display_name=display_name or f"Column '{column}' Not Null",
-            description=description
-            or f"Validates that column '{column}' contains no null values",
+            description=description or f"Validates that column '{column}' contains no null values",
         )
 
 
@@ -148,17 +144,16 @@ class ColumnValuesToBeUnique(ColumnTest):
     def __init__(
         self,
         column: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeUnique",
             column=column,
             name=name or f"{column}_unique",
             display_name=display_name or f"Column '{column}' Unique",
-            description=description
-            or f"Validates that all values in column '{column}' are unique",
+            description=description or f"Validates that all values in column '{column}' are unique",
         )
 
 
@@ -184,17 +179,16 @@ class ColumnValuesToMatchRegex(ColumnTest):
         self,
         column: str,
         regex: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToMatchRegex",
             column=column,
             name=name or f"{column}_matches_regex",
             display_name=display_name or f"Column '{column}' Matches Regex",
-            description=description
-            or f"Validates that values in column '{column}' match the pattern: {regex}",
+            description=description or f"Validates that values in column '{column}' match the pattern: {regex}",
         )
         self.parameters.append(TestCaseParameterValue(name="regex", value=regex))
 
@@ -221,21 +215,18 @@ class ColumnValuesToNotMatchRegex(ColumnTest):
         self,
         column: str,
         regex: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToNotMatchRegex",
             column=column,
             name=name or f"{column}_not_matches_regex",
             display_name=display_name or f"Column '{column}' Does Not Match Regex",
-            description=description
-            or f"Validates that values in column '{column}' do not match the pattern: {regex}",
+            description=description or f"Validates that values in column '{column}' do not match the pattern: {regex}",
         )
-        self.parameters.append(
-            TestCaseParameterValue(name="forbiddenRegex", value=regex)
-        )
+        self.parameters.append(TestCaseParameterValue(name="forbiddenRegex", value=regex))
 
 
 class ColumnValuesToBeBetween(ColumnTest):
@@ -260,11 +251,11 @@ class ColumnValuesToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeBetween",
@@ -275,13 +266,9 @@ class ColumnValuesToBeBetween(ColumnTest):
             or f"Validates that values in column '{column}' are between {min_value or 'any'} and {max_value or 'any'}",
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minValue", value=str(min_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValue", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxValue", value=str(max_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValue", value=str(max_value)))
 
 
 class ColumnValueMaxToBeBetween(ColumnTest):
@@ -306,11 +293,11 @@ class ColumnValueMaxToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the maximum value in column '{column}' "
@@ -324,13 +311,9 @@ class ColumnValueMaxToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minValueForMaxInCol", value=str(min_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValueForMaxInCol", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxValueForMaxInCol", value=str(max_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValueForMaxInCol", value=str(max_value)))
 
 
 class ColumnValueMinToBeBetween(ColumnTest):
@@ -355,11 +338,11 @@ class ColumnValueMinToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the minimum value in column '{column}' "
@@ -373,13 +356,9 @@ class ColumnValueMinToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minValueForMinInCol", value=str(min_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValueForMinInCol", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxValueForMinInCol", value=str(max_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValueForMinInCol", value=str(max_value)))
 
 
 class ColumnValueMeanToBeBetween(ColumnTest):
@@ -404,11 +383,11 @@ class ColumnValueMeanToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the mean value in column '{column}' "
@@ -422,17 +401,9 @@ class ColumnValueMeanToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="minValueForMeanInCol", value=str(min_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValueForMeanInCol", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="maxValueForMeanInCol", value=str(max_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValueForMeanInCol", value=str(max_value)))
 
 
 class ColumnValueMedianToBeBetween(ColumnTest):
@@ -457,11 +428,11 @@ class ColumnValueMedianToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the median value in column '{column}' "
@@ -475,17 +446,9 @@ class ColumnValueMedianToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="minValueForMedianInCol", value=str(min_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValueForMedianInCol", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="maxValueForMedianInCol", value=str(max_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValueForMedianInCol", value=str(max_value)))
 
 
 class ColumnValueStdDevToBeBetween(ColumnTest):
@@ -510,11 +473,11 @@ class ColumnValueStdDevToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the standard deviation in column '{column}' "
@@ -528,17 +491,9 @@ class ColumnValueStdDevToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="minValueForStdDevInCol", value=str(min_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValueForStdDevInCol", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="maxValueForStdDevInCol", value=str(max_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValueForStdDevInCol", value=str(max_value)))
 
 
 class ColumnValuesSumToBeBetween(ColumnTest):
@@ -563,11 +518,11 @@ class ColumnValuesSumToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the sum of values in column '{column}' "
@@ -581,13 +536,9 @@ class ColumnValuesSumToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minValueForColSum", value=str(min_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minValueForColSum", value=str(min_value)))
         if max_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxValueForColSum", value=str(max_value))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxValueForColSum", value=str(max_value)))
 
 
 class ColumnValuesMissingCount(ColumnTest):
@@ -612,32 +563,23 @@ class ColumnValuesMissingCount(ColumnTest):
     def __init__(
         self,
         column: str,
-        missing_count_value: Optional[int] = None,
-        missing_value_match: Optional[List[str]] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        missing_count_value: Optional[int] = None,  # noqa: UP045
+        missing_value_match: Optional[List[str]] = None,  # noqa: UP006, UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesMissingCount",
             column=column,
             name=name or f"{column}_missing_count",
             display_name=display_name or f"Column '{column}' Missing Count",
-            description=description
-            or f"Validates the count of missing values in column '{column}'",
+            description=description or f"Validates the count of missing values in column '{column}'",
         )
         if missing_count_value is not None:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="missingCountValue", value=str(missing_count_value)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="missingCountValue", value=str(missing_count_value)))
         if missing_value_match:
-            self.parameters.append(
-                TestCaseParameterValue(
-                    name="missingValueMatch", value=str(missing_value_match)
-                )
-            )
+            self.parameters.append(TestCaseParameterValue(name="missingValueMatch", value=str(missing_value_match)))
 
 
 class ColumnValueLengthsToBeBetween(ColumnTest):
@@ -662,11 +604,11 @@ class ColumnValueLengthsToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_length: Optional[int] = None,
-        max_length: Optional[int] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_length: Optional[int] = None,  # noqa: UP045
+        max_length: Optional[int] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that value lengths in column '{column}' "
@@ -680,13 +622,9 @@ class ColumnValueLengthsToBeBetween(ColumnTest):
             description=description or default_desc,
         )
         if min_length is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="minLength", value=str(min_length))
-            )
+            self.parameters.append(TestCaseParameterValue(name="minLength", value=str(min_length)))
         if max_length is not None:
-            self.parameters.append(
-                TestCaseParameterValue(name="maxLength", value=str(max_length))
-            )
+            self.parameters.append(TestCaseParameterValue(name="maxLength", value=str(max_length)))
 
 
 class ColumnValuesToBeAtExpectedLocation(ColumnTest):
@@ -722,9 +660,9 @@ class ColumnValuesToBeAtExpectedLocation(ColumnTest):
         longitude_column_name: str,
         latitude_column_name: str,
         radius: float,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeAtExpectedLocation",
@@ -734,19 +672,7 @@ class ColumnValuesToBeAtExpectedLocation(ColumnTest):
             description=description
             or f"Validates that lat/long values in column '{column}' are within {radius}m of expected location",
         )
-        self.parameters.append(
-            TestCaseParameterValue(
-                name="locationReferenceType", value=location_reference_type
-            )
-        )
-        self.parameters.append(
-            TestCaseParameterValue(
-                name="longitudeColumnName", value=longitude_column_name
-            )
-        )
-        self.parameters.append(
-            TestCaseParameterValue(
-                name="latitudeColumnName", value=latitude_column_name
-            )
-        )
+        self.parameters.append(TestCaseParameterValue(name="locationReferenceType", value=location_reference_type))
+        self.parameters.append(TestCaseParameterValue(name="longitudeColumnName", value=longitude_column_name))
+        self.parameters.append(TestCaseParameterValue(name="latitudeColumnName", value=latitude_column_name))
         self.parameters.append(TestCaseParameterValue(name="radius", value=str(radius)))

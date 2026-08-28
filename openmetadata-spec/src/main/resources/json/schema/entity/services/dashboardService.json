@@ -34,7 +34,9 @@
         "ThoughtSpot",
         "Grafana",
         "Hex",
-        "Ssrs"
+        "Ssrs",
+        "SapS4Hana",
+        "Omni"
       ],
       "javaEnums": [
         {
@@ -96,6 +98,12 @@
         },
         {
           "name": "Ssrs"
+        },
+        {
+          "name": "SapS4Hana"
+        },
+        {
+          "name": "Omni"
         }
       ]
     },
@@ -169,6 +177,12 @@
             },
             {
               "$ref": "./connections/dashboard/ssrsConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/sapS4HanaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/omniConnection.json"
             }
           ]
         }
@@ -220,6 +234,9 @@
       },
       "default": []
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "owners": {
       "description": "Owners of this dashboard service.",
       "$ref": "../../type/entityReferenceList.json"
@@ -264,6 +281,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "domains" : {
       "description": "Domains the Dashboard service belongs to.",

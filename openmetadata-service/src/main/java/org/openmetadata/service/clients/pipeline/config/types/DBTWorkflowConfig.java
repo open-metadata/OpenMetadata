@@ -11,8 +11,7 @@ import org.openmetadata.schema.metadataIngestion.Source;
 
 public class DBTWorkflowConfig implements WorkflowConfigTypeStrategy {
   public OpenMetadataWorkflowConfig buildOMWorkflowConfig(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service)
-      throws WorkflowBuildException {
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     OpenMetadataWorkflowConfig config = new OpenMetadataWorkflowConfig();
 
     Source source = buildDefaultSource(ingestionPipeline, service);

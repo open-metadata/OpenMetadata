@@ -16,8 +16,6 @@ import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
-  LOG_ENTITY_NAME,
-  LOG_ENTITY_TYPE,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_DIMENSION_KEY,
@@ -43,16 +41,25 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
-import { EntityAction, EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
+import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
-import { getPartialNameFromFQN } from './CommonUtils';
-import { getBasePath } from './HistoryUtils';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getPartialNameFromFQN } from './FqnUtils';
+import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import { getEncodedFqn } from './StringUtils';
+
+/**
+ * The landing page is reachable at two paths: `/` (rendered in place, where
+ * post-login lands) and the explicit `/my-data` link. Anything that keys off
+ * "am I on the landing page" must accept both, or it silently changes behavior
+ * depending on how the user got there.
+ */
+export const isLandingPagePath = (pathname: string): boolean =>
+  pathname === ROUTES.HOME || pathname === ROUTES.MY_DATA;
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
@@ -137,13 +144,13 @@ export const getEditIngestionPath = (
 };
 
 export const getDomainPath = (fqn?: string) => {
-  let path = ROUTES.DOMAIN;
+  const basePath = useMarketplaceStore.getState().domainBasePath;
+
   if (fqn) {
-    path = ROUTES.DOMAIN_DETAILS;
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+    return `${basePath}/${getEncodedFqn(fqn)}`;
   }
 
-  return path;
+  return basePath;
 };
 
 export const getDomainDetailsPath = (
@@ -151,19 +158,37 @@ export const getDomainDetailsPath = (
   tab?: string,
   subTab = 'all'
 ) => {
-  let path = tab ? ROUTES.DOMAIN_DETAILS_WITH_TAB : ROUTES.DOMAIN_DETAILS;
+  const basePath = useMarketplaceStore.getState().domainBasePath;
+  const encodedFqn = getEncodedFqn(fqn);
 
   if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.DOMAIN_DETAILS_WITH_SUBTAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+    return `${basePath}/${encodedFqn}/${tab}/${subTab}`;
   }
 
   if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+    return `${basePath}/${encodedFqn}/${tab}`;
   }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return `${basePath}/${encodedFqn}`;
+};
+
+export const getDataProductDetailsPath = (
+  fqn: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  const basePath = useMarketplaceStore.getState().dataProductBasePath;
+  const encodedFqn = getEncodedFqn(fqn);
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    return `${basePath}/${encodedFqn}/${tab}/${subTab}`;
+  }
+
+  if (tab) {
+    return `${basePath}/${encodedFqn}/${tab}`;
+  }
+
+  return `${basePath}/${encodedFqn}`;
 };
 
 export const getGlossaryPath = (fqn?: string) => {
@@ -419,41 +444,6 @@ export const getTestSuiteIngestionPath = (
   return path;
 };
 
-/**
- * It takes in a log entity type, log entity name, and ingestion name, and returns a path to the logs
- * viewer
- * @param {string} logEntityType - The type of entity that the logs are associated with.
- * @param {string} logEntityName - The name of the log entity.
- * @param {string} ingestionName - The name of the ingestion.
- * @returns A string
- */
-export const getLogsViewerPath = (
-  logEntityType: string,
-  logEntityName: string,
-  ingestionName: string
-) => {
-  let path = ROUTES.LOGS;
-
-  path = path.replace(LOG_ENTITY_TYPE, logEntityType);
-  path = path.replace(LOG_ENTITY_NAME, logEntityName);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
-
-  return path;
-};
-
-export const getGlossaryPathWithAction = (
-  fqn: string,
-  action: EntityAction
-) => {
-  let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_ACTION, action);
-
-  return path;
-};
-
 export const getQueryPath = (entityFqn: string, queryId: string) => {
   let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
 
@@ -687,9 +677,6 @@ export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
 
   return path;
 };
-export const getPathNameFromWindowLocation = () => {
-  return window.location.pathname.replace(getBasePath() ?? '', '');
-};
 
 export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
@@ -747,16 +734,19 @@ export const getServiceDetailsPath = (
   return path;
 };
 
+// Built from the ROUTES constant rather than the router's current location —
+// callers merging this into a `search`-only update need a pathname that
+// can't be affected by the router's location-context resolution.
+export const getExploreTabPath = (tab?: string): string =>
+  ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab ?? '');
+
 export const getExplorePath: (args: {
   tab?: string;
   search?: string;
   extraParameters?: Record<string, unknown>;
   isPersistFilters?: boolean;
 }) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
-  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
-    PLACEHOLDER_ROUTE_TAB,
-    tab ?? ''
-  );
+  const pathname = getExploreTabPath(tab);
   let paramsObject: Record<string, unknown> = QueryString.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)
@@ -886,16 +876,6 @@ export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
-
-  return path;
-};
-
-export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
-  let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    getEncodedFqn(entityTypeFQN)
-  );
 
   return path;
 };

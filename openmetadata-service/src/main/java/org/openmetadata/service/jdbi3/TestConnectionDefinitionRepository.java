@@ -89,10 +89,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
-          "steps",
-          () -> {
-            recordChange("steps", original.getSteps(), updated.getSteps(), true);
-          });
+          "steps", () -> recordChange("steps", original.getSteps(), updated.getSteps(), true));
     }
   }
 }

@@ -8,7 +8,6 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,31 +45,28 @@ public class ElasticSearchLineChartAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
-      boolean live)
-      throws IOException {
+      boolean live) {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
     int i = 0;
+    int groupByAggIndex = 0;
     long startTime = start;
 
     for (LineChartMetric metric : lineChart.getMetrics()) {
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
       Map<String, Aggregation> metricAggregations = new HashMap<>();
 
+      final String finalIncludeTerms =
+          CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())
+              ? null
+              : lineChart.getIncludeXAxisFiled();
+      final String finalExcludeTerms =
+          CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())
+              ? null
+              : lineChart.getExcludeXAxisField();
+
       if (lineChart.getxAxisField() != null
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
-        String includeTerms = null;
-        String excludeTerms = null;
-        if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())) {
-          includeTerms = lineChart.getIncludeXAxisFiled();
-        }
-        if (!CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
-          excludeTerms = lineChart.getExcludeXAxisField();
-        }
-
-        final String finalIncludeTerms = includeTerms;
-        final String finalExcludeTerms = excludeTerms;
-
         Aggregation termsAgg =
             Aggregation.of(
                 a -> {
@@ -130,13 +126,25 @@ public class ElasticSearchLineChartAggregator
       Aggregation currentAgg = metricAggregations.get(metricName);
       if (!subAggregations.isEmpty()) {
         if (currentAgg.isTerms()) {
-          // Rebuild terms aggregation with sub-aggregations
+          // Rebuild terms aggregation with sub-aggregations, preserving include/exclude filters
           final String fieldName = currentAgg.terms().field();
           final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 100;
           metricAggregations.put(
               metricName,
               Aggregation.of(
-                  a -> a.terms(t -> t.field(fieldName).size(size)).aggregations(subAggregations)));
+                  a ->
+                      a.terms(
+                              t -> {
+                                var builder = t.field(fieldName).size(size);
+                                if (finalIncludeTerms != null) {
+                                  builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
+                                }
+                                if (finalExcludeTerms != null) {
+                                  builder = builder.exclude(exc -> exc.regexp(finalExcludeTerms));
+                                }
+                                return builder;
+                              })
+                          .aggregations(subAggregations)));
         } else if (currentAgg._kind().name().equals("DateHistogram")) {
           // Rebuild date histogram aggregation with sub-aggregations
           final String fieldName = currentAgg.dateHistogram().field();
@@ -185,7 +193,7 @@ public class ElasticSearchLineChartAggregator
                   return termsBuilder.aggregations(finalMetricAggregations);
                 });
 
-        aggregationsMap.put("term_" + i, groupByAgg);
+        aggregationsMap.put("term_" + groupByAggIndex++, groupByAgg);
       } else {
         aggregationsMap.putAll(metricAggregations);
       }
@@ -234,8 +242,6 @@ public class ElasticSearchLineChartAggregator
       SearchResponse<JsonData> searchResponse,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder) {
-    Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolderInternal =
-        metricFormulaHolder;
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregate> aggregationMap =
@@ -262,9 +268,13 @@ public class ElasticSearchLineChartAggregator
               diChartResults.addAll(
                   processAggregations(
                       singleAggMap,
-                      metricFormulaHolderInternal.get(subAggName).formula,
+                      ((Map<String, MetricFormulaHolder>) metricFormulaHolder)
+                          .get(subAggName)
+                          .formula,
                       group,
-                      metricFormulaHolderInternal.get(subAggName).holders,
+                      ((Map<String, MetricFormulaHolder>) metricFormulaHolder)
+                          .get(subAggName)
+                          .holders,
                       getMetricName(lineChart, subAggName)));
             }
           }
@@ -275,13 +285,12 @@ public class ElasticSearchLineChartAggregator
     }
 
     List<DataInsightCustomChartResult> diChartResults = new ArrayList<>();
-    int i = 0;
     for (Map.Entry<String, Aggregate> entry : aggregationMap.entrySet()) {
       String aggName = entry.getKey();
       MetricFormulaHolder formulaHolder =
           metricFormulaHolder.get(aggName) == null
               ? new MetricFormulaHolder()
-              : metricFormulaHolderInternal.get(aggName);
+              : ((Map<String, MetricFormulaHolder>) metricFormulaHolder).get(aggName);
       String group = null;
       if (lineChart.getMetrics().size() > 1) {
         group = getMetricName(lineChart, aggName);
@@ -298,7 +307,6 @@ public class ElasticSearchLineChartAggregator
               formulaHolder.holders,
               getMetricName(lineChart, aggName));
       diChartResults.addAll(results);
-      i++;
     }
 
     resultList.setResults(diChartResults);

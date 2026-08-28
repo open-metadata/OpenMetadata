@@ -36,6 +36,7 @@ import {
   getClassificationVersionData,
   getClassificationVersionsList,
 } from '../../rest/tagAPI';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -193,7 +194,7 @@ function ClassificationVersionPage() {
     <PageLayoutV1
       className="version-page-container"
       pageTitle={t('label.entity-version-detail-plural', {
-        entity: t('label.classification'),
+        entity: getEntityName(currentVersionData) || t('label.classification'),
       })}>
       {versionComponent()}
     </PageLayoutV1>

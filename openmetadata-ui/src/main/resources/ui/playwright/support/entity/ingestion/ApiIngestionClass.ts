@@ -13,10 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
-import {
-  checkServiceFieldSectionHighlighting,
-  Services,
-} from '../../../utils/serviceIngestion';
+import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
@@ -52,12 +49,19 @@ class ApiIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const openAPISchemaURL = 'https://petstore3.swagger.io/api/v3/openapi.json';
+    // Fetch the OpenAPI fixture over HTTP so the test doesn't rely on a file
+    // bundled inside the ingestion image.
+    const openAPISchemaURL =
+      'https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/ingestion/examples/openapi/sample.json';
+
+    await page
+      .getByTestId('oneof-option-0')
+      .filter({ hasText: 'Open API Schema URL' })
+      .click();
 
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
       .fill(openAPISchemaURL);
-    await checkServiceFieldSectionHighlighting(page, 'openAPISchemaURL');
   }
 
   async deleteService(page: Page): Promise<void> {

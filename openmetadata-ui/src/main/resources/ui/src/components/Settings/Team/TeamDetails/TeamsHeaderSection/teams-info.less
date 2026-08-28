@@ -14,19 +14,11 @@
 .teams-info-header-container {
   display: flex;
   justify-content: space-around;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   border: 0.5px solid @border-color-2;
-  padding: 20px;
-  gap: 16px;
-  background-color: @white;
-
-  .ant-typography.teams-info-heading {
-    color: @primary-heading-color;
-  }
-
-  .ant-typography.teams-info-value {
-    color: @grey-700;
-  }
+  padding: var(--om-space-20);
+  gap: var(--om-space-16);
+  background-color: var(--tw-color-bg-primary);
 
   .domain-link-container,
   .owner-label-container {
@@ -43,9 +35,9 @@
   .edit-team-name,
   .edit-team-type-icon {
     border: 1px solid @border-light;
-    background-color: @white;
-    border-radius: 4px;
-    padding: 4px;
+    background-color: var(--tw-color-bg-primary);
+    border-radius: var(--om-radius-sm);
+    padding: var(--om-space-4);
     width: 20px;
     height: 20px;
     display: flex;

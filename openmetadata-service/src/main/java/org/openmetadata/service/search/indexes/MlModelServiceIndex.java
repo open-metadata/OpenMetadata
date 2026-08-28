@@ -4,18 +4,20 @@ import java.util.Map;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.service.Entity;
 
-public record MlModelServiceIndex(MlModelService mlModelService) implements SearchIndex {
-
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(mlModelService, Entity.MLMODEL_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(mlModelService.getEntityReference()));
-    return doc;
-  }
+public record MlModelServiceIndex(MlModelService mlModelService)
+    implements TaggableIndex, LineageIndex {
 
   @Override
   public Object getEntity() {
     return mlModelService;
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.MLMODEL_SERVICE;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    return doc;
   }
 }

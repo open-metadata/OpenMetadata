@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { Task } from '../../../../generated/entity/tasks/task';
+import { getTaskDetailPathFromTask } from '../../../../utils/TaskNavigationUtils';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 const mockProps = {
@@ -71,25 +73,64 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
-  getTaskDetailPath: jest.fn(),
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/test-case/issues'),
+  getTaskDisplayId: jest.fn().mockReturnValue('244'),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
+  OwnerLabel: jest.fn().mockReturnValue(null),
 }));
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/HistoryUtils', () => ({
+  ...jest.requireActual('../../../../utils/HistoryUtils'),
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
 }));
 
 describe('Test TestSummaryCustomTooltip component', () => {
+  it('should display a compact task-first incident link', async () => {
+    const incidentId = '9c479412-ebdf-4ad0-b1db-c030a7857492';
+    const task = {
+      id: incidentId,
+      taskId: 'TASK-00244',
+    } as Task;
+
+    render(
+      <TestSummaryCustomTooltip
+        active
+        payload={[
+          {
+            payload: {
+              incidentId,
+              name: 1748045364386,
+              status: 'Failed',
+              task,
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByTestId('incident')).toHaveTextContent('#244');
+    expect(screen.queryByText(incidentId)).not.toBeInTheDocument();
+    expect(getTaskDetailPathFromTask).toHaveBeenCalledWith(task);
+  });
+
   it('should render', async () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);
 
-    expect(
-      await screen.findByTestId('test-summary-tooltip-container')
-    ).toBeInTheDocument();
     expect(
       await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
@@ -118,5 +159,28 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect((await screen.findByTestId('freshness')).textContent).toBe(
       '7Y 2M 22d 9m 24s'
     );
+  });
+
+  describe('incident fallback', () => {
+    it('should not expose the incident UUID when task metadata is unavailable', () => {
+      const incidentId = 'incident-123';
+      const propsWithIncident = {
+        active: true,
+        payload: [
+          {
+            payload: {
+              name: 1748045364386,
+              status: 'Failed',
+              incidentId,
+            },
+          },
+        ],
+      };
+
+      render(<TestSummaryCustomTooltip {...propsWithIncident} />);
+
+      expect(screen.queryByTestId('incident')).not.toBeInTheDocument();
+      expect(screen.queryByText(incidentId)).not.toBeInTheDocument();
+    });
   });
 });

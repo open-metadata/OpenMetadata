@@ -64,6 +64,17 @@ export interface EsLineageData {
      */
     sqlQuery?: string;
     /**
+     * Key referencing the full SQL text in the parent document's lineageSqlQueries map. Set
+     * when the same SQL appears in multiple edges to avoid storing it repeatedly. Look up the
+     * actual SQL in lineageSqlQueries[sqlQueryKey].
+     */
+    sqlQueryKey?: string;
+    /**
+     * Lineage path through temporary/intermediate tables. Each element represents a hop with
+     * fromEntity and toEntity fields.
+     */
+    tempLineageTables?: TempLineageTable[];
+    /**
      * To Entity.
      */
     toEntity?: RelationshipRef;
@@ -121,5 +132,20 @@ export interface RelationshipRef {
      * Type of the entity.
      */
     type?: string;
+    [property: string]: any;
+}
+
+/**
+ * A single hop in a temporary table lineage path.
+ */
+export interface TempLineageTable {
+    /**
+     * Source entity or table name for this hop.
+     */
+    fromEntity: string;
+    /**
+     * Target entity or table name for this hop.
+     */
+    toEntity: string;
     [property: string]: any;
 }

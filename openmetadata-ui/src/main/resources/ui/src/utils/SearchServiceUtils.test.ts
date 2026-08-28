@@ -24,8 +24,8 @@ const mockGetSearchServiceConfigReturnValue = {
 };
 
 describe('SearchServiceUtils tests', () => {
-  it('getSearchServiceConfig should return correct config for ElasticSearch connector', () => {
-    const elasticSearchConfig = getSearchServiceConfig(
+  it('getSearchServiceConfig should return correct config for ElasticSearch connector', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
       SearchServiceType.ElasticSearch
     );
 
@@ -35,8 +35,8 @@ describe('SearchServiceUtils tests', () => {
     });
   });
 
-  it('getSearchServiceConfig should return correct config for OpenSearch connector', () => {
-    const elasticSearchConfig = getSearchServiceConfig(
+  it('getSearchServiceConfig should return correct config for OpenSearch connector', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
       SearchServiceType.OpenSearch
     );
 
@@ -46,8 +46,8 @@ describe('SearchServiceUtils tests', () => {
     });
   });
 
-  it('getSearchServiceConfig should return correct config for CustomSearch connector', () => {
-    const elasticSearchConfig = getSearchServiceConfig(
+  it('getSearchServiceConfig should return correct config for CustomSearch connector', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
       SearchServiceType.CustomSearch
     );
 
@@ -57,8 +57,10 @@ describe('SearchServiceUtils tests', () => {
     });
   });
 
-  it('getSearchServiceConfig should return only common UI schema in config for invalid connectors', () => {
-    const elasticSearchConfig = getSearchServiceConfig('' as SearchServiceType);
+  it('getSearchServiceConfig should return only common UI schema in config for invalid connectors', async () => {
+    const elasticSearchConfig = await getSearchServiceConfig(
+      '' as SearchServiceType
+    );
 
     expect(elasticSearchConfig).toEqual(mockGetSearchServiceConfigReturnValue);
   });

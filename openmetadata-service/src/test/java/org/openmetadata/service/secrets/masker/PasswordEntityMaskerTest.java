@@ -1,5 +1,7 @@
 package org.openmetadata.service.secrets.masker;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -31,7 +33,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                     .maskServiceConnectionConfig(
                         mysqlConnectionObject, "Mysql", ServiceType.DATABASE));
 
-    Assertions.assertEquals(
+    assertEquals(
         "Failed to mask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
 
@@ -46,7 +48,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                         "Mysql",
                         ServiceType.DATABASE));
 
-    Assertions.assertEquals(
+    assertEquals(
         "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
   }

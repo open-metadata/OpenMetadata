@@ -27,8 +27,7 @@ public class CustomJobFactory extends SimpleJobFactory {
     Class<? extends Job> jobClass = jobDetail.getJobClass();
 
     try {
-      LOG.debug(
-          "Producing instance of Job '" + jobDetail.getKey() + "', class=" + jobClass.getName());
+      LOG.debug("Producing instance of Job '{}', class={}", jobDetail.getKey(), jobClass.getName());
 
       return jobClass
           .getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)

@@ -1,5 +1,11 @@
 package org.openmetadata.service.notifications.channels.teams;
 
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.escapeMdLabel;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.escapeMdUrl;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.isAllowedLinkUrl;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.isBareUrl;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.markdownLink;
+
 import org.commonmark.ext.gfm.strikethrough.Strikethrough;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.BlockQuote;
@@ -62,7 +68,13 @@ final class TeamsMarkdownFormatter extends AbstractVisitor {
 
   @Override
   public void visit(Code code) {
-    out.append("`").append(code.getLiteral() == null ? "" : code.getLiteral()).append("`");
+    String literal = code.getLiteral() == null ? "" : code.getLiteral();
+    if (isBareUrl(literal)) {
+      String url = escapeMdUrl(literal);
+      out.append(markdownLink(url, url));
+    } else {
+      out.append("`").append(literal).append("`");
+    }
   }
 
   @Override
@@ -80,8 +92,7 @@ final class TeamsMarkdownFormatter extends AbstractVisitor {
     }
 
     String labelEsc = label.isEmpty() ? escapeMdUrl(dest) : escapeMdLabel(label);
-    String urlEsc = escapeMdUrl(dest);
-    out.append("[").append(labelEsc).append("](").append(urlEsc).append(")");
+    out.append(markdownLink(labelEsc, escapeMdUrl(dest)));
   }
 
   @Override
@@ -147,29 +158,5 @@ final class TeamsMarkdownFormatter extends AbstractVisitor {
   @Override
   public void visit(Heading heading) {
     visitChildren(heading);
-  }
-
-  private static boolean isAllowedLinkUrl(String url) {
-    try {
-      if (url == null) return false;
-      java.net.URI u = java.net.URI.create(url.trim());
-      String s = u.getScheme();
-      return s != null
-          && (s.equalsIgnoreCase("http")
-              || s.equalsIgnoreCase("https")
-              || s.equalsIgnoreCase("mailto"));
-    } catch (IllegalArgumentException ex) {
-      return false;
-    }
-  }
-
-  private static String escapeMdLabel(String s) {
-    if (s == null || s.isEmpty()) return "";
-    return s.replace("[", "\\[").replace("]", "\\]").replace("(", "\\(").replace(")", "\\)");
-  }
-
-  private static String escapeMdUrl(String s) {
-    if (s == null || s.isEmpty()) return "";
-    return s.trim().replace(" ", "%20").replace(")", "%29").replace("(", "%28");
   }
 }

@@ -56,7 +56,14 @@ const ConstraintIcon = ({
             entity: t('label.dist'),
           }),
         };
-
+      case ConstraintType.ClusterKey:
+        return {
+          icon: IconDistribution,
+          title: t('label.entity-key', {
+            entity: t('label.cluster'),
+          }),
+        };
+      case ConstraintType.SortKey:
       default:
         return {
           icon: IconSort,
@@ -74,7 +81,7 @@ const ConstraintIcon = ({
       })}
       data-testid={`${constraintType}-icon`}>
       {!showOnlyIcon && (
-        <img className="primary-key-section-line" src={SectionLine} />
+        <img alt="" className="primary-key-section-line" src={SectionLine} />
       )}
       <Tooltip placement="bottom" title={title} trigger="hover">
         <Icon

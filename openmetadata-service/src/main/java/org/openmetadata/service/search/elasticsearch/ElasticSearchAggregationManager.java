@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.settings.SettingsType;
@@ -39,12 +40,17 @@ import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final ObjectMapper mapper;
@@ -62,6 +68,60 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
     this.isClientAvailable = client != null;
     this.rbacConditionEvaluator = rbacConditionEvaluator;
     mapper = new ObjectMapper();
+  }
+
+  /**
+   * Resolves ContextMemory visibility for {@code subjectContext} so the counts match what that
+   * caller sees in the listing. Leaving the request unresolved (no identifiable subject) lets
+   * {@code ElasticSearchRequestBuilder#build} apply its org-wide-only default instead.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
+    }
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
+    }
+  }
+
+  /**
+   * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
+   * indexes, so without this a caller can read documents they are denied on the corresponding
+   * listing. A {@code null} or exempt subject (admin, bot, access control disabled) is left
+   * unfiltered.
+   */
+  private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
+    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      return query;
+    }
+    OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+    if (rbacQueryBuilder == null) {
+      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
+      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
+      return Query.of(qb -> qb.matchNone(m -> m));
+    }
+    Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
+    if (query == null) {
+      return rbacQuery;
+    }
+    final Query existingQuery = query;
+    return Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+  }
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into an aggregation query run without an
+   * identifiable subject. Such a query cannot tell whose restricted memory a document is and must
+   * fail closed: only memories everyone may read are aggregated. Non-memory documents are
+   * unaffected.
+   */
+  private Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((ElasticQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
   }
 
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
@@ -106,6 +166,25 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
+      if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
+        SearchSettings searchSettings =
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+        ElasticSearchSourceBuilderFactory searchBuilderFactory =
+            new ElasticSearchSourceBuilderFactory(searchSettings);
+        ElasticSearchRequestBuilder textQueryBuilder =
+            searchBuilderFactory.getSearchSourceBuilderV2(
+                indexName, request.getQueryText(), 0, 0, false, false);
+        Query textQuery = textQueryBuilder.query();
+        if (textQuery != null) {
+          if (query != null) {
+            final Query finalQuery = query;
+            query = Query.of(q -> q.bool(b -> b.must(finalQuery).must(textQuery)));
+          } else {
+            query = textQuery;
+          }
+        }
+      }
+
       if (request.getDeleted() != null) {
         Query deletedQuery =
             Query.of(q -> q.term(t -> t.field("deleted").value(request.getDeleted())));
@@ -118,64 +197,27 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
-      if (query != null) {
-        searchRequestBuilder.query(query);
-      }
+      searchRequestBuilder.query(restrictToOrgWideMemories(query));
 
       String aggregationField =
-          SearchSourceBuilderFactory.remapAggregationField(request.getFieldName());
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
         throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
       }
 
       int bucketSize = request.getSize();
       String includeValue = request.getFieldValue().toLowerCase();
+      boolean isSearchPattern = SearchUtils.isBestMatchSearchPattern(includeValue);
 
       Map<String, Aggregation> aggregations = new HashMap<>();
 
-      Aggregation termsAgg;
-
-      if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
-        List<String> topHitFields = request.getSourceFields();
-        int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
-
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                            t ->
-                                t.field(aggregationField)
-                                    .size(bucketSize)
-                                    .order(
-                                        Collections.singletonList(
-                                            NamedValue.of("_key", SortOrder.Asc)))
-                                    .include(tb -> tb.regexp(includeValue)))
-                        .aggregations(
-                            "top",
-                            Aggregation.of(
-                                th ->
-                                    th.topHits(
-                                        topHit ->
-                                            topHit
-                                                .size(topHitSize)
-                                                .source(
-                                                    s ->
-                                                        s.filter(
-                                                            f -> f.includes(topHitFields)))))));
+      if (isSearchPattern) {
+        buildBestMatchAggregations(
+            aggregations, aggregationField, includeValue, bucketSize, request);
       } else {
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                        t ->
-                            t.field(aggregationField)
-                                .size(bucketSize)
-                                .order(
-                                    Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
-                                .include(tb -> tb.regexp(includeValue))));
+        aggregations.put(
+            aggregationField, buildSingleAgg(aggregationField, includeValue, bucketSize, request));
       }
-
-      aggregations.put(aggregationField, termsAgg);
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -192,11 +234,64 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       }
 
       String responseJson = serializeSearchResponse(searchResponse);
+      if (isSearchPattern) {
+        responseJson =
+            SearchUtils.mergeBestMatchAggregations(
+                responseJson, aggregationField, bucketSize, mapper);
+      }
       return Response.status(Response.Status.OK).entity(responseJson).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
     }
+  }
+
+  private void buildBestMatchAggregations(
+      Map<String, Aggregation> aggregations,
+      String field,
+      String containsPattern,
+      int size,
+      AggregationRequest request) {
+    String escapedRaw = SearchUtils.extractRawSearchValue(containsPattern).replace(".", "\\.");
+    aggregations.put(SearchUtils.exactAggKey(field), buildSingleAgg(field, escapedRaw, 1, request));
+    aggregations.put(
+        SearchUtils.prefixAggKey(field), buildSingleAgg(field, escapedRaw + ".*", size, request));
+    aggregations.put(
+        SearchUtils.containsAggKey(field), buildSingleAgg(field, containsPattern, size, request));
+  }
+
+  private Aggregation buildSingleAgg(
+      String field, String includePattern, int size, AggregationRequest request) {
+    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
+      List<String> topHitFields = request.getSourceFields();
+      int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
+      return Aggregation.of(
+          a ->
+              a.terms(
+                      t ->
+                          t.field(field)
+                              .size(size)
+                              .order(
+                                  Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                              .include(tb -> tb.regexp(includePattern)))
+                  .aggregations(
+                      "top",
+                      Aggregation.of(
+                          th ->
+                              th.topHits(
+                                  topHit ->
+                                      topHit
+                                          .size(topHitSize)
+                                          .source(s -> s.filter(f -> f.includes(topHitFields)))))));
+    }
+    return Aggregation.of(
+        a ->
+            a.terms(
+                t ->
+                    t.field(field)
+                        .size(size)
+                        .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                        .include(tb -> tb.regexp(includePattern))));
   }
 
   @Override
@@ -217,7 +312,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
       searchRequestBuilder.index(indexName);
 
-      Query parsedQuery;
+      Query parsedQuery = null;
       if (query != null) {
         // Check if query string contains outer "query" wrapper and extract inner query
         if (query.trim().startsWith("{")) {
@@ -226,8 +321,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         } else {
           parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
         }
-        searchRequestBuilder.query(parsedQuery);
       }
+      searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -262,9 +357,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
       LOG.info(
           "Generic Aggregation - Aggregation results present: {}", aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info("Generic Aggregation - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject -> LOG.info("Generic Aggregation - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());
@@ -307,32 +401,9 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
-      // Apply RBAC conditions
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
-          if (parsedQuery != null) {
-            final Query existingQuery = parsedQuery;
-            Query combinedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-            parsedQuery = combinedQuery;
-          } else {
-            parsedQuery = rbacQuery;
-          }
-        }
-      }
+      parsedQuery = applyRbacQuery(parsedQuery, subjectContext);
 
-      if (parsedQuery != null) {
-        searchRequestBuilder.query(parsedQuery);
-      }
+      searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -368,10 +439,9 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       LOG.info(
           "Generic Aggregation with RBAC - Aggregation results present: {}",
           aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info(
-            "Generic Aggregation with RBAC - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject ->
+              LOG.info("Generic Aggregation with RBAC - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());
@@ -385,6 +455,17 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
+      throws IOException {
+    return aggregate(query, index, searchAggregation, filter, null);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot perform aggregation.");
@@ -430,14 +511,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       final Query finalParsedQuery = parsedQuery;
       final Query finalFilterQuery = filterQuery;
 
-      if (finalParsedQuery != null && finalFilterQuery != null) {
-        searchRequestBuilder.query(
-            q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)));
-      } else if (finalParsedQuery != null) {
-        searchRequestBuilder.query(finalParsedQuery);
-      } else if (finalFilterQuery != null) {
-        searchRequestBuilder.query(q -> q.bool(b -> b.filter(finalFilterQuery)));
+      Query combinedQuery = finalParsedQuery;
+      if (finalFilterQuery != null) {
+        combinedQuery =
+            finalParsedQuery != null
+                ? Query.of(q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)))
+                : Query.of(q -> q.bool(b -> b.filter(finalFilterQuery)));
       }
+      searchRequestBuilder.query(
+          restrictToOrgWideMemories(applyRbacQuery(combinedQuery, subjectContext)));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -534,6 +616,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   @Override
   public Response getEntityTypeCounts(
       org.openmetadata.schema.search.SearchRequest request, String index) throws IOException {
+    return getEntityTypeCounts(request, index, null);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request,
+      String index,
+      SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot perform get entity type counts");
       throw new IOException("ElasticSearch client is not available");
@@ -602,6 +693,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       // Resolve the index alias properly
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

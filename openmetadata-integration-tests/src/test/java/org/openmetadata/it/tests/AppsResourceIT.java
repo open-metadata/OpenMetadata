@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -81,8 +83,15 @@ public class AppsResourceIT {
   private void waitForAppJobCompletion(String appName) {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
     try {
+      // AppRunRecord.status is a lowercase enum (see appRunRecord.json: started, running,
+      // completed, failed, success, activeError, stopped, ...). Comparing with case-insensitive
+      // matchers — using uppercase here matches none of the real values and silently makes the
+      // wait a no-op. 5-minute ceiling covers an in-flight reindex from another test class
+      // (e.g. SearchIndexingFieldsParityIT triggers an "all entities" reindex that can take
+      // minutes); a 30s ceiling fell through to the catch and let the trigger Awaitility below
+      // hit its own 2-minute "already running" wall.
       Awaitility.await("Wait for app job completion: " + appName)
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofMinutes(5))
           .pollDelay(Duration.ofMillis(500))
           .pollInterval(Duration.ofSeconds(2))
           .ignoreExceptions()
@@ -98,9 +107,7 @@ public class AppsResourceIT {
                   return true;
                 }
                 String status = latestRun.getStatus().value();
-                return "SUCCESS".equals(status)
-                    || "FAILED".equals(status)
-                    || "COMPLETED".equals(status);
+                return !"running".equalsIgnoreCase(status) && !"started".equalsIgnoreCase(status);
               });
     } catch (org.awaitility.core.ConditionTimeoutException e) {
       // Best-effort wait — the app may be continuously running under parallel test load.
@@ -526,15 +533,15 @@ public class AppsResourceIT {
   void test_listApps_filterBySingleAgentType(TestNamespace ns) throws Exception {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
 
-    String appName1 = ns.prefix("testAppCollateAI");
-    String appName2 = ns.prefix("testAppMetadata");
+    String appName1 = ns.prefix("testAppMetadata1");
+    String appName2 = ns.prefix("testAppMetadata2");
 
     try {
       CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
           new CreateAppMarketPlaceDefinitionReq()
               .withName(appName1)
-              .withDisplayName("CollateAI App")
-              .withDescription("Test CollateAI app")
+              .withDisplayName("Metadata App 1")
+              .withDescription("Test Metadata app 1")
               .withFeatures("test features")
               .withDeveloper("Test Developer")
               .withDeveloperUrl("https://www.example.com")
@@ -546,12 +553,12 @@ public class AppsResourceIT {
               .withRuntime(new ScheduledExecutionContext().withEnabled(true))
               .withAppConfiguration(new HashMap<>())
               .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
 
       CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
           new CreateAppMarketPlaceDefinitionReq()
               .withName(appName2)
-              .withDisplayName("Metadata App")
+              .withDisplayName("Metadata App 2")
               .withDescription("Test Metadata app")
               .withFeatures("test features")
               .withDeveloper("Test Developer")
@@ -583,7 +590,7 @@ public class AppsResourceIT {
       App app1 =
           Apps.install()
               .name(marketPlaceDef1.getName())
-              .withDescription("CollateAI test app")
+              .withDescription("Metadata test app 1")
               .execute();
 
       App app2 =
@@ -593,148 +600,33 @@ public class AppsResourceIT {
               .execute();
 
       String responseJson =
-          httpClient.executeForString(HttpMethod.GET, "/v1/apps?agentType=CollateAI", null, null);
-      ResultList<App> apps =
-          JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
-
-      assertNotNull(apps);
-      assertNotNull(apps.getData());
-
-      boolean foundCollateAIApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
-      assertTrue(
-          foundCollateAIApp,
-          "CollateAI app should be found when filtering by CollateAI agent type");
-
-      responseJson =
           httpClient.executeForString(HttpMethod.GET, "/v1/apps?agentType=Metadata", null, null);
-      apps = JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
-
-      assertNotNull(apps);
-      assertNotNull(apps.getData());
-
-      boolean foundMetadataApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName2));
-      assertTrue(
-          foundMetadataApp, "Metadata app should be found when filtering by Metadata agent type");
-
-    } finally {
-      try {
-        Apps.uninstall(appName1, true);
-      } catch (Exception ignored) {
-      }
-      try {
-        Apps.uninstall(appName2, true);
-      } catch (Exception ignored) {
-      }
-    }
-  }
-
-  @Test
-  void test_listApps_filterByMultipleAgentTypes(TestNamespace ns) throws Exception {
-    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-
-    String appName1 = ns.prefix("testAppCollateAI2");
-    String appName2 = ns.prefix("testAppMetadata2");
-    String appName3 = ns.prefix("testAppTierAgent");
-
-    try {
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName1)
-              .withDisplayName("CollateAI App 2")
-              .withDescription("Test CollateAI app 2")
-              .withFeatures("test features")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
-
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName2)
-              .withDisplayName("Metadata App 2")
-              .withDescription("Test Metadata app 2")
-              .withFeatures("test features")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
-
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq3 =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName3)
-              .withDisplayName("Tier Agent App")
-              .withDescription("Test Tier Agent app")
-              .withFeatures("test features")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAITierAgent);
-
-      AppMarketPlaceDefinition marketPlaceDef1 =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq1,
-              AppMarketPlaceDefinition.class);
-
-      AppMarketPlaceDefinition marketPlaceDef2 =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq2,
-              AppMarketPlaceDefinition.class);
-
-      AppMarketPlaceDefinition marketPlaceDef3 =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq3,
-              AppMarketPlaceDefinition.class);
-
-      Apps.install().name(marketPlaceDef1.getName()).execute();
-      Apps.install().name(marketPlaceDef2.getName()).execute();
-      Apps.install().name(marketPlaceDef3.getName()).execute();
-
-      String responseJson =
-          httpClient.executeForString(
-              HttpMethod.GET, "/v1/apps?agentType=CollateAI,CollateAITierAgent", null, null);
       ResultList<App> apps =
           JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
 
       assertNotNull(apps);
       assertNotNull(apps.getData());
 
-      boolean foundCollateAIApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
-      boolean foundTierAgentApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName3));
-
+      boolean foundApp1 = apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
+      boolean foundApp2 = apps.getData().stream().anyMatch(app -> app.getName().equals(appName2));
       assertTrue(
-          foundCollateAIApp || foundTierAgentApp,
-          "Should find apps matching CollateAI or CollateAITierAgent agent types");
+          foundApp1 && foundApp2,
+          "Both Metadata apps should be found when filtering by Metadata agent type");
+
+      // Exclusion coverage: a non-matching agent type must not return the Metadata apps,
+      // so a no-op filter that returns everything fails here.
+      String excludedJson =
+          httpClient.executeForString(
+              HttpMethod.GET, "/v1/apps?agentType=NonMatchingType", null, null);
+      ResultList<App> excluded =
+          JsonUtils.readValue(excludedJson, new TypeReference<ResultList<App>>() {});
+      boolean app1Excluded =
+          excluded.getData().stream().noneMatch(app -> app.getName().equals(appName1));
+      boolean app2Excluded =
+          excluded.getData().stream().noneMatch(app -> app.getName().equals(appName2));
+      assertTrue(
+          app1Excluded && app2Excluded,
+          "Metadata apps must be excluded when filtering by a non-matching agent type");
 
     } finally {
       try {
@@ -743,10 +635,6 @@ public class AppsResourceIT {
       }
       try {
         Apps.uninstall(appName2, true);
-      } catch (Exception ignored) {
-      }
-      try {
-        Apps.uninstall(appName3, true);
       } catch (Exception ignored) {
       }
     }
@@ -758,7 +646,7 @@ public class AppsResourceIT {
 
     String responseJson =
         httpClient.executeForString(
-            HttpMethod.GET, "/v1/apps?agentType= CollateAI , Metadata ", null, null);
+            HttpMethod.GET, "/v1/apps?agentType= Metadata , NonExistent ", null, null);
     ResultList<App> apps =
         JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
 
@@ -799,7 +687,7 @@ public class AppsResourceIT {
 
     String responseJson =
         httpClient.executeForString(
-            HttpMethod.GET, "/v1/apps?agentType=CollateAI,Metadata&limit=50", null, null);
+            HttpMethod.GET, "/v1/apps?agentType=Metadata&limit=50", null, null);
     ResultList<App> apps =
         JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
 
@@ -1147,5 +1035,299 @@ public class AppsResourceIT {
       } catch (Exception ignored) {
       }
     }
+  }
+
+  /**
+   * Verifies that clearing an external app's cron schedule propagates the null
+   * scheduleInterval to the bound IngestionPipeline.
+   *
+   * <p>Bug: updateAppConfig did not call deriveInterval, so the pipeline kept the
+   * stale schedule even after the app schedule was cleared.
+   *
+   * <p>Fix: AbstractNativeApplication.updateAppConfig now syncs scheduleInterval
+   * via deriveInterval(app.getAppSchedule()) before persisting the pipeline.
+   */
+  @Test
+  void test_externalAppScheduleSync_clearingCronNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedSync");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          initialCron,
+          pipeline.getAirflowConfig().getScheduleInterval(),
+          "Bound pipeline should have the initial cron schedule");
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String clearCronPatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/scheduleTimeline\",\"value\":\"None\"},"
+              + "{\"op\":\"remove\",\"path\":\"/appSchedule/cronExpression\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          clearCronPatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      IngestionPipeline pipelineAfterClear =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterClear.getAirflowConfig().getScheduleInterval(),
+          "scheduleInterval must be null after app schedule is cleared");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  /**
+   * Verifies that changing an external app's cron expression updates the bound
+   * IngestionPipeline's scheduleInterval to the new value.
+   *
+   * <p>A schedule change must also flip the pipeline's requiresRedeployment flag,
+   * which is detected by IngestionPipelineRepository.hasScheduleChanged comparing
+   * the old and new scheduleInterval values.
+   */
+  @Test
+  void test_externalAppScheduleSync_changingCronUpdatedPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedChange");
+    String initialCron = "17 4 * * *";
+    String updatedCron = "30 2 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String changeCronPatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/cronExpression\",\"value\":\""
+              + updatedCron
+              + "\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          changeCronPatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterChange =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          updatedCron,
+          pipelineAfterChange.getAirflowConfig().getScheduleInterval(),
+          "scheduleInterval must reflect the updated cron after patching the app schedule");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_removingAppScheduleNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedRemove");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          initialCron,
+          pipeline.getAirflowConfig().getScheduleInterval(),
+          "Bound pipeline should have the initial cron schedule");
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String removeSchedulePatch = "[{\"op\":\"remove\",\"path\":\"/appSchedule\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          removeSchedulePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      IngestionPipeline pipelineAfterRemove =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterRemove.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null after removing appSchedule");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_noneTimelineNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedNone");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String setNoneTimelinePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/scheduleTimeline\",\"value\":\"None\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          setNoneTimelinePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterNone =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterNone.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when scheduleTimeline is None, even if cronExpression remains");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_nullScheduleNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedNullTL");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String removeSchedulePatch = "[{\"op\":\"remove\",\"path\":\"/appSchedule\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          removeSchedulePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterNullSchedule =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterNullSchedule.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when appSchedule is removed");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  private AppMarketPlaceDefinition createExternalAppMarketplace(
+      HttpClient httpClient, String appName) throws Exception {
+    CreateAppMarketPlaceDefinitionReq req =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName(appName)
+            .withDisplayName("External Schedule Sync Test App")
+            .withDescription("Validates that appSchedule changes propagate to IngestionPipeline")
+            .withFeatures("schedule sync validation")
+            .withDeveloper("Test Developer")
+            .withDeveloperUrl("https://www.example.com")
+            .withPrivacyPolicyUrl("https://www.example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName("org.openmetadata.service.apps.AbstractNativeApplication")
+            .withSourcePythonClass("metadata.applications.example.HelloPipelines")
+            .withAppType(AppType.External)
+            .withScheduleType(ScheduleType.ScheduledOrManual)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(new HashMap<>())
+            .withPermission(NativeAppPermission.All);
+
+    return httpClient.execute(
+        HttpMethod.POST, "/v1/apps/marketplace", req, AppMarketPlaceDefinition.class);
   }
 }

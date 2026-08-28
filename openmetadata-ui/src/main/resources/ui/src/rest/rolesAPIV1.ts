@@ -20,7 +20,7 @@ import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Function } from '../generated/type/function';
 import { Paging } from '../generated/type/paging';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const patchConfig = {
@@ -183,4 +183,22 @@ export const validateRuleCondition = async (condition: string) => {
    * Returning directly response because we will need status code as well
    */
   return response;
+};
+
+export const searchRoles = async (
+  query: string,
+  limit = 25
+): Promise<Role[]> => {
+  const response = await APIClient.get<{ data: Role[]; paging: Paging }>(
+    '/roles/search',
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
 };

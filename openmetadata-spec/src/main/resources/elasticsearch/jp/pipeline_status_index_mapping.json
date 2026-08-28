@@ -19,6 +19,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "pipelineId": {
         "type": "keyword",
         "fields": {

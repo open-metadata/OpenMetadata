@@ -11,9 +11,10 @@
 """
 MongoDB adaptor for the NoSQL profiler.
 """
+
 import json
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -41,7 +42,7 @@ class AggregationFunction(Enum):
 
 
 class Executable(BaseModel):
-    def to_executable(self, client: MongoClient) -> Union[CommandCursor, Cursor]:
+    def to_executable(self, client: MongoClient) -> Union[CommandCursor, Cursor]:  # noqa: UP007
         raise NotImplementedError
 
 
@@ -49,7 +50,7 @@ class Query(Executable):
     database: str
     collection: str
     filter: dict = Field(default_factory=dict)
-    limit: Optional[int] = None
+    limit: Optional[int] = None  # noqa: UP045
 
     def to_executable(self, client: MongoClient) -> Cursor:
         db = client[self.database]
@@ -64,7 +65,7 @@ class Aggregation(Executable):
     database: str
     collection: str
     column: str
-    aggregations: List[AggregationFunction]
+    aggregations: List[AggregationFunction]  # noqa: UP006
 
     def to_executable(self, client: MongoClient) -> CommandCursor:
         db = client[self.database]
@@ -74,10 +75,7 @@ class Aggregation(Executable):
                 {
                     "$group": {
                         "_id": None,
-                        **{
-                            a.name.lower(): {a.value: f"${self.column}"}
-                            for a in self.aggregations
-                        },
+                        **{a.name.lower(): {a.value: f"${self.column}"} for a in self.aggregations},
                     }
                 }
             ]
@@ -95,9 +93,7 @@ class MongoDB(NoSQLAdaptor):
         collection = db[table.name.root]
         return collection.count_documents({})
 
-    def scan(
-        self, table: Table, columns: List[Column], limit: int
-    ) -> List[Dict[str, any]]:
+    def scan(self, table: Table, columns: List[Column], limit: int) -> List[Dict[str, any]]:  # noqa: UP006
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
@@ -106,13 +102,11 @@ class MongoDB(NoSQLAdaptor):
             )
         )
 
-    def query(
-        self, table: Table, columns: List[Column], query: any, limit: int
-    ) -> List[Dict[str, any]]:
+    def query(self, table: Table, columns: List[Column], query: any, limit: int) -> List[Dict[str, any]]:  # noqa: UP006
         try:
             json_query = json.loads(query)
         except json.JSONDecodeError:
-            raise ValueError("Invalid JSON query")
+            raise ValueError("Invalid JSON query")  # noqa: B904
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
@@ -125,8 +119,8 @@ class MongoDB(NoSQLAdaptor):
         self,
         table: Table,
         column: SQALikeColumn,
-        aggregate_functions: List[AggregationFunction],
-    ) -> Dict[str, Union[int, float]]:
+        aggregate_functions: List[AggregationFunction],  # noqa: UP006
+    ) -> Dict[str, Union[int, float]]:  # noqa: UP006, UP007
         """
         Get the aggregate functions for a column in a table
         Returns:
@@ -162,5 +156,5 @@ class MongoDB(NoSQLAdaptor):
     def min(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
         return AggregationFunction.MIN
 
-    def execute(self, query: Executable) -> List[Dict[str, any]]:
+    def execute(self, query: Executable) -> List[Dict[str, any]]:  # noqa: UP006
         return list(query.to_executable(self.client))

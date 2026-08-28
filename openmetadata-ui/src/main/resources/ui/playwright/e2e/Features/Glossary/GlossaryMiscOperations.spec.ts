@@ -17,6 +17,11 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
+  fillDeleteConfirmationIfPresent,
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
+import {
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
@@ -95,9 +100,9 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       // Confirm deletion
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -158,14 +163,14 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for rename modal to appear
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      const renameModal = page.getByTestId('entity-name-modal');
+      await expect(renameModal).toBeVisible();
 
       const newName = 'RenamedParent';
-      // Use getByLabel to target the Name input in the modal
-      await page.getByLabel('Name', { exact: true }).fill(newName);
+      await renameModal.getByTestId('name').fill(newName);
 
       const renameRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByRole('button', { name: 'Save' }).click();
+      await renameModal.getByTestId('save-button').click();
       await renameRes;
 
       // Navigate to child term and verify its FQN includes new parent name
@@ -245,9 +250,9 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       // Confirm deletion
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -257,8 +262,12 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await afterDeleteResponse;
 
       // Verify term is deleted from glossary
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+      await page.goto(
+        `/glossary/${getEncodedFqn(
+          glossary.responseData.fullyQualifiedName as string
+        )}`
+      );
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
@@ -386,9 +395,9 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       // Confirm deletion
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 

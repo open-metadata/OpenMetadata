@@ -12,7 +12,6 @@
  */
 
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -43,13 +42,11 @@ import { getDataModels } from '../../../../rest/dashboardAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   dataProductTableObject,
   descriptionTableObject,
@@ -61,6 +58,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { DataModelTableProps } from './DataModelDetails.interface';
 
 const DataModelTable = ({

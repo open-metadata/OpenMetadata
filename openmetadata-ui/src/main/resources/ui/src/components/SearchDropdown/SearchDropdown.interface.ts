@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
@@ -34,6 +35,13 @@ export interface SearchDropdownProps {
   showSelectedCounts?: boolean; // Show counts instead of labels for selected items
   hideSearchBar?: boolean; // Determines if the search bar should be hidden. Default is false
   singleSelect?: boolean; // Enable single-select mode with radio buttons instead of checkboxes
+  // When true, every selection is applied to the query immediately (no Update button).
+  // The dropdown stays open for multi-select and closes after a single-select pick.
+  immediateApply?: boolean;
+  // Helper text shown at the bottom of the dropdown (e.g. "Pick values to refine.").
+  // Replaces the Update/Close footer when immediateApply is enabled.
+  helperText?: string;
+  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
 
 export interface SearchDropdownOption {
@@ -42,4 +50,5 @@ export interface SearchDropdownOption {
   labelKeyOptions?: Record<string, string | number | boolean>;
   count?: number;
   description?: string;
+  icon?: ReactNode;
 }

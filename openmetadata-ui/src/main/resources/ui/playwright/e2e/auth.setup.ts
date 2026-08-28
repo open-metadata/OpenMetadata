@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test as setup } from '@playwright/test';
+import { mkdir, writeFile } from 'fs/promises';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -19,9 +20,23 @@ import {
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
-import { getApiContext, uuid } from '../utils/common';
+import {
+  disableEtagConditionalReads,
+  getApiContext,
+  getToken,
+  uuid,
+} from '../utils/common';
 import { loginAsAdmin } from '../utils/initialSetup';
 
+/**
+ * Opt every E2E session out of client-side conditional (If-None-Match) reads.
+ *
+ * The server ETag only covers the entity's version/updatedAt, so it does not change for
+ * relationship-only or child mutations (followers, votes, customMetrics, testSuite). A refetch
+ * racing such a mutation can be answered "not modified" and render a stale body, which surfaces
+ * as flaky assertions across the suite. Setting the flag here persists it into storageState, so
+ * every spec in both OpenMetadata and Collate inherits it without a per-test helper.
+ */
 const adminFile = 'playwright/.auth/admin.json';
 const dataConsumerFile = 'playwright/.auth/dataConsumer.json';
 const dataStewardFile = 'playwright/.auth/dataSteward.json';
@@ -30,6 +45,7 @@ const editTagsFile = 'playwright/.auth/editTags.json';
 const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
 const viewOnlyFile = 'playwright/.auth/viewOnly.json';
 const ownerFile = 'playwright/.auth/owner.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
 
 const userUUID = uuid();
 
@@ -111,9 +127,66 @@ setup('authenticate all users', async ({ browser }) => {
     const newAdminPage = await browser.newPage();
     await admin.login(newAdminPage);
 
-    await newAdminPage.waitForURL('**/my-data');
+    await newAdminPage.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data'
+    );
+
+    await mkdir('playwright/.auth', { recursive: true });
+    await writeFile(
+      adminApiTokenFile,
+      JSON.stringify({ token: await getToken(newAdminPage) }),
+      { mode: 0o600 }
+    );
 
     const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    // TODO(collate#4484): Remove this block once the auth-config env reconcile bug is fixed.
+    // AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER is ignored on an existing/upgraded DB
+    // (the authenticationConfiguration settings row is seeded once and never reconciled),
+    // so the per-user session cap stays at the default of 5. That evicts the long-lived
+    // storageState session and causes 401 "Invalid session" on reused bearer tokens.
+    // Raise it at runtime via the security-config endpoint as a temporary workaround.
+    // Uses GET + PUT (not PATCH): PATCH /security/config runs a validator that rejects
+    // the basic-auth provider, whereas PUT persists + reloads without it. The unused
+    // oidc/ldap/saml blocks are nulled before the PUT because PUT's bean validation
+    // rejects their empty stubs (@NotNull ldap host/port/...); nulling them also avoids
+    // re-persisting the OIDC secret / LDAP password that GET returns masked. Basic auth
+    // does not use these blocks. Guarded to provider === 'basic'.
+    // https://github.com/open-metadata/openmetadata-collate/issues/4484
+    const securityConfigResponse = await apiContext.get(
+      '/api/v1/system/security/config'
+    );
+    if (!securityConfigResponse.ok()) {
+      // 404 == older build without the endpoint, tolerate it. Any other non-2xx
+      // (401/403/5xx) is a real failure that would otherwise silently leave the
+      // cap at 5, so surface it instead of skipping.
+      if (securityConfigResponse.status() !== 404) {
+        throw new Error(
+          `collate#4484 workaround: GET security config failed - HTTP ${securityConfigResponse.status()} ${await securityConfigResponse.text()}`
+        );
+      }
+    } else {
+      const securityConfig = await securityConfigResponse.json();
+      const authConfig = securityConfig?.authenticationConfiguration;
+      if (
+        authConfig?.provider === 'basic' &&
+        authConfig?.maxActiveSessionsPerUser !== 1000
+      ) {
+        authConfig.maxActiveSessionsPerUser = 1000;
+        authConfig.oidcConfiguration = null;
+        authConfig.ldapConfiguration = null;
+        authConfig.samlConfiguration = null;
+        const putResponse = await apiContext.put(
+          '/api/v1/system/security/config',
+          { data: securityConfig }
+        );
+        if (!putResponse.ok()) {
+          throw new Error(
+            `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${putResponse.status()} ${await putResponse.text()}`
+          );
+        }
+      }
+    }
 
     // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
     await Promise.allSettled([
@@ -156,46 +229,54 @@ setup('authenticate all users', async ({ browser }) => {
     // Wait for indexedDB databases to be available
     await adminPage.waitForFunction(() => indexedDB.databases());
 
-    // Additional wait to ensure auth state is persisted
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for auth state to be persisted to indexedDB
     await adminPage.waitForTimeout(2000);
 
     // Save admin state
+    await disableEtagConditionalReads(newAdminPage);
     await newAdminPage
       .context()
       .storageState({ path: adminFile, indexedDB: true });
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
+    await disableEtagConditionalReads(dataConsumerPage);
     await dataConsumerPage
       .context()
       .storageState({ path: dataConsumerFile, indexedDB: true });
 
     await dataSteward.login(dataStewardPage);
+    await disableEtagConditionalReads(dataStewardPage);
     await dataStewardPage
       .context()
       .storageState({ path: dataStewardFile, indexedDB: true });
 
     await editDescriptionUser.login(editDescriptionPage);
+    await disableEtagConditionalReads(editDescriptionPage);
     await editDescriptionPage
       .context()
       .storageState({ path: editDescriptionFile, indexedDB: true });
 
     await editTagsUser.login(editTagsPage);
+    await disableEtagConditionalReads(editTagsPage);
     await editTagsPage
       .context()
       .storageState({ path: editTagsFile, indexedDB: true });
 
     await editGlossaryTermUser.login(editGlossaryTermPage);
+    await disableEtagConditionalReads(editGlossaryTermPage);
     await editGlossaryTermPage
       .context()
       .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
     await viewOnlyUser.login(viewOnlyPage);
+    await disableEtagConditionalReads(viewOnlyPage);
     await viewOnlyPage
       .context()
       .storageState({ path: viewOnlyFile, indexedDB: true });
 
     await ownerUser.login(ownerPage);
+    await disableEtagConditionalReads(ownerPage);
     await ownerPage
       .context()
       .storageState({ path: ownerFile, indexedDB: true });
@@ -206,7 +287,6 @@ setup('authenticate all users', async ({ browser }) => {
       await newAdminPage.close();
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Error during authentication setup:', error);
 
     throw error;

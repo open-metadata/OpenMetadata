@@ -11,20 +11,26 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
+import { ChartClass } from '../support/entity/ChartClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../support/entity/DirectoryClass';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { FileClass } from '../support/entity/FileClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../support/entity/SpreadsheetClass';
+import { StoredProcedureClass } from '../support/entity/StoredProcedureClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { WorksheetClass } from '../support/entity/WorksheetClass';
 import {
   clickOutside,
   getApiContext,
@@ -84,9 +90,9 @@ export type LineageEdge = {
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-column-btn"]:not([data-selected])')
+    .waitFor();
   await clickOutside(page); // close Layer popover
 };
 
@@ -95,7 +101,7 @@ export const activateColumnLayer = async (page: Page) => {
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
-    .evaluate((el) => el.classList.contains('Mui-selected'));
+    .evaluate((el) => el.hasAttribute('data-selected'));
 
   if (isColumnLayerSelected) {
     await clickOutside(page);
@@ -111,15 +117,14 @@ export const editLineageClick = async (page: Page) => {
   await expect(page.getByTestId('edit-lineage')).toBeVisible();
 
   await page.getByTestId('edit-lineage').click();
-  await page.waitForTimeout(1); // wait for the edit mode to activate
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for edit mode to activate
+  await page.waitForTimeout(1);
 };
 
 export const editLineage = async (page: Page) => {
   await editLineageClick(page);
 
-  await expect(
-    page.getByTestId('table_search_index-draggable-icon')
-  ).toBeVisible();
+  await expect(page.getByTestId('table-draggable-icon')).toBeVisible();
 };
 
 export const performZoomOut = async (page: Page, xTimes = 10) => {
@@ -184,8 +189,10 @@ export const deleteEdge = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 };
 
@@ -194,11 +201,20 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- asynchronous ELK redraw has no browser-visible completion signal
   await page.waitForTimeout(1000);
-  const destinationElement = await page.waitForSelector(destinationSelector);
-  await page.hover(originSelector);
+  const originElement = page.locator(originSelector);
+  const destinationElement = page.locator(destinationSelector);
+  await Promise.all([originElement.waitFor(), destinationElement.waitFor()]);
+  await destinationElement.scrollIntoViewIfNeeded();
+  await originElement.hover();
   await page.mouse.down();
-  const box = (await destinationElement.boundingBox()) as DOMRect;
+  const box = await destinationElement.boundingBox();
+  if (!box) {
+    throw new Error(
+      `Unable to locate lineage destination ${destinationSelector}`
+    );
+  }
   const x = box.x + 250;
   const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
@@ -214,8 +230,8 @@ export const dragConnection = async (
   const selector = isColumnLineage
     ? '.lineage-column-node-handle'
     : '.lineage-node-handle';
-  const sourceNode = page.locator(`[data-testid="${sourceId}"]`);
-  const targetNode = page.locator(`[data-testid="${targetId}"]`);
+  const sourceNode = page.getByTestId(sourceId);
+  const targetNode = page.getByTestId(targetId);
   const sourceHandle = sourceNode.locator(
     `${selector}.react-flow__handle-right`
   );
@@ -223,17 +239,18 @@ export const dragConnection = async (
     `${selector}.react-flow__handle-left`
   );
 
-  const lineageRes = page.waitForResponse('/api/v1/lineage');
   await sourceHandle.dispatchEvent('click');
   await targetHandle.dispatchEvent('click');
-
-  await lineageRes;
 };
 
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
-  await page.waitForTimeout(500);
+};
+
+export const fitToScreen = async (page: Page) => {
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -253,7 +270,6 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
-
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
   );
@@ -271,11 +287,18 @@ export const connectEdgeBetweenNodes = async (
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
+
+  await expect(
+    page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+  ).toBeVisible();
 };
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.displayName') ?? '';
+  const name =
+    get(node, 'entityResponseData.displayName') ??
+    get(node, 'entityResponseData.name') ??
+    '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
   await lineageNode.waitFor({ state: 'attached' });
@@ -290,6 +313,20 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   await expect(entityHeaderName).toHaveText(name);
 };
 
+const verifyNodeDepth = async (
+  page: Page,
+  node: EntityClass,
+  expectedDepth: number
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const lineageNode = page.getByTestId(`lineage-node-${nodeFqn}`);
+  await lineageNode.waitFor({ state: 'attached' });
+  await lineageNode.scrollIntoViewIfNeeded();
+  await expect(lineageNode).toBeVisible();
+  const nodeDepth = await lineageNode.getAttribute('data-nodedepth');
+  expect(Number(nodeDepth)).toBe(expectedDepth);
+};
+
 export const performExpand = async (
   page: Page,
   node: EntityClass,
@@ -301,15 +338,29 @@ export const performExpand = async (
   const nodeLocator = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
   await nodeLocator.hover();
   const expandBtn = page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .getByTestId(`lineage-node-${nodeFqn}`)
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('plus-icon');
+
+  const existingNodeDepth = Number(
+    await page
+      .getByTestId(`lineage-node-${nodeFqn}`)
+      .getAttribute('data-nodedepth')
+  );
 
   if (newNode) {
     const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
     await expandBtn.dispatchEvent('click');
     await expandRes;
+
+    // perform a zoom out to have everything in view
+    await performZoomOut(page, 5);
     await verifyNodePresent(page, newNode);
+    await verifyNodeDepth(
+      page,
+      newNode,
+      upstream ? existingNodeDepth - 1 : existingNodeDepth + 1
+    );
   }
 };
 
@@ -326,7 +377,7 @@ export const performCollapse = async (
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('minus-icon');
 
-  await collapseBtn.click();
+  await collapseBtn.dispatchEvent('click');
 
   for (const entity of hiddenEntity) {
     const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
@@ -372,6 +423,8 @@ export const setupEntitiesForLineage = async (
   currentEntity:
     | TableClass
     | DashboardClass
+    | ChartClass
+    | StoredProcedureClass
     | TopicClass
     | MlModelClass
     | ContainerClass
@@ -379,10 +432,16 @@ export const setupEntitiesForLineage = async (
     | ApiEndpointClass
     | MetricClass
     | DashboardDataModelClass
+    | DirectoryClass
+    | FileClass
+    | SpreadsheetClass
+    | WorksheetClass
 ) => {
   const entities = [
     new TableClass(),
     new DashboardClass(),
+    new ChartClass(),
+    new StoredProcedureClass(),
     new TopicClass(),
     new MlModelClass(),
     new ContainerClass(),
@@ -390,6 +449,10 @@ export const setupEntitiesForLineage = async (
     new ApiEndpointClass(),
     new MetricClass(),
     new DashboardDataModelClass(),
+    new DirectoryClass(),
+    new FileClass(),
+    new SpreadsheetClass(),
+    new WorksheetClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
@@ -413,7 +476,7 @@ export const editPipelineEdgeDescription = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass,
-  pipelineData: ResponseDataType,
+  _pipelineData: ResponseDataType,
   description: string
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
@@ -452,7 +515,7 @@ export const verifyPipelineDataInDrawer = async (
     .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.getByTestId('edge-header-title')).toBeVisible();
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
@@ -470,7 +533,7 @@ export const verifyPipelineDataInDrawer = async (
 
     await fromNode.visitEntityPage(page);
   } else {
-    await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
+    await page.getByTestId('drawer-close-icon').click();
   }
 };
 
@@ -487,7 +550,9 @@ export const applyPipelineFromModal = async (
   );
 
   await clickEdgeBetweenNodes(page, fromNode, toNode);
-  await page.getByTestId('add-pipeline').click();
+  const addPipelineBtn = page.getByTestId('add-pipeline');
+  await addPipelineBtn.waitFor({ state: 'visible' });
+  await addPipelineBtn.dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -505,7 +570,7 @@ export const applyPipelineFromModal = async (
   await page.click('[data-testid="save-button"]');
   await saveRes;
 
-  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+  await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',
   });
 };
@@ -531,14 +596,12 @@ export const addColumnLineage = async (
   toColumnNode: string,
   exitEditMode = true
 ) => {
-  const lineageRes = page.waitForResponse('/api/v1/lineage');
   await dragConnection(
     page,
     `column-${fromColumnNode}`,
     `column-${toColumnNode}`,
     true
   );
-  await lineageRes;
 
   await page.getByTestId(`column-${toColumnNode}`).click();
 
@@ -562,11 +625,23 @@ export const removeColumnLineage = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 
-  await editLineageClick(page);
+  // Reload before asserting. removeColumnEdge optimistically mutates local
+  // React state (setEntityLineage / removeEdgeById / setColumnsHavingLineage),
+  // so the edge disappears from the DOM regardless of what the server did.
+  // Only a fresh /api/v1/lineage/getLineage response proves the removal
+  // actually persisted.
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.reload();
+  await lineageRes;
+
+  await waitForAllLoadersToDisappear(page);
+  await activateColumnLayer(page);
 
   await expect(
     page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
@@ -582,6 +657,52 @@ export const visitLineageTab = async (page: Page) => {
   await page.getByRole('button', { name: 'Full Screen View' }).first().click();
   const pane = page.locator('.react-flow__pane');
   await pane.click({ position: { x: 0, y: 0 } });
+};
+
+export const getEntityColumns = (
+  entity: EntityClass,
+  entityName: string
+): Array<{ name: string; fullyQualifiedName?: string }> => {
+  if (entityName === 'table' || entityName === 'dashboardDataModel') {
+    return get(entity, 'entityResponseData.columns', []);
+  } else if (entityName === 'topic') {
+    return get(entity, 'entityResponseData.messageSchema.schemaFields', []);
+  } else if (entityName === 'dashboard') {
+    return get(entity, 'entityResponseData.charts', []);
+  } else if (entityName === 'container') {
+    return get(entity, 'entityResponseData.dataModel.columns', []);
+  } else if (entityName === 'apiEndpoint') {
+    const requestSchema = get(
+      entity,
+      'entityResponseData.requestSchema.schemaFields',
+      []
+    );
+    const responseSchema = get(
+      entity,
+      'entityResponseData.responseSchema.schemaFields',
+      []
+    );
+    const schema = responseSchema.length > 0 ? responseSchema : requestSchema;
+
+    return isEmpty(schema) ? [] : schema;
+  } else if (entityName === 'mlModel') {
+    return get(entity, 'entityResponseData.mlFeatures', []);
+  } else if (entityName === 'searchIndex') {
+    return get(entity, 'entityResponseData.fields', []);
+  }
+
+  return [];
+};
+
+export const openImpactAnalysisTab = async (page: Page) => {
+  const impactAnalysisTab = page.getByRole('tab', {
+    name: 'Impact Analysis',
+  });
+
+  await expect(impactAnalysisTab).toBeVisible();
+  await impactAnalysisTab.scrollIntoViewIfNeeded();
+  await impactAnalysisTab.click();
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addPipelineBetweenNodes = async (
@@ -638,9 +759,9 @@ export const fillLineageConfigForm = async (
 
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"].Mui-selected'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-column-btn"][data-selected]')
+    .waitFor();
   await clickOutside(page); // Close Layer popover
 };
 
@@ -655,17 +776,18 @@ export const getLineageCSVData = async (page: Page) => {
 
   await page.getByTestId('export-button').click();
 
-  await page.waitForSelector(
-    '[data-testid="export-entity-modal"] #submit-button',
-    {
+  await page
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 
@@ -695,17 +817,7 @@ export const getLineageCSVData = async (page: Page) => {
 export const verifyExportLineageCSV = async (
   page: Page,
   currentEntity: EntityClass,
-  entities: readonly [
-    TableClass,
-    DashboardClass,
-    TopicClass,
-    MlModelClass,
-    ContainerClass,
-    SearchIndexClass,
-    ApiEndpointClass,
-    MetricClass,
-    DashboardDataModelClass
-  ],
+  entities: EntityClass[],
   pipeline: PipelineClass
 ) => {
   const parsedData = await getLineageCSVData(page);
@@ -751,32 +863,66 @@ export const verifyExportLineagePNG = async (
 
   await page.getByTestId('export-button').click();
 
-  await page.waitForSelector(
-    '[data-testid="export-entity-modal"] #submit-button',
-    {
+  await page
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
-    await page.locator('.ant-select-item[title="PNG"]').click();
+    await page.getByRole('option', { name: 'PNG' }).click();
   }
 
-  await expect(
-    page.getByTestId('export-type-select').getByText('PNGBeta')
-  ).toBeVisible();
+  await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
-    ),
-  ]);
+  // If the client-side render throws, no download event ever fires and the wait
+  // below expires with nothing to say. Capture page errors so a silent exception
+  // is reported as the cause instead of an anonymous 120s timeout; a genuinely
+  // slow render still surfaces the original timeout untouched.
+  const pageErrors: string[] = [];
+  const collectPageError = (error: Error) =>
+    pageErrors.push(error.stack ?? error.message);
+  page.on('pageerror', collectPageError);
 
-  const filePath = await download.path();
+  try {
+    const [download] = await Promise.all([
+      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+      // render enough headroom before the download event fires.
+      page.waitForEvent('download', { timeout: 120_000 }),
+      page.click(
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
+      ),
+    ]);
 
-  expect(filePath).not.toBeNull();
+    const filePath = await download.path();
+
+    expect(filePath).not.toBeNull();
+  } catch (error) {
+    // Only the download wait is ambiguous about its cause. A click or selector
+    // failure already says what went wrong, so a stray page error must never
+    // replace it — and even for a timeout the original message is kept and the
+    // page errors appended, so a slow render still reads as a slow render.
+    const isDownloadTimeout =
+      error instanceof Error &&
+      error.message.includes('waiting for event "download"');
+
+    if (isDownloadTimeout && pageErrors.length > 0) {
+      throw new Error(
+        `${
+          error.message
+        }\n\nThe page also threw during the export, which may be the real cause:\n  ${pageErrors.join(
+          '\n  '
+        )}`
+      );
+    }
+
+    throw error;
+  } finally {
+    page.off('pageerror', collectPageError);
+  }
 };
 
 export const verifyColumnLineageInCSV = async (
@@ -811,9 +957,7 @@ export const verifyColumnLineageInCSV = async (
 export const verifyLineageConfig = async (page: Page) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.waitForSelector('.ant-modal-content', {
-    state: 'visible',
-  });
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
 
   await page.getByTestId('field-upstream').fill('-1');
   await page.getByTestId('field-downstream').fill('-1');
@@ -871,10 +1015,16 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
-  await page
+  // React Flow mounts nodes after its own layout pass, which runs well after the
+  // getLineage response the caller waited on. Clicking straight away leaves the
+  // action auto-waiting with no timeout of its own, so a graph that is slow to
+  // lay out surfaces as a bare test timeout with nothing naming the node.
+  const nodeTitle = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .locator(`[data-testid="entity-header-display-name"]`)
-    .click();
+    .locator(`[data-testid="entity-header-display-name"]`);
+
+  await expect(nodeTitle).toBeVisible();
+  await nodeTitle.click();
 };
 
 export const updateLineageConfigFromModal = async (
@@ -883,9 +1033,7 @@ export const updateLineageConfigFromModal = async (
 ) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.waitForSelector('.ant-modal-content', {
-    state: 'visible',
-  });
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
 
   await page
     .getByTestId('field-upstream')
@@ -894,9 +1042,35 @@ export const updateLineageConfigFromModal = async (
     .getByTestId('field-downstream')
     .fill(config.downstreamDepth.toString());
 
-  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
-  await saveRes;
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+};
+
+export const setLineageDepthAndVerify = async (
+  page: Page,
+  upstreamDepth: number,
+  downstreamDepth: number
+) => {
+  await page.getByTestId('lineage-config').click();
+
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
+
+  await page.getByTestId('field-upstream').fill(upstreamDepth.toString());
+  await page.getByTestId('field-downstream').fill(downstreamDepth.toString());
+
+  const lineageRes = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return (
+      url.includes('/api/v1/lineage/getLineage') &&
+      url.includes(`upstreamDepth=${upstreamDepth}`) &&
+      url.includes(`downstreamDepth=${downstreamDepth}`)
+    );
+  });
+
+  await page.getByText('OK').click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await lineageRes;
 };
 
 export const verifyPlatformLineageForEntity = async (
@@ -916,9 +1090,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
-  await page.waitForTimeout(500);
-
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
+  await expect(fromNode).toBeVisible();
 
   // ensure node will be visible in the viewport
   await performZoomOut(page);
@@ -928,4 +1101,14 @@ export const verifyPlatformLineageForEntity = async (
   if (toFqn) {
     await expect(page.getByTestId(`lineage-node-${toFqn}`)).toBeVisible();
   }
+};
+
+export const generateColumns = (count: number, prefix: string) => {
+  return Array.from({ length: count }, (_, i) => ({
+    name: `${prefix}_column_${i}`,
+    dataType: 'VARCHAR',
+    dataLength: 100,
+    dataTypeDisplay: 'varchar',
+    description: `Test column ${i}`,
+  }));
 };

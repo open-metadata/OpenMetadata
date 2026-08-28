@@ -86,6 +86,7 @@ import org.springframework.util.CollectionUtils;
 
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
+  static final String AD_RECURSIVE_GROUP_MATCHING_RULE = "1.2.840.113556.1.4.1941";
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
@@ -150,7 +151,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
+  public JwtResponse loginUser(LoginRequest loginRequest) throws IOException {
     String email = loginRequest.getEmail();
     checkIfLoginBlocked(email);
     User omUser = lookUserInProvider(email, loginRequest.getPassword());
@@ -240,8 +241,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void validatePassword(String userDn, String reqPassword, User dummy)
-      throws TemplateException, IOException {
+  public void validatePassword(String userDn, String reqPassword, User dummy) {
     // Retry configuration for connection establishment
     final int maxRetries = 3;
     final int baseDelayMs = 500;
@@ -261,8 +261,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         "Unable to connect to authentication server after " + maxRetries + " attempts.");
   }
 
-  private void performLdapBind(String userDn, String reqPassword, User dummy)
-      throws TemplateException, IOException {
+  private void performLdapBind(String userDn, String reqPassword, User dummy) {
     BindResult bindingResult = null;
     LDAPConnection userConnection = null;
     try {
@@ -313,7 +312,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User lookUserInProvider(String email, String pwd) throws TemplateException, IOException {
+  public User lookUserInProvider(String email, String pwd) throws IOException {
     LdapUserInfo ldapUserInfo = getLdapUserInfo(email);
 
     if (ldapUserInfo != null && !nullOrEmpty(ldapUserInfo.userDn)) {
@@ -452,8 +451,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           Filter.createEqualityFilter(
               ldapConfiguration.getGroupAttributeName(),
               ldapConfiguration.getGroupAttributeValue());
-      Filter groupMemberAttr =
-          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+      Filter groupMemberAttr = buildGroupMemberFilter(ldapConfiguration, userDn);
       Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
       SearchRequest searchRequest =
           new SearchRequest(
@@ -527,6 +525,21 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           user.getName(),
           ex.getMessage());
     }
+  }
+
+  static Filter buildGroupMemberFilter(LdapConfiguration ldapConfiguration, String userDn) {
+    final Filter filter;
+    if (Boolean.TRUE.equals(ldapConfiguration.getRecursiveGroupMembership())) {
+      filter =
+          Filter.createExtensibleMatchFilter(
+              ldapConfiguration.getGroupMemberAttributeName(),
+              AD_RECURSIVE_GROUP_MATCHING_RULE,
+              false,
+              userDn);
+    } else {
+      filter = Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+    }
+    return filter;
   }
 
   private boolean isUserAdmin(String email, String username) {
@@ -665,7 +678,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  private void handleLdapException(Exception ex) throws TemplateException, IOException {
+  private void handleLdapException(Exception ex) {
     if (ex instanceof LDAPException ldapEx) {
       ResultCode resultCode = ldapEx.getResultCode();
       String errorMessage = ldapEx.getMessage();

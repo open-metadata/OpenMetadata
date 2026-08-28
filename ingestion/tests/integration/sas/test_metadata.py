@@ -11,6 +11,7 @@
 """
 Test SAS using the topology
 """
+
 import json
 from pathlib import Path
 from unittest import TestCase
@@ -87,10 +88,10 @@ mock_sas_config = {
 
 mock_search_path = Path(__file__).parent / "sas_dataset_search.json"
 mock_view_path = Path(__file__).parent / "sas_dataset_view.json"
-with open(mock_search_path, encoding="UTF-8") as search_file:
+with open(mock_search_path, encoding="UTF-8") as search_file:  # noqa: PTH123
     mock_search: dict = json.load(search_file)
 
-with open(mock_view_path, encoding="UTF-8") as view_file:
+with open(mock_view_path, encoding="UTF-8") as view_file:  # noqa: PTH123
     mock_view: dict = json.load(view_file)
 
 
@@ -98,9 +99,7 @@ def mock_list_assets(self, table):  # pylint: disable=unused-argument
     return mock_search
 
 
-def mock_access_token(
-    self, base_url, user, password
-):  # pylint: disable=unused-argument
+def mock_access_token(self, base_url, user, password):  # pylint: disable=unused-argument
     return "access_token"
 
 
@@ -113,7 +112,7 @@ EXPECTED_TABLE = Table(
     name="WATER_CLUSTER.sashdat",
     displayName=None,
     fullyQualifiedName="cas.cas-shared-default.Samples.WATER_CLUSTER.sashdat",
-    description='Last analyzed: <b>2023-12-20T20:52:01.453Z</b>. Visit <a target="_blank" '
+    description="Last analyzed: <b>2023-12-20T20:52:01.453Z</b>. Visit <a "
     'href="http://your-server-host.org/SASInformationCatalog/details/~fs~catalog~fs~instances~fs'
     '~0063116c-577c-0f44-8116-3924506c8f4a">SAS Information Catalog</a> for more information.',
     version=0.1,
@@ -254,15 +253,11 @@ class SASUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_sas_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_sas_config["workflowConfig"]["openMetadataServerConfig"])
         )
 
         config_ = mock_sas_config["source"]["serviceConnection"]["config"]
-        self.database_service = (
-            mock_database_service_object
-        ) = self.metadata.create_or_update(
+        self.database_service = mock_database_service_object = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name="local_sas",
                 serviceType="SAS",
@@ -357,9 +352,7 @@ class SASUnitTest(TestCase):
         Testing description updated for database, databaseSchema, table
         """
         _ = list(self.sas_source._iter())
-        loaded_database = self.metadata.get_by_name(
-            entity=Database, fqn='local_sas."cas.cas-shared-default"'
-        )
+        loaded_database = self.metadata.get_by_name(entity=Database, fqn='local_sas."cas.cas-shared-default"')
 
         assert loaded_database
         assert loaded_database.name.root == "cas.cas-shared-default"

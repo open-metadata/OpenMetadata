@@ -11,9 +11,10 @@
 """
 Microstrategy source helpers.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -24,7 +25,7 @@ class MicroStrategyColumnParser:
     Responsible for containing the logic to parse a column from MicroStrategy to OpenMetadata
     """
 
-    datatype_mapping = {
+    datatype_mapping = {  # noqa: RUF012
         "big decimal": DataType.DECIMAL,
         "binary": DataType.BYTES,
         "char": DataType.CHAR,
@@ -48,15 +49,13 @@ class MicroStrategyColumnParser:
     }
 
     @classmethod
-    def parse(cls, field: Dict[str, Any]) -> Column:
+    def parse(cls, field: Dict[str, Any]) -> Column:  # noqa: UP006
         """
         Parses a MicroStrategy table column into an OpenMetadata column.
         """
 
         array_data_type = None
-        data_type = cls.datatype_mapping.get(
-            field["dataType"].lower(), DataType.UNKNOWN
-        )
+        data_type = cls.datatype_mapping.get(field["dataType"].lower(), DataType.UNKNOWN)
 
         column_def = {
             "name": truncate_column_name(str(field["name"])),

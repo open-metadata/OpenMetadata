@@ -31,6 +31,10 @@ import AppRunsHistory from './AppRunsHistory.component';
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
+const mockSocket = {
+  on: jest.fn(),
+  off: jest.fn(),
+};
 let mockGetApplicationRuns = jest.fn().mockReturnValue({
   data: [mockApplicationData],
   paging: {
@@ -40,13 +44,15 @@ let mockGetApplicationRuns = jest.fn().mockReturnValue({
 });
 const mockShowErrorToast = jest.fn();
 const mockNavigate = jest.fn();
+const mockOpenLogs = jest.fn();
+const mockHasAppRunStats = jest.fn();
 
 jest.mock('../../../../constants/LeftSidebar.constants', () => ({
   SIDEBAR_NESTED_KEYS: {},
   SIDEBAR_LIST: [],
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 
@@ -80,6 +86,12 @@ jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
 }));
 
+jest.mock('../../../../context/WebSocketProvider/WebSocketProvider', () => ({
+  useWebSocketConnector: jest.fn().mockImplementation(() => ({
+    socket: mockSocket,
+  })),
+}));
+
 jest.mock('../../../../rest/applicationAPI', () => ({
   getApplicationRuns: jest
     .fn()
@@ -89,10 +101,18 @@ jest.mock('../../../../rest/applicationAPI', () => ({
 jest.mock('../../../../utils/ApplicationUtils', () => ({
   getStatusFromPipelineState: jest.fn(),
   getStatusTypeForApplication: jest.fn(),
+  hasAppRunStats: (...args: unknown[]) => mockHasAppRunStats(...args),
+  getAppRunFailureLogs: jest.fn().mockReturnValue('mock failure logs'),
 }));
 
-jest.mock('../../../../utils/RouterUtils', () => ({
-  getLogsViewerPath: jest.fn().mockReturnValue('logs viewer path'),
+jest.mock('../../../common/LogViewerModal/LogViewerModal.component', () => ({
+  __esModule: true,
+  default: ({ open }: { open: boolean }) =>
+    open ? <div>LogViewerModalOpen</div> : null,
+}));
+
+jest.mock('../../../../hooks/useLogsModal', () => ({
+  useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -155,8 +175,15 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../constants/constants', () => ({
   NO_DATA_PLACEHOLDER: '--',
+  SOCKET_EVENTS: {
+    SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
+    RDF_INDEX_JOB_BROADCAST_CHANNEL: 'rdfIndexJobStatus',
+    DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+    CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
+  },
   STATUS_LABEL: {
     [Status.Success]: 'Success',
+    [Status.Running]: 'Running',
   },
 }));
 
@@ -185,6 +212,20 @@ const mockProps3 = {
 };
 
 describe('AppRunsHistory', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockHasAppRunStats.mockReturnValue(true);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [mockApplicationData],
+      paging: {
+        offset: 0,
+        total: 3,
+      },
+    });
+    mockSocket.on.mockClear();
+    mockSocket.off.mockClear();
+  });
+
   it('should contain all necessary elements based on mockProps1', async () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -279,13 +320,51 @@ describe('AppRunsHistory', () => {
     });
   });
 
-  it('onclick of logs button should call navigate method of external apps', async () => {
+  it('opens the logs modal directly for an internal run with no inline stats', async () => {
+    mockHasAppRunStats.mockReturnValue(false);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-no-stats', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.log-plural'));
+
+    expect(screen.getByText('LogViewerModalOpen')).toBeInTheDocument();
+    expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
+  });
+
+  it('expands inline (no modal) for an internal run that has stats', async () => {
+    mockHasAppRunStats.mockReturnValue(true);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-with-stats', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.log-plural'));
+
+    expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
+    expect(screen.queryByText('LogViewerModalOpen')).not.toBeInTheDocument();
+  });
+
+  it('onclick of logs button should open the logs modal for external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     fireEvent.click(screen.getByText('label.log-plural'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
+    expect(mockOpenLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ logEntityType: 'apps' })
+    );
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
@@ -318,6 +397,21 @@ describe('AppRunsHistory', () => {
 
     expect(screen.getByTestId('app-run-config-close')).toBeInTheDocument();
     expect(screen.getByText('Configure Save')).toBeInTheDocument();
+  });
+
+  it('should disable config when schema is unavailable', async () => {
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [],
+      paging: {
+        offset: 0,
+        total: 0,
+      },
+    });
+
+    render(<AppRunsHistory {...mockProps1} jsonSchema={undefined} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(screen.getByTestId('app-historical-config')).toBeDisabled();
   });
 
   it('should render the stop button when conditions are met', async () => {
@@ -375,5 +469,27 @@ describe('AppRunsHistory', () => {
 
     // Verify status is rendered
     expect(screen.getByText('Success')).toBeInTheDocument();
+  });
+
+  it('should subscribe to RDF websocket updates and update the matching run', async () => {
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    const rdfCallback = mockSocket.on.mock.calls.find(
+      ([eventName]) => eventName === 'rdfIndexJobStatus'
+    )?.[1];
+
+    expect(rdfCallback).toBeInstanceOf(Function);
+
+    act(() => {
+      rdfCallback?.(
+        JSON.stringify({
+          ...mockApplicationData,
+          status: Status.Running,
+        })
+      );
+    });
+
+    expect(screen.getByText('Running')).toBeInTheDocument();
   });
 });

@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Card, Tag, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,20 +40,17 @@ import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getDataModelColumnsByFQN } from '../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
-import {
-  getEntityName,
-  highlightSearchArrayElement,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightSearchArrayElement } from '../../../utils/EntitySearchUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-} from '../../../utils/TableUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import AntTable from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
 

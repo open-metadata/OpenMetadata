@@ -12,13 +12,10 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
-import { Auth0Provider } from '@auth0/auth0-react';
-import {
+import type {
   Configuration,
   IPublicClientApplication,
-  PublicClientApplication,
 } from '@azure/msal-browser';
-import { MsalProvider } from '@azure/msal-react';
 import {
   AxiosError,
   AxiosRequestHeaders,
@@ -26,7 +23,7 @@ import {
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isNil, isNumber } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import type { WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
   createContext,
@@ -40,8 +37,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
-import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../../../constants/Auth.constants';
+import {
+  APP_ROUTER_ROUTES as ROUTES,
+  REDIRECT_PATHNAME,
+} from '../../../constants/router.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
@@ -50,14 +53,36 @@ import {
 } from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
+import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
+import { withDomainFilter } from '../../../hoc/withDomainFilter';
+import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
+import {
+  derivePreferencesFromList,
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
+} from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
+  readAppModeSession,
+  resolveEffectiveAppMode,
+  setAppDefaultMode,
+  translateWireMode,
+  writeAppMode,
+} from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useExploreCache } from '../../../hooks/useExploreCache';
+import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
+import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
-import { getLoggedInUser } from '../../../rest/userAPI';
+import { getAppConfiguration } from '../../../rest/settingConfigAPI';
+import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
@@ -68,7 +93,7 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
-import { withDomainFilter } from '../../../utils/DomainUtils';
+import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
   getOidcToken,
@@ -78,15 +103,21 @@ import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
-import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
-import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
-import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator';
-import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
-import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
-import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
+import {
+  LazyAuth0Authenticator,
+  LazyBasicAuthAuthenticator,
+  LazyGenericAuthenticator,
+  LazyMsalAuthenticator,
+  LazyOidcAuthenticator,
+  LazyOktaAuthenticator,
+} from '../AppAuthenticators/LazyAuthenticators';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
-import BasicAuthProvider from './BasicAuthProvider';
-import OktaAuthProvider from './OktaAuthProvider';
+import {
+  LazyAuth0ProviderWrapper,
+  LazyBasicAuthProviderWrapper,
+  LazyMsalProviderWrapper,
+  LazyOktaAuthProviderWrapper,
+} from './LazyAuthProviderWrappers';
 
 interface AuthProviderProps {
   childComponentType: ComponentType;
@@ -106,10 +137,91 @@ const userAPIQueryFields = [
 
 const isEmailVerifyField = 'isEmailVerified';
 
+/**
+ * Boot-time app-mode plumbing, run once `currentUser` is known (both the
+ * returning-session path and the fresh-login path need it). Fetches the
+ * user's own preferences bag and the tenant-wide app-mode default in
+ * parallel — neither depends on the other, only on `user.id` being
+ * resolved already, so a true 3-way `Promise.all` alongside
+ * `getLoggedInUser` isn't possible (the preferences fetch needs the id
+ * `getLoggedInUser` itself returns).
+ *
+ * Hydrates the local preferences store from the server (or migrates a
+ * local-only value up, on first boot after this feature ships), then
+ * resolves and writes the effective app mode via the fallback chain:
+ * user preference -> persona (unknown synchronously here; refined shortly
+ * after by `useResolvedAppMode` once the persona doc loads) -> tenant
+ * default -> `DEFAULT_APP_MODE`.
+ */
+const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
+  const [prefsRes, appConfig] = await Promise.all([
+    getUserPreferences(user.id).catch(() => ({ preferences: [] })),
+    getAppConfiguration().catch(() => null),
+  ]);
+  hydrateBackendSyncedPreferences(user, prefsRes);
+
+  const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
+  setAppDefaultMode(appDefault);
+
+  // Skip the boot-time write when this tab already has a signal that
+  // `useResolvedAppMode` will resolve authoritatively — the resolver is
+  // the single source of truth once it has persona + registry
+  // information, and writing to the session tuple here poisons the
+  // subsequent resolve. Two signals count:
+  //
+  //   1. A session tuple this tab already owns (returning tab, or a
+  //      manual toggle earlier in this tab).
+  //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
+  //      sibling tab's active mode carries into a newly-opened tab.
+  //      Once we write `DEFAULT_APP_MODE` here, the resolver's session-
+  //      tuple check is satisfied by our write and it never consults
+  //      the hint, so a cmd+click from an AI tab silently boots the new
+  //      tab into Classic.
+  // A returning tab (a `'manual'` or `'resolver'` tuple from a prior
+  // resolve) or a fresh tab that inherits an active hint from a
+  // sibling — leave both alone. `useResolvedAppMode` treats these as
+  // sticky and returns without rewriting. A `'boot'` tuple from an
+  // earlier auth cycle is NOT sticky and should be re-resolved, so
+  // don't skip on that.
+  const existingSession = readAppModeSession();
+  if (existingSession?.mode && existingSession.source !== 'boot') {
+    return;
+  }
+  const hint = readAppModeHint();
+  if (isAppModeHintFresh(hint) && hint?.mode) {
+    return;
+  }
+
+  const userPref =
+    derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+
+  // Provisional boot write — persona isn't known synchronously (its
+  // docStore doc is fetched by `useResolvedAppMode`), so we compute
+  // the best guess from what IS available (userPref, appDefault) and
+  // mark it `source: 'boot'`. The async resolver is allowed to
+  // override this tuple once it has the persona-doc result and the
+  // route registry has settled. The `writeHint` call inside
+  // `writeAppMode` is skipped for `'boot'` writes so a provisional
+  // guess doesn't leak to sibling tabs as an authoritative hint.
+  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault), null, {
+    source: 'boot',
+  });
+};
+
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
 
-let pendingRequests: any[] = [];
+let pendingRequests: {
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+  config: InternalAxiosRequestConfig<unknown>;
+}[] = [];
+
+// True while THIS tab is driving a token refresh and draining `pendingRequests`.
+// Kept in memory (not the cross-tab localStorage flag) so a sibling tab's
+// refresh can never leave this tab's queued 401s without a driver to settle
+// them — the bug that hung the UI on a spinner.
+let isRefreshDriverActive = false;
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -142,7 +254,6 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
     isAuthenticating,
-    initializeAuthState,
   } = useApplicationStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
@@ -168,17 +279,43 @@ export const AuthProvider = ({
   const onLoginHandler = () => {
     setApplicationLoading(true);
 
-    authenticatorRef.current?.invokeLogin();
+    let attempts = 0;
+    const maxAttempts = 100;
 
-    resetWebAnalyticSession();
+    const invokeLogin = () => {
+      if (authenticatorRef.current) {
+        authenticatorRef.current.invokeLogin?.();
+        resetWebAnalyticSession();
+      } else if (attempts < maxAttempts) {
+        // Polling mechanism to wait for authenticator ref to be available.
+        // This handles race conditions in production builds where onLoginHandler
+        // may be called before the authenticator component has mounted and set the ref.
+        // Retry every 50ms until ref is available (max 100 attempts = 5 seconds).
+        attempts++;
+        setTimeout(invokeLogin, 50);
+      } else {
+        // Max attempts reached, stop loading and silently fail
+        setApplicationLoading(false);
+      }
+    };
+
+    invokeLogin();
   };
 
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
-    // Let SSO complete the logout process
-    await authenticatorRef.current?.invokeLogout();
+    try {
+      // Let SSO complete the logout process. Swallow failures so local
+      // cleanup always runs — a rejected OIDC end-session call must not
+      // leave the user half-logged-out with a stale persona session key.
+      await authenticatorRef.current?.invokeLogout();
+    } catch {
+      // SSO logout failed; proceed with local cleanup anyway
+    }
+
+    clearPersonaSession();
 
     setIsAuthenticated(false);
 
@@ -191,6 +328,32 @@ export const AuthProvider = ({
     // Clear tokens properly during logout
     await clearOidcToken();
 
+    // Drop every in-memory client-side cache keyed by the current principal so the next user
+    // that signs in within this SPA session cannot see the previous user's cached responses.
+    // The app navigates to /signin without a hard reload, so global Zustand / module-level
+    // caches would otherwise survive across users.
+    //
+    // Three caches need clearing:
+    //   * useExploreCache — SWR cache for Explore search results (Zustand store)
+    //   * clearEtagCache() — ETag interceptor's response cache; without it, a freshly-
+    //     authenticated user could pick up another principal's cached body via 304.
+    //   * queryClient.clear() — React Query cache. Entries are keyed without the principal
+    //     in the key (auth comes from the Authorization header), so without an explicit
+    //     clear the next user would see the previous user's bodies until staleTime + gcTime.
+    useExploreCache.getState().clearCache();
+    clearEtagCache();
+    queryClient.clear();
+
+    // Drop the tab-scoped app-mode session so the next user boots into
+    // their own persona/preference-resolved mode rather than inheriting
+    // this user's transient mode.
+    clearAppMode();
+
+    // Reset the debounced backend-sync bookkeeping so a pending PATCH
+    // from user A cannot be flushed with user B's value/id when the SPA
+    // logs out + back in within the 300ms window.
+    resetBackendSyncState();
+
     setApplicationLoading(false);
 
     // Clear the refresh flag (used after refresh is complete)
@@ -202,20 +365,11 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      // Check if provider uses OidcAuthenticator which has routing logic
-      const usesOidcAuthenticator = [
-        AuthProviderEnum.Google,
-        AuthProviderEnum.CustomOidc,
-        AuthProviderEnum.AwsCognito,
-      ].includes(authConfig?.provider as AuthProviderEnum);
-
-      // For providers using OidcAuthenticator, navigate to HOME for routing
-      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
-      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
-        navigate(ROUTES.HOME);
-      } else {
-        navigate(ROUTES.MY_DATA);
-      }
+      // Route to `/` and let the (mode-specific) route tree render its
+      // own landing page. Rendering in place at `/` is provider-agnostic
+      // and lets non-default app modes (e.g. AskCollate's AI) own their
+      // own landing page without racing an early client-side redirect.
+      navigate(ROUTES.HOME);
     }
   };
 
@@ -233,6 +387,7 @@ export const AuthProvider = ({
   }, []);
 
   const resetUserDetails = (forceLogout = false) => {
+    clearPersonaSession();
     setCurrentUser({} as User);
     clearOidcToken();
     setIsAuthenticated(false);
@@ -250,10 +405,19 @@ export const AuthProvider = ({
   const getLoggedInUserDetails = async () => {
     setApplicationLoading(true);
     try {
+      // Bug 1: on cold-load with an expired token, /loggedInUser 401s and
+      // the axios response interceptor drives a refresh via TokenService.
+      // The real fix for the race between that refresh and the lazy
+      // authenticator's renewer registration lives in
+      // TokenService.fetchNewToken (it now awaits `awaitRenewerReady`),
+      // so this catch just needs to make sure we don't swallow the
+      // recovered response — the interceptor drains the queued request
+      // itself and getLoggedInUser resolves normally on success.
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        await hydrateAndResolveAppMode(res);
       } else {
         resetUserDetails();
       }
@@ -288,9 +452,9 @@ export const AuthProvider = ({
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
       refreshToken ||
-      [AuthProviderEnum.Basic, AuthProviderEnum.LDAP].indexOf(
+      ![AuthProviderEnum.Basic, AuthProviderEnum.LDAP].includes(
         authConfig?.provider as AuthProviderEnum
-      ) === -1;
+      );
 
     if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
       // Have 5m buffer before start trying for silent signIn
@@ -305,19 +469,87 @@ export const AuthProvider = ({
     }
   };
 
-  useEffect(() => {
-    initializeAuthState();
-  }, []);
+  // Renewer registration for TokenService moved into each authenticator's
+  // own mount effect (BasicAuthAuthenticator, GenericAuthenticator,
+  // OidcAuthenticator, MsalAuthenticator, OktaAuthenticator,
+  // Auth0Authenticator). The previous ref-deps effect here
+  // (`[authenticatorRef.current?.renewIdToken]`) never re-ran after the
+  // lazy authenticator finished loading because ref changes don't
+  // schedule re-renders — so on cold-load the first 401 raced ahead of
+  // the registration and TokenService.refreshToken() returned null
+  // without ever firing the `/api/v1/auth/refresh` HTTP call.
+  // `updateRefreshSuccessCallback(startTokenExpiryTimer)` is registered
+  // from the main mount effect below because that timer callback lives
+  // in this component's closure.
 
+  // When the tab becomes visible after being backgrounded, browsers may have
+  // throttled or suspended the proactive renewal timer. Check token freshness
+  // immediately and refresh only when the token is actually stale; otherwise
+  // just reschedule the timer with the correct remaining time.
   useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current.updateRenewToken(
-        authenticatorRef.current?.renewIdToken
-      );
-      // After every refresh success, start timer again
-      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
-    }
-  }, [authenticatorRef.current?.renewIdToken]);
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      try {
+        const token = await getOidcToken();
+        // No token in storage (user is on /signin, or just logged out).
+        // Firing tokenService.refreshToken() here would still invoke the
+        // renewer (e.g. OIDC signinSilent → hidden iframe to the IdP) on
+        // every tab focus — pure IdP-side noise for a signed-out session.
+        if (!token) {
+          return;
+        }
+        const { exp, isExpired, timeoutExpiry } =
+          extractDetailsFromToken(token);
+        // A missing / non-positive `exp` means the token is opaque, not a
+        // JWT at all, or spec-violating. extractDetailsFromToken returns
+        // `isExpired: true` for the jwt-decode-throws branch AND
+        // `isExpired: false, timeoutExpiry: 0` for the isNil(exp) branch —
+        // neither is signal we can act on, so leave the token in place and
+        // let the next real 401 drive a refresh via the axios interceptor.
+        // MUST come before the isExpired branch — otherwise opaque tokens
+        // would fire refresh() on every tab focus.
+        if (typeof exp !== 'number' || exp <= 0) {
+          return;
+        }
+        if (isExpired) {
+          const newToken = await tokenService.current?.refreshToken();
+          // Post-refresh reauth: if the user was bounced to signin by an
+          // earlier failed call, a successful refresh must re-run the
+          // loggedInUser flow to flip isAuthenticated back to true.
+          // Reading via getState() avoids the stale closure of the
+          // mount-only useEffect.
+          if (newToken && !useApplicationStore.getState().isAuthenticated) {
+            await getLoggedInUserDetails();
+          }
+
+          return;
+        }
+        // Only near-expiry (within the pre-expiry buffer) should proactively
+        // refresh here. `timeoutExpiry === 0` exactly captures that case
+        // once we've ruled out invalid exp above.
+        if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
+          const newToken = await tokenService.current?.refreshToken();
+          if (newToken && !useApplicationStore.getState().isAuthenticated) {
+            await getLoggedInUserDetails();
+          }
+
+          return;
+        }
+        startTokenExpiryTimer();
+      } catch {
+        // Storage read errors fall through: the next real 401 will drive
+        // the refresh via the axios interceptor.
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   /**
    * Performs cleanup around timers
@@ -355,6 +587,7 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
+          await hydrateAndResolveAppMode(userDetails);
 
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -363,15 +596,15 @@ export const AuthProvider = ({
       } catch (error) {
         const err = error as AxiosError;
         if (err?.response?.status === 404) {
-          if (!authConfig?.enableSelfSignup) {
-            resetUserDetails();
-            navigate(ROUTES.UNAUTHORISED);
-            showErrorToast(err);
-          } else {
+          if (authConfig?.enableSelfSignup) {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
             setIsSigningUp(true);
             navigate(ROUTES.SIGNUP);
+          } else {
+            resetUserDetails();
+            navigate(ROUTES.UNAUTHORISED);
+            showErrorToast(err);
           }
         } else {
           // eslint-disable-next-line no-console
@@ -411,20 +644,17 @@ export const AuthProvider = ({
     configJson: AuthenticationConfiguration
   ) => {
     const { provider, ...otherConfigs } = configJson;
-    switch (provider) {
-      case AuthProviderEnum.Azure:
-        {
-          const instance = new PublicClientApplication(
-            otherConfigs as unknown as Configuration
-          );
+    if (provider === AuthProviderEnum.Azure) {
+      const AzureBrowser = await import('@azure/msal-browser');
+      const { PublicClientApplication } = AzureBrowser;
+      const instance = new PublicClientApplication(
+        otherConfigs as unknown as Configuration
+      );
 
-          // Need to initialize the instance before setting it
-          await instance.initialize();
+      // Need to initialize the instance before setting it
+      await instance.initialize();
 
-          setMsalInstance(instance);
-        }
-
-        break;
+      setMsalInstance(instance);
     }
   };
 
@@ -443,7 +673,7 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      config: InternalAxiosRequestConfig<any>
+      config: InternalAxiosRequestConfig<unknown>
     ) {
       // Need to read token from local storage as it might have been updated with refresh
       const token: string = await getOidcToken();
@@ -461,7 +691,9 @@ export const AuthProvider = ({
         config.headers['Content-type'] = 'application/json-patch+json';
       }
 
-      return withDomainFilter(config);
+      return withLanguageHeader(
+        withActivePersonaHeader(withDomainFilter(config))
+      );
     });
 
     // Axios response interceptor for statusCode 401,403
@@ -476,56 +708,61 @@ export const AuthProvider = ({
             if (
               UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
               (error.config.url === '/users/loggedInUser' &&
-                !error.response.data.message.includes('Expired token!'))
+                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
+                  (error.response.data?.message ?? '').includes(authError)
+                ))
             ) {
               throw error;
             }
             handleStoreProtectedRedirectPath();
 
-            // If 401 error and refresh is not in progress, trigger the refresh
-            if (!tokenService.current?.isTokenUpdateInProgress()) {
-              // Start the refresh process
-              return new Promise((resolve, reject) => {
-                // Add this request to the pending queue
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
+            // Queue the failed request, then ensure exactly one refresh drives
+            // the queue in THIS tab. Every 401 lands in pendingRequests; the
+            // first arrival starts the refresh and, once it settles, ALWAYS
+            // drains the queue — retry with the new token, or reject + log out.
+            // Nothing is left parked. The previous code queued behind a
+            // cross-tab localStorage flag that no in-tab driver would clear,
+            // hanging the request (and the UI spinner) indefinitely.
+            return new Promise((resolve, reject) => {
+              pendingRequests.push({ resolve, reject, config: error.config });
+              if (isRefreshDriverActive) {
+                return;
+              }
+              isRefreshDriverActive = true;
 
-                // Refresh the token and retry the requests in the queue
-                tokenService.current
-                  .refreshToken()
-                  .then((token) => {
-                    if (token) {
-                      // Retry the pending requests
-                      initializeAxiosInterceptors();
-                      pendingRequests.forEach(({ resolve, reject, config }) => {
-                        axiosClient.request(config).then(resolve).catch(reject);
-                      });
+              const drainPendingRequests = (hasNewToken: boolean) => {
+                const queued = pendingRequests;
+                pendingRequests = [];
+                isRefreshDriverActive = false;
+                if (hasNewToken) {
+                  queued.forEach(
+                    ({ resolve: onResolve, reject: onReject, config }) =>
+                      axiosClient
+                        .request(config)
+                        .then(onResolve)
+                        .catch(onReject)
+                  );
+                } else {
+                  queued.forEach(({ reject: onReject }) => onReject(error));
+                }
+              };
 
-                      // Clear the queue after retrying
-                      pendingRequests = [];
-                    } else {
-                      resetUserDetails(true);
-                    }
-                  })
-                  .catch((error) => {
+              tokenService.current
+                .refreshToken()
+                .then(async (token) => {
+                  if (token) {
+                    await initializeAxiosInterceptors();
+                    drainPendingRequests(true);
+                  } else {
+                    drainPendingRequests(false);
                     resetUserDetails(true);
-
-                    return Promise.reject(error);
-                  });
-              });
-            } else {
-              // If refresh is in progress, queue the request
-              return new Promise((resolve, reject) => {
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
+                  }
+                })
+                .catch(() => {
+                  drainPendingRequests(false);
+                  resetUserDetails(true);
                 });
-              });
-            }
+            });
           }
         }
 
@@ -605,64 +842,64 @@ export const AuthProvider = ({
       authConfig?.provider === AuthProviderEnum.Saml
     ) {
       return (
-        <GenericAuthenticator ref={authenticatorRef}>
+        <LazyGenericAuthenticator ref={authenticatorRef}>
           {childElement}
-        </GenericAuthenticator>
+        </LazyGenericAuthenticator>
       );
     }
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
         return (
-          <BasicAuthProvider>
-            <BasicAuthAuthenticator ref={authenticatorRef}>
+          <LazyBasicAuthProviderWrapper>
+            <LazyBasicAuthAuthenticator ref={authenticatorRef}>
               {childElement}
-            </BasicAuthAuthenticator>
-          </BasicAuthProvider>
+            </LazyBasicAuthAuthenticator>
+          </LazyBasicAuthProviderWrapper>
         );
       }
       case AuthProviderEnum.Auth0: {
         return (
-          <Auth0Provider
+          <LazyAuth0ProviderWrapper
             useRefreshTokens
             cacheLocation="memory"
             clientId={authConfig.clientId?.toString() ?? ''}
             domain={authConfig.authority?.toString() ?? ''}
-            redirectUri={authConfig.callbackUrl?.toString()}>
-            <Auth0Authenticator ref={authenticatorRef}>
+            redirectUri={authConfig.callbackUrl?.toString() ?? ''}>
+            <LazyAuth0Authenticator ref={authenticatorRef}>
               {childElement}
-            </Auth0Authenticator>
-          </Auth0Provider>
+            </LazyAuth0Authenticator>
+          </LazyAuth0ProviderWrapper>
         );
       }
       case AuthProviderEnum.Okta: {
         return (
-          <OktaAuthProvider>
-            <OktaAuthenticator ref={authenticatorRef}>
+          <LazyOktaAuthProviderWrapper>
+            <LazyOktaAuthenticator ref={authenticatorRef}>
               {childElement}
-            </OktaAuthenticator>
-          </OktaAuthProvider>
+            </LazyOktaAuthenticator>
+          </LazyOktaAuthProviderWrapper>
         );
       }
       case AuthProviderEnum.Google:
       case AuthProviderEnum.CustomOidc:
       case AuthProviderEnum.AwsCognito: {
         return (
-          <OidcAuthenticator
+          <LazyOidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
             userConfig={userConfig}>
             {childElement}
-          </OidcAuthenticator>
+          </LazyOidcAuthenticator>
         );
       }
       case AuthProviderEnum.Azure: {
         return msalInstance ? (
-          <MsalProvider instance={msalInstance}>
-            <MsalAuthenticator ref={authenticatorRef}>
+          <LazyMsalProviderWrapper instance={msalInstance}>
+            <LazyMsalAuthenticator ref={authenticatorRef}>
               {childElement}
-            </MsalAuthenticator>
-          </MsalProvider>
+            </LazyMsalAuthenticator>
+          </LazyMsalProviderWrapper>
         ) : (
           <Loader fullScreen />
         );
@@ -677,6 +914,10 @@ export const AuthProvider = ({
     fetchAuthConfig();
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
+    // Timer restart after a successful cross-tab refresh — the callback
+    // itself lives in this component's closure, so we register it here
+    // rather than from each authenticator.
+    tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
 
     return cleanup;
   }, []);

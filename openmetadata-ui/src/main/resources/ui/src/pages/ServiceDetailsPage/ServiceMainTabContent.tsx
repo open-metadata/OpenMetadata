@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -28,11 +27,12 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -55,7 +55,7 @@ import { ServicesType } from '../../interface/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -68,9 +68,9 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getSearchIndexForService,
-} from '../../utils/ServiceUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject } from '../../utils/TagsUtils';
+} from '../../utils/ServicePureUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
+import { createTagObject } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from './ServiceDetailsPage.interface';
@@ -382,7 +382,7 @@ function ServiceMainTabContent({
             children: (
               <Row gutter={[16, 16]}>
                 <Col data-testid="description-container" span={24}>
-                  <DescriptionV1
+                  <Description
                     description={serviceDetails.description}
                     entityName={serviceName}
                     entityType={entityType}

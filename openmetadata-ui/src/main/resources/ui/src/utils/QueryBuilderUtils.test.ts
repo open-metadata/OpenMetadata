@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Fields } from '@react-awesome-query-builder/antd';
+import { Fields } from '@react-awesome-query-builder/ui';
 import { EntityType } from '../enums/entity.enum';
 import {
   QueryFieldInterface,
@@ -23,9 +23,8 @@ import {
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
   resolveFieldType,
-} from './QueryBuilderUtils';
-
-jest.mock('./StringsUtils', () => ({
+} from './QueryBuilderPureUtils';
+jest.mock('./StringUtils', () => ({
   generateUUID: jest.fn(),
 }));
 
@@ -37,7 +36,7 @@ describe('getJsonTreeFromQueryFilter', () => {
   it('should return a valid JSON tree structure for a given query filter', () => {
     const mockUUIDs = ['uuid1', 'uuid2', 'uuid3', 'uuid4'];
     (
-      jest.requireMock('./StringsUtils').generateUUID as jest.Mock
+      jest.requireMock('./StringUtils').generateUUID as jest.Mock
     ).mockImplementation(() => mockUUIDs.shift());
     const queryFilter: QueryFilterInterface = {
       query: {
@@ -254,6 +253,53 @@ describe('getEntityTypeAggregationFilter', () => {
       },
     },
   };
+
+  it('should return the original filter unchanged when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    expect(result).toEqual(baseQueryFilter);
+  });
+
+  it('should not inject entityType.keyword term into the filter when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    const firstMustBlock = (
+      result.query?.bool?.must as QueryFieldInterface[]
+    )?.[0];
+    const innerMust = firstMustBlock?.bool?.must as QueryFieldInterface[];
+
+    const hasEntityTypeKeyword = innerMust?.some(
+      (item) => item.term?.['entityType.keyword'] !== undefined
+    );
+
+    expect(hasEntityTypeKeyword).toBe(false);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and must array is empty', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+    const result = getEntityTypeAggregationFilter(queryFilter, EntityType.ALL);
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and query is empty', () => {
+    const emptyFilter = {} as QueryFilterInterface;
+    const result = getEntityTypeAggregationFilter(emptyFilter, EntityType.ALL);
+
+    expect(result).toEqual(emptyFilter);
+  });
 
   it('should add entity type to the first must block', () => {
     const result = getEntityTypeAggregationFilter(
@@ -511,8 +557,8 @@ describe('buildExploreUrlParams', () => {
   it('should return valid JSON strings', () => {
     const result = buildExploreUrlParams(mockTree, mockQFilter);
 
-    expect(() => JSON.parse(result.queryFilter!)).not.toThrow();
-    expect(() => JSON.parse(result.quickFilter!)).not.toThrow();
+    expect(() => JSON.parse(result.queryFilter as string)).not.toThrow();
+    expect(() => JSON.parse(result.quickFilter as string)).not.toThrow();
   });
 
   it('should produce params that can be URL encoded with proper separators', () => {
@@ -529,8 +575,10 @@ describe('buildExploreUrlParams', () => {
     const decoded = new URLSearchParams(queryString);
 
     expect(decoded.get('mode')).toBe('edit');
-    expect(JSON.parse(decoded.get('queryFilter')!)).toEqual(mockTree);
-    expect(JSON.parse(decoded.get('quickFilter')!)).toEqual(mockQFilter);
+    expect(JSON.parse(decoded.get('queryFilter') as string)).toEqual(mockTree);
+    expect(JSON.parse(decoded.get('quickFilter') as string)).toEqual(
+      mockQFilter
+    );
   });
 
   it('should work correctly when only queryFilter is present with other params', () => {

@@ -31,39 +31,59 @@ import { sidebarClick } from '../../utils/sidebar';
 const adminUser = new UserClass();
 
 /**
- * Helper function to perform a rename operation via the UI
+ * Helper function to perform a rename operation via the UI (for entities that
+ * still expose a Rename menu item — Glossary, GlossaryTerm, Tag).
  */
 async function performRename(
   page: Page,
   newName: string,
   apiEndpoint: string
 ): Promise<void> {
-  // Click manage button to open rename modal
   await page.getByTestId('manage-button').click();
 
-  // Always use the Rename menu item with rename-button to handle pages with multiple rename buttons
   await page
     .getByRole('menuitem', { name: /Rename.*Name/i })
     .getByTestId('rename-button')
     .click();
 
-  // Wait for modal to appear
   await expect(page.locator('#name')).toBeVisible();
 
-  // Clear and enter new name
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  // Save the rename
   const patchResponse = page.waitForResponse(
     (response) =>
       response.url().includes(apiEndpoint) &&
       response.request().method() === 'PATCH'
   );
   await page.getByTestId('save-button').click();
-  await patchResponse;
+  const patchRes = await patchResponse;
+  expect(patchRes.status()).toBe(200);
+}
 
-  // Wait for the UI to update
+async function performClassificationEdit(
+  page: Page,
+  newName: string
+): Promise<void> {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('edit-classification').click();
+
+  await expect(page.getByTestId('tags-form')).toBeVisible();
+
+  const nameField = page.getByTestId('name').getByRole('textbox');
+  await nameField.clear();
+  await nameField.fill(newName);
+
+  const patchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/classifications/') &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('save-button').click();
+  const patchRes = await patchResponse;
+  expect(patchRes.status()).toBe(200);
+
+  await expect(page.getByTestId('tags-form')).not.toBeVisible();
 }
 
 test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -212,7 +232,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Navigate to classification using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.waitForSelector('[data-testid="side-panel-classification"]');
+      await page.getByTestId('side-panel-classification').first().waitFor();
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })
@@ -221,11 +241,12 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Wait for page to load
       await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-      // Perform 3 consecutive renames
+      // Perform 3 consecutive renames via Edit drawer (PR #31299 removed the
+      // Rename menu item from Classification; use the Edit option instead)
       for (let i = 1; i <= 3; i++) {
         const newName = `renamed-class-${i}-${uuid()}`;
 
-        await performRename(page, newName, '/api/v1/classifications/');
+        await performClassificationEdit(page, newName);
 
         // Verify the header shows the new name
         await expect(page.getByTestId('entity-header-name')).toContainText(
@@ -233,9 +254,6 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
 
         currentName = newName;
-
-        // Wait a bit for the UI to stabilize
-        await page.waitForTimeout(500);
       }
 
       // Verify the classification is still accessible
@@ -283,7 +301,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Navigate to tag using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.waitForSelector('[data-testid="side-panel-classification"]');
+      await page.getByTestId('side-panel-classification').first().waitFor();
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })
@@ -322,17 +340,16 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
             response.request().method() === 'PATCH'
         );
         await page.getByTestId('save-button').click();
-        await patchResponse;
-
-        // Wait for the UI to update
+        const patchRes = await patchResponse;
+        expect(patchRes.status()).toBe(200);
 
         // Verify the header shows the new name
         await expect(page.getByTestId('entity-header-name')).toContainText(
           newName
         );
 
-        // Wait a bit for the UI to stabilize
-        await page.waitForTimeout(500);
+        // Wait for name to reflect in the header
+        await expect(page.getByTestId('entity-header-name')).toBeVisible();
       }
 
       // Verify the tag is still accessible

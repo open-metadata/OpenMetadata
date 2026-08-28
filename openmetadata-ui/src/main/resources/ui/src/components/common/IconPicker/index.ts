@@ -13,4 +13,3 @@
 
 export * from './IconPicker.constants';
 export * from './IconPicker.interface';
-export { default as MUIIconPicker } from './MUIIconPicker';

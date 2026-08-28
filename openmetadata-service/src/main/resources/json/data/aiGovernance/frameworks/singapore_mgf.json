@@ -1,0 +1,52 @@
+{
+  "framework": {
+    "name": "singapore_mgf",
+    "displayName": "Singapore Model AI Governance",
+    "description": "IMDA Model AI Governance Framework — a voluntary best-practice framework for responsible AI in Singapore.",
+    "reference": "IMDA MGF",
+    "region": "Singapore",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "Annual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "regions": ["Singapore"],
+      "riskClasses": [],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "mgf-1",
+      "name": "mgf-1",
+      "displayName": "Internal Governance Structures and Measures",
+      "category": "Governance",
+      "description": "Clear roles and responsibilities for ethical deployment of AI.",
+      "evidenceRequirements": ["RACI matrix", "Governance policy"]
+    },
+    {
+      "code": "mgf-2",
+      "name": "mgf-2",
+      "displayName": "Determining Level of Human Involvement",
+      "category": "Process",
+      "description": "Use a risk-impact matrix to determine appropriate level of human oversight.",
+      "evidenceRequirements": ["Risk-impact matrix", "Human oversight policy"]
+    },
+    {
+      "code": "mgf-3",
+      "name": "mgf-3",
+      "displayName": "Operations Management",
+      "category": "Quality",
+      "description": "Manage data quality, model robustness, reproducibility, and traceability.",
+      "evidenceRequirements": ["Model documentation", "Data quality report"]
+    },
+    {
+      "code": "mgf-4",
+      "name": "mgf-4",
+      "displayName": "Stakeholder Interaction & Communication",
+      "category": "Transparency",
+      "description": "Clear communication and disclosure of AI use to affected stakeholders.",
+      "evidenceRequirements": ["Disclosure log", "Stakeholder feedback channel"]
+    }
+  ]
+}

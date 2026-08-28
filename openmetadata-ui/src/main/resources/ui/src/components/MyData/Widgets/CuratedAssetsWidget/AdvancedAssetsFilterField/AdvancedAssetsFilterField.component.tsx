@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,21 +18,23 @@ import {
   JsonTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
-  AlertMessage,
-  CuratedAssetsFormSelectedAssetsInfo,
   getExpandedResourceList,
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
+} from '../../../../../utils/CuratedAssetsPureUtils';
+import {
+  AlertMessage,
+  CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
-import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderUtils';
+import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import './advanced-assets-filter-field.less';
@@ -182,6 +184,7 @@ export const AdvancedAssetsFilterField = ({
       <Row className="advanced-filter-form-field" gutter={[8, 8]}>
         <Col data-testid="advanced-filter-container" span={24}>
           <div className="ant-form-item-label advanced-filter-label">
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
             <label>{t('label.advance-filter')}</label>
           </div>
           <Query

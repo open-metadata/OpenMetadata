@@ -28,6 +28,9 @@
       },
       "default": null
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },

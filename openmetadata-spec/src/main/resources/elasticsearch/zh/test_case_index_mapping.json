@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "max_ngram_diff": 1
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -15,7 +18,8 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
@@ -28,9 +32,16 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
+          ]
+        },
+        "om_substring": {
+          "type": "custom",
+          "tokenizer": "substring_ngram_tokenizer",
+          "filter": [
+            "lowercase"
           ]
         }
       },
@@ -50,6 +61,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -61,21 +76,59 @@
             "letter",
             "digit"
           ]
+        },
+        "substring_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 4,
+          "token_chars": [
+            "letter",
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
         }
       }
-    },
-    "index": {
-      "max_ngram_diff": 1
     }
   },
   "mappings": {
     "properties": {
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "originEntityFQN": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -93,6 +146,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -124,6 +181,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -181,7 +242,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -194,6 +256,46 @@
           },
           "state": {
             "type": "keyword"
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },
@@ -394,6 +496,54 @@
           }
         }
       },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "testSuite": {
         "properties": {
           "id": {
@@ -440,6 +590,9 @@
             "type": "text"
           }
         }
+      },
+      "testSuitesRevision": {
+        "type": "long"
       },
       "testSuites": {
         "type": "nested",

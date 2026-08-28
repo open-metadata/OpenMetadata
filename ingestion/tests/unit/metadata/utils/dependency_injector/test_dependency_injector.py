@@ -43,7 +43,7 @@ class Cache:
     def __init__(self, host: str):
         self.host = host
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> Optional[str]:  # noqa: UP045
         if key == "user:1":
             return "Cache hit for user:1"
         return None
@@ -73,7 +73,7 @@ def get_cached_user(user_id: int, db: Inject[Database], cache: Inject[Cache]) ->
 class TestDependencyContainer:
     def test_register_and_get_dependency(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
 
         container.register(Database, db_factory)
         db = container.get(Database)
@@ -84,8 +84,8 @@ class TestDependencyContainer:
 
     def test_override_dependency(self):
         container = DependencyContainer()
-        original_factory = lambda: Database("postgresql://localhost:5432")
-        override_factory = lambda: Database("postgresql://test:5432")
+        original_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
+        override_factory = lambda: Database("postgresql://test:5432")  # noqa: E731
 
         container.register(Database, original_factory)
         container.override(Database, override_factory)
@@ -96,8 +96,8 @@ class TestDependencyContainer:
 
     def test_remove_override(self):
         container = DependencyContainer()
-        original_factory = lambda: Database("postgresql://localhost:5432")
-        override_factory = lambda: Database("postgresql://test:5432")
+        original_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
+        override_factory = lambda: Database("postgresql://test:5432")  # noqa: E731
 
         container.register(Database, original_factory)
         container.override(Database, override_factory)
@@ -109,8 +109,8 @@ class TestDependencyContainer:
 
     def test_clear_dependencies(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
-        cache_factory = lambda: Cache("localhost")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
+        cache_factory = lambda: Cache("localhost")  # noqa: E731
 
         container.register(Database, db_factory)
         container.register(Cache, cache_factory)
@@ -121,7 +121,7 @@ class TestDependencyContainer:
 
     def test_has_dependency(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
 
         assert not container.has(Database)
         container.register(Database, db_factory)
@@ -131,7 +131,7 @@ class TestDependencyContainer:
 class TestInjectDecorator:
     def test_inject_single_dependency(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
         container.register(Database, db_factory)
 
         result = get_user(user_id=1)
@@ -139,8 +139,8 @@ class TestInjectDecorator:
 
     def test_inject_multiple_dependencies(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
-        cache_factory = lambda: Cache("localhost")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
+        cache_factory = lambda: Cache("localhost")  # noqa: E731
 
         container.register(Database, db_factory)
         container.register(Cache, cache_factory)
@@ -157,7 +157,7 @@ class TestInjectDecorator:
 
     def test_explicit_dependency_override(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
         container.register(Database, db_factory)
 
         custom_db = Database("postgresql://custom:5432")
@@ -168,7 +168,7 @@ class TestInjectDecorator:
 class TestInjectClassAttributes:
     def test_inject_class_attributes_single_dependency(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
         container.register(Database, db_factory)
 
         @inject_class_attributes
@@ -186,8 +186,8 @@ class TestInjectClassAttributes:
 
     def test_inject_class_attributes_multiple_dependencies(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
-        cache_factory = lambda: Cache("localhost")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
+        cache_factory = lambda: Cache("localhost")  # noqa: E731
 
         container.register(Database, db_factory)
         container.register(Cache, cache_factory)
@@ -230,7 +230,7 @@ class TestInjectClassAttributes:
 
     def test_inject_class_attributes_shared_dependencies(self):
         container = DependencyContainer()
-        db_factory = lambda: Database("postgresql://localhost:5432")
+        db_factory = lambda: Database("postgresql://localhost:5432")  # noqa: E731
         container.register(Database, db_factory)
 
         @inject_class_attributes

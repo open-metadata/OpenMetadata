@@ -15,16 +15,19 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.CONVERSATION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +45,7 @@ import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
+import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -52,6 +56,11 @@ import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
+  // Reuse compiled filter expressions across events; the condition string is the cache key.
+  // Bounded + thread-safe — also evaluated from EventSubscriptionScheduler parallel streams.
+  private static final Cache<String, Expression> COMPILED_CONDITIONS =
+      Caffeine.newBuilder().maximumSize(1000).build();
+
   private AlertUtil() {}
 
   public static <T> void validateExpression(String condition, Class<T> clz) {
@@ -81,7 +90,8 @@ public final class AlertUtil {
       boolean result;
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      Expression expression = parseExpression(completeCondition);
+      Expression expression =
+          COMPILED_CONDITIONS.get(completeCondition, condition -> parseExpression(condition));
       SimpleEvaluationContext context =
           SimpleEvaluationContext.forReadOnlyDataBinding()
               .withInstanceMethods()
@@ -144,12 +154,17 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (event.getEntityType().equals(THREAD)
-        && (config.getResources().get(0).equals("announcement")
-            || config.getResources().get(0).equals("task")
-            || config.getResources().get(0).equals("conversation"))) {
-      Thread thread = AlertsRuleEvaluator.getThread(event);
-      return config.getResources().get(0).equalsIgnoreCase(thread.getType().value());
+    if (event.getEntityType().equals(CONVERSATION) || event.getEntityType().equals(Entity.THREAD)) {
+      // Observability alerts (those with trigger actions) react to a measurable signal the
+      // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
+      // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
+      // reach notification alerts (no actions) — see #28122.
+      if (!nullOrEmpty(config.getActions())) {
+        return false;
+      }
+      return event.getEntityType().equals(CONVERSATION)
+          ? shouldTriggerAlertForConversation(event, config.getResources().get(0))
+          : shouldTriggerAlertForThread(event, config.getResources().get(0));
     }
 
     // Test Suite
@@ -163,6 +178,33 @@ public final class AlertUtil {
     }
 
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
+  }
+
+  private static boolean shouldTriggerAlertForConversation(ChangeEvent event, String resource) {
+    Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+    if (conversation == null) {
+      return false;
+    }
+    if (CONVERSATION.equalsIgnoreCase(resource)) {
+      return true;
+    }
+    return conversation.getEntityRef() != null
+        && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
+  }
+
+  // Announcement is its own entity since #25894; task stays until #30559 retires the legacy path.
+  private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("task", "conversation");
+
+  private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    if (thread == null) {
+      return false;
+    }
+    if (THREAD_TYPE_RESOURCES.contains(resource.toLowerCase(Locale.ROOT))) {
+      return resource.equalsIgnoreCase(thread.getType().value());
+    }
+    return thread.getEntityRef() != null
+        && resource.equalsIgnoreCase(thread.getEntityRef().getType());
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(
@@ -188,6 +230,14 @@ public final class AlertUtil {
     return new TestDestinationStatus()
         .withStatus(status)
         .withStatusCode(statusCode)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, String reason, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(reason)
         .withTimestamp(timestamp);
   }
 

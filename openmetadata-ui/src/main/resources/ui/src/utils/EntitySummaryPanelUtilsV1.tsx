@@ -19,7 +19,8 @@ import {
   Table,
   Typography as AntTypography,
 } from 'antd';
-import { isEmpty } from 'lodash';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import { FieldCard } from '../components/common/FieldCard';
@@ -28,16 +29,18 @@ import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { Pipeline } from '../generated/entity/data/pipeline';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table as TableEntity } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { EntityReference } from '../generated/entity/type';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
@@ -46,37 +49,23 @@ import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
 } from '../rest/dataModelsAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
   searchTableColumnsByFQN,
 } from '../rest/tableAPI';
-import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
+import {
+  filterItemsBySearchText,
+  filterNestedFields,
+} from './EntitySummaryPanelPureUtilsV1';
+import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
+import { pruneEmptyChildren } from './TablePureUtils';
+import { showErrorToast } from './ToastUtils';
 
-import { pruneEmptyChildren } from './TableUtils';
 const { Text } = AntTypography;
-
-/**
- * Shared utility to filter items by search text using case-insensitive
- * name/displayName matching. Used by all entity child components.
- */
-const filterItemsBySearchText = <T extends { name?: string }>(
-  items: T[],
-  searchText?: string
-): T[] => {
-  if (!searchText) {
-    return items;
-  }
-  const lowerSearch = searchText.toLowerCase();
-
-  return items.filter(
-    (item) =>
-      item.name?.toLowerCase().includes(lowerSearch) ||
-      getEntityName(item)?.toLowerCase().includes(lowerSearch)
-  );
-};
 
 // Recursive component to render nested columns
 const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
@@ -234,32 +223,6 @@ const NestedSchemaFieldCard: React.FC<{
       )}
     </div>
   );
-};
-
-// Shared recursive filter that preserves tree structure (used by Topic, Container, SearchIndex)
-const filterNestedFields = (
-  fieldList: GenericNestedField[],
-  searchText: string
-): GenericNestedField[] => {
-  const lowerSearch = searchText.toLowerCase();
-
-  return fieldList.reduce<GenericNestedField[]>((acc, field) => {
-    const nameMatch =
-      field.name?.toLowerCase().includes(lowerSearch) ||
-      getEntityName(field)?.toLowerCase().includes(lowerSearch);
-    const filteredChildren = field.children
-      ? filterNestedFields(field.children, searchText)
-      : [];
-
-    if (nameMatch || filteredChildren.length > 0) {
-      acc.push({
-        ...field,
-        children: nameMatch ? field.children : filteredChildren,
-      });
-    }
-
-    return acc;
-  }, []);
 };
 
 // Component for Table and Dashboard Data Model schema fields
@@ -500,7 +463,7 @@ const TopicFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      {filteredFields.map((field: any) => (
+      {filteredFields.map((field) => (
         <NestedSchemaFieldCard
           expandedRowKeys={expandedRowKeys}
           field={field}
@@ -522,7 +485,56 @@ const ContainerFieldCardsV1: React.FC<{
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const columns = entityInfo.dataModel?.columns || [];
+  const [fetchedColumns, setFetchedColumns] = useState<Column[]>();
+
+  const inlineColumns = entityInfo.dataModel?.columns;
+  const containerFqn = entityInfo.fullyQualifiedName;
+  // Start in the loading state when columns must be fetched on demand, so the first render shows the
+  // loader instead of briefly flashing "No data available".
+  const [isColumnsLoading, setIsColumnsLoading] = useState(
+    () => isUndefined(inlineColumns) && Boolean(containerFqn)
+  );
+
+  useEffect(() => {
+    // dataModel is excluded from Explore search payloads because it can be very large, so when it is
+    // absent on the search hit we fetch it on demand from the entity API.
+    if (!isUndefined(inlineColumns) || !containerFqn) {
+      // No on-demand fetch needed (columns already inline, or no FQN). Clear any loading flag left
+      // set by a now-cancelled in-flight fetch so the loader can't get stuck on.
+      setIsColumnsLoading(false);
+
+      return;
+    }
+    // Drop any previously-fetched columns and show the loader so the prior container's schema isn't
+    // shown while the new one loads; the cancelled guard also ignores a stale in-flight result if
+    // the user switches containers again before it resolves.
+    let cancelled = false;
+    setFetchedColumns(undefined);
+    setIsColumnsLoading(true);
+    getContainerByFQN(containerFqn, { fields: TabSpecificField.DATAMODEL })
+      .then((container) => {
+        if (!cancelled) {
+          setFetchedColumns(container.dataModel?.columns ?? []);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setFetchedColumns([]);
+          showErrorToast(error as AxiosError);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsColumnsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [containerFqn, inlineColumns]);
+
+  const columns = inlineColumns ?? fetchedColumns ?? [];
 
   const filteredColumns = useMemo(
     () =>
@@ -538,7 +550,7 @@ const ContainerFieldCardsV1: React.FC<{
     );
   }, []);
 
-  if (loading) {
+  if (loading || isColumnsLoading) {
     return (
       <div className="flex-center p-lg">
         <Loader size="default" />
@@ -556,7 +568,7 @@ const ContainerFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      {filteredColumns.map((column: any) => (
+      {filteredColumns.map((column) => (
         <NestedSchemaFieldCard
           expandedRowKeys={expandedRowKeys}
           field={column}
@@ -603,7 +615,7 @@ const PipelineTasksV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredTasks.map((task: any) => {
+        {filteredTasks.map((task: Task) => {
           const isHighlighted = highlights?.tasks?.includes(task.name);
 
           return (
@@ -721,7 +733,7 @@ const APICollectionEndpointsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredEndpoints.map((endpoint: any) => {
+        {filteredEndpoints.map((endpoint: EntityReference) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
@@ -880,7 +892,7 @@ const DashboardChartsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredCharts.map((chart: any) => {
+        {filteredCharts.map((chart: EntityReference) => {
           const isHighlighted = highlights?.chart?.includes(chart.name);
 
           return (
@@ -1003,7 +1015,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (name: string, record: Record<string, any>) => (
+      render: (name: string, record: Field) => (
         <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
           <span className="break-word">{record.displayName || name}</span>
         </div>
@@ -1014,7 +1026,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'dataType',
       key: 'dataType',
       width: 150,
-      render: (dataType: string, record: Record<string, any>) => (
+      render: (dataType: string, record: Field) => (
         <Typography as="span" className="tw:text-xs">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>
@@ -1043,7 +1055,11 @@ const APIEndpointSchemaV1: React.FC<{
             <span className="tag-container" key={tag.tagFQN}>
               {tag.displayName || tag.name}
             </span>
-          )) || <span className="text-grey-muted">{t('label.no-tags')}</span>}
+          )) || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', { entity: t('label.tag-plural') })}
+            </span>
+          )}
         </div>
       ),
     },
@@ -1112,7 +1128,7 @@ const APIEndpointSchemaV1: React.FC<{
 
 // Component for Database schemas
 const DatabaseSchemasV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Database;
   highlights?: Record<string, string[]>;
   loading?: boolean;
   searchText?: string;
@@ -1143,7 +1159,7 @@ const DatabaseSchemasV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredSchemas.map((schema: any) => {
+        {filteredSchemas.map((schema: EntityReference) => {
           return (
             <Col key={schema.id} span={24}>
               <FieldCard
@@ -1202,7 +1218,7 @@ const SearchIndexFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      {filteredFields.map((field: any) => (
+      {filteredFields.map((field) => (
         <NestedSchemaFieldCard
           expandedRowKeys={expandedRowKeys}
           field={field}

@@ -12,20 +12,70 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isEmpty } from 'lodash';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
 import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { SearchRequest } from '../generated/search/searchRequest';
+import { AggregationRequest } from '../generated/search/aggregationRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
-import { getSearchAPIQueryParams } from '../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../utils/StringUtils';
 import APIClient from './index';
+
+export const getSearchAPIQueryParams = (
+  queryString: string,
+  from: number,
+  size: number,
+  filters: string,
+  sortField: string,
+  sortOrder: string,
+  searchIndex: SearchIndex | SearchIndex[],
+  onlyDeleted = false,
+  trackTotalHits = false,
+  wildcard = true
+): Record<string, string | boolean | number | string[]> => {
+  const start = (from - 1) * size;
+
+  const encodedQueryString = queryString
+    ? getEncodedFqn(escapeESReservedCharacters(queryString))
+    : '';
+
+  const query =
+    wildcard && encodedQueryString !== WILD_CARD_CHAR
+      ? `*${encodedQueryString}*`
+      : encodedQueryString;
+
+  const params: Record<string, string | boolean | number | string[]> = {
+    q: query + (filters ? ` AND ${filters}` : ''),
+    from: start,
+    size,
+    index: searchIndex,
+    deleted: onlyDeleted,
+  };
+
+  if (!isEmpty(sortField)) {
+    params.sort_field = sortField;
+  }
+
+  if (!isEmpty(sortOrder)) {
+    params.sort_order = sortOrder;
+  }
+
+  if (trackTotalHits) {
+    params.track_total_hits = trackTotalHits;
+  }
+
+  return params;
+};
 
 export const searchData = <SI extends SearchIndex>(
   queryString: string,
@@ -169,7 +219,9 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string,
   sourceFields?: string,
-  deleted = false
+  deleted = false,
+  isNLPEnabled = false,
+  queryText?: string
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -181,10 +233,11 @@ export const getAggregateFieldOptions = (
     q,
     sourceFields,
     deleted,
+    ...(queryText ? { queryText } : {}),
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
-    `/search/aggregate`,
+    isNLPEnabled ? `/hybrid/nlq/search/aggregate` : `/search/aggregate`,
     {
       params,
     }
@@ -193,18 +246,18 @@ export const getAggregateFieldOptions = (
 
 /**
  * Posts aggregate field options request with parameters in the body.
- * @param {SearchRequest} body - The search request body containing the parameters.
+ * @param {AggregationRequest} body - The aggregation request body containing the parameters.
  * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
  * containing the aggregate field options.
  */
 export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
-}: SearchRequest) => {
+}: AggregationRequest) => {
   const withWildCardValue = fieldValue
     ? `.*${escapeESReservedCharacters(fieldValue)}.*`
     : '.*';
-  const body: SearchRequest = {
+  const body: AggregationRequest = {
     fieldValue: withWildCardValue,
     ...rest,
   };

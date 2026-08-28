@@ -140,12 +140,18 @@ jest.mock('../../../common/DataQualitySection', () => {
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
       <div data-testid="data-quality-section">
         <div data-testid="total-tests">{totalTests}</div>
-        {tests.map((test: DataQualityTest, index: number) => (
+        {tests.map((test: DataQualityTest) => (
           <div
             data-testid={`test-${test.type}`}
-            key={index}
+            key={test.type}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}>
+            tabIndex={0}
+            onClick={() => onFilterChange?.(test.type)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onFilterChange?.(test.type);
+              }
+            }}>
             {test.count}
           </div>
         ))}
@@ -180,6 +186,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label={placeholder}
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}
@@ -198,12 +205,18 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  default: { t: jest.fn().mockReturnValue('') },
+  t: jest.fn().mockReturnValue(''),
+  translateWithNestedKeys: jest.fn().mockReturnValue(''),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => (
       <span data-testid="trans-i18next">{i18nKey}</span>
     )),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
     if (fqn?.includes('::columns::')) {
       return fqn.split('::columns::')[0];
@@ -229,14 +242,14 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockImplementation((entityLink: string) => {
       if (entityLink.includes('::columns::')) {
         const parts = entityLink.split('::columns::');
 
-        return parts[parts.length - 1];
+        return parts.at(-1);
       }
 
       return null;
@@ -647,8 +660,8 @@ describe('DataQualityTab', () => {
       const failedButtons = screen.getAllByTestId('test-failed');
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
-      );
-      fireEvent.click(failedButtonWithZeroCount!);
+      ) as HTMLElement;
+      fireEvent.click(failedButtonWithZeroCount);
 
       // Wait for the component to re-render with the filtered results
       await waitFor(() => {

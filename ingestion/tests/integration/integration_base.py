@@ -11,14 +11,15 @@
 """
 OpenMetadata base class for tests
 """
+
 import uuid
 from datetime import datetime
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, List, Optional, Type
+from typing import TYPE_CHECKING, Any, List, Optional, Type  # noqa: UP035
 
 if TYPE_CHECKING:
     from airflow import DAG
-    from airflow.operators.bash import BashOperator
+    from airflow.operators.bash import BashOperator  # noqa: F401
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -145,7 +146,7 @@ from metadata.ingestion.ometa.ometa_api import C, T
 from metadata.utils.dispatch import class_register
 
 TIER1_TAG: TagLabel = TagLabel(
-    tagFQN=TagFQN(f"Tier.Tier1"),
+    tagFQN=TagFQN(f"Tier.Tier1"),  # noqa: F541
     name="Tier1",
     source=TagSource.Classification,
     labelType=LabelType.Automated,
@@ -197,7 +198,7 @@ PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
             "serviceConnection": {{
                 "config": {service_config}
             }},
-            "sourceConfig": {{"config": {{"type":"Profiler", "profileSample": 100}}}}
+            "sourceConfig": {{"config": {{"type":"Profiler", "profileSampleConfig": {{"sampleConfigType": "STATIC", "config": {{"profileSample": 100, "profileSampleType": "PERCENTAGE"}}}}}}}}
         }},
         "processor": {{"type": "orm-profiler", "config": {{}}}},
         "sink": {{"type": "metadata-rest", "config": {{}}}},
@@ -223,7 +224,7 @@ def generate_name() -> EntityName:
 create_service_registry = class_register()
 
 
-def get_create_service(entity: Type[T], name: Optional[EntityName] = None) -> C:
+def get_create_service(entity: Type[T], name: Optional[EntityName] = None) -> C:  # noqa: UP006, UP045
     """Create a vanilla service based on the input type"""
     func = create_service_registry.registry.get(entity.__name__)
     if not func:
@@ -243,9 +244,7 @@ def _(name: EntityName) -> C:
     return CreatePipelineServiceRequest(
         name=name,
         serviceType=PipelineServiceType.CustomPipeline,
-        connection=PipelineConnection(
-            config=CustomPipelineConnection(type=CustomPipelineType.CustomPipeline)
-        ),
+        connection=PipelineConnection(config=CustomPipelineConnection(type=CustomPipelineType.CustomPipeline)),
     )
 
 
@@ -274,9 +273,7 @@ def _(name: EntityName) -> C:
         name=name,
         serviceType=DashboardServiceType.Looker,
         connection=DashboardConnection(
-            config=LookerConnection(
-                hostPort="http://hostPort", clientId="id", clientSecret="secret"
-            )
+            config=LookerConnection(hostPort="http://hostPort", clientId="id", clientSecret="secret")
         ),
     )
 
@@ -287,9 +284,7 @@ def _(name: EntityName) -> C:
     return CreateMessagingServiceRequest(
         name=name,
         serviceType=MessagingServiceType.Kafka,
-        connection=MessagingConnection(
-            config=KafkaConnection(bootstrapServers="localhost:9092")
-        ),
+        connection=MessagingConnection(config=KafkaConnection(bootstrapServers="localhost:9092")),
     )
 
 
@@ -299,9 +294,7 @@ def _(name: EntityName) -> C:
     return CreateStorageServiceRequest(
         name=name,
         serviceType=StorageServiceType.S3,
-        connection=StorageConnection(
-            config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))
-        ),
+        connection=StorageConnection(config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))),
     )
 
 
@@ -324,9 +317,9 @@ create_entity_registry = class_register()
 
 
 def get_create_entity(
-    entity: Type[T],
+    entity: Type[T],  # noqa: UP006
     reference: Any,
-    name: Optional[EntityName] = None,
+    name: Optional[EntityName] = None,  # noqa: UP045
 ) -> C:
     """Create a vanilla entity based on the input type"""
     func = create_entity_registry.registry.get(entity.__name__)
@@ -398,9 +391,7 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
     )
 
 
-def get_create_user_entity(
-    name: Optional[EntityName] = None, email: Optional[str] = None
-):
+def get_create_user_entity(name: Optional[EntityName] = None, email: Optional[str] = None):  # noqa: UP045
     if not name:
         name = generate_name().root
     if not email:
@@ -408,17 +399,17 @@ def get_create_user_entity(
     return CreateUserRequest(name=name, email=Email(root=email))
 
 
-def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):
+def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):  # noqa: UP006, UP045
     if not name:
         name = generate_name().root
     return CreateTeamRequest(name=name, teamType=TeamType.Group, users=users)
 
 
 def get_create_test_definition(
-    parameter_definition: List[TestCaseParameterDefinition],
+    parameter_definition: List[TestCaseParameterDefinition],  # noqa: UP006
     entity_type: [T],
-    name: Optional[EntityName] = None,
-    description: Optional[str] = None,
+    name: Optional[EntityName] = None,  # noqa: UP045
+    description: Optional[str] = None,  # noqa: UP045
 ):
     if not name:
         name = generate_name().root
@@ -435,8 +426,8 @@ def get_create_test_definition(
 
 def get_create_test_suite(
     executable_entity_reference: str,
-    name: Optional[EntityName] = None,
-    description: Optional[str] = None,
+    name: Optional[EntityName] = None,  # noqa: UP045
+    description: Optional[str] = None,  # noqa: UP045
 ):
     if not name:
         name = generate_name().root
@@ -452,8 +443,8 @@ def get_create_test_suite(
 def get_create_test_case(
     entity_link: str,
     test_definition: FullyQualifiedEntityName,
-    parameter_values: List[TestCaseParameterValue],
-    name: Optional[EntityName] = None,
+    parameter_values: List[TestCaseParameterValue],  # noqa: UP006
+    name: Optional[EntityName] = None,  # noqa: UP045
 ):
     if not name:
         name = generate_name().root

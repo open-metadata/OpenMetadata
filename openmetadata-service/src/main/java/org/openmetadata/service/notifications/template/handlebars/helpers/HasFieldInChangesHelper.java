@@ -1,6 +1,7 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
@@ -43,7 +44,7 @@ public class HasFieldInChangesHelper implements HandlebarsHelper {
 
           // Search for field name in all three lists: updates, adds, deletes
           return Stream.of(groups.updates(), groups.adds(), groups.deletes())
-              .flatMap(list -> list.stream())
+              .flatMap(Collection::stream)
               .anyMatch(fieldChange -> fieldName.equals(fieldChange.getName()));
         });
   }

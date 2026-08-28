@@ -12,20 +12,17 @@
  */
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { SearchIndex } from '../enums/search.enum';
+import { suggestions } from './FeedUtils';
 import {
   entityDisplayName,
   getBackendFormat,
   getEntityField,
   getEntityFQN,
   getEntityType,
-  getFeedHeaderTextFromCardStyle,
-  getFieldOperationIcon,
   getFrontEndFormat,
-  suggestions,
-} from './FeedUtils';
-
+} from './FeedUtilsPure';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({
     hits: {
@@ -38,43 +35,48 @@ jest.mock('../rest/searchAPI', () => ({
             fullyQualifiedName: 'db.schema.Table1',
           },
           _id: '1',
-          _index: 'team_search_index',
+          _index: SearchIndex.TEAM,
         },
       ],
     },
   }),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => encodeURIComponent(fqn)),
   getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
 }));
 
 jest.mock('./FeedUtils', () => ({
   ...jest.requireActual('./FeedUtils'),
-  getEntityField: jest.fn().mockReturnValue('entityField'),
-  getEntityFQN: jest.fn().mockReturnValue('123'),
-  getEntityType: jest.fn().mockReturnValue('entityType'),
   buildMentionLink: jest.fn().mockReturnValue('buildMentionLink'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
 }));
 
-jest.mock('./CommonUtils', () => ({
-  getPartialNameFromTableFQN: jest.fn(),
+jest.mock('./EntityDisplayPureUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
+}));
+
+jest.mock('./FqnUtils', () => ({
+  ...jest.requireActual('./FqnUtils'),
+  getPartialNameFromTableFQN: jest.fn(),
 }));
 
 describe('Feed Utils', () => {
   it('should getEntityType return the correct entity type', () => {
-    expect(getEntityType('#E::Type::123')).toBe('entityType');
+    expect(getEntityType('<#E::table::db.schema.table>')).toBe('table');
   });
 
   it('should getEntityFQN return the correct entity FQN', () => {
-    expect(getEntityFQN('#E::Type::123')).toBe('123');
+    expect(getEntityFQN('<#E::table::db.schema.table>')).toBe(
+      'db.schema.table'
+    );
   });
 
   it('should getEntityField return the correct entity field', () => {
-    expect(getEntityField('entityField')).toBe('entityField');
+    expect(getEntityField('<#E::table::db.schema.table::description>')).toBe(
+      'description'
+    );
   });
 
   it('should return mention suggestions for "@" mentionChar', async () => {
@@ -125,141 +127,6 @@ describe('Feed Utils', () => {
       [FqnPart.TestCase],
       FQN_SEPARATOR_CHAR
     );
-  });
-});
-
-describe('getFeedHeaderTextFromCardStyle', () => {
-  it('should return element for created application', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Added,
-      CardStyle.EntityCreated,
-      undefined,
-      EntityType.APPLICATION
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('label.installed-lowercase');
-    expect(stringResult).toContain('label.app-lowercase');
-  });
-
-  it('should return element for deleted application', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Deleted,
-      CardStyle.EntityDeleted,
-      undefined,
-      EntityType.APPLICATION
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('label.uninstalled-lowercase');
-    expect(stringResult).toContain('label.app-lowercase');
-  });
-
-  it('should return element for created team', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Added,
-      CardStyle.EntityCreated,
-      undefined,
-      EntityType.TEAM
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('label.added-lowercase');
-  });
-
-  it('should return element for soft deleted team', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Deleted,
-      CardStyle.EntitySoftDeleted,
-      undefined,
-      EntityType.TEAM
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('label.soft-deleted-lowercase');
-  });
-
-  it('should return element for deleted team', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Deleted,
-      CardStyle.EntityDeleted,
-      undefined,
-      EntityType.TEAM
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('label.deleted-lowercase');
-    expect(stringResult).toContain('text-danger');
-  });
-
-  it('should return element for created CustomProperties', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Added,
-      CardStyle.CustomProperties,
-      undefined,
-      EntityType.TABLE
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('message.feed-custom-property-header');
-  });
-
-  it('should return element element for created testCaseResult', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Added,
-      CardStyle.TestCaseResult,
-      undefined,
-      EntityType.TEST_CASE
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('message.feed-test-case-header');
-  });
-
-  it('should return element for updated description', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Updated,
-      CardStyle.Description,
-      undefined,
-      EntityType.TABLE
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('message.feed-field-action-entity-header');
-    expect(stringResult).toContain('label.description');
-    expect(stringResult).toContain('label.updated-lowercase');
-  });
-});
-
-describe('getFieldOperationIcon', () => {
-  it('should not return icon in case of operation updated', () => {
-    const result = getFieldOperationIcon(FieldOperation.Updated);
-
-    expect(result).toBeUndefined();
-  });
-
-  it('should return icon in case of operation added', () => {
-    const result = getFieldOperationIcon(FieldOperation.Added);
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain(FieldOperation.Added);
-  });
-
-  it('should return icon in case of operation deleted', () => {
-    const result = getFieldOperationIcon(FieldOperation.Deleted);
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain(FieldOperation.Deleted);
   });
 });
 

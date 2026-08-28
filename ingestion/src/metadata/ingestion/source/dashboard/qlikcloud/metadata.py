@@ -11,7 +11,7 @@
 """QlikCloud source module"""
 
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -48,7 +48,7 @@ from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikSpaceType,
 )
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
-from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
+from metadata.ingestion.source.dashboard.qliksense.models import QlikTable  # noqa: TC001
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_project
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -68,15 +68,11 @@ class QlikcloudSource(QliksenseSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: QlikCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikCloudConnection):
-            raise InvalidSourceException(
-                f"Expected QlikCloudConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected QlikCloudConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(
@@ -85,9 +81,9 @@ class QlikcloudSource(QliksenseSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.projects_map: Dict[str, QlikSpace] = {}
-        self.collections: List[QlikApp] = []
-        self.data_models: List[QlikTable] = []
+        self.projects_map: Dict[str, QlikSpace] = {}  # noqa: UP006
+        self.collections: List[QlikApp] = []  # noqa: UP006
+        self.data_models: List[QlikTable] = []  # noqa: UP006
 
     def prepare(self):
         """
@@ -109,7 +105,7 @@ class QlikcloudSource(QliksenseSource):
         """
         Filter space based on space types configured in connection config.
         """
-        spaceTypes = self.service_connection.spaceTypes
+        spaceTypes = self.service_connection.spaceTypes  # noqa: N806
         if spaceTypes is None:
             return False
         return project.type.value not in [space_type.value for space_type in spaceTypes]
@@ -122,9 +118,7 @@ class QlikcloudSource(QliksenseSource):
 
     def filter_draft_dashboard(self, dashboard: QlikApp) -> bool:
         # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikApp
-        return (not self.source_config.includeDraftDashboard) and (
-            not dashboard.published
-        )
+        return (not self.source_config.includeDraftDashboard) and (not dashboard.published)
 
     def get_dashboard_name(self, dashboard: QlikApp) -> str:
         """
@@ -132,7 +126,7 @@ class QlikcloudSource(QliksenseSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:  # noqa: UP045
         """
         Get Project Name
         """
@@ -142,7 +136,7 @@ class QlikcloudSource(QliksenseSource):
         project = self.projects_map.get(dashboard_details.space_id)
         return project.name if project else None
 
-    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:
+    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:  # noqa: UP045
         """
         Get app Details
         """
@@ -166,33 +160,26 @@ class QlikcloudSource(QliksenseSource):
                     "Filtering dashboard as project id is not present in projects map",
                 )
                 logger.warning(
-                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present"
-                    " in projects map"
+                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present in projects map"
                 )
                 continue
             project = self.projects_map[dashboard.space_id]
             if self.filter_projects_by_type(project):
-                self.status.filter(
-                    project.name, "Filtering dashboard based on space type filter"
-                )
+                self.status.filter(project.name, "Filtering dashboard based on space type filter")
 
                 # Skip dashboard based on space type filter
                 continue
             if not self.is_personal_project(project) and filter_by_project(
                 self.service_connection.projectFilterPattern, project.name
             ):
-                self.status.filter(
-                    project.name, "Filtering dashboard based on project filter pattern"
-                )
+                self.status.filter(project.name, "Filtering dashboard based on project filter pattern")
                 # Skip dashboard based on project filter pattern
                 continue
             # clean data models for next iteration
             self.data_models = []
             yield dashboard
 
-    def yield_dashboard(
-        self, dashboard_details: QlikApp
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: QlikApp) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -203,11 +190,7 @@ class QlikcloudSource(QliksenseSource):
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 project=self.context.get().project_name,
                 charts=[
                     FullyQualifiedEntityName(
@@ -238,7 +221,7 @@ class QlikcloudSource(QliksenseSource):
         self,
         db_service_entity: DatabaseService,
         data_model_entity: DashboardDataModel,
-    ) -> Optional[Table]:
+    ) -> Optional[Table]:  # noqa: UP045
         """
         Get the table entity for lineage
         """
@@ -265,7 +248,9 @@ class QlikcloudSource(QliksenseSource):
         return None
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: QlikApp, db_service_prefix: Optional[str] = None
+        self,
+        dashboard_details: QlikApp,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (
@@ -281,16 +266,13 @@ class QlikcloudSource(QliksenseSource):
                     if (
                         prefix_table_name
                         and data_model_entity.displayName
-                        and prefix_table_name.lower()
-                        != data_model_entity.displayName.lower()
+                        and prefix_table_name.lower() != data_model_entity.displayName.lower()
                     ):
                         self.status.filter(
                             data_model_entity.displayName,
                             "Filtering Table as display name doesnt match prefix table name",
                         )
-                        logger.debug(
-                            f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}"
-                        )
+                        logger.debug(f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}")
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
@@ -305,9 +287,7 @@ class QlikcloudSource(QliksenseSource):
                     )
                     if om_table:
                         columns_list = [col.name for col in datamodel.fields]
-                        column_lineage = self._get_column_lineage(
-                            om_table, data_model_entity, columns_list
-                        )
+                        column_lineage = self._get_column_lineage(om_table, data_model_entity, columns_list)
                         yield self._get_add_lineage_request(
                             to_entity=data_model_entity,
                             from_entity=om_table,
@@ -325,9 +305,7 @@ class QlikcloudSource(QliksenseSource):
                     )
                 )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: QlikApp
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: QlikApp) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method"""
         charts = self.client.get_dashboard_charts(dashboard_id=dashboard_details.id)
         for chart in charts:
@@ -336,25 +314,19 @@ class QlikcloudSource(QliksenseSource):
                     f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}"
                     f"/sheet/{chart.qInfo.qId}"
                 )
-                if chart.qMeta.title and filter_by_chart(
-                    self.source_config.chartFilterPattern, chart.qMeta.title
-                ):
+                if chart.qMeta.title and filter_by_chart(self.source_config.chartFilterPattern, chart.qMeta.title):
                     self.status.filter(chart.qMeta.title, "Chart Pattern not allowed")
                     continue
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart.qInfo.qId),
-                        displayName=chart.qMeta.title,
-                        description=(
-                            Markdown(chart.qMeta.description)
-                            if chart.qMeta.description
-                            else None
-                        ),
-                        chartType=ChartType.Other,
-                        sourceUrl=SourceUrl(chart_url),
-                        service=self.context.get().dashboard_service,
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.qInfo.qId),
+                    displayName=chart.qMeta.title,
+                    description=(Markdown(chart.qMeta.description) if chart.qMeta.description else None),
+                    chartType=ChartType.Other,
+                    sourceUrl=SourceUrl(chart_url),
+                    service=self.context.get().dashboard_service,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(

@@ -13,7 +13,7 @@ GitHub client to read files with token auth
 """
 
 from abc import ABC
-from typing import Dict, Union
+from typing import Dict, Union  # noqa: UP035
 
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
     BitBucketCredentials,
@@ -29,7 +29,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-ReadersCredentials = Union[GitHubCredentials, BitBucketCredentials, GitlabCredentials]
+ReadersCredentials = Union[GitHubCredentials, BitBucketCredentials, GitlabCredentials]  # noqa: UP007
 
 
 class ApiReader(Reader, ABC):
@@ -42,15 +42,13 @@ class ApiReader(Reader, ABC):
         self.credentials = credentials
 
     @property
-    def auth_headers(self) -> Dict[str, str]:
+    def auth_headers(self) -> Dict[str, str]:  # noqa: UP006
         """
         Build the headers to authenticate
         to the API
         """
         if self._auth_headers is None and self.credentials.token:
-            self._auth_headers = {
-                "Authorization": f"Bearer {self.credentials.token.root.get_secret_value()}"
-            }
+            self._auth_headers = {"Authorization": f"Bearer {self.credentials.token.root.get_secret_value()}"}
 
         return self._auth_headers
 

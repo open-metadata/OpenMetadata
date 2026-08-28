@@ -55,6 +55,21 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
       headers.putAll(webConfig.getPermissionPolicyHeaderFactory().build());
     }
 
+    // Cross-Origin-Embedder-Policy
+    if (webConfig.getCrossOriginEmbedderPolicyHeaderFactory() != null) {
+      headers.putAll(webConfig.getCrossOriginEmbedderPolicyHeaderFactory().build());
+    }
+
+    // Cross-Origin-Resource-Policy
+    if (webConfig.getCrossOriginResourcePolicyHeaderFactory() != null) {
+      headers.putAll(webConfig.getCrossOriginResourcePolicyHeaderFactory().build());
+    }
+
+    // Cross-Origin-Opener-Policy
+    if (webConfig.getCrossOriginOpenerPolicyHeaderFactory() != null) {
+      headers.putAll(webConfig.getCrossOriginOpenerPolicyHeaderFactory().build());
+    }
+
     // Cache Control
     if (!nullOrEmpty(webConfig.getCacheControl())) {
       headers.put("Cache-Control", webConfig.getCacheControl());

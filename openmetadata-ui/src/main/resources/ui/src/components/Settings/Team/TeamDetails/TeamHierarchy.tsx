@@ -12,27 +12,19 @@
  */
 
 import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
-import { ColumnsType, TableProps } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
-import { Transi18next } from '../../../../utils/CommonUtils';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
-import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
@@ -40,8 +32,14 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../common/Table/Table';
+import {
+  ColumnsType,
+  ExpandableConfig,
+  TableProps,
+} from '../../../common/Table/Table.interface';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
+import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCell';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
   currentTeam,
@@ -82,17 +80,11 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.team-plural'),
         dataIndex: 'teams',
-        className: 'whitespace-nowrap',
+        className: 'teams-hierarchy-name-column',
         key: 'teams',
+        width: '32%',
         render: (_, record) => (
-          <Link
-            className="link-hover"
-            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}
-          >
-            {stringToHTML(
-              highlightSearchText(getEntityName(record), searchTerm)
-            )}
-          </Link>
+          <TeamHierarchyNameCell record={record} searchTerm={searchTerm} />
         ),
       },
       {
@@ -152,7 +144,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       },
       ...descriptionTableObject<Team>({ width: 300 }),
     ];
-  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand, teamAssetCounts]);
+  }, [isFetchingAllTeamAdvancedDetails, searchTerm, t, teamAssetCounts]);
 
   const handleTableHover = useCallback(
     (value: boolean) => setIsTableHovered(value),
@@ -280,8 +272,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               <Button
                 data-testid="add-team"
                 type="primary"
-                onClick={handleAddTeamButtonClick}
-              >
+                onClick={handleAddTeamButtonClick}>
                 {t('label.add-entity', { entity: t('label.team') })}
               </Button>
             )}
@@ -310,8 +301,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
-        onOk={handleChangeTeam}
-      >
+        onOk={handleChangeTeam}>
         <Transi18next
           i18nKey="message.entity-transfer-message"
           renderElement={<strong />}

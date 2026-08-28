@@ -33,7 +33,7 @@ This parameter specifies the host and port of the Hive instance. This should be 
 
 If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:10000` as the value.
 $$
-$$section 
+$$section
 ### Authentication Mode $(id="auth")
 The auth parameter specifies the authentication method to use when connecting to the Hive server. Possible values are `LDAP`, `NONE`, `CUSTOM`, or `KERBEROS`. If you are using Kerberos authentication, you should set auth to `KERBEROS`. If you are using custom authentication, you should set auth to `CUSTOM` and provide additional options in the `authOptions` parameter.
 $$
@@ -50,6 +50,7 @@ $$
 
 $$section
 ### Database Name $(id="databaseName")
+
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
@@ -86,10 +87,11 @@ $$
 
 ## Basic Auth
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Postgres/MySQL.
-
+$$
 
 ## IAM Auth Config
 
@@ -266,35 +268,38 @@ If ticked, the workflow will be able to ingest all database in the cluster. If n
 
 ## Hive Mysql Metastore Connection Details
 
-
+$$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
+$$
 
-
-
+$$section
 ### Username $(id="username")
 Username to connect to MySQL. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
+$$
 
-
+$$section
 ### Host Port $(id="hostPort")
 
 This parameter specifies the host and port of the MySQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3306`.
 
 If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3306` as the value.
+$$
 
-
-
+$$section
 ### Database Name $(id="databaseName")
+
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```
 In the case of MySQL, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+$$
 
-
-
+$$section
 ### Database Schema $(id="databaseSchema")
 This is an optional parameter. When set, the value will be used to restrict the metadata reading to a single database (corresponding to the value passed in this field). When left blank, OpenMetadata will scan all the databases.
+$$
 
 
 $$section

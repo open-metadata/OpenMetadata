@@ -18,8 +18,8 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
@@ -150,7 +150,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
       <TagSelectableList
         hasPermission={hasPermission}
         popoverProps={{
-          placement: 'top',
+          // The anchor is the full-width `.tag-selector-display` div below, not the pencil, so a
+          // centered placement ('top' → align points bc/tc) pushes the popover to the middle of a
+          // wide container. `bottomLeft` pins it to the anchor's left edge, matching how
+          // GlossaryTermsSection anchors its own popover.
+          placement: 'bottomLeft',
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
           overlayClassName: 'tag-select-popover',

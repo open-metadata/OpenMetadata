@@ -29,21 +29,25 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +68,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -75,12 +80,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
-import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -88,6 +93,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
@@ -96,7 +102,10 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -105,15 +114,35 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+  private static final int MAX_TASK_CLEANUP_RETRIES = 3;
+  private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
+  private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
+  private static final IntervalFunction TASK_CLEANUP_RETRY_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS);
+      };
+  private static final RetryConfig TASK_CLEANUP_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(MAX_TASK_CLEANUP_RETRIES)
+          .intervalFunction(TASK_CLEANUP_RETRY_INTERVAL_FUNCTION)
+          .retryOnException(UserRepository::isTransientDeadlock)
+          .build();
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+  public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+  private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
+  private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+  private final UserPreferencesRepository userPreferencesRepository =
+      new UserPreferencesRepository();
 
   public UserRepository() {
     super(
@@ -320,7 +349,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Use the custom DAO method for optimized update
     // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
-    ((UserDAO) daoCollection.userDAO()).updateLastActivityTime(fqn, lastActivityTime);
+    daoCollection.userDAO().updateLastActivityTime(fqn, lastActivityTime);
   }
 
   @Transaction
@@ -331,7 +360,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Bulk update all users' activity times in a single query
     // This is much more efficient than individual updates
-    UserDAO userDAO = (UserDAO) daoCollection.userDAO();
+    UserDAO userDAO = daoCollection.userDAO();
 
     // Build the CASE statement and collect nameHashes
     StringBuilder caseBuilder = new StringBuilder();
@@ -506,7 +535,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   protected void entitySpecificCleanup(User entityInterface) {
-    FeedUtil.cleanUpTaskForAssignees(entityInterface.getId(), USER);
+    TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), USER);
   }
 
   /* Validate if the user is already part of the given team */
@@ -618,7 +647,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
-      Team team = Entity.getEntity(t, "", Include.ALL);
+      Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {
@@ -697,6 +726,31 @@ public class UserRepository extends EntityRepository<User> {
     roles = listOrEmpty(roles);
     for (EntityReference role : roles) {
       addRelationship(user.getId(), role.getId(), USER, Entity.ROLE, Relationship.HAS);
+    }
+  }
+
+  /**
+   * Internal-only mutation of the bot impersonation grant. {@code allowImpersonation} is read-only
+   * on the user APIs (see {@link UserUpdater}); bots receive or lose the grant through {@code
+   * BotResource}, which delegates here.
+   */
+  public void updateBotImpersonation(
+      UUID botUserId, boolean allowImpersonation, EntityReference impersonationRole) {
+    User user = find(botUserId, Include.NON_DELETED, false);
+    user.setAllowImpersonation(allowImpersonation);
+    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    updateImpersonationRole(user, allowImpersonation, impersonationRole);
+    SubjectCache.invalidateUser(user.getName());
+  }
+
+  private void updateImpersonationRole(
+      User user, boolean allowImpersonation, EntityReference impersonationRole) {
+    if (allowImpersonation) {
+      addRelationship(user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
+    } else {
+      deleteRelationship(
+          user.getId(), USER, impersonationRole.getId(), Entity.ROLE, Relationship.HAS);
     }
   }
 
@@ -837,58 +891,81 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void fetchAndSetOwns(List<User> users, Fields fields) {
+    fetchAndSetOwns(users, fields, null);
+  }
+
+  private void fetchAndSetOwns(List<User> users, Fields fields, ListFilter filter) {
     if (!fields.contains("owns") || users == null || users.isEmpty()) {
       return;
     }
 
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    String ownsEntityType = filter == null ? null : filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM);
+    boolean directOwnsOnly =
+        filter != null && Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM));
 
     // Get entities owned by users
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL);
+        nullOrEmpty(ownsEntityType)
+            ? daoCollection
+                .relationshipDAO()
+                .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL)
+            : daoCollection
+                .relationshipDAO()
+                .findToBatch(userIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
     // Also get entities owned by teams that users belong to
     // First get all teams for all users
     Map<UUID, List<EntityReference>> userTeams = new HashMap<>();
-    if (!fields.contains(TEAMS_FIELD)) {
-      // If teams weren't already fetched, we need to get them
-      List<CollectionDAO.EntityRelationshipObject> teamRecords =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-      for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-        UUID userId = UUID.fromString(record.getToId());
-        EntityReference teamRef =
-            Entity.getEntityReferenceById(
-                Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
-        userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
-      }
-    } else {
-      // Use already fetched teams
-      for (User user : users) {
-        if (user.getTeams() != null) {
-          userTeams.put(user.getId(), user.getTeams());
+    if (!directOwnsOnly) {
+      if (!fields.contains(TEAMS_FIELD)) {
+        // If teams weren't already fetched, we need to get them
+        List<CollectionDAO.EntityRelationshipObject> teamRecords =
+            daoCollection
+                .relationshipDAO()
+                .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
+        for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+          UUID userId = UUID.fromString(record.getToId());
+          EntityReference teamRef =
+              Entity.getEntityReferenceById(
+                  Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
+          userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+        }
+      } else {
+        // Use already fetched teams
+        for (User user : users) {
+          if (user.getTeams() != null) {
+            userTeams.put(user.getId(), user.getTeams());
+          }
         }
       }
     }
 
     // Get entities owned by teams
     Set<String> allTeamIds =
-        userTeams.values().stream()
-            .flatMap(List::stream)
-            .map(EntityReference::getId)
-            .map(UUID::toString)
-            .collect(Collectors.toSet());
+        directOwnsOnly
+            ? Collections.emptySet()
+            : userTeams.values().stream()
+                .flatMap(List::stream)
+                .map(EntityReference::getId)
+                .map(UUID::toString)
+                .collect(Collectors.toSet());
 
     List<CollectionDAO.EntityRelationshipObject> teamOwnsRecords = new ArrayList<>();
     if (!allTeamIds.isEmpty()) {
       teamOwnsRecords =
-          daoCollection
-              .relationshipDAO()
-              .findToBatchAllTypes(
-                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL);
+          nullOrEmpty(ownsEntityType)
+              ? daoCollection
+                  .relationshipDAO()
+                  .findToBatchAllTypes(
+                      new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL)
+              : daoCollection
+                  .relationshipDAO()
+                  .findToBatch(
+                      new ArrayList<>(allTeamIds),
+                      Relationship.OWNS.ordinal(),
+                      ownsEntityType,
+                      Include.ALL);
     }
 
     // Map user to owned entities
@@ -936,6 +1013,23 @@ public class UserRepository extends EntityRepository<User> {
       }
       user.setOwns(ownedEntities);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<User> users, ListFilter filter) {
+    if (fields.contains("owns")
+        && filter != null
+        && (!nullOrEmpty(filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM))
+            || Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM)))) {
+      fetchAndSetFieldsExcept(users, fields, Set.of("owns"));
+      fetchAndSetOwns(users, fields, filter);
+      setInheritedFields(users, fields);
+      for (User user : users) {
+        clearFieldsInternal(user, fields);
+      }
+      return;
+    }
+    super.setFieldsInBulk(fields, users);
   }
 
   private void fetchAndSetFollows(List<User> users, Fields fields) {
@@ -1250,17 +1344,119 @@ public class UserRepository extends EntityRepository<User> {
       BotTokenCache.invalidateToken(entity.getName());
     }
     JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
-    // Remove suggestions
-    daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            updateIncidentAssignee(entity);
-          } catch (Exception ex) {
-            LOG.error("Error updating test case incident assignee: ", ex);
-          }
-        });
+    revokeLiveSessions(entity);
+    if (hardDelete) {
+      // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
+      userPreferencesRepository.delete(entity.getId());
+    }
+    deleteSuggestionTasksForUser(entity);
+
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.USER_CLEANUP,
+            entity.getFullyQualifiedName(),
+            () -> {
+              try {
+                updateIncidentAssignee(entity);
+              } catch (Exception ex) {
+                LOG.error("Error updating test case incident assignee: ", ex);
+              }
+            });
+  }
+
+  /**
+   * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
+   * user's existing session-bound tokens keep working until natural expiry (7 days by default)
+   * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
+   * sockets as well.
+   */
+  private void revokeLiveSessions(User entity) {
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null || entity.getId() == null) {
+      return;
+    }
+    try {
+      int revoked = sessionService.revokeSessionsForUser(entity.getId().toString());
+      if (revoked > 0) {
+        LOG.info("Revoked {} session(s) for deleted user {}", revoked, entity.getName());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to revoke sessions for deleted user {}", entity.getName(), e);
+    }
+  }
+
+  private void deleteSuggestionTasksForUser(User entity) {
+    Retry retry = Retry.of("user-task-cleanup", TASK_CLEANUP_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying suggestion task cleanup for user {} after transient deadlock in {} "
+                        + "ms (attempt {}/{})",
+                    entity.getFullyQualifiedName(),
+                    event.getWaitInterval().toMillis(),
+                    event.getNumberOfRetryAttempts() + 1,
+                    MAX_TASK_CLEANUP_RETRIES));
+    String creatorId = entity.getId().toString();
+    String category = TaskCategory.MetadataUpdate.value();
+    // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
+    // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
+    // and its cache-invalidate hook — without explicit eviction the next GET on a
+    // previously-read task returns the stale cached row even though the DB row is gone.
+    // FQN is required because tasks expose both GET /v1/tasks/{id} (CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
+    // by-name reader pinned to a stale entry.
+    List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
+    retry.executeRunnable(
+        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+    if (!tasksToInvalidate.isEmpty()) {
+      invalidateTaskCacheForIds(tasksToInvalidate);
+    }
+  }
+
+  private void invalidateTaskCacheForIds(List<EntityDAO.EntityIdFqnPair> tasks) {
+    // Task is in UNCACHED_ENTITY_TYPES, so invalidateCacheForEntity clears only the local L1
+    // Guava cache and skips the pub/sub fan-out (deliberate perf optimization for the
+    // cascade-heavy bot/domain/data-product paths). In a multi-pod deployment, peer instances
+    // that previously read one of these tasks still hold it in their L1 cache and would serve
+    // the stale "deleted" row after this bulk SQL DELETE. Publish each (id, fqn) explicitly so
+    // peers drop both their by-id and by-name L1 entries.
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    for (EntityDAO.EntityIdFqnPair task : tasks) {
+      if (task.id == null) {
+        continue;
+      }
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      if (pubsub != null) {
+        pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
+      }
+    }
+  }
+
+  static long getTaskCleanupRetryDelayMillis(int attempt) {
+    return TASK_CLEANUP_RETRY_INTERVAL_FUNCTION.apply(attempt);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        String sqlState = sqlException.getSQLState();
+        if (errorCode == 1213
+            || errorCode == 1205
+            || "40001".equals(sqlState)
+            || "40P01".equals(sqlState)) {
+          return true;
+        }
+      }
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -1334,83 +1530,56 @@ public class UserRepository extends EntityRepository<User> {
       updated.setEmail(original.getEmail().toLowerCase());
       compareAndUpdate(
           "lastLoginTime",
-          () -> {
-            recordChange(
-                "lastLoginTime",
-                original.getLastLoginTime(),
-                updated.getLastLoginTime(),
-                false,
-                objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "lastLoginTime",
+                  original.getLastLoginTime(),
+                  updated.getLastLoginTime(),
+                  false,
+                  objectMatch,
+                  false));
 
-      compareAndUpdate(
-          "roles",
-          () -> {
-            updateRoles(original, updated);
-          });
-      compareAndUpdate(
-          "teams",
-          () -> {
-            updateTeams(original, updated);
-          });
-      compareAndUpdate(
-          "personas",
-          () -> {
-            updatePersonas(original, updated);
-          });
-      compareAndUpdate(
-          "defaultPersona",
-          () -> {
-            updateDefaultPersona(original, updated);
-          });
+      compareAndUpdate("roles", () -> updateRoles(original, updated));
+      compareAndUpdate("teams", () -> updateTeams(original, updated));
+      compareAndUpdate("personas", () -> updatePersonas(original, updated));
+      compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
       compareAndUpdate(
           "profile",
-          () -> {
-            recordChange("profile", original.getProfile(), updated.getProfile(), true);
-          });
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
           "timezone",
-          () -> {
-            recordChange("timezone", original.getTimezone(), updated.getTimezone());
-          });
+          () -> recordChange("timezone", original.getTimezone(), updated.getTimezone()));
       compareAndUpdate(
-          "isBot",
-          () -> {
-            recordChange("isBot", original.getIsBot(), updated.getIsBot());
-          });
+          "isBot", () -> recordChange("isBot", original.getIsBot(), updated.getIsBot()));
       compareAndUpdate(
-          "isAdmin",
-          () -> {
-            recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-          });
+          "isAdmin", () -> recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin()));
       compareAndUpdate(
           "isEmailVerified",
-          () -> {
-            recordChange(
-                "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
-          });
+          () ->
+              recordChange(
+                  "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
+      compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
+      compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
-          "allowImpersonation",
-          () -> {
-            recordChange(
-                "allowImpersonation",
-                original.getAllowImpersonation(),
-                updated.getAllowImpersonation());
-          });
-      compareAndUpdate(
-          "personaPreferences",
-          () -> {
-            updatePersonaPreferences(original, updated);
-          });
-      compareAndUpdate(
-          "authenticationMechanism",
-          () -> {
-            updateAuthenticationMechanism(original, updated);
-          });
+          "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+      compareAndUpdateAny(
+          () -> SubjectCache.invalidateUserContext(updated.getName()),
+          "personas",
+          "defaultPersona");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
+    }
+
+    private void updateAllowImpersonation() {
+      if (operation.isPut()) {
+        // CreateUser does not carry allowImpersonation; PUT must not wipe the stored grant
+        updated.setAllowImpersonation(original.getAllowImpersonation());
+      } else if (!Objects.equals(
+          original.getAllowImpersonation(), updated.getAllowImpersonation())) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute(USER, ALLOW_IMPERSONATION_FIELD));
+      }
     }
 
     private void updateRoles(User original, User updated) {
@@ -1579,8 +1748,7 @@ public class UserRepository extends EntityRepository<User> {
               systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
 
           if (!isAssignedPersona && !isSystemDefaultPersona) {
-            LOG.warn(
-                "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
+            LOG.warn("Persona with ID {} is not assigned to this user", pref.getPersonaId());
           }
           if (pref.getLandingPageSettings() != null) {
             UserUtil.validateUserPersonaPreferencesImage(pref.getLandingPageSettings());

@@ -12,6 +12,15 @@ class SingleStoreMedianFn(FunctionElement):
 
 @compiles(SingleStoreMedianFn)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = compiler.process(elements.clauses.clauses[0])
-    percentile = elements.clauses.clauses[2].value
+    clauses = elements.clauses.clauses
+    col = compiler.process(clauses[0])
+    table = clauses[1].value
+    percentile = clauses[2].value
+    dimension_col = clauses[3].value if len(clauses) > 3 else None
+    if dimension_col:
+        return (
+            f"(SELECT approx_percentile({col}, {percentile:.2f}) "
+            f"FROM {table} AS median_inner "
+            f"WHERE median_inner.{dimension_col} = {table}.{dimension_col})"
+        )
     return f"approx_percentile({col}, {percentile:.2f})"

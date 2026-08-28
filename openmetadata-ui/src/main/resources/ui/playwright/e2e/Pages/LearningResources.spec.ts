@@ -36,7 +36,9 @@ async function goToLearningResourcesAdmin(page: Page) {
     await admin.login(page);
   }
 
-  await page.waitForURL('**/my-data');
+  await page.waitForURL(
+    (url) => url.pathname === '/' || url.pathname === '/my-data'
+  );
   await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('learning-resources-page')).toBeVisible();
@@ -196,7 +198,7 @@ test.describe(
     }) => {
       await test.step('Click row and verify player modal opens', async () => {
         await page.getByText('Collate Clues: Automations').click();
-        const dialog = page.getByRole('dialog');
+        const dialog = page.getByTestId('resource-player-dialog');
         await expect(dialog).toBeVisible();
         await expect(
           dialog.getByText('Collate Clues: Automations')
@@ -205,7 +207,9 @@ test.describe(
 
       await test.step('Close preview modal', async () => {
         await page.getByTestId('close-resource-player').click();
-        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(
+          page.getByTestId('resource-player-dialog')
+        ).not.toBeVisible();
       });
     });
 
@@ -353,7 +357,7 @@ test.describe(
         await expect(resourceCard).toBeVisible();
         await resourceCard.click();
 
-        const playerDialog = page.getByRole('dialog');
+        const playerDialog = page.getByTestId('resource-player-dialog');
         await expect(playerDialog).toBeVisible();
         await expect(
           playerDialog.getByText(`PW Player Resource ${uniqueId}`)

@@ -18,7 +18,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
-import { Transi18next } from '../../../../utils/CommonUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { PropertyValue } from '../../../common/CustomPropertyTable/PropertyValue';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
@@ -86,6 +86,7 @@ const CustomPropertiesSection = ({
               i18nKey="message.no-custom-properties-entity"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={CUSTOM_PROPERTIES_DOCS}
                   rel="noreferrer"
                   target="_blank"

@@ -31,8 +31,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 public class UsageWorkflowConfig implements WorkflowConfigTypeStrategy {
 
   public OpenMetadataWorkflowConfig buildOMWorkflowConfig(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service)
-      throws WorkflowBuildException {
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     OpenMetadataWorkflowConfig config = new OpenMetadataWorkflowConfig();
 
     Source source = buildDefaultSource(ingestionPipeline, service);

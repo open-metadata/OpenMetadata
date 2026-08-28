@@ -11,12 +11,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.Openai;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
 
 @Slf4j
-public final class OpenAIEmbeddingClient implements EmbeddingClient {
+public final class OpenAIEmbeddingClient extends EmbeddingClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final HttpClient httpClient;
@@ -26,25 +26,28 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
   private final String endpoint;
   private final boolean isAzure;
 
-  public OpenAIEmbeddingClient(ElasticSearchConfiguration config) {
-    NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
-    Openai openaiCfg = nlsCfg.getOpenai();
-    if (openaiCfg == null) {
+  public OpenAIEmbeddingClient(LLMConfiguration config) {
+    super(resolveMaxConcurrent(config));
+    LLMOpenAIEmbeddingConfig embeddingCfg =
+        config.getEmbeddings() != null ? config.getEmbeddings().getOpenai() : null;
+    LLMOpenAIConfig openaiCfg = config.getOpenai();
+    if (embeddingCfg == null || openaiCfg == null) {
       throw new IllegalArgumentException("OpenAI configuration is required");
     }
     if (openaiCfg.getApiKey() == null || openaiCfg.getApiKey().isBlank()) {
       throw new IllegalArgumentException("OpenAI API key is required");
     }
-    if (openaiCfg.getEmbeddingModelId() == null || openaiCfg.getEmbeddingModelId().isBlank()) {
+    if (embeddingCfg.getEmbeddingModelId() == null
+        || embeddingCfg.getEmbeddingModelId().isBlank()) {
       throw new IllegalArgumentException("OpenAI embedding model ID is required");
     }
-    if (openaiCfg.getEmbeddingDimension() == null || openaiCfg.getEmbeddingDimension() <= 0) {
+    if (embeddingCfg.getEmbeddingDimension() == null || embeddingCfg.getEmbeddingDimension() <= 0) {
       throw new IllegalArgumentException("OpenAI embedding dimension must be positive");
     }
 
     this.apiKey = openaiCfg.getApiKey();
-    this.modelId = openaiCfg.getEmbeddingModelId();
-    this.dimension = openaiCfg.getEmbeddingDimension();
+    this.modelId = embeddingCfg.getEmbeddingModelId();
+    this.dimension = embeddingCfg.getEmbeddingDimension();
 
     String endpoint = openaiCfg.getEndpoint();
     String deploymentName = openaiCfg.getDeploymentName();
@@ -77,6 +80,19 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
       int dimension,
       String endpoint,
       boolean isAzure) {
+    this(
+        httpClient, apiKey, modelId, dimension, endpoint, isAzure, DEFAULT_MAX_CONCURRENT_REQUESTS);
+  }
+
+  OpenAIEmbeddingClient(
+      HttpClient httpClient,
+      String apiKey,
+      String modelId,
+      int dimension,
+      String endpoint,
+      boolean isAzure,
+      int maxConcurrentRequests) {
+    super(maxConcurrentRequests);
     this.httpClient = httpClient;
     this.apiKey = apiKey;
     this.modelId = modelId;
@@ -85,7 +101,7 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
     this.isAzure = isAzure;
   }
 
-  private String resolveEndpoint(Openai config) {
+  private String resolveEndpoint(LLMOpenAIConfig config) {
     String endpoint = config.getEndpoint();
     String deploymentName = config.getDeploymentName();
     boolean hasEndpoint = endpoint != null && !endpoint.isBlank();
@@ -105,7 +121,7 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
   }
 
   @Override
-  public float[] embed(String text) {
+  protected float[] doEmbed(String text) {
     if (text == null || text.isBlank()) {
       throw new IllegalArgumentException("Input text must not be null or blank");
     }

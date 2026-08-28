@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { getTermQuery } from './SearchUtils';
-import {
-  getDeleteIcon,
-  getTagAssetsQueryFilter,
-  getUsageCountLink,
-} from './TagsUtils';
+import { getTermQuery } from './SearchPureUtils';
+import { getTagAssetsQueryFilter, getUsageCountLink } from './TagsPureUtils';
+import { getDeleteIcon } from './TagsUtils';
 
 describe('getDeleteIcon', () => {
   it('renders CheckOutlined icon when deleteTagId matches id and status is "success"', () => {
@@ -109,6 +106,22 @@ describe('getTagAssetsQueryFilter', () => {
 
   it('returns common query filter for tagFQN starting with any name expect "Tier and Certification"', () => {
     const tagFQN = 'ClassificationTag.Gold';
+    const result = getTagAssetsQueryFilter(tagFQN);
+    const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('returns common query filter when classification name ends with "Tier"', () => {
+    const tagFQN = 'DataTier.Bronze';
+    const result = getTagAssetsQueryFilter(tagFQN);
+    const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('returns common query filter when classification name ends with "Certification"', () => {
+    const tagFQN = 'DataCertification.Gold';
     const result = getTagAssetsQueryFilter(tagFQN);
     const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
 

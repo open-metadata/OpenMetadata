@@ -22,7 +22,7 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]:
+def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]:  # noqa: UP045
     """
     Remove the import and extra syntax lines for a schema with references
     """
@@ -30,9 +30,7 @@ def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]
         lines = schema_text.splitlines() if schema_text else []
         new_lines = []
         for i, line in enumerate(lines):
-            if not re.search(r'import ".*";', line) and not re.search(
-                r"option .*;", line
-            ):
+            if not re.search(r'import ".*";', line) and not re.search(r"option .*;", line):
                 if re.search(r'\s*syntax\s*=\s*"proto\d+";\s*', line) and i != 0:
                     continue
                 new_lines.append(line)

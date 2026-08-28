@@ -16,6 +16,26 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
+/**
+ * Opens the user-profile dropdown and clicks the persona with the given
+ * display name, then closes the menu. Suitable for tests that need to switch
+ * the active persona without navigating away from the current page.
+ */
+export const selectPersonaFromDropdown = async (
+  page: Page,
+  personaDisplayName: string
+) => {
+  await page.getByTestId('dropdown-profile').click();
+  await page.locator('[role="menu"].profile-dropdown').waitFor({
+    state: 'visible',
+  });
+  await page
+    .getByTestId('persona-label')
+    .filter({ hasText: personaDisplayName })
+    .click();
+  await page.keyboard.press('Escape');
+};
+
 export const updatePersonaDisplayName = async ({
   page,
   displayName,
@@ -29,11 +49,11 @@ export const updatePersonaDisplayName = async ({
     '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
   );
 
-  await page.waitForSelector('#name', { state: 'visible' });
+  await page.locator('#name').waitFor({ state: 'visible' });
 
   await expect(page.locator('#name')).toBeDisabled();
 
-  await page.waitForSelector('#displayName', { state: 'visible' });
+  await page.locator('#displayName').waitFor({ state: 'visible' });
   await page.fill('#displayName', displayName);
 
   await page.click('[data-testid="save-button"]');
@@ -58,7 +78,7 @@ export const checkPersonaInProfile = async (
   expectedPersonaName?: string
 ) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
-  await page.waitForSelector('[role="menu"].profile-dropdown', {
+  await page.locator('[role="menu"].profile-dropdown').waitFor({
     state: 'visible',
   });
   await page.getByTestId('user-name').click();
@@ -80,14 +100,32 @@ export const checkPersonaInProfile = async (
  */
 export const setPersonaAsDefault = async (page: Page) => {
   await page.getByTestId('manage-button').click();
-  await page.getByTestId('set-as-default-button').click();
 
-  const setAsDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const setAsDefaultButton = page.getByTestId('set-as-default-button');
+  await setAsDefaultButton.waitFor({ state: 'visible' });
+  await setAsDefaultButton.click();
+
+  // The `default-persona-confirmation-modal` testid is on the antd
+  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
+  // hidden. Wait for the actual "Yes" button inside the modal instead — its
+  // visibility is the real signal that the modal is rendered and interactive.
   const setAsDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
+  const yesButton = setAsDefaultConfirmationModal.getByRole('button', {
+    name: 'Yes',
+  });
+  await expect(yesButton).toBeVisible();
 
-  await setAsDefaultConfirmationModal.getByText('Yes').click();
+  // Filter by PATCH so the wait cannot be satisfied by an unrelated GET on
+  // /api/v1/personas/* that happens to be in flight.
+  const setAsDefaultResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/personas\/[^/]+$/.test(response.url()) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await yesButton.click();
   await setAsDefaultResponse;
 };
 
@@ -144,13 +182,31 @@ export const removePersonaDefault = async (
   await navigateToPersonaWithPagination(page, personaName ?? '');
 
   await page.getByTestId('manage-button').click();
-  await page.getByTestId('remove-default-button').click();
 
-  const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const removeDefaultButton = page.getByTestId('remove-default-button');
+  await removeDefaultButton.waitFor({ state: 'visible' });
+  await removeDefaultButton.click();
+
+  // The `default-persona-confirmation-modal` testid is on the antd
+  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
+  // hidden. Wait for the actual "Yes" button inside the modal instead — its
+  // visibility is the real signal that the modal is rendered and interactive.
   const removeDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
+  const yesButton = removeDefaultConfirmationModal.getByRole('button', {
+    name: 'Yes',
+  });
+  await expect(yesButton).toBeVisible();
 
-  await removeDefaultConfirmationModal.getByText('Yes').click();
+  // Filter by PATCH so the wait cannot be satisfied by an unrelated GET on
+  // /api/v1/personas/* that happens to be in flight.
+  const removeDefaultResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/personas\/[^/]+$/.test(response.url()) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await yesButton.click();
   await removeDefaultResponse;
 };

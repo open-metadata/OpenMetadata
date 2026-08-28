@@ -19,8 +19,9 @@ import {
 } from '../../../src/generated/entity/data/worksheet';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -133,7 +134,10 @@ export class WorksheetClass extends EntityClass {
         data: this.service,
       }
     );
-    this.serviceResponseData = await serviceResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'WorksheetClass.create'
+    );
 
     // Create spreadsheet
     const spreadsheetResponse = await apiContext.post(
@@ -145,7 +149,10 @@ export class WorksheetClass extends EntityClass {
         },
       }
     );
-    this.spreadsheetResponseData = await spreadsheetResponse.json();
+    this.spreadsheetResponseData = await okJson(
+      spreadsheetResponse,
+      'WorksheetClass.create'
+    );
 
     // Create worksheet in spreadsheet
     const entityResponse = await apiContext.post(
@@ -157,7 +164,10 @@ export class WorksheetClass extends EntityClass {
         },
       }
     );
-    this.entityResponseData = await entityResponse.json();
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'WorksheetClass.create'
+    );
 
     this.childrenSelectorId =
       this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';
@@ -176,17 +186,19 @@ export class WorksheetClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.Worksheet}/name/${this.entityResponseData.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.Worksheet}/name/${this.entityResponseData.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'WorksheetClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -212,12 +224,10 @@ export class WorksheetClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

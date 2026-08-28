@@ -23,7 +23,20 @@ import AppDetails from './AppDetails.component';
 
 jest.mock('../../../../constants/constants', () => ({
   DE_ACTIVE_COLOR: '#fefefe',
+  MCP_APPLICATION_NAME: 'McpApplication',
 }));
+
+const mockIsAdminUser = jest.fn().mockReturnValue(true);
+
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockImplementation(() => ({
+    isAdminUser: mockIsAdminUser(),
+  })),
+}));
+
+jest.mock('../McpApplicationConfiguration/McpApplicationConfiguration', () =>
+  jest.fn().mockReturnValue(<div>MockMcpApplicationConfiguration</div>)
+);
 
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
@@ -58,6 +71,7 @@ const mockPatchApplication = jest
 const mockGetApplicationByName = jest
   .fn()
   .mockImplementation(() => Promise.resolve(mockApplicationData));
+const mockImportSchema = jest.fn().mockReturnValue({ default: ['table'] });
 
 jest.mock('../ApplicationConfiguration/ApplicationConfiguration', () =>
   jest.fn().mockImplementation(({ onConfigSave }) => (
@@ -89,7 +103,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getRelativeTime: jest.fn().mockReturnValue('getRelativeTime'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -141,6 +155,10 @@ jest.mock('../AppRunsHistory/AppRunsHistory.component', () =>
   jest.fn().mockReturnValue(<div>AppRunsHistory</div>)
 );
 
+jest.mock('../AppLiveIndexing/AppLiveIndexing.component', () =>
+  jest.fn().mockReturnValue(<div>AppLiveIndexing</div>)
+);
+
 jest.mock('../AppSchedule/AppSchedule.component', () =>
   jest
     .fn()
@@ -155,7 +173,7 @@ jest.mock('../AppSchedule/AppSchedule.component', () =>
 );
 
 jest.mock('./ApplicationsClassBase', () => ({
-  importSchema: jest.fn().mockReturnValue({ default: ['table'] }),
+  importSchema: jest.fn().mockImplementation(() => mockImportSchema()),
   getJSONUISchema: jest.fn().mockReturnValue({}),
   getApplicationConfigurationComponent: jest
     .fn()
@@ -182,6 +200,12 @@ const ConfirmAction = (buttonLabel: string) => {
 };
 
 describe('AppDetails component', () => {
+  beforeEach(() => {
+    mockImportSchema.mockReset();
+    mockImportSchema.mockReturnValue({ default: ['table'] });
+    mockIsAdminUser.mockReturnValue(true);
+  });
+
   it('actions check in AppDetails component', async () => {
     await renderAppDetails();
 
@@ -272,5 +296,56 @@ describe('AppDetails component', () => {
 
     expect(mockDeployApp).toHaveBeenCalled();
     expect(mockGetApplicationByName).toHaveBeenCalled();
+  });
+
+  it('logs schema import failures before showing the fallback toast', async () => {
+    mockImportSchema.mockRejectedValueOnce(new Error('schema missing'));
+
+    await renderAppDetails();
+
+    expect(mockShowErrorToast).toHaveBeenCalled();
+  });
+
+  it('should render the MCP configuration tab for an admin even without appConfiguration', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'McpApplication',
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+
+    await renderAppDetails();
+
+    expect(
+      within(screen.getByTestId('tabs')).getByRole('tab', {
+        name: 'label.configuration',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('MockMcpApplicationConfiguration')
+    ).toBeInTheDocument();
+  });
+
+  it('should hide the MCP configuration tab from non admins', async () => {
+    mockIsAdminUser.mockReturnValue(false);
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'McpApplication',
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+
+    await renderAppDetails();
+
+    expect(
+      within(screen.getByTestId('tabs')).queryByRole('tab', {
+        name: 'label.configuration',
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('MockMcpApplicationConfiguration')
+    ).not.toBeInTheDocument();
   });
 });

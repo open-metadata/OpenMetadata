@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import dataCollaborationImg from '../assets/img/login-screen/data-collaboration/data-collaboration.png';
 import discoveryImg from '../assets/img/login-screen/discovery/data-discovery.png';
 import governanceImg from '../assets/img/login-screen/governance/governance.png';
 import observabilityImg from '../assets/img/login-screen/observability/data-observability.png';
+import loginVideo from '../assets/videos/omd.mp4';
 
 class LoginClassBase {
   public getLoginCarouselContent() {
@@ -42,6 +44,10 @@ class LoginClassBase {
     ];
 
     return carouselContent;
+  }
+
+  public getLoginVideo(): string | undefined {
+    return loginVideo;
   }
 }
 

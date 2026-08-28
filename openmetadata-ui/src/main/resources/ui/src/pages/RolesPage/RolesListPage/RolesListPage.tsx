@@ -12,17 +12,17 @@
  */
 
 import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/Table';
+import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -44,7 +44,8 @@ import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getRoles } from '../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
   checkPermission,
@@ -65,6 +66,7 @@ const RolesListPage = () => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedRole, setSelectedRole] = useState<Role>();
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const {
     currentPage,
     pageSize,
@@ -240,6 +242,20 @@ const RolesListPage = () => {
     fetchRoles();
   }, [fetchRoles]);
 
+  const handleRoleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(selectedRole).toString(),
+      selectedRole?.id ?? '',
+      EntityType.ROLE
+    );
+    if (isSuccess) {
+      handleAfterDeleteAction();
+    }
+    setSelectedRole(undefined);
+    setIsDeleting(false);
+  }, [selectedRole, handleAfterDeleteAction]);
+
   const handleAddRole = () => {
     navigate(ROUTES.ADD_ROLE);
   };
@@ -333,17 +349,15 @@ const RolesListPage = () => {
             size="small"
           />
           {selectedRole && (
-            <DeleteWidgetModal
-              afterDeleteAction={handleAfterDeleteAction}
-              allowSoftDelete={false}
-              deleteMessage={t('message.are-you-sure-delete-entity', {
-                entity: getEntityName(selectedRole).toString(),
+            <DeleteModal
+              entityTitle={getEntityName(selectedRole).toString()}
+              isDeleting={isDeleting}
+              message={t('message.permanently-delete-common-message', {
+                entity: getEntityName(selectedRole).toString().toLowerCase(),
               })}
-              entityId={selectedRole.id}
-              entityName={getEntityName(selectedRole).toString()}
-              entityType={EntityType.ROLE}
-              visible={!isUndefined(selectedRole)}
+              open={!isUndefined(selectedRole)}
               onCancel={() => setSelectedRole(undefined)}
+              onDelete={handleRoleDelete}
             />
           )}
         </Col>

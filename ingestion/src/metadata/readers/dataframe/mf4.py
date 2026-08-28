@@ -13,6 +13,7 @@
 MF4 DataFrame reader for processing MF4 (Measurement Data Format) files.
 Extracts header metadata (small data) with streaming where possible.
 """
+
 import tempfile
 from functools import singledispatchmethod
 from typing import Optional
@@ -46,7 +47,7 @@ class MF4DataFrameReader(DataFrameReader):
     """
 
     @staticmethod
-    def _extract_header_from_mdf(mdf) -> Optional[DatalakeColumnWrapper]:
+    def _extract_header_from_mdf(mdf) -> Optional[DatalakeColumnWrapper]:  # noqa: UP045
         """Extract header properties from an opened MDF object."""
         import pandas as pd
 
@@ -54,28 +55,20 @@ class MF4DataFrameReader(DataFrameReader):
             common_props = mdf.header._common_properties
 
             if common_props:
-                schema_dict = {
-                    key: pd.Series(value) for key, value in common_props.items()
-                }
+                schema_dict = {key: pd.Series(value) for key, value in common_props.items()}
                 schema_df = pd.DataFrame(schema_dict, index=[0])
                 logger.info(f"Extracted {len(schema_dict)} properties from MF4 header")
 
                 def chunk_generator():
                     yield schema_df
 
-                return DatalakeColumnWrapper(
-                    dataframes=chunk_generator, raw_data=common_props, columns=None
-                )
+                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=common_props, columns=None)
 
         logger.debug("No _common_properties found in header.")
-        return DatalakeColumnWrapper(
-            dataframes=lambda: iter([]), raw_data=None, columns=None
-        )
+        return DatalakeColumnWrapper(dataframes=lambda: iter([]), raw_data=None, columns=None)
 
     @singledispatchmethod
-    def _read_mf4_dispatch(
-        self, config_source: ConfigSource, key: str, bucket_name: str
-    ) -> DatalakeColumnWrapper:
+    def _read_mf4_dispatch(self, config_source: ConfigSource, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         raise FileFormatException(config_source=config_source, file_name=key)
 
     @_read_mf4_dispatch.register
@@ -89,7 +82,7 @@ class MF4DataFrameReader(DataFrameReader):
             for chunk in response["Body"].iter_chunks():
                 tmp.write(chunk)
             tmp.flush()
-            mdf = MDF(tmp.name, load_measured_data=False)
+            mdf = MDF(tmp.name)
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
@@ -103,7 +96,7 @@ class MF4DataFrameReader(DataFrameReader):
 
         with tempfile.NamedTemporaryFile(suffix=".mf4", delete=True) as tmp:
             gcs.get(file_path, tmp.name)
-            mdf = MDF(tmp.name, load_measured_data=False)
+            mdf = MDF(tmp.name)
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
@@ -121,7 +114,7 @@ class MF4DataFrameReader(DataFrameReader):
 
         with tempfile.NamedTemporaryFile(suffix=".mf4", delete=True) as tmp:
             adlfs_fs.get(file_path, tmp.name)
-            mdf = MDF(tmp.name, load_measured_data=False)
+            mdf = MDF(tmp.name)
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
@@ -134,10 +127,8 @@ class MF4DataFrameReader(DataFrameReader):
         """Read MF4 header from local file - most efficient as no temp file needed."""
         from asammdf import MDF
 
-        mdf = MDF(key, load_measured_data=False)
+        mdf = MDF(key)
         return self._extract_header_from_mdf(mdf)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
-        return self._read_mf4_dispatch(
-            self.config_source, key=key, bucket_name=bucket_name
-        )
+        return self._read_mf4_dispatch(self.config_source, key=key, bucket_name=bucket_name)

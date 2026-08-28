@@ -14,10 +14,14 @@ Entity Fetcher Strategy
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, Iterator, Optional, cast
+from typing import Dict, Iterable, Iterator, List, Optional, cast  # noqa: UP035
 
+from pydantic import BaseModel
+
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -25,10 +29,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.settings.settings import Settings
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.entity_interface import EntityInterfaceWithTags
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ManualProgress
 from metadata.profiler.source.fetcher.config import EntityFilterConfigInterface
 from metadata.profiler.source.fetcher.profiler_source_factory import (
     profiler_source_factory,
@@ -36,13 +42,50 @@ from metadata.profiler.source.fetcher.profiler_source_factory import (
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
-    filter_by_classification,
-    filter_by_database,
+    filter_by_classifications,
+    filter_by_container,
     filter_by_schema,
     filter_by_table,
+    filter_by_topic,
+    validate_regex,
 )
+from metadata.utils.fqn import split
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 FIELDS = ["tableProfilerConfig", "columns", "customMetrics", "tags"]
+CONTAINER_FIELDS = ["dataModel", "tags"]
+
+
+class RegexFilter(BaseModel):
+    regex: str
+    mode: str
+
+
+def _combine_patterns(patterns: List[str]) -> str:  # noqa: UP006
+    if len(patterns) == 1:
+        return patterns[0]
+    return "|".join(f"({p})" for p in patterns)
+
+
+def _build_regex_from_filter(
+    filter_pattern: Optional[FilterPattern],  # noqa: UP045
+) -> Optional[RegexFilter]:  # noqa: UP045
+    """Build a RegexFilter from a FilterPattern for server-side filtering.
+
+    When both includes and excludes are set, includes take precedence.
+    Validates that all regex patterns compile before sending them to the server.
+    """
+    if not filter_pattern:
+        return None
+    validate_regex(filter_pattern.includes)
+    validate_regex(filter_pattern.excludes)
+    if filter_pattern.includes:
+        return RegexFilter(regex=_combine_patterns(filter_pattern.includes), mode="include")
+    if filter_pattern.excludes:
+        return RegexFilter(regex=_combine_patterns(filter_pattern.excludes), mode="exclude")
+    return None
 
 
 class FetcherStrategy(ABC):
@@ -52,14 +95,16 @@ class FetcherStrategy(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
+        progress: ManualProgress,
     ) -> None:
         self.config = config
         self.source_config = config.source.sourceConfig.config
         self.metadata = metadata
         self.global_profiler_config = global_profiler_config
         self.status = status
+        self.progress = progress
 
     def filter_classifications(self, entity: EntityInterfaceWithTags) -> bool:
         """Given a list of entities, filter out entities that do not match the classification filter pattern
@@ -70,32 +115,22 @@ class FetcherStrategy(ABC):
         Raises:
             NotImplementedError: Must be implemented by subclass
         """
-        classification_filter_pattern = getattr(
-            self.source_config, "classificationFilterPattern", None
-        )
+        classification_filter_pattern = getattr(self.source_config, "classificationFilterPattern", None)
         if not classification_filter_pattern:
             return False
 
         use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
+        tag_names = [
+            name
+            for name in (tag.tagFQN.root if use_fqn_for_filtering else tag.name for tag in (entity.tags or []))
+            if name
+        ]
 
-        if not entity.tags:
-            # if we are not explicitly including entities with tags we'll add the ones without tags
-            if not classification_filter_pattern.includes:
-                return False
-            return True
-
-        for tag in entity.tags:
-            tag_name = tag.tagFQN.root if use_fqn_for_filtering else tag.name
-            if not tag_name:
-                continue
-            if filter_by_classification(classification_filter_pattern, tag_name):
-                self.status.filter(
-                    tag_name,
-                    f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}",
-                )  # type: ignore
-                return True
-
-        return False
+        is_filtered = filter_by_classifications(classification_filter_pattern, tag_names)
+        if is_filtered:
+            entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else ""
+            self.status.filter(entity_fqn, "Classification pattern not allowed")
+        return is_filtered
 
     @abstractmethod
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
@@ -110,88 +145,25 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
+        progress: ManualProgress,
     ) -> None:
-        super().__init__(config, metadata, global_profiler_config, status)
-        self.source_config = cast(
-            EntityFilterConfigInterface, self.source_config
-        )  # Satisfy typechecker
+        super().__init__(config, metadata, global_profiler_config, status, progress)
+        self.database_filter_pattern = _build_regex_from_filter(self.source_config.databaseFilterPattern)
+        self.schema_filter_pattern = _build_regex_from_filter(self.source_config.schemaFilterPattern)
+        self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
+        self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker  # noqa: TC006
 
-    def _filter_databases(self, databases: Iterable[Database]) -> Iterable[Database]:
-        """Filter databases based on the filter pattern
-
-        Args:
-            databases (Database): Database to filter
-
-        Returns:
-            bool
-        """
-        filtered_databases = []
-
-        for database in databases:
-            database_name = database.name.root
-            if database.fullyQualifiedName and self.source_config.useFqnForFiltering:
-                database_name = database.fullyQualifiedName.root
-            if filter_by_database(
-                self.source_config.databaseFilterPattern, database_name
-            ):
-                self.status.filter(
-                    database_name,
-                    f"Database pattern not allowed for database {database_name}",
-                )
-                continue
-            filtered_databases.append(database)
-
-        return filtered_databases
-
-    def _filter_schemas(self, table: Table) -> bool:
-        """Filter tables based on the schema filter pattern
-
-        Args:
-            tables (List[Table]): Tables to filter
-
-        Returns:
-            List[Table]
-        """
-
-        if not table.databaseSchema:
-            return False
-        schema_name = (
-            table.databaseSchema.fullyQualifiedName
-            if self.source_config.useFqnForFiltering
-            else table.databaseSchema.name
-        )
-        if schema_name and filter_by_schema(
-            self.source_config.schemaFilterPattern, schema_name
-        ):
-            self.status.filter(
-                schema_name, f"Schema pattern not allowed for schema {schema_name}"
-            )
-            return True
-
-        return False
-
-    def _filter_tables(self, table: Table) -> bool:
-        """Filter tables based on the table filter pattern
-
-        Args:
-            tables (Iterable[Table]):
-
-        Returns:
-            Iterable[Table]:
-        """
-        table_name = table.name.root
-        if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
-            table_name = table.fullyQualifiedName.root
-
-        if filter_by_table(self.source_config.tableFilterPattern, table_name):
-            self.status.filter(
-                table_name, f"Table pattern not allowed for table {table_name}"
-            )
-            return True
-
-        return False
+    def _build_database_params(self) -> Dict[str, str]:  # noqa: UP006
+        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore  # noqa: UP006
+        db_filter = self.database_filter_pattern
+        if db_filter:
+            params["databaseRegex"] = db_filter.regex
+            params["regexMode"] = db_filter.mode
+            if self.source_config.useFqnForFiltering:
+                params["regexFilterByFqn"] = "true"
+        return params
 
     def _filter_views(self, table: Table) -> bool:
         """Filter the tables based on include views configuration"""
@@ -201,97 +173,142 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         # Otherwise, filter out views
         if table.tableType == TableType.View:
-            self.status.filter(
-                table.name.root, f"We are not including views {table.name.root}"
-            )
+            self.status.filter(table.name.root, f"We are not including views {table.name.root}")
             return True
 
         return False
-
-    def _filter_column_metrics_computation(self):
-        """Filter"""
 
     def _get_database_entities(self) -> Iterable[Database]:
         """Get database entities"""
         if not self.config.source.serviceName:
             raise ValueError("serviceName must be provided in the source configuration")
 
+        params = self._build_database_params()
         databases = self.metadata.list_all_entities(
             entity=Database,
-            params={"service": self.config.source.serviceName},
+            params=params,
         )
-        if not databases:
-            raise ValueError(
-                f"No databases found for service {self.config.source.serviceName}"
-            )
-        databases = cast(Iterable[Database], databases)
 
-        if self.source_config.databaseFilterPattern:
-            databases = self._filter_databases(databases)
+        count = 0
+        for database in databases:
+            count += 1
+            yield database
 
-        if not databases:
+        if count == 0:
             raise ValueError(
                 "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
                 f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
                 f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
-        return cast(Iterable[Database], databases)
+    def _build_table_params(self, database: Database) -> Dict[str, str]:  # noqa: UP006
+        params: Dict[str, str] = {  # noqa: UP006
+            "service": self.config.source.serviceName,  # type: ignore
+            "database": database.fullyQualifiedName.root,  # type: ignore
+        }
 
-    def _filter_entities(self, tables: Iterable[Table]) -> Iterable[Table]:
-        """Filter entities based on the filter pattern
+        schema_filter = self.schema_filter_pattern
+        table_filter = self.table_filter_pattern
 
-        Args:
-            entities (Iterable[EntityInterfaceWithTags]): Entities to filter
+        conflicting_modes = (
+            schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
+        )
 
-        Returns:
-            Iterable[EntityInterfaceWithTags]
-        """
-        tables = [
-            table
-            for table in tables
-            if (
-                not self.source_config.schemaFilterPattern
-                or not self._filter_schemas(table)
+        regex_mode: Optional[str] = None  # noqa: UP045
+        if schema_filter and (not conflicting_modes or schema_filter.mode == "include"):
+            params["databaseSchemaRegex"] = schema_filter.regex
+            regex_mode = schema_filter.mode
+
+        if table_filter and (not conflicting_modes or table_filter.mode == "include"):
+            params["tableRegex"] = table_filter.regex
+            regex_mode = table_filter.mode
+
+        if regex_mode:
+            params["regexMode"] = regex_mode
+            if self.source_config.useFqnForFiltering:
+                params["regexFilterByFqn"] = "true"
+
+        return params
+
+    def _has_conflicting_filter_modes(self) -> bool:
+        schema_filter = self.schema_filter_pattern
+        table_filter = self.table_filter_pattern
+        return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
+
+    def _filter_deferred_excludes(self, table: Table) -> bool:
+        """Apply exclude filters that were deferred to client-side
+        because schema and table filters use conflicting modes."""
+        schema_filter = self.schema_filter_pattern
+        table_filter = self.table_filter_pattern
+
+        if schema_filter and schema_filter.mode == "exclude" and table.databaseSchema:
+            exclude_only = FilterPattern(excludes=self.source_config.schemaFilterPattern.excludes)
+            schema_name = (
+                table.databaseSchema.fullyQualifiedName
+                if self.source_config.useFqnForFiltering
+                else table.databaseSchema.name
             )
-            and (
-                not self.source_config.tableFilterPattern
-                or not self._filter_tables(table)
-            )
-            and (
-                not self.source_config.classificationFilterPattern
-                or not self.filter_classifications(table)
-            )
-            and not self._filter_views(table)
-        ]
+            if schema_name and filter_by_schema(exclude_only, schema_name):
+                self.status.filter(
+                    schema_name,
+                    f"Schema pattern not allowed for schema {schema_name}",
+                )
+                return True
 
-        return tables
+        if table_filter and table_filter.mode == "exclude":
+            exclude_only = FilterPattern(excludes=self.source_config.tableFilterPattern.excludes)
+            table_name = table.name.root
+            if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
+                table_name = table.fullyQualifiedName.root
+            if filter_by_table(exclude_only, table_name):
+                self.status.filter(
+                    table_name,
+                    f"Table pattern not allowed for table {table_name}",
+                )
+                return True
+
+        return False
 
     def _get_table_entities(self, database: Database) -> Iterable[Table]:
-        """Given a database, get all table entities
-
-        Args:
-            database (Database): Database to get tables from
-
-        Returns:
-            Iterable[Table]
-        """
+        """Given a database, get all table entities"""
+        params = self._build_table_params(database)
         tables = self.metadata.list_all_entities(
             entity=Table,
             fields=FIELDS,
-            params={
-                "service": self.config.source.serviceName,
-                "database": database.fullyQualifiedName.root,  # type: ignore
-            },  # type: ignore
+            params=params,
         )
-        tables = cast(Iterable[Table], tables)
-        tables = self._filter_entities(tables)
 
-        return cast(Iterable[Table], tables)
+        has_deferred = self._has_conflicting_filter_modes()
+
+        for table in tables:
+            if has_deferred and self._filter_deferred_excludes(table):
+                continue
+            if self.source_config.classificationFilterPattern and self.filter_classifications(table):
+                continue
+            if self._filter_views(table):
+                continue
+            yield table
+
+    def _seed_table_total(self, database: Database, db_fqn: str) -> None:
+        """Seed this database's server-side-filtered table count so % and ETA
+        have an immediate denominator. A failure only skips the seed — the
+        scope still reconciles to the observed count."""
+        try:
+            total = self.metadata.list_entities(entity=Table, params=self._build_table_params(database), limit=1).total
+        except Exception as exc:
+            logger.debug(f"Could not seed table total for `{db_fqn}`: {exc}")
+            total = None
+        if total is not None:
+            self.progress.seed_scope_total(Table.__name__, db_fqn, total)
+        else:
+            self.progress.mark_reconcilable(Table.__name__)
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch database entity"""
         for database in self._get_database_entities():
+            db_fqn = getattr(database.fullyQualifiedName, "root", None) or str(database.name.root)
+            self._seed_table_total(database, db_fqn)
+            observed = 0
             try:
                 profiler_source = profiler_source_factory.create(
                     self.config.source.type.lower(),
@@ -302,6 +319,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 )
 
                 for table in self._get_table_entities(database):
+                    observed += 1
+                    self.progress.track_asset(Table.__name__)
                     yield Either(
                         left=None,
                         right=ProfilerSourceAndEntity(
@@ -312,9 +331,207 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=database.fullyQualifiedName.root,  # type: ignore
+                        name=db_fqn,
                         error=f"Error listing source and entities for database due to [{exc}]",
                         stackTrace=traceback.format_exc(),
                     ),
                     right=None,
                 )
+            finally:
+                self.progress.reconcile_scope_total(Table.__name__, db_fqn, observed)
+
+
+class StorageFetcherStrategy(FetcherStrategy):
+    """Storage fetcher strategy for Container entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Optional[Settings],  # noqa: UP045
+        status: Status,
+        progress: ManualProgress,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status, progress)
+
+    def _filter_buckets(self, container: Container) -> bool:
+        """Filter buckets (top-level containers) based on the bucket filter pattern
+
+        Args:
+            container (Container): Container to filter
+
+        Returns:
+            bool: True if the container should be filtered out
+        """
+        bucket_filter_pattern = getattr(self.source_config, "bucketFilterPattern", None)
+
+        if not bucket_filter_pattern:
+            return False
+
+        fqn_parts = split(container.fullyQualifiedName.root)
+        if len(fqn_parts) >= 2:
+            bucket_name = fqn_parts[1]
+        else:
+            bucket_name = container.name.root
+
+        if filter_by_container(bucket_filter_pattern, bucket_name):
+            self.status.filter(bucket_name, "Bucket pattern not allowed")
+            return True
+
+        return False
+
+    def _filter_containers(self, container: Container) -> bool:
+        """Filter containers based on the filter pattern
+
+        Args:
+            container (Container): Container to filter
+
+        Returns:
+            bool: True if the container should be filtered out
+        """
+        container_filter_pattern = getattr(self.source_config, "containerFilterPattern", None)
+        use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
+
+        if not container_filter_pattern:
+            return False
+
+        container_name = container.fullyQualifiedName.root if use_fqn_for_filtering else container.name.root
+
+        if filter_by_container(container_filter_pattern, container_name):
+            self.status.filter(container_name, "Container pattern not allowed")
+            return True
+
+        return False
+
+    def _filter_entities(self, containers: Iterable[Container]) -> Iterable[Container]:
+        """Filter container entities based on the filter pattern
+
+        Args:
+            containers (Iterable[Container]): Containers to filter
+
+        Returns:
+            Iterable[Container]: Filtered containers
+        """
+        containers = [
+            container
+            for container in containers
+            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and container.dataModel is not None
+        ]
+
+        return containers  # noqa: RET504
+
+    def _get_container_entities(self) -> Iterable[Container]:
+        """Get all container entities from the storage service
+
+        Returns:
+            Iterable[Container]: Container entities
+        """
+        containers = self.metadata.list_all_entities(
+            entity=Container,
+            fields=CONTAINER_FIELDS,
+            params={
+                "service": self.config.source.serviceName,
+            },
+        )
+        containers = cast(Iterable[Container], containers)  # noqa: TC006
+        containers = self._filter_entities(containers)
+
+        return cast(Iterable[Container], containers)  # noqa: TC006
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch container entities from storage service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            containers = list(self._get_container_entities())
+            self.progress.set_total(Container.__name__, len(containers))
+            for container in containers:
+                self.progress.track_asset(Container.__name__)
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=container,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName,
+                    error=f"Error listing source and entities for storage service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+
+class MessagingFetcherStrategy(FetcherStrategy):
+    """Messaging fetcher strategy for Topic entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Optional[Settings],  # noqa: UP045
+        status: Status,
+        progress: ManualProgress,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status, progress)
+
+    def _get_topic_entities(self) -> Iterable[Topic]:
+        """Get topic entities for the service, applying topicFilterPattern and skipping schema-less topics."""
+        service_name = self.config.source.serviceName
+        topics = self.metadata.list_all_entities(
+            entity=Topic,
+            fields=["messageSchema", "tags"],
+            params={"service": service_name} if service_name else None,
+        )
+        source_config = self.config.source.sourceConfig.config
+        topic_filter = getattr(source_config, "topicFilterPattern", None)
+        use_fqn = getattr(source_config, "useFqnForFiltering", False)
+        for topic in cast(Iterable[Topic], topics):  # noqa: TC006
+            if not (topic.messageSchema and topic.messageSchema.schemaFields):
+                continue
+            name = topic.fullyQualifiedName.root if use_fqn and topic.fullyQualifiedName else topic.name.root
+            if topic_filter and filter_by_topic(topic_filter, name):
+                self.status.filter(name, "Topic pattern not allowed")
+                continue
+            yield topic
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch topic entities from messaging service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            for topic in self._get_topic_entities():
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=topic,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName or "unknown",
+                    error=f"Error listing source and entities for messaging service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )

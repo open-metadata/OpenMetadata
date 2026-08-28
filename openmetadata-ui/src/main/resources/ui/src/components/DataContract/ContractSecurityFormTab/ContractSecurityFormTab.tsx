@@ -41,13 +41,13 @@ import {
   Policy,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
-import { filterSelectOptions } from '../../../utils/CommonUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
-import { getColumnOptionsFromTableColumn } from '../../../utils/TableUtils';
+import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
+import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-security-form-tab.less';
 
 export const ContractSecurityFormTab: React.FC<{

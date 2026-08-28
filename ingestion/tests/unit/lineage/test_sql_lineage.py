@@ -12,6 +12,7 @@
 """
 sql lineage utils tests
 """
+
 import uuid
 from unittest import TestCase
 
@@ -27,6 +28,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_column_lineage,
     get_table_fqn_from_query_name,
     populate_column_lineage_map,
+    search_table_entities,
 )
 from metadata.utils.logger import Loggers
 
@@ -40,11 +42,7 @@ EXPECTED_LINEAGE_MAP = [
     {"<default>.mytable2": {"<default>.mytable1": [("*", "*")]}},
     {"<default>.mytable3": {"<default>.mytable1": [("ID", "ID"), ("NAME", "NAME")]}},
     {"<default>.myview2": {"<default>.mytable1": [("CITY", "CITY"), ("NAME", "NAME")]}},
-    {
-        "<default>.mytable5": {
-            "<default>.mytable1": [("CITY", "CITY"), ("ID", "ID"), ("NAME", "NAME")]
-        }
-    },
+    {"<default>.mytable5": {"<default>.mytable1": [("CITY", "CITY"), ("ID", "ID"), ("NAME", "NAME")]}},
 ]
 
 
@@ -65,9 +63,7 @@ class SqlLineageTest(TestCase):
         Method to test column wildcard
         """
         # Given
-        column_lineage_map = {
-            "testdb.public.target": {"testdb.public.users": [("*", "*")]}
-        }
+        column_lineage_map = {"testdb.public.target": {"testdb.public.users": [("*", "*")]}}
         to_entity = Table(
             id=uuid.uuid4(),
             name="target",
@@ -122,15 +118,8 @@ class SqlLineageTest(TestCase):
         # When
         lineage_map = populate_column_lineage_map(raw_column_lineage)
         # Then
-        self.assertEqual(
-            lineage_map, {"testdb.public.target": {"testdb.public.users": [("*", "*")]}}
-        )
+        self.assertEqual(lineage_map, {"testdb.public.target": {"testdb.public.users": [("*", "*")]}})
 
-    # TODO: since default parser is sqlglot, which fails to parse CTEs properly,
-    # we need to either fix sqlglot or change the default parser to test this case
-    @pytest.mark.skip(
-        reason="SqlGlot does not handle CTEs properly yet for column lineage."
-    )
     def test_populate_column_lineage_map_ctes(self):
         """
         Method to test column lineage map populate func with ctes
@@ -162,11 +151,7 @@ class SqlLineageTest(TestCase):
         # Then
         self.assertEqual(
             lineage_map,
-            {
-                "testdb.public.target": {
-                    "testdb.public.users": [("ID", "ID"), ("NAME", "NAME")]
-                }
-            },
+            {"testdb.public.target": {"testdb.public.users": [("ID", "ID"), ("NAME", "NAME")]}},
         )
 
     @pytest.mark.skip(reason="It is flaky and must be reviewed.")
@@ -187,9 +172,7 @@ class SqlLineageTest(TestCase):
         values_format = "\t('value1{a}','value2{b}','value{c}','value{d}','value{e}')"
         values = [values_format.format(a=0, b=0, c=0, d=0, e=0)]
         for num in range(1, 2000):
-            values.insert(
-                0, values_format.format(a=num, b=num, c=num, d=num, e=num) + ","
-            )
+            values.insert(0, values_format.format(a=num, b=num, c=num, d=num, e=num) + ",")
         # When
         with self.assertLogs(Loggers.INGESTION.value, level="DEBUG") as logger:
             LineageParser(
@@ -199,10 +182,7 @@ class SqlLineageTest(TestCase):
             )
             # Then
             self.assertTrue(
-                any(
-                    "Parser has been running for more than 1 seconds." in log
-                    for log in logger.output
-                ),
+                any("Parser has been running for more than 1 seconds." in log for log in logger.output),
                 "Parser finished before the 1 expected seconds!",
             )
 
@@ -212,27 +192,74 @@ class SqlLineageTest(TestCase):
         """
         raw_query_name = "test.tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), (None, "test", "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, "test", "tab"))
 
         raw_query_name = "db.test.tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), ("db", "test", "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), ("db", "test", "tab"))
 
         raw_query_name = "tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), (None, None, "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, None, "tab"))
 
         raw_query_name = "project.dataset.info_schema.tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), (None, None, "tab")
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, None, "tab"))
+
+    def test_table_name_from_query_with_dotted_schema(self):
+        """
+        A connector may put a `.` inside a single name component -- Dremio flattens
+        nested folder paths into `folder.subfolder` -- in which case that component
+        arrives quoted. It must survive as one component instead of being torn in half,
+        which used to surface as `ValueError: Invalid name "folder` (issue #31481).
+        """
+        assert get_table_fqn_from_query_name('"OpsDataViews.Reporting".vw_customer') == (
+            None,
+            '"OpsDataViews.Reporting"',
+            "vw_customer",
         )
+
+        assert get_table_fqn_from_query_name('Prod."OpsDataViews.Reporting".vw_customer') == (
+            "Prod",
+            '"OpsDataViews.Reporting"',
+            "vw_customer",
+        )
+
+        # Deeply nested folders stay a single quoted schema rather than tripping the
+        # 4+ component branch and losing the schema altogether
+        assert get_table_fqn_from_query_name('"a.b.c.d".tab') == (None, '"a.b.c.d"', "tab")
+
+        # A quoted table name containing a dot is likewise preserved
+        assert get_table_fqn_from_query_name('db.schema."tab.v2"') == ("db", "schema", '"tab.v2"')
+
+    def test_table_name_from_query_is_quote_safe(self):
+        """
+        Names are harvested from parsed SQL, so malformed input must degrade rather
+        than raise -- get_table_fqn_from_query_name has no callers that catch ValueError.
+        """
+        assert get_table_fqn_from_query_name('"unbalanced') == (None, None, '"unbalanced')
+        assert get_table_fqn_from_query_name('"a.b"."c.d"') == (None, '"a.b"', '"c.d"')
+
+    def test_search_table_entities_without_table_name(self):
+        """
+        References such as `db.schema.` carry no table to look up. They should be skipped
+        instead of failing the FQN building once per searched service.
+        """
+        database, database_schema, table = get_table_fqn_from_query_name("db.schema.")
+        self.assertEqual((database, database_schema, table), ("db", "schema", ""))
+
+        with self.assertLogs(Loggers.UTILS.value, level="DEBUG") as logger:
+            self.assertIsNone(
+                search_table_entities(
+                    metadata=None,
+                    service_names=["service_1", "service_2"],
+                    database=database,
+                    database_schema=database_schema,
+                    table=table,
+                )
+            )
+
+        self.assertFalse([log for log in logger.output if log.startswith("ERROR")])
 
     def test_replace_target_table(self):
         """
@@ -420,10 +447,7 @@ class SqlLineageTest(TestCase):
         Test COPY INTO @stage FROM (SELECT ...) extracts the underlying
         source table correctly from the subquery.
         """
-        query = (
-            "COPY INTO @external_stage/path/ FROM "
-            "(SELECT col1, col2 FROM db.schema.source_table WHERE id > 100)"
-        )
+        query = "COPY INTO @external_stage/path/ FROM (SELECT col1, col2 FROM db.schema.source_table WHERE id > 100)"
         parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
 
         self.assertEqual(len(parser.source_tables), 1)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,14 +16,13 @@ import { useTranslation } from 'react-i18next';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import {
-  AlertMessage,
   EMPTY_QUERY_FILTER_STRINGS,
   getExploreURLWithFilters,
   getModifiedQueryFilterWithSelectedAssets,
-  getSelectedResourceCount,
   getTotalResourceCount,
   isValidElasticsearchQuery,
-} from './CuratedAssetsUtils';
+} from './CuratedAssetsPureUtils';
+import { AlertMessage, getSelectedResourceCount } from './CuratedAssetsUtils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
@@ -41,7 +40,7 @@ jest.mock('./RouterUtils', () => ({
   getExplorePath: jest.fn().mockReturnValue('/explore'),
 }));
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
+jest.mock('@react-awesome-query-builder/ui', () => ({
   Utils: {
     checkTree: jest.fn().mockReturnValue({}),
     loadTree: jest.fn().mockReturnValue({}),
@@ -65,7 +64,7 @@ jest.mock('@ant-design/icons', () => ({
 describe('CuratedAssetsUtils', () => {
   beforeEach(() => {
     (useTranslation as jest.Mock).mockReturnValue({
-      t: (key: string, params?: any) => {
+      t: (key: string, params?: Record<string, unknown>) => {
         if (key === 'message.search-entity-count') {
           return `${params?.count} entities found`;
         }

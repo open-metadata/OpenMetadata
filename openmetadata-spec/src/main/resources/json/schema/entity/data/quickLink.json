@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/quickLink.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QuickLink",
+  "description": "Quick Link Knowledge Page Store.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.QuickLink",
+  "properties": {
+    "url": {
+      "description": "The URL or destination of the Quick Link.",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": ["url"],
+  "additionalProperties": false
+}

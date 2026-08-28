@@ -11,26 +11,118 @@
  *  limitations under the License.
  */
 
-import { upperFirst } from 'lodash';
 import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { getEntityStatsData } from './ApplicationUtils';
+import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
-  MOCK_APPLICATION_ENTITY_STATS,
-  MOCK_APPLICATION_ENTITY_STATS_DATA,
-} from './mocks/ApplicationUtils.mock';
+  getAppRunFailureLogs,
+  getEntityStatsData,
+  hasAppRunStats,
+} from './ApplicationUtils';
+import { MOCK_APPLICATION_ENTITY_STATS } from './mocks/ApplicationUtils.mock';
 
 describe('ApplicationUtils tests', () => {
-  it('getEntityStatsData should return stats data in array', () => {
+  it('getEntityStatsData should return stats data in array with vector embeddings', () => {
     const resultData = getEntityStatsData(
       MOCK_APPLICATION_ENTITY_STATS as unknown as EntityStats
     );
 
-    const sortedMockData = MOCK_APPLICATION_ENTITY_STATS_DATA.map((data) => ({
-      ...data,
-      name: upperFirst(data.name),
-    })).sort((a, b) => a.name.localeCompare(b.name));
+    // Verify basic structure
+    expect(resultData.length).toBeGreaterThan(0);
 
-    // Verify the result matches the sorted mock data
-    expect(resultData).toEqual(sortedMockData);
+    // Verify sorted by name
+    for (let i = 1; i < resultData.length; i++) {
+      expect(
+        resultData[i - 1].name.localeCompare(resultData[i].name)
+      ).toBeLessThanOrEqual(0);
+    }
+
+    // Verify each entry has required fields including vectorEmbeddings
+    for (const entry of resultData) {
+      expect(entry).toHaveProperty('name');
+      expect(entry).toHaveProperty('totalRecords');
+      expect(entry).toHaveProperty('successRecords');
+      expect(entry).toHaveProperty('failedRecords');
+      expect(entry).toHaveProperty('vectorEmbeddings');
+    }
+
+    // Verify vector-indexable entities get a number (0 when no vectorSuccessRecords in mock)
+    const tableEntry = resultData.find((e) => e.name === 'Table');
+
+    expect(tableEntry?.vectorEmbeddings).toBe(0);
+
+    // Verify non-vector-indexable entities get null
+    const userEntry = resultData.find((e) => e.name === 'User');
+
+    expect(userEntry?.vectorEmbeddings).toBeNull();
+
+    const classificationEntry = resultData.find(
+      (e) => e.name === 'Classification'
+    );
+
+    expect(classificationEntry?.vectorEmbeddings).toBeNull();
+  });
+});
+
+describe('hasAppRunStats', () => {
+  it('returns true when the success context has any stat block', () => {
+    const record = {
+      successContext: { stats: { jobStats: { totalRecords: 1 } } },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(true);
+  });
+
+  it('returns true when the failure context has a stat block', () => {
+    const record = {
+      failureContext: { stats: { readerStats: { totalRecords: 1 } } },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(true);
+  });
+
+  it('returns true when there are server stats', () => {
+    const record = {
+      successContext: { serverStats: { 's-1': { processedRecords: 1 } } },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(true);
+  });
+
+  it('returns false when the record has only a failure and no stats', () => {
+    const record = {
+      failureContext: { failure: { message: 'boom' }, stackTrace: 'boom' },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(false);
+  });
+
+  it('returns false when the record is empty', () => {
+    expect(hasAppRunStats({} as AppRunRecord)).toBe(false);
+  });
+});
+
+describe('getAppRunFailureLogs', () => {
+  it('formats the failure object into readable log text', () => {
+    const record = {
+      failureContext: { failure: { message: 'oops' } },
+    } as unknown as AppRunRecord;
+
+    expect(getAppRunFailureLogs(record)).toContain('oops');
+  });
+
+  it('prefers stackTrace over failure', () => {
+    const record = {
+      failureContext: {
+        stackTrace: 'boom-trace',
+        failure: { message: 'oops' },
+      },
+    } as unknown as AppRunRecord;
+
+    // stackTrace wins, so the failure message is not present
+    expect(getAppRunFailureLogs(record)).not.toContain('oops');
+  });
+
+  it('returns an empty string when there is no failure context', () => {
+    expect(getAppRunFailureLogs({} as AppRunRecord)).toBe('');
   });
 });

@@ -12,7 +12,6 @@
  */
 
 import { Skeleton } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -31,21 +30,14 @@ import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  IngestionPipeline,
-  PipelineStatus,
-} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import {
-  deleteIngestionPipelineById,
-  getRunHistoryForPipeline,
-} from '../../../../../rest/ingestionPipelineAPI';
-import { Transi18next } from '../../../../../utils/CommonUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
+import { columnSorter } from '../../../../../utils/EntitySortUtils';
+import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
   renderScheduleField,
@@ -57,10 +49,11 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
-import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import './ingestion-list-table.less';
@@ -70,6 +63,15 @@ import {
 } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
+
+// Derived from symbols already in scope rather than imported from antd directly: tw-guard blocks
+// new antd specifiers, and this file's table is legacy AntD that is not being migrated here.
+type AntdSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
+type AntdTableChangeHandler = NonNullable<
+  NonNullable<IngestionListTableProps['extraTableProps']>['onChange']
+>;
+
+const INGESTION_EMPTY_CARD_CLASS = 'tw:relative tw:py-8';
 
 function IngestionListTable({
   tableContainerClassName = '',
@@ -99,6 +101,8 @@ function IngestionListTable({
   customRenderNameField,
   tableClassName,
   searchText,
+  sortOrder,
+  onSortChange,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -111,10 +115,6 @@ function IngestionListTable({
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
     useState<IngestionServicePermission>();
-  const [recentRunStatuses, setRecentRunStatuses] = useState<
-    Record<string, PipelineStatus[]>
-  >({});
-  const [isIngestionRunsLoading, setIsIngestionRunsLoading] = useState(false);
 
   const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
     setDeleteSelection(row);
@@ -129,10 +129,10 @@ function IngestionListTable({
     () =>
       ingestionData.map((item) => ({
         ...item,
-        runStatus: recentRunStatuses?.[item.name]?.[0]?.status?.[0],
-        runId: recentRunStatuses?.[item.name]?.[0]?.runId,
+        runStatus: item.pipelineStatuses?.[0]?.status?.[0],
+        runId: item.pipelineStatuses?.[0]?.runId,
       })),
-    [ingestionData, recentRunStatuses]
+    [ingestionData]
   );
 
   const deleteIngestion = useCallback(
@@ -186,23 +186,15 @@ function IngestionListTable({
     [handleCancelConfirmationModal]
   );
 
-  const fetchIngestionPipelineExtraDetails = useCallback(async () => {
-    try {
-      setIsIngestionRunsLoading(true);
-      const permissionPromises = ingestionData.map((item) =>
-        getEntityPermissionByFqn(
-          ResourceEntity.INGESTION_PIPELINE,
-          item.fullyQualifiedName ?? ''
-        )
-      );
-      const recentRunStatusPromises = ingestionData.map((item) =>
-        getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
-      );
-      const permissionResponse = await Promise.allSettled(permissionPromises);
-      const recentRunStatusResponse = await Promise.allSettled(
-        recentRunStatusPromises
-      );
+  const fetchIngestionPipelineExtraDetails = useCallback(() => {
+    const permissionPromises = ingestionData.map((item) =>
+      getEntityPermissionByFqn(
+        ResourceEntity.INGESTION_PIPELINE,
+        item.fullyQualifiedName ?? ''
+      )
+    );
 
+    Promise.allSettled(permissionPromises).then((permissionResponse) => {
       const permissionData = permissionResponse.reduce((acc, cv, index) => {
         return {
           ...acc,
@@ -210,44 +202,34 @@ function IngestionListTable({
             cv.status === 'fulfilled' ? cv.value : {},
         };
       }, {});
-
-      const recentRunStatusData = recentRunStatusResponse.reduce(
-        (acc, cv, index) => {
-          let value: PipelineStatus[] = [];
-
-          if (cv.status === 'fulfilled') {
-            const runs = cv.value.data ?? [];
-
-            const ingestion = ingestionData[index];
-
-            value =
-              runs.length === 0 && ingestion?.pipelineStatuses
-                ? [ingestion.pipelineStatuses]
-                : runs;
-          }
-
-          return {
-            ...acc,
-            [ingestionData?.[index].name]: value,
-          };
-        },
-        {}
-      );
       setIngestionPipelinePermissions(permissionData);
-      setRecentRunStatuses(recentRunStatusData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsIngestionRunsLoading(false);
-    }
+    });
   }, [ingestionData]);
 
-  const { isFetchingStatus, platform } = useMemo(
+  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
     () => airflowInformation ?? ({} as AirflowStatusContextType),
     [airflowInformation]
   );
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
+
+  // `isAirflowAvailable` is seeded false, so it only reads as "unreachable" once the status call
+  // has answered.
+  const isAirflowUnavailable = !isFetchingStatus && !isAirflowAvailable;
+
+  // The pipeline list is fetched independently of the airflow status now, so an empty table here
+  // really does mean "none exist". `AirflowMessageBanner` carries the unreachable case.
+  const defaultEmptyPlaceholder = useMemo(
+    () =>
+      getErrorPlaceHolder(
+        ingestionData.length,
+        isPlatFormDisabled,
+        theme,
+        pipelineType,
+        INGESTION_EMPTY_CARD_CLASS
+      ),
+    [ingestionData.length, isPlatFormDisabled, pipelineType, theme]
+  );
 
   const handleDeleteConfirm = useCallback(async () => {
     await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
@@ -285,7 +267,10 @@ function IngestionListTable({
           handleEditClick={handleEditClick}
           handleEnableDisableIngestion={handleEnableDisableIngestion}
           handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-          ingestionPipelinePermissions={ingestionPipelinePermissions}
+          ingestionPipelinePermissions={
+            ingestionPipelinePermissions?.[record.name]
+          }
+          isDisabled={isAirflowUnavailable}
           pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
@@ -295,6 +280,7 @@ function IngestionListTable({
       );
     },
     [
+      isAirflowUnavailable,
       isFetchingStatus,
       isPlatFormDisabled,
       deployIngestion,
@@ -310,6 +296,44 @@ function IngestionListTable({
     ]
   );
 
+  const isServerSorted = !isUndefined(onSortChange);
+
+  const antdSortOrder = useMemo<AntdSortOrder>(() => {
+    let order: AntdSortOrder = null;
+    if (sortOrder === SORT_ORDER.ASC) {
+      order = 'ascend';
+    } else if (sortOrder === SORT_ORDER.DESC) {
+      order = 'descend';
+    }
+
+    return order;
+  }, [sortOrder]);
+
+  const toSortOrder = (order?: AntdSortOrder): SORT_ORDER | undefined => {
+    let updatedSortOrder: SORT_ORDER | undefined;
+    if (order === 'ascend') {
+      updatedSortOrder = SORT_ORDER.ASC;
+    } else if (order === 'descend') {
+      updatedSortOrder = SORT_ORDER.DESC;
+    }
+
+    return updatedSortOrder;
+  };
+
+  // AntD reports sort, filter and pagination through the same `onChange`. Only the sort action is
+  // ours; everything else stays with the caller's handler, which must still receive every action.
+  const handleTableChange = useCallback<AntdTableChangeHandler>(
+    (pagination, filters, sorter, extra) => {
+      extraTableProps?.onChange?.(pagination, filters, sorter, extra);
+
+      if (extra.action === 'sort' && onSortChange) {
+        const order = Array.isArray(sorter) ? sorter[0]?.order : sorter.order;
+        onSortChange(toSortOrder(order));
+      }
+    },
+    [extraTableProps, onSortChange]
+  );
+
   const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
     () => [
       {
@@ -318,7 +342,13 @@ function IngestionListTable({
         dataIndex: 'name',
         key: 'name',
         fixed: 'left' as FixedType,
-        sorter: getColumnSorter<IngestionPipeline, 'name'>('name'),
+        // Sort on the same value the cell renders (getEntityName), not the raw
+        // `name`: agents created from the UI get a machine-generated name that
+        // has no relation to the label the user sees. `sorter: true` hands
+        // ordering to the server so it spans every page, not just the loaded one.
+        ...(isServerSorted
+          ? { sorter: true, sortOrder: antdSortOrder }
+          : { sorter: columnSorter }),
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
@@ -358,7 +388,7 @@ function IngestionListTable({
         key: 'count',
         width: 300,
         render: (_: string, record: ModifiedIngestionPipeline) => {
-          return isIngestionRunsLoading ? (
+          return isLoading ? (
             <Skeleton.Input active size="small" />
           ) : (
             <IngestionStatusCount
@@ -379,15 +409,15 @@ function IngestionListTable({
         title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
-        width: 150,
+        width: 180,
         render: (_: string, record: IngestionPipeline) => (
           <IngestionRecentRuns
-            appRuns={recentRunStatuses[record.name]}
+            appRuns={record.pipelineStatuses}
             classNames="align-middle"
             fetchStatus={false}
             handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
             ingestion={record}
-            isAppRunsLoading={isIngestionRunsLoading}
+            isAppRunsLoading={isLoading}
             pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           />
         ),
@@ -421,8 +451,9 @@ function IngestionListTable({
       enableActions,
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
-      recentRunStatuses,
-      isIngestionRunsLoading,
+      isLoading,
+      isServerSorted,
+      antdSortOrder,
     ]
   );
 
@@ -468,30 +499,24 @@ function IngestionListTable({
           dataSource={data}
           loading={isLoading}
           locale={{
-            emptyText:
-              emptyPlaceholder ??
-              getErrorPlaceHolder(
-                ingestionData.length,
-                isPlatFormDisabled,
-                theme,
-                pipelineType
-              ),
+            emptyText: emptyPlaceholder ?? defaultEmptyPlaceholder,
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
           scroll={data.length > 0 ? { x: 1300 } : undefined}
           size="small"
           {...extraTableProps}
+          onChange={handleTableChange}
         />
       </div>
 
-      <EntityDeleteModal
-        bodyText={ingestionDeleteMessage}
-        entityName={getEntityName(deleteSelection)}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
+      <DeleteModal
+        entityTitle={getEntityName(deleteSelection)}
+        isDeleting={deleteSelection.state === 'waiting'}
+        message={ingestionDeleteMessage}
+        open={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={handleDeleteConfirm}
+        onDelete={handleDeleteConfirm}
       />
     </>
   );

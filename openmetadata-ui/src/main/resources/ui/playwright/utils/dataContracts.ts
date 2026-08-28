@@ -19,7 +19,35 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+
+const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
+
+const pollContractStatus = async (
+  page: Page,
+  contractId: string,
+  timeoutMs = 180_000
+): Promise<void> => {
+  const { apiContext } = await getApiContext(page);
+  await expect
+    .poll(
+      async () => {
+        const contract = await apiContext
+          .get(`/api/v1/dataContracts/${contractId}`)
+          .then((r) => (r.ok() ? r.json() : null))
+          .catch(() => null);
+
+        return contract?.latestResult?.status ?? 'Running';
+      },
+      {
+        message: 'Wait for contract validation to reach terminal state',
+        timeout: timeoutMs,
+        intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
+      }
+    )
+    .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
+};
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
@@ -28,6 +56,10 @@ export const saveAndTriggerDataContractValidation = async (
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
+  expect(
+    response.ok(),
+    `Data contract save failed with status ${response.status()}`
+  ).toBe(true);
   const responseData = await response.json();
 
   if (isContractStatusNotVisible) {
@@ -48,21 +80,25 @@ export const saveAndTriggerDataContractValidation = async (
     .waitFor({ state: 'visible' });
 
   await page.getByTestId('contract-run-now-button').click();
-  // Use validate response to get the resultId of the newly triggered execution.
-  const runNowData = await (await runNowResponse).json();
+  await runNowResponse;
+
+  // Poll the API until the validation result reaches a terminal state before
+  // reloading the page. Without this, the UI status check immediately after
+  // the reload is racy: the backend may still be processing the result.
+  if (responseData?.id) {
+    await pollContractStatus(page, responseData.id);
+  }
 
   await page.reload();
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
-  // Prefer validate response; fall back to save response if latestResult is missing.
-  return 'latestResult' in runNowData ? runNowData : responseData;
+  return responseData;
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
-  page: Page
+  page: Page,
+  contractName?: string
 ) => {
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
@@ -72,7 +108,6 @@ export const validateDataContractInsideBundleTestSuites = async (
   await page.getByTestId('test-suites').click();
   await testSuiteResponse;
 
-
   const bundleSuitesResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
@@ -80,20 +115,36 @@ export const validateDataContractInsideBundleTestSuites = async (
       response.status() === 200
   );
 
-  await page
-    .locator('.ant-radio-button-wrapper')
-    .filter({ hasText: 'Bundle Suites' })
-    .click();
+  await page.getByTestId('bundle-suite-radio-btn').click();
 
   await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
+
+  // Search by the contract name so the suite row is guaranteed on the first
+  // page regardless of how many bundle suites exist (avoids pagination misses).
+  if (contractName) {
+    const suiteSearchResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/search/list?*'
+    );
+    await page
+      .getByTestId('searchbar-component')
+      .locator('input')
+      .fill(contractName);
+    await suiteSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('test-suite-table')
+        .getByRole('rowheader', { name: `Data Contract - ${contractName}` })
+    ).toBeVisible();
+  }
 };
 
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
-  resultId: string,
   maxConsecutiveErrors = 3
 ) => {
   const { apiContext } = await getApiContext(page);
@@ -105,36 +156,18 @@ export const waitForDataContractExecution = async (
     .poll(
       async () => {
         try {
-          const [latestResultResponse, specificResultResponse] =
-            await Promise.all([
-              apiContext
-                .get(`/api/v1/dataContracts/${contractId}/results/latest`)
-                .then((res) => (res.ok() ? res.json() : null))
-                .catch(() => null),
-              apiContext
-                .get(`/api/v1/dataContracts/${contractId}/results/${resultId}`)
-                .then((res) => (res.ok() ? res.json() : null))
-                .catch(() => null),
-            ]);
+          // Poll the contract entity — latestResult.status is what the backend updates
+          // and what the UI reads. Avoids coupling to a resultId that may be stale.
+          const contractResponse = await apiContext
+            .get(`/api/v1/dataContracts/${contractId}`)
+            .then((res) => (res.ok() ? res.json() : null))
+            .catch(() => null);
 
-          consecutiveErrors = 0; // Reset error counter on success
+          consecutiveErrors = 0;
 
-          const latestStatus = latestResultResponse?.contractExecutionStatus;
-          const specificStatus = specificResultResponse?.contractExecutionStatus;
+          const status = contractResponse?.latestResult?.status;
 
-          if (
-            latestStatus &&
-            terminalStatusPattern.test(latestStatus) &&
-            latestResultResponse?.id === resultId
-          ) {
-            return latestStatus;
-          }
-
-          if (specificStatus && terminalStatusPattern.test(specificStatus)) {
-            return specificStatus;
-          }
-
-          return latestStatus ?? specificStatus ?? 'Running';
+          return status ?? 'Running';
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -153,6 +186,77 @@ export const waitForDataContractExecution = async (
       }
     )
     .toEqual(expect.stringMatching(terminalStatusPattern));
+};
+
+/**
+ * Waits for the data contract execution to complete. If the contract's latestResult
+ * is not updated in time (the test suite takes significant time and the contract result
+ * propagation lags), falls back to the DataQuality page to verify the test suite results
+ * directly from the Bundle Suites list.
+ *
+ * Returns true if the contract's own result was available, false if the DQ fallback was used.
+ */
+export const waitForContractExecutionWithFallback = async (
+  page: Page,
+  contractId: string,
+  contractName: string
+): Promise<boolean> => {
+  try {
+    await waitForDataContractExecution(page, contractId);
+
+    return true;
+  } catch {
+    // The test suite has results but the contract's latestResult was not updated in time.
+    // Verify execution status directly from the DataQuality Bundle Suites page.
+    await validateDataContractInsideBundleTestSuites(page, contractName);
+
+    const suiteNameCell = page
+      .getByTestId('test-suite-table')
+      .getByRole('rowheader', {
+        name: `Data Contract - ${contractName}`,
+      });
+
+    await expect(suiteNameCell).toBeVisible();
+
+    const testCaseListResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list*'
+    );
+    await suiteNameCell.locator('a').first().click();
+    const testCasesJson = await (await testCaseListResponse).json();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('manage-button')).toBeVisible();
+
+    type TestCaseEntry = { testCaseResult?: { testCaseStatus?: string } };
+
+    const testCases = testCasesJson?.data ?? [];
+    const hasFailure = testCases.some(
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Failed'
+    );
+    const hasAborted = testCases.some(
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Aborted'
+    );
+    const hasSuccess = testCases.some(
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Success'
+    );
+
+    let suiteStatus = 'Running';
+
+    if (hasFailure) {
+      suiteStatus = 'Failed';
+    } else if (hasAborted) {
+      suiteStatus = 'Aborted';
+    } else if (hasSuccess) {
+      suiteStatus = 'Success';
+    }
+
+    const terminalStatusPattern =
+      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
+
+    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+
+    return false;
+  }
 };
 
 export const saveSecurityAndSLADetails = async (
@@ -270,7 +374,7 @@ export const saveSecurityAndSLADetails = async (
 
   await page.locator('.availability-time-picker').click();
 
-  await page.waitForSelector('.ant-picker-dropdown', {
+  await page.locator('.ant-picker-dropdown').waitFor({
     state: 'attached',
   });
 
@@ -282,20 +386,35 @@ export const saveSecurityAndSLADetails = async (
   await page.locator('#timezone').press('Enter');
 
   await page.getByTestId('refresh-frequency-unit-select').click();
+  await expect(
+    page.locator(
+      `.refresh-frequency-unit-select [title*='${data.refreshFrequencyUnitSelect}']`
+    )
+  ).toBeVisible();
   await page
     .locator(
-      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+      `.refresh-frequency-unit-select [title*='${data.refreshFrequencyUnitSelect}']`
     )
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
+  await expect(
+    page.locator(
+      `.max-latency-unit-select [title*='${data.maxLatencyUnitSelect}']`
+    )
+  ).toBeVisible();
   await page
-    .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
+    .locator(`.max-latency-unit-select [title*='${data.maxLatencyUnitSelect}']`)
     .click();
 
   await page.getByTestId('retention-unit-select').click();
+  await expect(
+    page.locator(
+      `.retention-unit-select [title*='${data.retentionUnitSelect}']`
+    )
+  ).toBeVisible();
   await page
-    .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+    .locator(`.retention-unit-select [title*='${data.retentionUnitSelect}']`)
     .click();
 
   await page
@@ -309,9 +428,7 @@ export const saveSecurityAndSLADetails = async (
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const validateSecurityAndSLADetails = async (
@@ -386,9 +503,7 @@ export const validateSecurityAndSLADetails = async (
 
 export const performInitialStepForRules = async (page: Page) => {
   await page.click('[data-testid="contract"]');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
   await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -405,14 +520,12 @@ export const performInitialStepForRules = async (page: Page) => {
 
 export const navigateToContractTab = async (page: Page) => {
   await page.click('[data-testid="contract"]');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.waitForSelector('.contract-action-dropdown', {
+  await page.getByTestId('contract-action-dropdown').waitFor({
     state: 'visible',
   });
 };
@@ -444,17 +557,12 @@ export const deleteContract = async (
 
   if (contractName) {
     await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(`Delete dataContract "${contractName}"`)
+      page.getByTestId('modal-header').getByText(contractName)
     ).toBeVisible();
   } else {
-    await expect(page.locator('.ant-modal-title')).toBeVisible();
+    await expect(page.getByTestId('modal-header')).toBeVisible();
   }
 
-  await page.getByTestId('confirmation-text-input').click();
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
   await page.getByTestId('confirm-button').click();
   await deleteContractResponse;
 };
@@ -464,12 +572,13 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
-export const triggerContractValidation = async (page: Page): Promise<void> => {
+export const triggerContractValidation = async (
+  page: Page,
+  contractId?: string
+): Promise<void> => {
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'
   );
@@ -477,6 +586,12 @@ export const triggerContractValidation = async (page: Page): Promise<void> => {
   await openContractActionsDropdown(page);
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
+
+  // If a contractId is supplied, poll until the validation reaches a terminal
+  // state so callers can safely assert on the UI status after a reload.
+  if (contractId) {
+    await pollContractStatus(page, contractId);
+  }
 };
 
 export const exportContractYaml = async (

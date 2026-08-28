@@ -102,12 +102,14 @@ public class SearchIndexFieldLimitIT {
   }
 
   /**
-   * Test that the extension field uses flattened type in Elasticsearch mapping.
-   * With flattened type, all custom properties are stored in a single field,
-   * preventing field explosion.
+   * Test that the extension field is a disabled object in the mapping. Custom-property values can
+   * exceed Lucene's 32766-byte keyword limit, and flattened/flat_object leaves are indexed as
+   * keywords (which OpenSearch cannot guard with ignore_above), so the raw extension is stored but
+   * not indexed. Custom-property search goes through customPropertiesTyped instead. Storing it as a
+   * disabled object also prevents field explosion.
    */
   @Test
-  void testExtensionFieldIsFlattenedType(TestNamespace ns) throws Exception {
+  void testExtensionFieldIsDisabledObject(TestNamespace ns) throws Exception {
     Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
@@ -122,11 +124,10 @@ public class SearchIndexFieldLimitIT {
     JsonNode extensionMapping = findExtensionMapping(root);
     assertNotNull(extensionMapping, "Extension field should exist in mapping");
 
-    String extensionType = extensionMapping.path("type").asText();
-    assertTrue(
-        "flattened".equals(extensionType) || "flat_object".equals(extensionType),
-        "Extension field should be flattened (ES) or flat_object (OpenSearch) type, but was: "
-            + extensionType);
+    assertFalse(
+        extensionMapping.path("enabled").asBoolean(true),
+        "Extension field should be a disabled object (enabled:false), but was: "
+            + extensionMapping);
   }
 
   /**

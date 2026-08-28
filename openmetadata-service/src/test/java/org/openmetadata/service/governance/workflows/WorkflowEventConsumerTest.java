@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -84,7 +85,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsGovernanceBotEvents() throws Exception {
+  void testSendMessage_SkipsGovernanceBotEvents() {
     ChangeEvent event = createChangeEvent("governance-bot", EventType.ENTITY_UPDATED);
 
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {
@@ -97,7 +98,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsGovernanceBotImpersonatedEvents() throws Exception {
+  void testSendMessage_SkipsGovernanceBotImpersonatedEvents() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     event.setImpersonatedBy("governance-bot");
 
@@ -111,7 +112,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SuccessfulTrigger() throws Exception {
+  void testSendMessage_SuccessfulTrigger() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -132,7 +133,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_RetriesOnDeadlock() throws Exception {
+  void testSendMessage_RetriesOnDeadlock() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -165,7 +166,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_RetriesOnOptimisticLockingFailure() throws Exception {
+  void testSendMessage_RetriesOnOptimisticLockingFailure() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -197,7 +198,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_DoesNotRetryNonTransientErrors() throws Exception {
+  void testSendMessage_DoesNotRetryNonTransientErrors() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -221,7 +222,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_FailsAfterMaxRetries() throws Exception {
+  void testSendMessage_FailsAfterMaxRetries() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -251,7 +252,46 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_SkipsInvalidEventTypes() throws Exception {
+  void testSendMessage_SkipsGracefullyWhenEntityDeleted() {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_CREATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenThrow(EntityNotFoundException.byMessage("table instance for test-id not found"));
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_SafetyNetCatchesEntityNotFoundFromTrigger() {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
+    EntityReference entityRef = createEntityReference();
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(entityRef);
+
+      doThrow(EntityNotFoundException.byMessage("table instance for test-id not found"))
+          .when(workflowHandler)
+          .triggerWithSignal(anyString(), anyMap());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+    }
+  }
+
+  @Test
+  void testSendMessage_SkipsInvalidEventTypes() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_DELETED);
 
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {

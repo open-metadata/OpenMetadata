@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,6 +19,9 @@ import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.Field;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingSignals;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SystemSettingsException;
@@ -49,8 +53,8 @@ class SearchSettingsHandlerTest {
     AssetTypeConfiguration metricConfig = findAssetConfig(defaultSearchSettings, "metric");
     assertNotNull(metricConfig, "searchSettings.json must contain metric assetTypeConfiguration");
     assertNotNull(metricConfig.getSearchFields());
-    assertTrue(
-        metricConfig.getSearchFields().size() > 0,
+    assertFalse(
+        metricConfig.getSearchFields().isEmpty(),
         "Metric config must have at least one search field");
 
     Set<String> fieldNames =
@@ -74,8 +78,8 @@ class SearchSettingsHandlerTest {
             .findFirst()
             .orElse(null);
     assertNotNull(metricAllowed, "searchSettings.json must contain metric in allowedFields");
-    assertTrue(
-        metricAllowed.getFields().size() > 0, "Metric allowedFields must have at least one field");
+    assertFalse(
+        metricAllowed.getFields().isEmpty(), "Metric allowedFields must have at least one field");
   }
 
   @Test
@@ -234,6 +238,28 @@ class SearchSettingsHandlerTest {
         "name",
         mergedMetric.getFields().get(0).getName(),
         "Allowed fields should come from defaults, not from existing/incoming settings");
+  }
+
+  @Test
+  void testRankingSignalsMaxBoostMustBePositive() {
+    AssetTypeConfiguration config = createAssetConfig("table", "name", 10.0);
+    config.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("exactName")
+                        .withFields(List.of("name"))
+                        .withWeight(1.0)))
+            .withSignals(new RankingSignals().withMaxBoost(0.0)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateAssetTypeConfiguration(config));
+
+    assertTrue(exception.getMessage().contains("maxBoost must be positive"));
   }
 
   @Test

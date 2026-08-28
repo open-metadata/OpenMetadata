@@ -33,6 +33,12 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "containerName": {
+      "title": "Container Name",
+      "description": "Container Name of the data source.",
+      "type": "string",
+      "default": ""
+    },
     "containerFilterPattern": {
       "description": "Regex to only fetch containers that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
@@ -41,6 +47,10 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,

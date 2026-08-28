@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type  # noqa: UP035
 
 import pytest
 
@@ -33,16 +33,12 @@ def workflow_config(metadata):
 
 @pytest.fixture(scope="session")
 def ingestion_bot_wokflow_config(metadata, workflow_config):
-    ingestion_bot: User = metadata.get_by_name(
-        entity=User, fqn="ingestion-bot", nullable=False
-    )
+    ingestion_bot: User = metadata.get_by_name(entity=User, fqn="ingestion-bot", nullable=False)
     ingestion_bot_auth: AuthenticationMechanism = metadata.get_by_id(
         entity=AuthenticationMechanism, entity_id=ingestion_bot.id, nullable=False
     )
     workflow_config = workflow_config.copy()
-    workflow_config["openMetadataServerConfig"]["securityConfig"][
-        "jwtToken"
-    ] = ingestion_bot_auth.config.JWTToken
+    workflow_config["openMetadataServerConfig"]["securityConfig"]["jwtToken"] = ingestion_bot_auth.config.JWTToken
     return workflow_config
 
 
@@ -76,7 +72,7 @@ def ingestion_bot_workflow_config(metadata: OpenMetadata):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
+    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:

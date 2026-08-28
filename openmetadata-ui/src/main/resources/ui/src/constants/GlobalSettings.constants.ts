@@ -23,6 +23,7 @@ export enum GlobalSettingsMenuCategory {
   PERSONA = 'persona',
   SEARCH = 'search',
   SSO = 'sso',
+  GOVERNANCE = 'governance',
 }
 
 export enum GlobalSettingOptions {
@@ -66,7 +67,6 @@ export enum GlobalSettingOptions {
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
   LOGIN_CONFIGURATION = 'loginConfiguration',
-  CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
@@ -99,6 +99,10 @@ export enum GlobalSettingOptions {
   WORKSHEETS = 'worksheets',
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
   AUDIT_LOGS = 'audit-logs',
+  GLOSSARY_TERM_RELATIONS = 'glossary-term-relations',
+  INTAKE_FORMS = 'intake-forms',
+  TASK_FORMS = 'task-forms',
+  WORKFLOW_DEFINITIONS = 'workflow-definitions',
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
 }

@@ -374,9 +374,6 @@ export interface EntityReference {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -626,6 +623,10 @@ export enum LabelType {
  */
 export interface TagLabelMetadata {
     /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
      * Metadata about the recognizer that automatically applied this tag
      */
     recognizer?: TagLabelRecognizerMetadata;
@@ -748,11 +749,15 @@ export enum DataModelType {
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
     MicroStrategyDataset = "MicroStrategyDataset",
+    OmniDataModel = "OmniDataModel",
     PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",
+    PowerBIDatamart = "PowerBIDatamart",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
+    SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
+    SsrsDataModel = "SsrsDataModel",
     SupersetDataModel = "SupersetDataModel",
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
@@ -820,12 +825,14 @@ export enum DashboardServiceType {
     Metabase = "Metabase",
     MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Omni = "Omni",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
     Superset = "Superset",

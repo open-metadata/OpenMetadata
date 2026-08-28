@@ -4,8 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -15,17 +13,22 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
+import org.openmetadata.service.apps.logging.AppRunLogAppender;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
+import org.slf4j.MDC;
 
 @Slf4j
 public class OmAppJobListener implements JobListener {
@@ -38,9 +41,49 @@ public class OmAppJobListener implements JobListener {
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
   public static final String SERVICES_FIELD = "services";
   public static final String APP_ID = "appId";
+  private static final String APP_RUN_LOG_ID = "appRunLogId";
 
   protected OmAppJobListener() {
     this.repository = new AppRepository();
+  }
+
+  /**
+   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Each field
+   * is filled independently and only if currently null:
+   *
+   * <ul>
+   *   <li>{@code endTime} defaults to {@code System.currentTimeMillis()} if absent.
+   *   <li>{@code executionTime} is computed from {@code endTime - startTime} if absent and both
+   *       endpoints are available — this means callers that pre-populated {@code endTime} (e.g.
+   *       from {@code job.getCompletedAt()}) still get an accurate {@code executionTime}.
+   * </ul>
+   *
+   * <p>The method is a no-op for non-terminal statuses, so it is safe to call from progress
+   * listeners that may persist before {@link #jobWasExecuted} runs. Without this, mid-flight
+   * writes by progress listeners (e.g. {@code QuartzProgressListener} firing {@code onJobFailed})
+   * would persist a terminal status to the DB without timings; if the job dies before {@code
+   * jobWasExecuted} fires, polling consumers would see {@code status=FAILED} with no
+   * {@code endTime} / {@code executionTime}.
+   */
+  public static void fillTerminalTimings(AppRunRecord record) {
+    if (record == null || record.getStatus() == null || !isTerminalStatus(record.getStatus())) {
+      return;
+    }
+    if (record.getEndTime() == null) {
+      record.withEndTime(System.currentTimeMillis());
+    }
+    if (record.getExecutionTime() == null
+        && record.getStartTime() != null
+        && record.getEndTime() != null) {
+      record.setExecutionTime(record.getEndTime() - record.getStartTime());
+    }
+  }
+
+  private static boolean isTerminalStatus(AppRunRecord.Status status) {
+    return switch (status) {
+      case SUCCESS, FAILED, ACTIVE_ERROR, STOPPED, COMPLETED -> true;
+      default -> false;
+    };
   }
 
   @Override
@@ -48,8 +91,17 @@ public class OmAppJobListener implements JobListener {
     return JOB_LISTENER_NAME;
   }
 
+  /**
+   * Quartz worker threads are long lived and never pass through the JAX-RS response filter, so a
+   * per-request ThreadLocal cache left behind by an earlier job is served to this one. The App is
+   * read below with {@code fromCache = true}, so without this the app runs with whatever
+   * appConfiguration was current the first time this particular worker ran it — for the life of the
+   * process, and differing between workers. {@code AbstractEventConsumer} brackets its tick the same
+   * way.
+   */
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
+    PerRequestContextCleaner.clear();
     try {
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
@@ -105,15 +157,33 @@ public class OmAppJobListener implements JobListener {
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
       dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(appConfig));
 
+      // Start log capture via Logback appender with thread-name prefix matching.
+      // The main scheduler thread is captured via MDC; worker threads are captured
+      // by matching their thread name prefix (no MDC propagation needed).
+      String appRunId = String.valueOf(runRecord.getTimestamp());
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+      String validatedAppName = jobApp.getName();
+      MDC.put(AppRunLogAppender.MDC_APP_RUN_ID, appRunId);
+      MDC.put(AppRunLogAppender.MDC_APP_NAME, validatedAppName);
+      MDC.put(AppRunLogAppender.MDC_SERVER_ID, serverId);
+      MDC.put(AppRunLogAppender.MDC_APP_ID, jobApp.getId().toString());
+      String[] threadPrefixes = getThreadPrefixesForApp(validatedAppName);
+      AppRunLogAppender.startCapture(
+          appRunId, jobApp.getId().toString(), validatedAppName, serverId, threadPrefixes);
+      dataMap.put(APP_RUN_LOG_ID, appRunId);
+
       // Insert new Record Run
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
     } catch (Exception e) {
       LOG.error("OmAppJobListener.jobToBeExecuted failed unexpectedly", e);
+      cleanupLogCapture(jobExecutionContext);
     }
   }
 
   @Override
-  public void jobExecutionVetoed(JobExecutionContext jobExecutionContext) {}
+  public void jobExecutionVetoed(JobExecutionContext jobExecutionContext) {
+    cleanupLogCapture(jobExecutionContext);
+  }
 
   @Override
   public void jobWasExecuted(
@@ -164,10 +234,11 @@ public class OmAppJobListener implements JobListener {
           context = runRecord.getFailureContext();
         }
         if (jobException != null) {
-          Map<String, Object> failure = new HashMap<>();
-          failure.put("message", jobException.getMessage());
-          failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
-          context.withAdditionalProperty("failure", failure);
+          context.withFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.JOB)
+                  .withMessage(jobException.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(jobException)));
         }
 
         runRecord.setFailureContext(context);
@@ -184,6 +255,10 @@ public class OmAppJobListener implements JobListener {
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, true);
     } catch (Exception e) {
       LOG.error("OmAppJobListener.jobWasExecuted failed unexpectedly", e);
+    } finally {
+      cleanupLogCapture(jobExecutionContext);
+      // Leave the worker clean however this exits, so the next job on it starts from the database.
+      PerRequestContextCleaner.clear();
     }
   }
 
@@ -209,5 +284,30 @@ public class OmAppJobListener implements JobListener {
         repository.addAppStatus(runRecord);
       }
     }
+  }
+
+  private static void cleanupLogCapture(JobExecutionContext context) {
+    try {
+      String appRunLogId = (String) context.getJobDetail().getJobDataMap().get(APP_RUN_LOG_ID);
+      String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
+      if (appRunLogId != null && appName != null) {
+        AppRunLogAppender.stopCapture(appName, appRunLogId);
+      }
+    } catch (Exception e) {
+      LOG.debug("Error stopping log capture", e);
+    }
+    MDC.remove(AppRunLogAppender.MDC_APP_RUN_ID);
+    MDC.remove(AppRunLogAppender.MDC_APP_NAME);
+    MDC.remove(AppRunLogAppender.MDC_SERVER_ID);
+    MDC.remove(AppRunLogAppender.MDC_APP_ID);
+  }
+
+  private static String[] getThreadPrefixesForApp(String appName) {
+    if (appName != null && appName.toLowerCase().contains("searchindex")) {
+      return new String[] {
+        "reindex-", "om-field-fetch-", "search-index-retry-",
+      };
+    }
+    return new String[0];
   }
 }

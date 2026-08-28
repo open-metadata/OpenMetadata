@@ -26,7 +26,7 @@ import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getTeamsUser } from '../../../utils/CommonUtils';
+import { getTeamsUser } from '../../../utils/TeamUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';

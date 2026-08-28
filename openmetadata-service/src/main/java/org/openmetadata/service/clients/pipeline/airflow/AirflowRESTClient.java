@@ -25,6 +25,7 @@ import java.net.http.HttpResponse;
 import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -76,8 +78,18 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
     this.setPlatform(PLATFORM);
 
-    this.username = (String) config.getParameters().getAdditionalProperties().get(USERNAME_KEY);
-    this.password = (String) config.getParameters().getAdditionalProperties().get(PASSWORD_KEY);
+    Map<String, Object> params =
+        config.getParameters() != null && config.getParameters().getAdditionalProperties() != null
+            ? config.getParameters().getAdditionalProperties()
+            : Collections.emptyMap();
+    this.username = getStringParam(params, USERNAME_KEY);
+    this.password = getStringParam(params, PASSWORD_KEY);
+    if (this.username == null || this.password == null) {
+      throw new PipelineServiceClientException(
+          "Missing Airflow credentials. Ensure 'username' and 'password' are configured in "
+              + "pipelineServiceClientConfiguration.parameters. "
+              + DOCS_LINK);
+    }
     this.serviceURL = validateServiceURL(config.getApiEndpoint());
 
     SSLContext sslContext = createAirflowSSLContext(config);
@@ -85,9 +97,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpClient.Builder clientBuilder =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(
-                Duration.ofSeconds(
-                    (Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)));
+            .connectTimeout(Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10)));
 
     if (sslContext == null) {
       this.client = clientBuilder.build();
@@ -102,12 +112,36 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static SSLContext createAirflowSSLContext(PipelineServiceClientConfiguration config)
       throws KeyStoreException {
 
-    String truststorePath =
-        (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PATH_KEY);
-    String truststorePassword =
-        (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PASSWORD_KEY);
+    Map<String, Object> params =
+        config.getParameters() != null && config.getParameters().getAdditionalProperties() != null
+            ? config.getParameters().getAdditionalProperties()
+            : Collections.emptyMap();
+    String truststorePath = getStringParam(params, TRUSTSTORE_PATH_KEY);
+    String truststorePassword = getStringParam(params, TRUSTSTORE_PASSWORD_KEY);
 
     return SSLUtil.createSSLContext(truststorePath, truststorePassword, PLATFORM);
+  }
+
+  private static String getStringParam(Map<String, Object> params, String key) {
+    Object value = params.get(key);
+    return value != null ? value.toString() : null;
+  }
+
+  private static int getIntParam(Map<String, Object> params, String key, int defaultValue) {
+    Object value = params.get(key);
+    if (value == null) {
+      return defaultValue;
+    }
+    try {
+      return Integer.parseInt(value.toString());
+    } catch (NumberFormatException e) {
+      LOG.warn(
+          "Invalid integer value '{}' for parameter '{}', using default {}",
+          value,
+          key,
+          defaultValue);
+      return defaultValue;
+    }
   }
 
   private List<String> detectAirflowApiVersion() {
@@ -330,12 +364,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      LOG.error(
-          String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
+      LOG.error("Failed to delete Airflow Pipeline {} from Airflow DAGS", pipelineName);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.error(
-          String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
+      LOG.error("Failed to delete Airflow Pipeline {} from Airflow DAGS", pipelineName);
     }
     return getResponse(
         500, String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
@@ -439,9 +471,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
     // Return an empty list. We'll just show the stored status from the Ingestion Pipeline
     LOG.error(
-        String.format(
-            "Got status code [%s] trying to get queued statuses: [%s]",
-            response.statusCode(), response.body()));
+        "Got status code [{}] trying to get queued statuses: [{}]",
+        response.statusCode(),
+        response.body());
     return new ArrayList<>();
   }
 
@@ -623,7 +655,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Map<String, String> getLastIngestionLogs(
       IngestionPipeline ingestionPipeline, String after) {
     HttpResponse<String> response;
-    String taskId = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString());
+    String taskId =
+        PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().toString());
     // Init empty after query param
 
     URIBuilder uri = buildURI("last_dag_logs");

@@ -30,8 +30,7 @@ import org.openmetadata.schema.api.lineage.openlineage.Owner;
 import org.openmetadata.schema.api.lineage.openlineage.OwnershipFacet;
 import org.openmetadata.schema.api.lineage.openlineage.SchemaFacet;
 import org.openmetadata.schema.api.lineage.openlineage.SchemaField;
-import org.openmetadata.schema.api.lineage.openlineage.SymlinkIdentifier;
-import org.openmetadata.schema.api.lineage.openlineage.SymlinksFacet;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -41,12 +40,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.DatasetCandidate;
 
 @Slf4j
 public class OpenLineageEntityResolver {
 
   private final Map<String, EntityReference> tableCache = new ConcurrentHashMap<>();
   private final Map<String, EntityReference> pipelineCache = new ConcurrentHashMap<>();
+  private final Map<String, EntityReference> containerCache = new ConcurrentHashMap<>();
   private final boolean autoCreateEntities;
   private final String defaultPipelineService;
   private final Map<String, String> namespaceToServiceMapping;
@@ -132,6 +134,42 @@ public class OpenLineageEntityResolver {
     return createTableFromOutput(dataset, updatedBy);
   }
 
+  public boolean isStorageDataset(String namespace) {
+    return OpenLineageDatasetNameNormalizer.isStorageNamespace(namespace);
+  }
+
+  public EntityReference resolveContainer(String namespace, String name) {
+    if (nullOrEmpty(namespace) || nullOrEmpty(name)) {
+      return null;
+    }
+
+    String fullPath = namespace.endsWith("/") ? namespace + name : namespace + "/" + name;
+    String cacheKey = "container:" + fullPath;
+
+    EntityReference cached = containerCache.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+
+    EntityReference ref = searchContainerByFullPath(fullPath);
+    if (ref != null) {
+      containerCache.put(cacheKey, ref);
+      return ref;
+    }
+
+    // Try without wildcard suffixes (e.g., "gs://bucket/path/file_*.csv" → "gs://bucket/path")
+    String parentPath = extractParentPath(fullPath);
+    if (parentPath != null && !parentPath.equals(fullPath)) {
+      ref = searchContainerByFullPath(parentPath);
+      if (ref != null) {
+        containerCache.put(cacheKey, ref);
+        return ref;
+      }
+    }
+
+    return null;
+  }
+
   public EntityReference resolveOrCreatePipeline(String namespace, String name, String updatedBy) {
     if (nullOrEmpty(name)) {
       return null;
@@ -157,6 +195,22 @@ public class OpenLineageEntityResolver {
       LOG.debug("Pipeline not found: {}", pipelineFqn);
     }
 
+    // Fallback: try namespace as service name, e.g. fasfas.stackoverflow_etl_lineage
+    if (!nullOrEmpty(namespace)) {
+      String fallbackFqn = namespace + "." + name;
+      try {
+        EntityReference ref =
+            Entity.getEntityReferenceByName(Entity.PIPELINE, fallbackFqn, NON_DELETED);
+        if (ref != null) {
+          LOG.info("Resolved pipeline via namespace fallback: {}", fallbackFqn);
+          pipelineCache.put(cacheKey, ref);
+          return ref;
+        }
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Pipeline not found by namespace fallback: {}", fallbackFqn);
+      }
+    }
+
     if (!autoCreateEntities) {
       LOG.debug("Auto-create disabled, skipping pipeline creation for: {}", pipelineName);
       return null;
@@ -166,51 +220,82 @@ public class OpenLineageEntityResolver {
   }
 
   private String resolveTableFqn(String namespace, String datasetName, DatasetFacets facets) {
-    String tableName = extractTableName(datasetName, facets);
-    if (tableName == null) {
-      return null;
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(namespace, datasetName, facets);
+    String result = null;
+    if (candidates.isEmpty()) {
+      LOG.warn(
+          "No parsable table identifier for dataset {} (namespace {}). "
+              + "Expected schema.table, catalog.schema.table, a Glue table/db/table symlink, or a Hive warehouse path",
+          datasetName,
+          namespace);
     }
-
-    String[] parts = tableName.split("\\.");
-    if (parts.length < 2) {
-      LOG.warn("Invalid table name format: {}. Expected schema.table", tableName);
-      return null;
+    String datasourceName = extractDatasourceName(facets);
+    for (DatasetCandidate candidate : candidates) {
+      result = resolveCandidateFqn(candidate.namespace(), datasourceName, candidate.tableName());
+      if (result != null) {
+        break;
+      }
     }
+    if (result == null && !candidates.isEmpty()) {
+      LOG.debug("Could not resolve dataset {} using candidates {}", datasetName, candidates);
+    }
+    return result;
+  }
 
+  private String resolveCandidateFqn(String namespace, String datasourceName, String candidate) {
+    String[] parts = candidate.split("\\.");
+    String database = parts.length >= 3 ? parts[parts.length - 3] : null;
     String schema = parts[parts.length - 2];
     String table = parts[parts.length - 1];
 
-    // First, try to use namespace-to-service mapping for exact match
+    String result = resolveViaNamespaceMapping(namespace, database, schema, table);
+    if (result == null) {
+      result = resolveViaDatasource(datasourceName, database, schema, table);
+    }
+    if (result == null && database != null) {
+      result = searchTableByFqnSuffix(database + "." + schema + "." + table);
+    }
+    if (result == null && datasourceName != null) {
+      result = searchTableByFqnPattern(datasourceName + ".%." + schema + "." + table);
+    }
+    if (result == null) {
+      result = searchTableByFqnSuffix(schema + "." + table);
+    }
+    return result;
+  }
+
+  private String resolveViaDatasource(
+      String datasourceName, String database, String schema, String table) {
+    String result = null;
+    if (datasourceName != null && database != null) {
+      result =
+          searchTableByFqnPattern(datasourceName + "." + database + "." + schema + "." + table);
+    }
+    return result;
+  }
+
+  private String resolveViaNamespaceMapping(
+      String namespace, String database, String schema, String table) {
+    String result = null;
     String mappedService = lookupServiceFromNamespace(namespace);
     if (mappedService != null) {
-      String matchedFqn = searchTableByServiceAndName(mappedService, schema, table);
-      if (matchedFqn != null) {
+      if (database != null) {
+        result =
+            searchTableByFqnPattern(mappedService + "." + database + "." + schema + "." + table);
+      }
+      if (result == null) {
+        result = searchTableByFqnPattern(mappedService + ".%.%" + schema + "." + table);
+      }
+      if (result != null) {
         LOG.debug(
             "Resolved table via namespace mapping: {} -> service {} -> {}",
             namespace,
             mappedService,
-            matchedFqn);
-        return matchedFqn;
+            result);
       }
     }
-
-    // Try to use datasource name for more specific matching
-    String datasourceName = extractDatasourceName(facets);
-    if (datasourceName != null) {
-      String matchedFqn = searchTableByDatasourceAndName(datasourceName, schema, table);
-      if (matchedFqn != null) {
-        return matchedFqn;
-      }
-    }
-
-    // Fall back to schema+table matching
-    String matchedFqn = searchTableBySchemaAndName(schema, table);
-    if (matchedFqn != null) {
-      return matchedFqn;
-    }
-
-    LOG.debug("Could not find table {} in schema {}", table, schema);
-    return null;
+    return result;
   }
 
   private String lookupServiceFromNamespace(String namespace) {
@@ -233,71 +318,31 @@ public class OpenLineageEntityResolver {
     return null;
   }
 
-  private String searchTableByServiceAndName(String serviceName, String schema, String tableName) {
-    String fqnPattern = serviceName + ".%.%" + schema + "." + tableName;
+  private String searchTableByFqnPattern(String fqnPattern) {
+    return searchTableByFilter(fqnPattern, new ListFilterByFqnPattern(fqnPattern));
+  }
+
+  private String searchTableByFqnSuffix(String fqnSuffix) {
+    return searchTableByFilter(fqnSuffix, new ListFilterByFqnSuffix(fqnSuffix));
+  }
+
+  private String searchTableByFilter(String searchKey, ListFilter filter) {
+    String result = null;
     try {
       @SuppressWarnings("unchecked")
       EntityRepository<Table> tableRepository =
           (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
 
       List<Table> tables =
-          tableRepository.listAll(
-              tableRepository.getFields("databaseSchema"), new ListFilterByFqnPattern(fqnPattern));
+          tableRepository.listAll(tableRepository.getFields("databaseSchema"), filter);
 
       if (!tables.isEmpty()) {
-        Table foundTable = tables.get(0);
-        return foundTable.getFullyQualifiedName();
+        result = tables.getFirst().getFullyQualifiedName();
       }
     } catch (Exception e) {
-      LOG.debug(
-          "Error searching for table with service {}, schema {}, table {}: {}",
-          serviceName,
-          schema,
-          tableName,
-          e.getMessage());
+      LOG.debug("Error searching for table matching {}: {}", searchKey, e.getMessage());
     }
-    return null;
-  }
-
-  private String searchTableByDatasourceAndName(
-      String datasourceName, String schema, String tableName) {
-    // Try exact FQN match: datasourceName.*.schema.tableName
-    String fqnPattern = datasourceName + ".%." + schema + "." + tableName;
-    try {
-      @SuppressWarnings("unchecked")
-      EntityRepository<Table> tableRepository =
-          (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
-
-      List<Table> tables =
-          tableRepository.listAll(
-              tableRepository.getFields("databaseSchema"), new ListFilterByFqnPattern(fqnPattern));
-
-      if (!tables.isEmpty()) {
-        Table table = tables.get(0);
-        return table.getFullyQualifiedName();
-      }
-    } catch (Exception e) {
-      LOG.debug(
-          "Error searching for table with datasource {}, schema {}, table {}: {}",
-          datasourceName,
-          schema,
-          tableName,
-          e.getMessage());
-    }
-    return null;
-  }
-
-  private String extractTableName(String datasetName, DatasetFacets facets) {
-    if (facets != null) {
-      SymlinksFacet symlinks = facets.getSymlinks();
-      if (symlinks != null && symlinks.getIdentifiers() != null) {
-        List<SymlinkIdentifier> identifiers = symlinks.getIdentifiers();
-        if (!identifiers.isEmpty()) {
-          return identifiers.get(0).getName();
-        }
-      }
-    }
-    return datasetName;
+    return result;
   }
 
   private String extractDatasourceName(DatasetFacets facets) {
@@ -313,25 +358,39 @@ public class OpenLineageEntityResolver {
     return null;
   }
 
-  private String searchTableBySchemaAndName(String schema, String tableName) {
-    String fqnSuffix = schema + "." + tableName;
+  private EntityReference searchContainerByFullPath(String fullPath) {
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<Table> tableRepository =
-          (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
+      EntityRepository<Container> containerRepository =
+          (EntityRepository<Container>) Entity.getEntityRepository(Entity.CONTAINER);
 
-      List<Table> tables =
-          tableRepository.listAll(
-              tableRepository.getFields("databaseSchema"), new ListFilterByFqnSuffix(fqnSuffix));
+      List<Container> containers =
+          containerRepository.listAll(
+              containerRepository.getFields(""), new ListFilterByJsonField("fullPath", fullPath));
 
-      if (!tables.isEmpty()) {
-        Table table = tables.get(0);
-        return table.getFullyQualifiedName();
+      if (!containers.isEmpty()) {
+        Container container = containers.get(0);
+        LOG.debug(
+            "Resolved container by fullPath: {} -> {}",
+            fullPath,
+            container.getFullyQualifiedName());
+        return container.getEntityReference();
       }
     } catch (Exception e) {
-      LOG.debug("Error searching for table {}.{}: {}", schema, tableName, e.getMessage());
+      LOG.debug("Error searching for container by fullPath {}: {}", fullPath, e.getMessage());
     }
     return null;
+  }
+
+  private String extractParentPath(String path) {
+    if (path == null) {
+      return null;
+    }
+    int lastSlash = path.lastIndexOf('/');
+    if (lastSlash <= 0) {
+      return null;
+    }
+    return path.substring(0, lastSlash);
   }
 
   private EntityReference createTableFromInput(OpenLineageInputDataset dataset, String updatedBy) {
@@ -347,23 +406,25 @@ public class OpenLineageEntityResolver {
 
   private EntityReference createTableInternal(
       String namespace, String name, DatasetFacets facets, String updatedBy) {
-    String tableName = extractTableName(name, facets);
-    if (tableName == null) {
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(namespace, name, facets);
+    if (candidates.isEmpty()) {
+      LOG.warn("Cannot create table, invalid name format: {}", name);
       return null;
     }
 
-    String[] parts = tableName.split("\\.");
-    if (parts.length < 2) {
-      LOG.warn("Cannot create table, invalid name format: {}", tableName);
-      return null;
+    String table = null;
+    String schemaFqn = null;
+    for (DatasetCandidate candidate : candidates) {
+      String[] parts = candidate.tableName().split("\\.");
+      schemaFqn = findSchemaFqn(parts);
+      if (schemaFqn != null) {
+        table = parts[parts.length - 1];
+        break;
+      }
     }
-
-    String schema = parts[parts.length - 2];
-    String table = parts[parts.length - 1];
-
-    String schemaFqn = searchSchemaByName(schema);
     if (schemaFqn == null) {
-      LOG.warn("Cannot create table, schema not found: {}", schema);
+      LOG.warn("Cannot create table, schema not found for candidates: {}", candidates);
       return null;
     }
 
@@ -377,6 +438,7 @@ public class OpenLineageEntityResolver {
       List<EntityReference> owners = extractOwners(facets);
 
       Table newTable = new Table();
+      newTable.setId(java.util.UUID.randomUUID());
       newTable.setName(table);
       newTable.setFullyQualifiedName(schemaFqn + "." + table);
       newTable.setDatabaseSchema(
@@ -447,6 +509,19 @@ public class OpenLineageEntityResolver {
     }
 
     return ownerRefs;
+  }
+
+  private String findSchemaFqn(String[] candidateParts) {
+    String schema = candidateParts[candidateParts.length - 2];
+    String result = null;
+    if (candidateParts.length >= 3) {
+      String database = candidateParts[candidateParts.length - 3];
+      result = searchSchemaByName(database + "." + schema);
+    }
+    if (result == null) {
+      result = searchSchemaByName(schema);
+    }
+    return result;
   }
 
   private String searchSchemaByName(String schemaName) {
@@ -561,6 +636,7 @@ public class OpenLineageEntityResolver {
               Entity.PIPELINE_SERVICE, defaultPipelineService, NON_DELETED);
 
       Pipeline newPipeline = new Pipeline();
+      newPipeline.setId(java.util.UUID.randomUUID());
       newPipeline.setName(pipelineName);
       newPipeline.setFullyQualifiedName(buildPipelineFqn(pipelineName));
       newPipeline.setService(serviceRef);
@@ -589,61 +665,71 @@ public class OpenLineageEntityResolver {
   public void clearCache() {
     tableCache.clear();
     pipelineCache.clear();
+    containerCache.clear();
   }
 
-  private static class ListFilterByFqnSuffix extends org.openmetadata.service.jdbi3.ListFilter {
+  private static class ListFilterByFqnSuffix extends ListFilter {
     public ListFilterByFqnSuffix(String suffix) {
       super(Include.NON_DELETED);
       addQueryParam("fqnSuffix", "%" + suffix);
     }
 
     @Override
-    public String getCondition() {
-      return getFqnCondition(null, "fqnSuffix");
-    }
-
-    @Override
-    public String getCondition(String alias) {
-      return getFqnCondition(alias, "fqnSuffix");
-    }
-
-    private String getFqnCondition(String alias, String paramName) {
-      String column = alias == null ? "json" : alias + ".json";
-      if (Boolean.TRUE.equals(
-          org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL())) {
-        return String.format(
-            "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.fullyQualifiedName')) LIKE :%s", column, paramName);
-      } else {
-        return String.format("%s->>'fullyQualifiedName' LIKE :%s", column, paramName);
-      }
+    public String getCondition(String tableName) {
+      String baseCondition = super.getCondition(tableName);
+      String fqnClause = buildFqnLikeClause(tableName, "fqnSuffix");
+      return baseCondition + " AND " + fqnClause;
     }
   }
 
-  private static class ListFilterByFqnPattern extends org.openmetadata.service.jdbi3.ListFilter {
+  private static class ListFilterByFqnPattern extends ListFilter {
     public ListFilterByFqnPattern(String pattern) {
       super(Include.NON_DELETED);
       addQueryParam("fqnPattern", pattern);
     }
 
     @Override
-    public String getCondition() {
-      return getFqnCondition(null);
+    public String getCondition(String tableName) {
+      String baseCondition = super.getCondition(tableName);
+      String fqnClause = buildFqnLikeClause(tableName, "fqnPattern");
+      return baseCondition + " AND " + fqnClause;
+    }
+  }
+
+  private static class ListFilterByJsonField extends ListFilter {
+    private final String fieldName;
+
+    public ListFilterByJsonField(String fieldName, String value) {
+      super(Include.NON_DELETED);
+      this.fieldName = fieldName;
+      addQueryParam("jsonFieldValue", value);
     }
 
     @Override
-    public String getCondition(String alias) {
-      return getFqnCondition(alias);
-    }
-
-    private String getFqnCondition(String alias) {
-      String column = alias == null ? "json" : alias + ".json";
+    public String getCondition(String tableName) {
+      String baseCondition = super.getCondition(tableName);
+      String column = tableName == null ? "json" : tableName + ".json";
+      String fieldClause;
       if (Boolean.TRUE.equals(
           org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL())) {
-        return String.format(
-            "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.fullyQualifiedName')) LIKE :fqnPattern", column);
+        fieldClause =
+            String.format(
+                "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.%s')) = :jsonFieldValue", column, fieldName);
       } else {
-        return String.format("%s->>'fullyQualifiedName' LIKE :fqnPattern", column);
+        fieldClause = String.format("%s->>'%s' = :jsonFieldValue", column, fieldName);
       }
+      return baseCondition + " AND " + fieldClause;
+    }
+  }
+
+  private static String buildFqnLikeClause(String tableName, String paramName) {
+    String column = tableName == null ? "json" : tableName + ".json";
+    if (Boolean.TRUE.equals(
+        org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.fullyQualifiedName')) LIKE :%s", column, paramName);
+    } else {
+      return String.format("%s->>'fullyQualifiedName' LIKE :%s", column, paramName);
     }
   }
 }

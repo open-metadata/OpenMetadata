@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/createAIFrameworkControl.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAIFrameworkControl",
+  "description": "Create a control within an AI Governance Framework.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.CreateAIFrameworkControl",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "framework": {
+      "description": "FQN of the parent framework.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "code": {
+      "type": "string"
+    },
+    "category": {
+      "$ref": "../../entity/ai/aiFrameworkControl.json#/definitions/controlCategory"
+    },
+    "evidenceRequirements": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "extension": {
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name", "framework"],
+  "additionalProperties": false
+}

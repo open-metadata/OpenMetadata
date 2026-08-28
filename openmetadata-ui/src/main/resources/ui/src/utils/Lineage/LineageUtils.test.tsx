@@ -11,22 +11,28 @@
  *  limitations under the License.
  */
 
-import { NodeData } from '../../components/Lineage/Lineage.interface';
+import {
+  LineageNodeType,
+  NodeData,
+} from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TagSource } from '../../generated/type/tagLabel';
 import { TableSearchSource } from '../../interface/search.interface';
 import {
   getSearchNameEsQuery,
-  LINEAGE_DEPENDENCY_OPTIONS,
-  LINEAGE_IMPACT_OPTIONS,
   prepareColumnLevelNodesFromEdges,
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
+} from './LineagePureUtils';
+import {
+  addBaseNodeDepthToNodes,
+  LINEAGE_DEPENDENCY_OPTIONS,
+  LINEAGE_IMPACT_OPTIONS,
 } from './LineageUtils';
 
 describe('LineageUtils', () => {
-  const mockNodes: Record<string, NodeData> = {
+  const mockNodes: Record<string, LineageNodeType> = {
     'test.table1': {
       entity: {
         id: 'entity1',
@@ -68,6 +74,44 @@ describe('LineageUtils', () => {
           },
         ],
         description: 'Test table description',
+        columns: [
+          {
+            name: 'customer_id',
+            fullyQualifiedName: 'customer_id',
+            dataType: 'BIGINT',
+            tags: [
+              {
+                tagFQN: 'PII.NonSensitive',
+                name: 'NonSensitive',
+                description: 'Non-sensitive column',
+                source: TagSource.Classification,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            ],
+          },
+          {
+            name: 'customer_name',
+            fullyQualifiedName: 'customer_name',
+            dataType: 'VARCHAR',
+            tags: [
+              {
+                tagFQN: 'PII.Sensitive',
+                name: 'Sensitive',
+                description: 'Sensitive column',
+                source: TagSource.Classification,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            ],
+          },
+          {
+            name: 'order_date',
+            fullyQualifiedName: 'order_date',
+            dataType: 'DATE',
+            tags: [],
+          },
+        ],
       },
       nodeDepth: 1,
       paging: {
@@ -85,6 +129,44 @@ describe('LineageUtils', () => {
         tags: [],
         domains: [],
         description: 'Another test table',
+        columns: [
+          {
+            name: 'customer_id1',
+            fullyQualifiedName: 'customer_id1',
+            dataType: 'BIGINT',
+            tags: [
+              {
+                tagFQN: 'PII.Public',
+                name: 'Public',
+                description: 'Public column',
+                source: TagSource.Classification,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            ],
+          },
+          {
+            name: 'created_date',
+            fullyQualifiedName: 'created_date',
+            dataType: 'DATE',
+            tags: [],
+          },
+          {
+            name: 'status',
+            fullyQualifiedName: 'status',
+            dataType: 'VARCHAR',
+            tags: [
+              {
+                tagFQN: 'BusinessGlossary.Status',
+                name: 'Status',
+                description: 'Status column',
+                source: TagSource.Glossary,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            ],
+          },
+        ],
       },
       nodeDepth: 2,
       paging: {
@@ -213,6 +295,17 @@ describe('LineageUtils', () => {
       expect(firstNode.nodeDepth).toBe(2); // nodeDepth from toEntity (test.table2)
       expect(firstNode.owners).toEqual([]);
       expect(firstNode.description).toBe('Another test table');
+      // Downstream direction uses toColumn tags
+      expect(firstNode.tags).toEqual([
+        {
+          tagFQN: 'PII.Public',
+          name: 'Public',
+          description: 'Public column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
 
       // Verify columns property is omitted
       expect(firstNode).not.toHaveProperty('columns');
@@ -223,6 +316,17 @@ describe('LineageUtils', () => {
       expect(secondNode.toColumn).toBe('customer_id1');
       expect(secondNode.fromColumn).toBe('customer_name'); // Second flattened fromColumn
       expect(secondNode.docId).toBe('customer_name->customer_id1');
+      // Same toColumn, same tags
+      expect(secondNode.tags).toEqual([
+        {
+          tagFQN: 'PII.Public',
+          name: 'Public',
+          description: 'Public column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
     });
 
     it('should prepare column nodes for upstream direction', () => {
@@ -250,9 +354,17 @@ describe('LineageUtils', () => {
       expect(firstNode.tier).toEqual(
         (mockNodes['test.table1'].entity as TableSearchSource).tier
       );
-      expect(firstNode.tags).toEqual(
-        (mockNodes['test.table1'].entity as TableSearchSource).tags
-      );
+      // Upstream direction uses fromColumn tags
+      expect(firstNode.tags).toEqual([
+        {
+          tagFQN: 'PII.NonSensitive',
+          name: 'NonSensitive',
+          description: 'Non-sensitive column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
       expect(firstNode.domains).toEqual(
         (mockNodes['test.table1'].entity as TableSearchSource).domains
       );
@@ -264,6 +376,17 @@ describe('LineageUtils', () => {
       expect(fourthNode.fromEntity).toEqual(mockEdges[1].fromEntity);
       expect(fourthNode.fromColumn).toBe('status');
       expect(fourthNode.nodeDepth).toBe(2); // nodeDepth from test.table2
+      // Upstream direction uses fromColumn (status) tags
+      expect(fourthNode.tags).toEqual([
+        {
+          tagFQN: 'BusinessGlossary.Status',
+          name: 'Status',
+          description: 'Status column',
+          source: TagSource.Glossary,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
     });
 
     it('should handle edges without columns', () => {
@@ -365,6 +488,17 @@ describe('LineageUtils', () => {
 
       expect(firstNode.nodeDepth).toBe(2); // nodeDepth from toEntity
       expect(firstNode.description).toBe('Another test table'); // description from toEntity
+      // Verify downstream uses toColumn tags
+      expect(firstNode.tags).toEqual([
+        {
+          tagFQN: 'PII.Public',
+          name: 'Public',
+          description: 'Public column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
     });
   });
 
@@ -382,6 +516,17 @@ describe('LineageUtils', () => {
 
       expect(firstNode.nodeDepth).toBe(1); // nodeDepth from fromEntity
       expect(firstNode.description).toBe('Test table description'); // description from fromEntity
+      // Verify upstream uses fromColumn tags
+      expect(firstNode.tags).toEqual([
+        {
+          tagFQN: 'PII.NonSensitive',
+          name: 'NonSensitive',
+          description: 'Non-sensitive column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
     });
   });
 
@@ -616,6 +761,18 @@ describe('LineageUtils', () => {
       expect(firstNode.domains).toBeDefined();
       expect(firstNode.description).toBeDefined();
 
+      // Tags should be from the column, not the table
+      expect(firstNode.tags).toEqual([
+        {
+          tagFQN: 'PII.NonSensitive',
+          name: 'NonSensitive',
+          description: 'Non-sensitive column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
+
       // Should not include other entity fields
       expect(firstNode['entityType']).toBeUndefined();
       expect(firstNode['id']).toBeUndefined();
@@ -637,6 +794,17 @@ describe('LineageUtils', () => {
       expect(firstNode).not.toHaveProperty('columns');
       expect(firstNode.toColumn).toBe('customer_id1');
       expect(firstNode.fromColumn).toBe('customer_id'); // Flattened
+      // Downstream uses toColumn tags
+      expect(firstNode.tags).toEqual([
+        {
+          tagFQN: 'PII.Public',
+          name: 'Public',
+          description: 'Public column',
+          source: TagSource.Classification,
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ]);
     });
   });
 
@@ -677,14 +845,17 @@ describe('LineageUtils', () => {
       expect(result[0].fromColumn).toBe('col1');
       expect(result[0].toColumn).toBe('result');
       expect(result[0].docId).toBe('col1->result');
+      expect(result[0].tags).toStrictEqual([]); // No column found with this FQN
 
       expect(result[1].fromColumn).toBe('col2');
       expect(result[1].toColumn).toBe('result');
       expect(result[1].docId).toBe('col2->result');
+      expect(result[1].tags).toStrictEqual([]); // No column found with this FQN
 
       expect(result[2].fromColumn).toBe('col3');
       expect(result[2].toColumn).toBe('result');
       expect(result[2].docId).toBe('col3->result');
+      expect(result[2].tags).toStrictEqual([]); // No column found with this FQN
     });
 
     it('should handle empty fromColumns array', () => {
@@ -753,6 +924,129 @@ describe('LineageUtils', () => {
 
       // Should not create any nodes when fromColumns is undefined
       expect(result).toHaveLength(0);
+    });
+
+    it('should use empty array for tags when column has no tags', () => {
+      const result = prepareColumnLevelNodesFromEdges(
+        [
+          {
+            fromEntity: {
+              id: 'entity1',
+              fullyQualifiedName: 'test.table1',
+              name: 'table1',
+              type: 'table',
+            },
+            toEntity: {
+              id: 'entity2',
+              fullyQualifiedName: 'test.table2',
+              name: 'table2',
+              type: 'table',
+            },
+            columns: [
+              {
+                fromColumns: ['order_date'],
+                toColumn: 'created_date',
+              },
+            ],
+          },
+        ],
+        mockNodes,
+        LineageDirection.Downstream
+      );
+
+      expect(result).toHaveLength(1);
+      // created_date column has no tags
+      expect(result[0].tags).toEqual([]);
+    });
+
+    it('should handle columns that are not found in entity data', () => {
+      const result = prepareColumnLevelNodesFromEdges(
+        [
+          {
+            fromEntity: {
+              id: 'entity1',
+              fullyQualifiedName: 'test.table1',
+              name: 'table1',
+              type: 'table',
+            },
+            toEntity: {
+              id: 'entity2',
+              fullyQualifiedName: 'test.table2',
+              name: 'table2',
+              type: 'table',
+            },
+            columns: [
+              {
+                fromColumns: ['nonexistent_column'],
+                toColumn: 'another_nonexistent',
+              },
+            ],
+          },
+        ],
+        mockNodes,
+        LineageDirection.Downstream
+      );
+
+      expect(result).toHaveLength(1);
+      // Column not found in map, should return empty array
+      expect(result[0].tags).toStrictEqual([]);
+    });
+  });
+
+  describe('addBaseNodeDepthToNodes', () => {
+    it('should offset nodeDepth by baseNodeDepth for each node', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+          nodeDepth: 1,
+        },
+        table2: {
+          entity: { id: 'e2', type: 'table', name: 'table2' },
+          paging: {},
+          nodeDepth: 2,
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(3, nodes);
+
+      expect(result['table1'].nodeDepth).toBe(4);
+      expect(result['table2'].nodeDepth).toBe(5);
+    });
+
+    it('should treat undefined nodeDepth as 0 when adding baseNodeDepth', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(2, nodes);
+
+      expect(result['table1'].nodeDepth).toBe(2);
+    });
+
+    it('should return a new object and not mutate the original nodes', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+          nodeDepth: 1,
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(5, nodes);
+
+      expect(result).not.toBe(nodes);
+      expect(nodes['table1'].nodeDepth).toBe(1);
+      expect(result['table1'].nodeDepth).toBe(6);
+    });
+
+    it('should handle empty nodes record', () => {
+      const result = addBaseNodeDepthToNodes(3, {});
+
+      expect(result).toStrictEqual({});
     });
   });
 });

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 
@@ -21,8 +22,15 @@ export const EntityStatusClass: Record<EntityStatus, StatusType> = {
   [EntityStatus.Deprecated]: StatusType.Deprecated,
   [EntityStatus.InReview]: StatusType.InReview,
   [EntityStatus.Unprocessed]: StatusType.Pending,
+  [EntityStatus.Archived]: StatusType.Archived,
 };
 
 export const getEntityStatusClass = (status: EntityStatus): StatusType => {
   return EntityStatusClass[status] ?? StatusType.Pending;
+};
+
+export const isDeleted = (deleted: unknown): boolean => {
+  return (deleted as string) === 'false' || deleted === false || isNil(deleted)
+    ? false
+    : true;
 };

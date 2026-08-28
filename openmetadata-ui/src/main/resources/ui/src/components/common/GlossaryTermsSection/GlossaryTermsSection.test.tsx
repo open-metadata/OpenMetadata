@@ -166,7 +166,7 @@ jest.mock('../../../utils/TagsUtils', () => ({
   fetchGlossaryList: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(
@@ -220,7 +220,7 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 }));
 
 jest.requireMock('../../../utils/ToastUtils');
-const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
+const { getEntityName } = jest.requireMock('../../../utils/EntityNameUtils');
 
 const baseGlossaryTags = [
   {

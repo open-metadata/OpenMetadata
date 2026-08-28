@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../generated/type/entityReference';
 import {
   mockSuggestion1,
   mockSuggestion2,
   mockSuggestion3,
 } from '../../mocks/Suggestions.mock';
+import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
   getSuggestionByType,
   getSuggestionTypeBasedOnData,
@@ -62,6 +59,33 @@ describe('getSuggestionByType', () => {
     expect(janeGroup?.tags).toHaveLength(0); // Jane has 0 SuggestTagLabel
     expect(janeGroup?.description).toHaveLength(1); // Jane has 1 SuggestDescription
     expect(janeGroup?.combinedData).toHaveLength(1); // Jane has 1 suggestion in total
+  });
+
+  it('should keep partial author suggestions grouped without creating avatar entries', () => {
+    const suggestionMock: Suggestion[] = [
+      {
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        type: SuggestionType.SuggestDescription,
+        createdBy: { name: 'Missing id' } as EntityReference,
+      } as Suggestion,
+      {
+        type: SuggestionType.SuggestDescription,
+        createdBy: { id: '1', name: 'Jane Smith' } as EntityReference,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionByType(suggestionMock);
+
+    expect(result.allUsersList).toEqual([{ id: '1', name: 'Jane Smith' }]);
+    expect(result.groupedSuggestions.has('')).toBe(false);
+    expect(
+      result.groupedSuggestions.get('Missing id')?.description
+    ).toHaveLength(1);
+    expect(
+      result.groupedSuggestions.get('Jane Smith')?.combinedData
+    ).toHaveLength(1);
   });
 });
 

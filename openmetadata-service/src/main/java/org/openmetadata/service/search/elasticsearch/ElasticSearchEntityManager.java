@@ -15,6 +15,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.Conflicts;
@@ -22,6 +23,7 @@ import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.Result;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
@@ -31,6 +33,7 @@ import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.GetResponse;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
+import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
@@ -44,6 +47,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +72,10 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
@@ -75,11 +86,20 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchEntityManager implements EntityManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
+  private final ElasticsearchAsyncClient asyncClient;
+  private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
+
+  // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
+  // stalled search backend can't hold the thread indefinitely; the async result is still handled.
+  private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.asyncClient =
+        this.isClientAvailable ? new ElasticsearchAsyncClient(this.client._transport()) : null;
+    this.isAsyncClientAvailable = this.asyncClient != null;
   }
 
   @Override
@@ -88,10 +108,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
-    if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot create entities.");
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
+    if (!isAsyncClientAvailable) {
+      LOG.error("ElasticSearch async client is not available. Cannot create entities.");
       return;
     }
 
@@ -113,25 +132,83 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    BulkResponse response =
-        client.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
+    // Execute the bulk request. The write is awaited below so realtime column indexing is
+    // durable before the caller returns; failures are routed to the retry queue in the handler.
+    CompletableFuture<BulkResponse> future =
+        asyncClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
 
-    if (response.errors()) {
-      LOG.error(
-          "Bulk indexing to ElasticSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+    future.whenComplete(
+        (response, error) -> {
+          if (error != null) {
+            String reason = SearchIndexRetryQueue.failureReason("createEntities", error);
+            docsAndIds.forEach(
+                docAndId ->
+                    docAndId
+                        .keySet()
+                        .forEach(
+                            docId -> {
+                              if (SearchIndexRetryQueue.isUuid(docId)) {
+                                SearchIndexRetryQueue.enqueue(docId, null, reason);
+                              }
+                            }));
+            LOG.error("Failed to create entities in ElasticSearch (async)", error);
+            return;
+          }
+
+          if (response.errors()) {
+            LOG.error(
+                "Bulk indexing to ElasticSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+                indexName,
+                docsAndIds.size(),
+                response.items().stream().filter(item -> item.error() != null).count());
+
+            response.items().stream()
+                .filter(item -> item.error() != null)
+                .forEach(
+                    item -> {
+                      if (SearchIndexRetryQueue.isUuid(item.id())) {
+                        SearchIndexRetryQueue.enqueue(
+                            item.id(),
+                            null,
+                            SearchIndexRetryQueue.failureReason(
+                                "createEntitiesItemError",
+                                new RuntimeException(item.error().reason())));
+                      }
+                      LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason());
+                    });
+          } else {
+            LOG.info(
+                "Successfully indexed {} entities to ElasticSearch for index: {}",
+                docsAndIds.size(),
+                indexName);
+          }
+        });
+
+    // Await the bulk so realtime indexing is read-your-write consistent: createEntities runs on
+    // the request thread post-commit (SearchIndexHandler.isAsync() is false), like the synchronous
+    // single-doc createEntity path, so a create-then-search in the same flow must see the docs
+    // (refresh=True above makes them searchable the moment the write lands). The wait is bounded so
+    // a stalled backend cannot hold the request thread; the whenComplete handler routes any failure
+    // to the retry queue independently of this wait.
+    awaitBulkCompletion(future, indexName);
+  }
+
+  private void awaitBulkCompletion(CompletableFuture<BulkResponse> future, String indexName) {
+    try {
+      future.get(BULK_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+    } catch (TimeoutException timedOut) {
+      LOG.warn(
+          "createEntities bulk for index {} did not complete within {}s; its result will be "
+              + "handled asynchronously and any failure retried",
           indexName,
-          docsAndIds.size(),
-          response.items().stream().filter(item -> item.error() != null).count());
-
-      response.items().stream()
-          .filter(item -> item.error() != null)
-          .forEach(
-              item -> LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason()));
-    } else {
-      LOG.info(
-          "Successfully indexed {} entities to ElasticSearch for index: {}",
-          docsAndIds.size(),
-          indexName);
+          BULK_AWAIT_TIMEOUT_SECONDS);
+    } catch (ExecutionException | CancellationException failuresAlreadyRetried) {
+      LOG.debug(
+          "createEntities bulk for index {} finished exceptionally; retries were enqueued",
+          indexName,
+          failuresAlreadyRetried);
     }
   }
 
@@ -149,11 +226,16 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
     DeleteResponse response =
         client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.True));
-    LOG.info(
-        "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
-        indexName,
-        docId,
-        response.result());
+    if (response.result() == Result.NotFound) {
+      LOG.debug(
+          "No ElasticSearch entity found to delete for index: {}, docId: {}", indexName, docId);
+    } else {
+      LOG.info(
+          "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
+          indexName,
+          docId,
+          response.result());
+    }
   }
 
   @Override
@@ -337,20 +419,22 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     try {
       Map<String, JsonData> params = convertToJsonDataMap(doc);
 
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .refresh(Refresh.True)
-                  .retryOnConflict(3)
-                  .scriptedUpsert(true)
-                  .upsert(params)
-                  .script(
-                      s ->
-                          s.source(ss -> ss.scriptString(scriptTxt))
-                              .lang(ScriptLanguage.Painless)
-                              .params(params)),
-          Map.class);
+      SearchRetryUtil.executeWithRetry(
+          () ->
+              client.update(
+                  u ->
+                      u.index(indexName)
+                          .id(docId)
+                          .refresh(Refresh.True)
+                          .retryOnConflict(3)
+                          .scriptedUpsert(true)
+                          .upsert(params)
+                          .script(
+                              s ->
+                                  s.source(ss -> ss.scriptString(scriptTxt))
+                                      .lang(ScriptLanguage.Painless)
+                                      .params(params)),
+                  Map.class));
 
       LOG.info(
           "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
@@ -363,6 +447,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             indexName,
             docId);
       } else {
+        SearchIndexRetryQueue.enqueue(
+            docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
         LOG.error(
             "Failed to update entity in ElasticSearch for index: {}, docId: {}",
             indexName,
@@ -370,6 +456,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             e);
       }
     } catch (IOException e) {
+      SearchIndexRetryQueue.enqueue(
+          docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
       LOG.error(
           "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -386,23 +474,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-      client.updateByQuery(
-          u ->
-              u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(exactFieldQuery(fieldAndValue))
-                  .conflicts(Conflicts.Proceed)
-                  .script(
-                      s ->
-                          s.source(ss -> ss.scriptString(updates.getKey()))
-                              .lang(ScriptLanguage.Painless)
-                              .params(params))
-                  .refresh(true));
-
-      LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
+      submitChildUpdate(
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
+          fieldAndValue,
+          updates);
+      LOG.info("Successfully submitted child update in ElasticSearch for index: {}", indexName);
     } catch (IOException | ElasticsearchException e) {
+      SearchIndexRetryQueue.enqueue(
+          null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
       LOG.error("Failed to update children in ElasticSearch for index: {}", indexName, e);
     }
   }
@@ -417,13 +496,64 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
       return;
     }
+    submitChildUpdate(indexNames, fieldAndValue, updates);
+    LOG.info("Successfully submitted child update in ElasticSearch for indices: {}", indexNames);
+  }
+
+  private void submitChildUpdate(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+  }
+
+  /**
+   * Builds the inherited-field child propagation as an async update-by-query
+   * ({@code wait_for_completion=false}). A synchronous update-by-query over a large child set (for
+   * example a test suite with thousands of test cases) holds one socket open for the entire scan
+   * and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException}; submitting
+   * it as a background task returns immediately and lets the cluster finish the propagation and the
+   * post-task {@code refresh} on its own.
+   */
+  UpdateByQueryRequest buildUpdateChildrenRequest(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+    return UpdateByQueryRequest.of(
+        u ->
+            u.index(indexNames)
+                .query(exactFieldQuery(fieldAndValue))
+                .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
+                .script(
+                    s ->
+                        s.source(ss -> ss.scriptString(updates.getKey()))
+                            .lang(ScriptLanguage.Painless)
+                            .params(params))
+                .refresh(true));
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
+      return;
+    }
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(exactFieldQuery(fieldAndValue))
+                .query(anyOfFieldQuery(field, values))
                 .conflicts(Conflicts.Proceed)
                 .script(
                     s ->
@@ -433,6 +563,26 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                 .refresh(true));
 
     LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
+  }
+
+  private Query anyOfFieldQuery(String field, List<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    Query termsOnField =
+        Query.of(q -> q.terms(t -> t.field(field).terms(tv -> tv.value(fieldValues))));
+    Query result;
+    if (field.endsWith(".keyword")) {
+      result = termsOnField;
+    } else {
+      Query termsOnKeyword =
+          Query.of(
+              q -> q.terms(t -> t.field(field + ".keyword").terms(tv -> tv.value(fieldValues))));
+      result =
+          Query.of(
+              q ->
+                  q.bool(
+                      b -> b.should(termsOnField).should(termsOnKeyword).minimumShouldMatch("1")));
+    }
+    return result;
   }
 
   @Override
@@ -449,7 +599,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
               Map.class);
 
-      if (response != null && response.found()) {
+      // This path runs no query and has no SubjectContext, so it cannot tell whose restricted
+      // memory a document is: a non-org-wide memory reads as not found rather than leaking.
+      if (response != null
+          && response.found()
+          && ContextMemorySearchVisibility.isOrgWideReadable(response.source())) {
         return Response.status(Response.Status.OK).entity(response.source()).build();
       }
     } catch (ElasticsearchException e) {
@@ -554,6 +708,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(ss -> ss.scriptString(UPDATE_FQN_PREFIX_SCRIPT))
@@ -573,6 +728,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newParentFQN, SearchIndexRetryQueue.failureReason("updateByFqnPrefix", e));
       LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
     }
   }
@@ -885,6 +1042,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          newFqnPrefix,
+          SearchIndexRetryQueue.failureReason("updateGlossaryTermByFqnPrefix", e));
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
     }
   }
@@ -937,6 +1098,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          newFqnPrefix,
+          SearchIndexRetryQueue.failureReason("updateClassificationTagByFqnPrefix", e));
       LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
     }
   }
@@ -987,6 +1152,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDataProductReferences", e));
       LOG.error("Error while updating data product references: {}", e.getMessage(), e);
     }
   }
@@ -1027,7 +1194,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                  req.index(
+                          Entity.getSearchRepository()
+                              .getWriteFanoutTargets(
+                                  Entity.getSearchRepository()
+                                      .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)))
                       .query(termQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1056,6 +1227,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          dataProductFqn,
+          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
       LOG.error("Error while updating asset domains for data product: {}", e.getMessage(), e);
     }
   }
@@ -1104,7 +1279,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(indexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(idsQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1135,6 +1310,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      for (UUID assetId : assetIds) {
+        SearchIndexRetryQueue.enqueue(
+            assetId != null ? assetId.toString() : null,
+            null,
+            SearchIndexRetryQueue.failureReason("updateAssetDomainsByIds", e));
+      }
       LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
     }
   }
@@ -1167,7 +1348,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(domainIndexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(domainIndexName))
                       .query(combinedQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1195,6 +1376,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update domain FQNs: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
       LOG.error("Error while updating domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
@@ -1224,7 +1407,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(indexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(matchingDomainQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1253,6 +1436,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
       LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
@@ -1362,8 +1547,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                 .withIncludeSourceFields(
                     SearchUtils.getRequiredEntityRelationshipFields(includeSourceFields));
         SearchEntityRelationshipResult tableER =
-            ((SearchClient) Entity.getSearchRepository().getSearchClient())
-                .searchEntityRelationship(request);
+            Entity.getSearchRepository().getSearchClient().searchEntityRelationship(request);
         Map.Entry<String, NodeInformation> tableNode =
             tableER.getNodes().entrySet().stream()
                 .filter(e -> fqn.toString().equals(e.getKey()))
@@ -1392,17 +1576,23 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot {}.", operation);
       return;
     }
-    client.update(
-        u ->
-            u.index(indexName)
-                .id(docId)
-                .docAsUpsert(true)
-                .refresh(Refresh.True)
-                .retryOnConflict(3)
-                .doc(toJsonData(doc)),
-        Map.class);
-    LOG.info(
-        "Successfully {} in ElasticSearch for index: {}, docId: {}", operation, indexName, docId);
+    SearchRetryUtil.executeWithRetry(
+        () -> {
+          client.update(
+              u ->
+                  u.index(indexName)
+                      .id(docId)
+                      .docAsUpsert(true)
+                      .refresh(Refresh.True)
+                      .retryOnConflict(3)
+                      .doc(toJsonData(doc)),
+              Map.class);
+          LOG.info(
+              "Successfully {} in ElasticSearch for index: {}, docId: {}",
+              operation,
+              indexName,
+              docId);
+        });
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {

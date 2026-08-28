@@ -12,6 +12,7 @@
 """
 Secrets manager implementation using AWS SSM Parameter Store
 """
+
 import traceback
 from typing import Optional
 
@@ -36,11 +37,9 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
     """
 
     def __init__(self, loader: SecretsManagerClientLoader):
-        super().__init__(
-            client="ssm", provider=SecretsManagerProvider.aws, loader=loader
-        )
+        super().__init__(client="ssm", provider=SecretsManagerProvider.aws, loader=loader)
 
-    def get_string_value(self, secret_id: str) -> Optional[str]:
+    def get_string_value(self, secret_id: str) -> Optional[str]:  # noqa: UP045
         """
         :param secret_id: The parameter name to retrieve.
         :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.
@@ -55,13 +54,7 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
         except ClientError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Couldn't get value for parameter [{secret_id}]: {err}")
-            raise err
+            raise err  # noqa: TRY201
         if "Parameter" in response and "Value" in response["Parameter"]:
-            return (
-                response["Parameter"]["Value"]
-                if response["Parameter"]["Value"] != NULL_VALUE
-                else None
-            )
-        raise ValueError(
-            f"Parameter for parameter name [{secret_id}] not present in the response."
-        )
+            return response["Parameter"]["Value"] if response["Parameter"]["Value"] != NULL_VALUE else None
+        raise ValueError(f"Parameter for parameter name [{secret_id}] not present in the response.")

@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { getEntityDisplayName } from '../../utils/entity';
 import {
   editDisplayNameFromPanel,
   navigateToExploreAndSelectTable,
@@ -75,7 +76,11 @@ async function verifyTabNavigation(page: Page) {
 test.describe('Entity Summary Panel', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    const dataAssetCount = page.waitForResponse(
+      '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await dataAssetCount;
   });
 
   ENTITY_TYPES.forEach((entityType) => {
@@ -194,7 +199,10 @@ test.describe('Entity Title Section - Edit Display Name', () => {
   }) => {
     const newDisplayName = `Updated Table ${uuid()}`;
 
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
+    await navigateToExploreAndSelectTable(
+      page,
+      getEntityDisplayName(table.entityResponseData)
+    );
 
     const summaryPanel = page.locator('.entity-summary-panel-container');
     await expect(summaryPanel).toBeVisible();
@@ -206,7 +214,10 @@ test.describe('Entity Title Section - Edit Display Name', () => {
   });
 
   test('should cancel edit display name modal', async ({ page }) => {
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
+    await navigateToExploreAndSelectTable(
+      page,
+      getEntityDisplayName(table.entityResponseData)
+    );
 
     const summaryPanel = page.locator('.entity-summary-panel-container');
     await expect(summaryPanel).toBeVisible();
@@ -214,7 +225,7 @@ test.describe('Entity Title Section - Edit Display Name', () => {
     const editButton = summaryPanel.getByTestId('edit-displayName-button');
     await editButton.click();
 
-    const modal = page.locator('.ant-modal');
+    const modal = page.getByTestId('entity-name-modal');
     await expect(modal).toBeVisible();
 
     await modal.getByRole('button', { name: 'Cancel' }).click();

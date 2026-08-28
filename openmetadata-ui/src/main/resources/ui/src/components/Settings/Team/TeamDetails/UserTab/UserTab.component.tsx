@@ -12,7 +12,6 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Modal, Space, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
@@ -45,12 +44,10 @@ import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,6 +55,7 @@ import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/Filt
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { UserTabProps } from './UserTab.interface';
@@ -201,10 +199,7 @@ export const UserTab = ({
     }
   }, [currentTeam, pageSize, pagingCursor]);
 
-  const isTeamDeleted = useMemo(
-    () => currentTeam.deleted ?? false,
-    [currentTeam]
-  );
+  const isTeamDeleted = currentTeam.deleted ?? false;
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
@@ -336,6 +331,7 @@ export const UserTab = ({
           <Space>
             <UserSelectableList
               hasPermission
+              includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}
             >
@@ -406,6 +402,7 @@ export const UserTab = ({
                 {users.length > 0 && editUserPermission && (
                   <UserSelectableList
                     hasPermission
+                    includeBot
                     selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}
                   >

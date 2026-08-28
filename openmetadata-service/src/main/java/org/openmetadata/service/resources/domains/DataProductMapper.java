@@ -16,6 +16,9 @@ public class DataProductMapper implements EntityMapper<DataProduct, CreateDataPr
     return copy(new DataProduct(), create, user)
         .withFullyQualifiedName(create.getName())
         .withStyle(create.getStyle())
+        .withDataProductType(create.getDataProductType())
+        .withVisibility(create.getVisibility())
+        .withPortfolioPriority(create.getPortfolioPriority())
         .withExperts(
             EntityUtil.validateAndPopulateEntityReferences(
                 getEntityReferences(Entity.USER, experts)));

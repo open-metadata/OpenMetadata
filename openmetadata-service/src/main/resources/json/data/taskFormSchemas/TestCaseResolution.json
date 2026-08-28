@@ -1,0 +1,46 @@
+{
+  "name": "TestCaseResolution",
+  "displayName": "Test Case Resolution",
+  "taskType": "TestCaseResolution",
+  "taskCategory": "Incident",
+  "workflowDefinitionRef": "TestCaseResolutionTaskWorkflow",
+  "formSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "uiSchema": {
+    "ui:handler": {
+      "type": "incident"
+    }
+  },
+  "transitionForms": {
+    "resolve": {
+      "requiresComment": true,
+      "formSchema": {
+        "type": "object",
+        "required": [
+          "testCaseFailureReason"
+        ],
+        "properties": {
+          "testCaseFailureReason": {
+            "type": "string",
+            "title": "Root Cause",
+            "enum": [
+              "FalsePositive",
+              "MissingData",
+              "Duplicates",
+              "OutOfBounds",
+              "Other"
+            ]
+          }
+        }
+      },
+      "uiSchema": {
+        "ui:order": [
+          "testCaseFailureReason"
+        ]
+      }
+    }
+  },
+  "fullyQualifiedName": "TestCaseResolution"
+}

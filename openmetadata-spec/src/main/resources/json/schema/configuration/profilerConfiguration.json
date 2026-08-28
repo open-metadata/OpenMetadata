@@ -70,6 +70,26 @@
         }
       },
       "additionalProperties": false
+    },
+    "sampleDataIngestionConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.profiler.SampleDataIngestionConfig",
+      "description": "Define the configuration for sample data ingestion at the platform level. This configuration will override the source-level configuration for sample data collection.",
+      "properties": {
+        "storeSampleData": {
+          "title": "Enable Storing of Sample Data",
+          "type": "boolean",
+          "description": "Allows OpenMetadata to store the sample data. This setting will override the source configuration.",
+          "default": true
+        },
+        "readSampleData": {
+          "title": "Enable Reading of Sample Data",
+          "type": "boolean",
+          "description": "Allows OpenMetadata to read the sample data. This setting won't save the sample data but sample data will temporarily be brought in OpenMetadata infrastructure for processing. If reading is disabled but storing is enabled, reading will be enabled by default.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -78,6 +98,11 @@
       "items": {
           "$ref": "#/definitions/metricConfigurationDefinition"
       }
+    },
+    "sampleDataConfig": {
+      "title": "Sample Data Configuration",
+      "description": "Whether to enable sample data collection at the platform level. This setting will override the source configuration.",
+      "$ref": "#/definitions/sampleDataIngestionConfig"
     }
   },
   "additionalProperties": false

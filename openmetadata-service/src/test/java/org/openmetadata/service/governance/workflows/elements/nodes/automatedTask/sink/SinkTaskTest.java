@@ -61,9 +61,8 @@ class SinkTaskTest {
     // Verify the subprocess was added - check by iterating flow elements
     boolean found = false;
     for (FlowElement element : process.getFlowElements()) {
-      if ("testSink".equals(element.getId()) && element instanceof SubProcess) {
+      if ("testSink".equals(element.getId()) && element instanceof SubProcess subProcess) {
         found = true;
-        SubProcess subProcess = (SubProcess) element;
         // Verify subprocess contains expected elements
         assertNotNull(subProcess.getFlowElement("testSink.startEvent"), "Should have start event");
         assertNotNull(

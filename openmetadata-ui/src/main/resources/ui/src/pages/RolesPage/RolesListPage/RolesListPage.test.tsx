@@ -16,6 +16,35 @@ import { ROUTES } from '../../../constants/constants';
 import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Popover: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  PopoverTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
 const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
@@ -35,7 +64,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
-jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../../components/common/DeleteWidget/DeleteEntityModal', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="delete-modal">DeletWdigetModal</div>)
@@ -44,7 +73,7 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
 }));
 

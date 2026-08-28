@@ -18,7 +18,7 @@ import { SearchIndex } from '../enums/search.enum';
 export const mockFeedData = [
   {
     id: '52d52eb1-b990-497f-bf80-47e52c106f85',
-    href: 'http://localhost:8585/api/v1/feed/52d52eb1-b990-497f-bf80-47e52c106f85',
+    href: 'http://localhost:8585/api/v1/conversations/52d52eb1-b990-497f-bf80-47e52c106f85',
     threadTs: 1646631348958,
     about:
       '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
@@ -34,7 +34,7 @@ export const mockFeedData = [
   },
   {
     id: '60df2514-3bea-4337-a5a2-f0fe5c65237f',
-    href: 'http://localhost:8585/api/v1/feed/60df2514-3bea-4337-a5a2-f0fe5c65237f',
+    href: 'http://localhost:8585/api/v1/conversations/60df2514-3bea-4337-a5a2-f0fe5c65237f',
     threadTs: 1646631340215,
     about:
       '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
@@ -1840,7 +1840,7 @@ export const mockDatasetData = {
     {
       name: 'bigquery',
       url: '/service/databaseServices/BigQuery/bigquery',
-      imgSrc: '/service-icon-query.png',
+      imgSrc: '/service-icon-query.webp',
     },
     {
       name: 'shopify',
@@ -2054,7 +2054,7 @@ export const mockSearchData = {
     max_score: 12.495619,
     hits: [
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: '9d664bbd-8c9e-4068-9112-9ab0457d4c52',
         _score: 12.495619,
@@ -2280,7 +2280,7 @@ export const mockSearchData = {
         },
       },
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: 'f1f03f22-24d6-4e88-a6bc-6aa0b03f0da0',
         _score: 10.606723,
@@ -2499,7 +2499,7 @@ export const mockSearchData = {
         },
       },
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: '94edd207-9d60-40cc-aa73-615e8fe20e97',
         _score: 4.081145,
@@ -2778,7 +2778,7 @@ export const mockSearchData = {
         },
       },
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: '4e3556eb-ac18-456e-b8ba-ea4a42dac422',
         _score: 4.081145,
@@ -3291,11 +3291,14 @@ export const MOCK_EXPLORE_PAGE_COUNT = {
   [SearchIndex.GLOSSARY_TERM]: 0,
   [SearchIndex.TAG]: 0,
   [SearchIndex.SEARCH_INDEX]: 0,
-  [SearchIndex.API_COLLECTION_INDEX]: 0,
-  [SearchIndex.API_ENDPOINT_INDEX]: 0,
-  [SearchIndex.METRIC_SEARCH_INDEX]: 0,
-  [SearchIndex.DIRECTORY_SEARCH_INDEX]: 0,
-  [SearchIndex.FILE_SEARCH_INDEX]: 0,
-  [SearchIndex.SPREADSHEET_SEARCH_INDEX]: 0,
-  [SearchIndex.WORKSHEET_SEARCH_INDEX]: 0,
+  [SearchIndex.API_COLLECTION]: 0,
+  [SearchIndex.API_ENDPOINT]: 0,
+  [SearchIndex.METRIC]: 0,
+  [SearchIndex.DIRECTORY]: 0,
+  [SearchIndex.FILE]: 0,
+  [SearchIndex.SPREADSHEET]: 0,
+  [SearchIndex.WORKSHEET]: 0,
+  [SearchIndex.CHART]: 0,
+  [SearchIndex.COLUMN]: 0,
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: 0,
 };

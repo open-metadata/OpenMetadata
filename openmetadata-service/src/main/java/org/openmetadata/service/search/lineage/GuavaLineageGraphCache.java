@@ -130,6 +130,55 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
   }
 
   @Override
+  public void invalidateIfGraphContains(String fqn) {
+    if (fqn == null || fqn.isEmpty() || cache.size() == 0) {
+      return;
+    }
+    java.util.List<LineageCacheKey> toEvict = new java.util.ArrayList<>();
+    for (java.util.Map.Entry<LineageCacheKey, SearchLineageResult> entry :
+        cache.asMap().entrySet()) {
+      if (graphReferencesFqn(entry.getKey(), entry.getValue(), fqn)) {
+        toEvict.add(entry.getKey());
+      }
+    }
+    if (!toEvict.isEmpty()) {
+      cache.invalidateAll(toEvict);
+      LOG.debug("Cache INVALIDATE_FQN fqn={} evicted {} entries", fqn, toEvict.size());
+    }
+  }
+
+  private boolean graphReferencesFqn(LineageCacheKey key, SearchLineageResult result, String fqn) {
+    if (fqn.equals(key.getFqn())) {
+      return true;
+    }
+    if (result == null) {
+      return false;
+    }
+    if (result.getNodes() != null && result.getNodes().containsKey(fqn)) {
+      return true;
+    }
+    return edgeMapReferencesFqn(result.getUpstreamEdges(), fqn)
+        || edgeMapReferencesFqn(result.getDownstreamEdges(), fqn);
+  }
+
+  private boolean edgeMapReferencesFqn(
+      java.util.Map<String, org.openmetadata.schema.api.lineage.EsLineageData> edges, String fqn) {
+    if (edges == null || edges.isEmpty()) {
+      return false;
+    }
+    for (org.openmetadata.schema.api.lineage.EsLineageData edge : edges.values()) {
+      if (edge.getFromEntity() != null
+          && fqn.equals(edge.getFromEntity().getFullyQualifiedName())) {
+        return true;
+      }
+      if (edge.getToEntity() != null && fqn.equals(edge.getToEntity().getFullyQualifiedName())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
   public CacheStats getStats() {
     return cache.stats();
   }

@@ -16,11 +16,18 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
+import {
+  BundleSuiteBulkAddRequestClass,
+  Mode as BundleSuiteBulkAddMode,
+} from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
+import { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { DataQualityReportBatchResponse } from '../generated/tests/dataQualityReportBatchResponse';
 import {
+  TableData,
   TestCase,
   TestCaseDimensionResult,
   TestCaseResult,
@@ -38,7 +45,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type ListTestSuitePrams = ListParams & {
@@ -57,12 +64,17 @@ export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
+  entityFQN?: string;
+  columnName?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'testCaseStatus'
+> & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;
@@ -76,6 +88,8 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   serviceName?: string;
   dataQualityDimension?: string;
   followedBy?: string;
+  dataProductFqn?: string;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -134,12 +148,24 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCaseBySearch = async (
-  params?: ListTestCaseParamsBySearch
+  params?: ListTestCaseParamsBySearch,
+  config?: { signal?: AbortSignal }
 ) => {
+  // The search endpoint accepts comma-separated statuses, while Axios' default
+  // array format uses brackets that the JAX-RS query parameter does not bind.
+  const serializedParams = Array.isArray(params?.testCaseStatus)
+    ? {
+        ...params,
+        testCaseStatus: params.testCaseStatus.length
+          ? params.testCaseStatus.join(',')
+          : undefined,
+      }
+    : params;
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     `${testCaseUrl}/search/list`,
     {
-      params,
+      params: serializedParams,
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 
@@ -208,6 +234,33 @@ export const addTestCaseToLogicalTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestSuite>
   >(`${testCaseUrl}/logicalTestCases`, data);
+
+  return response.data;
+};
+
+export type AddTestCaseListSubmitPayload = {
+  selectAll: boolean;
+  includeIds: string[];
+  excludeIds: string[];
+};
+
+export const addTestCasesToLogicalTestSuiteBulk = async (
+  testSuiteId: string,
+  payload: AddTestCaseListSubmitPayload
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkAddRequestClass = {
+    testSuiteId,
+    mode: payload.selectAll
+      ? BundleSuiteBulkAddMode.All
+      : BundleSuiteBulkAddMode.IDS,
+    selection: payload.selectAll
+      ? { filter: { excludeIds: payload.excludeIds } }
+      : { ids: payload.includeIds },
+  };
+  const response = await APIClient.put<
+    BundleSuiteBulkAddRequestClass,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk`, request);
 
   return response.data;
 };
@@ -372,11 +425,23 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
 
 export const getTestSuiteByName = async (
   name: string,
-  params?: ListTestCaseParams
+  params?: ListTestCaseParams,
+  config?: { signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
-    { params }
+    {
+      // Resolve owners/experts as non-deleted (consistent with data-asset detail pages), so a
+      // soft-deleted owner is not surfaced and the owner-edit diff stays aligned with the server's
+      // NON_DELETED PATCH base - otherwise a positional patch throws "array item index out of
+      // range". See issue #30117.
+      params: {
+        ...params,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
+      ...(config?.signal && { signal: config.signal }),
+    }
   );
 
   return response.data;
@@ -402,6 +467,17 @@ export const getDataQualityReport = async (
   return response.data;
 };
 
+export const getDataQualityReportBatch = async (
+  data: DataQualityReportBatchRequest
+): Promise<DataQualityReportBatchResponse> => {
+  const response = await APIClient.post<
+    DataQualityReportBatchRequest,
+    AxiosResponse<DataQualityReportBatchResponse>
+  >(`${testSuiteUrl}/dataQualityReport/batch`, data);
+
+  return response.data;
+};
+
 interface ListTestCasesParams {
   includeAllTests?: boolean;
   limit?: number;
@@ -410,6 +486,7 @@ interface ListTestCasesParams {
   after?: string;
   entityFQN?: string;
   entityLink?: string;
+  columnName?: string;
   testSuiteId?: string;
   include?: Include;
   testCaseStatus?: TestCaseStatus;
@@ -435,6 +512,24 @@ export const exportTestCasesInCSV = async (
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
     { params }
+  );
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (
+  id: string
+): Promise<TableData> => {
+  const response = await APIClient.get<TableData>(
+    `${testCaseUrl}/${id}/failedRowsSample`
+  );
+
+  return response.data;
+};
+
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const response = await APIClient.delete(
+    `${testCaseUrl}/${id}/failedRowsSample`
   );
 
   return response.data;

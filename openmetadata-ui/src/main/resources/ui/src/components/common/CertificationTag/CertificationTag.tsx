@@ -16,10 +16,10 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getTagImageSrc } from '../../../utils/IconUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
+import { Icon } from '../Icon/Icon';
 import './certification-tag.less';
 
 const CertificationTag = ({
@@ -30,23 +30,22 @@ const CertificationTag = ({
   showName?: boolean;
 }) => {
   const imageItem = useMemo(() => {
-    if (certification.tagLabel.style?.iconURL) {
-      const name = getEntityName(certification.tagLabel);
-      const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
+    const iconURL = certification.tagLabel.style?.iconURL;
+    const name = getEntityName(certification.tagLabel);
+    const defaultIconSize = 14;
 
-      return (
-        <img
-          alt={`certification: ${name}`}
-          className="certification-img"
-          src={tagSrc}
-        />
-      );
-    }
-
-    const iconSize = showName ? 14 : 20;
-
-    return <CertificationIcon height={iconSize} width={iconSize} />;
-  }, [certification.tagLabel.style?.iconURL, showName]);
+    return (
+      <Icon
+        alt={`certification: ${name}`}
+        fallback={
+          <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
+        }
+        iconValue={iconURL}
+        imageClassName="tw:h-3.5 tw:w-3.5"
+        size={defaultIconSize}
+      />
+    );
+  }, [certification.tagLabel]);
 
   const certificationRender = useMemo(() => {
     const name = getEntityName(certification.tagLabel);
@@ -55,9 +54,6 @@ const CertificationTag = ({
 
     const tagStyle = showName
       ? {
-          backgroundColor: certification.tagLabel.style?.color
-            ? certification.tagLabel.style?.color + '33'
-            : '#f8f8f8',
           padding: '2px 6px',
         }
       : {};
@@ -86,7 +82,7 @@ const CertificationTag = ({
         </Link>
       </Tooltip>
     );
-  }, [certification, imageItem]);
+  }, [certification, imageItem, showName]);
 
   return certificationRender;
 };

@@ -13,7 +13,7 @@
 SQA validator for column value to be at expected location test case
 """
 
-from typing import Iterator, List, cast
+from typing import Iterator, List, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect
 
@@ -29,16 +29,14 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValuesToBeAtExpectedLocationValidator(
-    BaseColumnValuesToBeAtExpectedLocationValidator, SQAValidatorMixin
-):
+class ColumnValuesToBeAtExpectedLocationValidator(BaseColumnValuesToBeAtExpectedLocationValidator, SQAValidatorMixin):
     """Validator for column value to be at expected location test case"""
 
-    def _fetch_data(self, columns: List[str]) -> Iterator:
+    def _fetch_data(self, columns: List[str]) -> Iterator:  # noqa: UP006
         """Fetch data from the runner object"""
-        self.runner = cast(QueryRunner, self.runner)
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
         inspection = inspect(self.runner.dataset)
-        table_columns: List[Column] = inspection.c if inspection is not None else []
+        table_columns: List[Column] = inspection.c if inspection is not None else []  # noqa: UP006
         cols = [col for col in table_columns if col.name in columns]
         for col in cols:
             col.key = col.name

@@ -58,8 +58,8 @@ jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   )),
 }));
 
-jest.mock('../../../common/EntityDescription/DescriptionV1', () =>
-  jest.fn(() => <div data-testid="description-v1">Description</div>)
+jest.mock('../../../common/EntityDescription/Description', () =>
+  jest.fn(() => <div data-testid="description">Description</div>)
 );
 
 jest.mock('../../../common/Loader/Loader', () =>
@@ -269,7 +269,7 @@ describe('DirectoryVersion', () => {
     renderDirectoryVersion();
 
     await waitFor(() => {
-      expect(screen.getByTestId('description-v1')).toBeInTheDocument();
+      expect(screen.getByTestId('description')).toBeInTheDocument();
       expect(screen.getByTestId('table')).toBeInTheDocument();
       expect(screen.getByTestId('data-products-container')).toBeInTheDocument();
       expect(screen.getAllByTestId('tags-container')).toHaveLength(2);
@@ -481,7 +481,9 @@ describe('DirectoryVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Record<string, unknown>
+      ).ViewCustomFields;
 
       renderDirectoryVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

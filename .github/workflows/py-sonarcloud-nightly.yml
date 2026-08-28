@@ -29,8 +29,9 @@ env:
   PROJECT_BASE_DIR: "ingestion"
 
 jobs:
-  ingestion-sonarcloud-analysis:
-    timeout-minutes: 180
+  py-unit-tests:
+    name: Unit Tests
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -45,10 +46,71 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
-          fetch-depth: 0
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-server: 'false'
+
+      - name: Run Unit Tests
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s unit-tests
+        shell: bash
+
+      - name: Upload coverage artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit
+          path: ingestion/.coverage
+          include-hidden-files: true
+
+  py-integration-tests:
+    name: "Integration Tests (${{ matrix.shard.name }})"
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - name: "shard-1"
+            nox-args: >-
+              tests/integration/ometa
+              tests/integration/postgres
+              tests/integration/mysql
+              tests/integration/profiler
+              tests/integration/data_quality
+              tests/integration/sql_server
+          - name: "shard-2"
+            nox-args: >-
+              --ignore=tests/integration/ometa
+              --ignore=tests/integration/postgres
+              --ignore=tests/integration/mysql
+              --ignore=tests/integration/profiler
+              --ignore=tests/integration/data_quality
+              --ignore=tests/integration/sql_server
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.BRANCH_NAME }}
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
@@ -57,11 +119,22 @@ jobs:
           args: "-m no-ui"
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
-      - name: Run Python Tests & Record Coverage
+      - name: Run Integration Tests
         run: |
           source env/bin/activate
-          make coverage
-          rm pom.xml
+          cd ingestion
+          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.shard.nox-args }}
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+        shell: bash
+
+      - name: Upload coverage artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-integration-${{ matrix.shard.name }}
+          path: ingestion/.coverage
+          include-hidden-files: true
 
       - name: Clean Up
         if: ${{ !cancelled() }}
@@ -69,6 +142,63 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  py-combine-coverage:
+    if: ${{ !cancelled() }}
+    needs: [py-unit-tests, py-integration-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+          # Do not add `filter: blob:none` — Sonar blames via JGit, which cannot
+          # lazily fetch blobs from a promisor remote.
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        run: pip install uv
+        shell: bash
+
+      - name: Install coverage
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          uv pip install "coverage[toml]" nox
+        shell: bash
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-*
+          path: ingestion/coverage-data/
+
+      - name: Prepare coverage files
+        run: |
+          cd ingestion
+          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          for dir in coverage-data/coverage-integration-*/; do
+            shard=$(basename "$dir" | sed 's/coverage-integration-//')
+            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"
+          done
+        shell: bash
+
+      - name: Combine coverage
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s combine-coverage
+        shell: bash
+
+      - name: Remove pom.xml
+        run: rm pom.xml
+        shell: bash
 
       - name: Push Results To Sonar
         if: ${{ !cancelled() }}
@@ -98,3 +228,26 @@ jobs:
           projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
           args: >
             -Dsonar.branch.name=${{ env.BRANCH_NAME }}
+
+  notify:
+    needs: [py-unit-tests, py-integration-tests, py-combine-coverage]
+    # Stay silent on green nights, or a daily cron becomes a channel nobody reads.
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    # Above the client's ~299s retry ceiling, so a Slack outage surfaces as the
+    # Slack error rather than as a job timeout.
+    timeout-minutes: 10
+    steps:
+      - name: Slack on failure
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": "🔥 *SonarCloud Ingestion Nightly* failed on `${{ env.BRANCH_NAME }}` 🔥\nunit: ${{ needs.py-unit-tests.result }} · integration: ${{ needs.py-integration-tests.result }} · combine+sonar: ${{ needs.py-combine-coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }

@@ -17,11 +17,14 @@ import {
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
-import { visitDataQualityTab } from '../../../utils/testCases';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import {
+  submitTestCaseForm,
+  visitDataQualityTab,
+} from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -83,67 +86,51 @@ test(
       await testCaseDoc;
 
       await page.click('[id="root\\/column"]');
-      await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
+      await page.locator('[data-id="column"]').waitFor({ state: 'visible' });
 
       await expect(page.locator('[data-id="column"]')).toBeVisible();
 
-      await page.click(
-        `[title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-      );
+      await page
+        .getByRole('option')
+        .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
+        .first()
+        .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.waitForSelector(`[data-id="dimensionColumns"]`, {
+      await page.locator('[data-id="dimensionColumns"]').waitFor({
         state: 'visible',
       });
 
       await expect(
-        page.locator(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-        )
+        page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page.click(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${dimension}"]`
-        );
+        await page
+          .getByRole('option')
+          .filter({ hasText: dimension })
+          .first()
+          .click();
       }
 
-      await page.locator('[data-id="dimensionColumns"]').click();
+      await page.keyboard.press('Escape');
 
-      await page.getByTestId('test-case-name').click();
+      await page.locator('[data-testid="test-case-name"] input').click();
       await page.fill(
-        '[data-testid="test-case-name"]',
+        '[data-testid="test-case-name"] input',
         NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name
       );
 
-      await page.fill(
-        '[id="root\\/testType"]',
-        NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type
-      );
-      await page.click(
-        `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type}"]`
-      );
+      await page.click('[id="root\\/testType"]');
+      await page
+        .getByRole('option')
+        .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label })
+        .first()
+        .click();
 
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-
-      const ingestionPipelines = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines'
-      );
-      const deploy = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines/deploy/*'
-      );
-
-      await page.click('[data-testid="create-btn"]');
-
-      const response = await createTestCaseResponse;
-      await ingestionPipelines;
-      await deploy;
-
-      expect(response.status()).toBe(201);
+      await submitTestCaseForm(page);
       await expect(
         page.locator(
           `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
@@ -166,24 +153,30 @@ test(
         .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`)
         .click();
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      await expect(page.getByTestId('form-heading')).toHaveText(
         `Edit ${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
       );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.waitForSelector(`[data-id="dimensionColumns"]`, {
+      await page.locator('[data-id="dimensionColumns"]').waitFor({
         state: 'visible',
       });
 
       await expect(
-        page.locator(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-        )
+        page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
       ).not.toBeVisible();
 
-      await page.click(
-        `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0]}"]`
-      );
+      await page
+        .getByRole('option')
+        .filter({
+          hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
+        })
+        .first()
+        .click();
+
+      await page.keyboard.press('Escape');
 
       const updateTestCaseResponse = page.waitForResponse(
         (response: Response) =>
@@ -191,7 +184,7 @@ test(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByTestId('update-btn').click();
+      await page.getByTestId('create-btn').click();
       const response = await updateTestCaseResponse;
 
       expect(response.status()).toBe(200);

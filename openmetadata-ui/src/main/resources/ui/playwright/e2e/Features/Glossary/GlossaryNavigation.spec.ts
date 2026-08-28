@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
@@ -24,6 +24,13 @@ import { sidebarClick } from '../../../utils/sidebar';
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
+
+const waitForEntityActivity = (page: Page) =>
+  page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.startsWith('/api/v1/activity/entity/') &&
+      response.request().method() === 'GET'
+  );
 
 test.describe('Glossary Navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -56,13 +63,14 @@ test.describe('Glossary Navigation', () => {
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByTestId('activity_feed');
 
-      const activityLoadResponse = page.waitForResponse('/api/v1/feed*');
+      const activityLoadResponse = waitForEntityActivity(page);
       await activityTab.click();
       await activityLoadResponse;
 
       // Wait for loader to disappear
       await page
-        .waitForSelector('[data-testid="loader"]', {
+        .getByTestId('loader')
+        .waitFor({
           state: 'detached',
           timeout: 5000,
         })
@@ -129,7 +137,8 @@ test.describe('Glossary Navigation', () => {
 
       // Wait for loader to disappear
       await page
-        .waitForSelector('[data-testid="loader"]', {
+        .getByTestId('loader')
+        .waitFor({
           state: 'detached',
           timeout: 5000,
         })
@@ -226,8 +235,7 @@ test.describe('Glossary Navigation', () => {
   });
 
   // UI-01: Empty glossary state (no terms)
-  // Skip: Test isolation issue - selectActiveGlossary not selecting the correct glossary
-  test.skip('should show empty state when glossary has no terms', async ({
+  test('should show empty state when glossary has no terms', async ({
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -240,8 +248,11 @@ test.describe('Glossary Navigation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
 
-      // Verify empty state is shown (with default status filter active)
-      await expect(page.getByText('No Glossary Term found')).toBeVisible();
+      // A glossary with zero terms renders the empty-glossary placeholder, not
+      // the "No Glossary Term found" row that a non-matching status filter shows.
+      await expect(
+        page.getByTestId('create-error-placeholder-Glossary Term')
+      ).toBeVisible();
 
       // Verify add term button is available
       await expect(page.getByTestId('add-new-tag-button-header')).toBeVisible();
@@ -265,7 +276,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = waitForEntityActivity(page);
       await activityTab.click();
       await feedResponse;
 
@@ -294,7 +305,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = waitForEntityActivity(page);
       await activityTab.click();
       await feedResponse;
 
@@ -321,7 +332,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = waitForEntityActivity(page);
       await activityTab.click();
       await feedResponse;
 
@@ -352,7 +363,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = waitForEntityActivity(page);
       await activityTab.click();
       await feedResponse;
 

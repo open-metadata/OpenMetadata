@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDashboardByFqn } from '../../rest/dashboardAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 
 // Mock the required dependencies
@@ -65,7 +66,7 @@ describe('DashboardDetailsPage', () => {
       Promise.resolve(mockDashboard)
     );
 
-    render(<DashboardDetailsPage />);
+    renderWithQueryClient(<DashboardDetailsPage />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
@@ -74,10 +75,14 @@ describe('DashboardDetailsPage', () => {
     (getDashboardByFqn as jest.Mock).mockResolvedValue(mockDashboard);
 
     await act(async () => {
-      render(<DashboardDetailsPage />);
+      renderWithQueryClient(<DashboardDetailsPage />);
     });
 
-    expect(screen.getByText('Dashboard Details Component')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText('Dashboard Details Component')
+      ).toBeInTheDocument()
+    );
   });
 
   it('should show error placeholder when dashboard is not found', async () => {
@@ -100,15 +105,19 @@ describe('DashboardDetailsPage', () => {
     });
 
     await act(async () => {
-      render(<DashboardDetailsPage />);
+      renderWithQueryClient(<DashboardDetailsPage />);
     });
 
-    expect(getDashboardByFqn).toHaveBeenCalledWith('test-dashboard', {
-      fields:
-        'domains,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
-    });
+    await waitFor(() =>
+      expect(getDashboardByFqn).toHaveBeenCalledWith('test-dashboard', {
+        fields:
+          'domains,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
+      })
+    );
 
-    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument()
+    );
   });
 
   it('should show permission error when user lacks view permissions', async () => {
@@ -120,11 +129,13 @@ describe('DashboardDetailsPage', () => {
     });
 
     await act(async () => {
-      render(<DashboardDetailsPage />);
+      renderWithQueryClient(<DashboardDetailsPage />);
     });
 
-    expect(
-      screen.getByTestId('permission-error-placeholder')
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('permission-error-placeholder')
+      ).toBeInTheDocument()
+    );
   });
 });

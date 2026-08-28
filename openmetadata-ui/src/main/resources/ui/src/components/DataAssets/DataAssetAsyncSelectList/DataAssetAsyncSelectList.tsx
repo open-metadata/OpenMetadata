@@ -20,10 +20,9 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -156,9 +155,10 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
             <div
               className="d-flex items-center gap-2"
               data-testid={`option-${value}`}>
-              <div className="flex-center data-asset-icon">
-                {searchClassBase.getEntityIcon(reference.type)}
-              </div>
+              {searchClassBase.getEntityIconWithBg(
+                reference.type,
+                EntityIconSize.Size14
+              )}
               <div className="d-flex flex-col">
                 <span className="text-grey-muted text-xs">
                   {reference.type}
@@ -182,20 +182,19 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     const { currentTarget } = e;
     if (
       currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
+        currentTarget.scrollHeight &&
+      options.length < paging.total
     ) {
-      if (options.length < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
+      try {
+        setHasContentLoading(true);
+        const res = await fetchOptions(searchValue, currentPage + 1);
+        setOptions((prev) => [...prev, ...res.data]);
+        setPaging(res.paging);
+        setCurrentPage((prev) => prev + 1);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setHasContentLoading(false);
       }
     }
   };
@@ -250,6 +249,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     <Select
       allowClear
       showSearch
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the async select when the list mounts
       autoFocus={autoFocus}
       data-testid="asset-select-list"
       dropdownRender={dropdownRender}

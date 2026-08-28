@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
@@ -41,10 +43,13 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
+  private String defaultListService;
+
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -78,7 +83,11 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Override
   protected Topic createEntity(CreateTopic createRequest) {
-    return SdkClients.adminClient().topics().create(createRequest);
+    Topic topic = SdkClients.adminClient().topics().create(createRequest);
+    if (defaultListService == null && topic.getService() != null) {
+      defaultListService = topic.getService().getFullyQualifiedName();
+    }
+    return topic;
   }
 
   @Override
@@ -134,6 +143,10 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Override
   protected ListResponse<Topic> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().topics().list(params);
   }
 
@@ -242,6 +255,55 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     assertNotNull(topic.getMessageSchema());
     assertEquals(SchemaType.Avro, topic.getMessageSchema().getSchemaType());
     assertNotNull(topic.getMessageSchema().getSchemaFields());
+  }
+
+  @Test
+  void post_topicWithNulInNestedDescription_200_OK(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+    Field schemaField =
+        new Field()
+            .withName("id")
+            .withDataType(FieldDataType.STRING)
+            .withDescription("nested >\u0000< NUL");
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText("{}")
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(List.of(schemaField));
+    CreateTopic request =
+        new CreateTopic()
+            .withName(ns.prefix("topic_with_nul_description"))
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1)
+            .withMessageSchema(schema);
+
+    Topic created = createEntity(request);
+    Topic stored = getEntityWithFields(created.getId().toString(), "messageSchema");
+
+    assertEquals(
+        "nested >< NUL", stored.getMessageSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
+  void post_topicWithInvalidSchemaFieldName_4xx(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaType(SchemaType.JSON)
+            .withSchemaFields(
+                List.of(new Field().withName("field>invalid").withDataType(FieldDataType.STRING)));
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_invalid_schema_field"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating topic with invalid schema field name should fail");
   }
 
   @Test
@@ -528,17 +590,20 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     // List topics
     ListParams params = new ListParams();
+    params.setFields("service");
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Topic> response = listEntities(params);
     assertNotNull(response);
 
-    // Verify we have at least our 3 topics
-    long serviceCount =
+    assertTrue(response.getData().size() >= 3);
+    assertTrue(
         response.getData().stream()
-            .filter(
-                t -> t.getService().getFullyQualifiedName().equals(service.getFullyQualifiedName()))
-            .count();
-    assertTrue(serviceCount >= 3);
+            .allMatch(
+                t ->
+                    t.getService()
+                        .getFullyQualifiedName()
+                        .equals(service.getFullyQualifiedName())));
   }
 
   @Test
@@ -1135,6 +1200,133 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   // ===================================================================
   // BULK API SUPPORT
   // ===================================================================
+
+  @Test
+  void patch_topicSchemaFieldDescription_200(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field().withName("id").withDataType(FieldDataType.STRING),
+            new Field().withName("name").withDataType(FieldDataType.STRING));
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText("{}")
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("patch_field_desc"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    Topic fetched = getEntityWithFields(topic.getId().toString(), "tags,messageSchema");
+    Double versionBefore = fetched.getVersion();
+
+    // Patch schema field description
+    fetched.getMessageSchema().getSchemaFields().get(0).setDescription("Unique identifier");
+    Topic patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore, "Version should increment after field update");
+
+    // Verify description persisted
+    Topic verified = getEntityWithFields(patched.getId().toString(), "tags,messageSchema");
+    assertEquals(
+        "Unique identifier", verified.getMessageSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
+  void patch_topicSchemaFieldTags_200(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field().withName("user_id").withDataType(FieldDataType.STRING),
+            new Field().withName("email").withDataType(FieldDataType.STRING));
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText("{}")
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("patch_field_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    Topic fetched = getEntityWithFields(topic.getId().toString(), "tags,messageSchema");
+    Double versionBefore = fetched.getVersion();
+
+    // Patch schema field with a tag
+    TagLabel piiTag = shared().PII_SENSITIVE_TAG_LABEL;
+    fetched.getMessageSchema().getSchemaFields().get(1).setTags(new ArrayList<>(List.of(piiTag)));
+    Topic patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore, "Version should increment after adding tag");
+
+    // Verify tag persisted
+    Topic verified = getEntityWithFields(patched.getId().toString(), "tags,messageSchema");
+    List<TagLabel> fieldTags = verified.getMessageSchema().getSchemaFields().get(1).getTags();
+    assertNotNull(fieldTags);
+    assertFalse(fieldTags.isEmpty(), "Schema field should have tags");
+    assertTrue(
+        fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(piiTag.getTagFQN())),
+        "Schema field should have PII.Sensitive tag");
+  }
+
+  @Test
+  void patch_topicSchemaFieldGlossaryTerm_200(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field().withName("account_id").withDataType(FieldDataType.STRING),
+            new Field().withName("status").withDataType(FieldDataType.STRING));
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText("{}")
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("patch_field_glossary"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    Topic fetched = getEntityWithFields(topic.getId().toString(), "tags,messageSchema");
+    Double versionBefore = fetched.getVersion();
+
+    // Patch schema field with a glossary term
+    TagLabel glossaryLabel = shared().GLOSSARY1_TERM1_LABEL;
+    fetched
+        .getMessageSchema()
+        .getSchemaFields()
+        .get(0)
+        .setTags(new ArrayList<>(List.of(glossaryLabel)));
+    Topic patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(
+        patched.getVersion() > versionBefore,
+        "Version should increment after adding glossary term");
+
+    // Verify glossary term persisted
+    Topic verified = getEntityWithFields(patched.getId().toString(), "tags,messageSchema");
+    List<TagLabel> fieldTags = verified.getMessageSchema().getSchemaFields().get(0).getTags();
+    assertNotNull(fieldTags);
+    assertFalse(fieldTags.isEmpty(), "Schema field should have tags");
+    assertTrue(
+        fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(glossaryLabel.getTagFQN())),
+        "Schema field should have glossary term");
+  }
 
   @Override
   protected BulkOperationResult executeBulkCreate(List<CreateTopic> createRequests) {

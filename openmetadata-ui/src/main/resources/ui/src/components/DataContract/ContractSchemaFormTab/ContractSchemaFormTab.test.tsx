@@ -46,13 +46,17 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
-  getTableExpandableConfig: jest.fn(),
   getAllRowKeysByKeyName: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTableData,
   })),
@@ -66,7 +70,18 @@ jest.mock('../../common/Table/Table', () => {
     rowSelection,
     rowKey,
     pagination,
-  }: any) {
+  }: {
+    columns?: unknown[];
+    dataSource?: Array<{
+      name: string;
+      fullyQualifiedName: string;
+      [key: string]: unknown;
+    }>;
+    loading?: boolean;
+    rowSelection?: { onChange?: (keys: string[]) => void };
+    rowKey: string;
+    pagination?: unknown;
+  }) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
@@ -74,8 +89,10 @@ jest.mock('../../common/Table/Table', () => {
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
         <div>Pagination: {pagination ? 'enabled' : 'disabled'}</div>
-        {dataSource?.map((item: any) => (
-          <div data-testid={`table-row-${item.name}`} key={item[rowKey]}>
+        {dataSource?.map((item) => (
+          <div
+            data-testid={`table-row-${item.name}`}
+            key={String(item[rowKey])}>
             <span>{item.name}</span>
             <button
               data-testid={`select-row-${item.name}`}
@@ -92,10 +109,14 @@ jest.mock('../../common/Table/Table', () => {
 });
 
 jest.mock('../../Database/TableTags/TableTags.component', () => {
-  return function MockTableTags({ tags }: any) {
+  return function MockTableTags({
+    tags,
+  }: {
+    tags?: Array<{ tagFQN: string }>;
+  }) {
     return (
       <div data-testid="table-tags">
-        {tags?.map((tag: any) => (
+        {tags?.map((tag) => (
           <span data-testid={`tag-${tag.tagFQN}`} key={tag.tagFQN}>
             {tag.tagFQN}
           </span>
@@ -126,30 +147,30 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockColumns: Column[] = [
+const mockColumns = [
   {
     name: 'id',
-    dataType: 'BIGINT' as any,
+    dataType: 'BIGINT',
     description: 'Primary key',
-    tags: [{ tagFQN: 'PII.Sensitive' }] as any,
-    constraint: 'PRIMARY_KEY' as any,
+    tags: [{ tagFQN: 'PII.Sensitive' }],
+    constraint: 'PRIMARY_KEY',
     fullyQualifiedName: 'service.database.schema.table.id',
   },
   {
     name: 'name',
-    dataType: 'VARCHAR' as any,
+    dataType: 'VARCHAR',
     description: 'User name',
-    tags: [{ tagFQN: 'PersonalData.Personal' }] as any,
+    tags: [{ tagFQN: 'PersonalData.Personal' }],
     fullyQualifiedName: 'service.database.schema.table.name',
   },
   {
     name: 'email',
-    dataType: 'VARCHAR' as any,
+    dataType: 'VARCHAR',
     description: 'User email',
-    tags: [] as any,
+    tags: [],
     fullyQualifiedName: 'service.database.schema.table.email',
   },
-] as any;
+] as unknown as Column[];
 
 const mockOnChange = jest.fn();
 const mockOnNext = jest.fn();

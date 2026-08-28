@@ -11,6 +11,7 @@
 """
 Run the Automation Workflow
 """
+
 from functools import singledispatch
 from typing import Any
 
@@ -41,19 +42,12 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     import metadata.automations.runner  # pylint: disable=import-outside-toplevel
 
     # This will already instantiate the Secrets Manager
-    metadata = OpenMetadata(
-        config=encrypted_automation_workflow.openMetadataServerConnection
-    )
+    metadata = OpenMetadata(config=encrypted_automation_workflow.openMetadataServerConnection)
 
-    automation_workflow = metadata.get_by_name(
-        entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.root
-    )
+    automation_workflow = metadata.get_by_name(entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.root)
 
     ingestion_runner = getattr(automation_workflow.request, "ingestionRunner", None)
     if ingestion_runner:
-        logger.info(
-            f"Executing automation [{automation_workflow.name.root}]"
-            f" in Runner [{ingestion_runner}]"
-        )
+        logger.info(f"Executing automation [{automation_workflow.name.root}] in Runner [{ingestion_runner}]")
 
     return run_workflow(automation_workflow.request, automation_workflow, metadata)

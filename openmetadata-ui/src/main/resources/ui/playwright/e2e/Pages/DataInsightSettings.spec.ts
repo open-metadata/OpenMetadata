@@ -175,6 +175,7 @@ test.describe.serial(
 
         const { apiContext } = await getApiContext(page);
 
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to start before polling status
         await page.waitForTimeout(2000);
 
         // Check data insight success status (assuming this is a custom function you need to implement)

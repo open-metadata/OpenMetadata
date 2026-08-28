@@ -36,32 +36,36 @@ import {
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 import {
-  getAlertActionTypeDisplayName,
-  getAlertEventsFilterLabels,
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
+  getConnectionTimeoutField,
+  getDestinationConfigField,
+  getFieldByArgumentType,
+  getFqnSearchIndexes,
+  searchEntity,
+} from './AlertsUtil';
+import {
+  getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getDisplayNameForEntities,
-  getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
   normalizeDestinationConfig,
-  searchEntity,
-} from './AlertsUtil';
+} from './AlertsUtilPure';
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
@@ -80,6 +84,10 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../rest/contractAPI', () => ({
+  searchContracts: jest.fn(),
 }));
 
 jest.mock('../ToastUtils', () => ({
@@ -332,7 +340,11 @@ describe('AlertsUtil tests', () => {
 
 describe('getFieldByArgumentType tests', () => {
   it('should return correct fields for argumentType fqnList', async () => {
-    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
+    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table', [
+      'databaseService',
+      'database',
+      'databaseSchema',
+    ]);
 
     render(field);
 
@@ -345,8 +357,41 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'table_search_index',
+      searchIndex: [
+        SearchIndex.TABLE,
+        SearchIndex.DATABASE_SERVICE,
+        SearchIndex.DATABASE,
+        SearchIndex.DATABASE_SCHEMA,
+      ],
     });
+  });
+
+  it('should use the Data Contract API for a dataContract fqnList', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+    (searchContracts as jest.Mock).mockResolvedValue([
+      {
+        fullyQualifiedName: 'service.database.schema.table.dataContract_test',
+      },
+    ]);
+
+    render(getFieldByArgumentType(0, 'fqnList', 0, 'dataContract'));
+
+    const api = MockedAsyncSelect.mock.calls[0][0].api as (
+      query: string
+    ) => Promise<unknown>;
+
+    await expect(api('test')).resolves.toEqual([
+      {
+        label: 'service.database.schema.table.dataContract_test',
+        value: 'service.database.schema.table.dataContract_test',
+      },
+    ]);
+    expect(searchContracts).toHaveBeenCalledWith('test', 50);
+    expect(searchQuery).not.toHaveBeenCalled();
   });
 
   it('should return correct fields for argumentType domainList', async () => {
@@ -363,7 +408,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'domain_search_index',
+      searchIndex: SearchIndex.DOMAIN,
     });
   });
 
@@ -386,7 +431,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'table_search_index',
+      searchIndex: SearchIndex.TABLE,
     });
   });
 
@@ -409,7 +454,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: ['team_search_index', 'user_search_index'],
+      searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
     });
   });
 
@@ -432,7 +477,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'user_search_index',
+      searchIndex: SearchIndex.USER,
     });
   });
 
@@ -450,7 +495,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: 'user_search_index',
+      searchIndex: SearchIndex.USER,
     });
   });
 
@@ -469,19 +514,168 @@ describe('getFieldByArgumentType tests', () => {
     expect(selectDiv).toBeInTheDocument();
   });
 
-  it('should return correct fields for argumentType entityIdList', () => {
+  it('should offer only the event types the resource declares', async () => {
     const field = getFieldByArgumentType(
       0,
-      'entityIdList',
+      'eventTypeList',
       0,
-      'selectedTrigger'
+      'glossaryTerm',
+      [],
+      [EventType.EntityCreated, EventType.ThreadCreated]
+    );
+
+    render(field);
+    const select = screen.getByTestId('event-type-select');
+    fireEvent.mouseDown(
+      select.querySelector('.ant-select-selector') as HTMLElement
+    );
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Thread' },
+    });
+
+    expect(await screen.findByTitle('Thread Created')).toBeInTheDocument();
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Suggestion' },
+    });
+
+    expect(screen.queryByTitle('Suggestion Created')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to every event type when the resource declares none', async () => {
+    const field = getFieldByArgumentType(0, 'eventTypeList', 0, 'glossaryTerm');
+
+    render(field);
+    const select = screen.getByTestId('event-type-select');
+    fireEvent.mouseDown(
+      select.querySelector('.ant-select-selector') as HTMLElement
+    );
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Suggestion' },
+    });
+
+    expect(await screen.findByTitle('Suggestion Created')).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType entityIdList', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(0, 'entityIdList', 0, 'table');
+
+    render(field);
+
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'entity-id-select',
+        mode: 'multiple',
+        optionLabelProp: 'uuid',
+      }),
+      expect.anything()
+    );
+
+    const selectDiv = screen.getByText('AsyncSelect');
+    fireEvent.click(selectDiv);
+
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: '',
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: SearchIndex.TABLE,
+    });
+  });
+
+  it('entityIdList: UUID-format input adds a term filter on the id field', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+
+    const field = getFieldByArgumentType(0, 'entityIdList', 0, 'table');
+
+    render(field);
+
+    const apiFn = MockedAsyncSelect.mock.calls[0][0].api as (
+      s: string
+    ) => Promise<unknown>;
+    const uuid = '550e8400-e29b-41d4-a716-446655440000';
+    await apiFn(uuid);
+
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: uuid,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ id: uuid }),
+      searchIndex: SearchIndex.TABLE,
+    });
+  });
+
+  it('fqnList: strict-pick (mode="multiple", no free-text tags)', () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
+
+    render(field);
+
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'fqn-list-select',
+        mode: 'multiple',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('tableNameList: strict-pick (mode="multiple", no free-text tags)', () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(0, 'tableNameList', 0, 'testCase');
+
+    render(field);
+
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'table-name-select',
+        mode: 'multiple',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('entityNameList: strict-pick (mode="multiple", no free-text tags)', () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(
+      0,
+      'entityNameList',
+      0,
+      'dataContract'
     );
 
     render(field);
 
-    const selectDiv = screen.getByTestId('entity-id-select');
-
-    expect(selectDiv).toBeInTheDocument();
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'entity-name-select',
+        mode: 'multiple',
+      }),
+      expect.anything()
+    );
   });
 
   it('should return correct fields for argumentType pipelineStateList', () => {
@@ -563,7 +757,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'test_suite_search_index',
+      searchIndex: SearchIndex.TEST_SUITE,
     });
   });
 
@@ -1081,7 +1275,7 @@ describe('handleAlertSave - downstream notification fields', () => {
               entityType: 'table',
               name: 'table',
             },
-            _index: 'table_search_index',
+            _index: SearchIndex.TABLE,
           },
           {
             _source: {
@@ -1090,7 +1284,7 @@ describe('handleAlertSave - downstream notification fields', () => {
               entityType: 'user',
               name: 'user',
             },
-            _index: 'user_search_index',
+            _index: SearchIndex.USER,
           },
         ],
       },
@@ -1221,7 +1415,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 displayName: 'Test Entity',
                 entityType: 'test',
               },
-              _index: 'test_search_index',
+              _index: 'test',
             },
           ],
         },
@@ -1252,7 +1446,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 fullyQualifiedName: 'test.database.table1',
                 entityType: 'table',
               },
-              _index: 'table_search_index',
+              _index: SearchIndex.TABLE,
             },
             {
               _source: {
@@ -1260,7 +1454,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 fullyQualifiedName: 'test.database.table2',
                 entityType: 'table',
               },
-              _index: 'table_search_index',
+              _index: SearchIndex.TABLE,
             },
           ],
         },
@@ -1303,7 +1497,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 fullyQualifiedName: 'test.entity',
                 // entityType is missing
               },
-              _index: 'test_search_index',
+              _index: 'test',
             },
           ],
         },
@@ -1764,5 +1958,33 @@ describe('getFormattedDestinations', () => {
     ]);
     expect(result?.[0]?.config).not.toHaveProperty('timeout');
     expect(result?.[0]?.config).not.toHaveProperty('readTimeout');
+  });
+});
+
+describe('getFqnSearchIndexes', () => {
+  it('includes the source index plus the descriptor-provided ancestor indexes', () => {
+    expect(
+      getFqnSearchIndexes('databaseSchema', ['databaseService', 'database'])
+    ).toEqual([
+      SearchIndex.DATABASE_SCHEMA,
+      SearchIndex.DATABASE_SERVICE,
+      SearchIndex.DATABASE,
+    ]);
+    expect(getFqnSearchIndexes('glossaryTerm', ['glossary'])).toEqual([
+      SearchIndex.GLOSSARY_TERM,
+      SearchIndex.GLOSSARY,
+    ]);
+  });
+
+  it('returns only the source index when there are no ancestors', () => {
+    expect(getFqnSearchIndexes('databaseService')).toEqual([
+      SearchIndex.DATABASE_SERVICE,
+    ]);
+  });
+
+  it('returns only the ALL index for the "all" source, ignoring container types', () => {
+    expect(getFqnSearchIndexes('all', ['databaseService', 'database'])).toEqual(
+      [SearchIndex.ALL]
+    );
   });
 });

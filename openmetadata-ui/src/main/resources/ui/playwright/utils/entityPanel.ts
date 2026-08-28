@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { redirectToExplorePage } from './common';
+import { clickOutside, redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
-import { waitForAllLoadersToDisappear } from './entity';
 import { EntityClass } from '../support/entity/EntityClass';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const getEntityFqn = (
   entityInstance: EntityClass
@@ -25,87 +25,214 @@ export const getEntityFqn = (
   ).entityResponseData?.fullyQualifiedName;
 };
 
-export const openEntitySummaryPanel = async (
-  page: Page,
-  entityName: string,
-  endpoint?: string,
-  fullyQualifiedName?: string
-) => {
-  if (
-    endpoint &&
-    ENDPOINT_TO_FILTER_MAP[endpoint] &&
-    ENDPOINT_TO_FILTER_MAP[endpoint] !== 'Search Index'
-  ) {
-    await page.waitForSelector('[data-testid="global-search-selector"]', {
-      state: 'visible',
+const findOptionByScrolling = async (page: Page, endpoint: string) => {
+  const maxTries = 12; // Bound the scan; the list is ~25 options over ~3 viewports.
+  const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
+  const dropdown = page
+    .getByTestId('global-search-select-dropdown')
+    .locator('.rc-virtual-list-holder');
+  const option = page.getByTestId(`global-search-select-option-${filterName}`);
+
+  // The filter list is virtualised, so only the ~11 rows around the current
+  // offset exist in the DOM: every option below "Container" — Stored Procedure,
+  // Data Product, API Endpoint, API Collection, Metric and the rest — is absent
+  // until scrolled into range.
+  //
+  // waitFor() rather than isVisible(): isVisible() resolves immediately and
+  // never retries, so probing it straight after scrollBy() races the re-render
+  // of the virtual window. That is why every entity type past the initial
+  // window was flaky under CI load while those inside it never were. When the
+  // option is already rendered this resolves instantly, so the timeout is only
+  // ever paid once per scroll step.
+  for (let tries = 0; tries < maxTries; tries++) {
+    const appeared = await option
+      .waitFor({ state: 'visible', timeout: 1_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (appeared) {
+      await option.click();
+
+      return true;
+    }
+
+    // Advance a whole viewport so the scan covers the list in a few steps, and
+    // detect the end from the clamped scrollTop rather than a fixed try count.
+    const movedBy = await dropdown.evaluate((element) => {
+      const before = element.scrollTop;
+      element.scrollBy(0, element.clientHeight);
+
+      return element.scrollTop - before;
     });
-    await page.getByTestId('global-search-selector').click();
-    await page.waitForSelector(
-      '[data-testid="global-search-select-dropdown"]',
-      {
-        state: 'visible',
-      }
-    );
-    await page
-      .getByTestId(
-        `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
-      )
-      .click();
+
+    if (movedBy === 0) {
+      break; // Already at the bottom: the option is not in this list.
+    }
   }
-  const searchResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/search/query')
-  );
 
-  await page.getByTestId('searchBox').fill(entityName);
+  await dropdown.evaluate((element) => {
+    element.scrollTop = 0;
+  });
 
-  const searchResponse = await searchResponsePromise;
-  expect(searchResponse.status()).toBe(200);
+  // Returned rather than thrown: the caller runs this inside an expect.poll,
+  // and a thrown error aborts that poll outright instead of letting it retry.
+  return false;
+};
 
-  await page.getByTestId('searchBox').press('Enter');
-  await waitForAllLoadersToDisappear(page);
+export const openEntitySummaryPanel = async ({
+  page,
+  entityName,
+  endpoint,
+  fullyQualifiedName,
+  exploreTab,
+  dataAssetTypeLeftPanelTestId,
+}: {
+  page: Page;
+  entityName: string;
+  endpoint?: string;
+  fullyQualifiedName?: string;
+  exploreTab?: string;
+  dataAssetTypeLeftPanelTestId?: string;
+}) => {
+  const runSearch = async () => {
+    if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
+      await page.getByTestId('global-search-selector').waitFor({
+        state: 'visible',
+      });
+      await page.getByTestId('global-search-selector').click();
+      await page.getByTestId('global-search-select-dropdown').waitFor({
+        state: 'visible',
+      });
+      if (!(await findOptionByScrolling(page, endpoint))) {
+        return false;
+      }
+    }
+    const searchResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/query')
+    );
+    await page.getByTestId('searchBox').fill(entityName);
+    await searchResponsePromise;
+    await page.getByTestId('searchBox').press('Enter');
+    await waitForAllLoadersToDisappear(page);
+
+    // Select the entity-type tab as part of each search attempt: for callers that
+    // pass an exploreTab without an endpoint filter (e.g. Column), the result card
+    // only renders under its tab, so the poll's visibility check must run after the
+    // tab is selected — not once, after the poll.
+    if (exploreTab) {
+      const tab = page
+        .getByTestId('explore-left-panel')
+        .getByRole('menuitem', { name: exploreTab });
+      await tab.waitFor({ state: 'visible' });
+      await tab.click();
+      await waitForAllLoadersToDisappear(page);
+    }
+
+    return true;
+  };
+
+  const entityResultCard = fullyQualifiedName
+    ? page.getByTestId(`table-data-card_${fullyQualifiedName}`)
+    : page
+        .locator('[data-testid^="table-data-card"]')
+        .filter({
+          has: page.getByTestId('entity-link').filter({ hasText: entityName }),
+        })
+        .first();
+
+  if (dataAssetTypeLeftPanelTestId) {
+    // The knowledge-center card is only revealed after selecting the KC item
+    // below, so it cannot gate the retry — issue a single search here. No poll
+    // wraps this branch, so a filter option that never rendered is fatal.
+    expect(
+      await runSearch(),
+      `Unable to select global search filter for endpoint "${endpoint}"`
+    ).toBe(true);
+  } else {
+    // Search indexing is eventually consistent and lags further under CI load, so
+    // a freshly created entity may not surface on the first query. Retry the
+    // search — reloading between attempts to force a fresh fetch — until the
+    // entity's result card appears, rather than assuming one query surfaces it.
+    let hasSearched = false;
+    await expect
+      .poll(
+        async () => {
+          if (hasSearched) {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+          }
+          hasSearched = true;
+
+          // A filter option that has not rendered yet is transient: let the
+          // poll reload and retry rather than failing the test outright.
+          if (!(await runSearch())) {
+            return false;
+          }
+
+          return entityResultCard.isVisible();
+        },
+        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
+      )
+      .toBe(true);
+  }
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
+    await clickOutside(page);
+    await expect(
+      page.locator('.ant-popover:not(.ant-popover-hidden)')
+    ).toHaveCount(0);
+
+    // Since the directly clicking on the card can sometimes click on title element which is link,
+    // we need to click on description container to open the summary panel.
+    await entityResultCard.getByTestId('description-text').click();
+
     return;
   }
 
-  const entityCard = page
-    .locator('[data-testid="table-data-card"]')
-    .filter({ hasText: entityName })
-    .first();
-
-  const isCardVisible = await entityCard.isVisible().catch(() => false);
-  if (isCardVisible) {
-    await entityCard.click();
+  if (dataAssetTypeLeftPanelTestId) {
+    const knowledgeCenterItem = page.getByTestId(dataAssetTypeLeftPanelTestId);
+    await knowledgeCenterItem.waitFor({ state: 'visible' });
+    await knowledgeCenterItem.click();
   }
+
+  await entityResultCard.getByTestId('description-text').click();
 };
 // ... (lines 48-468 unchanged)
 export async function navigateToExploreAndSelectTable(
   page: Page,
   entityName: string,
-  endpoint?: string
+  endpoint?: string,
+  exploreTab?: string,
+  fullyQualifiedName?: string
 ) {
   await redirectToExplorePage(page);
 
   await waitForAllLoadersToDisappear(page);
 
-  const permissionsResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/permissions')
-  );
+  await openEntitySummaryPanel({
+    page,
+    entityName,
+    endpoint,
+    exploreTab,
+    fullyQualifiedName,
+  });
 
-  await openEntitySummaryPanel(page, entityName, endpoint);
-
-  const permissionsResponse = await permissionsResponsePromise;
-  expect(permissionsResponse.status()).toBe(200);
-
-  // Ensure all the component for right panel are rendered
-  const loaders = page.locator(
-    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
-  );
+  // Opening the panel triggers a permissions fetch, but that response is often
+  // served from the client cache (the entity's permissions were already loaded
+  // by the preceding Set/Update steps), so no network request fires and waiting
+  // on the /permissions response hangs until the test times out. Assert the
+  // panel opened and finished loading via the DOM instead — the panel only
+  // renders when permissions resolve, so this covers the same outcome without
+  // depending on a network round-trip.
+  const summaryPanel = page.getByTestId('entity-summary-panel-container');
+  await summaryPanel.waitFor({ state: 'visible' });
 
   // Wait for the loader elements count to become 0
-  await expect(loaders).toHaveCount(0, { timeout: 30000 });
+  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
+    timeout: 30000,
+  });
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -129,9 +256,7 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 
   await tab.click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const editTags = async (page: Page, tagName: string) => {
@@ -157,7 +282,7 @@ export const editTags = async (page: Page, tagName: string) => {
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(`q=`) &&
-      response.url().includes('index=tag_search_index')
+      response.url().includes('index=tag')
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
@@ -165,9 +290,7 @@ export const editTags = async (page: Page, tagName: string) => {
   const searchTagResponse = await searchTagResponsePromise;
   expect(searchTagResponse.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const tagOption = page.getByTitle(tagName);
   // Wait for tag option to be visible before clicking
@@ -186,12 +309,14 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector(
-    '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]',
-    {
+  await page
+    .locator(
+      '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]'
+    )
+    .first()
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
   if (await editIcon.isVisible()) {
@@ -213,9 +338,7 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     );
 
     await searchBar.fill(termName);
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     const termOption = page
       .locator('.ant-list-item')
       .filter({ hasText: termName });
@@ -238,7 +361,7 @@ export const editDomain = async (page: Page, domainName: string) => {
   await domainsSection
     .locator('[data-testid="add-domain"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="add-domain"]', {
+  await page.getByTestId('add-domain').waitFor({
     state: 'visible',
   });
   await page.locator('[data-testid="add-domain"]').click();
@@ -274,9 +397,7 @@ export const editDomain = async (page: Page, domainName: string) => {
   const patchResponse = await patchReqPromise;
   expect(patchResponse.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyDeletedEntityNotVisible = async (
@@ -286,15 +407,14 @@ export const verifyDeletedEntityNotVisible = async (
   searchIndexType: 'user' | 'team' | 'tag' | 'glossaryTerm'
 ) => {
   const searchIndexMap = {
-    user: 'user_search_index',
-    team: 'team_search_index',
-    tag: 'tag_search_index',
-    glossaryTerm: 'glossary_term_search_index',
+    user: 'user',
+    team: 'team',
+    tag: 'tag',
+    glossaryTerm: 'glossaryTerm',
   };
 
-  const searchBar = await page.waitForSelector(
-    `[data-testid="${searchBarTestId}"]`
-  );
+  const searchBar = page.getByTestId(searchBarTestId);
+  await searchBar.waitFor();
   const searchResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -304,9 +424,7 @@ export const verifyDeletedEntityNotVisible = async (
 
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const deletedItem = page.getByTitle(entityName);
 
@@ -321,9 +439,7 @@ export const clickDataQualityStatCard = async (
     `[data-testid="data-quality-stat-card-${statType}"]`
   );
   await statCard.click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const navigateToIncidentsTab = async (page: Page) => {
@@ -336,9 +452,7 @@ export const navigateToIncidentsTab = async (page: Page) => {
 
   if (await incidentsTabButton.isVisible()) {
     await incidentsTabButton.click();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
   }
 };
 
@@ -352,9 +466,7 @@ export const removeTagsFromPanel = async (
     .locator('[data-testid="selectable-list"]')
     .waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   for (const tagName of tagDisplayNames) {
     const tagOption = page.getByTitle(tagName);
@@ -375,19 +487,17 @@ export const removeGlossaryTermFromPanel = async (
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
 
-  await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
+  await page.getByTestId('edit-glossary-terms').waitFor({
     state: 'visible',
   });
-  // Use force click to ensure popover triggers even if animating/partially obstructed
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-glossary-terms').click({ force: true });
 
   await page
     .locator('[data-testid="selectable-list"]')
     .waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   for (const termName of termDisplayNames) {
     const searchBar = page.getByTestId('glossary-term-select-search-bar');
     await searchBar.fill(termName);
@@ -414,9 +524,10 @@ export const removeOwnerFromPanel = async (
   ownerNames: string[],
   type: 'Users' | 'Teams' = 'Users'
 ) => {
-  await page.waitForSelector('[data-testid="edit-owners"]', {
+  await page.getByTestId('edit-owners').waitFor({
     state: 'visible',
   });
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-owners').click({ force: true });
 
   await page.getByTestId('select-owner-tabs').waitFor({ state: 'visible' });
@@ -456,11 +567,11 @@ export const removeOwnerFromPanel = async (
 };
 
 export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.waitForSelector('[data-testid="add-domain"]', {
+  await page.getByTestId('add-domain').waitFor({
     state: 'visible',
   });
 
-  // Use force click to ensure popover triggers even if animating/partially obstructed
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('add-domain').click({ force: true });
 
   const domainTree = page.getByTestId('domain-selectable-tree');
@@ -490,15 +601,16 @@ export const removeDomainFromPanel = async (page: Page, domainName: string) => {
 };
 
 export const assignTierToPanel = async (page: Page, tierName: string) => {
-  await page.waitForSelector('[data-testid="edit-icon-tier"]', {
+  await page.getByTestId('edit-icon-tier').waitFor({
     state: 'visible',
   });
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
   const tierPopover = page.getByTestId('cards');
   await tierPopover.waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const tierRadioButton = page.getByTestId(`radio-btn-${tierName}`);
   await tierRadioButton.waitFor({ state: 'visible' });
@@ -513,14 +625,15 @@ export const assignTierToPanel = async (page: Page, tierName: string) => {
 
   await patchPromise;
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeTierFromPanel = async (page: Page) => {
   await page.locator('[data-testid="edit-icon-tier"]').scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="edit-icon-tier"]', {
+  await page.getByTestId('edit-icon-tier').waitFor({
     state: 'visible',
   });
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
   const tierPopover = page.getByTestId('cards');
@@ -573,7 +686,7 @@ export const editDisplayNameFromPanel = async (
   await editButton.waitFor({ state: 'visible' });
   await editButton.click();
 
-  const modal = page.locator('.ant-modal');
+  const modal = page.getByTestId('entity-name-modal');
   await modal.waitFor({ state: 'visible' });
 
   const displayNameInput = modal.locator('#displayName');

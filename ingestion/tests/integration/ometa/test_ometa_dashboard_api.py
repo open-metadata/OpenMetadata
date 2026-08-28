@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Dashboard test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -94,15 +95,11 @@ class TestOMetaDashboardAPI:
         res = metadata.create_or_update(data=updated_entity)
 
         # Verify update
-        assert (
-            res.service.fullyQualifiedName == dashboard_service.fullyQualifiedName.root
-        )
+        assert res.service.fullyQualifiedName == dashboard_service.fullyQualifiedName.root
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
-    def test_get_name(
-        self, metadata, dashboard_request, expected_fqn, create_dashboard
-    ):
+    def test_get_name(self, metadata, dashboard_request, expected_fqn, create_dashboard):
         """
         We can fetch a Dashboard by name and get it back as Entity
         """
@@ -143,9 +140,7 @@ class TestOMetaDashboardAPI:
         created = create_dashboard(dashboard_request)
 
         # Delete
-        metadata.delete(
-            entity=Dashboard, entity_id=str(created.id.root), recursive=True
-        )
+        metadata.delete(entity=Dashboard, entity_id=str(created.id.root), recursive=True)
 
         # Verify deletion - get_by_name should return None
         deleted = metadata.get_by_name(entity=Dashboard, fqn=expected_fqn)
@@ -157,9 +152,7 @@ class TestOMetaDashboardAPI:
         """
         created = create_dashboard(dashboard_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=Dashboard, entity_id=created.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=Dashboard, entity_id=created.id.root)
         assert res is not None
         assert len(res.versions) >= 1
 
@@ -169,9 +162,7 @@ class TestOMetaDashboardAPI:
         """
         created = create_dashboard(dashboard_request)
 
-        res = metadata.get_entity_version(
-            entity=Dashboard, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Dashboard, entity_id=created.id.root, version=0.1)
 
         # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
@@ -182,8 +173,6 @@ class TestOMetaDashboardAPI:
         Test retrieving EntityReference for a dashboard
         """
         created = create_dashboard(dashboard_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Dashboard, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Dashboard, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id

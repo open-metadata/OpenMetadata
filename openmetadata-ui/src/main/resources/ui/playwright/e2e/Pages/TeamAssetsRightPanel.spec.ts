@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../support/fixtures/userPages';
-import { TeamClass } from '../../support/team/TeamClass';
+import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
-import { ClassificationClass } from '../../support/tag/ClassificationClass';
-import { TagClass } from '../../support/tag/TagClass';
+import { expect, test } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { Domain } from '../../support/domain/Domain';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
-import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { performAdminLogin } from '../../utils/admin';
-import { getEntityFqn } from '../../utils/entityPanel';
 import { uuid } from '../../utils/common';
+import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToTeamAssetsAndOpenPanel } from '../../utils/rightPanelNavigation';
+import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
+import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 
 const tableEntity = new TableClass();
 const teamEntity = new TeamClass();

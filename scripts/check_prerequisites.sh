@@ -25,7 +25,8 @@ set -e
 declare -A python
 python["name"]="Python"
 python["version_command"]="python --version 2>&1 | awk '{print \$2}'"
-python["required_version"]="3.9 3.10 3.11"
+python["required_version"]=">=3.10"
+python["minimum_version"]="3.10"
 
 declare -A docker
 docker["name"]="Docker"
@@ -90,11 +91,34 @@ check_version() {
     fi
     for v in "${required_versions[@]}"; do
         if [[ "$current" =~ $v.* ]]; then
-            echo "✓ $tool_name version $version is supported."
+            echo "✓ $tool_name version $current is supported."
             return
         fi
     done
-    print_error "$tool_name version $version is not supported. Supported versions are: $required"
+    print_error "$tool_name version $current is not supported. Supported versions are: $required"
+    code=1
+}
+
+check_minimum_version() {
+    local tool_name=$1
+    local current=${2#v}
+    local minimum=$3
+    if awk -v current="$current" -v minimum="$minimum" 'BEGIN {
+        current_count = split(current, current_parts, ".")
+        minimum_count = split(minimum, minimum_parts, ".")
+        count = current_count > minimum_count ? current_count : minimum_count
+        for (i = 1; i <= count; i++) {
+            current_part = current_parts[i] + 0
+            minimum_part = minimum_parts[i] + 0
+            if (current_part > minimum_part) exit 0
+            if (current_part < minimum_part) exit 1
+        }
+        exit 0
+    }'; then
+        echo "✓ $tool_name version $current is supported."
+        return
+    fi
+    print_error "$tool_name version $current is not supported. Minimum version is: $minimum"
     code=1
 }
 
@@ -107,7 +131,12 @@ for dependency in python docker java maven jq node yarn antlr; do
     tool_name=${dependency["name"]}
     version=$(eval ${dependency["version_command"]})
     required_version=${dependency["required_version"]}
-    check_version $tool_name "$version" "$required_version"
+    minimum_version=${dependency["minimum_version"]:-}
+    if [[ -n "$minimum_version" ]]; then
+      check_minimum_version "$tool_name" "$version" "$minimum_version"
+    else
+      check_version "$tool_name" "$version" "$required_version"
+    fi
 done
 if [[ $code -eq 0 ]]; then
     echo "✓ All prerequisites are met."

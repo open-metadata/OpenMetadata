@@ -11,57 +11,36 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen } from '@testing-library/react';
 import loginClassBase from '../../constants/LoginClassBase';
 import LoginCarousel from './LoginCarousel';
 
-const LOGIN_SLIDE = loginClassBase.getLoginCarouselContent();
-
 describe('Test LoginCarousel component', () => {
-  it('renders the carousel container', () => {
+  it('renders the login video when a video is configured', () => {
+    const videoSpy = jest
+      .spyOn(loginClassBase, 'getLoginVideo')
+      .mockReturnValue('test-video.mp4');
+
     render(<LoginCarousel />);
 
-    expect(screen.queryAllByTestId('slider-container')).toHaveLength(
-      LOGIN_SLIDE.length
-    );
+    const videos = screen.queryAllByTestId('login-video');
+
+    expect(videos).toHaveLength(1);
+    expect(videos[0].getAttribute('src')).toBe('test-video.mp4');
+
+    videoSpy.mockRestore();
   });
 
-  it('renders a carousel with the correct number of slides', async () => {
-    await act(async () => {
-      render(<LoginCarousel />, {
-        wrapper: MemoryRouter,
-      });
-    });
+  it('renders nothing when no video is configured', () => {
+    const videoSpy = jest
+      .spyOn(loginClassBase, 'getLoginVideo')
+      .mockReturnValue(undefined);
 
-    const sliderContainers = await screen.findAllByTestId('slider-container');
+    const { container } = render(<LoginCarousel />);
 
-    const slides = sliderContainers.map(
-      (slider) => slider.parentElement?.parentElement as HTMLElement
-    );
+    expect(screen.queryAllByTestId('login-video')).toHaveLength(0);
+    expect(container.childElementCount).toBe(0);
 
-    const slackList = slides.filter(
-      (slide) => !slide.classList.contains('slick-cloned')
-    );
-
-    expect(slackList).toHaveLength(LOGIN_SLIDE.length);
-  });
-
-  it('renders the correct slide description for each slide', async () => {
-    await act(async () => {
-      render(<LoginCarousel />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const slideDescriptions = await screen.findAllByTestId(
-      'carousel-slide-description'
-    );
-    const descriptions = LOGIN_SLIDE.map((d) => `message.${d.descriptionKey}`);
-    slideDescriptions.forEach((description) => {
-      expect(
-        descriptions.includes(description.textContent as string)
-      ).toBeTruthy();
-    });
+    videoSpy.mockRestore();
   });
 });

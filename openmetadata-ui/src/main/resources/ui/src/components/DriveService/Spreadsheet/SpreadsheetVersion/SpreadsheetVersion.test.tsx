@@ -53,7 +53,7 @@ jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     <div data-testid="custom-property-table">Custom Property Table</div>
   )),
 }));
-jest.mock('../../../common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../../common/EntityDescription/Description', () =>
   jest.fn(() => <div data-testid="description">Description Component</div>)
 );
 jest.mock('../../../common/Loader/Loader', () =>
@@ -68,7 +68,7 @@ jest.mock('../../../common/Table/Table', () =>
   jest.fn(({ dataSource }) => (
     <div data-testid="spreadsheet-children-table">
       {dataSource?.map((worksheet: { name: string }, index: number) => (
-        <div data-testid={`worksheet-row-${index}`} key={index}>
+        <div data-testid={`worksheet-row-${index}`} key={worksheet.name}>
           {worksheet.name}
         </div>
       ))}
@@ -648,7 +648,9 @@ describe('SpreadsheetVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Record<string, unknown>
+      ).ViewCustomFields;
 
       renderSpreadsheetVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

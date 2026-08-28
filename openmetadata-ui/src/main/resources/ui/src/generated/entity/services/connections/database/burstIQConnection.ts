@@ -23,6 +23,11 @@ export interface BurstIQConnection {
      */
     biqSdzName: string;
     /**
+     * BurstIQ system wallet ID sent as the biq_system_wallet_id header. Required for profiler
+     * data access.
+     */
+    biqSystemWalletId?: string;
+    /**
      * Password to connect to BurstIQ.
      */
     password: string;
@@ -32,6 +37,7 @@ export interface BurstIQConnection {
     realmName:                   string;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
      */

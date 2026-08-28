@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -21,6 +20,7 @@ import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -36,9 +36,10 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getColumnSorter, highlightSearchText } from '../../utils/EntityUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -56,7 +57,7 @@ const StoredProcedureTab = () => {
   } = usePaging();
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
 
   useEffect(() => {

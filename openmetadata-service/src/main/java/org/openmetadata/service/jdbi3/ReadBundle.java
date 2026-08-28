@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -33,6 +34,9 @@ final class ReadBundle {
 
   private final Map<UUID, List<TagLabel>> tagValues = new HashMap<>();
   private final Set<UUID> loadedTags = new HashSet<>();
+
+  private final Map<UUID, AssetCertification> certificationValues = new HashMap<>();
+  private final Set<UUID> loadedCertifications = new HashSet<>();
 
   private final Map<UUID, Votes> voteValues = new HashMap<>();
   private final Set<UUID> loadedVotes = new HashSet<>();
@@ -83,6 +87,21 @@ final class ReadBundle {
       return Optional.empty();
     }
     return Optional.of(tagValues.getOrDefault(entityId, Collections.emptyList()));
+  }
+
+  void putCertification(UUID entityId, AssetCertification certification) {
+    loadedCertifications.add(entityId);
+    if (certification != null) {
+      certificationValues.put(entityId, certification);
+    }
+  }
+
+  boolean hasCertification(UUID entityId) {
+    return loadedCertifications.contains(entityId);
+  }
+
+  AssetCertification getCertificationOrNull(UUID entityId) {
+    return certificationValues.get(entityId);
   }
 
   void putVotes(UUID entityId, Votes votes) {

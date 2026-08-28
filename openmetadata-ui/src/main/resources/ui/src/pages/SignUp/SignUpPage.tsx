@@ -18,12 +18,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import TeamsSelectable from '../../components/Settings/Team/TeamsSelectable/TeamsSelectable';
-import {
-  REDIRECT_PATHNAME,
-  ROUTES,
-  VALIDATION_MESSAGES,
-} from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import { ClientType } from '../../generated/configuration/authenticationConfiguration';
 import { EntityReference } from '../../generated/entity/type';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -33,8 +31,9 @@ import {
   setUrlPathnameExpiryAfterRoute,
 } from '../../utils/AuthProvider.util';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
-import { getImages, Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { getImages } from '../../utils/UserDataUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -52,7 +51,7 @@ const SignUp = () => {
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const OMDLogo = useMemo(() => brandClassBase.getMonogram().svg, []);
+  const OMDLogo = brandClassBase.getMonogram().svg;
 
   const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
     setLoading(true);
@@ -112,6 +111,7 @@ const SignUp = () => {
 
   return (
     <div className="flex-center w-full h-full">
+      <DocumentTitle title={t('label.sign-up')} />
       <Card className="p-x-md p-y-md w-500">
         <Space
           align="center"
@@ -121,7 +121,7 @@ const SignUp = () => {
           <OMDLogo
             data-testid="om-logo"
             height={50}
-            name={t('label.open-metadata-logo')}
+            name={t('label.brand-name-logo')}
             width={50}
           />
           <Typography.Title
@@ -132,7 +132,7 @@ const SignUp = () => {
               i18nKey="label.join-entity"
               renderElement={<span className="text-primary" />}
               values={{
-                entity: t('label.open-metadata'),
+                entity: t('label.brand-name'),
               }}
             />
           </Typography.Title>
@@ -154,6 +154,7 @@ const SignUp = () => {
               },
             ]}>
             <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of sign-up form
               autoFocus
               data-testid="full-name-input"
               placeholder={t('label.your-entity', {

@@ -35,7 +35,8 @@ import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { isCacheWarmupApplication } from '../../utils/ApplicationUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
@@ -124,8 +125,7 @@ const ApplicationPage = () => {
       <Col className="mt-24 text-center" span={24}>
         <ErrorPlaceHolder
           heading={t('label.application-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <div>{t('message.no-installed-applications-found')}</div>
         </ErrorPlaceHolder>
       </Col>
@@ -179,8 +179,7 @@ const ApplicationPage = () => {
               <Button
                 data-testid="add-application"
                 type="primary"
-                onClick={handleAddApplication}
-              >
+                onClick={handleAddApplication}>
                 {t('label.add-entity', {
                   entity: t('label.app-plural'),
                 })}
@@ -205,26 +204,35 @@ const ApplicationPage = () => {
           <>
             <Col span={24}>
               <Row className="applications-card-container" gutter={[20, 20]}>
-                {applicationData?.map((item) => (
-                  <Col
-                    key={item.fullyQualifiedName}
-                    lg={8}
-                    md={12}
-                    sm={24}
-                    xl={6}
-                  >
-                    <ApplicationCard
-                      appName={item.fullyQualifiedName ?? ''}
-                      deleted={item.deleted}
-                      description={item.description ?? ''}
-                      key={uniqueId()}
-                      linkTitle={t('label.configure')}
-                      showDescription={false}
-                      title={getEntityName(item)}
-                      onClick={() => viewAppDetails(item)}
-                    />
-                  </Col>
-                ))}
+                {applicationData?.map((item) => {
+                  const disabledReason =
+                    item.enabled === false &&
+                    isCacheWarmupApplication(item.name)
+                      ? t('message.cache-service-not-configured-message')
+                      : undefined;
+
+                  return (
+                    <Col
+                      key={item.fullyQualifiedName}
+                      lg={8}
+                      md={12}
+                      sm={24}
+                      xl={6}>
+                      <ApplicationCard
+                        appName={item.fullyQualifiedName ?? ''}
+                        deleted={item.deleted}
+                        description={item.description ?? ''}
+                        disabled={item.enabled === false}
+                        disabledReason={disabledReason}
+                        key={uniqueId()}
+                        linkTitle={t('label.configure')}
+                        showDescription={false}
+                        title={getEntityName(item)}
+                        onClick={() => viewAppDetails(item)}
+                      />
+                    </Col>
+                  );
+                })}
               </Row>
             </Col>
             <Col span={24}>

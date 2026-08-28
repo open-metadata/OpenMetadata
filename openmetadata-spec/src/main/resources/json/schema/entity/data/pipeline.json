@@ -107,7 +107,9 @@
       "properties": {
         "name": {
           "description": "Name that identifies this task instance uniquely.",
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
         },
         "displayName": {
           "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
@@ -388,6 +390,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

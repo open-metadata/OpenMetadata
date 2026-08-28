@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../../constant/service';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -55,25 +60,24 @@ export class DashboardServiceClass extends EntityClass {
     apiContext: APIRequestContext,
     dashboardData: { name: string; displayName: string; service: string }
   ): Promise<ResponseDataType> {
-    const response = await apiContext.post('/api/v1/dashboards', {
+    return await createOrFetch(apiContext, {
+      label: 'DashboardServiceClass.createDashboardChild',
+      createPath: '/api/v1/dashboards',
+      fqnSegments: [dashboardData.service, dashboardData.name],
       data: dashboardData,
     });
-
-    return await response.json();
   }
 
   async create(
     apiContext: APIRequestContext,
     customChildDashboards?: { name: string; displayName: string }[]
   ) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/dashboardServices',
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await serviceResponse.json();
+    const service = await createOrFetch(apiContext, {
+      label: 'DashboardServiceClass.create',
+      createPath: '/api/v1/services/dashboardServices',
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 
@@ -112,17 +116,22 @@ export class DashboardServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/services/dashboardServices/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/services/dashboardServices/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(
+      serviceResponse,
+      'DashboardServiceClass.patch'
+    );
 
     this.entityResponseData = service;
 

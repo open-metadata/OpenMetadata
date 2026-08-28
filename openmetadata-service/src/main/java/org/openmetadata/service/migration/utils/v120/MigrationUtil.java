@@ -82,8 +82,7 @@ public class MigrationUtil {
 
                   if (serviceId == null) {
                     String id = rowNode.get("id").asText();
-                    LOG.warn(
-                        String.format("Query [%s] cannot be linked to a service. Deleting...", id));
+                    LOG.warn("Query [{}] cannot be linked to a service. Deleting...", id);
                     // We cannot directly call the queryRepository for deletion, since the Query
                     // object is missing the new `service` property we introduced and the `delete`
                     // operation would fail. We need to delete the query entry and the relationships
@@ -107,8 +106,7 @@ public class MigrationUtil {
                     collectionDAO.queryDAO().update(query);
                   }
                 } catch (Exception ex) {
-                  LOG.warn(
-                      String.format("Error updating query [%s] due to [%s]", row, ex.getMessage()));
+                  LOG.warn("Error updating query [{}] due to [{}]", row, ex.getMessage());
                 }
               });
     } catch (Exception ex) {

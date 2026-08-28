@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { toastNotification } from './common';
 
 export const dragAndDropElement = async (
   page: Page,
@@ -37,10 +36,10 @@ export const dragAndDropElement = async (
 };
 
 export const openDragDropDropdown = async (page: Page, name: string) => {
-  const dropdownIcon = page.locator(
-    `[data-row-key=${name}] > .whitespace-nowrap > [data-testid="expand-icon"] > svg`
-  );
-  await dropdownIcon.click();
+  await page
+    .locator(`[data-row-key="${name}"]`)
+    .getByTestId('expand-icon')
+    .click();
 };
 
 export const confirmationDragAndDropTeam = async (
@@ -55,9 +54,23 @@ export const confirmationDragAndDropTeam = async (
     `Click on Confirm if you’d like to move ${dragTeam} team under ${dropTeam} team.`
   );
 
-  const patchResponse = page.waitForResponse('/api/v1/teams/*');
+  const patchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/') &&
+      response.request().method() === 'PATCH'
+  );
+  const teamsListResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams?parentTeam=') &&
+      response.request().method() === 'GET'
+  );
   await page.locator('.ant-modal-footer > .ant-btn-primary').click();
   await patchResponse;
+  const teamsListResponseResult = await teamsListResponse;
 
-  await toastNotification(page, 'Team moved successfully!');
+  expect(teamsListResponseResult.status()).toBe(200);
+
+  await expect(
+    page.locator('[data-testid="confirmation-modal"]')
+  ).not.toBeVisible();
 };

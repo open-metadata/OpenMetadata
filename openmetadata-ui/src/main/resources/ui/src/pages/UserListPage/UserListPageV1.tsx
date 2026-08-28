@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,11 +19,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -51,16 +51,15 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchQuery } from '../../rest/searchAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
-import { Transi18next } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
-
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();
@@ -578,7 +577,7 @@ const UserListPageV1 = () => {
           </p>
         </Modal>
 
-        <DeleteWidgetModal
+        <DeleteEntityModal
           afterDeleteAction={async () => {
             handleSearch('');
             // Update current count when Create / Delete operation performed

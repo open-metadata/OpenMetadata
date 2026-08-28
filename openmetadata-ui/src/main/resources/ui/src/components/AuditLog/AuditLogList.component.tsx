@@ -13,7 +13,7 @@
 
 import { Skeleton, Space, Typography } from 'antd';
 import { compact, startCase } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo } from 'react';
+import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
@@ -21,9 +21,10 @@ import {
   ChangeDescription,
   FieldChange,
 } from '../../generated/type/changeEvent';
-import { getTextFromHtmlString } from '../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType, getEntityName } from '../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
   getDomainPath,
@@ -31,7 +32,7 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from '../../utils/RouterUtils';
-import { isValidJSONString } from '../../utils/StringsUtils';
+import { isValidJSONString } from '../../utils/StringUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
@@ -179,23 +180,20 @@ const renderEntityLinks = (
     return plainValue ? [plainValue] : [];
   }
 
-  return entities.map((entity, idx) => {
+  return entities.map((entity) => {
     const link = getEntityLinkForField(fieldName, entity);
     const label = entity.displayName ?? entity.name;
+    const entityKey = `${keyPrefix}-${entity.fqn ?? entity.name}`;
 
     if (link) {
       return (
-        <Link
-          className="change-entity-link"
-          key={`${keyPrefix}-${idx}`}
-          to={link}
-        >
+        <Link className="change-entity-link" key={entityKey} to={link}>
           {label}
         </Link>
       );
     }
 
-    return <span key={`${keyPrefix}-${idx}`}>{label}</span>;
+    return <span key={entityKey}>{label}</span>;
   });
 };
 
@@ -279,8 +277,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                 return (
                   <span
                     className="change-value-item"
-                    key={`${keyPrefix}-wrap-${idx}`}
-                  >
+                    key={`${keyPrefix}-wrap-${entity?.fqn ?? entity?.name}`}>
                     {showProfilePic && entity && (
                       <ProfilePicture
                         displayName={entity.displayName ?? entity.name}
@@ -316,16 +313,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       const removedLabel = startCase(t('label.removed-lowercase'));
       const fallbackField = t('label.field', { defaultValue: 'field' });
 
-      (changeDescription.fieldsAdded ?? []).forEach((change, idx) => {
+      (changeDescription.fieldsAdded ?? []).forEach((change) => {
         const label = getFieldLabel(change.name);
         const valueNode = renderChangeValue(
           change,
           change.newValue,
-          `added-${idx}`
+          `added-${change.name}`
         );
 
         details.push(
-          <span className="change-detail" key={`added-${idx}`}>
+          <span className="change-detail" key={`added-${change.name}`}>
             <span className="change-action">{addedLabel}</span>{' '}
             <span className="change-field">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
@@ -335,21 +332,21 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
       (changeDescription.fieldsUpdated ?? [])
         .filter((change) => change.name !== 'deleted')
-        .forEach((change, idx) => {
+        .forEach((change) => {
           const label = getFieldLabel(change.name);
           const oldValueNode = renderChangeValue(
             change,
             change.oldValue,
-            `updated-old-${idx}`
+            `updated-old-${change.name}`
           );
           const newValueNode = renderChangeValue(
             change,
             change.newValue,
-            `updated-new-${idx}`
+            `updated-new-${change.name}`
           );
 
           details.push(
-            <span className="change-detail" key={`updated-${idx}`}>
+            <span className="change-detail" key={`updated-${change.name}`}>
               <span className="change-action">{updatedLabel}</span>{' '}
               <span className="change-field">{label || fallbackField}</span>
               {(oldValueNode || newValueNode) && (
@@ -363,16 +360,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           );
         });
 
-      (changeDescription.fieldsDeleted ?? []).forEach((change, idx) => {
+      (changeDescription.fieldsDeleted ?? []).forEach((change) => {
         const label = getFieldLabel(change.name);
         const valueNode = renderChangeValue(
           change,
           change.oldValue,
-          `deleted-${idx}`
+          `deleted-${change.name}`
         );
 
         details.push(
-          <span className="change-detail" key={`deleted-${idx}`}>
+          <span className="change-detail" key={`deleted-${change.name}`}>
             <span className="change-action">{removedLabel}</span>{' '}
             <span className="change-field">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
@@ -464,14 +461,12 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                 <Typography.Text className="event-separator">–</Typography.Text>
                 <Typography.Text
                   className="impersonated-by"
-                  data-testid="impersonated-by"
-                >
+                  data-testid="impersonated-by">
                   {t('label.impersonated-by-with-colon')}
                 </Typography.Text>{' '}
                 <Link
                   className="user-link"
-                  to={getUserPath(log.impersonatedBy)}
-                >
+                  to={getUserPath(log.impersonatedBy)}>
                   {log.impersonatedBy}
                 </Link>
               </>
@@ -482,7 +477,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           {descriptionNodes.length > 0 ? (
             <div className="description-content">
               {descriptionNodes.map((node, idx) => (
-                <span className="description-item" key={idx}>
+                <span
+                  className="description-item"
+                  key={isValidElement(node) ? node.key : undefined}>
                   {node}
                   {idx < descriptionNodes.length - 1 && (
                     <span className="description-separator">; </span>
@@ -504,16 +501,14 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             {entityType && (
               <Typography.Text
                 className="meta-item entity-type-badge"
-                data-testid="entity-type-badge"
-              >
+                data-testid="entity-type-badge">
                 {startCase(entityType)}
               </Typography.Text>
             )}
             {timestamp && (
               <Typography.Text
                 className="meta-item timestamp"
-                data-testid="timestamp"
-              >
+                data-testid="timestamp">
                 {getRelativeTime(timestamp)}
               </Typography.Text>
             )}

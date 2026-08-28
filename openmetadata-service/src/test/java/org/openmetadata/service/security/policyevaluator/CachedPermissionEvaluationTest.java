@@ -13,6 +13,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -170,10 +171,8 @@ public class CachedPermissionEvaluationTest {
             subjectContext.getPolicies(List.of(resourceOwnerTeam.getEntityReference())));
 
     // With owner should have more policies
-    assertEquals(
-        true,
-        withOwner.size() > withoutOwner.size(),
-        "Resource owner should add additional policies");
+    assertTrue(
+        withOwner.size() > withoutOwner.size(), "Resource owner should add additional policies");
 
     // Without owner policies should be prefix of with owner
     for (int i = 0; i < withoutOwner.size(); i++) {
@@ -191,7 +190,7 @@ public class CachedPermissionEvaluationTest {
         break;
       }
     }
-    assertEquals(true, hasOwnerPolicies, "Owner team policies should be included");
+    assertTrue(hasOwnerPolicies, "Owner team policies should be included");
   }
 
   @Test

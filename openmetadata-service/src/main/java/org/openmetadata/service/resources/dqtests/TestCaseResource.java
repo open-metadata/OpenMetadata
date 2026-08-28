@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,6 +36,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +44,9 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.teams.User;
@@ -54,6 +59,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -98,7 +104,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
-      "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,domains,tags,followers";
+      "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,incidentStatus,domains,tags,followers,dataProducts";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
 
@@ -178,6 +184,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("entityLink")
           String entityLink,
       @Parameter(
+              description = "Return list of tests by column names",
+              schema = @Schema(type = "string", example = "{columnName}"))
+          @QueryParam("columnName")
+          String columnName,
+      @Parameter(
               description = "Return list of tests by entity FQN",
               schema =
                   @Schema(
@@ -232,7 +243,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type)
             .addQueryParam("entityFQN", entityFQN)
-            .addQueryParam("createdBy", createdBy);
+            .addQueryParam("createdBy", createdBy)
+            .addQueryParam("columnName", columnName);
     List<AuthRequest> authRequests = new ArrayList<>();
     ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().build();
     OperationContext testCaseOperationContext =
@@ -334,13 +346,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Filter test case by status",
-              schema =
-                  @Schema(
-                      type = "string",
-                      allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+              description =
+                  "Filter test case by status. Can be repeated or comma separated to filter on "
+                      + "several statuses at once (e.g. `testCaseStatus=Failed&testCaseStatus=Aborted`), "
+                      + "in which case test cases matching any of the statuses are returned. "
+                      + "Values are matched case insensitively",
+              array =
+                  @ArraySchema(
+                      schema =
+                          @Schema(
+                              type = "string",
+                              allowableValues = {"Success", "Failed", "Aborted", "Queued"})))
           @QueryParam("testCaseStatus")
-          String status,
+          List<String> statuses,
       @Parameter(
               description = "Filter for test case type (e.g. column, table, all)",
               schema =
@@ -438,10 +456,21 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "Filter test cases by entities followed by a user",
               schema = @Schema(type = "string"))
           @QueryParam("followedBy")
-          String followedBy)
+          String followedBy,
+      @Parameter(
+              description = "Return list of tests by column names",
+              schema = @Schema(type = "string", example = "{columnName}"))
+          @QueryParam("columnName")
+          String columnName,
+      @Parameter(
+              description = "data product filter to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataProductFqn")
+          String dataProductFqn)
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
+    String searchTerm = q;
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter =
@@ -449,11 +478,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             include,
             !nullOrEmpty(testSuiteId) ? testSuiteId.toString() : null,
             includeAllTests,
-            status,
+            validateTestCaseStatuses(statuses),
             type,
             testPlatforms,
             dataQualityDimension,
-            q,
+            searchTerm,
             includeFields,
             domain,
             tags,
@@ -463,7 +492,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             owner,
             followedBy,
             startTimestamp,
-            endTimestamp);
+            endTimestamp,
+            columnName,
+            dataProductFqn);
 
     // Execute search
     return executeTestCaseSearch(
@@ -476,7 +507,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         searchSortFilter,
         limit,
         offset,
-        q,
+        searchTerm,
         queryString);
   }
 
@@ -1129,7 +1160,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @PUT
   @Path("/logicalTestCases")
   @Operation(
-      operationId = "addTestCasesToLogicalTestSuite",
+      operationId = "addTestCasesToBundleTestSuite",
       summary = "Add test cases to a logical test suite",
       description = "Add test cases to a logical test suite.",
       responses = {
@@ -1156,22 +1187,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             null,
             false);
 
-    OperationContext editTestsOpContext =
-        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface testSuiteRC =
-        TestCaseResourceContext.builder().entity(testSuite).build();
-
-    OperationContext editAllOpContext =
-        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(editTestsOpContext, testSuiteRC),
-            new AuthRequest(editAllOpContext, testSuiteRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    if (Boolean.TRUE.equals(testSuite.getBasic())) {
-      throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
-    }
+    validateTestSuiteOps(testSuite, securityContext);
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     if (testCaseIds == null || testCaseIds.isEmpty()) {
@@ -1184,7 +1200,69 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException(
           "You are trying to add one or more test cases that do not exist.");
     }
-    return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    return Response.fromResponse(
+            repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse())
+        .header("Deprecation", "true")
+        .header(
+            "Sunset",
+            "This endpoint will be removed in version 2.0. "
+                + "Use PUT /api/v1/dataQuality/testCases/logicalTestCases/bulk instead.")
+        .build();
+  }
+
+  @PUT
+  @Path("/logicalTestCases/bulk")
+  @Operation(
+      operationId = "addManyTestCasesToBundleTestSuite",
+      summary = "Add test cases to a logical test suite",
+      description = "Add test cases to a logical test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully added test cases to the logical test suite.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response addManyTestCasesToBundleTestSuite(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BundleSuiteBulkAddRequest bundleSuiteBulkAddRequest) {
+
+    TestSuite testSuite =
+        Entity.getEntity(
+            Entity.TEST_SUITE,
+            bundleSuiteBulkAddRequest.getTestSuiteId(),
+            "domains,owners",
+            null,
+            false);
+
+    validateTestSuiteOps(testSuite, securityContext);
+    BundleSuiteBulkAddRequest.Mode mode = bundleSuiteBulkAddRequest.getMode();
+    if (mode.equals(BundleSuiteBulkAddRequest.Mode.IDS)) {
+      BundleSuiteBulkAddRequestBulkByIds bulkByIds =
+          JsonUtils.convertValue(
+              bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkByIds.class);
+      List<UUID> testCaseIds = bulkByIds.getIds();
+      if (testCaseIds == null || testCaseIds.isEmpty()) {
+        return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
+            .toResponse();
+      }
+      int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
+      if (existingTestCaseCount != testCaseIds.size()) {
+        throw new IllegalArgumentException(
+            "You are trying to add one or more test cases that do not exist.");
+      }
+      return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    }
+
+    BundleSuiteBulkAddRequestBulkAll bulkAll =
+        JsonUtils.convertValue(
+            bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
+    return repository
+        .addAllTestCasesToLogicalTestSuite(testSuite, getExcludedIdsFromSelection(bulkAll))
+        .toResponse();
   }
 
   @GET
@@ -1393,6 +1471,41 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
   }
 
+  /**
+   * Statuses can be passed as repeated query params and/or as comma separated values. They are
+   * normalized to a single comma separated string of valid {@link TestCaseStatus} values, which the
+   * filter turns into an OR (`terms`) condition.
+   */
+  private static String validateTestCaseStatuses(List<String> statuses) {
+    String joinedStatuses = null;
+    if (!nullOrEmpty(statuses)) {
+      List<String> validStatuses =
+          statuses.stream()
+              .flatMap(status -> Arrays.stream(status.split(",")))
+              .map(String::trim)
+              .filter(status -> !status.isEmpty())
+              .map(TestCaseResource::toTestCaseStatus)
+              .map(TestCaseStatus::value)
+              .distinct()
+              .toList();
+      joinedStatuses = validStatuses.isEmpty() ? null : String.join(",", validStatuses);
+    }
+    return joinedStatuses;
+  }
+
+  /** Matching is case insensitive, the status is normalized to its canonical enum value. */
+  private static TestCaseStatus toTestCaseStatus(String status) {
+    return Arrays.stream(TestCaseStatus.values())
+        .filter(candidate -> candidate.value().equalsIgnoreCase(status))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Invalid testCaseStatus '%s'. Allowed values are %s",
+                        status, Arrays.toString(TestCaseStatus.values()))));
+  }
+
   private static SearchListFilter buildSearchListFilter(
       Include include,
       String testSuiteId,
@@ -1411,7 +1524,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       String owner,
       String followedBy,
       Long startTimestamp,
-      Long endTimestamp) {
+      Long endTimestamp,
+      String columnName,
+      String dataProductFqn) {
 
     SearchListFilter searchListFilter = new SearchListFilter(include);
 
@@ -1430,6 +1545,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("tier", tier);
     searchListFilter.addQueryParam("serviceName", serviceName);
     searchListFilter.addQueryParam("createdBy", createdBy);
+    searchListFilter.addQueryParam("columnName", columnName);
+    searchListFilter.addQueryParam("dataProductFqn", dataProductFqn);
 
     // Handle owner and followedBy parameters
     if (!nullOrEmpty(owner)) {
@@ -1498,6 +1615,34 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             authRequests);
 
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
+  }
+
+  private void validateTestSuiteOps(TestSuite testSuite, SecurityContext securityContext) {
+    OperationContext editTestsOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface testSuiteRC =
+        TestCaseResourceContext.builder().entity(testSuite).build();
+
+    OperationContext editAllOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(editTestsOpContext, testSuiteRC),
+            new AuthRequest(editAllOpContext, testSuiteRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
+    }
+  }
+
+  private List<UUID> getExcludedIdsFromSelection(BundleSuiteBulkAddRequestBulkAll bulkAll) {
+    if (bulkAll == null || bulkAll.getFilter() == null) {
+      return List.of();
+    }
+
+    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    return filter.getExcludeIds();
   }
 
   @Override

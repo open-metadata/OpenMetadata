@@ -22,13 +22,12 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import IconAuth0 from '../../assets/img/icon-auth0.svg';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
-import AlertBar from '../../components/AlertBar/AlertBar';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -38,9 +37,7 @@ import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselL
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './login.style.less';
 
 const SignInPage = () => {
@@ -49,14 +46,11 @@ const SignInPage = () => {
   const hasTriggeredAutoRedirect = useRef(false);
 
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { authConfig, isAuthenticated } = useApplicationStore();
   const { onLoginHandler } = useAuthProvider();
-  const { alert, addAlert, resetAlert } = useAlertStore();
-
   const { t } = useTranslation();
 
-  const brandName = brandClassBase.getPageTitle();
+  const brandName = t('label.brand-name');
 
   const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
@@ -162,15 +156,6 @@ const SignInPage = () => {
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    const loginError = searchParams.get('loginError');
-    if (loginError) {
-      addAlert({ message: loginError, type: 'error' });
-      searchParams.delete('loginError');
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams]);
-
   if (!authConfig) {
     return <Loader fullScreen />;
   }
@@ -197,12 +182,10 @@ const SignInPage = () => {
 
   const onClickSignUp = () => {
     navigate(ROUTES.REGISTER);
-    resetAlert();
   };
 
   const onClickForgotPassword = () => {
     navigate(ROUTES.FORGOT_PASSWORD);
-    resetAlert();
   };
 
   return (
@@ -212,20 +195,10 @@ const SignInPage = () => {
           className={classNames('login-box', {
             'sso-container': !isAuthProviderBasic,
           })}>
-          <BrandImage isMonoGram height="auto" width={50} />
+          <BrandImage isMonoGram height={50} width={50} />
           <Typography.Title className="header-text display-sm" level={3}>
             {t('label.welcome-to')} {brandName}
           </Typography.Title>
-          {alert && (
-            <div className="login-alert">
-              <AlertBar
-                defaultExpand
-                message={alert?.message}
-                type={alert?.type}
-              />
-            </div>
-          )}
-
           {isAuthProviderBasic ? (
             <div className="login-form ">
               <Form
@@ -249,6 +222,7 @@ const SignInPage = () => {
                     },
                   ]}>
                   <Input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of sign-in form
                     autoFocus
                     className="input-field"
                     placeholder={t('label.email')}

@@ -154,6 +154,6 @@ final class ReadPlan {
     if (source == null || source.isEmpty()) {
       return Map.of();
     }
-    return Collections.unmodifiableMap(new HashMap<>(source));
+    return Map.copyOf(source);
   }
 }

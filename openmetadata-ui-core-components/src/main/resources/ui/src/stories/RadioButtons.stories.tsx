@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { RadioButton, RadioGroup } from "../components/base/radio-buttons/radio-buttons";
+import type { Meta, StoryObj } from '@storybook/react';
+import {
+  RadioButton,
+  RadioGroup,
+} from '../components/base/radio-buttons/radio-buttons';
 
 const meta = {
-  title: "Components/RadioButtons",
+  title: 'Components/RadioButtons',
   component: RadioGroup,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof RadioGroup>;
 
 export default meta;
@@ -27,30 +30,30 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    label: "Select an option",
-    defaultValue: "option1",
+    label: 'Select an option',
+    defaultValue: 'option1',
   },
   render: (args) => (
     <RadioGroup {...args}>
-      <RadioButton value="option1" label="Option 1" />
-      <RadioButton value="option2" label="Option 2" />
-      <RadioButton value="option3" label="Option 3" />
+      <RadioButton label="Option 1" value="option1" />
+      <RadioButton label="Option 2" value="option2" />
+      <RadioButton label="Option 3" value="option3" />
     </RadioGroup>
   ),
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 40 }}>
-      <RadioGroup label="Small" size="sm" defaultValue="sm1">
-        <RadioButton value="sm1" label="Option A" />
-        <RadioButton value="sm2" label="Option B" />
-        <RadioButton value="sm3" label="Option C" />
+    <div style={{ display: 'flex', gap: 40 }}>
+      <RadioGroup defaultValue="sm1" label="Small" size="sm">
+        <RadioButton label="Option A" value="sm1" />
+        <RadioButton label="Option B" value="sm2" />
+        <RadioButton label="Option C" value="sm3" />
       </RadioGroup>
-      <RadioGroup label="Medium" size="md" defaultValue="md1">
-        <RadioButton value="md1" label="Option A" />
-        <RadioButton value="md2" label="Option B" />
-        <RadioButton value="md3" label="Option C" />
+      <RadioGroup defaultValue="md1" label="Medium" size="md">
+        <RadioButton label="Option A" value="md1" />
+        <RadioButton label="Option B" value="md2" />
+        <RadioButton label="Option C" value="md3" />
       </RadioGroup>
     </div>
   ),
@@ -58,21 +61,21 @@ export const Sizes: StoryObj = {
 
 export const WithHints: StoryObj = {
   render: () => (
-    <RadioGroup label="Pricing plan" defaultValue="pro">
+    <RadioGroup defaultValue="pro" label="Pricing plan">
       <RadioButton
-        value="basic"
-        label="Basic"
         hint="Up to 5 users, 10 GB storage"
+        label="Basic"
+        value="basic"
       />
       <RadioButton
-        value="pro"
-        label="Pro"
         hint="Up to 50 users, 100 GB storage"
+        label="Pro"
+        value="pro"
       />
       <RadioButton
-        value="enterprise"
-        label="Enterprise"
         hint="Unlimited users, unlimited storage"
+        label="Enterprise"
+        value="enterprise"
       />
     </RadioGroup>
   ),
@@ -80,20 +83,20 @@ export const WithHints: StoryObj = {
 
 export const WithDisabled: StoryObj = {
   render: () => (
-    <RadioGroup label="Options" defaultValue="available">
-      <RadioButton value="available" label="Available" />
-      <RadioButton value="disabled" label="Disabled option" isDisabled />
-      <RadioButton value="another" label="Another option" />
+    <RadioGroup defaultValue="available" label="Options">
+      <RadioButton label="Available" value="available" />
+      <RadioButton isDisabled label="Disabled option" value="disabled" />
+      <RadioButton label="Another option" value="another" />
     </RadioGroup>
   ),
 };
 
 export const StandaloneButtons: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <RadioButton value="a" label="Standalone Radio A" />
-      <RadioButton value="b" label="Standalone Radio B" />
-      <RadioButton value="c" label="Standalone Radio C (disabled)" isDisabled />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <RadioButton label="Standalone Radio A" value="a" />
+      <RadioButton label="Standalone Radio B" value="b" />
+      <RadioButton isDisabled label="Standalone Radio C (disabled)" value="c" />
     </div>
   ),
 };

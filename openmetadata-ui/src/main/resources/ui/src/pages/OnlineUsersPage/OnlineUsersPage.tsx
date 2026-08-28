@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Select, Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -37,10 +37,9 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
-
 const OnlineUsersPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();

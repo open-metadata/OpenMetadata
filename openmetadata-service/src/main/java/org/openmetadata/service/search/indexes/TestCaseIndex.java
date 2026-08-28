@@ -1,19 +1,28 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_SUBSTRING;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_SUBSTRING;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.SneakyThrows;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
-public record TestCaseIndex(TestCase testCase) implements SearchIndex {
+public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   private static final Set<String> excludeFields =
       Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
@@ -23,9 +32,38 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TEST_CASE;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add(TestCaseRepository.TEST_SUITE_FIELD);
+    fields.add(Entity.FIELD_TEST_SUITES);
+    fields.add(TestCaseRepository.TEST_DEFINITION_FIELD);
+    fields.add(Entity.TEST_CASE_RESULT);
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    Long revision = ctx.relationshipRevision();
+    if (revision == null) {
+      revision =
+          TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(testCase.getId()))
+              .getOrDefault(testCase.getId(), 0L);
+    }
+    doc.put(TestCaseRepository.TEST_SUITES_REVISION_FIELD, revision);
+    return doc;
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
-    SearchIndex.super.removeNonIndexableFields(esDoc);
-    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
+    TaggableIndex.super.removeNonIndexableFields(esDoc);
+    List<Map<String, Object>> testSuites =
+        (List<Map<String, Object>>) esDoc.get(Entity.FIELD_TEST_SUITES);
     if (testSuites != null) {
       for (Map<String, Object> testSuite : testSuites) {
         SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
@@ -35,35 +73,74 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
 
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    // Build Index Doc
-    TestDefinition testDefinition =
-        Entity.getEntity(
-            Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
-    doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
-    doc.put("entityType", Entity.TEST_CASE);
-    doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
-    doc.put("tags", testCase.getTags());
-    doc.put("testPlatforms", testDefinition.getTestPlatforms());
-    doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
-    doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
-    doc.put("testCaseType", testDefinition.getEntityType());
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    UUID ongoingIncidentId = tcrsRepo.getOngoingIncidentStateId(testCase.getFullyQualifiedName());
+    doc.put(
+        TestCaseRepository.INCIDENTS_FIELD,
+        ongoingIncidentId != null ? ongoingIncidentId.toString() : null);
+    if (testCase.getTestDefinition() != null) {
+      try {
+        TestDefinition testDefinition =
+            Entity.getEntity(
+                Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
+        doc.put("testPlatforms", testDefinition.getTestPlatforms());
+        doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
+        doc.put("testCaseType", testDefinition.getEntityType());
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "TestDefinition not found for TestCase [{}]: {}",
+            testCase.getFullyQualifiedName(),
+            ex.getMessage());
+      }
+    }
     setParentRelationships(doc, testCase);
     return doc;
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {
-    // denormalize the parent relationships for search
-    EntityReference testSuiteEntityReference = testCase.getTestSuite();
-    if (testSuiteEntityReference == null) {
-      return;
+    // Denormalize parent relationships and inherit domains/certification from the linked table.
+    // addTestSuiteParentEntityRelations already fetches the Table with these fields,
+    // so we reuse it to avoid an extra DB query per test case.
+    EntityInterface linkedTable = denormalizeTestSuiteParents(doc, testCase);
+
+    if (nullOrEmpty(testCase.getDomains())
+        && linkedTable != null
+        && !nullOrEmpty(linkedTable.getDomains())) {
+      doc.put("domains", getEntitiesWithDisplayName(linkedTable.getDomains()));
     }
-    TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
+
+    if (testCase.getCertification() == null
+        && linkedTable != null
+        && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
+    }
+
+    if (nullOrEmpty(testCase.getDataProducts())
+        && linkedTable != null
+        && !nullOrEmpty(linkedTable.getDataProducts())) {
+      doc.put(
+          Entity.FIELD_DATA_PRODUCTS, getEntitiesWithDisplayName(linkedTable.getDataProducts()));
+    }
+  }
+
+  private EntityInterface denormalizeTestSuiteParents(Map<String, Object> doc, TestCase testCase) {
+    EntityReference testSuiteRef = testCase.getTestSuite();
+    if (testSuiteRef == null) {
+      return null;
+    }
+    TestSuite testSuite = Entity.getEntityOrNull(testSuiteRef, "", Include.ALL);
+    if (testSuite == null) {
+      return null;
+    }
     EntityReference entityReference = testSuite.getBasicEntityReference();
-    if (entityReference != null) {
-      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    if (entityReference == null) {
+      return null;
     }
+    return TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
   public static Map<String, Float> getFields() {
@@ -73,6 +150,13 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     fields.put("testSuite.description", 1.0f);
     fields.put("entityLink", 3.0f);
     fields.put("entityFQN", 10.0f);
+    // The DQ list endpoints treat q as literal text, so a user's mid-token substring
+    // ("alues" in column_values_to_be_between) has no wildcard to fall back on. The
+    // *.ngram fields are edge_ngram, which only matches token prefixes; these are the
+    // only fields backing true substring matching, so they are scoped to the DQ
+    // indexes rather than added to SearchIndex.getDefaultFields().
+    fields.put(FIELD_NAME_SUBSTRING, 1.0f);
+    fields.put(FIELD_DISPLAY_NAME_SUBSTRING, 1.0f);
     return fields;
   }
 }

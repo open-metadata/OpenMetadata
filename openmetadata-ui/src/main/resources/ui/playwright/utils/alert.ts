@@ -15,17 +15,16 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
 import {
   ALERT_DESCRIPTION,
-  ALERT_WITH_PERMISSION_POLICY_DETAILS,
-  ALERT_WITH_PERMISSION_POLICY_NAME,
-  ALERT_WITH_PERMISSION_ROLE_DETAILS,
-  ALERT_WITH_PERMISSION_ROLE_NAME,
   ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
   ALERT_WITHOUT_PERMISSION_POLICY_NAME,
   ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
   ALERT_WITHOUT_PERMISSION_ROLE_NAME,
+  ALERT_WITH_PERMISSION_POLICY_DETAILS,
+  ALERT_WITH_PERMISSION_POLICY_NAME,
+  ALERT_WITH_PERMISSION_ROLE_DETAILS,
+  ALERT_WITH_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
-import { DELETE_TERM } from '../constant/common';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TableClass } from '../support/entity/TableClass';
@@ -37,7 +36,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { getEntityDisplayName, getTextFromHtmlString } from './entity';
+import {
+  getEntityDisplayName,
+  getTextFromHtmlString,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
   addFilterWithUsersListInput,
@@ -176,20 +179,39 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  const alertRow = page.locator(`[data-row-key="${id}"]`);
+  await waitForAllLoadersToDisappear(page);
+
+  // The alerts page renders no [data-testid="loader"], so the wait above is
+  // vacuous here, and the table body renders zero rows while a fetch is in
+  // flight. isHidden() does NOT wait, so sampling it against an unpainted table
+  // reports a false "not on this page"; isEnabled() DOES wait, so it resolves
+  // after the paint and reports Next as enabled. That mismatch walked the
+  // pagination past the alert, and because the walk is forward-only and returns
+  // silently, the caller's click then waited out the whole test budget on a row
+  // sitting on an earlier page. Wait for the body to paint before sampling.
+  await expect(page.locator('[data-row-key]').first()).toBeVisible();
+
+  // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
+  const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
-  if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
-    const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
-    await nextButton.click();
-    await getAlerts;
-    await page.waitForSelector('.ant-table-wrapper [data-testid="loader"]', {
-      state: 'detached',
-    });
-    await findPageWithAlert(page, alertDetails);
+
+  if (await alertRow.isVisible()) {
+    return;
   }
+
+  // isVisible() before isEnabled(): isEnabled() waits for attachment with no
+  // timeout, so on a single-page list — where pagination is not rendered at all
+  // — it would block indefinitely.
+  if (!(await nextButton.isVisible()) || !(await nextButton.isEnabled())) {
+    throw new Error(
+      `Alert "${alertDetails.name}" (${id}) was not found on any page of the alerts list.`
+    );
+  }
+
+  const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
+  await nextButton.click();
+  await getAlerts;
+  await findPageWithAlert(page, alertDetails);
 };
 
 export const deleteAlertSteps = async (
@@ -198,12 +220,6 @@ export const deleteAlertSteps = async (
   displayName: string
 ) => {
   await page.getByTestId(`alert-delete-${name}`).click();
-
-  await expect(page.locator('.ant-modal-header')).toHaveText(
-    `Delete subscription "${displayName}"`
-  );
-
-  await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
 
   const deleteAlert = page.waitForResponse(
     (response) =>
@@ -247,7 +263,7 @@ export const visitEditAlertPage = async (
 
   await findPageWithAlert(page, alertDetails);
   await page.click(
-    `[data-row-key="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"]`
+    `[id="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"], [data-row-key="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"]`
   );
 
   // Check alert name
@@ -269,7 +285,7 @@ export const visitAlertDetailsPage = async (
     '/api/v1/events/subscriptions/name/*/eventsRecord?listCountOnly=true'
   );
   await page
-    .locator(`[data-row-key="${alertDetails.id}"]`)
+    .locator(`[id="${alertDetails.id}"], [data-row-key="${alertDetails.id}"]`)
     .getByText(getEntityDisplayName(alertDetails))
     .click();
   await getAlertDetails;
@@ -296,7 +312,7 @@ export const addOwnerFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -326,7 +342,7 @@ export const addOwnerFilter = async ({
   await ownerInput.click();
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -377,7 +393,7 @@ export const addEntityFQNFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -398,6 +414,11 @@ export const addEntityFQNFilter = async ({
   // Ensure no dropdowns visible before searching
   await ensureNoDropdownVisible(page);
 
+  // Focus the combobox before filling — Ant Design Select with mode="multiple"
+  // renders the search input as readonly until it receives focus, which makes
+  // page.fill() fail with "element is not editable".
+  await page.click('[data-testid="fqn-list-select"] [role="combobox"]');
+
   // Search and select entity
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
   await page.fill(
@@ -407,7 +428,7 @@ export const addEntityFQNFilter = async ({
   await getSearchResult;
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -451,7 +472,7 @@ export const addEventTypeFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -482,7 +503,7 @@ export const addEventTypeFilter = async ({
     await eventTypeInput.click();
 
     // Wait for dropdown to open
-    await page.waitForSelector('.ant-select-dropdown:visible', {
+    await page.locator('.ant-select-dropdown:visible').first().waitFor({
       state: 'visible',
     });
 
@@ -535,7 +556,7 @@ export const addDomainFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -565,7 +586,7 @@ export const addDomainFilter = async ({
   await domainInput.click();
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -575,7 +596,7 @@ export const addDomainFilter = async ({
   const awaitResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query?q=') &&
-      response.url().includes('index=domain_search_index')
+      response.url().includes('index=domain')
   );
 
   // Fill search term and wait for API response
@@ -621,7 +642,7 @@ export const addGMEFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -766,7 +787,7 @@ export const addGetSchemaChangesAction = async ({
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -810,7 +831,7 @@ export const addPipelineStatusUpdatesAction = async ({
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -840,7 +861,7 @@ export const addPipelineStatusUpdatesAction = async ({
   await pipelineStatusInput.click();
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -987,15 +1008,38 @@ export const inputBasicAlertInformation = async ({
   await page.locator(descriptionBox).clear();
   await page.locator(descriptionBox).fill(ALERT_DESCRIPTION);
 
-  // Select all source
-  await page.click('[data-testid="add-source-button"]');
-
-  await page
+  // Select the alert source.
+  //
+  // The antd Dropdown opens with a slide-up motion. Playwright's `stable`
+  // actionability check clears once the bounding box holds for two animation
+  // frames, which the tail of the cubic-bezier ease satisfies while the
+  // transform is still running — so mousedown and mouseup can land on different
+  // nodes and the browser never synthesises a `click`. rc-menu's handler then
+  // never runs, `source-select` is never rendered, and because `locator.click()`
+  // retries actionability but never the *effect*, the assertion below would
+  // spend its whole budget on an element that can no longer appear. Retry the
+  // selection itself instead. The `isVisible()` calls are branch conditions for
+  // that retry, not assertions — the assertion is `toBeVisible` below them.
+  const sourceOption = page
     .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`)
-    .click();
+    .getByTestId(`${sourceName}-option`);
+  const sourceSelect = page.getByTestId('source-select');
 
-  await expect(page.getByTestId('source-select')).toHaveText(sourceDisplayName);
+  await expect(async () => {
+    if (!(await sourceSelect.isVisible())) {
+      // Gate on the option rather than the menu: `drop-down-menu` is also used
+      // by SearchDropdown, so probing it unscoped risks a strict-mode violation.
+      if (!(await sourceOption.isVisible())) {
+        await page.click('[data-testid="add-source-button"]');
+      }
+
+      await sourceOption.click();
+    }
+
+    await expect(sourceSelect).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+
+  await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
 export const saveAlertAndVerifyResponse = async (page: Page) => {
@@ -1173,9 +1217,7 @@ export const checkRecentEventDetails = async ({
       // Open collapse
       await page.getByTestId(`event-collapse-${event.data[0].id}`).click();
 
-      await page.waitForSelector(
-        `[data-testid="event-details-${event.data[0].id}"]`
-      );
+      await page.getByTestId(`event-details-${event.data[0].id}`).waitFor();
 
       // Check if table id is present in event details
       await expect(
@@ -1200,9 +1242,9 @@ export const checkRecentEventDetails = async ({
 
   await page.getByTestId('filter-button').click();
 
-  await page.waitForSelector(
-    '.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]'
-  );
+  await page
+    .locator('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]')
+    .waitFor();
 
   const getFailedEvents = page.waitForResponse(
     (response) =>

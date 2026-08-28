@@ -44,11 +44,13 @@ import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddO
 import {
   getDestinationConfigField,
   getDestinationStatusAlertData,
+} from '../../../../utils/Alerts/AlertsUtil';
+import {
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
-} from '../../../../utils/Alerts/AlertsUtil';
-import { Transi18next } from '../../../../utils/CommonUtils';
+} from '../../../../utils/Alerts/AlertsUtilPure';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 

@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -25,15 +32,17 @@ import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
+import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
@@ -81,7 +90,7 @@ jest.mock('../../../rest/applicationAPI', () => ({
   triggerOnDemandApp: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getEntityTypeFromServiceCategory: jest
     .fn()
     .mockImplementation(() => EntityType.DATABASE_SERVICE),
@@ -91,9 +100,15 @@ jest.mock('../../../rest/contractAPI', () => ({
   getContractByEntityId: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
+}));
+
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
+}));
+
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
 }));
 
@@ -104,6 +119,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  HeaderDotSeparator: jest
+    .fn()
+    .mockImplementation(() => <span data-testid="header-dot-separator" />),
   ExtraInfoLabel: jest
     .fn()
     .mockImplementation(({ label, value, dataTestId }) => (
@@ -126,13 +144,20 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
   return jest.fn().mockImplementation(() => <div>CertificationTag</div>);
 });
 
-jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
-  }
+jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
+  jest.fn().mockImplementation(({ items }) => (
+    <div data-testid="breadcrumb">
+      {items.map((item: { href?: string; label: string }) =>
+        item.href ? (
+          <a href={item.href} key={item.label}>
+            {item.label}
+          </a>
+        ) : (
+          <span key={item.label}>{item.label}</span>
+        )
+      )}
+    </div>
+  ))
 );
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
@@ -160,10 +185,15 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
 jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
+  '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
+    jest
+      .fn()
+      .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
 );
+jest.mock('../../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
+}));
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
@@ -175,9 +205,9 @@ jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
 );
 
 jest.mock('../../../rest/storageAPI', () => ({
-  getContainerByName: jest
+  getContainerAncestors: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ name: 'test' })),
+    .mockImplementation(() => Promise.resolve([])),
 }));
 
 let mockIsAlertSupported = false;
@@ -185,6 +215,14 @@ jest.mock('../../../utils/TableClassBase', () => ({
   getAlertEnableStatus: jest
     .fn()
     .mockImplementation(() => mockIsAlertSupported),
+  getRequestDataAccessBanner: jest.fn().mockImplementation(() => null),
+  getRequestDataAccessButton: jest.fn().mockImplementation(() => null),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: 'user-1', name: 'test.user' },
+  }),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({
@@ -198,6 +236,30 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
+
+jest.mock('../../Modals/IconColorModal', () =>
+  jest.fn().mockImplementation(({ onSubmit }: IconColorModalProps) => (
+    <div data-testid="icon-color-modal">
+      <button
+        data-testid="submit-empty-style"
+        onClick={() => {
+          void onSubmit({ color: '', iconURL: '' });
+        }}>
+        Submit Empty Style
+      </button>
+      <button
+        data-testid="submit-custom-style"
+        onClick={() => {
+          void onSubmit({
+            color: ' #654321 ',
+            iconURL: ' https://example.com/icon.svg ',
+          });
+        }}>
+        Submit Custom Style
+      </button>
+    </div>
+  ))
+);
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn(),
@@ -220,6 +282,13 @@ jest.mock('../../../hooks/useEntityRules', () => ({
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
     },
+  })),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+    permissions: { task: { Create: true, Delete: false, EditAll: false } },
   })),
 }));
 
@@ -255,26 +324,143 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
-  it('should call getContainerByName API on Page load for container assets', () => {
-    const mockGetContainerByName = getContainerByName as jest.Mock;
-    render(<DataAssetsHeader {...mockProps} />);
+  it('should render an explicitly supplied breadcrumb trail', () => {
+    const tableHeaderProps = {
+      ...mockProps,
+      dataAsset: {
+        id: 'table-id',
+        name: 'orders',
+        fullyQualifiedName: 'service.database.schema.orders',
+        columns: [],
+      },
+      entityType: EntityType.TABLE,
+    } as DataAssetsHeaderProps;
 
-    expect(mockGetContainerByName).toHaveBeenCalledWith('fullyQualifiedName', {
-      fields: 'parent',
-    });
-    expect(getDataQualityLineage).not.toHaveBeenCalled();
-  });
-
-  it('should not call getContainerByName API if parent is undefined', () => {
-    const mockGetContainerByName = getContainerByName as jest.Mock;
     render(
       <DataAssetsHeader
-        {...mockProps}
-        dataAsset={{ ...mockProps.dataAsset, parent: undefined }}
+        {...tableHeaderProps}
+        breadcrumbData={[
+          {
+            name: 'Test Suites',
+            url: '/data-quality/test-suites/table-suites',
+          },
+          {
+            name: 'orders',
+            url: '/table/service.database.schema.orders/profiler/data-quality',
+          },
+        ]}
       />
     );
 
-    expect(mockGetContainerByName).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Test Suites' })).toHaveAttribute(
+      'href',
+      '/data-quality/test-suites/table-suites'
+    );
+    expect(
+      within(screen.getByTestId('breadcrumb')).getByText('orders')
+    ).not.toHaveAttribute('href');
+    expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  it('should call getContainerAncestors API on Page load for container assets', () => {
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    render(<DataAssetsHeader {...mockProps} />);
+
+    // The breadcrumb resolution is now a single batched server call against
+    // the container's own FQN. The server returns the full ancestor chain.
+    expect(mockGetContainerAncestors).toHaveBeenCalledWith(
+      mockProps.dataAsset.fullyQualifiedName
+    );
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
+  it('should not call getContainerAncestors API when the container FQN is missing', () => {
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    mockGetContainerAncestors.mockClear();
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{ ...mockProps.dataAsset, fullyQualifiedName: '' }}
+      />
+    );
+
+    expect(mockGetContainerAncestors).not.toHaveBeenCalled();
+  });
+
+  it('clears stale announcements when navigating to an entity without any', async () => {
+    (getActiveAnnouncements as jest.Mock)
+      .mockResolvedValueOnce({ data: [{ id: 'announcement-1' }] })
+      .mockResolvedValueOnce({ data: [] });
+
+    const { rerender } = render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      await screen.findByText('AnnouncementsWidgetV3Body.component')
+    ).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          fullyQualifiedName: 'other.fully.qualified.name',
+        }}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('AnnouncementsWidgetV3Body.component')
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('should resolve the full ancestor chain in a single API call', async () => {
+    // Replaces the old recursive behaviour where each ancestor required its
+    // own getContainerByName request. We assert the breadcrumb resolution
+    // makes exactly one network call regardless of nesting depth.
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    mockGetContainerAncestors.mockClear();
+    mockGetContainerAncestors.mockResolvedValue([
+      {
+        id: 'root-id',
+        type: 'container',
+        name: 'root',
+        displayName: 'Root',
+        fullyQualifiedName: 's3.root',
+      },
+      {
+        id: 'mid-id',
+        type: 'container',
+        name: 'mid',
+        displayName: 'Mid',
+        fullyQualifiedName: 's3.root.mid',
+      },
+      {
+        id: 'leaf-parent-id',
+        type: 'container',
+        name: 'leaf_parent',
+        displayName: 'Leaf Parent',
+        fullyQualifiedName: 's3.root.mid.leaf_parent',
+      },
+    ]);
+
+    await act(async () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{
+            ...mockProps.dataAsset,
+            fullyQualifiedName: 's3.root.mid.leaf_parent.leaf',
+          }}
+        />
+      );
+    });
+
+    expect(mockGetContainerAncestors).toHaveBeenCalledTimes(1);
+    expect(mockGetContainerAncestors).toHaveBeenCalledWith(
+      's3.root.mid.leaf_parent.leaf'
+    );
   });
 
   it('should render the Tier data if present', () => {
@@ -364,6 +550,92 @@ describe('DataAssetsHeader component', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
+  it('should render source URL button from endpointURL for API entities', () => {
+    const mockEndpointUrl = 'https://petstore3.swagger.io/#/pet';
+    const apiEndpointProps = {
+      ...mockProps,
+      dataAsset: {
+        ...mockProps.dataAsset,
+        sourceUrl: undefined,
+        endpointURL: mockEndpointUrl,
+      },
+    } as DataAssetsHeaderProps;
+
+    render(<DataAssetsHeader {...apiEndpointProps} />);
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    expect(sourceUrlButton).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', mockEndpointUrl);
+  });
+
+  it('should render the follow button in the stat bar and trigger onFollowClick', () => {
+    const onFollowClick = jest.fn();
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    expect(followButton).toBeInTheDocument();
+    expect(followButton).toHaveTextContent('label.follow');
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalled();
+  });
+
+  it('should disable the up-vote button while the vote request is in flight', async () => {
+    let resolveVote: () => void = () => undefined;
+    const onUpdateVote = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVote = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
+
+    const upVoteButton = screen.getByTestId('up-vote-btn');
+
+    fireEvent.click(upVoteButton);
+
+    await waitFor(() => expect(upVoteButton).toBeDisabled());
+
+    fireEvent.click(upVoteButton);
+
+    expect(onUpdateVote).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveVote();
+    });
+  });
+
+  it('should disable the follow button while the follow request is in flight', async () => {
+    let resolveFollow: () => void = () => undefined;
+    const onFollowClick = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFollow = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    fireEvent.click(followButton);
+
+    await waitFor(() => expect(followButton).toBeDisabled());
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFollow();
+    });
   });
 
   it('should render certification only when serviceCategory is undefined', () => {
@@ -458,6 +730,88 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('certification-label')).not.toBeInTheDocument();
   });
 
+  it('should submit null style when icon and color are cleared', async () => {
+    const onStyleUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          style: {
+            color: '#123456',
+            iconURL: 'https://example.com/icon.svg',
+          },
+        }}
+        onStyleUpdate={onStyleUpdate}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('submit-empty-style'));
+
+    await waitFor(() => {
+      expect(onStyleUpdate).toHaveBeenCalledWith(null);
+    });
+  });
+
+  it('should trim and submit style when icon or color is set', async () => {
+    const onStyleUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(<DataAssetsHeader {...mockProps} onStyleUpdate={onStyleUpdate} />);
+
+    fireEvent.click(screen.getByTestId('submit-custom-style'));
+
+    await waitFor(() => {
+      expect(onStyleUpdate).toHaveBeenCalledWith({
+        color: '#654321',
+        iconURL: 'https://example.com/icon.svg',
+      });
+    });
+  });
+
+  it('should not render the auto-pilot button when user has no Trigger permission (view-only policy)', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+        permissions={{
+          ...DEFAULT_ENTITY_PERMISSION,
+          ViewAll: true,
+          ViewBasic: true,
+          Trigger: false,
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('trigger-auto-pilot-application-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should not render the auto-pilot button when user has deny-all permissions', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+        permissions={DEFAULT_ENTITY_PERMISSION}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('trigger-auto-pilot-application-button')
+    ).not.toBeInTheDocument();
+  });
+
   it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
@@ -468,6 +822,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -492,6 +847,7 @@ describe('DataAssetsHeader component', () => {
           serviceType: DatabaseServiceType.BigQuery,
         }}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -510,6 +866,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -530,6 +887,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButtonMessage={customMessage}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -549,6 +907,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -556,6 +915,14 @@ describe('DataAssetsHeader component', () => {
 
     expect(button).toBeInTheDocument();
     expect(button).toBeEnabled();
+  });
+
+  it('should not render the request data access button by default (OSS)', () => {
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      screen.queryByTestId('request-data-access-button')
+    ).not.toBeInTheDocument();
   });
 
   describe('dataContractLatestResultButton', () => {
@@ -735,7 +1102,10 @@ describe('DataAssetsHeader component', () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
-      mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
+      const TestIcon = (props: { className?: string }) => (
+        <svg {...props} data-testid="contract-status-icon" />
+      );
+      mockGetDataContractStatusIcon.mockReturnValue(TestIcon);
 
       (getContractByEntityId as jest.Mock).mockImplementation(() =>
         Promise.resolve({
@@ -750,7 +1120,7 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('.anticon')).toBeInTheDocument();
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

@@ -15,7 +15,7 @@ import { EntityDataClass } from '../support/entity/EntityDataClass';
 import { performAdminLogin } from '../utils/admin';
 
 setup('create entity data prerequisites', async ({ browser }) => {
-  setup.setTimeout(300 * 1000);
+  setup.setTimeout(600 * 1000);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
 

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -82,47 +81,53 @@ test.describe('User with different Roles', () => {
     await afterAction();
   });
 
-  test(
-    'Admin user can edit teams from the user profile',
-    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-    async ({ adminPage }) => {
-      test.slow();
-      await redirectToUserPage(adminPage);
+  test('Admin user can edit teams from the user profile', async ({
+    adminPage,
+  }) => {
+    test.slow();
+    await visitUserProfilePage(adminPage, user1.getUserName());
 
-      // Check if the avatar is visible
-      await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
+    // Check if the avatar is visible
+    await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
 
-      const teamsListResponse = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/teams/hierarchy') &&
-          response.request().method() === 'GET'
-      );
+    const teamsListResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/hierarchy') &&
+        response.request().method() === 'GET'
+    );
 
-      await adminPage.getByTestId('edit-teams-button').click();
-      await teamsListResponse;
+    await adminPage.getByTestId('edit-teams-button').click();
+    await teamsListResponse;
 
-      await adminPage.waitForSelector('.ant-tree-select-dropdown', {
-        state: 'visible',
-      });
+    await adminPage.locator('.ant-tree-select-dropdown').waitFor({
+      state: 'visible',
+    });
 
-      const teamOption = adminPage
-        .locator('[title="' + team.responseData.displayName + '"]')
-        .first();
+    const teamOption = adminPage
+      .locator('[title="' + team.responseData.displayName + '"]')
+      .first();
 
-      await expect(teamOption).toBeVisible();
-      await teamOption.click();
+    await expect(teamOption).toBeVisible();
+    await teamOption.click();
 
-      await adminPage.getByTestId('teams-edit-save-btn').click();
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
 
-      await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
-        team.responseData.displayName ?? team.data.displayName
-      );
-    }
-  );
+    await adminPage.getByTestId('teams-edit-save-btn').click();
+    await saveTeamsResponse;
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      team.responseData.displayName ?? team.data.displayName
+    );
+  });
 
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,
   }) => {
+    test.slow();
+
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
@@ -131,7 +136,7 @@ test.describe('User with different Roles', () => {
 
     await expect(adminPage.getByTestId('team-select')).toBeVisible();
 
-    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+    await adminPage.locator('.ant-tree-select-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -152,7 +157,6 @@ test.describe('User with different Roles', () => {
     );
 
     await adminPage.getByText(team.responseData.displayName).first().click();
-
 
     const domainResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/domains/hierarchy')
@@ -195,7 +199,6 @@ test.describe('User with different Roles', () => {
 
     await visitUserProfilePage(adminPage, user3.getUserName());
 
-
     // Wait for the team to be visible in the teams section
     await adminPage
       .getByTestId('loader')
@@ -225,7 +228,7 @@ test.describe('User with different Roles', () => {
 
     await teamsListResponse;
 
-    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+    await adminPage.locator('.ant-tree-select-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -238,6 +241,7 @@ test.describe('User with different Roles', () => {
       response.url().includes('/api/v1/users/')
     );
 
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await adminPage.getByTestId('teams-edit-save-btn').click({ force: true });
 
     await userProfileResponse;
@@ -260,12 +264,12 @@ test.describe('User with different Roles', () => {
 
     const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
 
-    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
       state: 'visible',
     });
 
@@ -295,7 +299,7 @@ test.describe('User with different Roles', () => {
     await adminPage.locator('.custom-domain-edit-select').click();
 
     // Wait for domain tree to load
-    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
       state: 'visible',
     });
 
@@ -312,7 +316,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
@@ -330,7 +334,7 @@ test.describe('User with different Roles', () => {
       .click();
 
     // Click save button to assign domain
-    let updateUserResponse = adminPage.waitForResponse(
+    const assignDomainResponse = adminPage.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/') &&
         response.request().method() === 'PATCH'
@@ -338,9 +342,10 @@ test.describe('User with different Roles', () => {
 
     await adminPage
       .getByTestId('user-profile-domain-edit-cancel')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       .click({ force: true });
 
-    await updateUserResponse;
+    await assignDomainResponse;
 
     // Verify domain is assigned and visible in user profile
     await expect(
@@ -365,7 +370,7 @@ test.describe('User with different Roles', () => {
     await adminPage.locator('.custom-domain-edit-select').click();
 
     // Wait for domain tree to load
-    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
       state: 'visible',
     });
 
@@ -382,7 +387,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
@@ -400,7 +405,7 @@ test.describe('User with different Roles', () => {
       .click();
 
     // Click save button to remove domain
-    updateUserResponse = adminPage.waitForResponse(
+    const removeDomainResponse = adminPage.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/') &&
         response.request().method() === 'PATCH'
@@ -408,9 +413,10 @@ test.describe('User with different Roles', () => {
 
     await adminPage
       .getByTestId('user-profile-domain-edit-cancel')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       .click({ force: true });
 
-    await updateUserResponse;
+    await removeDomainResponse;
 
     // Verify domain is removed
     await expect(
@@ -441,7 +447,7 @@ test.describe('User with different Roles', () => {
     await adminPage.locator('.custom-domain-edit-select').click();
 
     // Wait for domain tree to load
-    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
       state: 'visible',
     });
 
@@ -458,7 +464,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
@@ -497,22 +503,50 @@ test.describe('User with different Roles', () => {
 
     await expect(adminPage.getByTestId('user-profile-roles')).toBeVisible();
 
+    const initialRolesResponse = adminPage.waitForResponse(
+      '/api/v1/roles/search?*'
+    );
     await adminPage.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await expect(
       adminPage.getByTestId('profile-edit-roles-select')
     ).toBeVisible();
 
-    await adminPage.waitForSelector('.ant-select-dropdown', {
+    await adminPage.locator('.ant-select-dropdown').waitFor({
       state: 'visible',
     });
 
+    const applicationRolesResponse = adminPage.waitForResponse(
+      '/api/v1/roles/search?*'
+    );
+    await adminPage
+      .getByTestId('profile-edit-roles-select')
+      .locator('input')
+      .fill('Application');
+    await applicationRolesResponse;
+    await adminPage
+      .locator('.ant-select-item-option-content')
+      .getByText('Application bot role', { exact: true })
+      .waitFor({ state: 'visible' });
     await adminPage
       .locator('.ant-select-item-option-content')
       .getByText('Application bot role', { exact: true })
       .click();
 
+    await adminPage.keyboard.press('Escape');
+
+    await adminPage.locator('.ant-select-dropdown').waitFor({
+      state: 'hidden',
+    });
+
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
+    await saveTeamsResponse;
 
     await expect(adminPage.getByTestId('user-profile-roles')).toContainText(
       'Application bot role'
@@ -531,7 +565,7 @@ test.describe('User with different Roles', () => {
 
     await userPage.click('[data-testid="user-profile-manage-btn"]');
     await userPage.click('[data-testid="edit-displayname"]');
-    await userPage.waitForSelector('[role="dialog"].ant-modal', {
+    await userPage.locator('[role="dialog"].ant-modal').waitFor({
       state: 'visible',
     });
     await userPage.fill(
@@ -600,31 +634,41 @@ test.describe('User with different Roles', () => {
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const searchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const searchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(table.entity.name))
       );
+
+      const assetCardText = table.entity.displayName ?? table.entity.name;
 
       await assetsSearchBox.fill(table.entity.name);
 
-      await searchResponse;
+      const searchResponse = await searchPromise;
+      expect(searchResponse.status()).toBe(200);
 
-      const assetCard = adminPage.getByText(table.entity.name).first();
+      const assetCard = adminPage.getByText(assetCardText).first();
 
       await expect(assetCard).toBeVisible();
 
       await assetsSearchBox.clear();
 
-      const incorrectSearchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const incorrectSearchTerm = 'nonexistent-asset-name-xyz-123';
+
+      const incorrectSearchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(incorrectSearchTerm)
       );
 
-      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+      await assetsSearchBox.fill(incorrectSearchTerm);
 
-      await incorrectSearchResponse;
+      const incorrectSearchResponse = await incorrectSearchPromise;
+      expect(incorrectSearchResponse.status()).toBe(200);
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+      const incorrectAssetCard = adminPage.getByText(assetCardText);
 
       await expect(incorrectAssetCard).not.toBeVisible();
 

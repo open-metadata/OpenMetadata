@@ -55,11 +55,11 @@ public class SparqlBuilder implements SqlVisitor<Void> {
     sparql.append("\nWHERE {\n");
     sparql.append(whereClause);
 
-    if (optionalClause.length() > 0) {
+    if (!optionalClause.isEmpty()) {
       sparql.append(optionalClause);
     }
 
-    if (filterClause.length() > 0) {
+    if (!filterClause.isEmpty()) {
       sparql.append("\n  FILTER (").append(filterClause).append(")");
     }
 
@@ -101,8 +101,7 @@ public class SparqlBuilder implements SqlVisitor<Void> {
     SqlNodeList selectList = select.getSelectList();
     if (selectList != null) {
       for (SqlNode node : selectList) {
-        if (node instanceof SqlIdentifier) {
-          SqlIdentifier id = (SqlIdentifier) node;
+        if (node instanceof SqlIdentifier id) {
           processProjection(id);
         }
       }
@@ -139,9 +138,7 @@ public class SparqlBuilder implements SqlVisitor<Void> {
     SqlNode left = call.operand(0);
     SqlNode right = call.operand(1);
 
-    if (left instanceof SqlIdentifier && right instanceof SqlLiteral) {
-      SqlIdentifier id = (SqlIdentifier) left;
-      SqlLiteral literal = (SqlLiteral) right;
+    if (left instanceof SqlIdentifier id && right instanceof SqlLiteral literal) {
 
       String columnName = extractColumnName(id);
       String tableAlias = extractTableAlias(id);
@@ -154,7 +151,7 @@ public class SparqlBuilder implements SqlVisitor<Void> {
 
       String var = getOrCreateVar(tableAlias);
 
-      if (filterClause.length() > 0) {
+      if (!filterClause.isEmpty()) {
         filterClause.append(" && ");
       }
       filterClause
@@ -172,17 +169,15 @@ public class SparqlBuilder implements SqlVisitor<Void> {
     SqlNode left = call.operand(0);
     SqlNode right = call.operand(1);
 
-    if (left instanceof SqlIdentifier && right instanceof SqlLiteral) {
-      SqlIdentifier id = (SqlIdentifier) left;
-      SqlLiteral literal = (SqlLiteral) right;
+    if (left instanceof SqlIdentifier id && right instanceof SqlLiteral literal) {
 
       String columnName = extractColumnName(id);
       String tableAlias = extractTableAlias(id);
-      String pattern = literal.toValue().toString().replace("%", ".*").replace("_", ".");
+      String pattern = literal.toValue().replace("%", ".*").replace("_", ".");
 
       String var = getOrCreateVar(tableAlias);
 
-      if (filterClause.length() > 0) {
+      if (!filterClause.isEmpty()) {
         filterClause.append(" && ");
       }
       filterClause
@@ -351,15 +346,12 @@ public class SparqlBuilder implements SqlVisitor<Void> {
   }
 
   private void processJoinCondition(SqlNode condition, String leftAlias, String rightAlias) {
-    if (condition instanceof SqlCall) {
-      SqlCall call = (SqlCall) condition;
+    if (condition instanceof SqlCall call) {
       if (call.getOperator() == SqlStdOperatorTable.EQUALS) {
         SqlNode left = call.operand(0);
         SqlNode right = call.operand(1);
 
-        if (left instanceof SqlIdentifier && right instanceof SqlIdentifier) {
-          SqlIdentifier leftId = (SqlIdentifier) left;
-          SqlIdentifier rightId = (SqlIdentifier) right;
+        if (left instanceof SqlIdentifier leftId && right instanceof SqlIdentifier rightId) {
 
           String leftColumn = extractColumnName(leftId);
           String rightColumn = extractColumnName(rightId);
@@ -383,11 +375,9 @@ public class SparqlBuilder implements SqlVisitor<Void> {
   private void processOrderBy(SqlNodeList orderList) {
     StringBuilder orderBy = new StringBuilder("ORDER BY ");
     for (SqlNode node : orderList) {
-      if (node instanceof SqlCall) {
-        SqlCall call = (SqlCall) node;
+      if (node instanceof SqlCall call) {
         SqlNode expr = call.operand(0);
-        if (expr instanceof SqlIdentifier) {
-          SqlIdentifier id = (SqlIdentifier) expr;
+        if (expr instanceof SqlIdentifier id) {
           String columnName = extractColumnName(id);
           String tableAlias = extractTableAlias(id);
           String var = getOrCreateVar(tableAlias);
@@ -404,8 +394,7 @@ public class SparqlBuilder implements SqlVisitor<Void> {
   }
 
   private void processLimit(SqlNode fetch) {
-    if (fetch instanceof SqlLiteral) {
-      SqlLiteral literal = (SqlLiteral) fetch;
+    if (fetch instanceof SqlLiteral literal) {
       limitClause = "LIMIT " + literal.toValue();
     }
   }

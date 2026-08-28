@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getAuthMechanismForBotUser } from '../../../../rest/userAPI';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import BotDetails from './BotDetails.component';
@@ -93,6 +94,10 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('../../../../rest/rolesAPIV1', () => ({
+  searchRoles: jest.fn().mockResolvedValue([]),
+}));
+
 const mockGetResourceLimit = jest.fn().mockResolvedValue({
   configuredLimit: { disabledFields: [] },
 });
@@ -109,7 +114,7 @@ jest.mock('../../../../rest/userAPI', () => {
   };
 });
 
-jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
@@ -146,6 +151,10 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 describe('Test BotsDetail Component', () => {
+  beforeEach(() => {
+    (searchRoles as jest.Mock).mockResolvedValue([]);
+  });
+
   it('Should render all child elements', async () => {
     await act(async () => {
       render(<BotDetails {...mockProp} />, {

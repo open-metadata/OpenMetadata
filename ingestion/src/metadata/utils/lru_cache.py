@@ -15,7 +15,7 @@ LRU cache
 
 import threading
 from collections import OrderedDict
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar  # noqa: UP035
 
 LRU_CACHE_SIZE = 4096
 
@@ -78,7 +78,7 @@ class LRUCache(Generic[T]):
         with self.lock:
             return len(self._cache)
 
-    def wrap(self, key_func: Callable[..., str]):
+    def wrap(self, key_func: Callable[..., str]) -> Callable[[Callable[..., T]], Callable[..., T]]:
         """Decorator to cache the result of a function based on its arguments.
 
         Example:
@@ -123,7 +123,7 @@ class LRUCache(Generic[T]):
 class SkipNoneLRUCache(LRUCache[T]):
     """A caching mechanism that does not cache `None` results"""
 
-    def wrap(self, key_func: Callable[..., str]):
+    def wrap(self, key_func: Callable[..., str]) -> Callable[[Callable[..., T]], Callable[..., T]]:
         """Decorator to cache the result of a function based on its arguments.
 
         Example:

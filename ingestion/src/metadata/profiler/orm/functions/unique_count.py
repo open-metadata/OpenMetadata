@@ -14,7 +14,7 @@ Unique Count Metric functions
 """
 
 from collections import defaultdict
-from typing import Tuple
+from typing import Tuple  # noqa: UP035
 
 from sqlalchemy import NVARCHAR, TEXT, Column, case, func, literal_column, select
 from sqlalchemy.sql import ColumnElement
@@ -25,10 +25,16 @@ from metadata.profiler.orm.functions.count import CountFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
+# Alias for the per-value occurrence count exposed by the grouped sub-select/CTE that the
+# unique-count implementations read back from. It must never be derived from the column name:
+# BigQuery profiles nested STRUCT subfields under a dotted name (``customer.email``), and its
+# dialect renders that name two incompatible ways - ``format_label`` substitutes the dot
+# (``customer_email``) while ``quote_column`` splits it into ``\`customer\`.\`email\```. A derived
+# label therefore can never be referenced back. Issue #30152.
+UNIQUE_COUNT_GROUP_ALIAS = "value_occurrences"
 
-def _get_unique_count_expressions(
-    col: Column, dialect: str
-) -> Tuple[ColumnElement, ColumnElement]:
+
+def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:  # noqa: UP006
     """
     Get dialect-specific expressions for unique count computation.
 
@@ -52,16 +58,12 @@ def _get_unique_count_expressions(
         # Avoid using these data types in new development work, and plan to modify applications that currently use them.
         # Use nvarchar(max), varchar(max), and varbinary(max) instead.
         # ref:https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
-        is_mssql_deprecated_datatype = isinstance(
-            col.type, (CustomImage, TEXT, NVARCHAR)
-        )
+        is_mssql_deprecated_datatype = isinstance(col.type, (CustomImage, TEXT, NVARCHAR))
         if is_mssql_deprecated_datatype:
             count_expr = CountFn(col)
-            group_by_expr = func.convert(
-                literal_column(cast_dict.get(type(col.type))), col
-            )
+            group_by_expr = func.convert(literal_column(cast_dict.get(type(col.type))), col)
             return group_by_expr, count_expr
-        else:
+        else:  # noqa: RET505
             return col, col
     elif dialect == Dialects.Oracle:
         count_fn = CountFn(col)
@@ -81,9 +83,7 @@ def _unique_count_query(col, session, sample):
 
     Uses dialect-agnostic logic via _get_unique_count_expressions().
     """
-    group_by_expr, count_expr = _get_unique_count_expressions(
-        col, session.get_bind().dialect.name
-    )
+    group_by_expr, count_expr = _get_unique_count_expressions(col, session.get_bind().dialect.name)
 
     return (
         session.query(func.count(count_expr))
@@ -113,9 +113,7 @@ _unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle
 # ============================================================================
 
 
-def _unique_count_dimensional_cte(
-    col: Column, table, dimension_col: Column, dialect: str
-) -> Tuple[CTE, ColumnElement]:
+def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> Tuple[CTE, ColumnElement]:  # noqa: UP006
     """
     Build CTE for dimensional unique count validation.
 
@@ -142,19 +140,18 @@ def _unique_count_dimensional_cte(
         select(
             dimension_col.label("dim_value"),
             group_by_expr.label("col_value"),
+            # Deliberately independent of UNIQUE_COUNT_GROUP_ALIAS: this CTE is read back by
+            # attribute (value_counts.c.occurrence_count below), never by the profiled column's
+            # name, so it never had the dotted-STRUCT-path clash that alias exists to solve.
             func.count(count_expr).label("occurrence_count"),
-            func.count().label(
-                "row_count"
-            ),  # Total rows for this (dimension, value) pair
+            func.count().label("row_count"),  # Total rows for this (dimension, value) pair
         )
         .select_from(table)
         .group_by(dimension_col, group_by_expr)
     ).cte("value_counts")
 
     # Expression: Count values appearing exactly once per dimension
-    unique_count_expr = func.sum(
-        case((value_counts.c.occurrence_count == 1, 1), else_=0)
-    )
+    unique_count_expr = func.sum(case((value_counts.c.occurrence_count == 1, 1), else_=0))
 
     return value_counts, unique_count_expr
 

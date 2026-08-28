@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.analytics;
 
+import static org.openmetadata.service.util.JsonStorageUtils.removeNulCharacters;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +59,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/analytics/web/events")
@@ -86,6 +89,9 @@ public class WebAnalyticEventResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<WebAnalyticEvent> webAnalyticEvents =
         repository.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
@@ -604,10 +610,12 @@ public class WebAnalyticEventResource
     if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.PAGE_VIEW)) {
       // Validate Json as Page View Data
       PageViewData pageViewData = JsonUtils.convertValue(inputData, PageViewData.class);
+      stripNullCharacters(pageViewData);
       webAnalyticEventDataInput.setEventData(pageViewData);
     } else if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.CUSTOM_EVENT)) {
       // Validate Json as type Custom Event
       CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
+      stripNullCharacters(customEventData);
       if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
         if (containsHtml(customEventData.getEventValue())) {
           throw new IllegalArgumentException("Invalid event value for custom event.");
@@ -628,5 +636,21 @@ public class WebAnalyticEventResource
       return false;
     }
     return HTML_PATTERN.matcher(input).matches();
+  }
+
+  private static void stripNullCharacters(PageViewData data) {
+    data.setFullUrl(removeNulCharacters(data.getFullUrl()));
+    data.setUrl(removeNulCharacters(data.getUrl()));
+    data.setHostname(removeNulCharacters(data.getHostname()));
+    data.setLanguage(removeNulCharacters(data.getLanguage()));
+    data.setScreenSize(removeNulCharacters(data.getScreenSize()));
+    data.setReferrer(removeNulCharacters(data.getReferrer()));
+  }
+
+  private static void stripNullCharacters(CustomEvent event) {
+    event.setFullUrl(removeNulCharacters(event.getFullUrl()));
+    event.setUrl(removeNulCharacters(event.getUrl()));
+    event.setHostname(removeNulCharacters(event.getHostname()));
+    event.setEventValue(removeNulCharacters(event.getEventValue()));
   }
 }

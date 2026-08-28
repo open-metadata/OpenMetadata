@@ -11,12 +11,12 @@
 """
 Postgres usage module
 """
+
 import traceback
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -56,7 +56,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    row = row._asdict()
+                    row = row._asdict()  # noqa: PLW2901
                     try:
                         queries.append(
                             TableQuery(
@@ -78,25 +78,29 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
             if queries:
                 yield TableQueries(queries=queries)
 
-        except OperationalError as err:
+        except Exception as err:
+            # Record the failure on the workflow status, not just in the logs, so a
+            # source error surfaces as a failed run rather than a silent success.
+            stack_trace = traceback.format_exc()
+            query_source = self.service_connection.queryStatementSource or "pg_stat_statements"
+            error_message = (
+                f"Source usage processing error for service [{self.config.serviceName}] "
+                f"while reading query logs from [{query_source}]: {err}"
+            )
+            if query:
+                logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
+            logger.debug(stack_trace)
+            logger.error(error_message)
             self.status.failed(
                 StackTraceError(
                     name="Usage",
-                    error=f"Source Usage failed due to - {err}",
-                    stackTrace=traceback.format_exc(),
+                    error=error_message,
+                    stackTrace=stack_trace,
                 )
             )
 
-        except Exception as err:
-            if query:
-                logger.debug(
-                    f"###### USAGE QUERY #######\n{query}\n##########################"
-                )
-            logger.error(f"Source usage processing error - {err}")
-            logger.debug(traceback.format_exc())
-
     def get_filters(self) -> str:
-        if filter_condition := self.source_config.filterCondition:
+        if filter_condition := self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
             filter_condition = filter_condition.replace("%", "%%")
             return f"{self.filters} AND (s.{filter_condition})"
         return self.filters

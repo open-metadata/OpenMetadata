@@ -15,6 +15,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
@@ -66,13 +67,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
-    Menu: jest
-      .fn()
-      .mockImplementation(({ children, onAction }) => (
-        <ul onClick={(e) => onAction?.((e.target as HTMLElement).dataset.key)}>
-          {children}
-        </ul>
-      )),
+    Menu: jest.fn().mockImplementation(({ children, onAction }) => (
+      <div
+        role="menu"
+        tabIndex={0}
+        onClick={(e) => onAction?.((e.target as HTMLElement).dataset.key)}
+        onKeyDown={(e) => onAction?.((e.target as HTMLElement).dataset.key)}>
+        {children}
+      </div>
+    )),
     Item: jest
       .fn()
       .mockImplementation(({ children, key }) => (
@@ -112,16 +115,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )
     ),
   Tabs: Object.assign(
-    jest
-      .fn()
-      .mockImplementation(({ children, onSelectionChange }) => (
-        <div
-          onClick={(e) =>
-            onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
-          }>
-          {children}
-        </div>
-      )),
+    jest.fn().mockImplementation(({ children, onSelectionChange }) => (
+      <div
+        role="tablist"
+        tabIndex={0}
+        onClick={(e) =>
+          onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
+        }
+        onKeyDown={(e) =>
+          onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
+        }>
+        {children}
+      </div>
+    )),
     {
       List: jest
         .fn()
@@ -174,6 +180,7 @@ jest.mock('./LineageConfigModal', () =>
 jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn(({ onSearch, searchValue, placeholder }) => (
     <input
+      aria-label="Search"
       data-testid="search-bar"
       placeholder={placeholder}
       value={searchValue}
@@ -330,6 +337,36 @@ describe('CustomControls', () => {
     expect(mockOnExportClick).toHaveBeenCalled();
   });
 
+  it('builds impact analysis export requests from the current depth and direction', async () => {
+    const { exportLineageByEntityCountAsync } = jest.requireMock(
+      '../../../rest/lineageAPI'
+    ) as {
+      exportLineageByEntityCountAsync: jest.Mock;
+    };
+
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=4&dir=downstream',
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByLabelText('label.export-as-type'));
+
+    const exportHandler = mockOnExportClick.mock.calls[0][1];
+    await exportHandler();
+
+    expect(exportLineageByEntityCountAsync).toHaveBeenCalledWith({
+      fqn: 'test.table',
+      entityType: EntityType.TABLE,
+      direction: LineageDirection.Downstream,
+      nodeDepth: 4,
+      maxDepth: 4,
+      query_filter: undefined,
+    });
+  });
+
   it('opens lineage config modal when settings button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -408,7 +445,7 @@ describe('CustomControls', () => {
     );
     fireEvent.click(nodeDepthButton);
 
-    // The menu items would be rendered by Material-UI Menu component
+    // The menu items would be rendered by the component library's Menu component
     // This test verifies the click handler is set up correctly
     expect(nodeDepthButton).toBeInTheDocument();
   });

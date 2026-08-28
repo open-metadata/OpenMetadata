@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   navigateToCustomizeLandingPage,
   removeAndCheckWidget,
@@ -50,6 +50,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.describe.configure({ mode: 'default' });
+
   test.beforeEach(async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     await setUserDefaultPersona(adminPage, persona.responseData.displayName);
@@ -136,7 +138,6 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Modal should disappear and navigate to settings
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
-
     // Should navigate to the settings page
     expect(adminPage.url()).toContain('settings');
 
@@ -212,15 +213,23 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       adminPage.locator('[data-testid="save-button"]')
     ).toBeEnabled();
 
-    // Save changes
-    const saveResponse = adminPage.waitForResponse('/api/v1/docStore');
+    // Save changes.
+    // The persona is shared across the tests in this file and an earlier test
+    // already saves a layout for it, so this save is an UPDATE
+    // (PUT /api/v1/docStore/{id}) rather than a create. A bare
+    // '/api/v1/docStore' string is an exact URL match, and '*' does not cross
+    // a '/', so both would miss the update and hang until the test timeout.
+    const saveResponse = adminPage.waitForResponse('**/api/v1/docStore**');
     await adminPage.locator('[data-testid="save-button"]').click();
     await saveResponse;
 
-    // Wait for success toast and save button to be disabled
-    await expect(
-      adminPage.locator('[data-testid="alert-message"]')
-    ).toContainText('Page layout created successfully.');
+    // This test asserts navigation-blocker behaviour, not create-vs-update
+    // semantics, so accept either outcome rather than depending on whether a
+    // preceding test already created the layout.
+    await toastNotification(
+      adminPage,
+      /Page layout (created|updated) successfully/i
+    );
     await expect(
       adminPage.locator('[data-testid="save-button"]')
     ).toBeDisabled();

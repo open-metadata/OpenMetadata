@@ -8,6 +8,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 
 @Setter
@@ -26,7 +27,7 @@ public class OpenTermsAggregations implements OpenAggregations {
     Map<String, String> params = node.getValue();
     this.aggregationName = node.getName();
 
-    this.field = params.get("field");
+    this.field = SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(params.get("field"));
     this.includesStr = params.get("include");
     String sizeStr = params.get("size");
     this.missing = params.get("missing");

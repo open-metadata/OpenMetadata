@@ -1,0 +1,845 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PowerBIConnection",
+  "description": "PowerBI Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.PowerBIConnection",
+  "definitions": {
+    "powerBiType": {
+      "description": "PowerBI service type",
+      "type": "string",
+      "enum": [
+        "PowerBI"
+      ],
+      "default": "PowerBI"
+    },
+    "localConfig": {
+      "title": "Local Config",
+      "description": "Local config source where no extra information needs to be sent.",
+      "type": "object",
+      "properties": {
+        "pbitFileConfigType": {
+          "description": "pbit File Configuration type",
+          "type": "string",
+          "enum": [
+            "local"
+          ],
+          "default": "local"
+        },
+        "path": {
+          "title": "Path",
+          "description": "Directory path for the pbit files",
+          "type": "string"
+        },
+        "pbitFilesExtractDir": {
+          "title": "pbit Files Extraction Directory",
+          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+          "type": "string",
+          "default": "/tmp/pbitFiles"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "PowerBI",
+      "type": "string",
+      "enum": [
+        "PowerBI"
+      ]
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "client_id for PowerBI.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "clientSecret for PowerBI.",
+      "type": "string",
+      "format": "password"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Tenant ID for PowerBI.",
+      "type": "string"
+    },
+    "apiURL": {
+      "title": "PowerBI REST API url",
+      "description": "API URL to call powerbi rest apis to extract metadata. Default to `https://api.powerbi.com`. You can provide youw own in case of different environment",
+      "type": "string",
+      "default": "https://api.powerbi.com"
+    },
+    "authorityURI": {
+      "title": "Authority URI",
+      "description": "Authority URI for the PowerBI service.",
+      "type": "string",
+      "default": "https://login.microsoftonline.com/"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Dashboard URL for PowerBI service.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://app.powerbi.com"
+    },
+    "scope": {
+      "title": "Scope",
+      "description": "PowerBI secrets.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "https://analysis.windows.net/powerbi/api/.default"
+      ]
+    },
+    "pagination_entity_per_page": {
+      "title": "Pagination Entity Per Page",
+      "description": "Entity Limit set here will be used to paginate the PowerBi APIs",
+      "type": "integer",
+      "default": 100
+    },
+    "useAdminApis": {
+      "title": "Use PowerBI Admin APIs",
+      "description": "Fetch the PowerBI metadata using admin APIs",
+      "type": "boolean",
+      "default": true
+    },
+    "displayTableNameFromSource": {
+      "title": "Display Table Name from source",
+      "description": "Display Table Name from source instead of renamed table name for datamodel tables",
+      "type": "boolean",
+      "default": false
+    },
+    "pbitFilesSource": {
+      "title": "PowerBI .pbit Files Source",
+      "description": "Source to get the .pbit files to extract lineage information",
+      "oneOf": [
+        {
+          "title": "Local Config",
+          "description": "Local config source where no extra information needs to be sent.",
+          "type": "object",
+          "properties": {
+            "pbitFileConfigType": {
+              "description": "pbit File Configuration type",
+              "type": "string",
+              "enum": [
+                "local"
+              ],
+              "default": "local"
+            },
+            "path": {
+              "title": "Path",
+              "description": "Directory path for the pbit files",
+              "type": "string"
+            },
+            "pbitFilesExtractDir": {
+              "title": "pbit Files Extraction Directory",
+              "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+              "type": "string",
+              "default": "/tmp/pbitFiles"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "AzureConfig",
+          "description": "Azure storage config for pbit files",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfig",
+          "properties": {
+            "pbitFileConfigType": {
+              "description": "pbit File Configuration type",
+              "type": "string",
+              "enum": [
+                "azure"
+              ],
+              "default": "azure"
+            },
+            "securityConfig": {
+              "title": "Azure Config Source",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Azure Cloud Credentials",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+              "properties": {
+                "clientId": {
+                  "title": "Client ID",
+                  "description": "Your Service Principal App ID (Client ID)",
+                  "type": "string"
+                },
+                "clientSecret": {
+                  "title": "Client Secret",
+                  "description": "Your Service Principal Password (Client Secret)",
+                  "type": "string",
+                  "format": "password"
+                },
+                "tenantId": {
+                  "title": "Tenant ID",
+                  "description": "Tenant ID of your Azure Subscription",
+                  "type": "string"
+                },
+                "accountName": {
+                  "title": "Storage Account Name",
+                  "description": "Account Name of your storage account",
+                  "type": "string"
+                },
+                "vaultName": {
+                  "title": "Key Vault Name",
+                  "description": "Key Vault Name",
+                  "type": "string"
+                },
+                "scopes": {
+                  "title": "Scopes",
+                  "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "prefixConfig": {
+              "title": "Prefix Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Details of the bucket where the .pbit files are stored",
+              "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
+              "type": "object",
+              "properties": {
+                "bucketName": {
+                  "title": "Bucket Name",
+                  "description": "Name of the bucket where the .pbit files are stored",
+                  "type": "string"
+                },
+                "objectPrefix": {
+                  "title": "Object Prefix",
+                  "description": "Path of the folder where the .pbit files are stored",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "pbitFilesExtractDir": {
+              "title": "pbit Files Extraction Directory",
+              "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+              "type": "string",
+              "default": "/tmp/pbitFiles"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "securityConfig"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "GCSConfig",
+          "description": "GCS storage config for pbit files",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig",
+          "properties": {
+            "pbitFileConfigType": {
+              "description": "pbit File Configuration type",
+              "type": "string",
+              "enum": [
+                "gcs"
+              ],
+              "default": "gcs"
+            },
+            "securityConfig": {
+              "title": "GCS Security Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "GCP credentials configs.",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
+              "definitions": {
+                "gcpADC": {
+                  "title": "GCP Application Default Credentials",
+                  "description": "Use the application default credentials",
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "title": "Credentials Type",
+                      "description": "Google Cloud Platform ADC ( Application Default Credentials )",
+                      "type": "string",
+                      "default": "gcp_adc",
+                      "const": "gcp_adc"
+                    },
+                    "projectId": {
+                      "title": "GCP Project ID",
+                      "description": "GCP Project ID to parse metadata from",
+                      "oneOf": [
+                        {
+                          "title": "Single Project ID",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Multiple Project ID",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      ],
+                      "default": null
+                    }
+                  }
+                },
+                "gcpCredentialsPath": {
+                  "title": "GCP Credentials Path",
+                  "description": "Pass the path of file containing the GCP credentials info",
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "title": "Credentials Type",
+                      "description": "Google Cloud Platform account type.",
+                      "type": "string",
+                      "default": "gcp_credential_path",
+                      "const": "gcp_credential_path"
+                    },
+                    "path": {
+                      "title": "Path",
+                      "description": "Path of the file containing the GCP credentials info",
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "title": "GCP Project ID",
+                      "description": "GCP Project ID to parse metadata from",
+                      "oneOf": [
+                        {
+                          "title": "Single Project ID",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Multiple Project ID",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      ],
+                      "default": null
+                    }
+                  }
+                },
+                "GCPImpersonateServiceAccountValues": {
+                  "title": "GCP impersonate service account values",
+                  "description": "Pass the values to impersonate a service account of Google Cloud",
+                  "type": "object",
+                  "properties": {
+                    "impersonateServiceAccount": {
+                      "title": "Target Service Account Email",
+                      "description": "The impersonated service account email",
+                      "type": "string"
+                    },
+                    "lifetime": {
+                      "title": "Lifetime",
+                      "description": "Number of seconds the delegated credential should be valid",
+                      "type": "integer",
+                      "default": 3600
+                    }
+                  }
+                }
+              },
+              "properties": {
+                "gcpConfig": {
+                  "title": "GCP Credentials Configuration",
+                  "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
+                  "oneOf": [
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
+                      "title": "GCP Credentials Values",
+                      "description": "Pass the raw credential values provided by GCP",
+                      "definitions": {
+                        "singleProjectId": {
+                          "title": "Single Project ID",
+                          "type": "string"
+                        },
+                        "multipleProjectId": {
+                          "title": "Multiple Project ID",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "service_account",
+                          "const": "service_account"
+                        },
+                        "projectId": {
+                          "title": "Project ID",
+                          "description": "Project ID",
+                          "oneOf": [
+                            {
+                              "title": "Single Project ID",
+                              "type": "string"
+                            },
+                            {
+                              "title": "Multiple Project ID",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          ]
+                        },
+                        "privateKeyId": {
+                          "title": "Private Key ID",
+                          "description": "Google Cloud private key id.",
+                          "type": "string"
+                        },
+                        "privateKey": {
+                          "title": "Private Key",
+                          "description": "Google Cloud private key.",
+                          "type": "string",
+                          "format": "password",
+                          "uiFieldType": "fileOrInput"
+                        },
+                        "clientEmail": {
+                          "title": "Client Email",
+                          "description": "Google Cloud email.",
+                          "type": "string"
+                        },
+                        "clientId": {
+                          "title": "Client ID",
+                          "description": "Google Cloud Client ID.",
+                          "type": "string"
+                        },
+                        "authUri": {
+                          "title": "Authentication URI",
+                          "description": "Google Cloud auth uri.",
+                          "type": "string",
+                          "format": "uri",
+                          "default": "https://accounts.google.com/o/oauth2/auth"
+                        },
+                        "tokenUri": {
+                          "title": "Token URI",
+                          "description": "Google Cloud token uri.",
+                          "type": "string",
+                          "format": "uri",
+                          "default": "https://oauth2.googleapis.com/token"
+                        },
+                        "authProviderX509CertUrl": {
+                          "title": "Authentication Provider x509 Certificate URL",
+                          "description": "Google Cloud auth provider certificate.",
+                          "type": "string",
+                          "format": "uri",
+                          "default": "https://www.googleapis.com/oauth2/v1/certs"
+                        },
+                        "clientX509CertUrl": {
+                          "title": "Client x509 Certificate URL",
+                          "description": "Google Cloud client certificate uri.",
+                          "type": "string",
+                          "format": "uri"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "title": "GCP Credentials Path",
+                      "description": "Pass the path of file containing the GCP credentials info",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "gcp_credential_path",
+                          "const": "gcp_credential_path"
+                        },
+                        "path": {
+                          "title": "Path",
+                          "description": "Path of the file containing the GCP credentials info",
+                          "type": "string"
+                        },
+                        "projectId": {
+                          "title": "GCP Project ID",
+                          "description": "GCP Project ID to parse metadata from",
+                          "oneOf": [
+                            {
+                              "title": "Single Project ID",
+                              "type": "string"
+                            },
+                            {
+                              "title": "Multiple Project ID",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          ],
+                          "default": null
+                        }
+                      }
+                    },
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
+                      "title": "GCP External Account",
+                      "description": "Pass the raw credential values provided by GCP",
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "external_account",
+                          "const": "external_account"
+                        },
+                        "externalType": {
+                          "title": "GCP Account Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "external_account",
+                          "const": "external_account"
+                        },
+                        "audience": {
+                          "title": "Audience",
+                          "description": "Google Security Token Service audience which contains the resource name for the workload identity pool and the provider identifier in that pool.",
+                          "type": "string"
+                        },
+                        "subjectTokenType": {
+                          "title": "Subject Token Type",
+                          "description": "Google Security Token Service subject token type based on the OAuth 2.0 token exchange spec.",
+                          "type": "string"
+                        },
+                        "tokenURL": {
+                          "title": "Token URL",
+                          "description": "Google Security Token Service token exchange endpoint.",
+                          "type": "string"
+                        },
+                        "credentialSource": {
+                          "title": "Credential Source",
+                          "description": "This object defines the mechanism used to retrieve the external credential from the local environment so that it can be exchanged for a GCP access token via the STS endpoint",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.credentialSource",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "title": "GCP Application Default Credentials",
+                      "description": "Use the application default credentials",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform ADC ( Application Default Credentials )",
+                          "type": "string",
+                          "default": "gcp_adc",
+                          "const": "gcp_adc"
+                        },
+                        "projectId": {
+                          "title": "GCP Project ID",
+                          "description": "GCP Project ID to parse metadata from",
+                          "oneOf": [
+                            {
+                              "title": "Single Project ID",
+                              "type": "string"
+                            },
+                            {
+                              "title": "Multiple Project ID",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          ],
+                          "default": null
+                        }
+                      }
+                    }
+                  ]
+                },
+                "gcpImpersonateServiceAccount": {
+                  "title": "GCP Impersonate Service Account Configuration",
+                  "description": "we enable the authenticated service account to impersonate another service account",
+                  "type": "object",
+                  "properties": {
+                    "impersonateServiceAccount": {
+                      "title": "Target Service Account Email",
+                      "description": "The impersonated service account email",
+                      "type": "string"
+                    },
+                    "lifetime": {
+                      "title": "Lifetime",
+                      "description": "Number of seconds the delegated credential should be valid",
+                      "type": "integer",
+                      "default": 3600
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "gcpConfig"
+              ]
+            },
+            "prefixConfig": {
+              "title": "Prefix Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Details of the bucket where the .pbit files are stored",
+              "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
+              "type": "object",
+              "properties": {
+                "bucketName": {
+                  "title": "Bucket Name",
+                  "description": "Name of the bucket where the .pbit files are stored",
+                  "type": "string"
+                },
+                "objectPrefix": {
+                  "title": "Object Prefix",
+                  "description": "Path of the folder where the .pbit files are stored",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "pbitFilesExtractDir": {
+              "title": "pbit Files Extraction Directory",
+              "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+              "type": "string",
+              "default": "/tmp/pbitFiles"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "securityConfig"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "S3Config",
+          "description": "S3 storage config for pbit files",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config",
+          "properties": {
+            "pbitFileConfigType": {
+              "description": "pbit File Configuration type",
+              "type": "string",
+              "enum": [
+                "s3"
+              ],
+              "default": "s3"
+            },
+            "securityConfig": {
+              "title": "S3 Security Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "AWS credentials configs.",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+              "properties": {
+                "enabled": {
+                  "title": "Enable IAM Auth",
+                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "awsAccessKeyId": {
+                  "title": "AWS Access Key ID",
+                  "description": "AWS Access key ID.",
+                  "type": "string"
+                },
+                "awsSecretAccessKey": {
+                  "title": "AWS Secret Access Key",
+                  "description": "AWS Secret Access Key.",
+                  "type": "string",
+                  "format": "password"
+                },
+                "awsRegion": {
+                  "title": "AWS Region",
+                  "description": "AWS Region",
+                  "type": "string"
+                },
+                "awsSessionToken": {
+                  "title": "AWS Session Token",
+                  "description": "AWS Session Token.",
+                  "type": "string"
+                },
+                "endPointURL": {
+                  "title": "Endpoint URL",
+                  "description": "EndPoint URL for the AWS",
+                  "type": "string",
+                  "format": "uri"
+                },
+                "profileName": {
+                  "title": "Profile Name",
+                  "description": "The name of a profile to use with the boto session.",
+                  "type": "string"
+                },
+                "assumeRoleArn": {
+                  "title": "Role Arn for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                  "type": "string"
+                },
+                "assumeRoleSessionName": {
+                  "title": "Role Session Name for Assume Role",
+                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                  "type": "string",
+                  "default": "OpenMetadataSession"
+                },
+                "assumeRoleSourceIdentity": {
+                  "title": "Source Identity for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "awsRegion"
+              ]
+            },
+            "prefixConfig": {
+              "title": "Prefix Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Details of the bucket where the .pbit files are stored",
+              "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
+              "type": "object",
+              "properties": {
+                "bucketName": {
+                  "title": "Bucket Name",
+                  "description": "Name of the bucket where the .pbit files are stored",
+                  "type": "string"
+                },
+                "objectPrefix": {
+                  "title": "Object Prefix",
+                  "description": "Path of the folder where the .pbit files are stored",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "pbitFilesExtractDir": {
+              "title": "pbit Files Extraction Directory",
+              "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+              "type": "string",
+              "default": "/tmp/pbitFiles"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "securityConfig"
+          ]
+        }
+      ]
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "title": "Default Dashboard Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "title": "Default Chart Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "title": "Default Data Model Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "title": "Default Project Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "clientId",
+    "clientSecret",
+    "tenantId"
+  ]
+}

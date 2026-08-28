@@ -5,6 +5,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,7 +25,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
-import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 
 public class FilterEntityImpl implements JavaDelegate {
   private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
+  private static final TypeReference<java.util.Map<String, String>> FILTER_MAP_TYPE =
+      new TypeReference<>() {};
   private Expression excludedFieldsExpr;
   private Expression includeFieldsExpr;
   private Expression filterExpr;
@@ -55,6 +57,18 @@ public class FilterEntityImpl implements JavaDelegate {
     String entityLinkStr =
         (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
 
+    // eventBasedEntity triggers get relatedEntity from the change event that started them; a
+    // null value here means the trigger was invoked without one (e.g. the manual trigger REST
+    // endpoint for a workflow type that expects an event context). Short-circuit with
+    // passesFilter=false so the workflow does not advance, instead of NPE'ing in the parser.
+    if (entityLinkStr == null || entityLinkStr.isBlank()) {
+      log.debug(
+          "Trigger {} - no relatedEntity in variables; skipping",
+          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
+      execution.setVariable(PASSES_FILTER_VARIABLE, false);
+      return;
+    }
+
     // Parse entity type from entity link to determine which filter to use
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
@@ -73,17 +87,12 @@ public class FilterEntityImpl implements JavaDelegate {
           passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
     }
 
-    if (passesFilter) {
-      String triggerWorkflowDefinitionKey =
-          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-      String mainWorkflowDefinitionName =
-          TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(triggerWorkflowDefinitionKey);
-      String currentProcessInstanceId = execution.getProcessInstanceId();
-      WorkflowHandler.getInstance()
-          .terminateDuplicateInstances(
-              mainWorkflowDefinitionName, entityLinkStr, currentProcessInstanceId);
-    }
-
+    // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
+    // supersedes the old" at trigger time is too early: this filter runs before the workflow
+    // evaluates checkChangeDescription/checkEntityAttributes, so a no-op event that passes the
+    // entity filter but creates no task would still kill a valid pending approval. The supersede
+    // now happens at task-creation time in CreateTask, where the run has genuinely produced a new
+    // approval task. See CreateTask#supersedePriorApprovalTask.
     String workflowKey =
         WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     log.debug("Trigger {} - Entity {} passes filter: {}", workflowKey, entityLinkStr, passesFilter);
@@ -95,9 +104,11 @@ public class FilterEntityImpl implements JavaDelegate {
       return null;
     }
 
-    // Parse JSON string into map if needed
-    if (filterObj instanceof String) {
-      String filterStr = (String) filterObj;
+    // Flowable's Expression#getValue returns Object; the trigger BPMN feeds it the raw
+    // Config#filter, itself typed as Object because the JSON Schema is a oneOf of string
+    // (legacy top-level JsonLogic) and object (per-entity map). Both variants have to be
+    // decoded here.
+    if (filterObj instanceof String filterStr) {
       // Handle empty string as "no filter"
       if (filterStr.trim().isEmpty()) {
         return null; // Empty string means no filtering
@@ -105,8 +116,7 @@ public class FilterEntityImpl implements JavaDelegate {
       // Check if it's a JSON object string
       if (filterStr.trim().startsWith("{") && filterStr.trim().endsWith("}")) {
         try {
-          java.util.Map<String, String> filterMap =
-              JsonUtils.readValue(filterStr, java.util.Map.class);
+          java.util.Map<String, String> filterMap = JsonUtils.readValue(filterStr, FILTER_MAP_TYPE);
           return extractFromFilterMap(filterMap, entityType);
         } catch (Exception e) {
           log.error(
@@ -119,10 +129,11 @@ public class FilterEntityImpl implements JavaDelegate {
       return null;
     }
 
-    // Handle map format with entity-specific filters
+    // Second variant of the oneOf: entity-specific filter map already deserialized as a Map.
+    // Use JsonUtils.convertValue so the coercion to Map<String,String> is done by Jackson with a
+    // typed TypeReference instead of an unchecked cast.
     if (filterObj instanceof java.util.Map) {
-      @SuppressWarnings("unchecked")
-      java.util.Map<String, String> filterMap = (java.util.Map<String, String>) filterObj;
+      java.util.Map<String, String> filterMap = JsonUtils.convertValue(filterObj, FILTER_MAP_TYPE);
       return extractFromFilterMap(filterMap, entityType);
     }
 
@@ -134,20 +145,25 @@ public class FilterEntityImpl implements JavaDelegate {
     if (filterMap == null || entityType == null) {
       return null;
     }
-
-    // First check for entity-specific filter
-    String specificFilter = filterMap.get(entityType);
-    if (specificFilter != null && !specificFilter.trim().isEmpty()) {
+    String specificFilter = sanitizeFilterValue(filterMap.get(entityType));
+    if (specificFilter != null) {
       return specificFilter;
     }
+    return sanitizeFilterValue(filterMap.get("default"));
+  }
 
-    // Fall back to default filter if no specific filter found
-    String defaultFilter = filterMap.get("default");
-    if (defaultFilter != null && !defaultFilter.trim().isEmpty()) {
-      return defaultFilter;
+  // A saved-but-empty filter from the UI can serialize as a JSON-encoded empty
+  // string (\"\") or empty object ({}) instead of being dropped. Treat those as
+  // "no filter" so RuleEngine never sees garbage that it can't parse.
+  private static String sanitizeFilterValue(String filter) {
+    String sanitized = null;
+    if (filter != null) {
+      String trimmed = filter.trim();
+      if (!trimmed.isEmpty() && !"\"\"".equals(trimmed) && !"{}".equals(trimmed)) {
+        sanitized = filter;
+      }
     }
-
-    return null;
+    return sanitized;
   }
 
   private boolean isTagFeedbackCreation(WorkflowVariableHandler varHandler) {
@@ -209,15 +225,22 @@ public class FilterEntityImpl implements JavaDelegate {
               || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
     }
 
-    // Apply JSON filter
-    boolean passesJsonFilter = true;
+    return fieldBasedFilter && !matchesExclusionFilter(filterLogic, entity);
+  }
+
+  // Trigger filter is EXCLUSION: if the JsonLogic evaluates to TRUE, the entity
+  // is excluded from triggering the workflow. Non-match (FALSE) or unparseable
+  // filter (RuleEngine returns false on any exception) → NOT excluded, workflow
+  // triggers. Restoring the original design from PR #22437; Task Redesign (#25894)
+  // accidentally dropped the "!" inversion and flipped this to inclusion.
+  private boolean matchesExclusionFilter(String filterLogic, EntityInterface entity) {
+    boolean matches = false;
     if (filterLogic != null && !filterLogic.trim().isEmpty()) {
-      passesJsonFilter =
-          !Boolean.TRUE.equals(
+      matches =
+          Boolean.TRUE.equals(
               RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity)));
     }
-
-    return fieldBasedFilter && passesJsonFilter;
+    return matches;
   }
 
   private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {
@@ -236,19 +259,21 @@ public class FilterEntityImpl implements JavaDelegate {
               boolean isTriggerField =
                   Arrays.stream(WorkflowTriggerFields.values())
                       .map(WorkflowTriggerFields::value)
-                      .anyMatch(fieldName::equals);
+                      .anyMatch(tf -> matchesField(fieldName, tf));
               if (!isTriggerField) {
                 return false;
               }
 
-              // Check include filter first (higher priority)
               if (includeFields != null && !includeFields.isEmpty()) {
-                // If include fields are specified, ONLY those fields should trigger
-                return includeFields.contains(fieldName);
+                return includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
               }
 
-              // If no include filter specified, check exclude filter
-              return excludedFilter == null || !excludedFilter.contains(fieldName);
+              return excludedFilter == null
+                  || excludedFilter.stream().noneMatch(f -> matchesField(fieldName, f));
             });
+  }
+
+  private boolean matchesField(String fieldName, String triggerField) {
+    return fieldName.equals(triggerField) || fieldName.startsWith(triggerField + Entity.SEPARATOR);
   }
 }

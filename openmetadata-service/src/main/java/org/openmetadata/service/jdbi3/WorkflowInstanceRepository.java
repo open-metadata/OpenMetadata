@@ -4,17 +4,16 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
-import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
   public WorkflowInstanceRepository() {
@@ -56,44 +55,28 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
 
-    workflowInstance.setEndedAt(endedAt);
+    // Preserve a terminal SUPERSEDED status set upstream by the supersede path — the process-end
+    // execution listener also lands here and would otherwise recompute the status to FINISHED.
+    if (workflowInstance.getStatus() == WorkflowInstance.WorkflowStatus.SUPERSEDED) {
+      workflowInstance.setEndedAt(endedAt);
+      getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
+      return;
+    }
 
-    WorkflowDefinitionRepository workflowDefinitionRepository =
-        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.get(
-            null, workflowInstance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
+    workflowInstance.setEndedAt(endedAt);
 
     WorkflowInstanceStateRepository workflowInstanceStateRepository =
         (WorkflowInstanceStateRepository)
             Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
 
-    String offset = null;
+    List<WorkflowInstanceState> states =
+        workflowInstanceStateRepository.listAllStatesForInstance(workflowInstanceId);
+
     WorkflowInstance.WorkflowStatus workflowStatus = WorkflowInstance.WorkflowStatus.FINISHED;
-
-    do {
-      ResultList<WorkflowInstanceState> workflowInstanceStates =
-          workflowInstanceStateRepository.listWorkflowInstanceStateForInstance(
-              workflowDefinition.getName(),
-              workflowInstanceId,
-              offset,
-              workflowInstance.getStartedAt(),
-              workflowInstance.getEndedAt(),
-              100,
-              false);
-
-      if (workflowInstanceStates.getData().stream()
-          .anyMatch(
-              workflowInstanceState ->
-                  workflowInstanceState
-                      .getStatus()
-                      .equals(WorkflowInstance.WorkflowStatus.FAILURE))) {
-        workflowStatus = WorkflowInstance.WorkflowStatus.FAILURE;
-        break;
-      }
-
-      offset = workflowInstanceStates.getPaging().getAfter();
-    } while (offset != null);
+    if (states.stream()
+        .anyMatch(s -> s.getStatus().equals(WorkflowInstance.WorkflowStatus.FAILURE))) {
+      workflowStatus = WorkflowInstance.WorkflowStatus.FAILURE;
+    }
 
     workflowInstance.setStatus(workflowStatus);
 
@@ -126,4 +109,26 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
   }
+
+  /** Marks a workflow instance as SUPERSEDED when a newer run replaces it. */
+  public void markInstanceAsSuperseded(UUID workflowInstanceId, String reason) {
+    WorkflowInstance workflowInstance =
+        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+
+    Map<String, Object> variables = workflowInstance.getVariables();
+    if (variables == null) {
+      variables = new HashMap<>();
+    }
+    variables.put(TERMINATION_REASON_VARIABLE_KEY, reason);
+
+    WorkflowInstance updatedInstance =
+        workflowInstance
+            .withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED)
+            .withVariables(variables)
+            .withEndedAt(System.currentTimeMillis());
+
+    getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
+  }
+
+  private static final String TERMINATION_REASON_VARIABLE_KEY = "terminationReason";
 }

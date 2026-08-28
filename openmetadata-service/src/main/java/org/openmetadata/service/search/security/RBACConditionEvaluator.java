@@ -2,7 +2,15 @@ package org.openmetadata.service.search.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.*;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,10 +30,13 @@ import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
+@Slf4j
 public class RBACConditionEvaluator {
 
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
+  private final Cache<String, SpelExpression> expressionCache =
+      Caffeine.newBuilder().maximumSize(512).build();
   private final StandardEvaluationContext spelContext;
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
@@ -118,14 +129,18 @@ public class RBACConditionEvaluator {
     }
 
     if (rule.getCondition() != null && !rule.getCondition().trim().isEmpty()) {
-      SpelExpression parsedExpression =
-          (SpelExpression) spelParser.parseExpression(rule.getCondition());
+      SpelExpression parsedExpression = parseCondition(rule.getCondition());
       preprocessExpression(parsedExpression.getAST(), ruleCollector);
     } else {
       ruleCollector.addMust(queryBuilderFactory.matchAllQuery());
     }
 
     return ruleCollector.buildFinalQuery();
+  }
+
+  SpelExpression parseCondition(String condition) {
+    return expressionCache.get(
+        condition, value -> (SpelExpression) spelParser.parseExpression(value));
   }
 
   private void preprocessExpression(SpelNode node, ConditionCollector collector) {
@@ -348,14 +363,30 @@ public class RBACConditionEvaluator {
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
     if (user == null || nullOrEmpty(user.getDomains())) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+      // No user domains: only domainless entities, and never any Domain entity itself.
+      collector.addMustNot(queryBuilderFactory.existsQuery("domains.id"));
+      collector.addMustNot(queryBuilderFactory.termQuery("entityType", Entity.DOMAIN));
     } else {
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
+      List<String> userDomainIds = new ArrayList<>();
       for (EntityReference domain : user.getDomains()) {
         String domainId = domain.getId().toString();
-        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
-        collector.addMust(domainQuery);
+        domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
+        userDomainIds.add(domainId);
       }
+      // A Domain entity is not itself domain-tagged, so the domains.id clauses never match a Domain
+      // document. Match the user's own domains by their id so the Domain index search does not leak
+      // other domains' names to a domain-restricted user.
+      domainQueries.add(queryBuilderFactory.termsQuery("id.keyword", userDomainIds));
+      // Domainless entities stay visible, but a Domain document must not slip through here.
+      domainQueries.add(
+          queryBuilderFactory
+              .boolQuery()
+              .mustNot(
+                  List.of(
+                      queryBuilderFactory.existsQuery("domains.id"),
+                      queryBuilderFactory.termQuery("entityType", Entity.DOMAIN))));
+      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
   }
 
@@ -382,11 +413,19 @@ public class RBACConditionEvaluator {
   }
 
   private OMQueryBuilder getIndexFilter(List<String> resources) {
+    var searchRepository = Entity.getSearchRepository();
     List<String> indices = new ArrayList<>();
     for (String resource : resources) {
-      indices.add(Entity.getSearchRepository().getIndexOrAliasName(resource));
-      for (String childAlias : Entity.getSearchRepository().getChildIndexAliases(resource)) {
-        indices.add(Entity.getSearchRepository().getIndexOrAliasName(childAlias));
+      if (searchRepository == null) {
+        LOG.warn(
+            "SearchRepository is not initialized while building RBAC index filter for resource [{}]; falling back to resource name",
+            resource);
+        indices.add(resource.toLowerCase());
+        continue;
+      }
+      indices.add(searchRepository.getIndexOrAliasName(resource));
+      for (String childAlias : searchRepository.getChildIndexAliases(resource)) {
+        indices.add(searchRepository.getIndexOrAliasName(childAlias));
       }
     }
     return queryBuilderFactory.termsQuery("_index", indices);

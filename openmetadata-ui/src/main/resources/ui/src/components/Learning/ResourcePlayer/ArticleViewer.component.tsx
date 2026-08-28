@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './article-viewer.less';
 
 interface ArticleViewerProps {
@@ -106,7 +106,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
     <div className="article-viewer-wrapper">
       <div className="article-viewer-container">
         <div className="article-viewer-content">
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             enableSeeMoreVariant={false}
             markdown={content}
           />

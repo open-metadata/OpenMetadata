@@ -219,7 +219,7 @@ public class SecurityServiceRepository
           .withTags(
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION))))
-          .withDomains(getDomains(printer, csvRecord, 6));
+          .withDomains(getDomains(printer, csvRecord, 6, newSecurityService.getDomains()));
 
       if (processRecord) {
         createEntity(printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
@@ -261,9 +261,7 @@ public class SecurityServiceRepository
       // Handle security service specific updates
       compareAndUpdate(
           "serviceType",
-          () -> {
-            recordChange("serviceType", original.getServiceType(), updated.getServiceType());
-          });
+          () -> recordChange("serviceType", original.getServiceType(), updated.getServiceType()));
     }
   }
 }

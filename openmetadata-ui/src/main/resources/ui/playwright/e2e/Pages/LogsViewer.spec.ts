@@ -21,10 +21,14 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  navigateToBundleSuiteWithPagination,
+  waitForFirstPipelineStatusNotQueued,
+} from '../../utils/logsViewer';
 import { test } from '../fixtures/pages';
 
-const table = new TableClass();
-const bundleTestSuite = new BundleTestSuiteClass();
+let table: TableClass;
+let bundleTestSuite: BundleTestSuiteClass;
 
 test.describe(
   'Logs viewer page',
@@ -35,104 +39,138 @@ test.describe(
     ],
   },
   () => {
-  test.beforeAll(
-    'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll(
+      'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
+      async ({ browser }) => {
+        table = new TableClass();
+        bundleTestSuite = new BundleTestSuiteClass();
 
-      await table.create(apiContext);
-      await bundleTestSuite.createBundleTestSuite(apiContext);
-      const { pipeline } =
-        await bundleTestSuite.createBundleTestSuitePipeline(apiContext);
-      await bundleTestSuite.runIngestionPipeline(apiContext, pipeline.id);
+        const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await afterAction();
-    }
-  );
+        await table.create(apiContext);
+        await bundleTestSuite.createBundleTestSuite(apiContext);
+        const { pipeline } =
+          await bundleTestSuite.createBundleTestSuitePipeline(apiContext);
+        await bundleTestSuite.runIngestionPipeline(apiContext, pipeline.id);
 
-  test('Logs page shows breadcrumb, summary, and log viewer or empty state after opening from bundle suite pipeline tab', async ({
-    page,
-  }) => {
-    test.slow();
+        await afterAction();
+      }
+    );
 
-    await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
-      await redirectToHomePage(page);
+    test('Logs page shows breadcrumb, summary, and log viewer or empty state after opening from bundle suite pipeline tab', async ({
+      page,
+    }) => {
+      // 6 minutes
+      test.setTimeout(6 * 60 * 1000);
 
-      const listResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
-          r.status() === 200
-      );
-      await page.goto('/data-quality/test-suites/bundle-suites');
-      await listResponse;
-      await waitForAllLoadersToDisappear(page);
+      // The copy toolbar action writes to the clipboard; grant permission so
+      // the "Copied" state can be asserted.
+      await page.context().grantPermissions(['clipboard-write']);
 
-      const bundleSuiteFqn =
-        bundleTestSuite.bundleTestSuiteResponseData?.fullyQualifiedName ??
-        bundleTestSuite.bundleTestSuiteResponseData?.name;
-      expect(bundleSuiteFqn, 'bundle suite created in beforeAll').toBeTruthy();
-      const bundleSuiteLink = page
-        .getByTestId('test-suite-table')
-        .locator(`a[href*="${encodeURIComponent(bundleSuiteFqn)}"]`);
-      await expect(bundleSuiteLink).toBeVisible({ timeout: 10000 });
-      await bundleSuiteLink.click();
-      await waitForAllLoadersToDisappear(page);
-    });
+      await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
+        await redirectToHomePage(page);
 
-    await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
-      await page.getByTestId('pipeline').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const pipelinesResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/services/ingestionPipelines') &&
-          r.status() === 200
-      );
-      const logsLastResponse = page.waitForResponse(
-        (r) => {
-          const url = r.url();
-          return (
-            url.includes('/api/v1/services/ingestionPipelines/logs/') &&
-            url.includes('/last') &&
+        const listResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
             r.status() === 200
-          );
-        }
-      );
-      await expect(page.getByTestId('logs-button').first()).toBeVisible();
-      await page.getByTestId('logs-button').first().click();
-      await pipelinesResponse;
-      await logsLastResponse;
+        );
+        await page.goto('/data-quality/test-suites/bundle-suites');
+        await listResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const bundleSuiteFqn =
+          bundleTestSuite.bundleTestSuiteResponseData?.fullyQualifiedName ??
+          bundleTestSuite.bundleTestSuiteResponseData?.name;
+        expect(
+          bundleSuiteFqn,
+          'bundle suite created in beforeAll'
+        ).toBeTruthy();
+        await navigateToBundleSuiteWithPagination(page, bundleSuiteFqn);
+      });
+
+      await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
+        await waitForFirstPipelineStatusNotQueued(page);
+
+        const pipelinesResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/services/ingestionPipelines') &&
+            r.status() === 200
+        );
+        await expect(page.getByTestId('logs-button').first()).toBeVisible();
+        await page.getByTestId('logs-button').first().click();
+        await pipelinesResponse;
+      });
+
+      await test.step('The logs viewer modal opens in place with its toolbar', async () => {
+        await expect(page.getByTestId('log-viewer-title')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-fullscreen')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-jump-to-end')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-close')).toBeVisible();
+
+        // Following the tail only means anything while a run streams, so a
+        // finished run must not offer the toggle at all.
+        await expect(page.getByTestId('log-viewer-follow')).toBeHidden();
+
+        // The URL must NOT change — the logs viewer is now an in-place modal.
+        expect(page.url()).not.toContain('/logs');
+      });
+
+      await test.step('Toggling fullscreen expands and restores the modal', async () => {
+        const fullScreen = page.getByTestId('log-viewer-fullscreen');
+
+        await expect(fullScreen).toHaveAttribute('aria-pressed', 'false');
+        await fullScreen.click();
+        await expect(fullScreen).toHaveAttribute('aria-pressed', 'true');
+        await fullScreen.click();
+        await expect(fullScreen).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      await test.step('Hovering a toolbar button shows its tooltip', async () => {
+        await page.getByTestId('log-viewer-wrap').hover();
+
+        await expect(page.getByRole('tooltip')).toBeVisible();
+      });
+
+      await test.step('Toggling wrap flips its pressed state', async () => {
+        const wrap = page.getByTestId('log-viewer-wrap');
+
+        await expect(wrap).toHaveAttribute('aria-pressed', 'false');
+        await wrap.click();
+        await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+        await wrap.click();
+        await expect(wrap).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      await test.step('Copying the logs switches the button to the copied state', async () => {
+        const copy = page.getByTestId('log-viewer-copy');
+
+        await expect(copy).toContainText('Copy');
+        await copy.click();
+        await expect(copy).toContainText('Copied');
+      });
+
+      await test.step('Searching a non-matching term shows the empty state', async () => {
+        const search = page.getByTestId('log-viewer-search');
+
+        await search.fill('zzq-no-log-line-match-zzq');
+        await expect(page.getByTestId('log-viewer-match-count')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-empty')).toBeVisible();
+
+        await search.clear();
+        await expect(page.getByTestId('log-viewer-empty')).not.toBeVisible();
+      });
+
+      await test.step('Jump-to-end keeps the log body visible', async () => {
+        await page.getByTestId('log-viewer-jump-to-end').click();
+
+        await expect(page.getByTestId('log-viewer-body')).toBeVisible();
+      });
+
+      await test.step('Closing the modal returns to the pipeline tab', async () => {
+        await page.getByTestId('log-viewer-close').click();
+        await expect(page.getByTestId('log-viewer-title')).not.toBeVisible();
+      });
     });
-
-    await test.step('Wait for logs page to load and verify all key elements', async () => {
-      await page.waitForURL(/\/testSuite\/.*\/logs/);
-
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(page.getByTestId('skeleton-container')).not.toBeVisible();
-
-      await expect(page.getByTestId('breadcrumb')).toBeVisible();
-      await expect(page.getByTestId('summary-card')).toBeVisible();
-
-      const hasLogContent = await page.getByTestId('lazy-log').isVisible();
-      const hasNoLogsEmptyState = await page
-        .getByTestId('no-data-placeholder')
-        .filter({
-          has: page.getByText(/no .* log|logs.*available/i),
-        })
-        .isVisible();
-
-      expect(hasLogContent || hasNoLogsEmptyState).toBeTruthy();
-    });
-
-    await test.step('Verify action buttons work when log content is present', async () => {
-      const jumpToEnd = page.getByTestId('jump-to-end-button');
-      const downloadBtn = page.getByTestId('download');
-      const copyToClipboardBtn = page.getByTestId('copy-secret');
-
-      await expect(jumpToEnd).toBeEnabled();
-      await expect(downloadBtn).toBeVisible();
-      await expect(copyToClipboardBtn).toBeVisible();
-    });
-  });
-});
+  }
+);

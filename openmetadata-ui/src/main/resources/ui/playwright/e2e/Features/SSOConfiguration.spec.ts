@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { Page } from '@playwright/test';
+import path from 'path';
+
 import {
   LDAP_VISIBLE_FIELDS,
   OIDC_COMMON_FIELDS,
@@ -24,6 +27,21 @@ import {
   verifyProviderFields,
 } from '../../utils/sso';
 import { test } from '../fixtures/pages';
+
+const VALID_SAML_XML = path.join(
+  __dirname,
+  '../../test-data/saml-metadata-valid.xml'
+);
+const INVALID_SAML_XML = path.join(
+  __dirname,
+  '../../test-data/saml-metadata-invalid.xml'
+);
+
+const EXPECTED_ENTITY_ID =
+  'https://sts.example.com/00000000-0000-0000-0000-000000000000/';
+const EXPECTED_SSO_LOGIN_URL =
+  'https://sso.example.com/00000000-0000-0000-0000-000000000000/saml2';
+const EXPECTED_CERT_PREFIX = '-----BEGIN CERTIFICATE-----';
 
 const { expect } = test;
 
@@ -762,16 +780,24 @@ test.describe('SSO Configuration Tests', () => {
 
       // Typing filters the visible options
       await field.click();
+      const dataRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('Data');
+      await dataRoleSearchResponse;
       await expect(
         dropdown.locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'
         )
-      ).not.toHaveCount(0);
+      ).not.toHaveCount(0, { timeout: 15000 });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
       await field.locator('input').clear();
+      const missingRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('NonExistentRoleXYZ123');
+      await missingRoleSearchResponse;
       await field.locator('input').press('Enter');
       await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
     });
@@ -781,6 +807,107 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
       await expect(page.locator('.ldap-role-mapping-widget')).not.toBeVisible();
+    });
+  });
+});
+test.describe('SAML Metadata XML Upload', () => {
+  test('should show upload drop zone for SAML provider', async ({ page }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+
+    const dropZone = page.getByTestId('file-upload-drop-zone');
+
+    await expect(dropZone).toBeVisible();
+    await expect(
+      dropZone.getByText(/or drag and drop an xml file here/i)
+    ).toBeVisible();
+    await expect(
+      dropZone.getByText(/we'll auto-fill saml configuration fields/i)
+    ).toBeVisible();
+  });
+
+  test('should parse valid SAML metadata XML and populate form fields, then clear fields on invalid XML', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+
+    await test.step('Wait for drop zone and upload valid SAML metadata XML', async () => {
+      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      const fileInput = page.getByTestId('file-uploader');
+
+      await fileInput.setInputFiles(VALID_SAML_XML);
+    });
+
+    await test.step('Verify success status card is shown', async () => {
+      await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
+      await expect(
+        page.getByText(/has been uploaded and parsed successfully/i)
+      ).toBeVisible();
+    });
+
+    await test.step('Verify IdP Entity ID field is populated', async () => {
+      const entityIdField = page.locator(
+        '[id="root/authenticationConfiguration/samlConfiguration/idp/entityId"]'
+      );
+
+      await expect(entityIdField).toHaveValue(EXPECTED_ENTITY_ID);
+    });
+
+    await test.step('Verify IdP SSO Login URL field is populated', async () => {
+      const ssoLoginUrlField = page.locator(
+        '[id="root/authenticationConfiguration/samlConfiguration/idp/ssoLoginUrl"]'
+      );
+
+      await expect(ssoLoginUrlField).toHaveValue(EXPECTED_SSO_LOGIN_URL);
+    });
+
+    await test.step('Verify IdP X509 Certificate field is populated', async () => {
+      const certField = page.locator(
+        '[id="root/authenticationConfiguration/samlConfiguration/idp/idpX509Certificate"]'
+      );
+
+      await expect(certField).toHaveValue(new RegExp(EXPECTED_CERT_PREFIX));
+    });
+
+    await test.step('Click change file and upload invalid SAML metadata XML', async () => {
+      await page.getByTestId('change-metadata-xml-btn').click();
+      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+
+      const fileInput = page.getByTestId('file-uploader');
+
+      await fileInput.setInputFiles(INVALID_SAML_XML);
+    });
+
+    await test.step('Verify error status card is shown', async () => {
+      await expect(
+        page.getByText(/invalid saml metadata could not be parsed/i)
+      ).toBeVisible();
+      await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
+    });
+
+    await test.step('Verify IdP fields are cleared after invalid upload', async () => {
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/idp/entityId"]'
+        )
+      ).toHaveValue('');
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/idp/ssoLoginUrl"]'
+        )
+      ).toHaveValue('');
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/idp/idpX509Certificate"]'
+        )
+      ).toHaveValue('');
     });
   });
 });
@@ -889,5 +1016,81 @@ test.describe('SSO Back Navigation', () => {
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
     expect(page.url()).not.toContain('provider=');
+  });
+});
+
+test.describe('SSO Test Configuration', () => {
+  const VALIDATE_URL = '**/system/security/validate';
+
+  const mockValidate = (page: Page, body: Record<string, unknown>) =>
+    page.route(VALIDATE_URL, async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(body),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
+  });
+
+  test('should show the Test Configuration button and lockout warning for a new configuration', async ({
+    page,
+  }) => {
+    await selectSSOProvider(page, 'google');
+
+    await expect(page.getByTestId('test-sso-configuration')).toBeVisible();
+    await expect(page.locator('.sso-save-warning')).toBeVisible();
+  });
+
+  test('should validate the configuration without saving and show a success banner', async ({
+    page,
+  }) => {
+    await mockValidate(page, { status: 'success' });
+    await selectSSOProvider(page, 'google');
+
+    const validateResponse = page.waitForResponse(VALIDATE_URL);
+    await page.getByTestId('test-sso-configuration').click();
+    await validateResponse;
+
+    await expect(page.locator('.sso-test-result.success-alert')).toBeVisible();
+    await expect(page.locator('.sso-test-result')).toContainText(
+      /valid and reachable/i
+    );
+
+    // Testing must never sign the admin out or leave the form
+    await expect(page).toHaveURL(/settings\/sso/);
+    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+  });
+
+  test('should surface validation errors when the test fails', async ({
+    page,
+  }) => {
+    await mockValidate(page, {
+      status: 'failed',
+      errors: [
+        {
+          field: 'authenticationConfiguration.authority',
+          error: 'Authority is required',
+        },
+      ],
+    });
+    await selectSSOProvider(page, 'google');
+
+    const validateResponse = page.waitForResponse(VALIDATE_URL);
+    await page.getByTestId('test-sso-configuration').click();
+    await validateResponse;
+
+    await expect(page.locator('.sso-test-result.error-alert')).toBeVisible();
+    await expect(page.locator('.sso-test-result')).toContainText(
+      /validation failed/i
+    );
+    await expect(page).toHaveURL(/settings\/sso/);
   });
 });

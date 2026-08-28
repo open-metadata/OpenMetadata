@@ -17,10 +17,14 @@ import { DataInsightLatestRun } from '../components/Settings/Applications/AppDet
 import { AgentType, App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
-import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  PipelineState,
+  PipelineStatus,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps';
@@ -32,10 +36,30 @@ type AppListParams = ListParams & {
   endTs?: number;
 };
 
-interface GetAgentRunsParams {
-  service: string;
-  startTs?: number;
-  endTs?: number;
+/**
+ * AutoPilot's Collate agents are AI Automations instantiated per service. Only the
+ * identity fields are needed here, so this is kept independent of the full entity
+ * schema, which is not part of the OSS build.
+ */
+export interface CollateAgentAutomation {
+  id: string;
+  name: string;
+  fullyQualifiedName?: string;
+}
+
+/** A single run of an AI Automation's backing ingestion pipeline. */
+export interface AutomationPipelineRun {
+  pipelineState?: PipelineState;
+  startDate?: number;
+  endDate?: number;
+  timestamp?: number;
+  runId?: string;
+  status?: Array<{
+    records?: number;
+    updated_records?: number;
+    warnings?: number;
+    errors?: number;
+  }>;
 }
 
 export const getApplicationList = async (params?: AppListParams) => {
@@ -102,9 +126,15 @@ export const getExternalApplicationRuns = async (
   return response.data;
 };
 
-export const getLatestApplicationRuns = async (appName: string) => {
+export const getLatestApplicationRuns = async (
+  appName: string,
+  runId?: string
+) => {
   const response = await APIClient.get<DataInsightLatestRun>(
-    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`,
+    {
+      params: runId ? { runId } : undefined,
+    }
   );
 
   return response.data;
@@ -155,26 +185,78 @@ export const restoreApp = async (id: string) => {
   return response.data;
 };
 
-export const stopApp = async (name: string) => {
-  return await APIClient.post(`${BASE_URL}/stop/${getEncodedFqn(name)}`);
+export const stopApp = async (name: string, runId?: string) => {
+  return await APIClient.post(
+    `${BASE_URL}/stop/${getEncodedFqn(name)}`,
+    undefined,
+    {
+      params: runId ? { runId } : undefined,
+    }
+  );
 };
 
-export const getApplicationLogs = (appName: string, after?: string) => {
+export const getApplicationLogs = (
+  appName: string,
+  after?: string,
+  runId?: string
+) => {
   return APIClient.get(`${BASE_URL}/name/${appName}/logs`, {
     params: {
       after,
+      ...(runId && { runId }),
     },
   });
 };
 
-export const getAgentRuns = async (
-  applicationName: string,
-  params?: GetAgentRunsParams
+/** Lists the AI Automations AutoPilot runs for a service, in template order. */
+export const getAiAutomationsByService = async (serviceFqn: string) => {
+  const response = await APIClient.get<
+    PagingResponse<CollateAgentAutomation[]>
+  >('/ai/automations', {
+    // The list endpoint defaults to provider=user when omitted, which filters
+    // out AutoPilot's provider=automation entries; request them explicitly.
+    params: {
+      service: serviceFqn,
+      isTemplate: false,
+      provider: ProviderType.Automation,
+    },
+  });
+
+  return response.data;
+};
+
+export const getAiAutomationRuns = async (
+  id: string,
+  startTs?: number,
+  endTs?: number
 ) => {
-  const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `/collate/apps/name/${applicationName}/agentRuns`,
-    { params }
+  const response = await APIClient.get<AutomationPipelineRun[]>(
+    `/ai/automations/${id}/runs`,
+    { params: { startTs, endTs } }
   );
+
+  return response.data;
+};
+
+export interface SearchIndexRetryRecord {
+  entityId: string;
+  entityFqn: string;
+  failureReason: string;
+  status: string;
+  entityType: string;
+  retryCount: number;
+  claimedAt: string | null;
+}
+
+export const getLiveIndexingQueue = async (
+  appName: string,
+  params?: { limit?: number; offset?: number }
+) => {
+  const response = await APIClient.get<
+    PagingResponse<SearchIndexRetryRecord[]>
+  >(`${BASE_URL}/name/${getEncodedFqn(appName)}/live-indexing-queue`, {
+    params,
+  });
 
   return response.data;
 };

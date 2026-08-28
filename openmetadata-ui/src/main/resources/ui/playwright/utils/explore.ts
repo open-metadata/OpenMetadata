@@ -10,18 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
 import { isEmpty, isUndefined } from 'lodash';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { openEntitySummaryPanel } from './entityPanel';
+import { waitForAggregation } from './searchAggregation';
 
 export interface Bucket {
   key: string;
   doc_count: number;
 }
+
+/**
+ * Explore quick filters apply immediately; the Update button only exists in
+ * legacy (non immediate-apply) consumers. Click it when present so shared
+ * flows work in both modes.
+ */
+export const clickUpdateButtonIfVisible = async (page: Page) => {
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    await updateButton.click();
+  }
+};
 
 export const searchAndClickOnOption = async (
   page: Page,
@@ -29,17 +43,14 @@ export const searchAndClickOnOption = async (
   checkedAfterClick: boolean
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
-  // Filtering for tiers is done on client side, so no API call will be triggered
-  if (filter.key === 'tier.tagFQN') {
-    testId = filter.value ?? '';
-  } else {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
-    );
 
-    await page.fill('[data-testid="search-input"]', filter.value ?? '');
-    await searchRes;
-  }
+  const searchRes = waitForAggregation(page, {
+    field: filter.key,
+    value: filter.value ?? null,
+  });
+
+  await page.fill('[data-testid="search-input"]', filter.value ?? '');
+  await searchRes;
 
   await page.getByTestId(testId).click();
 
@@ -69,10 +80,7 @@ export const selectNullOption = async (
                   ? [
                       {
                         term: {
-                          [filter.key]:
-                            filter.key === 'tier.tagFQN'
-                              ? filter.value
-                              : filter.value.toLowerCase(),
+                          [filter.key]: filter.value.toLowerCase(),
                         },
                       },
                     ]
@@ -92,10 +100,16 @@ export const selectNullOption = async (
     await searchAndClickOnOption(page, filter, true);
   }
 
-  const queryRes = page.waitForResponse(querySearchURL);
-  await page.click('[data-testid="update-btn"]');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
-  await queryRes;
+  // Immediate-apply commits on selection (no Update button); legacy mode commits
+  // on the Update click. Only wait on the Update-triggered response in legacy
+  // mode, otherwise the query has already fired and we just let loaders settle.
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    const queryRes = page.waitForResponse(querySearchURL);
+    await updateButton.click();
+    await queryRes;
+  }
+  await waitForAllLoadersToDisappear(page);
 
   const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
@@ -105,7 +119,7 @@ export const selectNullOption = async (
   expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
-    await page.click(`[data-testid="clear-filters"]`);
+    await page.click(`[data-testid="clear-all-chips"]`);
   }
 };
 
@@ -115,29 +129,39 @@ export const checkCheckboxStatus = async (
   isChecked: boolean
 ) => {
   const checkbox = page.getByTestId(boxId);
-  const isCheckedOnPage = await checkbox.isChecked();
 
-  expect(isCheckedOnPage).toEqual(isChecked);
+  if (isChecked) {
+    await expect(checkbox).toBeChecked();
+  } else {
+    await expect(checkbox).not.toBeChecked();
+  }
 };
 
 export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
-  await page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
-  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: filterValue,
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(filterValue.toLowerCase());
   await dataAssetDropdownRequest;
   await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
-  await page.getByTestId('update-btn').click();
+
+  // Legacy mode commits + closes on Update; immediate-apply commits on check but
+  // leaves the dropdown open, so close it via its trigger to match the helper's
+  // post-condition (results interactable for callers).
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    await updateButton.click();
+  } else {
+    await page.getByRole('button', { name: 'Data Assets' }).click();
+  }
 };
 
 export const validateBucketsForIndex = async (page: Page, index: string) => {
@@ -171,15 +195,20 @@ export const expandServiceInExploreTree = async (
   serviceExpanded = false
 ) => {
   if (!serviceExpanded) {
-    // Check that the service exists in the explore tree
+    // Expanding the serviceType groups its services. The service drill-down
+    // goes through the aggregate API (POST /search/aggregate) so the buckets
+    // carry service.style top hits for custom service icons.
+    // eslint-disable-next-line openmetadata-playwright/require-aggregation-wait-helper -- not a facet dropdown: the tree drill-down is a POST aggregate with no field/value pair for waitForAggregation to discriminate on
     const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+      (response) =>
+        response.url().endsWith('/api/v1/search/aggregate') &&
+        response.request().method() === 'POST'
     );
+    // Tree rows carry count badges, so match by testid instead of exact text
     await page
-      .locator('div')
-      .filter({ hasText: /^mysql$/ })
-      .locator('svg')
-      .first()
+      .locator('.ant-tree-treenode')
+      .filter({ has: page.getByTestId('explore-tree-title-mysql') })
+      .locator('.ant-tree-switcher svg')
       .click();
     await serviceNameRes;
   }
@@ -302,15 +331,15 @@ export const validateBucketsForIndexAndSort = async (
 };
 
 export const selectSortOrder = async (page: Page, sortOrder: string) => {
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('sorting-dropdown-label').click();
-  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+  await page.getByRole('menuitemradio', { name: sortOrder }).waitFor({
     state: 'visible',
   });
   const nameFilter = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
   );
-  await page.getByRole('menuitem', { name: sortOrder }).click();
+  await page.getByRole('menuitemradio', { name: sortOrder }).click();
   await nameFilter;
 
   await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
@@ -322,19 +351,22 @@ export const selectSortOrder = async (page: Page, sortOrder: string) => {
   );
   await page.getByTestId('sort-order-button').click();
   await ascSortOrder;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyEntitiesAreSorted = async (page: Page) => {
   // Wait for search results to be stable after sort
-  await page.waitForSelector('[data-testid="search-results"]', {
+  await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });
 
-  const entityNames = await page.$$eval(
-    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
-    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
-  );
+  const entityNames = (
+    await page
+      .locator(
+        '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
+      )
+      .allTextContents()
+  ).map((name) => name.trim());
 
   // Elasticsearch keyword field with case-insensitive sorting
   const sortedEntityNames = [...entityNames].sort((a, b) => {
@@ -353,19 +385,64 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
   expect(entityNames).toEqual(sortedEntityNames);
 };
 
-export const navigateToExploreAndSelectEntity = async (
-  page: Page,
-  entityName: string,
-  endpoint?: string,
-  fullyQualifiedName?: string
-) => {
+export const navigateToExploreAndSelectEntity = async ({
+  page,
+  entityName,
+  endpoint,
+  fullyQualifiedName,
+  exploreTab,
+  dataAssetTypeLeftPanelTestId,
+}: {
+  page: Page;
+  entityName: string;
+  endpoint?: string;
+  fullyQualifiedName?: string;
+  exploreTab?: string;
+  dataAssetTypeLeftPanelTestId?: string;
+}) => {
   await redirectToExplorePage(page);
 
   await expect(page.locator('[data-testid="loader"]')).toHaveCount(0, {
     timeout: 30000,
   });
 
-  await openEntitySummaryPanel(page, entityName, endpoint, fullyQualifiedName);
+  await openEntitySummaryPanel({
+    page,
+    entityName,
+    endpoint,
+    fullyQualifiedName,
+    exploreTab,
+    dataAssetTypeLeftPanelTestId,
+  });
+};
+
+export const getExportModalContent = (page: Page) =>
+  page.getByTestId('export-scope-modal').locator('.ant-modal-content');
+
+export const openExportScopeModal = async (page: Page) => {
+  await page.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitemradio', { name: 'Export' }).click();
+
+  await expect(getExportModalContent(page)).toBeVisible();
+};
+
+export const countCsvResponseRows = (csvText: string): number =>
+  csvText.split('\n').filter((line: string) => line.trim().length > 0).length -
+  1;
+
+export const getExportCountFromModal = async (
+  modalContent: Locator,
+  testId: string
+): Promise<number> => {
+  const countLocator = modalContent.getByTestId(testId);
+
+  await expect(countLocator).toBeVisible();
+  await expect(countLocator).toContainText(/\(\d[\d,]* Results?\)/);
+
+  const text = await countLocator.textContent();
+  const match = text?.match(/(\d[\d,]*)/);
+
+  return match ? parseInt(match[1].replace(/,/g, ''), 10) : 0;
 };
 
 export const getFlatColumnCountOfTable = (

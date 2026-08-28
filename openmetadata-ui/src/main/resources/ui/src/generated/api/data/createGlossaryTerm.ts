@@ -15,6 +15,10 @@
  */
 export interface CreateGlossaryTerm {
     /**
+     * Optional mappings to external concepts (e.g., SKOS alignments).
+     */
+    conceptMappings?: ConceptMapping[];
+    /**
      * Description of the glossary term.
      */
     description: string;
@@ -23,6 +27,10 @@ export interface CreateGlossaryTerm {
      */
     displayName?: string;
     /**
+     * Fully qualified names of the domains the Glossary Term belongs to.
+     */
+    domains?: string[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -30,6 +38,11 @@ export interface CreateGlossaryTerm {
      * FullyQualifiedName of the glossary that this term is part of.
      */
     glossary: string;
+    /**
+     * Canonical IRI of this term in its source ontology. Preserves identity across ontology
+     * import/export round-trips.
+     */
+    iri?: string;
     /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When
@@ -71,6 +84,42 @@ export interface CreateGlossaryTerm {
      * Tags for this glossary term.
      */
     tags?: TagLabel[];
+}
+
+/**
+ * Mapping to an external concept (e.g., SKOS concept IRI).
+ */
+export interface ConceptMapping {
+    /**
+     * External concept IRI to map this glossary term to.
+     */
+    conceptIri: string;
+    /**
+     * Type of mapping used for the external concept alignment.
+     */
+    mappingType: ConceptMappingType;
+    /**
+     * Optional external concept scheme IRI for the mapped concept.
+     */
+    schemeIri?: string;
+    /**
+     * Optional source label or catalog for the external concept.
+     */
+    source?: string;
+}
+
+/**
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
+ */
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
 }
 
 /**
@@ -270,6 +319,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

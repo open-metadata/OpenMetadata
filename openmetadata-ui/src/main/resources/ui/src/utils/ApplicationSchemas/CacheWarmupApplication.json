@@ -1,0 +1,111 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/cacheWarmupApp.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cache Warmup Application",
+  "type": "object",
+  "description": "Cache Warmup Application Configuration.",
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "type": "string",
+      "enum": ["CacheWarmup"],
+      "default": "CacheWarmup"
+    },
+    "entities": {
+      "title": "Entities",
+      "description": "List of entity types to warm up in cache. Use 'all' to warm up all entity types.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "all",
+          "table",
+          "databaseSchema",
+          "container",
+          "testSuite",
+          "mlmodelService",
+          "pipelineService",
+          "messagingService",
+          "entityReportData",
+          "ingestionPipeline",
+          "database",
+          "metadataService",
+          "searchService",
+          "aggregatedCostAnalysisReportData",
+          "tag",
+          "dashboard",
+          "rawCostAnalysisReportData",
+          "webAnalyticEntityViewReportData",
+          "storedProcedure",
+          "dataProduct",
+          "databaseService",
+          "dashboardService",
+          "driveService",
+          "query",
+          "queryCostRecord",
+          "apiService",
+          "searchIndex",
+          "testCaseResult",
+          "apiCollection",
+          "team",
+          "mlmodel",
+          "classification",
+          "glossaryTerm",
+          "testCaseResolutionStatus",
+          "dashboardDataModel",
+          "pipeline",
+          "glossary",
+          "apiEndpoint",
+          "storageService",
+          "metric",
+          "webAnalyticUserActivityReportData",
+          "domain",
+          "topic",
+          "chart",
+          "testCase",
+          "directory",
+          "file",
+          "spreadsheet",
+          "worksheet"
+        ]
+      },
+      "default": ["all"],
+      "uiFieldType": "treeSelect",
+      "uniqueItems": true
+    },
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Number of entities to process in each batch.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 10,
+      "maximum": 1000
+    },
+    "warmBundles": {
+      "title": "Warm Read Bundles",
+      "description": "Pre-warm the per-entity bundle cache (tags + certification) so the first read after deploy doesn't fan out to the DB. Disable for very large installs.",
+      "type": "boolean",
+      "default": true
+    },
+    "warmRelationships": {
+      "title": "Warm Relationships",
+      "description": "Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles. This adds extra relationship-table and entity-reference reads during warmup, so enable it only when first-read relationship latency matters.",
+      "type": "boolean",
+      "default": false
+    },
+    "enableDistributedClaim": {
+      "title": "Enable Distributed Claim",
+      "description": "In multi-instance deployments, claim each entity type via Redis SETNX so only one instance warms it. Disable to let every instance warm independently (idempotent but redundant).",
+      "type": "boolean",
+      "default": false
+    },
+    "force": {
+      "title": "Force Warmup",
+      "description": "Force cache warmup even if another instance is detected (use with caution).",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

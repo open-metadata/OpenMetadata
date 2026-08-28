@@ -1,0 +1,550 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StorageServiceMetadataPipeline",
+  "description": "StorageService Metadata Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "storageMetadataConfigType": {
+      "description": "Object Store Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": [
+        "StorageMetadata"
+      ],
+      "default": "StorageMetadata"
+    },
+    "noMetadataConfigurationSource": {
+      "title": "No Global Manifest",
+      "description": "No manifest file available. Ingestion would look for bucket-level metadata file instead",
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/storageMetadataConfigType",
+      "default": "StorageMetadata"
+    },
+    "containerFilterPattern": {
+      "description": "Regex to only fetch containers that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "storageMetadataConfigSource": {
+      "mask": true,
+      "title": "Storage Metadata Configuration Source",
+      "description": "Global manifest source. When configured, entries here take precedence over any bucket-level openmetadata.json and over defaultManifest for buckets whose containerName matches.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/noMetadataConfigurationSource"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Storage Metadata Local Config",
+          "description": "Storage Metadata Manifest file path config.",
+          "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataLocalConfig",
+          "type": "object",
+          "properties": {
+            "manifestFilePath": {
+              "title": "Storage Metadata Manifest File Path",
+              "description": "Storage Metadata manifest file path to extract locations to ingest from.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "manifestFilePath"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Storage Metadata Http Config",
+          "description": "Storage Metadata Manifest file HTTP path config.",
+          "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataHttpConfig",
+          "type": "object",
+          "properties": {
+            "manifestHttpPath": {
+              "title": "Storage Metadata Manifest HTTP Path",
+              "description": "Storage Metadata manifest http file path to extract locations to ingest from.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "manifestHttpPath"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Storage Metadata S3 Config",
+          "description": "Storage Metadata Manifest file S3 path config.",
+          "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config",
+          "type": "object",
+          "properties": {
+            "securityConfig": {
+              "title": "S3 Security Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "AWS credentials configs.",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+              "properties": {
+                "enabled": {
+                  "title": "Enable IAM Auth",
+                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "awsAccessKeyId": {
+                  "title": "AWS Access Key ID",
+                  "description": "AWS Access key ID.",
+                  "type": "string"
+                },
+                "awsSecretAccessKey": {
+                  "title": "AWS Secret Access Key",
+                  "description": "AWS Secret Access Key.",
+                  "type": "string",
+                  "format": "password"
+                },
+                "awsRegion": {
+                  "title": "AWS Region",
+                  "description": "AWS Region",
+                  "type": "string"
+                },
+                "awsSessionToken": {
+                  "title": "AWS Session Token",
+                  "description": "AWS Session Token.",
+                  "type": "string"
+                },
+                "endPointURL": {
+                  "title": "Endpoint URL",
+                  "description": "EndPoint URL for the AWS",
+                  "type": "string",
+                  "format": "uri"
+                },
+                "profileName": {
+                  "title": "Profile Name",
+                  "description": "The name of a profile to use with the boto session.",
+                  "type": "string"
+                },
+                "assumeRoleArn": {
+                  "title": "Role Arn for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                  "type": "string"
+                },
+                "assumeRoleSessionName": {
+                  "title": "Role Session Name for Assume Role",
+                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                  "type": "string",
+                  "default": "OpenMetadataSession"
+                },
+                "assumeRoleSourceIdentity": {
+                  "title": "Source Identity for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "awsRegion"
+              ]
+            },
+            "prefixConfig": {
+              "title": "Storage Metadata Prefix Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Details of the bucket where the storage metadata manifest file is stored",
+              "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
+              "type": "object",
+              "properties": {
+                "containerName": {
+                  "title": "Storage Metadata Container Name",
+                  "description": "Name of the top level container where the storage metadata file is stored",
+                  "type": "string"
+                },
+                "objectPrefix": {
+                  "title": "Storage Metadata Object Prefix",
+                  "description": "Path of the folder where the storage metadata file is stored. If the file is at the root, you can keep it empty.",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "containerName"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "prefixConfig"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Storage Metadata ADLS Config",
+          "description": "Storage Metadata Manifest file ADLS path config.",
+          "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig",
+          "type": "object",
+          "properties": {
+            "securityConfig": {
+              "title": "ADLS Security Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Azure Cloud Credentials",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+              "properties": {
+                "clientId": {
+                  "title": "Client ID",
+                  "description": "Your Service Principal App ID (Client ID)",
+                  "type": "string"
+                },
+                "clientSecret": {
+                  "title": "Client Secret",
+                  "description": "Your Service Principal Password (Client Secret)",
+                  "type": "string",
+                  "format": "password"
+                },
+                "tenantId": {
+                  "title": "Tenant ID",
+                  "description": "Tenant ID of your Azure Subscription",
+                  "type": "string"
+                },
+                "accountName": {
+                  "title": "Storage Account Name",
+                  "description": "Account Name of your storage account",
+                  "type": "string"
+                },
+                "vaultName": {
+                  "title": "Key Vault Name",
+                  "description": "Key Vault Name",
+                  "type": "string"
+                },
+                "scopes": {
+                  "title": "Scopes",
+                  "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "prefixConfig": {
+              "title": "Storage Metadata Prefix Config",
+              "$ref": "#/properties/storageMetadataConfigSource/oneOf/3/properties/prefixConfig"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "prefixConfig"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Storage Metadata GCS Config",
+          "description": "Storage Metadata Manifest file GCS path config.",
+          "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig",
+          "type": "object",
+          "properties": {
+            "securityConfig": {
+              "title": "GCS Security Config",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "GCP credentials configs.",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
+              "definitions": {
+                "gcpADC": {
+                  "title": "GCP Application Default Credentials",
+                  "description": "Use the application default credentials",
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "title": "Credentials Type",
+                      "description": "Google Cloud Platform ADC ( Application Default Credentials )",
+                      "type": "string",
+                      "default": "gcp_adc",
+                      "const": "gcp_adc"
+                    },
+                    "projectId": {
+                      "title": "GCP Project ID",
+                      "description": "GCP Project ID to parse metadata from",
+                      "oneOf": [
+                        {
+                          "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                        },
+                        {
+                          "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                        }
+                      ],
+                      "default": null
+                    }
+                  }
+                },
+                "gcpCredentialsPath": {
+                  "title": "GCP Credentials Path",
+                  "description": "Pass the path of file containing the GCP credentials info",
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "title": "Credentials Type",
+                      "description": "Google Cloud Platform account type.",
+                      "type": "string",
+                      "default": "gcp_credential_path",
+                      "const": "gcp_credential_path"
+                    },
+                    "path": {
+                      "title": "Path",
+                      "description": "Path of the file containing the GCP credentials info",
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "title": "GCP Project ID",
+                      "description": "GCP Project ID to parse metadata from",
+                      "oneOf": [
+                        {
+                          "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                        },
+                        {
+                          "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                        }
+                      ],
+                      "default": null
+                    }
+                  }
+                },
+                "GCPImpersonateServiceAccountValues": {
+                  "title": "GCP impersonate service account values",
+                  "description": "Pass the values to impersonate a service account of Google Cloud",
+                  "type": "object",
+                  "properties": {
+                    "impersonateServiceAccount": {
+                      "title": "Target Service Account Email",
+                      "description": "The impersonated service account email",
+                      "type": "string"
+                    },
+                    "lifetime": {
+                      "title": "Lifetime",
+                      "description": "Number of seconds the delegated credential should be valid",
+                      "type": "integer",
+                      "default": 3600
+                    }
+                  }
+                }
+              },
+              "properties": {
+                "gcpConfig": {
+                  "title": "GCP Credentials Configuration",
+                  "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
+                  "oneOf": [
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
+                      "title": "GCP Credentials Values",
+                      "description": "Pass the raw credential values provided by GCP",
+                      "definitions": {
+                        "singleProjectId": {
+                          "title": "Single Project ID",
+                          "type": "string"
+                        },
+                        "multipleProjectId": {
+                          "title": "Multiple Project ID",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "service_account",
+                          "const": "service_account"
+                        },
+                        "projectId": {
+                          "title": "Project ID",
+                          "description": "Project ID",
+                          "oneOf": [
+                            {
+                              "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                            },
+                            {
+                              "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                            }
+                          ]
+                        },
+                        "privateKeyId": {
+                          "title": "Private Key ID",
+                          "description": "Google Cloud private key id.",
+                          "type": "string"
+                        },
+                        "privateKey": {
+                          "title": "Private Key",
+                          "description": "Google Cloud private key.",
+                          "type": "string",
+                          "format": "password",
+                          "uiFieldType": "fileOrInput"
+                        },
+                        "clientEmail": {
+                          "title": "Client Email",
+                          "description": "Google Cloud email.",
+                          "type": "string"
+                        },
+                        "clientId": {
+                          "title": "Client ID",
+                          "description": "Google Cloud Client ID.",
+                          "type": "string"
+                        },
+                        "authUri": {
+                          "title": "Authentication URI",
+                          "description": "Google Cloud auth uri.",
+                          "type": "string",
+                          "format": "uri",
+                          "default": "https://accounts.google.com/o/oauth2/auth"
+                        },
+                        "tokenUri": {
+                          "title": "Token URI",
+                          "description": "Google Cloud token uri.",
+                          "type": "string",
+                          "format": "uri",
+                          "default": "https://oauth2.googleapis.com/token"
+                        },
+                        "authProviderX509CertUrl": {
+                          "title": "Authentication Provider x509 Certificate URL",
+                          "description": "Google Cloud auth provider certificate.",
+                          "type": "string",
+                          "format": "uri",
+                          "default": "https://www.googleapis.com/oauth2/v1/certs"
+                        },
+                        "clientX509CertUrl": {
+                          "title": "Client x509 Certificate URL",
+                          "description": "Google Cloud client certificate uri.",
+                          "type": "string",
+                          "format": "uri"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/definitions/gcpCredentialsPath"
+                    },
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
+                      "title": "GCP External Account",
+                      "description": "Pass the raw credential values provided by GCP",
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "external_account",
+                          "const": "external_account"
+                        },
+                        "externalType": {
+                          "title": "GCP Account Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "external_account",
+                          "const": "external_account"
+                        },
+                        "audience": {
+                          "title": "Audience",
+                          "description": "Google Security Token Service audience which contains the resource name for the workload identity pool and the provider identifier in that pool.",
+                          "type": "string"
+                        },
+                        "subjectTokenType": {
+                          "title": "Subject Token Type",
+                          "description": "Google Security Token Service subject token type based on the OAuth 2.0 token exchange spec.",
+                          "type": "string"
+                        },
+                        "tokenURL": {
+                          "title": "Token URL",
+                          "description": "Google Security Token Service token exchange endpoint.",
+                          "type": "string"
+                        },
+                        "credentialSource": {
+                          "title": "Credential Source",
+                          "description": "This object defines the mechanism used to retrieve the external credential from the local environment so that it can be exchanged for a GCP access token via the STS endpoint",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.credentialSource",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/definitions/gcpADC"
+                    }
+                  ]
+                },
+                "gcpImpersonateServiceAccount": {
+                  "title": "GCP Impersonate Service Account Configuration",
+                  "description": "we enable the authenticated service account to impersonate another service account",
+                  "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/definitions/GCPImpersonateServiceAccountValues"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "gcpConfig"
+              ]
+            },
+            "prefixConfig": {
+              "title": "Storage Metadata Prefix Config",
+              "$ref": "#/properties/storageMetadataConfigSource/oneOf/3/properties/prefixConfig"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "prefixConfig"
+          ]
+        }
+      ]
+    },
+    "markDeletedContainers": {
+      "description": "Optional configuration to soft delete containers in OpenMetadata if the source containers are deleted. Also, if the topic is deleted, all the associated entities with that containers will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Containers"
+    },
+    "overrideMetadata": {
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "includeTags": {
+      "description": "Optional configuration to toggle the tags ingestion.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include Tags"
+    },
+    "defaultManifest": {
+      "title": "Default Manifest (JSON)",
+      "description": "Fallback manifest applied to any bucket that does not have its own openmetadata.json file. If a bucket has a manifest file, that file takes precedence and this value is ignored for that bucket. Paste the same JSON you would place in a bucket's openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.",
+      "type": "string",
+      "uiFieldType": "code",
+      "format": "json",
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

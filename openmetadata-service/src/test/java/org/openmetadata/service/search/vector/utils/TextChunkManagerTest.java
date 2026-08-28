@@ -63,7 +63,7 @@ class TextChunkManagerTest {
   @Test
   void testHandlesTextWithExactlyWordLimit() {
     StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < 380; i++) sb.append("a ");
+    sb.append("a ".repeat(380));
     String input = sb.toString();
     List<String> result = TextChunkManager.chunk(input);
     assertEquals(1, result.size());

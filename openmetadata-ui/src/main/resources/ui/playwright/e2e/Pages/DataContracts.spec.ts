@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -73,7 +74,7 @@ import {
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
-  waitForDataContractExecution,
+  waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
 import {
   addOwner,
@@ -85,8 +86,8 @@ import {
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { submitTestCaseForm } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -122,7 +123,7 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Data Contracts', () => {
   const user = new UserClass();
   test.slow(true);
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -138,11 +139,14 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
+    const testDetails = entitySupportsQuality(entityType)
+      ? PLAYWRIGHT_INGESTION_TAG_OBJ
+      : {};
+    const testTitle = `Create Data Contract and validate for ${entityType}`;
 
-    test(`Create Data Contract and validate for ${entityType}`, async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(testTitle, testDetails, async ({ page }) => {
+      // 12-min timeout so waitForDataContractExecution completes first.
+      test.setTimeout(900_000);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
@@ -181,7 +185,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         // Add owner using created user to verify displayName is shown in UserTag
         await addOwnerWithoutValidation({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           initiatorId: 'select-owners',
         });
@@ -189,7 +193,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         // Verify the UserTag shows the user's displayName (not name)
         await expect(page.getByTestId('user-tag')).toBeVisible();
         await expect(
-          page.getByTestId('user-tag').getByText(user.responseData.displayName)
+          page.getByTestId('user-tag').getByText(user.getUserDisplayName())
         ).toBeVisible();
       });
 
@@ -246,19 +250,19 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         const ruleLocator = page.locator('.group').nth(0);
         await selectOption(
           page,
-          ruleLocator.locator('.group--field .ant-select'),
+          ruleLocator.locator('.group--field'),
           DATA_CONTRACT_SEMANTICS1.rules[0].field,
           true
         );
         await selectOption(
           page,
-          ruleLocator.locator('.rule--operator .ant-select'),
+          ruleLocator.locator('.rule--operator'),
           DATA_CONTRACT_SEMANTICS1.rules[0].operator
         );
         await selectOption(
           page,
-          ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.displayName,
+          ruleLocator.locator('.rule--value'),
+          user.getUserDisplayName(),
           true
         );
         await page.getByRole('button', { name: 'Add New Rule' }).click();
@@ -268,13 +272,13 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         const ruleLocator2 = page.locator('.rule').nth(1);
         await selectOption(
           page,
-          ruleLocator2.locator('.rule--field .ant-select'),
+          ruleLocator2.locator('.rule--field'),
           DATA_CONTRACT_SEMANTICS1.rules[1].field,
           true
         );
         await selectOption(
           page,
-          ruleLocator2.locator('.rule--operator .ant-select'),
+          ruleLocator2.locator('.rule--operator'),
           DATA_CONTRACT_SEMANTICS1.rules[1].operator
         );
         await page.getByTestId('save-semantic-button').click();
@@ -307,13 +311,13 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         const ruleLocator3 = page.locator('.group').nth(2);
         await selectOption(
           page,
-          ruleLocator3.locator('.group--field .ant-select'),
+          ruleLocator3.locator('.group--field'),
           DATA_CONTRACT_SEMANTICS2.rules[0].field,
           true
         );
         await selectOption(
           page,
-          ruleLocator3.locator('.rule--operator .ant-select'),
+          ruleLocator3.locator('.rule--operator'),
           DATA_CONTRACT_SEMANTICS2.rules[0].operator
         );
         await page.getByTestId('save-semantic-button').click();
@@ -337,8 +341,14 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       });
 
       await test.step('Save contract and validate for semantics', async () => {
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+        // save and trigger contract validation; the utility now polls the API
+        // until the result is terminal before reloading, so the status check
+        // below is reliable even when the backend is slow.
+        const contractData = await saveAndTriggerDataContractValidation(
+          page,
+          true
+        );
+        const contractId = (contractData as { id?: string })?.id;
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -352,24 +362,28 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         await addOwner({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           endpoint: entity.endpoint,
           dataTestId: 'data-assets-header',
         });
 
-        await triggerContractValidation(page);
+        // Register before clicking so the observer is already attached when
+        // the toast appears — avoids a race where the page reloads after the
+        // API response and closes the page context before waitFor is called.
+        const toastPromise = page
+          .getByTestId('alert-bar')
+          .getByText('Contract validation trigger successfully.')
+          .waitFor({ state: 'visible' });
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        // Pass contractId so the utility polls for the terminal state before
+        // returning, making the 'Passed' assertion below reliable.
+        await triggerContractValidation(page, contractId);
+        await toastPromise;
 
         await page.reload();
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -388,29 +402,21 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           await expect(page.getByRole('dialog')).toBeVisible();
 
           await page.fill(
-            '[data-testid="test-case-name"]',
+            '[data-testid="test-case-name"] input',
             NEW_TABLE_TEST_CASE.name
           );
 
           await page.locator('[id="root\\/testType"]').click();
 
-          const dropdown = page.locator('.rc-virtual-list-holder-inner');
+          const testTypeOption = page
+            .getByRole('option')
+            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
+            .first();
 
-          await expect(dropdown).toBeVisible();
+          await expect(testTypeOption).toBeVisible();
 
-          for (let i = 0; i < 20; i++) {
-            const optionVisible = await dropdown
-              .getByText(NEW_TABLE_TEST_CASE.label)
-              .isVisible();
-            if (optionVisible) {
-              break;
-            }
-            await dropdown.press('ArrowDown');
-          }
+          await testTypeOption.click();
 
-          await dropdown.getByText(NEW_TABLE_TEST_CASE.label).click();
-
-          await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
           await page.fill(
             '#testCaseFormV1_params_columnCount',
             NEW_TABLE_TEST_CASE.value
@@ -422,10 +428,12 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
             testTag.data.name
           );
           await page
-            .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+            .getByTestId(
+              `tag-option-${testTag.responseData.fullyQualifiedName}`
+            )
             .click();
 
-          await page.getByRole('heading', { name: 'Tags' }).click();
+          await page.keyboard.press('Escape');
 
           await page.click('[data-testid="glossary-terms-selector"] input');
           await page.fill(
@@ -435,42 +443,28 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
           await page
             .getByTestId(
-              `tag-${testGlossaryTerm.responseData.fullyQualifiedName}`
+              `tag-option-${testGlossaryTerm.responseData.fullyQualifiedName}`
             )
             .click();
 
-          await page.getByRole('heading', { name: 'Glossary Terms' }).click();
-
-          await page.getByTestId('pipeline-name').fill('test-pipeline');
+          await page.keyboard.press('Escape');
 
           await page
-            .locator('.selection-title', { hasText: 'On Demand' })
-            .click();
+            .getByTestId('pipeline-name')
+            .locator('input')
+            .fill('test-pipeline');
+
+          await page.getByTestId('schedular-on-demand').click();
 
           await expect(page.locator('.expression-text')).toContainText(
             'Pipeline will only be triggered manually.'
           );
 
-          const pipelineResponse = page.waitForResponse(
-            '/api/v1/services/ingestionPipelines'
-          );
-          const deploy = page.waitForResponse(
-            '/api/v1/services/ingestionPipelines/deploy/*'
-          );
-
-          const testCaseResponse = page.waitForResponse(
-            '/api/v1/dataQuality/testCases'
-          );
-          await page.click('[data-testid="create-btn"]');
-          await testCaseResponse;
-          await pipelineResponse;
-          await deploy;
+          await submitTestCaseForm(page);
 
           await expect(page.getByRole('dialog')).not.toBeVisible();
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await expect(
             page
@@ -489,41 +483,38 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           // save and trigger contract validation
           const response = await saveAndTriggerDataContractValidation(page);
 
+          // The test suite results may be available before the contract's latestResult is
+          // updated. If waitForDataContractExecution times out, fall back to the DataQuality
+          // page to verify the test suite ran successfully.
           if (
             typeof response === 'object' &&
             response !== null &&
-            'latestResult' in response
+            'id' in response
           ) {
-            const {
-              id: contractId,
-              latestResult: { resultId: latestResultId },
-            } = response;
+            const { id: contractId } = response as { id: string };
 
-            if (contractId && latestResultId) {
-              await waitForDataContractExecution(
-                page,
-                contractId,
-                latestResultId
-              );
+            if (contractId) {
+              const contractResultVisible =
+                await waitForContractExecutionWithFallback(
+                  page,
+                  contractId,
+                  DATA_CONTRACT_DETAILS.name
+                );
+
+              if (contractResultVisible) {
+                await expect(
+                  page.getByTestId('data-contract-latest-result-btn')
+                ).toBeVisible();
+              }
             }
           }
-
-          await expect(
-            page.getByTestId('data-contract-latest-result-btn')
-          ).toBeVisible();
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
-          await validateDataContractInsideBundleTestSuites(page);
-
-          await expect(
-            page
-              .getByTestId('test-suite-table')
-              .locator('.ant-table-cell')
-              .filter({
-                hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
-              })
-          ).toBeVisible();
+          await validateDataContractInsideBundleTestSuites(
+            page,
+            DATA_CONTRACT_DETAILS.name
+          );
         });
 
         await test.step('Edit quality expectations from the data contract and validate', async () => {
@@ -540,9 +531,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           await page.getByRole('tab', { name: 'Quality' }).click();
 
           await qualityResponse;
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await page
             .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -623,9 +612,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
             .getByText('Schema')
             .click();
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await page.getByRole('checkbox', { name: 'Select all' }).click();
 
@@ -679,9 +666,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await toastNotification(page, '"Contract" deleted successfully!');
 
         await contractRefreshResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -709,9 +694,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await toastNotification(page, '"Contract" deleted successfully!');
 
         await contractRefreshResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
@@ -747,9 +730,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         const response = await contractRefreshResponse;
         expect(response.status()).toBe(404);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
@@ -768,9 +749,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
       });
 
       await test.step('Open contract section and start adding contract', async () => {
@@ -795,9 +774,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           .click();
 
         await columnResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -816,9 +793,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await page.getByTestId('next').click();
 
         await columnResponse2;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -837,9 +812,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await page.getByTestId('next').click();
 
         await columnResponse3;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -861,8 +834,21 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       });
 
       await test.step('Save contract and validate for schema', async () => {
+        const saveResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts') &&
+            response.request().method() === 'POST'
+        );
+        const getResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await page.getByTestId('save-contract-btn').click();
-        await page.waitForResponse('/api/v1/dataContracts/*');
+
+        await saveResponsePromise;
+        await getResponsePromise;
 
         // Check all schema from 1 to 50, and 10 is the max-pagination chip
         await expect(page.getByTitle('10')).toBeVisible();
@@ -898,9 +884,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           .click();
 
         await columnResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -926,7 +910,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await test.step('Re-select some columns on page 1, save and validate', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
@@ -941,9 +925,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           .click();
 
         await columnResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         for (let i = 1; i <= 5; i++) {
           await page
@@ -976,9 +958,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await navigateToContractTab(page);
 
@@ -1044,18 +1024,18 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.group--field .ant-select'),
+      ruleLocator.locator('.group--field'),
       DATA_CONTRACT_CONTAIN_SEMANTICS.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.locator('.rule--operator'),
       DATA_CONTRACT_CONTAIN_SEMANTICS.rules[0].operator
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--value .ant-select'),
+      ruleLocator.locator('.rule--value'),
       'Tier.Tier1',
       true
     );
@@ -1066,19 +1046,19 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       DATA_CONTRACT_CONTAIN_SEMANTICS.rules[1].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.locator('.rule--operator'),
       DATA_CONTRACT_CONTAIN_SEMANTICS.rules[1].operator
     );
 
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--value .ant-select'),
+      ruleLocator2.locator('.rule--value'),
       testTag.responseData.name,
       true
     );
@@ -1092,19 +1072,19 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator3 = page.locator('.rule').nth(2);
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--field .ant-select'),
+      ruleLocator3.locator('.rule--field'),
       DATA_CONTRACT_CONTAIN_SEMANTICS.rules[2].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--operator .ant-select'),
+      ruleLocator3.locator('.rule--operator'),
       DATA_CONTRACT_CONTAIN_SEMANTICS.rules[2].operator
     );
 
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--value .ant-select'),
+      ruleLocator3.locator('.rule--value'),
       testGlossaryTerm.responseData.name,
       true
     );
@@ -1128,8 +1108,14 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
 
-    // save and trigger contract validation
-    await saveAndTriggerDataContractValidation(page, true);
+    // save and trigger contract validation; the utility now polls the API
+    // until the result is terminal before reloading, so the status check
+    // below is reliable even when the backend is slow.
+    const contractData1104 = await saveAndTriggerDataContractValidation(
+      page,
+      true
+    );
+    const contractId1104 = (contractData1104 as { id?: string })?.id;
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1159,15 +1145,22 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    // Pass contractId so the utility polls for the terminal state before
+    // returning, making the 'Passed' assertion below reliable.
+    await triggerContractValidation(page, contractId1104);
+    await toastPromise;
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1224,18 +1217,18 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.group--field .ant-select'),
+      ruleLocator.locator('.group--field'),
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.locator('.rule--operator'),
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[0].operator
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--value .ant-select'),
+      ruleLocator.locator('.rule--value'),
       'Tier.Tier1',
       true
     );
@@ -1246,19 +1239,19 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[1].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.locator('.rule--operator'),
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[1].operator
     );
 
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--value .ant-select'),
+      ruleLocator2.locator('.rule--value'),
       testTag.responseData.name,
       true
     );
@@ -1272,19 +1265,19 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator3 = page.locator('.rule').nth(2);
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--field .ant-select'),
+      ruleLocator3.locator('.rule--field'),
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[2].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--operator .ant-select'),
+      ruleLocator3.locator('.rule--operator'),
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[2].operator
     );
 
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--value .ant-select'),
+      ruleLocator3.locator('.rule--value'),
       testGlossaryTerm.responseData.name,
       true
     );
@@ -1308,8 +1301,14 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
 
-    // save and trigger contract validation
-    await saveAndTriggerDataContractValidation(page, true);
+    // save and trigger contract validation; the utility now polls the API
+    // until the result is terminal before reloading, so the status check
+    // below is reliable even when the backend is slow.
+    const contractData1289 = await saveAndTriggerDataContractValidation(
+      page,
+      true
+    );
+    const contractId1289 = (contractData1289 as { id?: string })?.id;
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1336,15 +1335,22 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    // Pass contractId so the utility polls for the terminal state before
+    // returning, making the 'Failed' assertion below reliable.
+    await triggerContractValidation(page, contractId1289);
+    await toastPromise;
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1378,9 +1384,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     // First level column should be selectable
     await page
@@ -1497,7 +1501,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     // Run Contract After Schema Change should Fail
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.waitForSelector('.contract-action-dropdown', {
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -1505,9 +1509,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-schema-status')
@@ -1528,7 +1530,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.waitForSelector('.contract-action-dropdown', {
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
     await page.getByTestId('contract-edit-button').click();
@@ -1596,18 +1598,18 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.group--field .ant-select'),
+      ruleLocator.locator('.group--field'),
       DATA_CONTRACT_SEMANTICS1.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS1.rules[0].operator
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--value .ant-select'),
+      ruleLocator.locator('.rule--value'),
       'admin',
       true
     );
@@ -1618,13 +1620,13 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       DATA_CONTRACT_SEMANTICS1.rules[1].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS1.rules[1].operator
     );
     await page.getByTestId('save-semantic-button').click();
@@ -1661,9 +1663,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1678,18 +1678,18 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.group--field .ant-select'),
+      ruleLocator.locator('.group--field'),
       DATA_CONTRACT_SEMANTICS1.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS1.rules[0].operator
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--value .ant-select'),
+      ruleLocator.locator('.rule--value'),
       'admin',
       true
     );
@@ -1700,13 +1700,13 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       DATA_CONTRACT_SEMANTICS1.rules[1].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS1.rules[1].operator
     );
     await page.getByTestId('save-semantic-button').click();
@@ -1720,13 +1720,13 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator3 = page.locator('.group').nth(2);
     await selectOption(
       page,
-      ruleLocator3.locator('.group--field .ant-select'),
+      ruleLocator3.locator('.group--field'),
       DATA_CONTRACT_SEMANTICS2.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--operator .ant-select'),
+      ruleLocator3.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS2.rules[0].operator
     );
     await page.getByTestId('save-semantic-button').click();
@@ -1772,18 +1772,18 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.group--field .ant-select'),
+      ruleLocator.locator('.group--field'),
       DATA_CONTRACT_SEMANTICS1.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS1.rules[0].operator
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--value .ant-select'),
+      ruleLocator.locator('.rule--value'),
       'admin',
       true
     );
@@ -1832,18 +1832,18 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.group--field .ant-select'),
+      ruleLocator.locator('.group--field'),
       DATA_CONTRACT_SEMANTICS1.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS1.rules[0].operator
     );
     await selectOption(
       page,
-      ruleLocator.locator('.rule--value .ant-select'),
+      ruleLocator.locator('.rule--value'),
       'admin',
       true
     );
@@ -1858,13 +1858,13 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const ruleLocator3 = page.locator('.group').nth(2);
     await selectOption(
       page,
-      ruleLocator3.locator('.group--field .ant-select'),
+      ruleLocator3.locator('.group--field'),
       DATA_CONTRACT_SEMANTICS2.rules[0].field,
       true
     );
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--operator .ant-select'),
+      ruleLocator3.locator('.rule--operator'),
       DATA_CONTRACT_SEMANTICS2.rules[0].operator
     );
     await page.getByTestId('save-semantic-button').click();
@@ -1938,7 +1938,8 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         ).toContainText(
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
-          }`
+          }`,
+          { timeout: 30_000 }
         );
       }
 
@@ -1963,7 +1964,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
         )
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 30_000 });
 
       await openContractActionsDropdown(page);
       await page.getByTestId('contract-edit-button').click();
@@ -2013,7 +2014,8 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         ).toContainText(
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
-          },${filter.values[2]},${filter.values[3]}`
+          },${filter.values[2]},${filter.values[3]}`,
+          { timeout: 30_000 }
         );
       }
 
@@ -2040,7 +2042,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
         )
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 30_000 });
 
       await clickEditContractButton(page);
       await validateSecurityAndSLADetails(
@@ -2066,9 +2068,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-security-policy-container')
@@ -2115,7 +2115,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         // Click to import via the modal
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2125,9 +2125,6 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'update.yaml',
@@ -2149,16 +2146,17 @@ description:
         ).toBeVisible();
 
         // Verify merge is default selected
-        const mergeRadio = page.locator('input[type="radio"][value="merge"]');
-        await expect(mergeRadio).toBeVisible();
-        await expect(mergeRadio).toBeChecked();
+        await expect(page.getByTestId('import-mode-merge')).toBeVisible();
+        await expect(
+          page.locator('input[type="radio"][value="merge"]')
+        ).toBeChecked();
 
         // Import with merge mode
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=merge**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');
@@ -2198,7 +2196,7 @@ description:
       await test.step('Import again via modal with replace mode', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2208,9 +2206,6 @@ description:
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'replace.yaml',
@@ -2231,24 +2226,19 @@ description:
         ).toBeVisible();
 
         // Select replace mode
-        const replaceRadio = page.locator(
-          'input[type="radio"][value="replace"]'
-        );
-        await expect(replaceRadio).toBeVisible();
-        await replaceRadio.click();
+        await expect(page.getByTestId('import-mode-replace')).toBeVisible();
+        await page.getByTestId('import-mode-replace').click();
 
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=replace**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // SLA should NOT be visible (replace mode clears fields not in import)
         await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
@@ -2379,18 +2369,18 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               const ruleLocator = page.locator('.group').nth(0);
               await selectOption(
                 page,
-                ruleLocator.locator('.group--field .ant-select'),
+                ruleLocator.locator('.group--field'),
                 DATA_CONTRACT_SEMANTICS1.rules[0].field,
                 true
               );
               await selectOption(
                 page,
-                ruleLocator.locator('.rule--operator .ant-select'),
+                ruleLocator.locator('.rule--operator'),
                 DATA_CONTRACT_SEMANTICS1.rules[0].operator
               );
               await selectOption(
                 page,
-                ruleLocator.locator('.rule--value .ant-select'),
+                ruleLocator.locator('.rule--value'),
                 'admin',
                 true
               );
@@ -2424,7 +2414,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.waitForSelector('.ant-skeleton-content', {
+              await page.locator('.ant-skeleton-content').first().waitFor({
                 state: 'detached',
               });
 
@@ -2438,23 +2428,21 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               // Add user to persona
               await page.getByTestId('add-persona-button').click();
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               const searchUser = page.waitForResponse(
                 `/api/v1/search/query?q=*${encodeURIComponent(
-                  adminUser.responseData.displayName
+                  adminUser.getUserDisplayName()
                 )}*`
               );
               await page
                 .getByTestId('searchbar')
-                .fill(adminUser.responseData.displayName);
+                .fill(adminUser.getUserDisplayName());
               await searchUser;
 
               await page
                 .getByRole('listitem', {
-                  name: adminUser.responseData.displayName,
+                  name: adminUser.getUserDisplayName(),
                 })
                 .click();
 
@@ -2502,9 +2490,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
 
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               // Navigate to persona details and customize UI
               await navigateToPersonaWithPagination(
@@ -2525,9 +2511,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 })
                 .click();
 
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               // Hide the Contract tab
               await page.getByTestId('tab-contract').click();

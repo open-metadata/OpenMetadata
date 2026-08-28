@@ -13,12 +13,12 @@
 
 import { FieldProps } from '@rjsf/utils';
 import { render, screen, waitFor } from '@testing-library/react';
-import { getRoles } from '../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SsoRolesSelectField from './SsoRolesSelectField';
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
-  getRoles: jest.fn(),
+  searchRoles: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -29,17 +29,14 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const mockGetRoles = getRoles as jest.Mock;
+const mockSearchRoles = searchRoles as jest.Mock;
 const mockShowErrorToast = showErrorToast as jest.Mock;
 
-const mockRolesResponse = {
-  data: [
-    { name: 'Admin', displayName: 'Administrator' },
-    { name: 'DataSteward', displayName: 'Data Steward' },
-    { name: 'DataConsumer', displayName: '' },
-  ],
-  paging: { total: 3 },
-};
+const mockRolesResponse = [
+  { name: 'Admin', displayName: 'Administrator' },
+  { name: 'DataSteward', displayName: 'Data Steward' },
+  { name: 'DataConsumer', displayName: '' },
+];
 
 const mockOnChange = jest.fn();
 const mockOnBlur = jest.fn();
@@ -67,7 +64,7 @@ const rolesSelectProps: FieldProps = {
 describe('SsoRolesSelectField', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetRoles.mockResolvedValue(mockRolesResponse);
+    mockSearchRoles.mockResolvedValue(mockRolesResponse);
   });
 
   it('renders the roles select', async () => {
@@ -90,50 +87,42 @@ describe('SsoRolesSelectField', () => {
     });
   });
 
-  it('calls getRoles API on mount with correct arguments', async () => {
+  it('calls searchRoles API on mount with correct arguments', async () => {
     render(<SsoRolesSelectField {...rolesSelectProps} />);
 
     await waitFor(() => {
-      expect(mockGetRoles).toHaveBeenCalledTimes(1);
-      expect(mockGetRoles).toHaveBeenCalledWith(
-        '*',
-        undefined,
-        undefined,
-        true,
-        1000
-      );
+      expect(mockSearchRoles).toHaveBeenCalledTimes(1);
+      expect(mockSearchRoles).toHaveBeenCalledWith('');
     });
   });
 
   it('uses displayName as option label when available', async () => {
-    mockGetRoles.mockResolvedValue({
-      data: [{ name: 'Admin', displayName: 'Administrator' }],
-      paging: { total: 1 },
-    });
+    mockSearchRoles.mockResolvedValue([
+      { name: 'Admin', displayName: 'Administrator' },
+    ]);
 
     render(<SsoRolesSelectField {...rolesSelectProps} />);
 
     await waitFor(() => {
-      expect(mockGetRoles).toHaveBeenCalled();
+      expect(mockSearchRoles).toHaveBeenCalled();
     });
   });
 
   it('falls back to name as option label when displayName is empty', async () => {
-    mockGetRoles.mockResolvedValue({
-      data: [{ name: 'DataConsumer', displayName: '' }],
-      paging: { total: 1 },
-    });
+    mockSearchRoles.mockResolvedValue([
+      { name: 'DataConsumer', displayName: '' },
+    ]);
 
     render(<SsoRolesSelectField {...rolesSelectProps} />);
 
     await waitFor(() => {
-      expect(mockGetRoles).toHaveBeenCalled();
+      expect(mockSearchRoles).toHaveBeenCalled();
     });
   });
 
-  it('shows error toast when getRoles API call fails', async () => {
+  it('shows error toast when searchRoles API call fails', async () => {
     const apiError = new Error('Network error');
-    mockGetRoles.mockRejectedValue(apiError);
+    mockSearchRoles.mockRejectedValue(apiError);
 
     render(<SsoRolesSelectField {...rolesSelectProps} />);
 
@@ -197,7 +186,7 @@ describe('SsoRolesSelectField', () => {
   });
 
   it('renders with empty options list when API returns empty data', async () => {
-    mockGetRoles.mockResolvedValue({ data: [], paging: { total: 0 } });
+    mockSearchRoles.mockResolvedValue([]);
 
     render(<SsoRolesSelectField {...rolesSelectProps} />);
 
@@ -211,12 +200,12 @@ describe('SsoRolesSelectField', () => {
   });
 
   it('renders with empty options and no error toast when API returns null data', async () => {
-    mockGetRoles.mockResolvedValue({ data: null, paging: { total: 0 } });
+    mockSearchRoles.mockResolvedValue(null);
 
     render(<SsoRolesSelectField {...rolesSelectProps} />);
 
     await waitFor(() => {
-      expect(mockGetRoles).toHaveBeenCalled();
+      expect(mockSearchRoles).toHaveBeenCalled();
       expect(mockShowErrorToast).not.toHaveBeenCalled();
     });
   });

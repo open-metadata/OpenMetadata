@@ -106,6 +106,12 @@
       "description": "Regex to only fetch tags that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Tag Filter Pattern"
+    },
+    "includeMetrics": {
+      "title": "Include dbt Metrics",
+      "description": "Optional configuration to toggle the ingestion of dbt semantic layer metrics.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

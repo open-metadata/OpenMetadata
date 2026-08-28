@@ -15,8 +15,10 @@ package org.openmetadata.service.openlineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,17 +49,21 @@ import org.openmetadata.schema.type.LineageDetails;
 @Slf4j
 public class OpenLineageMapper {
 
+  private static final String OPEN_LINEAGE_USER = "openlineage";
+
   private final OpenLineageEntityResolver entityResolver;
   private final Set<String> allowedEventTypes;
 
   public OpenLineageMapper(OpenLineageEntityResolver entityResolver) {
-    this(entityResolver, (OpenLineageSettings) null);
+    this(entityResolver, null);
   }
 
   public OpenLineageMapper(OpenLineageEntityResolver entityResolver, OpenLineageSettings settings) {
     this.entityResolver = entityResolver;
 
-    if (settings != null && settings.getEventTypeFilter() != null) {
+    if (settings != null
+        && settings.getEventTypeFilter() != null
+        && !settings.getEventTypeFilter().isEmpty()) {
       this.allowedEventTypes =
           settings.getEventTypeFilter().stream()
               .map(OpenLineageEventType::value)
@@ -95,8 +101,16 @@ public class OpenLineageMapper {
 
     String sqlQuery = extractSqlQuery(event);
 
+    // eventTime is the pipeline runtime moment the edge was actually observed; preserving it
+    // lets historical replay (e.g. Kinesis backlog) reconstruct the real timeline rather than
+    // collapsing everything to ingestion wall-clock.
+    long eventTimeMs = resolveEventTimeMillis(event);
+
     for (OpenLineageOutputDataset output : outputs) {
       EntityReference outputRef = entityResolver.resolveOrCreateTable(output, updatedBy);
+      if (outputRef == null && entityResolver.isStorageDataset(output.getNamespace())) {
+        outputRef = entityResolver.resolveContainer(output.getNamespace(), output.getName());
+      }
       if (outputRef == null) {
         LOG.warn(
             "Could not resolve output dataset: {}.{}", output.getNamespace(), output.getName());
@@ -108,6 +122,9 @@ public class OpenLineageMapper {
 
       for (OpenLineageInputDataset input : inputs) {
         EntityReference inputRef = entityResolver.resolveOrCreateTable(input, updatedBy);
+        if (inputRef == null && entityResolver.isStorageDataset(input.getNamespace())) {
+          inputRef = entityResolver.resolveContainer(input.getNamespace(), input.getName());
+        }
         if (inputRef == null) {
           LOG.warn("Could not resolve input dataset: {}.{}", input.getNamespace(), input.getName());
           continue;
@@ -123,7 +140,11 @@ public class OpenLineageMapper {
                 .withDescription(buildDescription(event))
                 .withPipeline(pipelineRef)
                 .withSqlQuery(sqlQuery)
-                .withColumnsLineage(relevantColumnLineage.isEmpty() ? null : relevantColumnLineage);
+                .withColumnsLineage(relevantColumnLineage.isEmpty() ? null : relevantColumnLineage)
+                .withCreatedAt(eventTimeMs)
+                .withUpdatedAt(eventTimeMs)
+                .withCreatedBy(OPEN_LINEAGE_USER)
+                .withUpdatedBy(OPEN_LINEAGE_USER);
 
         AddLineage addLineage =
             new AddLineage()
@@ -148,11 +169,48 @@ public class OpenLineageMapper {
     return allowedEventTypes.contains(eventType.value());
   }
 
+  private static long resolveEventTimeMillis(OpenLineageRunEvent event) {
+    Date eventTime = event.getEventTime();
+    long resolved;
+    if (eventTime != null) {
+      resolved = eventTime.getTime();
+    } else {
+      Long nominalStart = parseNominalStartTime(event);
+      resolved = (nominalStart != null) ? nominalStart : System.currentTimeMillis();
+    }
+    return resolved;
+  }
+
+  private static Long parseNominalStartTime(OpenLineageRunEvent event) {
+    Long resolved = null;
+    OpenLineageRun run = event.getRun();
+    RunFacets facets = (run != null) ? run.getFacets() : null;
+    Map<String, Object> additional = (facets != null) ? facets.getAdditionalProperties() : null;
+    Object nominalTime = (additional != null) ? additional.get("nominalTime") : null;
+    if (nominalTime instanceof Map) {
+      Object nominalStart = ((Map<?, ?>) nominalTime).get("nominalStartTime");
+      if (nominalStart instanceof String) {
+        try {
+          resolved = Instant.parse((String) nominalStart).toEpochMilli();
+        } catch (Exception e) {
+          LOG.debug(
+              "Failed to parse nominalStartTime from OpenLineage event {}: {}",
+              run != null ? run.getRunId() : "unknown",
+              e.getMessage());
+        }
+      }
+    }
+    return resolved;
+  }
+
   private Map<String, String> buildInputFqnMap(List<OpenLineageInputDataset> inputs) {
     Map<String, String> map = new HashMap<>();
     for (OpenLineageInputDataset input : inputs) {
       String olName = buildOpenLineageDatasetName(input.getNamespace(), input.getName());
       EntityReference ref = entityResolver.resolveTable(input);
+      if (ref == null && entityResolver.isStorageDataset(input.getNamespace())) {
+        ref = entityResolver.resolveContainer(input.getNamespace(), input.getName());
+      }
       if (ref != null) {
         map.put(olName, ref.getFullyQualifiedName());
       }
@@ -198,12 +256,15 @@ public class OpenLineageMapper {
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
 
+    // Check outputFacets first (OpenLineage spec location), fall back to dataset facets
+    ColumnLineageFacet columnLineageFacet = null;
     OutputDatasetFacets outputFacets = output.getOutputFacets();
-    if (outputFacets == null) {
-      return columnLineages;
+    if (outputFacets != null) {
+      columnLineageFacet = outputFacets.getColumnLineage();
     }
-
-    ColumnLineageFacet columnLineageFacet = outputFacets.getColumnLineage();
+    if (columnLineageFacet == null && output.getFacets() != null) {
+      columnLineageFacet = output.getFacets().getColumnLineage();
+    }
     if (columnLineageFacet == null || columnLineageFacet.getFields() == null) {
       return columnLineages;
     }

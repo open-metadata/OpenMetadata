@@ -38,6 +38,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
@@ -100,9 +101,7 @@ test.describe(
 
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     test('Add new policy with invalid condition', async ({ page }) => {
@@ -308,9 +307,7 @@ test.describe(
 
       await test.step('Delete created policy', async () => {
         await settingClick(page, GlobalSettingOptions.POLICIES);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
         const policyElement = page.locator('[data-testid="policy-name"]', {
           hasText: UPDATED_POLICY_NAME,
         });
@@ -323,14 +320,8 @@ test.describe(
         await deleteButton.waitFor({ state: 'visible' });
         await deleteButton.click();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        // Type 'DELETE' in the confirmation text input
-        await page
-          .locator('[data-testid="confirmation-text-input"]')
-          .fill('DELETE');
-
-        // Click on confirm button
         await page.locator('[data-testid="confirm-button"]').click();
 
         // Validate deleted policy
@@ -409,18 +400,12 @@ test.describe(
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
+      await waitForAllLoadersToDisappear(page);
 
       await getElementWithPagination(page, policyLocator);
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill('DELETE');
       await page.locator('[data-testid="confirm-button"]').click();
 
       await expect(policyLocator).not.toBeVisible();

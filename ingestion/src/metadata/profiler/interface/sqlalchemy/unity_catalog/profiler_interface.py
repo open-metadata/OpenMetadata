@@ -35,9 +35,7 @@ class UnityCatalogProfilerInterface(DatabricksProfilerInterface):
         @event.listens_for(session_maker, "after_begin")
         def set_catalog(session, transaction, connection):
             # Safely quote the catalog name to prevent SQL injection
-            quoted_catalog = connection.dialect.identifier_preparer.quote(
-                self.service_connection_config.catalog
-            )
+            quoted_catalog = connection.dialect.identifier_preparer.quote(self.service_connection_config.catalog)
             connection.execute(text(f"USE CATALOG {quoted_catalog};"))
 
         self.session_factory = scoped_session(session_maker)

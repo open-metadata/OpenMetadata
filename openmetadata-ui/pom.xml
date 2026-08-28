@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.12.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -18,9 +18,60 @@
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
     <node.heap.size>6144</node.heap.size>
+    <!-- Overridden to `true` by the skip-ui-build profile below when BOTH
+         `env.SKIP_UI_BUILD=true` is set (exported by .github/actions/cache-ui-dist
+         on a cache HIT) AND the vite app dist already exists on disk. Each
+         frontend-maven-plugin execution honors <skip> to short-circuit. -->
+    <skip.ui.build>false</skip.ui.build>
   </properties>
 
+  <dependencies>
+    <!-- No Java classpath dependency exists between openmetadata-ui and
+         openmetadata-ui-core-components — the vite build resolves core-components
+         at build time via a workspace symlink in node_modules. This dep exists
+         solely to declare reactor ordering: `mvn ... -pl openmetadata-dist -am`
+         (used by playwright-postgresql-e2e and java-playwright-nightly) only
+         pulls Maven-declared deps into the reactor, and openmetadata-dist
+         depends on openmetadata-ui but not on openmetadata-ui-core-components.
+         Without this, core-components' dist/ is never built and vite fails with
+         "Failed to resolve entry for package @openmetadata/ui-core-components".
+         `<optional>true</optional>` keeps the core-components jar off any
+         downstream consumer's transitive classpath. -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-ui-core-components</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+
   <profiles>
+    <!-- Activates ONLY when the composite action .github/actions/cache-ui-dist
+         signals a cache hit by exporting SKIP_UI_BUILD=true, AND the vite
+         build output exists on disk. Both conditions together defend against
+         two independent risks:
+
+           - The env-var gate keeps a stale on-disk dist from silently
+             suppressing a rebuild during a local `mvn clean package` after
+             the developer edited UI sources (mvn clean removes target, not
+             the source-tree dist).
+           - The file-exists check keeps a spurious env var from suppressing
+             the build when the cache actually missed and left dist empty. -->
+    <profile>
+      <id>skip-ui-build</id>
+      <activation>
+        <property>
+          <name>env.SKIP_UI_BUILD</name>
+          <value>true</value>
+        </property>
+        <file>
+          <exists>${project.basedir}/src/main/resources/ui/dist/index.html</exists>
+        </file>
+      </activation>
+      <properties>
+        <skip.ui.build>true</skip.ui.build>
+      </properties>
+    </profile>
     <profile>
       <id>release</id>
       <build>
@@ -97,10 +148,11 @@
         <artifactId>frontend-maven-plugin</artifactId>
         <version>1.12.1</version>
 
-        <!-- optional -->
+        <!-- Shared with openmetadata-ui-core-components so the reactor downloads
+             node+yarn once. See openmetadata-ui-core-components/pom.xml. -->
         <configuration>
           <workingDirectory>src/main/resources/ui/</workingDirectory>
-          <installDirectory>target</installDirectory>
+          <installDirectory>${maven.multiModuleProjectDirectory}/target/frontend</installDirectory>
         </configuration>
 
         <executions>
@@ -110,8 +162,9 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v22.17.0</nodeVersion>
+              <nodeVersion>v22.22.2</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -122,7 +175,27 @@
             <phase>prepare-package</phase>
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
-              <arguments>install --frozen-lockfile</arguments>
+              <!-- ignore-scripts skips the package.json preinstall hook (which
+                   would otherwise re-install and re-build openmetadata-ui-core-components
+                   that the reactor already built). It also suppresses postinstall, so
+                   the `yarn run build-check` execution below re-runs its work (js-antlr
+                   parser generation) explicitly, since that output is gitignored and
+                   required by the vite build. The dereferenced schemas under src/jsons
+                   are committed, so they are no longer regenerated here. -->
+              <arguments>install --frozen-lockfile --ignore-scripts</arguments>
+              <skip>${skip.ui.build}</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run build-check</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
+              <arguments>run build-check</arguments>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -150,8 +223,10 @@
                   (and you can remove this whole <configuration> section.) -->
               <arguments>run build</arguments>
               <!--arguments>build</arguments-->
+              <skip>${skip.ui.build}</skip>
               <environmentVariables>
                 <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
+                <APP_VERSION>${project.version}</APP_VERSION>
               </environmentVariables>
             </configuration>
           </execution>
@@ -196,6 +271,8 @@
                 <nonFilteredFileExtension>webp</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpg</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>mp4</nonFilteredFileExtension>
+                <nonFilteredFileExtension>webm</nonFilteredFileExtension>
                 <nonFilteredFileExtension>js</nonFilteredFileExtension>
                 <nonFilteredFileExtension>css</nonFilteredFileExtension>
               </nonFilteredFileExtensions>

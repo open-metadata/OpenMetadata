@@ -12,7 +12,6 @@
 QlikSense Constants
 """
 
-
 GET_DOCS_LIST_REQ = {
     "handle": -1,
     "method": "GetDocList",
@@ -76,5 +75,28 @@ GET_LOADMODEL_LAYOUT = {
     "method": "GetLayout",
     "params": [],
     "id": 6,
+    "jsonrpc": "2.0",
+}
+
+
+GET_TABLES_AND_KEYS = {
+    "handle": 1,
+    "method": "GetTablesAndKeys",
+    "params": [
+        {"qcx": 1000, "qcy": 1000},
+        {"qcx": 0, "qcy": 0},
+        30,
+        True,
+        False,
+    ],
+    "id": 7,
+    "jsonrpc": "2.0",
+}
+
+GET_SCRIPT = {
+    "handle": 1,
+    "method": "GetScript",
+    "params": [],
+    "id": 8,
     "jsonrpc": "2.0",
 }

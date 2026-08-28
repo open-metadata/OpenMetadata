@@ -27,11 +27,23 @@
       "description": "Host and port of the Databricks service.",
       "type": "string"
     },
-    "token": {
-      "title": "Token",
-      "description": "Generated Token to connect to Databricks.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose between different authentication types for Databricks.",
+      "oneOf": [
+        {
+          "title": "Personal Access Token",
+          "$ref": "../database/databricks/personalAccessToken.json"
+        },
+        {
+          "title": "Databricks OAuth",
+          "$ref": "../database/databricks/databricksOAuth.json"
+        },
+        {
+          "title": "Azure AD Setup",
+          "$ref": "../database/databricks/azureAdSetup.json"
+        }
+      ]
     },
     "connectionTimeout": {
       "title": "Connection Timeout",
@@ -69,6 +81,6 @@
   "additionalProperties": false,
   "required": [
     "hostPort",
-    "token"
+    "authType"
   ]
 }

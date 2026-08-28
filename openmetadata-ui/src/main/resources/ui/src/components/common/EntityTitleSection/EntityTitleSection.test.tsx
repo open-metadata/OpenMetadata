@@ -49,7 +49,7 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((entity) => {
     return entity?.displayName || entity?.name || '';
   }),
@@ -59,7 +59,7 @@ jest.mock('../../../utils/BlockEditorUtils', () => ({
   getTextFromHtmlString: jest.fn().mockImplementation((str) => str),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 

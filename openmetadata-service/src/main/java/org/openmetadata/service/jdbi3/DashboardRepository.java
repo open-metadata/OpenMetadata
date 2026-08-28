@@ -14,12 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,20 +30,14 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -67,6 +58,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     fieldFetchers.put("charts", this::fetchAndSetCharts);
     fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
@@ -78,48 +73,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setFullyQualifiedName(
         FullyQualifiedName.add(
             dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("charts")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (entityLink.getArrayFieldValue() != null) {
-        return new ChartDescriptionAndTagTaskWorkflow(threadContext);
-      }
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class ChartDescriptionAndTagTaskWorkflow extends DescriptionTaskWorkflow {
-    ChartDescriptionAndTagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      EntityLink entityLink = threadContext.getAbout();
-      Dashboard dashboard =
-          Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
-      String chartName = threadContext.getAbout().getArrayFieldName();
-      EntityReference chartReference =
-          dashboard.getCharts().stream()
-              .filter(c -> c.getName().equals(chartName))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("chart", chartName)));
-      Chart chart = Entity.getEntity(chartReference, "", ALL);
-      if (entityLink.getArrayFieldValue().equals(FIELD_DESCRIPTION)) {
-        threadContext.setAbout(
-            new EntityLink(
-                Entity.CHART, chart.getFullyQualifiedName(), FIELD_DESCRIPTION, null, null));
-      } else if (entityLink.getArrayFieldValue().equals(FIELD_TAGS)) {
-        threadContext.setAbout(
-            new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), FIELD_TAGS, null, null));
-      }
-      threadContext.setAboutEntity(chart);
-    }
   }
 
   @Override
@@ -209,14 +162,28 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
-  // Override soft delete behavior to handle charts through HAS relation.
+  // Hard-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
+  // path in EntityRepository.bulkHardDeleteSubtree; chart handling is a per-dashboard concern
+  // and lives in the per-entity extension hook so it runs both for direct dashboard deletes
+  // and when dashboards are descendants of a larger hard-delete cascade.
   @Transaction
   @Override
-  protected void deleteChildren(
-      UUID dashboardId, boolean recursive, boolean hardDelete, String updatedBy) {
-    super.deleteChildren(dashboardId, recursive, hardDelete, updatedBy);
+  protected void hardDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+    cascadeChartCleanup(dashboardId, updatedBy, true);
+  }
 
-    // Load all charts linked to this dashboard
+  // Soft-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
+  // path in EntityRepository.bulkSoftDeleteSubtree; chart handling is a per-dashboard
+  // concern and lives in the per-entity extension hook so it runs both for direct dashboard
+  // deletes and when dashboards are descendants of a larger soft-delete (e.g.,
+  // DashboardService cascade).
+  @Transaction
+  @Override
+  protected void softDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+    cascadeChartCleanup(dashboardId, updatedBy, false);
+  }
+
+  private void cascadeChartCleanup(UUID dashboardId, String updatedBy, boolean hardDelete) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -225,7 +192,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    // Batch-load dashboard relationships for these charts
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
         daoCollection
             .relationshipDAO()
@@ -248,11 +214,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Include.NON_DELETED)
             .stream()
             .map(Dashboard::getId)
-            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
 
-    // For deletion: get charts whose linked dashboards (excluding the current dashboard)
-    // have no other non‑deleted dashboards.
+    // Soft-delete charts whose only remaining dashboard is the one being deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeDeleted =
         new ArrayList<>();
 
@@ -277,13 +242,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     deleteChildren(filteredChartRecordsToBeDeleted, hardDelete, updatedBy);
   }
 
-  // Override restore behavior to handle charts through HAS relation.
+  // Restore chart links (HAS relation). The CONTAINS subtree is now restored by the bulk
+  // path in EntityRepository.bulkRestoreSubtree; chart handling is a per-dashboard concern
+  // and lives in the per-entity extension hook.
   @Transaction
   @Override
-  protected void restoreChildren(UUID dashboardId, String updatedBy) {
-    super.restoreChildren(dashboardId, updatedBy);
-
-    // Load all charts linked to this dashboard
+  protected void restoreAdditionalChildren(UUID dashboardId, String updatedBy) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -292,7 +256,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    // Batch-load dashboard relationships for these charts
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
         daoCollection
             .relationshipDAO()
@@ -315,11 +278,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Include.DELETED)
             .stream()
             .map(Dashboard::getId)
-            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
 
-    // For restore: get charts whose linked dashboards (excluding the current dashboard)
-    // are all non‑deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeRestored =
         new ArrayList<>();
 
@@ -341,9 +302,25 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
 
+    // Per-chart restore preserves the full chart restoreEntity flow (setFieldsInternal,
+    // setInheritedFields, lifecycle hooks, ES restore-from-search). Charts are typically
+    // few per dashboard, so the loop isn't a hot path; the bulkRestoreSubtree shortcut
+    // skipped chart-specific setup that the test in DashboardResourceIT relies on.
     for (CollectionDAO.EntityRelationshipRecord record : filteredChartRecordsToBeRestored) {
       LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-      Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      try {
+        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      } catch (RuntimeException e) {
+        // Surface the underlying cause — Entity.restoreEntity has no try/catch wrapper of
+        // its own and silently aborts the whole dashboard restore if a single chart fails.
+        LOG.error(
+            "[ChartRestoreCascade] Failed to restore chart {} for dashboard {}: {}",
+            record.getId(),
+            dashboardId,
+            e.getMessage(),
+            e);
+        throw e;
+      }
     }
   }
 
@@ -686,38 +663,31 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "charts",
-          () -> {
-            update(
-                Entity.CHART,
-                "charts",
-                listOrEmpty(updated.getCharts()),
-                listOrEmpty(original.getCharts()));
-          });
+          () ->
+              update(
+                  Entity.CHART,
+                  "charts",
+                  listOrEmpty(updated.getCharts()),
+                  listOrEmpty(original.getCharts())));
       compareAndUpdate(
           "dataModels",
-          () -> {
-            update(
-                Entity.DASHBOARD_DATA_MODEL,
-                "dataModels",
-                listOrEmpty(updated.getDataModels()),
-                listOrEmpty(original.getDataModels()));
-          });
-      compareAndUpdate(
-          "sourceUrl",
-          () -> {
-            updateDashboardUrl(original, updated);
-          });
+          () ->
+              update(
+                  Entity.DASHBOARD_DATA_MODEL,
+                  "dataModels",
+                  listOrEmpty(updated.getDataModels()),
+                  listOrEmpty(original.getDataModels())));
+      compareAndUpdate("sourceUrl", () -> updateDashboardUrl(original, updated));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void update(

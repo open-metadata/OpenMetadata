@@ -11,21 +11,45 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const testUser = new UserClass();
+let testUser: UserClass;
+
+const ONLINE_USERS_PATH = '/settings/members/online-users';
+
+const navigateToOnlineUsersPage = async (page: Page) => {
+  const onlineUsersRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/online') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.goto(ONLINE_USERS_PATH, { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(`**${ONLINE_USERS_PATH}**`, {
+    waitUntil: 'domcontentloaded',
+  });
+  const onlineUsersResponse = await onlineUsersRes;
+
+  expect(onlineUsersResponse.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('online-users-page')).toBeVisible();
+  await expect(page.getByTestId('online-users-table')).toBeVisible();
+};
 
 test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
+    testUser = new UserClass();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await testUser.create(apiContext);
     await afterAction();
@@ -37,18 +61,10 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await afterAction();
   });
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
   test('Should show online users under Settings > Members > Online Users for admins', async ({
     page,
   }) => {
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToOnlineUsersPage(page);
 
     // Verify we're on the Online Users page
     await expect(
@@ -73,49 +89,43 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")
-    const timeWindowText = page.getByText('Time window:');
-
-    await expect(timeWindowText).toBeVisible();
-
-    // The dropdown component should be visible (it's an Ant Design Select, not a native select)
-    const timeFilterDropdown = page
-      .locator('.ant-select')
-      .filter({ hasText: /Last \d+ hours/ });
-
-    await expect(timeFilterDropdown).toBeVisible();
+    await expect(page.getByText('Time window:')).toBeVisible();
 
     // Current selection should show "Last 24 hours" by default
+    const timeFilterDropdown = page.getByTestId('time-window-select');
+
     await expect(timeFilterDropdown).toContainText('Last 24 hours');
   });
 
   test('Should update user activity time when user navigates', async ({
+    browser,
     page,
   }) => {
-    // First, navigate around to generate activity
-    await sidebarClick(page, SidebarItem.EXPLORE);
+    const userPage = await browser.newPage();
+    try {
+      await testUser.login(userPage);
+      await redirectToHomePage(userPage);
+      await sidebarClick(userPage, SidebarItem.EXPLORE);
+      await waitForAllLoadersToDisappear(userPage);
+    } finally {
+      await userPage.close();
+    }
+
+    await navigateToOnlineUsersPage(page);
+
+    const displayName = testUser.responseData.displayName;
+    const searchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=user&from=0&size=*'
+    );
+    await page.getByTestId('searchbar').fill(displayName);
+    await searchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await sidebarClick(page, SidebarItem.DATA_QUALITY);
-    await waitForAllLoadersToDisappear(page);
+    const userCell = page.getByRole('cell', { name: displayName }).first();
+    await expect(userCell).toBeVisible();
 
-    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await onlineUsersRes;
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    await expect(page.getByTestId('online-users-table')).toBeVisible();
-
-    // Admin user should appear in the online users list with recent activity
-    const adminLink = page.locator('a').filter({ hasText: 'admin' }).first();
-
-    await expect(adminLink).toBeVisible();
-
-    // Check that admin user shows recent activity since we just navigated
-    const adminRow = page.locator('tr').filter({ has: adminLink });
-    const activityCell = adminRow.locator('td:nth-child(3)');
+    const userRow = page.locator('tr').filter({ has: userCell });
+    const activityCell = userRow.locator('td:nth-child(3)');
 
     await expect(activityCell).toHaveText(
       /(Online now|\d+\s+(seconds?|minutes?)\s+ago)/
@@ -123,8 +133,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Should not show bots in online users list', async ({ page }) => {
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await waitForAllLoadersToDisappear(page);
+    await navigateToOnlineUsersPage(page);
 
     // Verify bot users are not shown (ingestion-bot should not be visible)
     const tableRows = page.locator('tbody tr');
@@ -139,16 +148,9 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Should filter users by time window', async ({ page }) => {
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+    await navigateToOnlineUsersPage(page);
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    // Find the time filter dropdown by looking for the one that contains "Last"
-    const timeFilterDropdown = page
-      .getByTestId('time-window-select')
-      .filter({ hasText: /Last \d+ hours|Last hour|Last \d+ days|All time/ });
+    const timeFilterDropdown = page.getByTestId('time-window-select');
 
     // Verify default filter is "Last 24 hours"
     await expect(timeFilterDropdown).toContainText('Last 24 hours');
@@ -156,32 +158,41 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Click on the time filter dropdown
     await timeFilterDropdown.click();
 
-    // Verify dropdown options are visible
-    const dropdownOptions = page.locator('.ant-select-dropdown:visible');
+    // Wait for dropdown to fully render
+    await expect(page.locator('.ant-select-dropdown:visible')).toBeVisible();
 
-    await expect(dropdownOptions.getByText('Last 5 minutes')).toBeVisible();
-    await expect(dropdownOptions.getByText('Last hour')).toBeVisible();
-    await expect(dropdownOptions.getByText('Last 24 hours')).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown:visible [title="Last 5 minutes"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown:visible [title="Last hour"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown:visible [title="Last 24 hours"]')
+    ).toBeVisible();
 
     const onlineRes = page.waitForResponse(
       '/api/v1/users/online?timeWindow=60&*'
     );
 
     // Select a different time window
-    await dropdownOptions.getByText('Last hour').click();
-    await onlineRes;
+    await page
+      .locator('.ant-select-dropdown:visible [title="Last hour"]')
+      .click();
+    const onlineResponse = await onlineRes;
+
+    expect(onlineResponse.status()).toBe(200);
 
     // Verify the filter has changed
     await expect(timeFilterDropdown).toContainText('Last hour');
 
     // The table should exist (with or without data)
-    await expect(page.locator('.ant-table')).toBeVisible();
+    await expect(page.getByTestId('online-users-table')).toBeVisible();
   });
 
   test('Non-admin users should not see Online Users page', async ({
     dataConsumerPage,
   }) => {
-    // Use the existing dataConsumer auth
     await redirectToHomePage(dataConsumerPage);
     await sidebarClick(dataConsumerPage, SidebarItem.SETTINGS);
 
@@ -190,15 +201,11 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await expect(
       dataConsumerPage.getByTestId('members.online-users')
-    ).not.toBeVisible();
+    ).toBeHidden();
   });
 
   test('Should show correct last activity format', async ({ page }) => {
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToOnlineUsersPage(page);
     // Check various time formats in the Last Activity column
     const activityCells = page.locator('tbody tr td:nth-child(3)');
     const count = await activityCells.count();
@@ -224,6 +231,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     browser,
     page,
   }) => {
+    test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
       const userPage = await browser.newPage();
       await testUser.login(userPage);
@@ -240,22 +248,29 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const displayName = testUser.responseData.displayName;
 
       // 2 step - go to online user page and check that user display name should present
-      await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await navigateToOnlineUsersPage(page);
 
       // Search for the user to ensure it is visible in the list
       const searchResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*&index=*&from=0&size=*'
+        '/api/v1/search/query?q=*&index=user&from=0&size=*'
       );
       await page.getByTestId('searchbar').fill(displayName);
       await searchResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByRole('cell', { name: displayName }).first()
+      ).toBeVisible();
+
+      // Search by email should surface the same user
+      const emailSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=user&from=0&size=*'
+      );
+      await page.getByTestId('searchbar').fill(testUser.data.email);
+      await emailSearchResponse;
+
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByRole('cell', { name: displayName }).first()

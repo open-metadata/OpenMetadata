@@ -15,6 +15,7 @@ import ApiEndpointsImg from '../../assets/img/widgets/api-endpoints.png';
 import ApiSchemaImg from '../../assets/img/widgets/api-schema.png';
 import ContainerChildrenImg from '../../assets/img/widgets/container-children.png';
 import ContainerSchemaImg from '../../assets/img/widgets/container-schema.png';
+import KnowledgeArticleImg from '../../assets/img/widgets/context-center-widget.png';
 import CustomPropertyImg from '../../assets/img/widgets/custom_properties.png';
 import ChartsTableImg from '../../assets/img/widgets/dashboard-charts.png';
 import DataModelImg from '../../assets/img/widgets/dashboard-data-model.png';
@@ -146,6 +147,8 @@ class CustomizeDetailPageClassBase {
         return TopicSchemaImg;
       case DetailPageWidgetKeys.DOMAIN_TYPE:
         return DomainTypeImg;
+      case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE:
+        return KnowledgeArticleImg;
       default:
         return '';
     }

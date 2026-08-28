@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/createAIGovernanceFramework.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAIGovernanceFramework",
+  "description": "Create or update a workspace AI Governance Framework configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.CreateAIGovernanceFramework",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "source": {
+      "$ref": "../../entity/ai/aiGovernanceFramework.json#/definitions/frameworkSource"
+    },
+    "forkedFrom": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "stewards": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "assessmentCadence": {
+      "$ref": "../../entity/ai/aiGovernanceFramework.json#/definitions/assessmentCadence"
+    },
+    "autoApply": {
+      "$ref": "../../entity/ai/aiGovernanceFramework.json#/definitions/autoApplyRules"
+    },
+    "nextDeadline": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "extension": {
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

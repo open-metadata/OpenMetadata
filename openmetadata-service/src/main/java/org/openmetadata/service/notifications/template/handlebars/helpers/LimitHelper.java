@@ -25,7 +25,7 @@ public class LimitHelper implements HandlebarsHelper {
     handlebars.registerHelper(
         getName(),
         (context, options) -> {
-          if (context == null || !(context instanceof Collection<?>)) {
+          if (context == null || !(context instanceof Collection<?> collection)) {
             return new ArrayList<>();
           }
 
@@ -33,7 +33,6 @@ public class LimitHelper implements HandlebarsHelper {
             return new ArrayList<>((Collection<?>) context);
           }
 
-          Collection<?> collection = (Collection<?>) context;
           int limit;
 
           try {

@@ -35,6 +35,10 @@ export interface AggregationRequest {
      */
     query?: string;
     /**
+     * Free-text search query used to scope aggregation results to matching documents.
+     */
+    queryText?: string;
+    /**
      * Size to limit the number of aggregation buckets returned.
      */
     size?: number;

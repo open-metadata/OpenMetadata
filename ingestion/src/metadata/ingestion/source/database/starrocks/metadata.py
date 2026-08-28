@@ -9,9 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """StarRocks source module"""
+
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from sqlalchemy import sql
 from sqlalchemy.engine.reflection import Inspector
@@ -53,7 +54,7 @@ RELKIND_MAP = {
     "ELASTICSEARCH": TableType.External,
     "HIVE": TableType.External,
     "JDBC": TableType.External,
-    "ICEBERG": TableType.External,
+    "ICEBERG": TableType.Iceberg,
     "HUDI": TableType.External,
 }
 
@@ -93,8 +94,12 @@ def _get_sqlalchemy_type(type_str):
     type_mapping = {
         "VARCHAR": sqltypes.VARCHAR,
         "CHAR": sqltypes.CHAR,
+        "TINYINT": sqltypes.SMALLINT,
+        "SMALLINT": sqltypes.SMALLINT,
         "INT": sqltypes.INT,
+        "INTEGER": sqltypes.INTEGER,
         "BIGINT": sqltypes.BIGINT,
+        "LARGEINT": sqltypes.BIGINT,
         "FLOAT": sqltypes.FLOAT,
         "DOUBLE": sqltypes.FLOAT,
         "DECIMAL": sqltypes.DECIMAL,
@@ -103,11 +108,17 @@ def _get_sqlalchemy_type(type_str):
         "TIMESTAMP": sqltypes.TIMESTAMP,
         "BOOLEAN": sqltypes.BOOLEAN,
         "ARRAY": sqltypes.ARRAY,
+        "MAP": sqltypes.TEXT,
+        "STRUCT": sqltypes.TEXT,
         "JSON": sqltypes.JSON,
         "STRING": sqltypes.TEXT,
         "BINARY": sqltypes.BINARY,
         "VARBINARY": sqltypes.VARBINARY,
         "TEXT": sqltypes.TEXT,
+        # StarRocks specialised analytics types — no SQL equivalent; store as TEXT
+        "BITMAP": sqltypes.TEXT,
+        "HLL": sqltypes.TEXT,
+        "PERCENTILE": sqltypes.TEXT,
         "UNKNOWN": sqltypes.NullType,
     }
 
@@ -123,7 +134,7 @@ def _get_sqlalchemy_type(type_str):
             return sql_type_cls(item_type=child_sql_type)
 
         # Length-based types (VARCHAR/CHAR, etc.)
-        elif base_type in ["VARCHAR", "CHAR", "VARBINARY", "BINARY"] and params:
+        elif base_type in ["VARCHAR", "CHAR", "VARBINARY", "BINARY"] and params:  # noqa: RET505
             return sql_type_cls(length=int(params[0]))
 
         # DECIMAL type (precision + scale)
@@ -131,9 +142,7 @@ def _get_sqlalchemy_type(type_str):
             return sql_type_cls(precision=int(params[0]), scale=int(params[1]))
 
     except (ValueError, TypeError) as exc:
-        logger.warning(
-            f"Failed to parse type parameters ({type_str}): {str(exc)}, using default type"
-        )
+        logger.warning(f"Failed to parse type parameters ({type_str}): {str(exc)}, using default type")  # noqa: RUF010
 
     # Return type instance (NullType has no parameters, call directly)
     return sql_type_cls()
@@ -167,9 +176,7 @@ def _get_column(ordinal, field, _type, null, default, comment):
             name_type = [item.strip() for item in child.split(":")]
             if len(name_type) != 2:
                 continue
-            children.append(
-                _get_column(key_, name_type[0], name_type[1], "YES", None, None)
-            )
+            children.append(_get_column(key_, name_type[0], name_type[1], "YES", None, None))
 
     return {
         "name": field,
@@ -201,17 +208,13 @@ class StarRocksSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create a StarRocksSource instance (factory method)"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if not config.serviceConnection:
             raise InvalidSourceException("Missing service connection configuration")
 
-        service_connection = cast(
-            StarRocksConnection, config.serviceConnection.root.config
-        )
+        service_connection = cast(StarRocksConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(service_connection, StarRocksConnection):
             raise InvalidSourceException(
                 f"Expected connection type to be StarRocksConnection, actual type: {type(service_connection)}"
@@ -230,16 +233,9 @@ class StarRocksSource(CommonDbSourceService):
                 if schema_name.lower() not in STARROCKS_SYSTEM_SCHEMAS:
                     yield schema_name
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         tables = []
-        result = (
-            self.connection.execute(
-                sql.text(STARROCKS_GET_TABLE_NAMES), {"schema": schema_name}
-            )
-            or []
-        )
+        result = self.connection.execute(sql.text(STARROCKS_GET_TABLE_NAMES), {"schema": schema_name}) or []
 
         for name, engine in result:
             table_type = RELKIND_MAP.get(engine, TableType.Regular)
@@ -248,17 +244,10 @@ class StarRocksSource(CommonDbSourceService):
 
         return tables
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         tables = []
         # Execute query to get results
-        result = (
-            self.connection.execute(
-                sql.text(STARROCKS_GET_TABLE_NAMES), {"schema": schema_name}
-            )
-            or []
-        )
+        result = self.connection.execute(sql.text(STARROCKS_GET_TABLE_NAMES), {"schema": schema_name}) or []
 
         for name, engine in result:  # name and engine are valid within the loop
             # Calculate table_type
@@ -270,17 +259,13 @@ class StarRocksSource(CommonDbSourceService):
         return tables
 
     @staticmethod
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:  # noqa: UP045
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
-            )
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             description = table_info.get("text")
 
@@ -295,9 +280,7 @@ class StarRocksSource(CommonDbSourceService):
         table_columns = []
         primary_columns = []
         if not self.engine:
-            logger.error(
-                "SQLAlchemy engine not initialized, cannot query column information"
-            )
+            logger.error("SQLAlchemy engine not initialized, cannot query column information")
             return table_columns, primary_columns
 
         with self.engine.connect() as conn:
@@ -309,7 +292,7 @@ class StarRocksSource(CommonDbSourceService):
 
                 # Parse by column name (avoid compatibility issues with fixed-position unpacking)
                 col_names = result.keys()
-                row_dicts = [dict(zip(col_names, row)) for row in result]
+                row_dicts = [dict(zip(col_names, row)) for row in result]  # noqa: B905
 
                 for ordinal, row in enumerate(row_dicts):
                     field_name = row.get("Field")
@@ -320,9 +303,7 @@ class StarRocksSource(CommonDbSourceService):
                     comment = row.get("Comment", "")
 
                     if not field_name:
-                        logger.warning(
-                            f"Skipping empty column name (table: {schema}.{table_name})"
-                        )
+                        logger.warning(f"Skipping empty column name (table: {schema}.{table_name})")
                         continue
 
                     # Generate column information dictionary
@@ -339,13 +320,11 @@ class StarRocksSource(CommonDbSourceService):
                     # Record primary key columns
                     if key_type == "PRI":
                         primary_columns.append(field_name)
-                        logger.debug(
-                            f"Primary key column of table {schema}.{table_name}: {field_name}"
-                        )
+                        logger.debug(f"Primary key column of table {schema}.{table_name}: {field_name}")
 
             except Exception as exc:
                 logger.error(
-                    f"Failed to get column information (table: {schema}.{table_name}): {str(exc)}",
+                    f"Failed to get column information (table: {schema}.{table_name}): {str(exc)}",  # noqa: RUF010
                     exc_info=True,
                 )
 
@@ -357,10 +336,8 @@ class StarRocksSource(CommonDbSourceService):
         table_name: str,
         db_name: str,
         inspector: Inspector,
-        table_type: str = None,
-    ) -> Tuple[
-        Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
-    ]:
+        table_type: str = None,  # noqa: RUF013
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
         """Get column information and constraints (compatible with OpenMetadata schema)"""
         table_columns = []
         table_constraints = []
@@ -379,9 +356,7 @@ class StarRocksSource(CommonDbSourceService):
                             description=child.get("comment"),
                             dataType=child["system_data_type"],
                             dataTypeDisplay=child["display_type"],
-                            dataLength=self._check_col_length(
-                                child["system_data_type"], child["data_type"]
-                            ),
+                            dataLength=self._check_col_length(child["system_data_type"], child["data_type"]),
                             ordinalPosition=child.get("ordinalPosition"),
                             children=child.get("children"),
                             arrayDataType=child.get("arr_data_type"),
@@ -390,13 +365,9 @@ class StarRocksSource(CommonDbSourceService):
                     ]
 
                 # Get column constraints (primary key/non-null, etc.)
-                col_constraint = self._get_column_constraints(
-                    column, primary_columns, []
-                )
+                col_constraint = self._get_column_constraints(column, primary_columns, [])
                 # Check column length
-                col_data_length = self._check_col_length(
-                    column["system_data_type"], column["data_type"]
-                )
+                col_data_length = self._check_col_length(column["system_data_type"], column["data_type"])
                 if col_data_length is None:
                     col_data_length = 1  # Default length (avoid null values)
 
@@ -422,33 +393,23 @@ class StarRocksSource(CommonDbSourceService):
                 if column["system_data_type"] == "DECIMAL":
                     om_column.precision = (
                         int(column["data_type"].precision)
-                        if (
-                            column["data_type"].precision
-                            and str(column["data_type"].precision).isdigit()
-                        )
+                        if (column["data_type"].precision and str(column["data_type"].precision).isdigit())
                         else None
                     )
                     om_column.scale = (
                         int(column["data_type"].scale)
-                        if (
-                            column["data_type"].scale
-                            and str(column["data_type"].scale).isdigit()
-                        )
+                        if (column["data_type"].scale and str(column["data_type"].scale).isdigit())
                         else None
                     )
 
                 # Add column tags (e.g., sensitive data tags)
-                om_column.tags = self.get_column_tag_labels(
-                    table_name=table_name, column=column
-                )
+                om_column.tags = self.get_column_tag_labels(table_name=table_name, column=column)
                 table_columns.append(om_column)
 
             except Exception as exc:
-                logger.debug(
-                    f"Detailed stack trace for failed column processing: {traceback.format_exc()}"
-                )
+                logger.debug(f"Detailed stack trace for failed column processing: {traceback.format_exc()}")
                 logger.warning(
-                    f"Failed to process column [{column.get('name')}] in table {schema_name}.{table_name}: {str(exc)}"
+                    f"Failed to process column [{column.get('name')}] in table {schema_name}.{table_name}: {str(exc)}"  # noqa: RUF010
                 )
                 continue
 
@@ -459,12 +420,10 @@ class StarRocksSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """Get partition information of the table"""
         if not self.engine:
-            logger.debug(
-                "SQLAlchemy engine not initialized, cannot query partition information"
-            )
+            logger.debug("SQLAlchemy engine not initialized, cannot query partition information")
             return False, None
 
         with self.engine.connect() as conn:
@@ -490,26 +449,18 @@ class StarRocksSource(CommonDbSourceService):
                         for key in partition_keys
                     ]
                 )
-                logger.debug(
-                    f"Partition keys of table {schema_name}.{table_name}: {partition_keys}"
-                )
-                return True, partition_details
+                logger.debug(f"Partition keys of table {schema_name}.{table_name}: {partition_keys}")
+                return True, partition_details  # noqa: TRY300
 
             except Exception as exc:
-                logger.debug(
-                    f"Could not get partition information for {schema_name}.{table_name}: {exc}"
-                )
+                logger.debug(f"Could not get partition information for {schema_name}.{table_name}: {exc}")
 
         return False, None
 
-    def _check_col_length(
-        self, system_data_type: str, data_type: sqltypes.TypeEngine
-    ) -> Optional[int]:
+    def _check_col_length(self, system_data_type: str, data_type: sqltypes.TypeEngine) -> Optional[int]:  # noqa: UP045
         """Check column length (compatible with sqlalchemy.sql.sqltypes types)"""
         if not isinstance(data_type, sqltypes.TypeEngine):
-            logger.warning(
-                f"Not a SQLAlchemy TypeEngine instance, cannot get length: {type(data_type)}"
-            )
+            logger.warning(f"Not a SQLAlchemy TypeEngine instance, cannot get length: {type(data_type)}")
             return None
 
         # Return length only for types with length attribute

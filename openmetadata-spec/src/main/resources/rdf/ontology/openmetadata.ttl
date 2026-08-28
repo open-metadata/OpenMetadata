@@ -235,6 +235,84 @@ om:Tag a owl:Class ;
     rdfs:label "Tag" ;
     rdfs:subClassOf om:Entity, skos:Concept .
 
+#################################################################
+# Glossary Term Relation Properties (Business-oriented)
+#################################################################
+
+# Associative Relations
+om:relatedTo a owl:ObjectProperty ;
+    rdfs:label "related to" ;
+    rdfs:comment "General associative relationship between terms that are conceptually connected" ;
+    rdfs:subPropertyOf skos:related ;
+    a owl:SymmetricProperty ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+om:synonym a owl:ObjectProperty ;
+    rdfs:label "synonym" ;
+    rdfs:comment "Terms that have the same or nearly identical meaning and can be used interchangeably" ;
+    rdfs:subPropertyOf skos:exactMatch ;
+    a owl:SymmetricProperty ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+om:seeAlso a owl:ObjectProperty ;
+    rdfs:label "see also" ;
+    rdfs:comment "Reference to a related term that may provide additional context" ;
+    rdfs:subPropertyOf rdfs:seeAlso ;
+    a owl:SymmetricProperty ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+# Hierarchical Relations (Classification)
+om:typeOf a owl:ObjectProperty ;
+    rdfs:label "type of" ;
+    rdfs:comment "Classification where the subject is a specific type of the object (e.g., 'Premium Customer' typeOf 'Customer')" ;
+    rdfs:subPropertyOf rdfs:subClassOf ;
+    owl:inverseOf om:hasTypes ;
+    a owl:TransitiveProperty ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+om:hasTypes a owl:ObjectProperty ;
+    rdfs:label "has types" ;
+    rdfs:comment "Inverse of 'Type Of'. The subject has specific types (e.g., 'Customer' hasTypes 'Premium Customer')" ;
+    owl:inverseOf om:typeOf ;
+    a owl:TransitiveProperty ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+# Hierarchical Relations (Composition)
+om:componentOf a owl:ObjectProperty ;
+    rdfs:label "component of" ;
+    rdfs:comment "The subject is a component or part of the object (e.g., 'Product Revenue' componentOf 'Total Revenue')" ;
+    owl:inverseOf om:composedOf ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+om:composedOf a owl:ObjectProperty ;
+    rdfs:label "composed of" ;
+    rdfs:comment "The subject is composed of or includes the object (e.g., 'Total Revenue' composedOf 'Product Revenue')" ;
+    owl:inverseOf om:componentOf ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+# Derivation Relations (for Metrics/KPIs)
+om:calculatedFrom a owl:ObjectProperty ;
+    rdfs:label "calculated from" ;
+    rdfs:comment "The subject metric is calculated or derived from the object (e.g., 'ARR' calculatedFrom 'MRR')" ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    owl:inverseOf om:usedToCalculate ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
+om:usedToCalculate a owl:ObjectProperty ;
+    rdfs:label "used to calculate" ;
+    rdfs:comment "The subject is used to calculate the object metric (e.g., 'MRR' usedToCalculate 'ARR')" ;
+    owl:inverseOf om:calculatedFrom ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:GlossaryTerm .
+
 om:DataContract a owl:Class ;
     rdfs:label "Data Contract" ;
     rdfs:subClassOf om:Entity .
@@ -535,6 +613,12 @@ om:hasTag a owl:ObjectProperty ;
     rdfs:label "has tag" ;
     rdfs:domain om:Entity ;
     rdfs:range om:Tag .
+
+om:hasGlossaryTerm a owl:ObjectProperty ;
+    rdfs:label "has glossary term" ;
+    rdfs:subPropertyOf dct:subject ;
+    rdfs:domain om:Entity ;
+    rdfs:range om:GlossaryTerm .
 
 om:hasOwner a owl:ObjectProperty ;
     rdfs:label "has owner" ;

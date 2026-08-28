@@ -11,57 +11,55 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, omit, once } from 'lodash';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
+import { isEmpty, omit } from 'lodash';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column, Table } from '../../../generated/entity/data/table';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
+import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { postThread } from '../../../rest/feedsAPI';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
 import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   extractColumnsFromData,
   findFieldByFQN,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
   ColumnFieldUpdate,
   ColumnOrTask,
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
-import {
-  GenericContextType,
-  GenericProviderProps,
-} from './GenericProvider.interface';
+import { createGenericContext } from './GenericContext';
+import { GenericProviderProps } from './GenericProvider.interface';
 
-const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  createContext({} as GenericContextType<T>)
+const ColumnDetailPanel = withSuspenseFallback(
+  lazy(() =>
+    import('../../Database/ColumnDetailPanel/ColumnDetailPanel.component').then(
+      (module) => ({ default: module.ColumnDetailPanel })
+    )
+  )
 );
+
+const getWidgetLayout = (
+  ...args: Parameters<typeof getLayoutFromCustomizedPage>
+): WidgetConfig[] => {
+  const layout = getLayoutFromCustomizedPage(...args);
+
+  return Array.isArray(layout) ? (layout as WidgetConfig[]) : [];
+};
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   children,
@@ -74,24 +72,23 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   currentVersionData,
   isTabExpanded = false,
   customizedPage,
-  muiTags = false,
+  newTagsUI = false,
   columnFqn,
-  onColumnsUpdate,
+  activeTab,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
-  const { t } = useTranslation();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const location = useLocation();
   const navigate = useNavigate();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: routeTab } = useRequiredParams<{ tab: EntityTabs }>();
+  // `routeTab` is undefined on an entity's landing URL (no `:tab` segment) and always
+  // undefined in the domain tree view, so it cannot be the sole source of truth for the
+  // layout -- falling back to the first customized tab renders another tab's widgets.
+  const currentTab = activeTab ?? routeTab;
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
-    getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
+    getWidgetLayout(pageType, currentTab, customizedPage, isVersionView)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
@@ -102,8 +99,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     null
   );
 
-  // State to store the displayed columns (sorted/filtered) from SchemaTable
-  const [displayedColumns, setDisplayedColumns] = useState<ColumnOrTask[]>([]);
+  // Children (SchemaTable, ModelTab, etc.) register their sorted/filtered/paginated
+  // column list here. Kept in a ref so the write does not re-render the provider on
+  // load; only mirrored into `panelColumns` state while the column detail panel is open.
+  const displayedColumnsRef = useRef<ColumnOrTask[]>([]);
+  const selectedColumnRef = useRef<ColumnOrTask | null>(null);
+  const [panelColumns, setPanelColumns] = useState<ColumnOrTask[]>([]);
+
+  const setDisplayedColumns = useCallback((cols: ColumnOrTask[]) => {
+    displayedColumnsRef.current = cols;
+    // Keep the open panel's navigation list live; when closed, skip the re-render.
+    if (selectedColumnRef.current) {
+      setPanelColumns(cols);
+    }
+  }, []);
 
   // Derive isColumnDetailOpen from selectedColumn - if a column is selected, panel is open
   const isColumnDetailOpen = useMemo(
@@ -111,17 +120,31 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [selectedColumn]
   );
 
-  const { entityRules } = useEntityRules(type);
+  useEffect(() => {
+    selectedColumnRef.current = selectedColumn;
+  }, [selectedColumn]);
+
+  const { entityRules, isRulesLoaded } = useEntityRules(type);
+
+  // limit=1000 is the backend max. Entities with more tracked field changes
+  // will have entries beyond this limit silently omitted. Use fieldPrefix
+  // filtering when targeting a specific section (e.g., 'columns.').
+  const { changeSummary } = useChangeSummary(
+    isVersionView ? '' : type,
+    isVersionView ? '' : data.id ?? '',
+    { limit: 1000 }
+  );
 
   // Extract columns from data
   const extractedColumns = useMemo(() => {
     return extractColumnsFromData(data, type) as ColumnOrTask[];
   }, [data, type]);
 
-  // Use displayed columns if available (sorted), otherwise fall back to extracted columns
+  // Use the panel's snapshot of displayed columns (sorted) if available, otherwise
+  // fall back to the extracted columns.
   const columnsForPanel = useMemo(() => {
-    return displayedColumns.length > 0 ? displayedColumns : extractedColumns;
-  }, [displayedColumns, extractedColumns]);
+    return panelColumns.length > 0 ? panelColumns : extractedColumns;
+  }, [panelColumns, extractedColumns]);
 
   // Helper to clean column by removing empty children array
   const cleanColumn = useCallback((column: ColumnOrTask): ColumnOrTask => {
@@ -138,6 +161,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     if (columnFqn && extractedColumns.length > 0) {
       const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
       if (col) {
+        // Seed the panel navigation list on the deep-link path too — the child's
+        // ref write is dropped here because the panel-open gate is still null.
+        setPanelColumns(
+          displayedColumnsRef.current.length > 0
+            ? displayedColumnsRef.current
+            : extractedColumns
+        );
         setSelectedColumn(cleanColumn(col));
       }
     }
@@ -174,37 +204,17 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   useEffect(() => {
     setLayout(
-      getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
+      getWidgetLayout(pageType, currentTab, customizedPage, isVersionView)
     );
-  }, [customizedPage, tab, pageType, isVersionView]);
+  }, [customizedPage, currentTab, pageType, isVersionView]);
 
   const onThreadPanelClose = useCallback(() => {
     setThreadLink('');
   }, [setThreadLink]);
 
-  const onThreadLinkSelect = useCallback(
-    (link: string, threadType?: ThreadType) => {
-      setThreadLink(link);
-      if (threadType) {
-        setThreadType(threadType);
-      }
-    },
-    [setThreadLink, setThreadType]
-  );
-
-  // Create a thread
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
+  const onThreadLinkSelect = useCallback((link: string) => {
+    setThreadLink(link);
+  }, []);
 
   // Filter the widgets we need to hide widgets which doesn't render anything
   const filterWidgets = useCallback(
@@ -231,12 +241,19 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         return;
       }
 
+      // Snapshot the child's current displayed list for panel prev/next navigation.
+      setPanelColumns(
+        displayedColumnsRef.current.length > 0
+          ? displayedColumnsRef.current
+          : extractedColumns
+      );
+
       // Set selected column immediately to avoid flicker
       setSelectedColumn(column);
 
       // Update URL to include column FQN if the column has a fullyQualifiedName
       if (columnFqn && data.fullyQualifiedName) {
-        const newPath = getEntityDetailsPath(type, columnFqn, tab);
+        const newPath = getEntityDetailsPath(type, columnFqn, routeTab);
 
         // Only navigate if the path is different from current path to avoid loops
         if (location.pathname !== newPath) {
@@ -247,19 +264,25 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [
       data?.fullyQualifiedName,
       type,
-      tab,
+      routeTab,
       navigate,
       location.pathname,
       selectedColumn?.fullyQualifiedName,
+      extractedColumns,
     ]
   );
 
   const closeColumnDetailPanel = useCallback(() => {
     setSelectedColumn(null);
+    setPanelColumns([]);
 
     // Update URL to remove column FQN
     if (data?.fullyQualifiedName) {
-      const newPath = getEntityDetailsPath(type, data.fullyQualifiedName, tab);
+      const newPath = getEntityDetailsPath(
+        type,
+        data.fullyQualifiedName,
+        routeTab
+      );
       navigate(newPath, { replace: true });
     } else if (location.hash) {
       // Fallback: just remove hash if no FQN available
@@ -268,7 +291,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         { replace: true }
       );
     }
-  }, [data?.fullyQualifiedName, type, tab, location, navigate]);
+  }, [data?.fullyQualifiedName, type, routeTab, location, navigate]);
 
   // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(
@@ -394,12 +417,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   useEffect(() => {
     // on unmount remove filterKeys
     return () => setFilteredKeys([]);
-  }, [tab]);
+  }, [currentTab]);
 
   const values = useMemo(
     () => ({
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,
@@ -411,16 +435,18 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
-      muiTags,
+      newTagsUI,
       selectedColumn,
       isColumnDetailOpen,
       openColumnDetailPanel,
       closeColumnDetailPanel,
       setDisplayedColumns,
+      changeSummary,
     }),
     [
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,
@@ -432,12 +458,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
-      muiTags,
+      newTagsUI,
       selectedColumn,
       isColumnDetailOpen,
       openColumnDetailPanel,
       closeColumnDetailPanel,
       setDisplayedColumns,
+      changeSummary,
     ]
   );
 
@@ -446,13 +473,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       {children}
       {threadLink ? (
         <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
           threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}
@@ -467,13 +489,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
           onColumnFieldUpdate={handleColumnFieldUpdate}
-          onColumnsUpdate={onColumnsUpdate}
           onNavigate={openColumnDetailPanel}
         />
       )}
     </GenericContext.Provider>
   );
 };
-
-export const useGenericContext = <T extends Omit<EntityReference, 'type'>>() =>
-  useContext(createGenericContext<T>());

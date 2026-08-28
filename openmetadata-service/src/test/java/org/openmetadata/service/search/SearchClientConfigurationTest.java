@@ -9,6 +9,15 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 class SearchClientConfigurationTest {
 
   @Test
+  void testConnectionPoolDefaults() {
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+
+    assertEquals(5, config.getConnectionRequestTimeoutSecs());
+    assertEquals(30, config.getMaxConnTotal());
+    assertEquals(10, config.getMaxConnPerRoute());
+  }
+
+  @Test
   void testValidSingleHostConfiguration() {
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     config.setHost("localhost");
@@ -107,8 +116,9 @@ class SearchClientConfigurationTest {
     config.setAws(awsConfig);
 
     assertDoesNotThrow(() -> validateConfiguration(config));
-    assertFalse(
-        Boolean.TRUE.equals(config.getAws().getEnabled()),
+    assertNotEquals(
+        Boolean.TRUE,
+        config.getAws().getEnabled(),
         "IAM auth should be disabled by default for backward compatibility");
   }
 

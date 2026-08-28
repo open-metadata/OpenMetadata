@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11/manifest.json",
+    "dbt_version": "1.5.0",
+    "generated_at": "2024-01-01T00:00:00.000000Z",
+    "invocation_id": "abc-123",
+    "env": {},
+    "project_name": "my_project",
+    "project_id": "xyz",
+    "adapter_type": "postgres",
+    "credential_id": null,
+    "profile_name": "my_profile"
+  },
+  "nodes": {
+    "model.my_project.customers": {
+      "name": "customers",
+      "description": "Customer records",
+      "unique_id": "model.my_project.customers",
+      "fqn": ["my_project", "customers"]
+    }
+  },
+  "sources": {
+    "source.my_project.raw.customers": {
+      "name": "customers",
+      "description": "Raw customer data",
+      "unique_id": "source.my_project.raw.customers"
+    }
+  },
+  "macros": {},
+  "docs": {},
+  "exposures": {},
+  "metrics": {},
+  "groups": {},
+  "selectors": {},
+  "disabled": {},
+  "parent_map": {},
+  "child_map": {},
+  "group_map": {},
+  "saved_queries": {},
+  "semantic_models": {},
+  "unit_tests": {}
+}

@@ -12,15 +12,14 @@
 """
 Source connection handler
 """
+
 import os
-import sys
 from copy import deepcopy
 from typing import Optional
 from urllib.parse import quote_plus
 
 import oracledb
 from oracledb.exceptions import DatabaseError
-from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -31,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 )
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleDatabaseSchema,
+    OracleScheme,
     OracleServiceName,
     OracleTNSConnection,
 )
@@ -45,6 +45,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.queries import (
     CHECK_ACCESS_TO_ALL,
@@ -58,8 +59,8 @@ from metadata.ingestion.source.database.oracle.utils import (
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
-CX_ORACLE_LIB_VERSION = "8.3.0"
 LD_LIB_ENV = "LD_LIBRARY_PATH"
+MIN_RECOMMENDED_ORACLE_CLIENT_VERSION = 19
 
 logger = ingestion_logger()
 
@@ -75,14 +76,26 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         try:
             if self.service_connection.instantClientDirectory:
                 logger.info(
-                    f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}"
+                    "Initializing Oracle thick client at %s",
+                    self.service_connection.instantClientDirectory,
                 )
                 os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
-                oracledb.init_oracle_client(
-                    lib_dir=self.service_connection.instantClientDirectory
-                )
+                oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
+                if oracledb.clientversion() < (MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,):
+                    logger.warning(
+                        "Oracle Client versions older than %s are deprecated and "
+                        "will not be supported in a future OpenMetadata release. "
+                        "Upgrade to Oracle Client %s or newer.",
+                        MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,
+                        MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,
+                    )
         except DatabaseError as err:
-            logger.info(f"Could not initialize Oracle thick client: {err}")
+            logger.warning(
+                "Could not initialize Oracle thick client. "
+                "Verify that Oracle Client 11.2 or newer is installed and available; "
+                "continuing in thin mode: %s",
+                err,
+            )
 
         return create_generic_db_connection(
             connection=self.service_connection,
@@ -93,8 +106,8 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -104,9 +117,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         self.client.dialect.table_prefix = table_prefix
         test_conn_queries = {
             "CheckAccess": CHECK_ACCESS_TO_ALL.format(prefix=table_prefix),
-            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES.format(
-                prefix=table_prefix
-            ),
+            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES.format(prefix=table_prefix),
             "GetMaterializedViews": TEST_MATERIALIZED_VIEWS.format(prefix=table_prefix),
             "GetQueryHistory": TEST_QUERY_HISTORY,
         }
@@ -139,17 +150,11 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         # Add connection type specific information
         if isinstance(connection_copy.oracleConnectionType, OracleDatabaseSchema):
-            connection_dict[
-                "database"
-            ] = connection_copy.oracleConnectionType.databaseSchema
+            connection_dict["database"] = connection_copy.oracleConnectionType.databaseSchema
         elif isinstance(connection_copy.oracleConnectionType, OracleServiceName):
-            connection_dict[
-                "database"
-            ] = connection_copy.oracleConnectionType.oracleServiceName
+            connection_dict["database"] = connection_copy.oracleConnectionType.oracleServiceName
         elif isinstance(connection_copy.oracleConnectionType, OracleTNSConnection):
-            connection_dict[
-                "host"
-            ] = connection_copy.oracleConnectionType.oracleTNSConnection
+            connection_dict["host"] = connection_copy.oracleConnectionType.oracleTNSConnection
 
         # Add connection options if present
         if connection_copy.connectionOptions and connection_copy.connectionOptions.root:
@@ -157,10 +162,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             connection_dict.update(connection_copy.connectionOptions.root)
 
         # Add connection arguments if present
-        if (
-            connection_copy.connectionArguments
-            and connection_copy.connectionArguments.root
-        ):
+        if connection_copy.connectionArguments and connection_copy.connectionArguments.root:
             connection_dict.update(get_connection_args_common(connection_copy))
 
         return connection_dict
@@ -168,17 +170,15 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     @staticmethod
     def get_connection_url(connection: OracleConnectionConfig) -> str:
         """
-        Build the URL and handle driver version at system level
+        Build the SQLAlchemy connection URL.
         """
 
-        oracledb.version = CX_ORACLE_LIB_VERSION
-        sys.modules["cx_Oracle"] = oracledb
-
-        url = f"{connection.scheme.value}://"
+        # The legacy scheme is accepted as configuration input only.
+        url = f"{OracleScheme.oracle_oracledb.value}://"
         if connection.username:
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
-                connection.password = SecretStr("")
+                connection.password = _CustomSecretStr("")
             url += f":{quote_plus(connection.password.get_secret_value())}"
             url += "@"
 
@@ -186,11 +186,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         options = get_connection_options_dict(connection)
         if options:
-            params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in options.items()
-                if value
-            )
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
             if isinstance(connection.oracleConnectionType, OracleServiceName):
                 url = f"{url}&{params}"
             else:
@@ -222,6 +218,6 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         if isinstance(connection.oracleConnectionType, OracleServiceName):
             url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
-            return url
+            return url  # noqa: RET504
 
         raise ValueError(f"Unknown connection type {connection.oracleConnectionType}")

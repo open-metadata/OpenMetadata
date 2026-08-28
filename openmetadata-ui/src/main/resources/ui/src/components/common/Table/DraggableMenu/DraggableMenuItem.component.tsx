@@ -46,7 +46,7 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
 
   const [, drop] = useDrop({
     accept: 'CHECKBOX',
-    hover: (draggedItem: any) => {
+    hover: (draggedItem: { index: number }) => {
       if (draggedItem.index !== index) {
         moveDropdownMenuItem(draggedItem.index, index);
         draggedItem.index = index;
@@ -62,6 +62,7 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
   return (
     <div
       className={`draggable-menu-item ${isDragging ? 'dragging' : ''}`}
+      data-testid={`column-menu-item-${value}`}
       ref={(node) => {
         drag(drop(node));
       }}>

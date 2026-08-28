@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/utils/common/basicAuthConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Basic Auth",
+  "description": "Username and password for Airflow API authentication.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.utils.common.BasicAuthConfig",
+  "properties": {
+    "username": {
+      "title": "Username",
+      "description": "Username for basic authentication to the Airflow API.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for basic authentication to the Airflow API.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": ["username", "password"],
+  "additionalProperties": false
+}

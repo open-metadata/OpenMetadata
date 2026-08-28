@@ -11,10 +11,10 @@
   ],
   "definitions": {
     "messagingServiceType": {
-      "description": "Type of messaging service - Kafka or Pulsar.",
+      "description": "Type of messaging service.",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Kafka", "Redpanda", "Kinesis", "CustomMessaging"],
+      "enum": ["Kafka", "Redpanda", "Kinesis", "Nats", "PubSub", "CustomMessaging"],
       "javaEnums": [
         {
           "name": "Kafka"
@@ -24,6 +24,12 @@
         },
         {
           "name": "Kinesis"
+        },
+        {
+          "name": "Nats"
+        },
+        {
+          "name": "PubSub"
         },
         {
           "name": "CustomMessaging"
@@ -57,6 +63,12 @@
             },
             {
               "$ref": "./connections/messaging/kinesisConnection.json"
+            },
+            {
+              "$ref": "./connections/messaging/natsConnection.json"
+            },
+            {
+              "$ref": "./connections/messaging/pubSubConnection.json"
             },
             {
               "$ref": "connections/messaging/customMessagingConnection.json"
@@ -111,6 +123,9 @@
       },
       "default": []
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -155,6 +170,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "domains" : {
       "description": "Domains the Messaging service belongs to.",

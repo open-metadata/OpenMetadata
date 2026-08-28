@@ -20,22 +20,38 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  NOTIFICATION_READ_TIMER,
+} from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
-import { ThreadType } from '../../generated/api/feed/createThread';
-import { Post, Thread } from '../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../generated/entity/feed/conversation';
+import { ConversationFilterType } from '../../generated/type/conversationFilterType';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getFeedsWithFilter } from '../../rest/feedsAPI';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { useDomainStore } from '../../hooks/useDomainStore';
+import { listConversations } from '../../rest/conversationsAPI';
+import {
+  listMyAssignedTasks,
+  Task as TaskEntity,
+  TaskEntityStatus,
+} from '../../rest/tasksAPI';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
-import { getFilters, tabsInfo } from './NotificationBox.utils';
+import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
+type NotificationItem = Conversation | TaskEntity;
+
+const isTaskNotification = (
+  notification: NotificationItem
+): notification is TaskEntity => 'taskId' in notification;
 
 const NotificationBox = ({
   activeTab,
@@ -46,8 +62,9 @@ const NotificationBox = ({
   onTabChange,
 }: NotificationBoxProp) => {
   const { t } = useTranslation();
+  const activeDomain = useDomainStore((state) => state.activeDomain);
   const { currentUser } = useApplicationStore();
-  const [notifications, setNotifications] = useState<Thread[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [viewAllPath, setViewAllPath] = useState<string>(
     getUserPath(
@@ -59,39 +76,44 @@ const NotificationBox = ({
 
   const notificationDropDownList = useMemo(() => {
     return notifications.slice(0, 5).map((feed) => {
-      const mainFeed = {
-        message: feed.message,
-        postTs: feed.threadTs,
-        from: feed.createdBy,
-        id: feed.id,
-        reactions: feed.reactions,
-      } as Post;
-      const entityType = getEntityType(feed.about);
-      const entityFQN = getEntityFQN(feed.about);
+      if (isTaskNotification(feed)) {
+        return (
+          <NotificationFeedCard
+            createdBy={feed.createdBy?.name ?? ''}
+            entityFQN={feed.about?.fullyQualifiedName ?? ''}
+            entityType={feed.about?.type ?? ''}
+            key={`${feed.createdBy?.name ?? ''} ${feed.id}`}
+            taskEntity={feed}
+            timestamp={feed.createdAt}
+          />
+        );
+      }
 
-      // For mention notifications, get the actual user who made the mention from posts
-      let actualUser = mainFeed.from;
-      let actualTimestamp = mainFeed.postTs;
-      let feedType = feed.type || ThreadType.Conversation;
-      const isConversationFeed = feed.type === ThreadType.Conversation;
+      const entityType = feed.entityRef?.type ?? getEntityType(feed.about);
+      const entityFQN =
+        feed.entityRef?.fullyQualifiedName ?? getEntityFQN(feed.about);
+
+      let actualUser =
+        feed.createdBy?.name ?? feed.createdBy?.fullyQualifiedName ?? '';
+      let actualTimestamp = feed.createdAt;
 
       if (
-        activeTab === ThreadType.Conversation &&
-        feed.posts &&
-        feed.posts.length > 0
+        activeTab === NotificationTabsKey.CONVERSATION &&
+        feed.replies &&
+        feed.replies.length > 0
       ) {
-        // Find the most recent post that contains a mention
-        const mentionPost = feed.posts
-          .filter(
-            (post) =>
-              post.message.includes('<#E::user::') && post.postTs !== undefined
-          )
-          .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
+        const mentionReply = [...feed.replies]
+          .filter((reply) => reply.message.includes('<#E::user::'))
+          .sort((left, right) => right.createdAt - left.createdAt)[0] as
+          | ConversationReply
+          | undefined;
 
-        if (mentionPost?.postTs !== undefined) {
-          actualUser = mentionPost.from;
-          actualTimestamp = mentionPost.postTs;
-          feedType = ThreadType.Conversation;
+        if (mentionReply) {
+          actualUser =
+            mentionReply.author.name ??
+            mentionReply.author.fullyQualifiedName ??
+            '';
+          actualTimestamp = mentionReply.createdAt;
         }
       }
 
@@ -100,22 +122,24 @@ const NotificationBox = ({
           createdBy={actualUser}
           entityFQN={entityFQN as string}
           entityType={entityType as string}
-          feedType={feedType}
-          isConversationFeed={isConversationFeed}
-          key={`${actualUser} ${mainFeed.id}`}
-          task={feed}
+          key={`${actualUser} ${feed.id}`}
+          mentionNotification={feed}
           timestamp={actualTimestamp}
         />
       );
     });
-  }, [notifications]);
+  }, [activeTab, notifications]);
 
-  const getNotificationData = (
-    feedFilter: FeedFilter,
-    threadType?: ThreadType
-  ) => {
+  const getTaskNotificationData = useCallback(() => {
     setIsLoading(true);
-    getFeedsWithFilter(currentUser?.id, feedFilter, undefined, threadType)
+    const domain =
+      activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+    listMyAssignedTasks({
+      status: TaskEntityStatus.Open,
+      fields: 'about,createdBy,assignees',
+      limit: 10,
+      domain,
+    })
       .then((res) => {
         setNotifications(res.data);
       })
@@ -130,14 +154,40 @@ const NotificationBox = ({
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }, [activeDomain, t]);
+
+  const getMentionNotificationData = useCallback(() => {
+    setIsLoading(true);
+    listConversations({
+      filterType: ConversationFilterType.Mentions,
+      limit: 10,
+      userId: currentUser?.id,
+    })
+      .then((res) => {
+        setNotifications(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.notification'),
+          })
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [currentUser?.id, t]);
 
   const updateActiveTab = useCallback(
     (key: string) => {
       onTabChange(key);
-      const { threadType, feedFilter } = getFilters(key as ThreadType);
 
-      getNotificationData(feedFilter, threadType);
+      if (key === NotificationTabsKey.TASK) {
+        getTaskNotificationData();
+      } else {
+        getMentionNotificationData();
+      }
 
       setViewAllPath(
         getUserPath(
@@ -157,11 +207,18 @@ const NotificationBox = ({
         }, NOTIFICATION_READ_TIMER);
       }
     },
-    [onTabChange, currentUser, hasTaskNotification, hasMentionNotification]
+    [
+      onTabChange,
+      currentUser,
+      hasTaskNotification,
+      hasMentionNotification,
+      getTaskNotificationData,
+      getMentionNotificationData,
+    ]
   );
 
   useEffect(() => {
-    getNotificationData(FeedFilter.ASSIGNED_TO, ThreadType.Task);
+    getTaskNotificationData();
   }, []);
 
   const getTabTitle = (name: string, key: string) => {

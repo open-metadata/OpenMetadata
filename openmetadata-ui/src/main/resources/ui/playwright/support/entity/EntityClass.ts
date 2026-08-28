@@ -16,12 +16,14 @@ import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  getApiContext,
   removeDataProduct,
   removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
+  CustomPropertyTypeByName,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
@@ -50,7 +52,6 @@ import {
   removeTag,
   removeTagsFromChildren,
   removeTier,
-  replyAnnouncement,
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
@@ -65,10 +66,11 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
-import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
+import { EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type = '';
+  exploreTabName?: string;
   serviceCategory?: GlobalSettingOptions;
   serviceType?: ServiceTypes;
   childrenTabId?: string;
@@ -94,50 +96,28 @@ export class EntityClass {
     return {};
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   public set(_data: any) {
     // handle in parent component
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
     // Override for entity visit
   }
 
-  async prepareCustomProperty(apiContext: APIRequestContext) {
+  async prepareCustomProperty(
+    apiContext: APIRequestContext,
+    propertyTypes?: readonly CustomPropertyTypeByName[]
+  ) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const data = await createCustomPropertyForEntity(
         apiContext,
-        this.endpoint
+        this.endpoint,
+        propertyTypes
       );
 
       this.customPropertyValue = data.customProperties;
       this.cleanupUser = data.cleanupUser;
-    }
-  }
-
-  async cleanupCustomProperty(apiContext: APIRequestContext) {
-    // Delete custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
-      await this.cleanupUser?.(apiContext);
-      const entitySchemaResponse = await apiContext.get(
-        `/api/v1/metadata/types/name/${
-          ENTITY_PATH[this.endpoint as keyof typeof ENTITY_PATH]
-        }`
-      );
-      const entitySchema = await entitySchemaResponse.json();
-      await apiContext.patch(`/api/v1/metadata/types/${entitySchema.id}`, {
-        data: [
-          {
-            op: 'remove',
-            path: '/customProperties',
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      });
     }
   }
 
@@ -237,7 +217,8 @@ export class EntityClass {
         'Tier',
         'tier.tagFQN',
         tier2Fqn,
-        entity
+        entity,
+        true
       );
     }
     await removeTier(page, this.endpoint);
@@ -274,7 +255,6 @@ export class EntityClass {
 
   async descriptionUpdate(page: Page) {
     const description =
-      // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     await updateDescription(
@@ -293,7 +273,6 @@ export class EntityClass {
     entityEndpoint: string
   ) {
     const description =
-      // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     // Add description
@@ -513,16 +492,29 @@ export class EntityClass {
       title: 'Edited Playwright Test Announcement',
       description: 'Updated Playwright Test Announcement Description',
     });
-    await replyAnnouncement(page);
     await deleteAnnouncement(page);
   }
 
   async inactiveAnnouncement(page: Page) {
-    await createInactiveAnnouncement(page, {
+    const announcementId = await createInactiveAnnouncement(page, {
       title: 'Inactive Playwright announcement',
       description: 'Inactive Playwright announcement description',
     });
-    await deleteAnnouncement(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      const deleteResponse = await apiContext.delete(
+        `/api/v1/announcements/${announcementId}`
+      );
+
+      if (!deleteResponse.ok()) {
+        throw new Error(
+          `Failed to clean up inactive announcement ${announcementId}: ${deleteResponse.status()}`
+        );
+      }
+    } finally {
+      await afterAction();
+    }
   }
 
   async renameEntity(page: Page, entityName: string) {

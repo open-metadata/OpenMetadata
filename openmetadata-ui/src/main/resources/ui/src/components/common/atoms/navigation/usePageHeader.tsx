@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Paper, Typography } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import {
+  Badge,
+  Button,
+  Card,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
-import { ReactNode, useMemo } from 'react';
+import { startCase } from 'lodash';
+import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
+import HeaderShell from '../../HeaderShell/HeaderShell.component';
+import ProfilePicture from '../../ProfilePicture/ProfilePicture';
+
+export type PageHeaderVariant = 'default' | 'greeting' | 'search' | 'beta';
 
 interface PageHeaderConfig {
   titleKey: string;
@@ -27,77 +38,138 @@ interface PageHeaderConfig {
   addButtonTestId?: string;
   onAddClick?: () => void;
   learningPageId?: string;
+  /**
+   * Visual variant. Defaults to 'default', which renders the original card
+   * header unchanged. 'greeting' | 'search' | 'beta' render through HeaderShell.
+   */
+  variant?: PageHeaderVariant;
+  /** Leading icon for search/beta/default variants; wrapped in a FeaturedIcon tile. */
+  icon?: FC<{ className?: string }> | ReactNode;
+  iconColor?: 'brand' | 'gray' | 'success' | 'warning' | 'error';
+  /** Inline search node (usually from useSearch) rendered in search/beta variants. */
+  search?: ReactNode;
+  /** Breadcrumb row rendered above the title in HeaderShell variants. */
+  breadcrumb?: ReactNode;
+  /** i18n key for the greeting title. Defaults to 'label.hey-comma-name'. */
+  greetingNameKey?: string;
+  /** i18n key for the beta badge label. Defaults to 'label.beta'. */
+  betaLabelKey?: string;
 }
 
 export const usePageHeader = (config: PageHeaderConfig) => {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const { currentUser } = useApplicationStore();
 
+  const variant = config.variant ?? 'default';
   const displayTitle = t(config.titleKey);
   const displayDescription = t(config.descriptionMessageKey);
   const displayButtonLabel = config.addButtonLabelKey
     ? t(config.addButtonLabelKey)
     : '';
 
-  // Inline implementation copying exact EntityPageHeader styling
-  const pageHeader = useMemo(
-    () => (
-      <Paper
-        sx={{
-          p: 5,
-          mb: 5,
-          boxShadow: 'none',
-          border: `1px solid ${theme.palette.allShades?.blueGray?.[100]}`,
-          borderRadius: 1.5,
-        }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '1.5rem',
-                  color: 'text.primary',
-                  mb: 0.5,
-                }}
-                variant="h4">
-                {displayTitle}
-              </Typography>
-              {config.learningPageId && (
-                <LearningIcon pageId={config.learningPageId} />
+  const addButton =
+    config.createPermission && config.addButtonLabelKey && config.onAddClick ? (
+      <Button
+        color="primary"
+        data-testid={config.addButtonTestId || 'add-entity-button'}
+        iconLeading={Plus}
+        onClick={config.onAddClick}>
+        {displayButtonLabel}
+      </Button>
+    ) : null;
+
+  const pageHeader = ((): ReactNode => {
+    if (variant === 'default') {
+      return (
+        <Card className="tw:mb-5 tw:p-5">
+          <div className="tw:flex tw:items-center tw:justify-between">
+            <div>
+              <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">
+                <Typography as="h3">{displayTitle}</Typography>
+                {config.learningPageId && (
+                  <LearningIcon pageId={config.learningPageId} />
+                )}
+              </div>
+              {displayDescription && (
+                <Typography className="tw:text-secondary" size="text-xs">
+                  {displayDescription}
+                </Typography>
               )}
-            </Box>
-            {displayDescription && (
-              <Typography
-                sx={{ color: 'text.secondary', fontSize: '0.875rem' }}
-                variant="body2">
-                {displayDescription}
-              </Typography>
-            )}
-          </Box>
-          {config.actions ||
-            (config.createPermission &&
-              config.addButtonLabelKey &&
-              config.onAddClick && (
-                <Button
-                  color="primary"
-                  data-testid={config.addButtonTestId || 'add-entity-button'}
-                  startIcon={<Plus size={16} />}
-                  variant="contained"
-                  onClick={config.onAddClick}>
-                  {displayButtonLabel}
-                </Button>
-              ))}
-        </Box>
-      </Paper>
-    ),
-    [displayTitle, displayDescription, displayButtonLabel, config, theme]
-  );
+            </div>
+            {config.actions || addButton}
+          </div>
+        </Card>
+      );
+    }
+
+    const isGreeting = variant === 'greeting';
+    const showSearch = variant === 'search' || variant === 'beta';
+    const greetingName = startCase(
+      currentUser?.displayName || currentUser?.name || ''
+    );
+
+    const leading = isGreeting ? (
+      <ProfilePicture
+        displayName={currentUser?.displayName}
+        name={currentUser?.name ?? ''}
+        width="48"
+      />
+    ) : config.icon ? (
+      <FeaturedIcon
+        color={config.iconColor ?? 'brand'}
+        icon={config.icon}
+        shape="square"
+        size="md"
+        theme="gradient"
+      />
+    ) : undefined;
+
+    const title = isGreeting
+      ? t(config.greetingNameKey ?? 'label.hey-comma-name', {
+          name: greetingName,
+        })
+      : displayTitle;
+
+    const betaBadge =
+      variant === 'beta' ? (
+        <Badge color="brand" size="sm" type="color">
+          {t(config.betaLabelKey ?? 'label.beta')}
+        </Badge>
+      ) : null;
+
+    const learningIcon = config.learningPageId ? (
+      <LearningIcon pageId={config.learningPageId} />
+    ) : null;
+
+    const badge =
+      betaBadge || learningIcon ? (
+        <>
+          {betaBadge}
+          {learningIcon}
+        </>
+      ) : undefined;
+
+    const actions = isGreeting ? undefined : (
+      <>
+        {showSearch && config.search}
+        {config.actions ?? addButton}
+      </>
+    );
+
+    return (
+      <HeaderShell
+        actions={actions}
+        badge={badge}
+        breadcrumb={config.breadcrumb}
+        className="tw:mb-5"
+        data-testid="page-header-container"
+        leading={leading}
+        subtitle={displayDescription}
+        title={title}
+        variant="gradient"
+      />
+    );
+  })();
 
   return { pageHeader };
 };

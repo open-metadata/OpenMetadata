@@ -13,30 +13,44 @@
 
 import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, toLower } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { debounce, toLower, uniqBy } from 'lodash';
+import {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
 
-import {
-  PAGE_SIZE_LARGE,
-  TERM_ADMIN,
-} from '../../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { getRoles } from '../../../../../rest/rolesAPIV1';
-import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { searchRoles } from '../../../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
 import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
+
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">
+    {t('label.plus-count-more', {
+      count,
+    })}
+  </span>
+);
 
 const UserProfileRoles = ({
   userRoles,
@@ -51,7 +65,9 @@ const UserProfileRoles = ({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const selectedRolesRef = useRef<string[]>([]);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -69,25 +85,37 @@ const UserProfileRoles = ({
     return options;
   }, [roles, isUserAdmin, getEntityName]);
 
-  const fetchRoles = async () => {
-    try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.role-plural'),
-        })
-      );
-    }
-  };
+  const fetchRoles = useCallback(
+    async (query = '') => {
+      setIsRolesLoading(true);
+
+      try {
+        const response = await searchRoles(query);
+        setRoles((prevRoles) => {
+          const selectedRoleOptions = prevRoles.filter((role) =>
+            selectedRolesRef.current.includes(role.id)
+          );
+
+          return uniqBy([...selectedRoleOptions, ...response], 'id');
+        });
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.role-plural'),
+          })
+        );
+      } finally {
+        setIsRolesLoading(false);
+      }
+    },
+    [t]
+  );
+
+  const debouncedFetchRoles = useMemo(
+    () => debounce(fetchRoles, 300),
+    [fetchRoles]
+  );
 
   const setUserRoles = useCallback(() => {
     const defaultUserRoles = [
@@ -98,7 +126,7 @@ const UserProfileRoles = ({
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
 
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<ComponentRef<typeof Select> | null>(null);
 
   const handleRolesSave = async () => {
     setIsLoading(true);
@@ -150,14 +178,40 @@ const UserProfileRoles = ({
   }, [setUserRoles]);
 
   useEffect(() => {
+    selectedRolesRef.current = selectedRoles;
+  }, [selectedRoles]);
+
+  useEffect(() => {
     setUserRoles();
   }, [setUserRoles]);
 
   useEffect(() => {
-    if (isRolesEdit && isEmpty(roles)) {
+    setRoles((prevRoles) =>
+      uniqBy(
+        [
+          ...(prevRoles ?? []),
+          ...((userRoles ?? []).map((role) => ({
+            id: role.id,
+            name: role.name ?? '',
+            displayName: role.displayName,
+          })) as Role[]),
+        ],
+        'id'
+      )
+    );
+  }, [userRoles]);
+
+  useEffect(() => {
+    if (isRolesEdit) {
       fetchRoles();
     }
-  }, [isRolesEdit, roles]);
+  }, [isRolesEdit]);
+
+  useEffect(() => {
+    return () => {
+      debouncedFetchRoles.cancel();
+    };
+  }, [debouncedFetchRoles]);
 
   useEffect(() => {
     setIsDropdownOpen(isRolesEdit);
@@ -238,25 +292,22 @@ const UserProfileRoles = ({
                     className="w-full"
                     data-testid="profile-edit-roles-select"
                     dropdownMatchSelectWidth={false}
-                    filterOption={handleSearchFilterOption}
-                    loading={isLoading}
+                    filterOption={false}
+                    loading={isRolesLoading}
                     maxTagCount={3}
-                    maxTagPlaceholder={(omittedValues) => (
-                      <span className="max-tag-text">
-                        {t('label.plus-count-more', {
-                          count: omittedValues.length,
-                        })}
-                      </span>
-                    )}
+                    maxTagPlaceholder={(omittedValues) =>
+                      renderMaxTagPlaceholder(omittedValues.length, t)
+                    }
                     mode="multiple"
                     open={isDropdownOpen}
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
-                    ref={dropdownRef as any}
+                    ref={dropdownRef}
                     tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
                     onDropdownVisibleChange={handleDropdownChange}
+                    onSearch={debouncedFetchRoles}
                   />
                 </div>
 

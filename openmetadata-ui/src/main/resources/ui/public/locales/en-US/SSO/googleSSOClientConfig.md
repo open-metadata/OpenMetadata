@@ -1,19 +1,17 @@
----
-title: Google SSO Configuration | OpenMetadata
-description: Configure Google Single Sign-On for OpenMetadata with complete field reference
-slug: /main-concepts/metadata-standard/schemas/security/client/google-sso
----
 
 Google Single Sign-On (SSO) enables users to log in with their Google Workspace accounts using OAuth 2.0 and OpenID Connect (OIDC).
 
-### <span data-id="providerName">Provider Name</span>
+$$section
+### Provider Name $(id="providerName")
 
 - **Definition:** A human-readable name for this Google SSO configuration instance.
 - **Example:** Google SSO, Company Google SSO, Google Workspace
 - **Why it matters:** Helps identify this specific SSO configuration in logs and user interfaces.
 - **Note:** This is a display name and doesn't affect authentication functionality.
+$$
 
-### <span data-id="clientType">Client Type</span>
+$$section
+### Client Type $(id="clientType")
 
 - **Definition:** Defines whether the application is public (no client secret) or confidential (requires client secret).
 - **Options:** Public | Confidential
@@ -23,23 +21,29 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
   - Choose **Public** for SPAs and mobile apps
   - Choose **Confidential** for backend services and web applications
   - Google typically uses **Confidential** client type
+$$
 
-### <span data-id="selfSignup">Enable Self Signup</span>
+$$section
+### Enable Self Signup $(id="selfSignup")
 
 - **Definition:** Allows users to automatically create accounts on first login.
 - **Options:** Enabled | Disabled
 - **Example:** Enabled
 - **Why it matters:** Controls whether new users can join automatically or need manual approval.
 - **Note:** Disable for stricter control over user access.
+$$
 
-### <span data-id="clientId">Client ID</span>
+$$section
+### Client ID $(id="clientId")
 
 - **Definition:** OAuth 2.0 client ID assigned to your application in Google Cloud Console.
 - **Example:** 123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com
 - **Why it matters:** Google uses this to identify your application during authentication.
 - **Note:** Found in Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
+$$
 
-### <span data-id="secretKey">Client Secret</span>
+$$section
+### Client Secret $(id="secretKey")
 
 - **Definition:** Secret key for confidential client authentication with Google.
 - **Example:** GOCSPX-abcdefghijklmnopqrstuvwxyz123456
@@ -48,8 +52,10 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
   - Generate in Google Cloud Console → APIs & Services → Credentials
   - Store securely and rotate regularly
   - Only shown for Confidential client type
+$$
 
-### <span data-id="callbackUrl">Callback URL</span>
+$$section
+### Callback URL $(id="callbackUrl")
 
 - **Definition:** Redirect URI where Google sends authentication responses.
 - **Example:** https://yourapp.company.com/callback
@@ -57,31 +63,39 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
 - **Note:**
   - Must be registered in Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs
   - Always use HTTPS in production
+$$
 
-### <span data-id="audience">Audience</span>
+$$section
+### Audience $(id="audience")
 
 - **Definition:** Google OAuth 2.0 token endpoint URL for token validation.
 - **Default:** https://www.googleapis.com/oauth2/v4/token
 - **Example:** https://www.googleapis.com/oauth2/v4/token
 - **Why it matters:** Used to verify that tokens are intended for your application.
 - **Note:** Usually the default value is correct and doesn't need to be changed
+$$
 
-### <span data-id="authority">Authority</span>
+$$section
+### Authority $(id="authority")
 
 - **Definition:** Google's authorization server endpoint for OAuth 2.0 authentication.
 - **Default:** https://accounts.google.com
 - **Example:** https://accounts.google.com
 - **Why it matters:** Specifies the Google authorization server that will handle authentication requests.
 - **Note:** This is Google's standard OAuth 2.0 authorization endpoint and typically doesn't need to be changed
+$$
 
-### <span data-id="publicKey">Public Key URLs</span>
+$$section
+### Public Key URLs $(id="publicKey")
 
 - **Definition:** List of URLs where Google publishes its public keys for token verification.
 - **Example:** ["https://www.googleapis.com/oauth2/v3/certs"]
 - **Why it matters:** Used to verify JWT token signatures from Google.
 - **Note:** Usually auto-discovered from the discovery URI, rarely needs manual configuration
+$$
 
-### <span data-id="emailClaim">Email Claim</span>
+$$section
+### Email Claim $(id="emailClaim")
 
 - **Definition:** Name of the JWT claim containing the user's email address.
 - **Default:** "email"
@@ -92,16 +106,20 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
   - Usernames are auto-generated from the email prefix (e.g., `john.doe@company.com` -> `john.doe`)
   - If two users share the same email prefix across domains, a random suffix is appended (e.g., `john.doe_x7k2`)
   - Falls back to legacy `jwtPrincipalClaims` flow if this claim is not found in the token
+$$
 
-### <span data-id="displayNameClaim">Display Name Claim</span>
+$$section
+### Display Name Claim $(id="displayNameClaim")
 
 - **Definition:** Name of the JWT claim containing the user's display name.
 - **Default:** "name"
 - **Example:** name, given_name, displayName
 - **Why it matters:** Used to populate the user's display name in OpenMetadata when using the email-first flow.
 - **Note:** Only used when Email Claim is configured. Falls back to the email prefix if not found.
+$$
 
-### <span data-id="principals">JWT Principal Claims</span>
+$$section
+### JWT Principal Claims $(id="principals")
 
 > ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
 > - These claims MUST exist in JWT tokens from Google
@@ -114,8 +132,10 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
 - **Example:** ["email", "sub", "preferred_username"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common claims: email (recommended), sub, preferred_username
+$$
 
-### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
+$$section
+### JWT Principal Claims Mapping $(id="jwtPrincipalClaimsMapping")
 
 - **Definition:** Maps JWT claims to OpenMetadata user attributes.
 - **Example:** ["email:email", "username:name"]
@@ -126,8 +146,10 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
 - **Important:** JWT Principal Claims Mapping is **rarely needed** for most Google SSO configurations. The default JWT Principal Claims (`email`, `preferred_username`, `sub`) handle user identification correctly. Only configure this if you have specific custom claim requirements.
+$$
 
-### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+$$section
+### JWT Team Claim Mapping $(id="jwtTeamClaimMapping")
 
 - **Definition:** JWT claim or attribute containing team/department information for automatic team assignment.
 - **Example:** "department", "groups", or "organizationalUnit"
@@ -151,15 +173,19 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
 ## OIDC Configuration (Confidential Client Only)
 
 These fields are only shown when Client Type is set to **Confidential**.
+$$
 
-### <span data-id="id">OIDC Client ID</span>
+$$section
+### OIDC Client ID $(id="id")
 
 - **Definition:** OAuth 2.0 client ID for OIDC authentication with Google.
 - **Example:** 123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com
 - **Why it matters:** Identifies your application to Google in OIDC flows.
 - **Note:** Same as the Client ID in Google Cloud Console
+$$
 
-### <span data-id="clientSecret">OIDC Client Secret</span>
+$$section
+### OIDC Client Secret $(id="clientSecret")
 
 - **Definition:** Secret key for confidential client authentication with Google.
 - **Example:** GOCSPX-abcdefghijklmnopqrstuvwxyz123456
@@ -168,8 +194,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - Generate in Google Cloud Console → APIs & Services → Credentials
   - Store securely and rotate regularly
   - Only shown for Confidential client type
+$$
 
-### <span data-id="scopes">OIDC Request Scopes</span>
+$$section
+### OIDC Request Scopes $(id="scopes")
 
 - **Definition:** Permissions requested from Google during authentication.
 - **Default:** openid email profile
@@ -179,52 +207,66 @@ These fields are only shown when Client Type is set to **Confidential**.
   - `openid` is required for OIDC
   - `email` and `profile` provide basic user information
   - Additional scopes can be added based on requirements
+$$
 
-### <span data-id="discoveryUri">OIDC Discovery URI</span>
+$$section
+### OIDC Discovery URI $(id="discoveryUri")
 
 - **Definition:** Google's OpenID Connect metadata endpoint.
 - **Example:** https://accounts.google.com/.well-known/openid-configuration
 - **Why it matters:** Allows OpenMetadata to automatically discover Google's OIDC endpoints.
 - **Note:** Google's standard discovery endpoint, rarely needs to be changed
+$$
 
-### <span data-id="useNonce">OIDC Use Nonce</span>
+$$section
+### OIDC Use Nonce $(id="useNonce")
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
 - **Default:** false
 - **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
 - **Note:** Can be enabled for additional security if your provider supports it
+$$
 
-### <span data-id="disablePkce">OIDC Disable PKCE</span>
+$$section
+### OIDC Disable PKCE $(id="disablePkce")
 
 - **Definition:** Whether to disable Proof Key for Code Exchange (security extension).
 - **Default:** false
 - **Example:** false
 - **Why it matters:** PKCE adds security to the authorization code flow.
 - **Note:** Should typically be left enabled (false) for security
+$$
 
-### <span data-id="maxClockSkew">OIDC Max Clock Skew</span>
+$$section
+### OIDC Max Clock Skew $(id="maxClockSkew")
 
 - **Definition:** Maximum allowed time difference between systems when validating tokens.
 - **Example:** 0 (seconds)
 - **Why it matters:** Prevents token validation failures due to minor time differences.
 - **Note:** Usually 0 is fine unless you have significant clock skew issues
+$$
 
-### <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
+$$section
+### OIDC Client Authentication Method $(id="clientAuthenticationMethod")
 
 - **Definition:** Method used to authenticate the client with Google.
 - **Default:** client_secret_post (automatically configured)
 - **Why it matters:** OpenMetadata uses `client_secret_post` which is supported by Google OAuth.
 - **Note:** This field is hidden and automatically configured. Google supports both `client_secret_post` and `client_secret_basic`.
+$$
 
-### <span data-id="tokenValidity">OIDC Token Validity</span>
+$$section
+### OIDC Token Validity $(id="tokenValidity")
 
 - **Definition:** How long (in seconds) the issued tokens remain valid.
 - **Default:** 0 (use provider default)
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls token lifetime and security vs usability balance.
+$$
 
-### <span data-id="customParams">OIDC Custom Parameters</span>
+$$section
+### OIDC Custom Parameters $(id="customParams")
 
 - **Definition:** Additional parameters to send in OIDC requests.
 - **Example:** {"hd": "company.com", "prompt": "select_account"}
@@ -233,8 +275,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - `hd`: Hosted domain (restrict to specific Google Workspace domain)
   - `prompt`: Controls authentication prompts
   - `login_hint`: Pre-fill email address
+$$
 
-### <span data-id="callbackUrl">OIDC Callback URL / Redirect URI</span>
+$$section
+### OIDC Callback URL / Redirect URI $(id="callbackUrl")
 
 - **Definition:** URL where Google redirects after authentication.
 - **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
@@ -244,15 +288,19 @@ These fields are only shown when Client Type is set to **Confidential**.
   - **This field is read-only** - it cannot be edited
   - **Copy this exact URL** and add it to your Google Cloud Console → OAuth 2.0 Client → Authorized redirect URIs
   - Format is always: `{your-domain}/callback`
+$$
 
-### <span data-id="maxAge">OIDC Max Age</span>
+$$section
+### OIDC Max Age $(id="maxAge")
 
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
 - **Note:** Leave empty for no specific max age requirement
+$$
 
-### <span data-id="prompt">OIDC Prompt</span>
+$$section
+### OIDC Prompt $(id="prompt")
 
 - **Definition:** Controls Google's authentication prompts.
 - **Options:** none | login | consent | select_account
@@ -263,8 +311,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - `consent`: Prompt for permissions
   - `select_account`: Show account picker
   - `none`: Silent authentication (may fail if user isn't logged in)
+$$
 
-### <span data-id="sessionExpiry">OIDC Session Expiry</span>
+$$section
+### OIDC Session Expiry $(id="sessionExpiry")
 
 - **Definition:** How long (in seconds) user sessions remain valid.
 - **Default:** 604800 (7 days)
@@ -273,8 +323,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 - **Note:** Only applies to confidential clients
 
 ## Authorizer Configuration
+$$
 
-### <span data-id="adminEmails">Admin Emails</span>
+$$section
+### Admin Emails $(id="adminEmails")
 
 - **Definition:** List of email addresses that should be granted admin privileges.
 - **Example:** ["admin@company.com", "security-lead@company.com"]
@@ -284,8 +336,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - Case-insensitive matching (admin@Company.com matches admin@company.com)
   - If a matching user already exists, they are promoted to admin
   - If no user exists, a new admin account is created with a username derived from the email
+$$
 
-### <span data-id="allowedEmailDomains">Allowed Email Domains</span>
+$$section
+### Allowed Email Domains $(id="allowedEmailDomains")
 
 - **Definition:** List of email domains allowed to authenticate.
 - **Example:** ["company.com", "subsidiary.com"]
@@ -294,38 +348,48 @@ These fields are only shown when Client Type is set to **Confidential**.
   - Takes precedence over the legacy Enforce Principal Domain / Allowed Domains settings
   - Users with email addresses outside these domains will be rejected at login
   - Case-insensitive domain matching
+$$
 
-### <span data-id="botDomain">Bot Domain</span>
+$$section
+### Bot Domain $(id="botDomain")
 
 - **Definition:** Email domain used for system-created bot accounts.
 - **Default:** "openmetadata.org"
 - **Example:** openmetadata.org
 - **Why it matters:** Separates bot email domain from user email domain. Bots get emails like `ingestion-bot@{botDomain}`.
 - **Note:** Replaces the use of Principal Domain for bot email construction.
+$$
 
-### <span data-id="adminPrincipals">Admin Principals</span>
+$$section
+### Admin Principals $(id="adminPrincipals")
 
 - **Definition:** List of user principals who will have admin access.
 - **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
+$$
 
-### <span data-id="principalDomain">Principal Domain</span>
+$$section
+### Principal Domain $(id="principalDomain")
 
 - **Definition:** Default domain for user principals.
 - **Example:** company.com
 - **Why it matters:** Used to construct full user principals when only username is provided.
 - **Note:** Typically your organization's Google Workspace domain
+$$
 
-### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+$$section
+### Enforce Principal Domain $(id="enforcePrincipalDomain")
 
 - **Definition:** Whether to enforce that all users belong to the principal domain.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
 - **Note:** Useful when combined with Google Workspace `hd` parameter
+$$
 
-### <span data-id="allowedDomains">Allowed Domains</span>
+$$section
+### Allowed Domains $(id="allowedDomains")
 
 - **Definition:** List of email domains that are permitted to access OpenMetadata.
 - **Example:** ["company.com", "contractor-company.com"]
@@ -335,8 +399,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
   - Leave empty or use single `principalDomain` if you only have one Google Workspace domain
   - Useful when you have multiple Google Workspace domains or want to allow specific external domains
+$$
 
-### <span data-id="enableSecureSocketConnection">Enable Secure Socket Connection</span>
+$$section
+### Enable Secure Socket Connection $(id="enableSecureSocketConnection")
 
 - **Definition:** Whether to use SSL/TLS for secure connections.
 - **Default:** false
@@ -367,3 +433,4 @@ Ensure the following Google APIs are enabled in your Google Cloud Console:
 ### Service Account (Optional)
 
 For advanced integrations, you may need to create a service account in Google Cloud Console with appropriate permissions for accessing Google Workspace data.
+$$

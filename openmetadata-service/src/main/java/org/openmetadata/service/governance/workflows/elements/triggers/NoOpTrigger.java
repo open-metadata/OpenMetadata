@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -25,8 +26,30 @@ import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 
 public class NoOpTrigger implements TriggerInterface {
+  private static final Set<String> TASK_WORKFLOW_PASSTHROUGH_VARIABLES =
+      Set.of(
+          WorkflowStartVariables.TASK_ENTITY_ID,
+          WorkflowStartVariables.TASK_WORKFLOW_MANAGED,
+          WorkflowStartVariables.TASK_NAME,
+          WorkflowStartVariables.TASK_DISPLAY_NAME,
+          WorkflowStartVariables.TASK_DESCRIPTION,
+          WorkflowStartVariables.TASK_TYPE,
+          WorkflowStartVariables.TASK_CATEGORY,
+          WorkflowStartVariables.TASK_PRIORITY,
+          WorkflowStartVariables.TASK_PAYLOAD,
+          WorkflowStartVariables.TASK_DUE_DATE,
+          WorkflowStartVariables.TASK_EXTERNAL_REFERENCE,
+          WorkflowStartVariables.TASK_TAGS,
+          WorkflowStartVariables.TASK_CREATED_BY,
+          WorkflowStartVariables.TASK_UPDATED_BY,
+          WorkflowStartVariables.TASK_REVIEWERS,
+          WorkflowStartVariables.TASK_ASSIGNEES,
+          WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
+          WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION,
+          WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
   private final Process process;
 
   @Getter private final String triggerWorkflowId;
@@ -83,14 +106,24 @@ public class NoOpTrigger implements TriggerInterface {
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
             .calledElement(mainWorkflowName)
             .inheritBusinessKey(true)
+            .inheritVariables(true)
             .build();
 
     List<IOParameter> inputParameters = new ArrayList<>();
 
-    for (String triggerOutput : triggerOutputs) {
+    Set<String> forwardedVariables = new LinkedHashSet<>();
+    forwardedVariables.addAll(triggerOutputs);
+    forwardedVariables.addAll(TASK_WORKFLOW_PASSTHROUGH_VARIABLES);
+
+    for (String triggerOutput : forwardedVariables) {
       IOParameter inputParameter = new IOParameter();
-      inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
-      inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+      if (TASK_WORKFLOW_PASSTHROUGH_VARIABLES.contains(triggerOutput)) {
+        inputParameter.setSource(triggerOutput);
+        inputParameter.setTarget(triggerOutput);
+      } else {
+        inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+        inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+      }
       inputParameters.add(inputParameter);
     }
 

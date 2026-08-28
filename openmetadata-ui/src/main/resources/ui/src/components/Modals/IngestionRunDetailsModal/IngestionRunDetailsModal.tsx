@@ -12,8 +12,6 @@
  */
 
 import { Button, Col, Modal, Row, Typography } from 'antd';
-import { ColumnType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,10 +22,40 @@ import {
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Table from '../../common/Table/Table';
+import {
+  ColumnType,
+  ExpandableConfig,
+} from '../../common/Table/Table.interface';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
+
+const renderFailuresRow = (record: StepSummary) =>
+  record.failures ? (
+    <Row gutter={[16, 16]}>
+      {record.failures.map((failure) => (
+        <Col key={failure.name} span={24}>
+          <ConnectionStepCard
+            isTestingConnection={false}
+            key={failure.name}
+            testConnectionStep={{
+              name: failure.name,
+              mandatory: false,
+              description: failure.error,
+            }}
+            testConnectionStepResult={{
+              name: failure.name,
+              passed: false,
+              mandatory: false,
+              message: failure.error,
+              errorLog: failure.stackTrace,
+            }}
+          />
+        </Col>
+      ))}
+    </Row>
+  ) : undefined;
 
 function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
   pipelineStatus,
@@ -90,32 +118,7 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
 
   const expandable: ExpandableConfig<StepSummary> = useMemo(
     () => ({
-      expandedRowRender: (record) => {
-        return record.failures ? (
-          <Row gutter={[16, 16]}>
-            {record.failures.map((failure) => (
-              <Col key={failure.name} span={24}>
-                <ConnectionStepCard
-                  isTestingConnection={false}
-                  key={failure.name}
-                  testConnectionStep={{
-                    name: failure.name,
-                    mandatory: false,
-                    description: failure.error,
-                  }}
-                  testConnectionStepResult={{
-                    name: failure.name,
-                    passed: false,
-                    mandatory: false,
-                    message: failure.error,
-                    errorLog: failure.stackTrace,
-                  }}
-                />
-              </Col>
-            ))}
-          </Row>
-        ) : undefined;
-      },
+      expandedRowRender: renderFailuresRow,
       indentSize: 0,
       expandIcon: () => null,
       expandedRowKeys: expandedKeys,

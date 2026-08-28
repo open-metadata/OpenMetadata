@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -76,7 +77,9 @@ public class WorkflowResourceIT {
     assertEquals(workflowName, workflow.getName());
     assertEquals(WorkflowType.TEST_CONNECTION, workflow.getWorkflowType());
     assertNotNull(workflow.getRequest());
-    assertNotNull(workflow.getOpenMetadataServerConnection());
+    assertNull(
+        workflow.getOpenMetadataServerConnection(),
+        "SECURITY: Create response must NOT return openMetadataServerConnection to prevent JWT token exposure");
   }
 
   @Test
@@ -313,5 +316,74 @@ public class WorkflowResourceIT {
     Workflow workflow = client.workflows().create(createRequest);
 
     assertNotNull(workflow.getHref());
+  }
+
+  @Test
+  void get_workflow_doesNotExposeJwtToken_security(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("securityGetWorkflow");
+
+    Workflow created = client.workflows().create(createRequest(workflowName));
+
+    Workflow fetchedById = client.workflows().get(created.getId().toString());
+    assertNull(
+        fetchedById.getOpenMetadataServerConnection(),
+        "SECURITY: GET by ID must NOT return openMetadataServerConnection to prevent JWT token exposure");
+
+    Workflow fetchedByName = client.workflows().getByName(created.getFullyQualifiedName());
+    assertNull(
+        fetchedByName.getOpenMetadataServerConnection(),
+        "SECURITY: GET by name must NOT return openMetadataServerConnection to prevent JWT token exposure");
+  }
+
+  @Test
+  void list_workflows_doesNotExposeJwtToken_security(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    for (int i = 0; i < 2; i++) {
+      client.workflows().create(createRequest(ns.prefix("securityListWorkflow" + i)));
+    }
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    ListResponse<Workflow> response = client.workflows().list(params);
+    assertNotNull(response);
+    assertNotNull(response.getData());
+
+    for (Workflow workflow : response.getData()) {
+      assertNull(
+          workflow.getOpenMetadataServerConnection(),
+          String.format(
+              "SECURITY: LIST must NOT return openMetadataServerConnection for workflow [%s]",
+              workflow.getName()));
+    }
+  }
+
+  @Test
+  void put_workflow_doesNotExposeJwtToken_security(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("securityPutWorkflow");
+
+    Workflow created = client.workflows().create(createRequest(workflowName));
+    created.setDescription("Updated description for security test");
+    Workflow updated = client.workflows().update(created.getId().toString(), created);
+
+    assertNull(
+        updated.getOpenMetadataServerConnection(),
+        "SECURITY: PUT response must NOT return openMetadataServerConnection to prevent JWT token exposure");
+  }
+
+  @Test
+  void get_workflowVersion_doesNotExposeJwtToken_security(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("securityVersionWorkflow");
+
+    Workflow created = client.workflows().create(createRequest(workflowName));
+    Double initialVersion = created.getVersion();
+
+    Workflow version = client.workflows().getVersion(created.getId().toString(), initialVersion);
+    assertNull(
+        version.getOpenMetadataServerConnection(),
+        "SECURITY: GET version must NOT return openMetadataServerConnection to prevent JWT token exposure");
   }
 }

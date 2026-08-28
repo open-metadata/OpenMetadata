@@ -89,6 +89,6 @@ public class OMJobResource extends CustomResource<OMJobSpec, OMJobStatus> implem
     long completionTime = getStatus().getCompletionTime().getEpochSecond();
     long currentTime = System.currentTimeMillis() / 1000;
 
-    return (currentTime - completionTime) > ttl;
+    return (currentTime - completionTime) >= ttl;
   }
 }

@@ -12,10 +12,16 @@
  */
 import Icon from '@ant-design/icons';
 import { Card, Segmented, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
@@ -36,26 +42,44 @@ import {
   Task,
 } from '../../../generated/entity/data/pipeline';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TasksDAGView from '../TasksDAGView/TasksDAGView';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+// TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
+// with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
+// into the entry chunk because PipelineTaskTab is reachable from
+// PipelineDetailsUtils + GenericWidgetUtils (both eager). Lazy-loading here
+// breaks that chain — Vite drops reactflow + the lineage helpers out of the
+// entry preload list; the DAG view chunk loads when the user actually opens
+// the Tasks tab. Suspense fallback is `null` because the surrounding Card
+// already has its own title/skeleton; a spinner here would flash once.
+const TasksDAGView = lazy(() => import('../TasksDAGView/TasksDAGView'));
 
 export const PipelineTaskTab = () => {
   const {
@@ -82,6 +106,16 @@ export const PipelineTaskTab = () => {
   }>();
   const { deleted } = pipelineDetails ?? {};
   const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const {
+    currentPage,
+    pageSize,
+    showPagination,
+    paging,
+    handlePagingChange,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging();
 
   useFqnDeepLink({
     data: pipelineDetails.tasks ?? [],
@@ -114,7 +148,7 @@ export const PipelineTaskTab = () => {
     [permissions]
   );
 
-  const tasksInternal = useMemo(
+  const allTasksInternal = useMemo(
     () =>
       pipelineDetails.tasks
         ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
@@ -122,24 +156,50 @@ export const PipelineTaskTab = () => {
     [pipelineDetails.tasks]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(allTasksInternal);
+
+  useEffect(() => {
+    handlePagingChange({ total: filteredData.length });
+    const maxPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
+    if (currentPage > maxPage) {
+      handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
+    }
+  }, [filteredData.length, pageSize]);
+
+  const tasksInternal = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
+
+  const handleTasksPageChange = useCallback(
+    ({ currentPage: page }: PagingHandlerParams) => {
+      handlePageChange(page, { cursorType: null, cursorValue: undefined });
+    },
+    [handlePageChange]
+  );
+
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(tasksInternal);
+    const tags = getAllTags(allTasksInternal);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [tasksInternal]);
+  }, [allTasksInternal]);
 
   const tasksDAGView = useMemo(
     () =>
       !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
         <Card className="task-dag-view-card" title={t('label.dag-view')}>
           <div className="h-100">
-            <TasksDAGView
-              selectedExec={selectedExecution}
-              tasks={pipelineDetails.tasks}
-            />
+            <Suspense fallback={null}>
+              <TasksDAGView
+                selectedExec={selectedExecution}
+                tasks={pipelineDetails.tasks}
+              />
+            </Suspense>
           </div>
         </Card>
       ) : (
@@ -271,7 +331,12 @@ export const PipelineTaskTab = () => {
             hasEditPermission={editDescriptionPermission}
             index={index}
             isReadOnly={deleted}
-            onClick={() => setEditTask({ task: record, index })}
+            onClick={() =>
+              setEditTask({
+                task: record,
+                index: (currentPage - 1) * pageSize + index,
+              })
+            }
           />
         ),
       },
@@ -297,7 +362,7 @@ export const PipelineTaskTab = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -307,7 +372,7 @@ export const PipelineTaskTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -330,6 +395,9 @@ export const PipelineTaskTab = () => {
       editGlossaryTermsPermission,
       handleTableTagSelection,
       editDescriptionPermission,
+      currentPage,
+      pageSize,
+      tagFilterState,
     ]
   );
 
@@ -347,6 +415,15 @@ export const PipelineTaskTab = () => {
         <Table
           className="align-table-filter-left"
           columns={taskColumns}
+          customPaginationProps={{
+            currentPage,
+            showPagination,
+            isNumberBased: true,
+            pageSize,
+            paging,
+            pagingHandler: handleTasksPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
           data-testid="task-table"
           dataSource={tasksInternal}
           defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
@@ -355,6 +432,7 @@ export const PipelineTaskTab = () => {
           scroll={{ x: 1200 }}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       ) : (
         tasksDAGView

@@ -2,28 +2,30 @@ default_language_version:
   python: python3
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v5.0.0
     hooks:
       - id: check-json
-        exclude: vscode
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.5.0
+        # TODO: investigate and fix or remove the excluded files. The first
+        # three carry real JSON issues (duplicate keys, malformed/empty
+        # content) that pre-commit-hooks v2.3.0 didn't catch; v5.0.0 does.
+        # The last is an intentionally malformed test fixture.
+        exclude: |
+          (?x)^(
+            .*vscode.*|
+            openmetadata-spec/src/main/resources/rdf/contexts/dataAsset\.jsonld|
+            ingestion/examples/sample_data/pipelines/tasks\.json|
+            openmetadata-service/src/main/resources/dataInsights/opensearch/indexSettingsTemplate\.json|
+            openmetadata-ui/src/main/resources/ui/playwright/test-data/odcs-examples/invalid-malformed\.json
+          )$
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
     hooks:
-      - id: pycln
+      - id: ruff-check
         files: ^(ingestion|openmetadata-airflow-apis)/
-        args: [ "--config", "ingestion/pyproject.toml" ]
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
+        args: ["--fix", "--config", "ingestion/pyproject.toml"]
+      - id: ruff-format
         files: ^(ingestion|openmetadata-airflow-apis)/
-        args: [ "--settings-file", "ingestion/pyproject.toml" ]
-  - repo: https://github.com/ambv/black
-    rev: 22.3.0
-    hooks:
-      - id: black
-        files: ^(ingestion|openmetadata-airflow-apis)/
-        args: [ "--config", "ingestion/pyproject.toml" ]
+        args: ["--config", "ingestion/pyproject.toml"]
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v2.5.1
     hooks:
@@ -38,12 +40,56 @@ repos:
         language: script
         files: \.java$
         require_serial: true
-  - repo: local
-    hooks:
-      - id: lint-staged
-        name: lint-staged
-        description: Formats TS and JS code.
-        entry: scripts/lint-staged.sh
-        language: script
-        files: \.(js|jsx|ts|tsx)$
+      - id: token-audit
+        name: Design token audit (no hardcoded CSS values)
+        description: Fails if committed UI CSS/LESS contains hardcoded colors or spacing instead of design tokens. See openmetadata-ui/src/main/resources/ui/specs/.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/token-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(less|css)$
         require_serial: true
+      - id: token-drift
+        name: Design token drift (generated files, token refs, spec links)
+        description: Fails if tokens.css / token-reference.md are stale (run yarn token-gen), a referenced token is undefined, or a component spec links to a missing file.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/design-tokens/check-drift.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/(src/styles/tokens\.css|src/.*\.(less|css)|specs/.*\.md)$
+        pass_filenames: false
+        require_serial: true
+      - id: ui-prettier
+        name: Prettier (UI)
+        description: Fails if changed UI TS/TSX/JS/JSX/JSON is not prettier-formatted (matches CI ui-checkstyle). Fix with `yarn --cwd openmetadata-ui/src/main/resources/ui ui-checkstyle:changed`.
+        entry: scripts/check-ui-format.sh
+        language: script
+        files: ^(openmetadata-ui/src/main/resources/ui/(src|playwright)|openmetadata-ui-core-components/src/main/resources/ui/src)/.*\.(ts|tsx|js|jsx|json)$
+        exclude: /generated/
+        require_serial: true
+      - id: ui-license-header
+        name: Apache-2.0 license header (UI)
+        description: Fails if a changed UI source file is missing the Apache-2.0 header (matches CI ui-checkstyle). Fix with `yarn --cwd openmetadata-ui/src/main/resources/ui license-header-fix`.
+        entry: scripts/check-ui-license.sh
+        language: script
+        files: ^(openmetadata-ui/src/main/resources/ui/(src|playwright)|openmetadata-ui-core-components/src/main/resources/ui/src)/.*\.(ts|tsx|js|jsx)$
+        exclude: /generated/
+        require_serial: true
+      - id: tw-audit
+        name: Tailwind audit (no hardcoded values in TSX)
+        description: Fails if committed .tsx/.ts uses arbitrary Tailwind color/spacing/radius values that map to a design-system utility (e.g. tw:bg-[#2e90fa] -> tw:bg-brand-500).
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js)$
+        require_serial: true
+      - id: tw-deprecation-guard
+        name: Antd + Less deprecation guard (no new debt)
+        description: Fails if a change adds a new .less file or a new `import ... from 'antd'`. Existing usage is fine; use UntitledUI + Tailwind for new work.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-deprecation-guard.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less)$
+        pass_filenames: false
+        require_serial: true
+      - id: core-components-i18n
+        name: core-components i18n checks (gates 1+2+3)
+        description: Fails if core-components `t()` keys, locale files, or the language-set are out of sync. Run `yarn check-i18n-all` in openmetadata-ui-core-components/src/main/resources/ui.
+        entry: bash -c 'cd openmetadata-ui-core-components/src/main/resources/ui && yarn check-i18n-all'
+        language: system
+        files: ^openmetadata-ui-core-components/src/main/resources/ui/src/.*\.(ts|tsx|json)$
+        pass_filenames: false

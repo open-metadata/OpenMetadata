@@ -30,7 +30,11 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.SortOrder;
@@ -44,6 +48,21 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 
 @Slf4j
 public class OsUtils {
+
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built on a raw {@code
+   * SearchRequest.Builder}. Non-memory documents are unaffected.
+   */
+  static Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((OpenSearchQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
     try {
@@ -63,7 +82,7 @@ public class OsUtils {
     } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid JSON input", e);
     }
-    return JsonData.of(docMap);
+    return JsonData.of(docMap, jsonpMapper);
   }
 
   public static String parseJsonQuery(String jsonQuery) throws JsonProcessingException {
@@ -80,9 +99,11 @@ public class OsUtils {
   }
 
   private static final ObjectMapper mapper;
+  private static final JacksonJsonpMapper jsonpMapper;
 
   static {
     mapper = new ObjectMapper();
+    jsonpMapper = new JacksonJsonpMapper(mapper);
   }
 
   public static String getEntityRelationshipAggregationField(
@@ -256,7 +277,10 @@ public class OsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -281,6 +305,19 @@ public class OsUtils {
       Pair<String, String> hasToFqnPair,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntityByKey(
+        client, direction, indexAlias, keyName, hasToFqnPair, null, fieldsToRemove);
+  }
+
+  public static Map<String, Object> searchEntityByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Pair<String, String> hasToFqnPair,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
     Map<String, Object> result =
         searchEntitiesByKey(
             client,
@@ -290,6 +327,7 @@ public class OsUtils {
             Set.of(hasToFqnPair.getLeft()),
             0,
             1,
+            fieldsToInclude,
             fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
@@ -311,18 +349,82 @@ public class OsUtils {
       int size,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntitiesByKey(
+        client, direction, indexAlias, keyName, keyValues, from, size, null, fieldsToRemove, null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        fieldsToInclude,
+        fieldsToRemove,
+        null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        null,
+        fieldsToRemove,
+        queryFilter);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
     Map<String, Object> result = new HashMap<>();
     SearchRequest searchRequest =
         getSearchRequest(
             direction,
             indexAlias,
-            null,
+            queryFilter,
             null,
             Map.of(keyName, keyValues),
             from,
             size,
             null,
-            null,
+            fieldsToInclude,
             fieldsToRemove);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
@@ -380,7 +482,10 @@ public class OsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -409,8 +514,13 @@ public class OsUtils {
                     t ->
                         t.field("deleted").value(FieldValue.of(!nullOrEmpty(deleted) && deleted))));
 
+    // Platform lineage returns each hit's raw _source and runs without a SubjectContext, so it
+    // cannot tell whose restricted memory a document is: only org-wide memories may come back.
     SearchRequest.Builder searchRequestBuilder =
-        new SearchRequest.Builder().index(indexName).query(deletedQuery).size(10000);
+        new SearchRequest.Builder()
+            .index(indexName)
+            .query(restrictToOrgWideMemories(deletedQuery))
+            .size(10000);
 
     // Apply query filter
     buildSearchSourceFilter(queryFilter, searchRequestBuilder);
@@ -554,8 +664,15 @@ public class OsUtils {
                 JsonNode typeNode = fieldObj.get("type");
                 if (typeNode != null && "flattened".equals(typeNode.asText())) {
                   fieldObj.put("type", "flat_object");
+                  // flat_object does not support the ES flattened guard parameters
+                  fieldObj.remove("ignore_above");
+                  fieldObj.remove("depth_limit");
                   LOG.debug(
                       "Transformed field '{}' from 'flattened' to 'flat_object'", entry.getKey());
+                }
+                // OpenSearch's boolean type does not support ignore_malformed (Elasticsearch does)
+                if (typeNode != null && "boolean".equals(typeNode.asText())) {
+                  fieldObj.remove("ignore_malformed");
                 }
 
                 // Recurse into nested properties

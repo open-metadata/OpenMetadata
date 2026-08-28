@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import Table from '../../../components/common/Table/Table';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../../components/common/Table/Table.interface';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import {
   PartitionColumnDetails,
@@ -86,13 +86,11 @@ export const PartitionedKeys = ({
   );
 
   return renderAsExpandableCard ? (
-    <ExpandableCard
-      cardProps={{
-        title: t('label.table-partition-plural'),
-      }}
-      isExpandDisabled={isEmpty(partitionColumnDetails)}>
+    <WidgetCard
+      isExpandDisabled={isEmpty(partitionColumnDetails)}
+      title={t('label.table-partition-plural')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   ) : (
     content
   );

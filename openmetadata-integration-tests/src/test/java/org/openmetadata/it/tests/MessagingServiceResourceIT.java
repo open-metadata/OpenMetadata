@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.net.URI;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -37,6 +39,23 @@ public class MessagingServiceResourceIT
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .topics()
+            .create(
+                new CreateTopic()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName())
+                    .withPartitions(1));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        java.util.List.of(new SearchDoc("topic_search_index", child.getId().toString())));
   }
 
   @Override
@@ -431,6 +450,28 @@ public class MessagingServiceResourceIT
 
     KafkaConnection conn = extractKafkaConnection(fetched);
     assertPasswordsNotMasked(conn, "Bot GET by name");
+  }
+
+  @Test
+  void patch_messagingServiceConnection_preservesMaskedPasswords(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "patch_preserves_secrets");
+    KafkaConnection maskedConnection = extractKafkaConnection(service);
+    assertPasswordsMasked(maskedConnection, "Admin create response");
+    maskedConnection.setBootstrapServers("updated:9092");
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config")
+        .set("value", JsonUtils.valueToTree(maskedConnection));
+
+    SdkClients.adminClient().messagingServices().patch(service.getId(), patch);
+
+    MessagingService persisted =
+        SdkClients.ingestionBotClient().messagingServices().get(service.getId());
+    KafkaConnection persistedConnection = extractKafkaConnection(persisted);
+    assertEquals("updated:9092", persistedConnection.getBootstrapServers());
+    assertPasswordsNotMasked(persistedConnection, "Bot GET after masked PATCH");
   }
 
   /**

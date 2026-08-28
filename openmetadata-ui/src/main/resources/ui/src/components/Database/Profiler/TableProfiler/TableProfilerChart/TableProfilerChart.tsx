@@ -31,8 +31,8 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
-import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
+import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
@@ -115,6 +115,7 @@ const TableProfilerChart = ({
         i18nKey="message.no-profiler-card-message-with-link"
         renderElement={
           <a
+            aria-label={t('label.documentation')}
             href={profilerDocsLink}
             rel="noreferrer"
             target="_blank"

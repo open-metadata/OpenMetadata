@@ -30,7 +30,7 @@ import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addGlossaries } from '../../rest/glossaryAPI';
-import { getIsErrorMatch } from '../../utils/CommonUtils';
+import { getIsErrorMatch } from '../../utils/APIUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';

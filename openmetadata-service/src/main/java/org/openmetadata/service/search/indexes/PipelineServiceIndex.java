@@ -4,17 +4,19 @@ import java.util.Map;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.service.Entity;
 
-public record PipelineServiceIndex(PipelineService pipelineService) implements SearchIndex {
+public record PipelineServiceIndex(PipelineService pipelineService)
+    implements TaggableIndex, LineageIndex {
   @Override
   public Object getEntity() {
     return pipelineService;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.PIPELINE_SERVICE;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(pipelineService, Entity.PIPELINE_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(pipelineService.getEntityReference()));
     return doc;
   }
 }

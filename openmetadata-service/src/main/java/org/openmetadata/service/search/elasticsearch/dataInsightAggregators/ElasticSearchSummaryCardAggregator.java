@@ -7,7 +7,6 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,8 +32,7 @@ public class ElasticSearchSummaryCardAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaMap,
-      boolean live)
-      throws IOException {
+      boolean live) {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
 

@@ -35,8 +35,16 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 @Repository
 public class LLMModelRepository extends EntityRepository<LLMModel> {
-  private static final String MODEL_UPDATE_FIELDS = "usedByAgents";
-  private static final String MODEL_PATCH_FIELDS = "usedByAgents";
+  private static final String FIELD_CAPABILITIES = "capabilities";
+  private static final String FIELD_CERTIFICATIONS = "certifications";
+  private static final String FIELD_DETECTION = "detection";
+  private static final String FIELD_EVIDENCE = "evidence";
+  private static final String FIELD_MODEL_TYPE = "modelType";
+  private static final String FIELD_PROVIDER_MODEL_ID = "providerModelId";
+  private static final String FIELD_REGULATORY_COMPLIANCE = "regulatoryCompliance";
+  private static final String FIELD_REMEDIATION_ACTIONS = "remediationActions";
+  private static final String MODEL_UPDATE_FIELDS = "usedByAgents,reviewers";
+  private static final String MODEL_PATCH_FIELDS = "usedByAgents,reviewers";
 
   public LLMModelRepository() {
     super(
@@ -128,6 +136,7 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     if (llmModel.getService() != null) {
       populateService(llmModel);
     }
+    AIAssetStatusSync.sync(llmModel);
   }
 
   @Override
@@ -168,7 +177,13 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     if (entity.getService() == null) {
       return null;
     }
-    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+    EntityReference service = entity.getService();
+    EntityRepository<?> serviceRepository = Entity.getEntityRepository(service.getType());
+    Fields parentFields = serviceRepository.getOnlySupportedFields(fields);
+    return service.getId() != null
+        ? serviceRepository.get(null, service.getId(), parentFields, Include.ALL, true)
+        : serviceRepository.getByName(
+            null, service.getFullyQualifiedName(), parentFields, Include.ALL, true);
   }
 
   private void populateService(LLMModel llmModel) {
@@ -186,63 +201,122 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "baseModel",
-          () -> {
-            recordChange("baseModel", original.getBaseModel(), updated.getBaseModel());
-          });
+          () -> recordChange("baseModel", original.getBaseModel(), updated.getBaseModel()));
+      updateModelIdentity();
+      updateCapabilities();
       compareAndUpdate(
           "modelVersion",
-          () -> {
-            recordChange("modelVersion", original.getModelVersion(), updated.getModelVersion());
-          });
+          () ->
+              recordChange("modelVersion", original.getModelVersion(), updated.getModelVersion()));
       compareAndUpdate(
           "modelProvider",
-          () -> {
-            recordChange("modelProvider", original.getModelProvider(), updated.getModelProvider());
-          });
+          () ->
+              recordChange(
+                  "modelProvider", original.getModelProvider(), updated.getModelProvider()));
       compareAndUpdate(
           "modelSpecifications",
-          () -> {
-            recordChange(
-                "modelSpecifications",
-                original.getModelSpecifications(),
-                updated.getModelSpecifications(),
-                true);
-          });
+          () ->
+              recordChange(
+                  "modelSpecifications",
+                  original.getModelSpecifications(),
+                  updated.getModelSpecifications(),
+                  true));
       compareAndUpdate(
           "trainingMetadata",
-          () -> {
-            recordChange(
-                "trainingMetadata",
-                original.getTrainingMetadata(),
-                updated.getTrainingMetadata(),
-                true);
-          });
+          () ->
+              recordChange(
+                  "trainingMetadata",
+                  original.getTrainingMetadata(),
+                  updated.getTrainingMetadata(),
+                  true));
       compareAndUpdate(
           "modelEvaluation",
-          () -> {
-            recordChange(
-                "modelEvaluation",
-                original.getModelEvaluation(),
-                updated.getModelEvaluation(),
-                true);
-          });
+          () ->
+              recordChange(
+                  "modelEvaluation",
+                  original.getModelEvaluation(),
+                  updated.getModelEvaluation(),
+                  true));
       compareAndUpdate(
           "costMetrics",
-          () -> {
-            recordChange("costMetrics", original.getCostMetrics(), updated.getCostMetrics(), true);
-          });
+          () ->
+              recordChange(
+                  "costMetrics", original.getCostMetrics(), updated.getCostMetrics(), true));
       compareAndUpdate(
           "deploymentInfo",
-          () -> {
-            recordChange(
-                "deploymentInfo", original.getDeploymentInfo(), updated.getDeploymentInfo(), true);
-          });
+          () ->
+              recordChange(
+                  "deploymentInfo",
+                  original.getDeploymentInfo(),
+                  updated.getDeploymentInfo(),
+                  true));
       compareAndUpdate(
           "governanceStatus",
-          () -> {
-            recordChange(
-                "governanceStatus", original.getGovernanceStatus(), updated.getGovernanceStatus());
-          });
+          () ->
+              recordChange(
+                  "governanceStatus",
+                  original.getGovernanceStatus(),
+                  updated.getGovernanceStatus()));
+      updateGovernanceEvidence();
+      updateCompliance();
+    }
+
+    private void updateModelIdentity() {
+      compareAndUpdate(
+          FIELD_MODEL_TYPE,
+          () -> recordChange(FIELD_MODEL_TYPE, original.getModelType(), updated.getModelType()));
+      compareAndUpdate(
+          FIELD_PROVIDER_MODEL_ID,
+          () ->
+              recordChange(
+                  FIELD_PROVIDER_MODEL_ID,
+                  original.getProviderModelId(),
+                  updated.getProviderModelId()));
+    }
+
+    private void updateCapabilities() {
+      compareAndUpdate(
+          FIELD_CAPABILITIES,
+          () ->
+              recordChange(
+                  FIELD_CAPABILITIES, original.getCapabilities(), updated.getCapabilities(), true));
+    }
+
+    private void updateGovernanceEvidence() {
+      compareAndUpdate(
+          FIELD_DETECTION,
+          () ->
+              recordChange(FIELD_DETECTION, original.getDetection(), updated.getDetection(), true));
+      compareAndUpdate(
+          FIELD_EVIDENCE,
+          () -> recordChange(FIELD_EVIDENCE, original.getEvidence(), updated.getEvidence(), true));
+      compareAndUpdate(
+          FIELD_REMEDIATION_ACTIONS,
+          () ->
+              recordChange(
+                  FIELD_REMEDIATION_ACTIONS,
+                  original.getRemediationActions(),
+                  updated.getRemediationActions(),
+                  true));
+    }
+
+    private void updateCompliance() {
+      compareAndUpdate(
+          FIELD_CERTIFICATIONS,
+          () ->
+              recordChange(
+                  FIELD_CERTIFICATIONS,
+                  original.getCertifications(),
+                  updated.getCertifications(),
+                  true));
+      compareAndUpdate(
+          FIELD_REGULATORY_COMPLIANCE,
+          () ->
+              recordChange(
+                  FIELD_REGULATORY_COMPLIANCE,
+                  original.getRegulatoryCompliance(),
+                  updated.getRegulatoryCompliance(),
+                  true));
     }
   }
 }

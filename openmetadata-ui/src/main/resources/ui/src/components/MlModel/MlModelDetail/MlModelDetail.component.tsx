@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Table, Tabs, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,13 +33,17 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -48,23 +51,23 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
-
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
@@ -142,9 +145,26 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const fetchEntityFeedCount = () =>
     getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedMlModelFqn) {
+      fetchEntityTaskCountsInto(decodedMlModelFqn, setFeedCount);
+    }
+  }, [decodedMlModelFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedMlModelFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.MLMODEL,
+        decodedMlModelFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedMlModelFqn]);
+
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
-      fetchEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [mlModelPermissions, decodedMlModelFqn]);
 

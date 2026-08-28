@@ -57,12 +57,8 @@ public class OktaAuthValidator {
         return clientIdValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain, null);
-      if (publicKeyValidation != null) {
-        return publicKeyValidation;
-      }
-
-      return null; // Success - Okta public client validated
+      return validatePublicKeyUrls(
+          authConfig, oktaDomain, null); // Success - Okta public client validated
     } catch (Exception e) {
       LOG.error("Okta public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -101,14 +97,11 @@ public class OktaAuthValidator {
 
       // Step 5: Validate client credentials (secret)
       String clientId = oidcConfig.getId();
-      FieldError credentialsValidation =
-          validateClientCredentials(
-              oktaDomain, clientId, oidcConfig.getSecret(), oidcConfig.getDiscoveryUri());
-      if (credentialsValidation != null) {
-        return credentialsValidation;
-      }
-
-      return null; // Success - Okta confidential client validated
+      return validateClientCredentials(
+          oktaDomain,
+          clientId,
+          oidcConfig.getSecret(),
+          oidcConfig.getDiscoveryUri()); // Success - Okta confidential client validated
     } catch (Exception e) {
       LOG.error("Okta confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -256,7 +249,7 @@ public class OktaAuthValidator {
         }
 
         JsonNode jwks = JsonUtils.readTree(response.getBody());
-        if (!jwks.has("keys") || jwks.get("keys").size() == 0) {
+        if (!jwks.has("keys") || jwks.get("keys").isEmpty()) {
           throw new IllegalArgumentException("Invalid JWKS: " + urlStr);
         }
       }

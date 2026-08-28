@@ -24,8 +24,16 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  compact,
+  debounce,
+  isEmpty,
+  isUndefined,
+  map,
+  trim,
+  uniqBy,
+} from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
@@ -42,7 +50,6 @@ import { CreatePasswordGenerator } from '../../../../enums/user.enum';
 import {
   AuthType,
   CreatePasswordType,
-  CreateUser as CreateUserSchema,
 } from '../../../../generated/api/teams/createUser';
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
@@ -55,12 +62,10 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
-import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -69,10 +74,9 @@ import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
-import { CreateUserProps } from './CreateUser.interface';
+import { CreateUserFormData, CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
-  roles,
   isLoading,
   onCancel,
   onSave,
@@ -86,12 +90,17 @@ const CreateUser = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const isAdminPage = Boolean(state?.isAdminPage);
-  const { authConfig, inlineAlertDetails } = useApplicationStore();
+  const { authConfig, currentUser, inlineAlertDetails } = useApplicationStore();
+  const isAdminUser = Boolean(currentUser?.isAdmin);
   const [isAdmin, setIsAdmin] = useState(isAdminPage);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<
     Array<EntityReference | undefined>
   >([]);
+  const [roleOptions, setRoleOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([]);
+  const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
@@ -135,12 +144,35 @@ const CreateUser = ({
   const selectedRoles = Form.useWatch('roles', form);
   const selectedPersonas = Form.useWatch('personas', form);
 
-  const roleOptions = useMemo(() => {
-    return map(roles, (role) => ({
-      label: getEntityName(role),
-      value: role.id,
-    }));
-  }, [roles]);
+  const fetchRoleOptions = useCallback(
+    async (searchText = '') => {
+      setIsRolesLoading(true);
+
+      try {
+        const roles = await searchRoles(searchText);
+        const nextOptions = map(roles, (role) => ({
+          label: getEntityName(role),
+          value: role.id,
+        }));
+
+        setRoleOptions((prevOptions) => {
+          const selectedRoleOptions = prevOptions.filter((option) =>
+            (selectedRoles ?? []).includes(String(option.value))
+          );
+
+          return uniqBy([...selectedRoleOptions, ...nextOptions], 'value');
+        });
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.role-plural') })
+        );
+      } finally {
+        setIsRolesLoading(false);
+      }
+    },
+    [selectedRoles, t]
+  );
 
   const fetchPersonaOptions = async (_searchText: string, page?: number) => {
     try {
@@ -209,10 +241,16 @@ const CreateUser = ({
         } as EntityReference)
     );
 
-    const { email, displayName, tokenExpiry, confirmPassword, description } =
-      values;
+    const {
+      email,
+      displayName,
+      tokenExpiry,
+      confirmPassword,
+      description,
+      allowImpersonation,
+    } = values;
 
-    const userProfile: CreateUserSchema = {
+    const userProfile: CreateUserFormData = {
       description,
       name: email.split('@')[0],
       displayName: trim(displayName),
@@ -231,6 +269,7 @@ const CreateUser = ({
                 JWTTokenExpiry: tokenExpiry,
               },
             },
+            allowImpersonation,
           }
         : isAuthProviderBasic
         ? {
@@ -264,6 +303,23 @@ const CreateUser = ({
     generateRandomPassword();
   }, []);
 
+  useEffect(() => {
+    if (!forceBot && !isAdminPage) {
+      fetchRoleOptions();
+    }
+  }, [forceBot, isAdminPage]);
+
+  const debouncedFetchRoleOptions = useMemo(
+    () => debounce(fetchRoleOptions, 300),
+    [fetchRoleOptions]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedFetchRoleOptions.cancel();
+    };
+  }, [debouncedFetchRoleOptions]);
+
   return (
     <Form
       form={form}
@@ -273,8 +329,7 @@ const CreateUser = ({
       }}
       layout="vertical"
       validateMessages={VALIDATION_MESSAGES}
-      onFinish={handleSave}
-    >
+      onFinish={handleSave}>
       <Form.Item
         label={t('label.email')}
         name="email"
@@ -287,8 +342,7 @@ const CreateUser = ({
               fieldText: t('label.email'),
             }),
           },
-        ]}
-      >
+        ]}>
         <Input
           data-testid="email"
           name="email"
@@ -310,15 +364,22 @@ const CreateUser = ({
             {
               required: true,
             },
-          ]}
-        >
+          ]}>
           <Select
             className="w-full"
             data-testid="token-expiry"
-            placeholder={t('message.select-token-expiration')}
-          >
+            placeholder={t('message.select-token-expiration')}>
             {getJWTTokenExpiryOptions()}
           </Select>
+        </Form.Item>
+      )}
+      {forceBot && isAdminUser && (
+        <Form.Item
+          label={t('label.allow-impersonation')}
+          name="allowImpersonation"
+          tooltip={t('message.allow-impersonation-help')}
+          valuePropName="checked">
+          <Switch data-testid="allow-impersonation" />
         </Form.Item>
       )}
 
@@ -354,8 +415,7 @@ const CreateUser = ({
                         pattern: passwordRegex,
                         message: t('message.password-error-message'),
                       },
-                    ]}
-                  >
+                    ]}>
                     <Input.Password
                       autoComplete="off"
                       name="password"
@@ -382,8 +442,7 @@ const CreateUser = ({
                           return Promise.resolve();
                         },
                       },
-                    ]}
-                  >
+                    ]}>
                     <Input.Password
                       autoComplete="off"
                       name="confirmPassword"
@@ -404,8 +463,7 @@ const CreateUser = ({
                       {
                         required: true,
                       },
-                    ]}
-                  >
+                    ]}>
                     <Input.Password
                       readOnly
                       addonAfter={
@@ -413,8 +471,14 @@ const CreateUser = ({
                           <div
                             className="w-8 h-7 flex-center cursor-pointer"
                             data-testid="password-generator"
+                            role="button"
+                            tabIndex={0}
                             onClick={generateRandomPassword}
-                          >
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                generateRandomPassword();
+                              }
+                            }}>
                             {isPasswordGenerating ? (
                               <Loader size="small" type="default" />
                             ) : (
@@ -449,15 +513,18 @@ const CreateUser = ({
               </Form.Item>
               <Form.Item label={t('label.role-plural')} name="roles">
                 <Select
+                  showSearch
                   data-testid="roles-dropdown"
-                  disabled={isEmpty(roles)}
-                  filterOption={handleSearchFilterOption}
+                  disabled={isRolesLoading && isEmpty(roleOptions)}
+                  filterOption={false}
                   getPopupContainer={(triggerNode) => triggerNode.parentElement}
+                  loading={isRolesLoading}
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.role-plural'),
                   })}
+                  onSearch={debouncedFetchRoleOptions}
                 />
               </Form.Item>
               <Form.Item label={t('label.persona-plural')} name="personas">
@@ -527,8 +594,7 @@ const CreateUser = ({
           form="create-user-bot-form"
           htmlType="submit"
           loading={isLoading}
-          type="primary"
-        >
+          type="primary">
           {t('label.create')}
         </Button>
       </Space>

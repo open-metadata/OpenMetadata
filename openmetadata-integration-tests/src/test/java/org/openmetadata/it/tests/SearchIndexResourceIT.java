@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.SearchServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -42,12 +43,15 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 @Execution(ExecutionMode.CONCURRENT)
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
 
+  private String defaultListService;
+
   {
     supportsSearchIndex = false;
     supportsDomains = false;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -104,7 +108,11 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   @Override
   protected SearchIndex createEntity(CreateSearchIndex createRequest) {
-    return SdkClients.adminClient().searchIndexes().create(createRequest);
+    SearchIndex searchIndex = SdkClients.adminClient().searchIndexes().create(createRequest);
+    if (defaultListService == null && searchIndex.getService() != null) {
+      defaultListService = searchIndex.getService().getFullyQualifiedName();
+    }
+    return searchIndex;
   }
 
   @Override
@@ -160,6 +168,10 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   @Override
   protected ListResponse<SearchIndex> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().searchIndexes().list(params);
   }
 
@@ -230,6 +242,25 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     assertNotNull(searchIndex);
     assertNotNull(searchIndex.getFields());
     assertEquals(2, searchIndex.getFields().size());
+  }
+
+  @Test
+  void post_searchIndexWithInvalidFieldName_4xx(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+
+    CreateSearchIndex request = new CreateSearchIndex();
+    request.setName(ns.prefix("searchindex_invalid_field"));
+    request.setService(service.getFullyQualifiedName());
+    request.setFields(
+        List.of(
+            new SearchIndexField()
+                .withName("title>invalid")
+                .withDataType(SearchIndexDataType.TEXT)));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating search index with invalid field name should fail");
   }
 
   @Test
@@ -745,6 +776,69 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     // After restore, deleted should be false (not null)
     assertNotNull(restored.getDeleted());
     assertFalse(restored.getDeleted());
+  }
+
+  // ===================================================================
+  // PATCH TESTS FOR NESTED SEARCH INDEX FIELDS
+  // ===================================================================
+
+  @Test
+  void patch_searchIndexFieldDescription_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+
+    List<SearchIndexField> fields =
+        Arrays.asList(
+            new SearchIndexField().withName("title").withDataType(SearchIndexDataType.TEXT),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT));
+
+    CreateSearchIndex request = new CreateSearchIndex();
+    request.setName(ns.prefix("patch_field_desc"));
+    request.setService(service.getFullyQualifiedName());
+    request.setFields(fields);
+
+    SearchIndex searchIndex = createEntity(request);
+    SearchIndex fetched = getEntityWithFields(searchIndex.getId().toString(), "tags,fields");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getFields().get(0).setDescription("Document title");
+    SearchIndex patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    SearchIndex verified = getEntityWithFields(patched.getId().toString(), "tags,fields");
+    assertEquals("Document title", verified.getFields().get(0).getDescription());
+  }
+
+  @Test
+  void patch_searchIndexFieldTags_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    List<SearchIndexField> fields =
+        Arrays.asList(
+            new SearchIndexField().withName("email").withDataType(SearchIndexDataType.TEXT),
+            new SearchIndexField().withName("content").withDataType(SearchIndexDataType.TEXT));
+
+    CreateSearchIndex request = new CreateSearchIndex();
+    request.setName(ns.prefix("patch_field_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setFields(fields);
+
+    SearchIndex searchIndex = createEntity(request);
+    SearchIndex fetched = getEntityWithFields(searchIndex.getId().toString(), "tags,fields");
+    Double versionBefore = fetched.getVersion();
+
+    TagLabel piiTag = shared.PII_SENSITIVE_TAG_LABEL;
+    fetched.getFields().get(0).setTags(new ArrayList<>(List.of(piiTag)));
+    SearchIndex patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    SearchIndex verified = getEntityWithFields(patched.getId().toString(), "tags,fields");
+    List<TagLabel> fieldTags = verified.getFields().get(0).getTags();
+    assertNotNull(fieldTags);
+    assertFalse(fieldTags.isEmpty());
+    assertTrue(fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(piiTag.getTagFQN())));
   }
 
   // ===================================================================

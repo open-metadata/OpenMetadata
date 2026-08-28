@@ -25,9 +25,7 @@ from metadata.sampler.models import SampleData
 table = Table(
     id=Uuid(root=uuid.uuid4()),
     name=EntityName(root="example_table"),
-    fullyQualifiedName=FullyQualifiedEntityName(
-        root="Service.database.schema.example_table"
-    ),
+    fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table"),
     columns=[
         Column(
             name=ColumnName(root="transactionDateUtc"),
@@ -51,9 +49,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.nhs_number"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.nhs_number"),
         ),
     ],
 )

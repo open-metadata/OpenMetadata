@@ -22,9 +22,7 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -32,3 +30,15 @@ def get_table_comment(
         schema=schema,
         query=TERADATA_TABLE_COMMENTS,
     )
+
+
+@reflection.cache
+def get_columns(self, connection, table_name, schema=None, **kw):
+    """Map CommentString from dbc.ColumnsV to comment field."""
+    columns = get_columns._original(  # pylint: disable=protected-access
+        self, connection, table_name, schema, **kw
+    )
+    for col in columns:
+        comment = col.get("CommentString") or col.get("commentstring")
+        col["comment"] = (comment.strip() or None) if comment else None
+    return columns

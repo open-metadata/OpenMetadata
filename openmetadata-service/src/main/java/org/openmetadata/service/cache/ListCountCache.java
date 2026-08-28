@@ -1,0 +1,248 @@
+package org.openmetadata.service.cache;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.util.HexFormat;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.IntSupplier;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.jdbi3.ListFilter;
+
+/**
+ * Read-through cache for paginated entity listing counts (e.g. {@code paging.total} for
+ * {@code GET /api/v1/<entity>}). Entity-list endpoints recompute {@code count(*) WHERE ...}
+ * on every call before returning even a single-row page; on tables in the hundreds of
+ * thousands of rows that one count dominates listing latency, especially when the planner
+ * falls back to a parallel seq scan (no index-only scan, stale stats).
+ *
+ * <p>Storage: a single Redis hash per entity type keyed at {@code <ns>:lc:<entityType>}, with
+ * one field per distinct {@link ListFilter} variant. The field name is the first 16 hex chars
+ * of a SHA-1 over the canonicalized filter (sorted query params + Include enum value, see
+ * {@link #hashFilter}). 16 hex chars = 64 bits — birthday collision around 2^32 distinct filter
+ * variants per entity type, which is well above any realistic load. Reads are HGET, writes are
+ * HSET, and {@link #invalidate(String)} is a single DEL on the hash key — every filter variant
+ * is dropped atomically.
+ *
+ * <p>Consistency model: invalidation runs from
+ * {@link org.openmetadata.service.jdbi3.EntityRepository EntityRepository} lifecycle hooks
+ * (postCreate / postDelete / restoreEntity). The {@code @Transaction} annotation on those methods
+ * is decorative — {@code EntityRepository} subclasses are instantiated with {@code new ...()} and
+ * registered via {@code Entity.registerEntity(...)}, not obtained via {@code jdbi.onDemand} or
+ * {@code jdbi.attach}, so the JDBI SqlObject proxy that would honor {@code @Transaction} is never
+ * applied. Each underlying DAO call (which IS a SqlObject) auto-commits independently, and
+ * invalidation runs after those commits. The window between a DAO commit and the Redis DEL is
+ * sub-millisecond; any concurrent reader caching post-commit state sees the live count.
+ *
+ * <p><b>TTL semantics — important caveats</b>: {@link CacheProvider#hset} applies {@code EXPIRE}
+ * to the entire Redis hash, not per-field. So:
+ * <ul>
+ *   <li>Any write to any field <em>refreshes</em> the TTL for every other field. On a busy
+ *       entity type, the hash effectively never expires via TTL — invalidation hooks
+ *       {@link #invalidate(String)} are the sole mechanism that bounds staleness in the steady
+ *       state. {@link CacheConfig#listCountTtlSeconds} is the bound only when no other writes
+ *       happen during the TTL window.</li>
+ *   <li>Field count is unbounded: every distinct {@link ListFilter} variant produces a new
+ *       field. For high-cardinality user filters (e.g. {@code nameFilter}, {@code *Regex})
+ *       continuously typed in by users, the hash grows over time. In practice OM listings
+ *       filter by service / database / domain (low cardinality, dozens to hundreds of
+ *       distinct values per tenant), so the working set is bounded — but worth monitoring on
+ *       hash size if you see memory pressure on Redis. Eventual fix: a versioned-key strategy
+ *       where invalidate bumps a version counter and old hashes age out naturally; deferred
+ *       to a follow-up since it adds an extra round trip per read and the in-practice working
+ *       set hasn't justified it yet.</li>
+ * </ul>
+ *
+ * <p>The actual listing data is always live — {@code dao.listAfter} reads from the DB on every
+ * call — only {@code paging.total} can ever be stale. Falls back transparently to the supplier
+ * when Redis is disabled or unavailable.
+ */
+@Slf4j
+public final class ListCountCache {
+
+  /** Cached per-thread SHA-1 digester. SHA-1 is mandated by every Java SE provider; instantiate
+   * once per thread and reuse via {@link MessageDigest#reset()} to keep the per-call cost out of
+   * hot list endpoints. */
+  private static final ThreadLocal<MessageDigest> SHA1 =
+      ThreadLocal.withInitial(
+          () -> {
+            try {
+              return MessageDigest.getInstance("SHA-1");
+            } catch (NoSuchAlgorithmException e) {
+              throw new IllegalStateException("SHA-1 unavailable from JVM provider", e);
+            }
+          });
+
+  private ListCountCache() {}
+
+  /**
+   * Returns the cached count for {@code (entityType, filter)}, or computes via {@code supplier}
+   * and populates the cache on a miss. Any cache I/O failure logs at debug and degrades to a
+   * direct compute — listing must not fail because Redis is down.
+   */
+  public static int getOrCompute(String entityType, ListFilter filter, IntSupplier supplier) {
+    if (EntityCacheBypass.isSkipped()) {
+      return supplier.getAsInt();
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    CacheConfig config = CacheBundle.getCacheConfig();
+    if (provider == null || !provider.available() || config == null || config.redis == null) {
+      return supplier.getAsInt();
+    }
+
+    String hashKey = buildHashKey(entityType, config);
+    String filterHash = hashFilter(filter);
+
+    Integer cachedCount = readCachedCount(provider, hashKey, filterHash, entityType);
+    if (cachedCount != null) {
+      return cachedCount;
+    }
+
+    int count = supplier.getAsInt();
+    writeCachedCount(
+        provider, hashKey, filterHash, count, Duration.ofSeconds(config.listCountTtlSeconds));
+    return count;
+  }
+
+  /**
+   * Read a cached count, returning null on miss or any failure. Evicts the field on parse failure
+   * so the next caller writes a clean value instead of looping on a corrupt field until TTL.
+   */
+  private static Integer readCachedCount(
+      CacheProvider provider, String hashKey, String filterHash, String entityType) {
+    try {
+      Optional<String> cached = provider.hget(hashKey, filterHash);
+      if (cached.isEmpty()) {
+        return null;
+      }
+      try {
+        return Integer.parseInt(cached.get());
+      } catch (NumberFormatException e) {
+        evictCorruptField(provider, hashKey, filterHash, entityType);
+        return null;
+      }
+    } catch (Exception e) {
+      LOG.debug("listCount cache read failed for {}: {}", entityType, e.getMessage());
+      return null;
+    }
+  }
+
+  private static void evictCorruptField(
+      CacheProvider provider, String hashKey, String filterHash, String entityType) {
+    LOG.debug(
+        "listCount cache had non-integer value for {} field {}; evicting", entityType, filterHash);
+    try {
+      provider.hdel(hashKey, filterHash);
+    } catch (Exception evictFail) {
+      LOG.debug(
+          "listCount cache hdel after parse failure failed for {}: {}",
+          entityType,
+          evictFail.getMessage());
+    }
+  }
+
+  private static void writeCachedCount(
+      CacheProvider provider, String hashKey, String filterHash, int count, Duration ttl) {
+    try {
+      provider.hset(hashKey, Map.of(filterHash, String.valueOf(count)), ttl);
+    } catch (Exception e) {
+      LOG.debug("listCount cache write failed for {}: {}", hashKey, e.getMessage());
+    }
+  }
+
+  /**
+   * Drop every cached filter variant for an entity type in one DEL. Wired into
+   * {@code postCreate}, {@code postDelete}, and {@code restoreEntity} on {@link
+   * org.openmetadata.service.jdbi3.EntityRepository EntityRepository} so {@code paging.total}
+   * reflects state changes within a round-trip rather than waiting out the TTL window. Routine
+   * updates (description, tags, owners) deliberately do not invalidate — they don't change the
+   * count, and over-invalidation would defeat the cache on heavy editing workloads. Note the
+   * commit-ordering trade-off documented at the class level.
+   */
+  public static void invalidate(String entityType) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    CacheConfig config = CacheBundle.getCacheConfig();
+    if (provider == null || !provider.available() || config == null || config.redis == null) {
+      return;
+    }
+    String hashKey = buildHashKey(entityType, config);
+    try {
+      provider.del(hashKey);
+    } catch (Exception e) {
+      LOG.debug("listCount cache invalidate failed for {}: {}", entityType, e.getMessage());
+    }
+  }
+
+  private static String buildHashKey(String entityType, CacheConfig config) {
+    return new CacheKeys(config.redis.keyspace).listCount(entityType);
+  }
+
+  /**
+   * Build a deterministic 16-hex-char field key for a filter. Two filters that hit the same SQL
+   * count must produce the same key; two that hit different counts must not.
+   *
+   * <p>Canonicalization uses {@link ListFilter#getInclude()} (the Include enum drives the deleted
+   * predicate at the SQL level) plus the {@code queryParams} map sorted by key. Same-shaped
+   * filter regardless of {@code addQueryParam} call order produces the same key.
+   *
+   * <p><b>Encoding is length-prefixed</b>, not delimiter-based. User-controlled values
+   * (e.g. {@code nameFilter}, {@code *Regex} params) can contain any character, including
+   * whatever separator we'd otherwise pick — concatenating with {@code |} or {@code =} would
+   * let a value like {@code "foo|service=bar"} collide with the two-key map
+   * {@code {nameFilter=foo, service=bar}}. Each key and value is fed to the digest as
+   * {@code [4-byte BE length][bytes]}, so no value can be confused with a key/value separator.
+   *
+   * <p><b>Mutation contract</b>: {@link ListFilter#getCondition()} mutates {@code queryParams} as
+   * a side-effect (it adds derived bind params like {@code serviceHash}, {@code ownerIdParam},
+   * {@code databaseSchemaHashExact}, etc.). The hash is computed from whatever shape
+   * {@code queryParams} has at the moment {@code hashFilter} is called. Callers must therefore
+   * invoke {@link #getOrCompute} BEFORE any code path that calls {@link ListFilter#getCondition()}
+   * — i.e. before {@code dao.listAfter / listBefore / listCount}. {@link
+   * org.openmetadata.service.jdbi3.EntityRepository EntityRepository}'s list methods follow this
+   * ordering. Inside {@link #getOrCompute} itself, hashing happens before the supplier runs, so
+   * the supplier's own {@code dao.listCount(filter)} mutation does not affect the hash for this
+   * call. Subsequent calls in the same request see post-mutation queryParams; that's fine —
+   * each request gets a fresh {@link ListFilter} instance.
+   *
+   * <p>Bytes are hashed under {@link StandardCharsets#UTF_8} so cross-environment / cross-JVM
+   * deployments produce identical keys regardless of platform default charset.
+   *
+   * <p>Returned value is the first 16 hex chars of the SHA-1 digest (64 bits). Truncation keeps
+   * the Redis hash field short; collision probability is negligible for any realistic number of
+   * filter variants per entity type.
+   */
+  // Package-private for test access.
+  static String hashFilter(ListFilter filter) {
+    MessageDigest digest = SHA1.get();
+    digest.reset();
+    feed(digest, "include");
+    feed(digest, String.valueOf(filter.getInclude()));
+    Map<String, String> params = filter.getQueryParams();
+    if (params != null && !params.isEmpty()) {
+      params.entrySet().stream()
+          .sorted(Map.Entry.comparingByKey())
+          .forEach(
+              e -> {
+                feed(digest, e.getKey());
+                feed(digest, e.getValue() == null ? "" : e.getValue());
+              });
+    }
+    return HexFormat.of().formatHex(digest.digest()).substring(0, 16);
+  }
+
+  /** Feed a string to the digest as {@code [4-byte BE length][UTF-8 bytes]} — unambiguous, so no
+   *  user-supplied value can be confused with a separator. */
+  private static void feed(MessageDigest digest, String s) {
+    byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+    digest.update((byte) (bytes.length >>> 24));
+    digest.update((byte) (bytes.length >>> 16));
+    digest.update((byte) (bytes.length >>> 8));
+    digest.update((byte) bytes.length);
+    digest.update(bytes);
+  }
+}

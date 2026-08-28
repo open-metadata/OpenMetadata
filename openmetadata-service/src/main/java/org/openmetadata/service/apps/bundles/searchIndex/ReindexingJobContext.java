@@ -20,9 +20,6 @@ public interface ReindexingJobContext {
   /** Application ID (for Quartz-based jobs, null for CLI/API) */
   UUID getAppId();
 
-  /** Whether this is a distributed indexing job */
-  boolean isDistributed();
-
   /** The source that triggered this job (e.g., "QUARTZ", "CLI", "API") */
   String getSource();
 }

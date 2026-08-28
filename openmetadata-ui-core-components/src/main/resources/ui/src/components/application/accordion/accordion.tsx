@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from "react";
-import { useContext } from "react";
-import { ChevronDown } from "@untitledui/icons";
+import type { ReactNode } from 'react';
+import { useContext } from 'react';
+import { ChevronDown } from '@untitledui/icons';
 import type {
   ButtonProps as AriaButtonProps,
   DisclosureGroupProps as AriaDisclosureGroupProps,
   DisclosurePanelProps as AriaDisclosurePanelProps,
   DisclosureProps as AriaDisclosureProps,
-} from "react-aria-components";
+} from 'react-aria-components';
 import {
   Button as AriaButton,
   Disclosure as AriaDisclosure,
@@ -26,8 +26,8 @@ import {
   DisclosurePanel as AriaDisclosurePanel,
   DisclosureStateContext,
   Heading as AriaHeading,
-} from "react-aria-components";
-import { cx } from "@/utils/cx";
+} from 'react-aria-components';
+import { cx } from '@/utils/cx';
 
 export interface AccordionProps extends AriaDisclosureGroupProps {
   /**
@@ -36,13 +36,19 @@ export interface AccordionProps extends AriaDisclosureGroupProps {
   className?: string;
 }
 
-export interface AccordionItemProps extends AriaDisclosureProps {}
+export type AccordionItemProps = AriaDisclosureProps;
 
 export interface AccordionHeaderProps extends AriaButtonProps {
   /**
    * The content to display in the accordion header trigger.
    */
   children: ReactNode;
+  /**
+   * When false, renders children directly without the grow-span wrapper or
+   * built-in chevron — gives children full layout control (e.g. custom grids).
+   * Defaults to true.
+   */
+  showChevron?: boolean;
 }
 
 export interface AccordionPanelProps extends AriaDisclosurePanelProps {
@@ -54,6 +60,13 @@ export interface AccordionPanelProps extends AriaDisclosurePanelProps {
    * Optional className for the panel content container.
    */
   className?: string;
+  /**
+   * When true, children are unmounted while the panel is collapsed instead of
+   * just visually hidden. Use for heavy static content; leave false (default)
+   * for content with internal state (e.g. form inputs), which would otherwise
+   * reset on collapse.
+   */
+  unmountOnCollapse?: boolean;
 }
 
 /**
@@ -72,15 +85,18 @@ export interface AccordionPanelProps extends AriaDisclosurePanelProps {
  *   </AccordionItem>
  * </Accordion>
  */
-export const Accordion = ({ children, className, ...props }: AccordionProps) => {
+export const Accordion = ({
+  children,
+  className,
+  ...props
+}: AccordionProps) => {
   return (
     <AriaDisclosureGroup
       {...props}
       className={cx(
-        "tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:ring-1 tw:ring-border-secondary tw:overflow-hidden",
-        className,
-      )}
-    >
+        'tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:outline-1 tw:outline-border-secondary tw:overflow-hidden',
+        className
+      )}>
       {children}
     </AriaDisclosureGroup>
   );
@@ -100,12 +116,11 @@ export const AccordionItem = ({
       {...props}
       className={(state) =>
         cx(
-          "tw:group/item tw:w-full tw:bg-primary",
-          state.isDisabled && "tw:cursor-not-allowed tw:opacity-50",
-          typeof className === "function" ? className(state) : className,
+          'tw:group/item tw:w-full tw:bg-primary',
+          state.isDisabled && 'tw:cursor-not-allowed tw:opacity-50',
+          typeof className === 'function' ? className(state) : className
         )
-      }
-    >
+      }>
       {children}
     </AriaDisclosure>
   );
@@ -118,6 +133,7 @@ export const AccordionItem = ({
 export const AccordionHeader = ({
   children,
   className,
+  showChevron = true,
   ...props
 }: AccordionHeaderProps) => {
   return (
@@ -127,21 +143,28 @@ export const AccordionHeader = ({
         {...props}
         className={(state) =>
           cx(
-            "tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:px-6 tw:py-4 tw:text-left tw:outline-hidden tw:transition tw:duration-200 tw:ease-in-out",
-            "tw:text-sm tw:font-semibold tw:text-primary",
-            "hover:tw:bg-primary_hover",
+            // `outline-hidden` removed: the outline now draws the focus indicator (it
+            // replaced a ring, which WebKit does not pixel-snap).
+            'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:px-6 tw:py-4 tw:text-left tw:transition tw:duration-200 tw:ease-in-out',
+            'tw:text-sm tw:font-semibold tw:text-primary',
+            'hover:tw:bg-primary_hover',
             state.isFocusVisible &&
-              "tw:ring-2 tw:ring-inset tw:ring-brand-300",
-            state.isDisabled && "tw:cursor-not-allowed tw:text-disabled",
-            typeof className === "function" ? className(state) : className,
+              'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
+            state.isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
+            typeof className === 'function' ? className(state) : className
           )
-        }
-      >
-        <span className="tw:grow">{children}</span>
-        <ChevronDown
-          aria-hidden="true"
-          className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200 tw:ease-in-out tw:group-data-expanded/item:rotate-180"
-        />
+        }>
+        {showChevron ? (
+          <>
+            <span className="tw:grow">{children}</span>
+            <ChevronDown
+              aria-hidden="true"
+              className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200 tw:ease-in-out tw:group-data-expanded/item:rotate-180"
+            />
+          </>
+        ) : (
+          children
+        )}
       </AriaButton>
     </AriaHeading>
   );
@@ -153,20 +176,21 @@ export const AccordionHeader = ({
 export const AccordionPanel = ({
   children,
   className,
+  unmountOnCollapse = false,
   ...props
 }: AccordionPanelProps) => {
   const state = useContext(DisclosureStateContext);
+  const shouldRenderChildren = !unmountOnCollapse || state?.isExpanded;
 
   return (
     <AriaDisclosurePanel
       {...props}
       className={cx(
-        "tw:overflow-hidden tw:border-t tw:border-border-secondary tw:px-6 tw:py-4 tw:text-sm tw:text-secondary",
-        !state?.isExpanded && "tw:hidden",
-        className,
-      )}
-    >
-      {children}
+        'tw:overflow-hidden tw:border-t tw:border-border-secondary tw:px-6 tw:py-4 tw:text-sm tw:text-secondary',
+        !state?.isExpanded && 'tw:hidden',
+        className
+      )}>
+      {shouldRenderChildren ? children : null}
     </AriaDisclosurePanel>
   );
 };

@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
@@ -22,6 +25,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
@@ -31,6 +35,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Classification entity operations.
@@ -465,6 +470,50 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Test
+  void test_putPreservesAutoClassificationConfig_ingestionScenario(TestNamespace ns) {
+    // A metadata connector re-creates a source classification with a bare PUT
+    // (name + description only, no autoClassificationConfig). This must NOT wipe
+    // an existing config - the regression that disabled auto-classification for
+    // PII/PersonalData after every metadata ingestion.
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_put_preserve"));
+    createClassification.setDescription("Classification with auto-classification enabled");
+    createClassification.setAutoClassificationConfig(
+        new AutoClassificationConfig().withEnabled(true).withMinimumConfidence(0.6));
+
+    Classification classification = createEntity(createClassification);
+    assertNotNull(classification.getAutoClassificationConfig());
+    assertTrue(classification.getAutoClassificationConfig().getEnabled());
+
+    // Simulate the ingestion sink's create_or_update: PUT /v1/classifications with a
+    // CreateClassification carrying only name + description (no autoClassificationConfig).
+    CreateClassification bareUpsert =
+        new CreateClassification()
+            .withName(classification.getName())
+            .withDescription("Updated by metadata ingestion");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/classifications", bareUpsert, Classification.class);
+
+    // The config must survive the bare PUT
+    Classification afterIngestion =
+        getEntityWithFields(classification.getId().toString(), "autoClassificationConfig");
+    assertNotNull(
+        afterIngestion.getAutoClassificationConfig(),
+        "Bare PUT from ingestion must not delete autoClassificationConfig");
+    assertTrue(afterIngestion.getAutoClassificationConfig().getEnabled());
+
+    // An explicit PATCH clearing the config must still delete it
+    afterIngestion.setAutoClassificationConfig(null);
+    patchEntity(afterIngestion.getId().toString(), afterIngestion);
+    Classification afterPatch =
+        getEntityWithFields(classification.getId().toString(), "autoClassificationConfig");
+    assertNull(
+        afterPatch.getAutoClassificationConfig(),
+        "Explicit PATCH clearing the config must still delete it");
+  }
+
+  @Test
   void test_deleteAutoClassificationConfig(TestNamespace ns) {
     // Create classification with auto-classification config
     CreateClassification createClassification = new CreateClassification();
@@ -762,5 +811,345 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
               assertTrue(fetchedTag1.getFullyQualifiedName().startsWith(newName));
               assertTrue(fetchedTag2.getFullyQualifiedName().startsWith(newName));
             });
+  }
+
+  // ===================================================================
+  // Issue #28696 (classification analogue): renaming a classification so the new
+  // name keeps the old name as a PREFIX must rewrite child tag FQNs on linked
+  // assets correctly AND must NOT corrupt a sibling classification that merely
+  // shares a textual prefix. Classification asset-tag propagation runs through
+  // the shared, now boundary-aware UPDATE_FQN_PREFIX_SCRIPT
+  // (propagateToRelatedEntities, gated on the displayName change a UI rename
+  // sends). Unlike glossary it is single-pass, so the exact rename was already
+  // fine; the sibling assertion is what the boundary fix protects.
+  // ===================================================================
+  @Test
+  void test_renameClassificationPrefixExtension_rewritesChildTagsButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    TableResourceIT tableResourceIT = new TableResourceIT();
+
+    // Dot-free classification name; sibling shares the prefix WITHOUT a '.' boundary.
+    String nameA = "clf_" + ns.shortPrefix();
+    Classification a =
+        createEntity(
+            new CreateClassification()
+                .withName(nameA)
+                .withDisplayName("Sensitivity")
+                .withDescription("Classification renamed via prefix extension (#28696)"));
+    Classification sibling =
+        createEntity(
+            new CreateClassification()
+                .withName(nameA + "x")
+                .withDescription("Sibling classification sharing the textual prefix"));
+
+    Tag tagA =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("sensitive")
+                    .withClassification(a.getFullyQualifiedName())
+                    .withDescription("child tag of the renamed classification"));
+    Tag tagSibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("foo")
+                    .withClassification(sibling.getFullyQualifiedName())
+                    .withDescription("child tag of the sibling classification"));
+    String tagAFqn = tagA.getFullyQualifiedName();
+    String siblingTagFqn = tagSibling.getFullyQualifiedName();
+
+    Table assetA = createTableWithTag(tableResourceIT, ns, "a", tagAFqn);
+    Table assetSibling = createTableWithTag(tableResourceIT, ns, "s", siblingTagFqn);
+
+    awaitTableTag(client, mapper, assetA.getId().toString(), tagAFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingTagFqn);
+
+    a.setName(nameA + " Renamed");
+    a.setDisplayName("Sensitivity Renamed");
+    Classification renamed = patchEntity(a.getId().toString(), a);
+    String newNameA = renamed.getFullyQualifiedName();
+    assertNotEquals(nameA, newNameA);
+    assertTrue(newNameA.startsWith(nameA), "rename must extend the name as a prefix: " + newNameA);
+
+    // Child tag FQN on the linked asset follows the renamed classification...
+    awaitTableTag(client, mapper, assetA.getId().toString(), newNameA + ".sensitive");
+    // ...and the prefix-sharing sibling's asset tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingTagFqn);
+  }
+
+  private Table createTableWithTag(
+      TableResourceIT tableResourceIT, TestNamespace ns, String suffix, String tagFqn) {
+    Table table =
+        tableResourceIT.createEntity(
+            tableResourceIT.createRequest(ns.shortPrefix("clf_tbl_" + suffix), ns).withTags(null));
+    table.setTags(List.of(new TagLabel().withTagFQN(tagFqn)));
+    return tableResourceIT.patchEntity(table.getId().toString(), table);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
+            });
+  }
+
+  @Test
+  void test_exportClassificationCsv_containsAllTags(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+
+    CreateTag firstTagRequest = new CreateTag();
+    firstTagRequest.setName(ns.prefix("exportTagA"));
+    firstTagRequest.setDescription("Exportable tag A");
+    firstTagRequest.setClassification(classification.getFullyQualifiedName());
+    Tag firstTag = SdkClients.adminClient().tags().create(firstTagRequest);
+
+    CreateTag secondTagRequest = new CreateTag();
+    secondTagRequest.setName(ns.prefix("exportTagB"));
+    secondTagRequest.setDescription("Exportable tag B");
+    secondTagRequest.setClassification(classification.getFullyQualifiedName());
+    Tag secondTag = SdkClients.adminClient().tags().create(secondTagRequest);
+
+    String csv =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/classifications/name/" + classification.getFullyQualifiedName() + "/export",
+                null);
+
+    assertNotNull(csv);
+    assertTrue(
+        csv.contains("parent") && csv.contains("mutuallyExclusive"),
+        "Exported CSV must contain the header row");
+    assertTrue(csv.contains(firstTag.getName()), "Exported CSV must contain the first tag");
+    assertTrue(csv.contains(secondTag.getName()), "Exported CSV must contain the second tag");
+  }
+
+  @Test
+  void test_importClassificationCsv_createsTags(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+
+    String tagName = ns.prefix("importedTag");
+    String csv =
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+            + ",%s,Imported Tag,An imported tag,,,,,,,\n".formatted(tagName);
+
+    String importResult =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/classifications/name/"
+                    + classification.getFullyQualifiedName()
+                    + "/import?dryRun=false",
+                csv);
+
+    assertNotNull(importResult);
+    assertTrue(importResult.contains(tagName), "Import result must reference the imported tag");
+
+    Tag importedTag =
+        SdkClients.adminClient()
+            .tags()
+            .getByName(classification.getFullyQualifiedName() + "." + tagName);
+    assertNotNull(importedTag, "Imported tag must be created");
+    assertEquals("An imported tag", importedTag.getDescription());
+  }
+
+  @Test
+  void test_importClassificationCsv_renamedRowCreatesNewTag(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    String header =
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
+    String importPath =
+        "/v1/classifications/name/"
+            + classification.getFullyQualifiedName()
+            + "/import?dryRun=false";
+
+    String originalName = ns.prefix("renameSource");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Original,First,,,,,,,\n".formatted(originalName));
+
+    // Re-import with a changed name. A different name produces a different FQN,
+    // so the row is created as a NEW tag rather than renaming the original one.
+    String renamedName = ns.prefix("renameTarget");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Renamed,First,,,,,,,\n".formatted(renamedName));
+
+    Tag originalTag =
+        SdkClients.adminClient()
+            .tags()
+            .getByName(classification.getFullyQualifiedName() + "." + originalName);
+    Tag renamedTag =
+        SdkClients.adminClient()
+            .tags()
+            .getByName(classification.getFullyQualifiedName() + "." + renamedName);
+
+    assertNotNull(originalTag, "Original tag must still exist after the renamed import");
+    assertNotNull(renamedTag, "Renamed row must be created as a new tag");
+    assertNotEquals(originalTag.getId(), renamedTag.getId());
+  }
+
+  @Test
+  void test_importClassificationCsv_emptyOptionalFieldsPreserveExisting(TestNamespace ns)
+      throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    String header =
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
+    String importPath =
+        "/v1/classifications/name/"
+            + classification.getFullyQualifiedName()
+            + "/import?dryRun=false";
+    String tagName = ns.prefix("mutexTag");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Mutex,desc,,,APPROVED,#123456,,,true\n".formatted(tagName));
+
+    String tagFqn = classification.getFullyQualifiedName() + "." + tagName;
+    Tag created = SdkClients.adminClient().tags().getByName(tagFqn);
+    assertTrue(created.getMutuallyExclusive(), "Tag should be created as mutuallyExclusive");
+    assertEquals(EntityStatus.APPROVED, created.getEntityStatus());
+    assertEquals("#123456", created.getStyle().getColor());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Mutex,updated desc,,,,,,,\n".formatted(tagName));
+
+    Tag updated = SdkClients.adminClient().tags().getByName(tagFqn);
+    assertTrue(
+        updated.getMutuallyExclusive(),
+        "Empty mutuallyExclusive cell must not flip an existing true value to false");
+    assertEquals(
+        EntityStatus.APPROVED,
+        updated.getEntityStatus(),
+        "Empty status must preserve the existing value");
+    assertEquals(
+        "#123456", updated.getStyle().getColor(), "Empty style must preserve the existing value");
+    assertEquals("updated desc", updated.getDescription());
+  }
+
+  @Test
+  void test_importClassificationCsv_systemClassificationRejected() {
+    String csv =
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+            + ",SystemImportedTag,System,Should be rejected,,,,,,,\n";
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT, "/v1/classifications/name/Tier/import?dryRun=true", csv));
+
+    assertTrue(
+        exception.getMessage().contains("can not be modified"),
+        "System classification import must be rejected: " + exception.getMessage());
+  }
+
+  @Test
+  void test_exportClassificationCsv_systemClassificationRejected() {
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET, "/v1/classifications/name/Tier/export", null));
+
+    assertTrue(
+        exception.getMessage().contains("can not be modified"),
+        "System classification export must be rejected: " + exception.getMessage());
+  }
+
+  @Test
+  void test_importClassificationCsv_preservesNonCsvTagFields(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    String tagName = ns.prefix("autoClassTag");
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName(tagName);
+    tagRequest.setDescription("Tag with auto-classification");
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setAutoClassificationEnabled(true);
+    tagRequest.setAutoClassificationPriority(7);
+    SdkClients.adminClient().tags().create(tagRequest);
+    String tagFqn = classification.getFullyQualifiedName() + "." + tagName;
+
+    String csv =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/classifications/name/" + classification.getFullyQualifiedName() + "/export",
+                null);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/classifications/name/"
+                + classification.getFullyQualifiedName()
+                + "/import?dryRun=false",
+            csv);
+
+    Tag reimported =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tags/name/" + tagFqn + "?fields=autoClassificationEnabled",
+                null,
+                Tag.class);
+    assertEquals(
+        Boolean.TRUE,
+        reimported.getAutoClassificationEnabled(),
+        "CSV re-import must preserve autoClassificationEnabled (not in CSV columns)");
+    assertEquals(
+        7,
+        reimported.getAutoClassificationPriority(),
+        "CSV re-import must preserve autoClassificationPriority (not in CSV columns)");
   }
 }

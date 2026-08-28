@@ -16,8 +16,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
-import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+} from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import SchemaTable from './SchemaTable.component';
 
 const mockTableConstraints = [
@@ -133,7 +137,7 @@ const mockGenericContextProps = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest
     .fn()
     .mockImplementation(() => mockGenericContextProps),
@@ -155,7 +159,7 @@ jest.mock('../../../rest/tableAPI', () => ({
   updateTableColumn: jest.fn(),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
 }));
 
@@ -309,7 +313,7 @@ jest.mock('../TableTags/TableTags.component', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(),
-  searchTagInData: jest.fn(),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
 
 jest.mock('../TableDescription/TableDescription.component', () => {
@@ -328,11 +332,11 @@ jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityColumnFQN: jest.fn(),
 }));
 
@@ -357,13 +361,21 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
     .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
+}));
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityBulkEditPath: jest.fn(),
+}));
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
+}));
+jest.mock('../../../utils/EntityColumnUtils', () => ({
   getFrequentlyJoinedColumns: jest.fn(),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchArrayElement: jest.fn(),
   highlightSearchText: jest.fn().mockImplementation((value) => value),
 }));
@@ -427,6 +439,22 @@ describe('Test EntityTable Component', () => {
     const tableDescription = screen.getAllByText('TableDescription');
 
     expect(tableDescription).toHaveLength(3);
+  });
+
+  it('should source column tag filter options from the full table columns, not the loaded page', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+      data: [mockColumns[0]],
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(getAllTags).toHaveBeenCalledWith(mockColumns);
+    expect(searchTableColumnsByFQN).not.toHaveBeenCalled();
   });
 
   it('Table should load empty when no data present', async () => {
@@ -586,7 +614,7 @@ describe('Test EntityTable Component', () => {
     it('should have updateColumnInNestedStructure available in TableUtils', () => {
       const {
         updateColumnInNestedStructure,
-      } = require('../../../utils/TableUtils');
+      } = require('../../../utils/TablePureUtils');
 
       expect(updateColumnInNestedStructure).toBeDefined();
       expect(typeof updateColumnInNestedStructure).toBe('function');

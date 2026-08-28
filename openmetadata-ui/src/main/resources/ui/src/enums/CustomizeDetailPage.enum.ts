@@ -47,6 +47,8 @@ export enum DetailPageWidgetKeys {
   API_ENDPOINTS = 'KnowledgePanel.APIEndpoints',
   API_SCHEMA = 'KnowledgePanel.APISchema',
   RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
+  METRIC_DIMENSIONS = 'KnowledgePanel.MetricDimensions',
+  METRIC_MEASURES = 'KnowledgePanel.MetricMeasures',
   ML_MODEL_FEATURES = 'KnowledgePanel.MlModelFeatures',
   CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
   DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',
@@ -54,6 +56,11 @@ export enum DetailPageWidgetKeys {
   WORKSHEET_COLUMNS = 'KnowledgePanel.WorksheetColumns',
   TIER = 'KnowledgePanel.Tier',
   CERTIFICATION = 'KnowledgePanel.Certification',
+  MARKETPLACE_DATA_PRODUCTS = 'KnowledgePanel.MarketplaceDataProducts',
+  MARKETPLACE_DOMAINS = 'KnowledgePanel.MarketplaceDomains',
+  MARKETPLACE_ANNOUNCEMENTS = 'KnowledgePanel.MarketplaceAnnouncements',
+  KNOWLEDGE_ARTICLE = 'KnowledgePanel.KnowledgeArticle',
+  ASSET_HEALTH = 'KnowledgePanel.AssetHealth',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

@@ -1,9 +1,9 @@
 package org.openmetadata.service.apps;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.Include;
@@ -17,7 +17,10 @@ public class ApplicationContext {
   private final Map<String, AbstractNativeApplication> apps;
 
   private ApplicationContext() {
-    this.apps = new HashMap<>();
+    // ConcurrentHashMap: registerApp (put) runs on every Quartz job execution while request/event
+    // threads iterate getAllApps()/getApp() concurrently — a plain HashMap threw
+    // ConcurrentModificationException and could tear reads during a resize.
+    this.apps = new ConcurrentHashMap<>();
   }
 
   public static ApplicationContext getInstance() {
@@ -45,7 +48,7 @@ public class ApplicationContext {
         appRepo
             .listAfter(
                 null,
-                appRepo.getFields("*"),
+                appRepo.getFields("pipelines"),
                 listFilter,
                 appRepo.getDao().listCount(listFilter),
                 "")
@@ -81,8 +84,7 @@ public class ApplicationContext {
   }
 
   public AbstractNativeApplication getAppIfExists(String name) {
-    AbstractNativeApplication app = this.apps.get(name);
-    return app;
+    return this.apps.get(name);
   }
 
   public Collection<AbstractNativeApplication> getAllApps() {

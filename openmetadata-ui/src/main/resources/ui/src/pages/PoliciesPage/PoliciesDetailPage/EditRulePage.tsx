@@ -28,7 +28,7 @@ import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getPath,
   getPolicyWithFqnPath,

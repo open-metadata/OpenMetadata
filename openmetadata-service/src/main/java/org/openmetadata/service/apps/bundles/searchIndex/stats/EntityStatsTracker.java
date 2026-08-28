@@ -177,6 +177,9 @@ public class EntityStatsTracker {
     }
 
     try {
+      // Non-distributed (legacy) path does not yet measure stage timing — pass zeros so
+      // counts continue to flush correctly. Timing surfaces only in the distributed path
+      // (StageStatsTracker), which is the production default.
       statsDAO.incrementStats(
           recordId,
           jobId,
@@ -191,6 +194,10 @@ public class EntityStatsTracker {
           pFailed,
           vSuccess,
           vFailed,
+          0L,
+          0L,
+          0L,
+          0L,
           (int) partCompleted,
           (int) partFailed,
           System.currentTimeMillis());

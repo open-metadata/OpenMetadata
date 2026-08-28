@@ -35,6 +35,7 @@ ischema_names.update(
         "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
         "bpchar": SqlAlchemyString,
+        "citext": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),
@@ -43,6 +44,7 @@ ischema_names.update(
         "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
         "tsquery": create_sqlalchemy_type("TSQUERY"),
         "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "tid": SqlAlchemyString,
         "xid": SqlAlchemyString,
         "xml": create_sqlalchemy_type("XML"),
         # PostgreSQL range types (used by TimescaleDB for chunk boundaries)

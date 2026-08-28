@@ -58,6 +58,12 @@
                 "$ref": "../../../../../type/entityReference.json"
               },
               "default": []
+            },
+            "emptyAssigneeStrategy": {
+              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen.",
+              "type": "string",
+              "enum": ["none", "assignAdmins"],
+              "default": "none"
             }
           },
           "additionalProperties": false
@@ -75,6 +81,91 @@
           "type": "integer",
           "minimum": 1,
           "default": 1
+        },
+        "stageId": {
+          "title": "Stage Id",
+          "description": "Workflow stage identifier stored on the task while this user task is active.",
+          "type": "string"
+        },
+        "stageDisplayName": {
+          "title": "Stage Display Name",
+          "description": "Human-readable stage label shown to task assignees.",
+          "type": "string"
+        },
+        "taskStatus": {
+          "title": "Task Status",
+          "description": "Coarse task status mapped while this user task is active.",
+          "$ref": "../../../../../entity/tasks/task.json#/definitions/taskStatus"
+        },
+        "assigneeStrategy": {
+          "title": "Assignee Strategy",
+          "description": "Optional label describing how assignees are derived for the stage.",
+          "type": "string"
+        },
+        "transitionMetadata": {
+          "title": "Transition Metadata",
+          "description": "Transitions available from this stage. Edge conditions should match these transition ids.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "targetStageId": {
+                "type": "string"
+              },
+              "targetTaskStatus": {
+                "$ref": "../../../../../entity/tasks/task.json#/definitions/taskStatus"
+              },
+              "resolutionType": {
+                "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
+              },
+              "formRef": {
+                "type": "string"
+              },
+              "requiresComment": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": ["id", "label", "targetStageId", "targetTaskStatus"],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "expiryTimer": {
+          "title": "Expiry Timer",
+          "description": "Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date variable. The boundary timer interrupts the user task and exits the subprocess with the configured transitionId as the node's result, so an outgoing edge with that condition routes the workflow downstream (e.g. to auto-revoke or auto-close).",
+          "type": "object",
+          "properties": {
+            "durationVariable": {
+              "description": "Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' → 'P14D').",
+              "type": "string"
+            },
+            "dateVariable": {
+              "description": "Name of the process variable holding the absolute ISO 8601 date/time when the timer should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').",
+              "type": "string"
+            },
+            "transitionId": {
+              "description": "Result value emitted when the timer fires. Must match an outgoing edge condition from this node.",
+              "type": "string"
+            },
+            "closeAsResolution": {
+              "title": "Close As Resolution",
+              "description": "When set, the underlying Task entity is closed at the moment the timer fires with this resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible for closing the Task (avoids double-resolve).",
+              "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
+            }
+          },
+          "required": ["transitionId"],
+          "oneOf": [
+            {"required": ["durationVariable"]},
+            {"required": ["dateVariable"]}
+          ],
+          "additionalProperties": false
         }
       },
       "required": ["assignees"],

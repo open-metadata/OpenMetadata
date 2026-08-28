@@ -204,6 +204,11 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sampleData": {
+      "description": "Sample data for the container.",
+      "$ref": "../data/table.json#/definitions/tableData",
+      "default": null
+    },
     "sourceUrl": {
       "description": "Source URL of container.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
@@ -219,6 +224,10 @@
     "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "votes": {
       "description": "Votes on the entity.",

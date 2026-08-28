@@ -12,25 +12,41 @@
 """
 Source connection handler
 """
-from functools import partial
-from typing import Any, Optional
+
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import quote_plus
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import (
+    Diagnosis,
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
+)
+from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
+    DatabaseStep,
+    ping,
+    run_sql,
+)
+from metadata.core.connections.test_connection.checks.summary import enumerated
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
+from metadata.core.connections.test_connection.network import (
+    NETWORK_ERRORS,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection as SnowflakeConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -39,32 +55,48 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import (
-    test_connection_engine_step,
-    test_connection_steps,
-    test_query,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_ACCESS_HISTORY_PROBE,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
+    SNOWFLAKE_TEST_GET_SCHEMAS,
     SNOWFLAKE_TEST_GET_STREAMS,
     SNOWFLAKE_TEST_GET_TABLES,
     SNOWFLAKE_TEST_GET_VIEWS,
 )
-from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from sqlalchemy.engine import Row
+
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
+
 logger = ingestion_logger()
+
+# Default value of the ``accountUsageSchema`` connection field, used to key the
+# account_usage-denial diagnosis when no custom schema is configured.
+DEFAULT_ACCOUNT_USAGE_SCHEMA = "SNOWFLAKE.ACCOUNT_USAGE"
+
+# The Snowflake driver connects to ``<account>.snowflakecomputing.com:443``; the
+# SQLAlchemy URL only carries the bare account as its host, so the shared TCP
+# preflight in ``ping`` cannot run (no port). CheckAccess folds in an explicit
+# probe to this host:port instead.
+SNOWFLAKE_HOST_SUFFIX = ".snowflakecomputing.com"
+SNOWFLAKE_PORT = 443
 
 
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnectionConfig
     engine: Any
-    database_name: Optional[str] = None
+    database_name: Optional[str] = None  # noqa: UP045
 
 
 def _init_database(engine_wrapper: SnowflakeEngineWrapper):
@@ -88,29 +120,281 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
         engine_wrapper.database_name = engine_wrapper.service_connection.database
 
 
-def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: str):
+def probe_access_history_available(engine: Engine, account_usage_schema: str) -> bool:
     """
-    Method to test connection via inspector functions,
-    this function creates the inspector object and fetches
-    the function with name `func_name` and executes it
+    Check whether the configured Snowflake role can read ACCOUNT_USAGE.ACCESS_HISTORY.
+
+    Required for the ACCESS_HISTORY-based lineage path. Standard Edition accounts
+    or roles without `IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE` will fail this
+    probe and the caller should fall back to the legacy parser path.
+
+    Logs failures at INFO (not WARNING) — Standard Edition is a legitimate state.
     """
-    _init_database(engine_wrapper)
-    with engine_wrapper.engine.connect() as conn:
-        conn.execute(text(f'USE DATABASE "{engine_wrapper.database_name}"'))
-        inspector = inspect(conn)
-        inspector_fn = getattr(inspector, func_name)
-        inspector_fn()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=account_usage_schema)))
+    except Exception as exc:
+        logger.info(
+            f"ACCESS_HISTORY probe failed (will fall back to legacy lineage path): {exc}. "
+            f"Ensure the role has IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE and the account is Enterprise+."
+        )
+        return False
+    return True
 
 
-def test_table_query(engine_wrapper: SnowflakeEngineWrapper, statement: str):
-    """
-    Test Table queries
-    """
-    _init_database(engine_wrapper)
-    test_query(
-        engine=engine_wrapper.engine,
-        statement=statement.format(database_name=engine_wrapper.database_name),
+def _sf_errno(*codes: int) -> Matcher:
+    """Match a Snowflake driver error number.
+
+    Unlike PyMySQL (which puts the code in ``args[0]``), the snowflake connector
+    carries it on the exception's ``.errno`` attribute, with the original DBAPI
+    error preserved by SQLAlchemy at ``.orig``. We walk both across the cause
+    chain. Codes are the stable signal - message text varies."""
+    wanted = frozenset(codes)
+
+    def match(error: BaseException) -> bool:
+        result = False
+        for current in exception_chain(error):
+            for candidate in (current, getattr(current, "orig", None)):
+                code = getattr(candidate, "errno", None)
+                if isinstance(code, int) and code in wanted:
+                    result = True
+        return result
+
+    return match
+
+
+def _account_usage_denied(account_usage_schema: str | None) -> Matcher:
+    """Match a privilege/visibility failure on the ACCOUNT_USAGE share
+    (query_history, access_history, tag_references) rather than a generic missing
+    object.
+
+    Keys on the *configured* ``accountUsageSchema`` token (default
+    ``SNOWFLAKE.ACCOUNT_USAGE``) plus an access-denial marker, so the rule holds
+    for any value the schema is set to - not just the default one."""
+    token = (account_usage_schema or DEFAULT_ACCOUNT_USAGE_SCHEMA).lower()
+
+    def match(error: BaseException) -> bool:
+        text_chain = chain_text(error)
+        return token in text_chain and ("not authorized" in text_chain or "does not exist" in text_chain)
+
+    return match
+
+
+def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
+    """Build the Snowflake error pack, baking the configured ACCOUNT_USAGE schema
+    into the account_usage-denial rule.
+
+    Rule order matters (first match wins). The connect-phase errno 250001 is
+    overloaded - a bad password, a missing role, and an MFA requirement all raise
+    it - so the specific message-token rules (MFA, role) are placed BEFORE the
+    250001 catch-all. Bad host / port on a custom endpoint raise before the driver
+    and are caught by the TCP preflight in CheckAccess via NETWORK_ERRORS; a wrong
+    *account* is not - Snowflake's wildcard DNS resolves any
+    ``<account>.snowflakecomputing.com`` and accepts TCP on 443, so it is only
+    rejected at the HTTP login layer, handled here."""
+    return ErrorPack(
+        # Any login-endpoint 403 yields this message (snowflake _auth.py), so it
+        # means "rejected at login" - proxy, IP allowlist, network policy too, per
+        # the fix. Keyed on the message: this path's errno is an accidental 540001.
+        when(Matchers.contains("verify the account name is correct")).diagnose(
+            "Snowflake rejected the login endpoint request",
+            fix="Snowflake answered 403 before authenticating. Most often the account identifier is "
+            "wrong - use the one from your Snowflake URL (e.g. <org>-<account> or "
+            "<locator>.<region>.<cloud>). If it is correct, check whether a network policy, IP "
+            "allowlist, or proxy is blocking this host.",
+        ),
+        when(Matchers.contains("multi-factor authentication")).diagnose(
+            "Multi-factor authentication required",
+            fix="MFA is enforced on this user, and password login cannot satisfy the MFA prompt "
+            "for a non-interactive ingestion. Switch the connection to key-pair authentication "
+            "(set the Private Key field) or a Programmatic Access Token (put the PAT in the "
+            "Password field); do not use the account password.",
+        ),
+        when(Matchers.contains("is not granted to this user")).diagnose(
+            "Role not granted",
+            fix="Grant the configured role to the user, or set a role the user already has "
+            "(e.g. PUBLIC), so the connection can assume it.",
+        ),
+        when(
+            Matchers.any_of(
+                _sf_errno(250001),
+                Matchers.contains("incorrect username or password"),
+            )
+        ).diagnose(
+            "Authentication failed",
+            fix="Check the username and password (or private key) and that the user is allowed to connect.",
+        ),
+        when(_account_usage_denied(account_usage_schema)).diagnose(
+            "Account usage not accessible",
+            fix="Grant the role IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE (or SELECT on the "
+            "snowflake.account_usage views) so query history, tags, and lineage can be read; "
+            "otherwise usage and lineage won't be collected.",
+        ),
+        when(
+            Matchers.any_of(
+                Matchers.contains("insufficient privileges"),
+                _sf_errno(3001),
+            )
+        ).diagnose(
+            "Insufficient privileges",
+            fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
+            "and SELECT on its objects).",
+        ),
+        when(
+            Matchers.any_of(
+                _sf_errno(2003, 2043),
+                Matchers.contains("object does not exist"),
+                Matchers.contains("does not exist or not authorized"),
+            )
+        ).diagnose(
+            "Object not found",
+            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
+            "authorized to use them.",
+        ),
+        when(Matchers.contains("no active warehouse")).diagnose(
+            "No active warehouse",
+            fix="Set a valid warehouse on the connection - verify the name, since a missing, "
+            "misspelled, or inaccessible warehouse all fail here - and ensure the role has USAGE "
+            "on it, so queries have compute to run on.",
+        ),
+    ).including(NETWORK_ERRORS)
+
+
+# Default pack, keyed on the default ACCOUNT_USAGE schema. Each connection builds
+# its own from the configured ``accountUsageSchema`` (see ``SnowflakeChecks``).
+SNOWFLAKE_ERRORS = _snowflake_errors(DEFAULT_ACCOUNT_USAGE_SCHEMA)
+
+
+def _no_tables_caveat(database: str | None) -> Diagnosis:
+    """Non-blocking advisory when GetTables saw no user tables.
+
+    The probe filters out INFORMATION_SCHEMA, so an empty result is a real signal:
+    the connection works but there is nothing to ingest. The step still passes;
+    this surfaces it as a Warning. Mirrors the shared ``list_tables`` convention -
+    tables (and schemas) warn when empty, an empty view/stream list stays silent."""
+    scope = f"database '{database}'" if database else "the database"
+    return Diagnosis(
+        title=f"No tables visible in {scope}",
+        remediation=f"Verify the role can see the tables (USAGE on the schema and object "
+        f"privileges), or confirm {scope} actually contains tables.",
     )
+
+
+def _snowflake_host(account: str) -> str:
+    """The host the driver dials: the account with the Snowflake domain appended
+    unless it is already a fully-qualified host."""
+    if account.endswith(SNOWFLAKE_HOST_SUFFIX):
+        return account
+    return f"{account}{SNOWFLAKE_HOST_SUFFIX}"
+
+
+class SnowflakeChecks:
+    """Test-connection checks for Snowflake.
+
+    The table/view/stream probes run custom queries (not the default inspector,
+    whose ``SHOW`` is capped at 10000 rows - issue #12798), scoped to a database
+    resolved lazily through ``SnowflakeEngineWrapper`` so no network call happens
+    before the gate.
+    """
+
+    def __init__(self, db: Borrowed[Engine], service_connection: SnowflakeConnectionConfig) -> None:
+        self._db = db
+        self.service_connection = service_connection
+        self.errors = _snowflake_errors(service_connection.accountUsageSchema)
+        self._wrapper: SnowflakeEngineWrapper | None = None
+
+    @property
+    def _engine_wrapper(self) -> SnowflakeEngineWrapper:
+        """Built on first use: it holds the engine, and reading the borrow builds it."""
+        if self._wrapper is None:
+            self._wrapper = SnowflakeEngineWrapper(
+                service_connection=self.service_connection,
+                engine=self._db.client,
+                database_name=None,
+            )
+        return self._wrapper
+
+    def _database(self) -> str | None:
+        """Resolve (and cache) the database to probe. Runs ``SHOW DATABASES`` only
+        when none is configured; called from a check, never at construction."""
+        _init_database(self._engine_wrapper)
+        return self._engine_wrapper.database_name
+
+    def _probe_target(self) -> tuple[str, int] | None:
+        """The host:port the driver will actually dial. An explicit ``host`` in
+        connectionArguments (a proxy, load balancer, or PrivateLink endpoint) wins
+        over the synthesized account host, and its ``port`` override is honored too
+        so a non-443 endpoint is not probed on the wrong port. ``None`` when neither
+        a host override nor an account is set, which skips the preflight."""
+        arguments = self.service_connection.connectionArguments
+        overrides = arguments.root if arguments else None
+        if overrides and overrides.get("host"):
+            result = (str(overrides["host"]), int(overrides.get("port", SNOWFLAKE_PORT)))
+        elif self.service_connection.account:
+            result = (_snowflake_host(self.service_connection.account), SNOWFLAKE_PORT)
+        else:
+            result = None
+        return result
+
+    @check(DatabaseStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        target = self._probe_target()
+        if target:
+            probe_or_fail(*target)
+        return ping(self._db.client)
+
+    @check(DatabaseStep.GetDatabases)
+    def get_databases(self) -> Evidence:
+        return run_sql(
+            self._db.client,
+            SNOWFLAKE_GET_DATABASES,
+            lambda rows: enumerated(len(rows), "database", DEFAULT_SAMPLE_ROWS),
+        )
+
+    @check(DatabaseStep.GetSchemas)
+    def get_schemas(self) -> Evidence:
+        statement = SNOWFLAKE_TEST_GET_SCHEMAS.format(database_name=self._database())
+        return run_sql(self._db.client, statement, lambda rows: enumerated(len(rows), "schema", DEFAULT_SAMPLE_ROWS))
+
+    @check(DatabaseStep.GetTables)
+    def get_tables(self) -> Evidence:
+        database = self._database()
+        statement = SNOWFLAKE_TEST_GET_TABLES.format(database_name=database)
+        counts: list[int] = []
+
+        def summarize(rows: Sequence[Row]) -> str:
+            counts.append(len(rows))
+            return enumerated(len(rows), "table", DEFAULT_SAMPLE_ROWS)
+
+        evidence = run_sql(self._db.client, statement, summarize)
+        if not counts[0]:
+            evidence = replace(evidence, caveat=_no_tables_caveat(database))
+        return evidence
+
+    @check(DatabaseStep.GetViews)
+    def get_views(self) -> Evidence:
+        statement = SNOWFLAKE_TEST_GET_VIEWS.format(database_name=self._database())
+        return run_sql(self._db.client, statement, lambda rows: enumerated(len(rows), "view", DEFAULT_SAMPLE_ROWS))
+
+    @check(DatabaseStep.GetStreams)
+    def get_streams(self) -> Evidence:
+        statement = SNOWFLAKE_TEST_GET_STREAMS.format(database_name=self._database())
+        return run_sql(self._db.client, statement, lambda rows: enumerated(len(rows), "stream", DEFAULT_SAMPLE_ROWS))
+
+    @check(DatabaseStep.GetTags)
+    def get_tags(self) -> Evidence:
+        statement = SNOWFLAKE_TEST_FETCH_TAG.format(account_usage=self.service_connection.accountUsageSchema)
+        return run_sql(self._db.client, statement, lambda _: "tags accessible")
+
+    @check(DatabaseStep.GetQueries)
+    def get_queries(self) -> Evidence:
+        statement = SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema)
+        return run_sql(self._db.client, statement, lambda _: "query history accessible")
+
+    @check(DatabaseStep.GetAccessHistory)
+    def get_access_history(self) -> Evidence:
+        statement = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=self.service_connection.accountUsageSchema)
+        return run_sql(self._db.client, statement, lambda _: "access history accessible")
 
 
 class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
@@ -118,7 +402,9 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         """
         Return the SQLAlchemy Engine for Snowflake.
         """
-        return self.get_connection()
+        engine = self.get_connection()
+        self._on_close(engine.dispose)
+        return engine
 
     @staticmethod
     def get_connection_url(connection: SnowflakeConnectionConfig) -> str:
@@ -131,12 +417,8 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if connection.username:
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
-                connection.password = SecretStr("")
-            url += (
-                f":{quote_plus(connection.password.get_secret_value())}"
-                if connection
-                else ""
-            )
+                connection.password = _CustomSecretStr("")
+            url += f":{quote_plus(connection.password.get_secret_value())}" if connection else ""
             url += "@"
 
         url += connection.account
@@ -146,11 +428,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if options:
             if not connection.database:
                 url += "/"
-            params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in options.items()
-                if value
-            )
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
             url = f"{url}?{params}"
         options = {
             "account": connection.account,
@@ -162,9 +440,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def _get_private_key(
-        self, encoding: serialization.Encoding = serialization.Encoding.DER
-    ) -> Optional[bytes]:
+    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:  # noqa: UP045
         connection = self.service_connection
         if connection.privateKey:
             snowflake_private_key_passphrase = (
@@ -174,13 +450,9 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             )
 
             if not snowflake_private_key_passphrase:
-                logger.warning(
-                    "Snowflake Private Key Passphrase not found, replacing it with empty string"
-                )
+                logger.warning("Snowflake Private Key Passphrase not found, replacing it with empty string")
 
-            encrypted_private_key = normalize_pem_string(
-                connection.privateKey.get_secret_value()
-            )
+            encrypted_private_key = normalize_pem_string(connection.privateKey.get_secret_value())
 
             p_key = serialization.load_pem_private_key(
                 bytes(
@@ -195,10 +467,10 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            return pkb
+            return pkb  # noqa: RET504
         return None
 
-    def _get_client_session_keep_alive(self) -> Optional[bool]:
+    def _get_client_session_keep_alive(self) -> Optional[bool]:  # noqa: UP045
         connection = self.service_connection
         if connection.clientSessionKeepAlive:
             return connection.clientSessionKeepAlive
@@ -216,99 +488,26 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             connection.connectionArguments.root["private_key"] = private_key
 
         if keep_alive := self._get_client_session_keep_alive():
-            connection.connectionArguments.root[
-                "client_session_keep_alive"
-            ] = keep_alive
+            connection.connectionArguments.root["client_session_keep_alive"] = keep_alive
+
+        # Bound the Snowflake socket so a silently-severed TCP connection
+        # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
+        # error within 10 minutes instead of hanging the worker indefinitely.
+        # User-supplied connectionArguments win via setdefault.
+        if connection.connectionArguments.root is not None:
+            connection.connectionArguments.root.setdefault("network_timeout", 600)
 
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
-        if (
-            connection.connectionArguments.root
-            and connection.connectionArguments.root.get("private_key")
-        ):
+        if connection.connectionArguments.root and connection.connectionArguments.root.get("private_key"):
             del connection.connectionArguments.root["private_key"]
         return engine
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow.
-
-        Note how we run a custom GetTables query:
-
-            The default inspector `get_table_names` runs a SHOW which
-            has a limit on 10000 rows in the result set:
-            https://github.com/open-metadata/OpenMetadata/issues/12798
-
-            This can cause errors if we are running tests against schemas
-            with more tables than that. There is no issues during the metadata
-            ingestion since in metadata.py we are overriding the default
-            `get_table_names` function with our custom queries.
-        """
-        engine_wrapper = SnowflakeEngineWrapper(
+    def checks(self) -> ChecksProvider:
+        return SnowflakeChecks(
+            db=self.borrow(),
             service_connection=self.service_connection,
-            engine=self.client,
-            database_name=None,
-        )
-        test_fn = {
-            "CheckAccess": partial(test_connection_engine_step, self.client),
-            "GetDatabases": partial(
-                test_query, statement=SNOWFLAKE_GET_DATABASES, engine=self.client
-            ),
-            "GetSchemas": partial(
-                execute_inspector_func, engine_wrapper, "get_schema_names"
-            ),
-            "GetTables": partial(
-                test_table_query,
-                statement=SNOWFLAKE_TEST_GET_TABLES,
-                engine_wrapper=engine_wrapper,
-            ),
-            "GetViews": partial(
-                test_table_query,
-                statement=SNOWFLAKE_TEST_GET_VIEWS,
-                engine_wrapper=engine_wrapper,
-            ),
-            "GetStreams": partial(
-                test_table_query,
-                statement=SNOWFLAKE_TEST_GET_STREAMS,
-                engine_wrapper=engine_wrapper,
-            ),
-            "GetQueries": partial(
-                test_query,
-                statement=SNOWFLAKE_TEST_GET_QUERIES.format(
-                    account_usage=self.service_connection.accountUsageSchema
-                ),
-                engine=self.client,
-            ),
-            "GetTags": partial(
-                test_query,
-                statement=SNOWFLAKE_TEST_FETCH_TAG.format(
-                    account_usage=self.service_connection.accountUsageSchema
-                ),
-                engine=self.client,
-            ),
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=self.service_connection.type.value,
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
-        )
-
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError(
-            "get_connection_dict is not implemented for Snowflake"
         )

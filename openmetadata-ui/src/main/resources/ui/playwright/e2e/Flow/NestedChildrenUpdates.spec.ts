@@ -28,6 +28,8 @@ for (const [
   { CreationClass, tabSelector, supportDisplayNameUpdate },
 ] of Object.entries(nestedChildrenTestData)) {
   test.describe(entityType, () => {
+    test.describe.configure({ mode: 'default' });
+
     const entity = new CreationClass();
 
     test.beforeAll(async ({ browser }) => {
@@ -40,19 +42,19 @@ for (const [
     test.describe('Level 1 Nested Columns', () => {
       test.beforeEach(async ({ page }) => {
         await redirectToHomePage(page);
-        const { level0Key, expand } = getNestedColumnDetails(
+        const { level0Key, level1Key, expand } = getNestedColumnDetails(
           entityType,
           entity
         );
 
         await entity.visitEntityPage(page);
         if (tabSelector) {
-          await page.waitForSelector(tabSelector, { state: 'visible' });
+          await page.locator(tabSelector).waitFor({ state: 'visible' });
 
           await page.click(tabSelector);
         }
         if (expand) {
-          await expandNestedColumn(page, level0Key);
+          await expandNestedColumn(page, level0Key, level1Key);
         }
       });
 
@@ -155,21 +157,19 @@ for (const [
     test.describe('Level 2 Deeply Nested Columns', () => {
       test.beforeEach(async ({ page }) => {
         await redirectToHomePage(page);
-        const { level0Key, level1Key, expand } = getNestedColumnDetails(
+        const { level0Key, level1Key, level2Key } = getNestedColumnDetails(
           entityType,
           entity
         );
 
         await entity.visitEntityPage(page);
         if (tabSelector) {
-          await page.waitForSelector(tabSelector, { state: 'visible' });
+          await page.locator(tabSelector).waitFor({ state: 'visible' });
 
           await page.click(tabSelector);
         }
-        if (expand) {
-          await expandNestedColumn(page, level0Key);
-          await expandNestedColumn(page, level1Key);
-        }
+        await expandNestedColumn(page, level0Key, level1Key);
+        await expandNestedColumn(page, level1Key, level2Key);
       });
 
       test('should update nested column description immediately without page refresh', async ({
@@ -266,15 +266,23 @@ for (const [
   });
 }
 
-const expandNestedColumn = async (page: Page, nestedColumnFqn: string) => {
-  await page.waitForSelector(
-    `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`,
-    {
-      state: 'visible',
-    }
+const expandNestedColumn = async (
+  page: Page,
+  nestedColumnFqn: string,
+  childKey?: string
+) => {
+  const expandIcon = page.locator(
+    `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`
   );
+  await expandIcon.waitFor({ state: 'visible' });
 
-  await page
-    .locator(`[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`)
-    .click();
+  if (childKey) {
+    const childRow = page.locator(`[data-row-key="${childKey}"]`);
+    if (await childRow.isVisible()) {
+      return;
+    }
+  }
+
+  await expandIcon.scrollIntoViewIfNeeded();
+  await expandIcon.click();
 };

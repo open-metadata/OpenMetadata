@@ -45,15 +45,9 @@ class MetadataWorkflow(IngestionWorkflow):
 
         source_class = self.import_source_class()
 
-        pipeline_name = (
-            self.ingestion_pipeline.fullyQualifiedName.root
-            if self.ingestion_pipeline
-            else None
-        )
+        pipeline_name = self.ingestion_pipeline.fullyQualifiedName.root if self.ingestion_pipeline else None
 
-        source: Source = source_class.create(
-            self.config.source.model_dump(), self.metadata, pipeline_name
-        )
+        source: Source = source_class.create(self.config.source.model_dump(), self.metadata, pipeline_name)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -64,7 +58,12 @@ class MetadataWorkflow(IngestionWorkflow):
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.model_dump().get("config", {})
+        sink_config.setdefault("override_metadata", self._source_override_metadata())
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
+
+    def _source_override_metadata(self) -> bool:
+        source_config = self.config.source.sourceConfig.config
+        return bool(getattr(source_config, "overrideMetadata", False))

@@ -23,16 +23,19 @@ import ServiceBaseClass from './ServiceBaseClass';
 class BigQueryIngestionClass extends ServiceBaseClass {
   name = '';
   filterPattern: string;
+  authOverrides: Record<string, string>;
 
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
     shouldAddDefaultFilters?: boolean;
+    authOverrides?: Record<string, string>;
   }) {
     const {
       shouldTestConnection = true,
       shouldAddIngestion = true,
       shouldAddDefaultFilters = false,
+      authOverrides,
     } = extraParams ?? {};
 
     super(
@@ -46,6 +49,7 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     );
 
     this.filterPattern = 'testschema';
+    this.authOverrides = authOverrides ?? {};
   }
 
   async createService(page: Page) {
@@ -60,28 +64,23 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     const clientEmail = process.env.PLAYWRIGHT_BQ_CLIENT_EMAIL ?? '';
     const projectId = process.env.PLAYWRIGHT_BQ_PROJECT_ID ?? '';
     const privateKeyId = process.env.PLAYWRIGHT_BQ_PRIVATE_KEY_ID ?? '';
-    const privateKey = process.env.PLAYWRIGHT_BQ_PRIVATE_KEY ?? '';
+    const privateKey =
+      this.authOverrides.privateKey ??
+      process.env.PLAYWRIGHT_BQ_PRIVATE_KEY ??
+      '';
     const clientId = process.env.PLAYWRIGHT_BQ_CLIENT_ID ?? '';
     const projectIdTaxonomy =
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
     await page
-      .getByTestId('select-widget-root/credentials/gcpConfig__oneof_select')
-      .getByRole('combobox')
-      .click({ force: true });
-    await page.click(
-      '.ant-select-dropdown:visible [title="GCP Credentials Values"]'
-    );
+      .getByRole('button', { name: 'GCP Credentials Values GCP' })
+      .click();
+    await page.getByRole('option', { name: 'GCP Credentials Values' }).click();
 
     await page
-      .getByTestId(
-        'select-widget-root/credentials/gcpConfig/projectId__oneof_select'
-      )
-      .getByRole('combobox')
-      .click({ force: true });
-    await page.click(
-      '.ant-select-dropdown:visible [title="Multiple Project ID"]'
-    );
+      .getByRole('button', { name: 'Single Project ID Project ID' })
+      .click();
+    await page.getByRole('option', { name: 'Multiple Project ID' }).click();
 
     const projectIds = projectId.split(',');
     for (const id of projectIds) {
@@ -105,6 +104,10 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'clientEmail');
     await page.fill('#root\\/credentials\\/gcpConfig\\/clientId', clientId);
     await checkServiceFieldSectionHighlighting(page, 'clientId');
+
+    await page
+      .getByRole('button', { name: 'Show advanced credential' })
+      .click();
     await page.fill(
       '#root\\/credentials\\/gcpConfig\\/clientX509CertUrl',
       `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
@@ -113,16 +116,26 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     );
     await checkServiceFieldSectionHighlighting(page, 'clientX509CertUrl');
 
+    await page.getByTestId('connection-section-scope').click();
+
     await page.fill(`#root\\/taxonomyProjectID`, projectIdTaxonomy);
     await page.locator(`#root\\/taxonomyProjectID`).press('Enter');
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill(
-      '#root\\/schemaFilterPattern\\/includes',
-      `${this.filterPattern}`
-    );
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.filterPattern);
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async deleteService(page: Page) {

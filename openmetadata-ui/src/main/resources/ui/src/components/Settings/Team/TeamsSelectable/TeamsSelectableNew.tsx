@@ -16,17 +16,29 @@ import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
+import { BaseSelectRef } from 'rc-select';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
-const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">
+    {t('label.plus-count-more', {
+      count,
+    })}
+  </span>
+);
+
+const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
   (
     {
       showTeamsAlert,
@@ -118,18 +130,14 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           getPopupContainer={(trigger) => trigger.parentElement}
           loading={isLoading}
           maxTagCount={maxValueCount}
-          maxTagPlaceholder={(omittedValues) => (
-            <span className="max-tag-text">
-              {t('label.plus-count-more', {
-                count: omittedValues.length,
-              })}
-            </span>
-          )}
+          maxTagPlaceholder={(omittedValues) =>
+            renderMaxTagPlaceholder(omittedValues.length, t)
+          }
           open={open}
           placeholder={placeholder}
           placement="bottomLeft"
           popupClassName="teams-custom-dropdown-class"
-          ref={ref as any}
+          ref={ref}
           showCheckedStrategy={TreeSelect.SHOW_CHILD}
           style={{ width: '100%' }}
           tagRender={TagRenderer}

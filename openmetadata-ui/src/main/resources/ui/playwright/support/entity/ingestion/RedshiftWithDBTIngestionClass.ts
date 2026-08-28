@@ -25,12 +25,18 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import {
+  visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
 import { visitServiceDetailsPage } from '../../../utils/service';
+import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
   checkServiceFieldSectionHighlighting,
+  getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -94,12 +100,19 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    // no schema or database filters
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/schemaFilterPattern\\/includes')
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.schemaFilterPattern);
-
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async runAdditionalTests(
@@ -120,19 +133,23 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       );
 
       await page.click('[data-testid="agents"]');
-      await page.waitForSelector('[data-testid="ingestion-details-container"]');
+      await page.getByTestId('ingestion-details-container').waitFor();
 
       const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
       if (await metadataTab.isVisible()) {
         await metadataTab.click();
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForSelector('.ant-dropdown:visible [data-menu-id*="dbt"]');
+      await page
+        .locator('.ant-dropdown:visible [data-menu-id*="dbt"]')
+        .waitFor();
       await page.click('[data-menu-id*="dbt"]');
+      await waitForIngestionWorkflowForm(page);
 
-      await page.waitForSelector('#root\\/dbtConfigSource__oneof_select');
-      await page.selectOption(
-        '#root\\/dbtConfigSource__oneof_select',
+      await selectOneOfOption(
+        page,
+        'root/dbtConfigSource',
+        'select-widget-root/dbtConfigSource__oneof_select',
         'DBT S3 Config'
       );
       await page.fill(
@@ -156,15 +173,15 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         DBT.s3Prefix
       );
 
-      await page.click('[data-testid="submit-btn"]');
+      await page.click('[data-testid="next-button"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);
 
       await page.click('[data-testid="view-service-button"]');
 
       // Header available once page loads
-      await page.waitForSelector('[data-testid="data-assets-header"]');
-      await page.getByTestId('loader').waitFor({ state: 'detached' });
+      await page.getByTestId('data-assets-header').waitFor();
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId('agents').click();
       const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
       if (await metadataTab2.isVisible()) {
@@ -183,16 +200,15 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
       await page.waitForTimeout(3000);
-      await page.click(
-        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-      );
-      await page.getByTestId('run-button').click();
+      await getAgentCard(page, response.data[0].name)
+        .getByTestId('run-agent-button')
+        .click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 
-      // need manual wait to make sure we are awaiting on latest run results
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
       await page.waitForTimeout(2000);
 
       await this.handleIngestionRetry('dbt', page);
@@ -201,18 +217,16 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     await test.step('Validate DBT is ingested properly', async () => {
       await sidebarClick(page, SidebarItem.TAGS);
 
-      await page.waitForSelector('[data-testid="data-summary-container"]');
+      await page.getByTestId('data-summary-container').waitFor();
 
       await page.click(
         `[data-testid="data-summary-container"] >> text=${DBT.classification}`
       );
 
       // Verify DBT tag category is added
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('.ant-table-row');
+      await page.getByTestId('table').waitFor();
 
       await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
 
@@ -224,7 +238,11 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       });
 
       // Verify tags
-      await page.waitForSelector('[data-testid="entity-tags"]');
+      await page
+        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId('tags-container')
+        .getByTestId('entity-tags')
+        .waitFor();
 
       await expect(
         page
@@ -237,7 +255,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="dbt"]');
 
       // Verify query is present in the DBT tab
-      await page.waitForSelector('.CodeMirror');
+      await page.locator('.CodeMirror').waitFor();
       const codeMirrorText = await page.textContent('.CodeMirror');
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
@@ -260,10 +278,13 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await visitLineageTab(page);
 
       // Verify entity header display name
-      await page.waitForSelector('[data-testid="entity-header-display-name"]');
-      const entityHeaderDisplayName = await page.textContent(
-        '[data-testid="entity-header-display-name"]'
+      const dbtLineageNode = page.getByTestId(
+        `lineage-node-${this.dbtEntityFqn}`
       );
+      await dbtLineageNode.getByTestId('entity-header-display-name').waitFor();
+      const entityHeaderDisplayName = await dbtLineageNode
+        .getByTestId('entity-header-display-name')
+        .textContent();
 
       expect(entityHeaderDisplayName).toContain(DBT.dbtLineageNodeLabel);
 
@@ -283,5 +304,4 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   }
 }
 
-// eslint-disable-next-line jest/no-export
 export default RedshiftWithDBTIngestionClass;

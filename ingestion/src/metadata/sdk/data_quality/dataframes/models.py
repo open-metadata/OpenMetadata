@@ -17,9 +17,7 @@ def create_mock_test_case(test_definition: BaseTest) -> MockTestCase:
     """
     entity_link = "<#E::table::dataframe_validation>"
     if isinstance(test_definition, ColumnTest):
-        entity_link = (
-            f"<#E::table::dataframe_validation::columns::{test_definition.column_name}>"
-        )
+        entity_link = f"<#E::table::dataframe_validation::columns::{test_definition.column_name}>"
 
     return MockTestCase(  # pyright: ignore[reportCallIssue]
         id=uuid4(),

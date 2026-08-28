@@ -23,11 +23,16 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import {
+  visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
+  getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
@@ -87,11 +92,19 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/schemaFilterPattern\\/includes')
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.filterPattern);
-
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async runAdditionalTests(
@@ -113,30 +126,29 @@ class PostgresIngestionClass extends ServiceBaseClass {
         );
 
         await page.click('[data-testid="agents"]');
-        await page.waitForSelector(
-          '[data-testid="ingestion-details-container"]'
-        );
+        await page.getByTestId('ingestion-details-container').waitFor();
 
         const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
         if (await metadataTab.isVisible()) {
           await metadataTab.click();
         }
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page.waitForSelector(
-          '.ant-dropdown:visible [data-menu-id*="usage"]'
-        );
+        await page
+          .locator('.ant-dropdown:visible [data-menu-id*="usage"]')
+          .waitFor();
         await page.click('[data-menu-id*="usage"]');
+        await waitForIngestionWorkflowForm(page);
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
-        await page.click('[data-testid="submit-btn"]');
+        await page.click('[data-testid="next-button"]');
         // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
         await this.scheduleIngestion(page);
 
         await page.click('[data-testid="view-service-button"]');
 
         // Header available once page loads
-        await page.waitForSelector('[data-testid="data-assets-header"]');
-        await page.getByTestId('loader').waitFor({ state: 'detached' });
+        await page.getByTestId('data-assets-header').waitFor();
+        await waitForAllLoadersToDisappear(page);
         await page.getByTestId('agents').click();
         const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
         if (await metadataTab2.isVisible()) {
@@ -155,26 +167,22 @@ class PostgresIngestionClass extends ServiceBaseClass {
           )
           .then((res) => res.json());
 
-        // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
         await page.waitForTimeout(3000);
-        await page.click(
-          `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-        );
-
-        await page.getByTestId('run-button').click();
+        await getAgentCard(page, response.data[0].name)
+          .getByTestId('run-agent-button')
+          .click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);
 
-        // need manual wait to make sure we are awaiting on latest run results
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
         await page.waitForTimeout(2000);
 
         await this.handleIngestionRetry('usage', page);
       });
 
       await test.step('Verify if usage is ingested properly', async () => {
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'hidden',
-        });
+        await waitForAllLoadersToDisappear(page);
         const entityResponse = page.waitForResponse(
           `/api/v1/tables/name/*.order_items?**`
         );
@@ -195,8 +203,8 @@ class PostgresIngestionClass extends ServiceBaseClass {
         // );
 
         await page.click('[data-testid="schema"]');
-        await page.waitForSelector('[data-testid="related-tables-data"]');
-        await page.waitForSelector('[data-testid="frequently-joined-columns"]');
+        await page.getByTestId('related-tables-data').waitFor();
+        await page.getByTestId('frequently-joined-columns').waitFor();
       });
     }
   }
@@ -206,5 +214,4 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 }
 
-// eslint-disable-next-line jest/no-export
 export default PostgresIngestionClass;

@@ -12,8 +12,10 @@
  */
 
 import { DrawerProps } from 'antd';
+import { ReactNode } from 'react';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 
 export interface BundleSuiteFormProps {
   drawerProps?: DrawerProps;
@@ -27,10 +29,22 @@ export interface BundleSuiteFormProps {
   };
 }
 
+export interface BundleSuiteFormDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: (testSuite: TestSuite) => void;
+  initialValues?: BundleSuiteFormProps['initialValues'];
+  /** 'drawer' renders the slideout drawer; 'modal' renders the centered modal. */
+  variant?: 'drawer' | 'modal';
+  title?: ReactNode;
+  headerActions?: ReactNode;
+  width?: number | string;
+}
+
 export type BundleSuiteFormData = {
   name: string;
   description?: string;
-  testCases: TestCase[] | string[];
+  testCaseSelection: AddTestCaseListChangePayload;
   enableScheduler?: boolean;
   cron?: string;
   enableDebugLog?: boolean;

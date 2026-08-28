@@ -16,7 +16,5 @@ def test_service_spec():
     assert spec.metadata_source_class == get_class_path(MysqlSource)
     assert spec.profiler_class == get_class_path(SQAProfilerInterface)
 
-    spec = DefaultDatabaseSpec(
-        metadata_source_class=MysqlSource, connection_class=MySQLConnection
-    )
+    spec = DefaultDatabaseSpec(metadata_source_class=MysqlSource, connection_class=MySQLConnection)
     assert spec.connection_class == get_class_path(MySQLConnection)

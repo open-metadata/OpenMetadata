@@ -10,11 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Suggestion,
-  SuggestionType,
-} from '../generated/entity/feed/suggestion';
 import { EntityReference } from '../generated/type/entityReference';
+import { Suggestion, SuggestionType } from '../types/taskSuggestion';
 
 export const MOCK_SUGGESTIONS = [
   {

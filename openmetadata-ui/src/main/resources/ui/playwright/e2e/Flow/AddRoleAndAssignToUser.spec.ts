@@ -64,23 +64,24 @@ test.describe.serial('Add role and assign it to the user', () => {
 
     await page.waitForURL(`**/settings/access/roles/${roleName}`);
 
-    await page.waitForSelector('[data-testid="inactive-link"]');
+    await page.getByTestId('inactive-link').waitFor();
 
-    expect(await page.textContent('[data-testid="inactive-link"]')).toBe(
+    await expect(page.locator('[data-testid="inactive-link"]')).toHaveText(
       roleName
     );
-    expect(
-      await page.textContent(
+    await expect(
+      page.locator(
         '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
       )
-    ).toContain(`description for ${roleName}`);
+    ).toContainText(`description for ${roleName}`);
   });
 
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
-
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.click('[data-testid="add-user"]');
+    await initialRolesResponse;
 
     await page.fill('[data-testid="email"]', user.email);
     await page.fill('[data-testid="displayName"]', userDisplayName);
@@ -94,15 +95,17 @@ test.describe.serial('Add role and assign it to the user', () => {
     await expect(page.locator('#generatedPassword')).toHaveValue(/\S+/);
 
     await page.click('[data-testid="roles-dropdown"]');
-    await page.waitForSelector('.ant-select-dropdown', {
+    await page.locator('.ant-select-dropdown').waitFor({
       state: 'visible',
     });
+    const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.fill('#roles', roleName);
+    await rolesSearchResponse;
     await page.click(`[title="${roleName}"]`);
 
     await page.keyboard.press('Escape');
 
-    await page.waitForSelector('[data-testid="save-user"]', {
+    await page.getByTestId('save-user').waitFor({
       state: 'visible',
     });
 
@@ -114,7 +117,7 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Verify assigned role to new user', async ({ page }) => {
     await visitUserProfilePage(page, userName);
 
-    await page.waitForSelector('[data-testid="user-profile"]');
+    await page.getByTestId('user-profile').waitFor();
 
     await expect(page.getByTestId('user-profile-roles')).toContainText(
       roleName

@@ -9,6 +9,7 @@
     "Draft",
     "In Review",
     "Approved",
+    "Archived",
     "Deprecated",
     "Rejected",
     "Unprocessed"

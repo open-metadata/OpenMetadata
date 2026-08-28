@@ -14,7 +14,7 @@
 Usage query database and schema filter tests
 """
 
-from typing import Dict, List, Optional, Type, TypeVar
+from typing import Dict, List, Optional, Type, TypeVar  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -62,10 +62,10 @@ mock_clickhouse_config = {
 
 def mock_list_entities(
     self,
-    entity: Type[T],
-    fields: Optional[List[str]] = None,
+    entity: Type[T],  # noqa: UP006
+    fields: Optional[List[str]] = None,  # noqa: UP006, UP045
     limit: int = 1000,
-    params: Optional[Dict[str, str]] = None,
+    params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
 ):
     """
     mock list entities for databases
@@ -147,10 +147,9 @@ class UsageQueryFilterTests(TestCase):
     @patch.object(OpenMetadata, "list_all_entities", mock_list_entities)
     def test_prepare_clickhouse(self):
         config = OpenMetadataWorkflowConfig.model_validate(mock_clickhouse_config)
-        with patch(
-            "metadata.ingestion.source.database.query_parser_source.get_ssl_connection"
-        ), patch(
-            "metadata.ingestion.source.database.clickhouse.usage.ClickhouseUsageSource.test_connection"
+        with (
+            patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection"),
+            patch("metadata.ingestion.source.database.clickhouse.usage.ClickhouseUsageSource.test_connection"),
         ):
             clickhouse_source = ClickhouseUsageSource.create(
                 mock_clickhouse_config["source"],

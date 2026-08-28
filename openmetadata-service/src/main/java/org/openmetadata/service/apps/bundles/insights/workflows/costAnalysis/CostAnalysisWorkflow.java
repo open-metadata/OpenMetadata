@@ -26,6 +26,7 @@ import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.processors.CreateReportDataProcessor;
 import org.openmetadata.service.apps.bundles.insights.sinks.ReportDataSink;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.processors.AggregatedCostAnalysisReportDataAggregator;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.processors.AggregatedCostAnalysisReportDataProcessor;
@@ -38,7 +39,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
-public class CostAnalysisWorkflow {
+public class CostAnalysisWorkflow implements DataInsightsWorkflow {
   public static final String AGGREGATED_COST_ANALYSIS_DATA_MAP_KEY =
       "aggregatedCostAnalysisDataMap";
   @Getter private final int batchSize;
@@ -47,6 +48,7 @@ public class CostAnalysisWorkflow {
   private final int retentionDays = 30;
   @Getter private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
   private final CostAnalysisConfig costAnalysisConfig;
+  private volatile boolean stopped;
 
   public record CostAnalysisTableData(
       Table table, Optional<LifeCycle> oLifeCycle, Optional<Double> oSize) {}
@@ -102,22 +104,26 @@ public class CostAnalysisWorkflow {
 
   private void initialize() throws SearchIndexException {
     PaginatedEntitiesSource databaseServices =
-        new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of("*"));
+        new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of());
     int total = 0;
 
     String keysetCursor = null;
-    while (true) {
+    while (!stopped) {
       ResultList<? extends EntityInterface> rawResult =
           databaseServices.readNextKeyset(keysetCursor);
       keysetCursor = rawResult.getPaging().getAfter();
       ResultList<DatabaseService> resultList = filterDatabaseServices(rawResult);
       if (!resultList.getData().isEmpty()) {
         for (DatabaseService databaseService : resultList.getData()) {
+          if (stopped) {
+            break;
+          }
           ListFilter filter = new ListFilter(null);
           filter.addQueryParam("database", databaseService.getFullyQualifiedName());
 
           sources.add(
-              new PaginatedEntitiesSource(Entity.TABLE, batchSize, List.of("*"), filter)
+              new PaginatedEntitiesSource(
+                      Entity.TABLE, batchSize, List.of(Entity.FIELD_LIFE_CYCLE), filter)
                   .withName(
                       String.format(
                           "[CostAnalysisWorkflow] %s", databaseService.getFullyQualifiedName())));
@@ -139,8 +145,9 @@ public class CostAnalysisWorkflow {
         new AggregatedCostAnalysisReportDataProcessor(total);
   }
 
+  @Override
   public void process() throws SearchIndexException {
-    if (!costAnalysisConfig.getEnabled()) {
+    if (!costAnalysisConfig.getEnabled() || stopped) {
       return;
     }
     LOG.info("[Data Insights] Processing Cost Analysis.");
@@ -150,7 +157,7 @@ public class CostAnalysisWorkflow {
     // Delete the records of the days we are going to process
     // TODO: It might be good to delete and process one day at a time
     Long pointerTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
-    while (pointerTimestamp >= startTimestamp) {
+    while (pointerTimestamp >= startTimestamp && !stopped) {
       deleteReportDataRecordsAtDate(
           pointerTimestamp, ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
       pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
@@ -158,9 +165,14 @@ public class CostAnalysisWorkflow {
 
     // Delete the Raw Records since we only keep the last Snapshot.
     // TODO: When implementing backfill, we should only save the last Date for the Raw Reports.
-    deleteReportDataRecords(ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
+    if (!stopped) {
+      deleteReportDataRecords(ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
+    }
 
     for (PaginatedEntitiesSource source : sources) {
+      if (stopped) {
+        break;
+      }
       // TODO: Could the size of the Maps be an issue?
       List<RawCostAnalysisReportData> rawCostAnalysisReportDataList = new ArrayList<>();
       Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>>
@@ -172,7 +184,7 @@ public class CostAnalysisWorkflow {
       Optional<String> initialProcessorError = Optional.empty();
 
       String tableKeysetCursor = null;
-      while (true) {
+      while (!stopped) {
         try {
           ResultList<? extends EntityInterface> resultList =
               source.readNextKeyset(tableKeysetCursor);
@@ -199,6 +211,9 @@ public class CostAnalysisWorkflow {
         }
       }
 
+      if (stopped) {
+        break;
+      }
       if (initialProcessorError.isPresent()) {
         continue;
       }
@@ -207,6 +222,10 @@ public class CostAnalysisWorkflow {
           processRawCostAnalysisReportData(rawCostAnalysisReportDataList, contextData);
 
       processRawCostAnalysisError.ifPresent(LOG::debug);
+
+      if (stopped) {
+        break;
+      }
 
       Optional<String> processAggregatedCostAnalysisError =
           processAggregatedCostAnalysisReportData(aggregatedCostAnalysisDataMap, contextData);
@@ -243,7 +262,7 @@ public class CostAnalysisWorkflow {
           createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
-    if (rawCostAnalysisReportData.isPresent()) {
+    if (rawCostAnalysisReportData.isPresent() && !stopped) {
       ReportDataSink reportDataSink =
           new ReportDataSink(
               rawCostAnalysisReportData.get().size(),
@@ -292,7 +311,7 @@ public class CostAnalysisWorkflow {
           aggregatedCostAnalysisReportDataAggregator.getStats());
     }
 
-    if (aggregatedCostAnalysisReportDataList.isPresent()) {
+    if (aggregatedCostAnalysisReportDataList.isPresent() && !stopped) {
       CreateReportDataProcessor createReportdataProcessor =
           new CreateReportDataProcessor(
               aggregatedCostAnalysisReportDataList.get().size(),
@@ -316,7 +335,7 @@ public class CostAnalysisWorkflow {
             createReportdataProcessor.getName(), createReportdataProcessor.getStats());
       }
 
-      if (aggregatedCostAnalysisReportData.isPresent()) {
+      if (aggregatedCostAnalysisReportData.isPresent() && !stopped) {
         ReportDataSink reportDataSink =
             new ReportDataSink(
                 aggregatedCostAnalysisReportData.get().size(),
@@ -381,5 +400,10 @@ public class CostAnalysisWorkflow {
             .sum();
 
     workflowStats.updateWorkflowStats(currentSuccess, currentFailed);
+  }
+
+  @Override
+  public void stop() {
+    stopped = true;
   }
 }

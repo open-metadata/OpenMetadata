@@ -15,32 +15,41 @@ import { Operation } from 'fast-json-patch';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
+  SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { generateRandomUsername, uuid } from '../../utils/common';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  disableEtagConditionalReads,
+  generateRandomUsername,
+  suppressWelcomeScreen,
+  uuid,
+} from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
 
-type UserData = {
+export type UserData = {
   email: string;
   firstName: string;
   lastName: string;
   password: string;
 };
 
-const dataStewardPolicy = new PolicyClass();
-const dataStewardRoles = new RolesClass();
-let dataStewardTeam: TeamClass;
-
 export class UserClass {
   data: UserData;
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
+  private isExistingUser = false;
   isUserDataSteward = false;
+  private readonly dataStewardPolicy = new PolicyClass();
+  private readonly dataStewardRoles = new RolesClass();
+  private dataStewardTeam: TeamClass | undefined;
+  isAdmin: boolean;
 
-  constructor(data?: UserData) {
-    this.data = data ? data : generateRandomUsername();
+  constructor(data?: UserData, isAdmin = false) {
+    this.data = data ?? generateRandomUsername();
+    this.isAdmin = isAdmin;
   }
 
   async create(apiContext: APIRequestContext, assignRole = true) {
@@ -48,36 +57,75 @@ export class UserClass {
       '/api/v1/roles/name/DataConsumer'
     );
 
-    const dataConsumerRole = await dataConsumerRoleResponse.json();
+    const dataConsumerRole = await okJson(
+      dataConsumerRoleResponse,
+      'UserClass.create'
+    );
 
     const response = await apiContext.post('/api/v1/users/signup', {
       data: this.data,
     });
 
-    if (!response.ok()) {
-      throw new Error(
-        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
-      );
+    if (response.ok()) {
+      this.responseData = await response.json();
+    } else {
+      const body = await response.text();
+
+      if (
+        response.status() === 400 &&
+        body.includes('User with Email Already Exists')
+      ) {
+        const userName = this.data.email.split('@')[0];
+        const existing = await apiContext.get(
+          `/api/v1/users/name/${userName}?fields=id,name,email,displayName,isAdmin,roles`
+        );
+
+        if (!existing.ok()) {
+          throw new Error(
+            `UserClass.create() fallback fetch failed with status ${existing.status()}: ${await existing.text()}`
+          );
+        }
+
+        this.responseData = await existing.json();
+        this.isExistingUser = true;
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${body}`
+        );
+      }
     }
-
-    this.responseData = await response.json();
-    if (assignRole) {
-      const { entity } = await this.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/roles/0',
-            value: {
-              id: dataConsumerRole.id,
-              type: 'role',
-              name: dataConsumerRole.name,
+    if (assignRole && !this.isExistingUser) {
+      if (this.isAdmin) {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/isAdmin',
+              value: true,
             },
-          },
-        ],
-      });
+          ],
+        });
 
-      return entity;
+        return entity;
+      } else {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/roles/0',
+              value: {
+                id: dataConsumerRole.id,
+                type: 'role',
+                name: dataConsumerRole.name,
+              },
+            },
+          ],
+        });
+
+        return entity;
+      }
     }
 
     return this.responseData;
@@ -90,17 +138,16 @@ export class UserClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/users/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/users/${this.responseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'UserClass.patch');
 
     return {
       entity: response.body,
@@ -151,6 +198,7 @@ export class UserClass {
     await dataConsumerPolicy.create(apiContext, DATA_CONSUMER_RULES);
     await dataConsumerRoles.create(apiContext, [
       dataConsumerPolicy.responseData.name,
+      SYSTEM_POLICY_NAMES.taskAuthorPolicy,
     ]);
     const dataConsumerTeam = new TeamClass({
       name: `PW%data_consumer_team-${id}`,
@@ -168,28 +216,28 @@ export class UserClass {
   async setDataStewardRole(apiContext: APIRequestContext) {
     this.isUserDataSteward = true;
     const id = uuid();
-    await dataStewardPolicy.create(apiContext, DATA_STEWARD_RULES);
-    await dataStewardRoles.create(apiContext, [
-      dataStewardPolicy.responseData.name,
+    await this.dataStewardPolicy.create(apiContext, DATA_STEWARD_RULES);
+    await this.dataStewardRoles.create(apiContext, [
+      this.dataStewardPolicy.responseData.name,
     ]);
-    dataStewardTeam = new TeamClass({
+    this.dataStewardTeam = new TeamClass({
       name: `PW%data_steward_team-${id}`,
       displayName: `PW Data Steward Team ${id}`,
       description: 'playwright data steward team description',
       teamType: 'Group',
       users: [this.responseData.id],
-      defaultRoles: dataStewardRoles.responseData.id
-        ? [dataStewardRoles.responseData.id]
+      defaultRoles: this.dataStewardRoles.responseData.id
+        ? [this.dataStewardRoles.responseData.id]
         : [],
     });
-    await dataStewardTeam.create(apiContext);
+    await this.dataStewardTeam.create(apiContext);
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
     if (this.isUserDataSteward) {
-      await dataStewardPolicy.delete(apiContext);
-      await dataStewardRoles.delete(apiContext);
-      await dataStewardTeam.delete(apiContext);
+      await this.dataStewardPolicy.delete(apiContext);
+      await this.dataStewardRoles.delete(apiContext);
+      await this.dataStewardTeam?.delete(apiContext);
     }
 
     const response = await apiContext.delete(
@@ -210,9 +258,23 @@ export class UserClass {
   async login(
     page: Page,
     userName = this.data.email,
-    password = this.data.password
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
   ) {
-    await page.goto('/');
+    const { suppressWelcomeScreen: shouldSuppressWelcomeScreen = true } =
+      options;
+
+    // Seed `loggedInUsers` before the first navigation so the landing-page
+    // welcome banner never renders for this session. Prefer the authoritative
+    // entity name from create(); fall back to the login email's local-part
+    // (the server-assigned username) for a pure login such as admin. Tests that
+    // exercise the welcome banner itself (e.g. Tour) opt out with
+    // `suppressWelcomeScreen: false`.
+    if (shouldSuppressWelcomeScreen) {
+      await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
+    }
+
+    await page.goto('/signin');
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });
     } catch {
@@ -235,6 +297,7 @@ export class UserClass {
       })
       .catch(() => undefined);
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+    await disableEtagConditionalReads(page);
 
     const modal = await page
       .getByRole('dialog')
@@ -248,14 +311,12 @@ export class UserClass {
     }
 
     // Collapse the left side bar after logging in if it's open
-    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
-    const sidebarVisible = await leftNavBar.isVisible().catch(() => false);
-    if (!sidebarVisible) {
-      return;
-    }
+    const leftNavBar = page.getByTestId('left-sidebar');
 
     const hasOpenClass = await leftNavBar
-      .evaluate((el) => el.classList.contains('sidebar-open'))
+      .evaluate((el) => el.classList.contains('sidebar-open'), null, {
+        timeout: 10000,
+      })
       .catch(() => false);
 
     if (hasOpenClass) {

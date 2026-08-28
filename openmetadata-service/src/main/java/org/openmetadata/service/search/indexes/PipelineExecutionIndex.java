@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.service.Entity;
 
 public record PipelineExecutionIndex(Pipeline pipeline, PipelineStatus pipelineStatus)
     implements SearchIndex {
@@ -11,6 +12,11 @@ public record PipelineExecutionIndex(Pipeline pipeline, PipelineStatus pipelineS
   @Override
   public Object getEntity() {
     return new PipelineExecutionData(pipeline, pipelineStatus);
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.PIPELINE_EXECUTION;
   }
 
   @Override

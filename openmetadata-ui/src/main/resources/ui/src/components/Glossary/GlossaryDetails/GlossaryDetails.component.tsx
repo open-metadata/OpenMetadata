@@ -13,32 +13,70 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { isEmpty, noop } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { FeedCounts } from '../../../interface/feed.interface';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import type { FeedCounts } from '../../../interface/feed.interface';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import { GenericTab } from '../../Customization/GenericTab/GenericTab';
-import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
-import { GlossaryDetailsProps } from './GlossaryDetails.interface';
+import type { GlossaryDetailsProps } from './GlossaryDetails.interface';
+
+const GlossaryHeader = withSuspenseFallback(
+  lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
+);
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component').then(
+      (module) => ({ default: module.ActivityFeedTab })
+    )
+  )
+);
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../../common/TabsLabel/TabsLabel.component'))
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../Customization/GenericTab/GenericTab').then((module) => ({
+      default: module.GenericTab,
+    }))
+  )
+);
+
+const OntologyExplorer = withSuspenseFallback(
+  lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
+);
+
+const AlignRightIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.AlignRightIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
@@ -71,6 +109,20 @@ const GlossaryDetails = ({
     );
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.GLOSSARY, fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
@@ -97,6 +149,26 @@ const GlossaryDetails = ({
       },
       ...(!isVersionView
         ? [
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.RELATIONS_GRAPH}
+                  isActive={activeTab === EntityTabs.RELATIONS_GRAPH}
+                  name={
+                    tabLabelMap[EntityTabs.RELATIONS_GRAPH] ??
+                    t('label.relations-graph')
+                  }
+                />
+              ),
+              key: EntityTabs.RELATIONS_GRAPH,
+              children: (
+                <OntologyExplorer
+                  glossaryId={glossary.id}
+                  height="100%"
+                  scope="glossary"
+                />
+              ),
+            },
             {
               label: (
                 <TabsLabel
@@ -143,7 +215,8 @@ const GlossaryDetails = ({
   ]);
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(

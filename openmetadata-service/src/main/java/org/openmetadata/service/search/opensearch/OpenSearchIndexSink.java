@@ -12,6 +12,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.EntityError;
@@ -23,6 +24,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
@@ -191,12 +193,26 @@ public class OpenSearchIndexSink
         if (item.error() != null) {
           errors.add(
               new EntityError()
-                  .withMessage(item.error().reason())
+                  .withMessage(buildErrorMessage(item.error()))
                   .withEntity(taggedOps.get(i).entityRef()));
         }
       }
     }
     return errors;
+  }
+
+  private String buildErrorMessage(ErrorCause error) {
+    String message = String.format("%s: %s", error.type(), error.reason());
+    if (error.causedBy() != null) {
+      message = String.format("%s | Caused by: %s", message, buildErrorMessage(error.causedBy()));
+    } else if (error.rootCause() != null && !error.rootCause().isEmpty()) {
+      String rootCauses =
+          error.rootCause().stream()
+              .map(c -> String.format("%s: %s", c.type(), c.reason()))
+              .collect(Collectors.joining("; "));
+      message = String.format("%s | Root cause: [%s]", message, rootCauses);
+    }
+    return message;
   }
 
   @Override

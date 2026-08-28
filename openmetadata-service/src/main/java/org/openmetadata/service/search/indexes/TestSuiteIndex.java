@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,11 +11,12 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 
-public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("summary", "testCaseResultSummary");
+public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
+  private static final Set<String> excludeFields =
+      Set.of(TestSuiteRepository.SUMMARY_FIELD, "testCaseResultSummary");
 
   @Override
   public Object getEntity() {
@@ -21,18 +24,39 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TEST_SUITE;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add(TestSuiteRepository.SUMMARY_FIELD);
+    fields.add("tests");
+    return Collections.unmodifiableSet(fields);
+  }
 
-    doc.put("fqnParts", getFQNParts(testSuite.getFullyQualifiedName()));
-    doc.put("entityType", Entity.TEST_SUITE);
-    doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));
-    doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TEST_SUITE, testSuite));
-    doc.put("tags", parseTags.getTags());
+  @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      Long revision = ctx.relationshipRevision();
+      if (revision == null) {
+        revision =
+            TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuite.getId()))
+                .getOrDefault(testSuite.getId(), 0L);
+      }
+      doc.put(TestSuiteRepository.TESTS_REVISION_FIELD, revision);
+    }
+    return doc;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     setParentRelationships(doc, testSuite);
 
     List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
@@ -48,20 +72,32 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestSuite testSuite) {
-    // denormalize the parent relationships for search
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference == null) return;
-    addTestSuiteParentEntityRelations(entityReference, doc);
+    Table linkedTable = addTestSuiteParentEntityRelations(entityReference, doc);
+    if (linkedTable != null && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
+    }
   }
 
-  static void addTestSuiteParentEntityRelations(
+  static Table addTestSuiteParentEntityRelations(
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
-      Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);
-      doc.put("table", table.getEntityReference());
-      doc.put("database", table.getDatabase());
-      doc.put("databaseSchema", table.getDatabaseSchema());
-      doc.put("service", table.getService());
+      try {
+        Table table =
+            Entity.getEntity(testSuiteRef, "domains,certification,dataProducts", Include.ALL);
+        doc.put("table", table.getEntityReference());
+        doc.put("database", table.getDatabase());
+        doc.put("databaseSchema", table.getDatabaseSchema());
+        doc.put("service", table.getService());
+        return table;
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "Table [{}] not found during search indexing: {}",
+            testSuiteRef.getId(),
+            ex.getMessage());
+      }
     }
+    return null;
   }
 }

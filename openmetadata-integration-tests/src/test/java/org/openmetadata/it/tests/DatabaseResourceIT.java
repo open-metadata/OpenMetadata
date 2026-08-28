@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,10 +37,16 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -77,6 +85,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // Store last created database for import/export tests
@@ -1189,6 +1198,73 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     }
   }
 
+  /**
+   * Test: Recursive database CSV export preserves table-level AND column-level tags.
+   *
+   * <p>Guards against the redundant per-table tag re-scan removal in
+   * {@code DatabaseRepository.DatabaseCsv.exportAllCsv}. The recursive export bulk-populates table
+   * and column tags via {@code listAllForCSV(... columns ...)}, so the per-table
+   * {@code setFieldsInternal} re-scan is redundant. After removing it, both the table-level tag and
+   * the column-level tag must still appear in the exported CSV.
+   */
+  @Test
+  void test_recursiveCsvExportPreservesTableAndColumnTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("tagdb"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("tagschema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    TagLabel tableTag =
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel columnTag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("tagtable"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withTags(List.of(tableTag))
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("ssn")
+                                .withDataType(ColumnDataType.VARCHAR)
+                                .withDataLength(64)
+                                .withTags(List.of(columnTag)))));
+    assertNotNull(table);
+
+    String exportedCsv = client.databases().exportCsv(database.getFullyQualifiedName(), true);
+    assertNotNull(exportedCsv, "Recursive CSV export should succeed");
+    assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+
+    assertTrue(
+        exportedCsv.contains("PII.Sensitive"),
+        "Exported CSV should retain the table-level tag PII.Sensitive. Result: " + exportedCsv);
+    assertTrue(
+        exportedCsv.contains("PersonalData.Personal"),
+        "Exported CSV should retain the column-level tag PersonalData.Personal. Result: "
+            + exportedCsv);
+  }
+
   // ===================================================================
   // RDF TESTS - Run only with -Ppostgres-rdf-tests profile
   // ===================================================================
@@ -1607,5 +1683,138 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     CreateDatabase request = new CreateDatabase();
     request.setName(ns.prefix("invalid_database"));
     return request;
+  }
+
+  @Test
+  void testRegexListDatabase(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("analytics_prod").in(service.getFullyQualifiedName()).execute();
+    Databases.create().name("analytics_staging").in(service.getFullyQualifiedName()).execute();
+    Databases.create().name("warehouse").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "service",
+                            service.getFullyQualifiedName(),
+                            "databaseRegex",
+                            ".*analytics.*")));
+    List<Database> databases = response.getData();
+    assertFalse(databases.isEmpty(), "Should find databases matching analytics regex");
+    assertTrue(
+        databases.stream().allMatch(d -> d.getName().contains("analytics")),
+        "All returned databases should contain 'analytics' in name");
+  }
+
+  @Test
+  void testRegexListDatabase_noMatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("mydb").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "service",
+                            service.getFullyQualifiedName(),
+                            "databaseRegex",
+                            ".*zzz_no_match.*")));
+    assertTrue(response.getData().isEmpty(), "No databases should match a nonexistent regex");
+  }
+
+  @Test
+  void testRegexListDatabase_regexOnlyNoServiceFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("unique_regex_db").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(new ListParams().setQueryParams(Map.of("databaseRegex", ".*unique_regex_db")));
+    assertFalse(
+        response.getData().isEmpty(), "Should find databases using regex without service filter");
+    assertTrue(
+        response.getData().stream().allMatch(d -> d.getName().equals("unique_regex_db")),
+        "All returned databases should be unique_regex_db");
+  }
+
+  @Test
+  void testRegexListDatabase_excludeMode(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("keep_db").in(service.getFullyQualifiedName()).execute();
+    Databases.create().name("temp_db").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "service",
+                            service.getFullyQualifiedName(),
+                            "databaseRegex",
+                            "temp.*",
+                            "regexMode",
+                            "exclude")));
+    List<Database> databases = response.getData();
+    assertFalse(databases.isEmpty(), "Should return databases not matching the exclude regex");
+    assertTrue(
+        databases.stream().noneMatch(d -> d.getName().startsWith("temp")),
+        "Excluded databases should not appear in results");
+  }
+
+  @Test
+  void test_listEntityHistoryByTimestamp_returnsServiceField(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    long startTs = System.currentTimeMillis();
+
+    CreateDatabase createRequest = createRequest(ns.prefix("history_service_field"), ns);
+    Database database = createEntity(createRequest);
+
+    database.setDescription("Updated for history test - " + System.currentTimeMillis());
+    patchEntity(database.getId().toString(), database);
+
+    long endTs = System.currentTimeMillis();
+    String basePath = getResourcePath() + "history";
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=10",
+                null);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode result = mapper.readTree(response);
+    JsonNode data = result.get("data");
+
+    assertTrue(data.isArray(), "Data should be an array");
+    assertTrue(data.size() > 0, "Should have at least one version in the time range");
+
+    for (JsonNode entityNode : data) {
+      assertTrue(
+          entityNode.has("service") && !entityNode.get("service").isNull(),
+          "Each database version must include the required 'service' field, but got: "
+              + entityNode);
+
+      Database deserialized = mapper.treeToValue(entityNode, Database.class);
+      EntityReference service = deserialized.getService();
+      assertNotNull(service, "Deserialized database must have a non-null service reference");
+      assertNotNull(service.getId(), "Service reference must have an id");
+      assertNotNull(service.getType(), "Service reference must have a type");
+    }
   }
 }

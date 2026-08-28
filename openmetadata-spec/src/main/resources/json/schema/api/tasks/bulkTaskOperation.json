@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tasks/bulkTaskOperation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkTaskOperationRequest",
+  "description": "Request for bulk operations on multiple tasks.",
+  "javaType": "org.openmetadata.schema.api.tasks.BulkTaskOperation",
+  "type": "object",
+  "definitions": {
+    "bulkOperation": {
+      "javaType": "org.openmetadata.schema.type.BulkTaskOperationType",
+      "description": "Type of bulk operation.",
+      "type": "string",
+      "enum": [
+        "Approve",
+        "Reject",
+        "Assign",
+        "UpdatePriority",
+        "Cancel"
+      ],
+      "javaEnums": [
+        {"name": "Approve"},
+        {"name": "Reject"},
+        {"name": "Assign"},
+        {"name": "UpdatePriority"},
+        {"name": "Cancel"}
+      ]
+    },
+    "bulkOperationParams": {
+      "javaType": "org.openmetadata.schema.type.BulkTaskOperationParams",
+      "description": "Parameters for bulk operations.",
+      "type": "object",
+      "properties": {
+        "comment": {
+          "description": "Comment for approval/rejection.",
+          "type": "string"
+        },
+        "assignees": {
+          "description": "FQNs of assignees (for Assign operation).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "priority": {
+          "description": "New priority (for UpdatePriority operation).",
+          "$ref": "../../entity/tasks/task.json#/definitions/taskPriority"
+        }
+      }
+    }
+  },
+  "properties": {
+    "taskIds": {
+      "description": "List of task IDs (UUID or taskId) to operate on.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "operation": {
+      "description": "Operation to perform on the tasks.",
+      "$ref": "#/definitions/bulkOperation"
+    },
+    "params": {
+      "description": "Parameters for the operation.",
+      "$ref": "#/definitions/bulkOperationParams"
+    }
+  },
+  "required": ["taskIds", "operation"],
+  "additionalProperties": false
+}

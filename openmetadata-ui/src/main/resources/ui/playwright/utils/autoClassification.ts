@@ -14,6 +14,7 @@
 import { Page } from '@playwright/test';
 import MysqlIngestionClass from '../support/entity/ingestion/MySqlIngestionClass';
 import { getApiContext, toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { visitServiceDetailsPage } from './service';
 
 export const addAndTriggerAutoClassificationPipeline = async (
@@ -42,20 +43,19 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   await page.click('[data-testid="add-new-ingestion-button"]');
 
-  await page.waitForSelector(
-    '.ant-dropdown:visible [data-menu-id*="autoClassification"]'
-  );
+  await page
+    .locator('.ant-dropdown:visible [data-menu-id*="autoClassification"]')
+    .waitFor();
 
-  await page.waitForSelector('[data-menu-id*="autoClassification"]');
+  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
 
   await page.click('[data-menu-id*="autoClassification"]');
 
-  // Fill the auto classification form details
-  await page.waitForSelector('#root\\/tableFilterPattern\\/includes');
+  await waitForAllLoadersToDisappear(page);
 
   await mysqlService.fillIngestionDetails(page);
 
-  await page.click('[data-testid="submit-btn"]');
+  await page.getByTestId('next-button').click();
 
   // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
   await mysqlService.scheduleIngestion(page);
@@ -63,7 +63,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
   await page.click('[data-testid="view-service-button"]');
 
   // Header available once page loads
-  await page.getByTestId('loader').waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('agents').click();
   const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
   if (await metadataTab2.isVisible()) {
@@ -82,17 +82,16 @@ export const addAndTriggerAutoClassificationPipeline = async (
     )
     .then((res) => res.json());
 
-  // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
   await page.waitForTimeout(3000);
 
-  await page.click(
-    `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-  );
-  await page.getByTestId('run-button').click();
-
+  await page
+    .getByTestId(`agent-card-${response.data[0].fullyQualifiedName}`)
+    .getByTestId('run-agent-button')
+    .click();
   await toastNotification(page, `Pipeline triggered successfully!`);
 
-  // need manual wait to make sure we are awaiting on latest run results
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
   await page.waitForTimeout(2000);
 
   await mysqlService.handleIngestionRetry('autoClassification', page);

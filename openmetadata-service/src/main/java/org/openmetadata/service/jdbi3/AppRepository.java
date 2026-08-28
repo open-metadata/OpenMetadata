@@ -6,6 +6,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -175,9 +176,24 @@ public class AppRepository extends EntityRepository<App> {
     return daoCollection.applicationDAO().listAppsRef();
   }
 
+  // openMetadataServerConnection and privateConfiguration are runtime-only fields
+  // (re-injected on demand by ApplicationHandler.setAppRuntimeProperties). They carry
+  // secrets (app bot JWT, external tokens) and must never be persisted or serialized.
+  public static final List<String> RUNTIME_SECRET_FIELDS =
+      List.of("openMetadataServerConnection", "privateConfiguration");
+
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("bot");
+    List<String> strippedFields = new ArrayList<>(RUNTIME_SECRET_FIELDS);
+    strippedFields.add("bot");
+    return strippedFields;
+  }
+
+  @Override
+  protected String serializeForVersionHistory(App entity) {
+    ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
+    node.remove(RUNTIME_SECRET_FIELDS);
+    return node.toString();
   }
 
   @Override
@@ -243,17 +259,6 @@ public class AppRepository extends EntityRepository<App> {
           Entity.BOT,
           Relationship.CONTAINS);
     }
-  }
-
-  @Override
-  protected void postDelete(App entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
-    // Delete the status stored in the app extension
-    // Note that we don't want to delete the LIMITS, since we want to keep them
-    // between different app installations
-    daoCollection
-        .appExtensionTimeSeriesDao()
-        .delete(entity.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
   }
 
   public final List<App> listAll() {
@@ -397,6 +402,43 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
+  /**
+   * Page through extensions inside a half-open {@code [startTime, endTime)} window. Unlike
+   * {@link #listAppExtensionAfterTimeByName}, the SQL filter excludes rows at or after
+   * {@code endTime} so OFFSET pagination stays correct even when new rows are inserted
+   * concurrently. Useful for any counter that aggregates across multiple pages.
+   *
+   * <p><b>Known limitation:</b> the {@code apps_extension_time_series} table has no surrogate
+   * primary key, so the ORDER BY tie-breaker is limited to {@code timestamp}. Two writes that
+   * land in the same millisecond can be ordered non-deterministically across separate page
+   * queries, causing one row near a page boundary to be skipped or counted twice. At
+   * {@link org.openmetadata.service.resources.mcp.McpUsageResource}'s page size (1000) the risk
+   * is bounded and acceptable for a growth-metric dashboard. Adding a deterministic
+   * tie-breaker would require a schema migration to introduce a surrogate id column.
+   */
+  public <T> List<T> listAppExtensionInWindowByName(
+      App app,
+      long startTime,
+      long endTime,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    if (limitParam <= 0) {
+      return new ArrayList<>();
+    }
+    List<String> jsons =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionInWindowByName(
+                app.getName(), limitParam, offset, startTime, endTime, extensionType.toString());
+    List<T> entities = new ArrayList<>(jsons.size());
+    for (String json : jsons) {
+      entities.add(JsonUtils.readValue(json, clazz));
+    }
+    return entities;
+  }
+
   public <T> ResultList<T> listAppExtensionAfterTimeById(
       App app,
       long startTime,
@@ -484,6 +526,12 @@ public class AppRepository extends EntityRepository<App> {
     return JsonUtils.readValue(result.get(0), clazz);
   }
 
+  /**
+   * Reached exclusively from {@code cleanup()}, which the delete path runs on the hard-delete
+   * branch only — so an app's run history survives a (reversible) soft delete and comes back with
+   * the app on restore. LIMITS extensions are deliberately left in place: they are meant to carry
+   * over between installations of the same app.
+   */
   @Override
   protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
@@ -491,6 +539,9 @@ public class AppRepository extends EntityRepository<App> {
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
   }
 
   @Override
@@ -562,28 +613,22 @@ public class AppRepository extends EntityRepository<App> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "appConfiguration",
-          () -> {
-            recordChange(
-                "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
-          });
+          () ->
+              recordChange(
+                  "appConfiguration",
+                  original.getAppConfiguration(),
+                  updated.getAppConfiguration()));
       compareAndUpdate(
           "appSchedule",
-          () -> {
-            recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
-          });
-      compareAndUpdate(
-          "bot",
-          () -> {
-            recordChange("bot", original.getBot(), updated.getBot());
-          });
+          () -> recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule()));
+      compareAndUpdate("bot", () -> recordChange("bot", original.getBot(), updated.getBot()));
       compareAndUpdate(
           "eventSubscriptions",
-          () -> {
-            recordChange(
-                "eventSubscriptions",
-                original.getEventSubscriptions(),
-                updated.getEventSubscriptions());
-          });
+          () ->
+              recordChange(
+                  "eventSubscriptions",
+                  original.getEventSubscriptions(),
+                  updated.getEventSubscriptions()));
     }
   }
 }

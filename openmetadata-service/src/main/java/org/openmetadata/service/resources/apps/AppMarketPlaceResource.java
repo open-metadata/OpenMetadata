@@ -136,8 +136,16 @@ public class AppMarketPlaceResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<AppMarketPlaceDefinition> applications =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    applications
+        .getData()
+        .forEach(
+            application ->
+                application.setEnabled(
+                    ApplicationHandler.getInstance().isEnabled(application.getName())));
+    return applications;
   }
 
   @GET

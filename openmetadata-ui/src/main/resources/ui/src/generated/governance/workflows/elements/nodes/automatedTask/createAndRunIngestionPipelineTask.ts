@@ -67,6 +67,7 @@ export enum PipelineType {
     ElasticSearchReindex = "elasticSearchReindex",
     Lineage = "lineage",
     Metadata = "metadata",
+    PolicyAgent = "policyAgent",
     Profiler = "profiler",
     TestSuite = "TestSuite",
     Usage = "usage",

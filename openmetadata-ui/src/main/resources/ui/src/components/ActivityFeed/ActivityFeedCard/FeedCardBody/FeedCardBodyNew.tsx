@@ -11,29 +11,56 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
+import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
+import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
 import {
-  getEntityFQN,
-  getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
-import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
-import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
+} from '../../../../utils/FeedUtilsPure';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
+
+const RichTextEditorPreviewerNew = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
+);
+
+const ActivityDescriptionFeed = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed'
+      )
+  )
+);
+
+const ActivityOwnersFeed = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed'
+      )
+  )
+);
+
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
+const ActivityTagsFeed = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../ActivityFeedCardV2/FeedCardBody/TagsFeed/ActivityTagsFeed')
+  )
+);
 
 const FeedCardBodyNew = ({
   isPost = false,
   feed,
+  activity,
   isEditPost,
   message,
   onUpdate,
@@ -44,14 +71,7 @@ const FeedCardBodyNew = ({
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
-
-  const { entityFQN, entityType, cardStyle } = useMemo(() => {
-    return {
-      entityFQN: getEntityFQN(feed.about) ?? '',
-      entityType: getEntityType(feed.about) ?? '',
-      cardStyle: feed.cardStyle ?? '',
-    };
-  }, [feed]);
+  const isActivityEvent = !isUndefined(activity);
 
   const handleSave = useCallback(() => {
     onUpdate?.(postMessage ?? '');
@@ -62,41 +82,57 @@ const FeedCardBodyNew = ({
   };
 
   const feedBodyStyleCardsRender = useMemo(() => {
-    if (!isPost) {
-      if (cardStyle === CardStyle.Description) {
-        return <DescriptionFeedNew feed={feed} />;
+    if (isActivityEvent && activity) {
+      const eventType = activity.eventType;
+
+      if (
+        eventType === ActivityEventType.TagsUpdated ||
+        eventType === ActivityEventType.ColumnTagsUpdated
+      ) {
+        return <ActivityTagsFeed activity={activity} />;
       }
 
-      if (cardStyle === CardStyle.Tags) {
-        return <TagsFeed feed={feed} />;
+      if (
+        eventType === ActivityEventType.DescriptionUpdated ||
+        eventType === ActivityEventType.ColumnDescriptionUpdated
+      ) {
+        return <ActivityDescriptionFeed activity={activity} />;
       }
 
-      if (cardStyle === CardStyle.Owner) {
+      if (eventType === ActivityEventType.OwnerUpdated) {
         return (
-          <OwnersFeed
-            feed={feed}
+          <ActivityOwnersFeed
+            activity={activity}
             isForFeedTab={isForFeedTab}
             showThread={showThread}
           />
         );
       }
 
-      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-        <Card bordered className="activity-feed-reply-card-message">
-          <Typography.Text className="activity-feed-comment-text">
-            {message}
-          </Typography.Text>
-        </Card>;
-      }
+      return (
+        <RichTextEditorPreviewerNew
+          className="text-wrap"
+          markdown={getFrontEndFormat(activity.summary ?? message)}
+        />
+      );
     }
 
     return (
       <RichTextEditorPreviewerNew
         className="text-wrap"
-        markdown={getFrontEndFormat(feed.message)}
+        markdown={getFrontEndFormat(feed?.message ?? message)}
       />
     );
-  }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
+  }, [
+    isPost,
+    message,
+    postMessage,
+    feed,
+    isActivityEvent,
+    activity,
+    isForFeedTab,
+    showThread,
+  ]);
 
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
@@ -139,12 +175,6 @@ const FeedCardBodyNew = ({
     <div
       className={classNames(
         showThread ? 'show-thread' : 'hide-thread',
-        feed.cardStyle === 'description' ? 'description' : '',
-        !showThread &&
-          feed.cardStyle === 'description' &&
-          feed.fieldOperation === 'updated'
-          ? 'updated'
-          : '',
         isFeedWidget && 'feed-widget-body'
       )}>
       {feedBodyRender}

@@ -28,6 +28,9 @@
               "$ref": "messagingServiceMetadataPipeline.json"
             },
             {
+              "$ref": "messagingServiceAutoClassificationPipeline.json"
+            },
+            {
               "$ref": "databaseServiceProfilerPipeline.json"
             },
             {
@@ -41,6 +44,9 @@
             },
             {
               "$ref": "storageServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "storageServiceAutoClassificationPipeline.json"
             },
             {
               "$ref": "driveServiceMetadataPipeline.json"
@@ -68,6 +74,12 @@
             },
             {
               "$ref": "reverseIngestionPipeline.json"
+            },
+            {
+              "$ref": "mcpServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "policyAgentPipeline.json"
             }
           ]
         }

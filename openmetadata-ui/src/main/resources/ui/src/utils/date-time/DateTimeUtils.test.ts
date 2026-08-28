@@ -20,6 +20,7 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
   getScheduleDescriptionTexts,
@@ -71,6 +72,13 @@ describe('DateTimeUtils tests', () => {
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
     expect(formatTimeDurationFromSeconds(60)).toBe(`00:01:00`);
+  });
+
+  it(`formatDurationToHHMMSS should show milliseconds for short runs`, () => {
+    expect(formatDurationToHHMMSS(0)).toBe('00:00:00');
+    expect(formatDurationToHHMMSS(210)).toBe('210 ms');
+    expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
+    expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
   });
 
   it(`customFormatDateTime should formate date and time both`, () => {
@@ -644,10 +652,14 @@ describe('convertSecondsToHumanReadableFormat', () => {
       }
 
       // Verify specific case from original bug: 362.6 days < 366.6 days
-      const nov27 = formattedResults.find((r) => r.days === 362.6);
-      const nov19 = formattedResults.find((r) => r.days === 366.6);
+      const nov27 = formattedResults.find(
+        (r) => r.days === 362.6
+      ) as (typeof formattedResults)[number];
+      const nov19 = formattedResults.find(
+        (r) => r.days === 366.6
+      ) as (typeof formattedResults)[number];
 
-      expect(Math.abs(nov27!.seconds)).toBeLessThan(Math.abs(nov19!.seconds));
+      expect(Math.abs(nov27.seconds)).toBeLessThan(Math.abs(nov19.seconds));
 
       // Verify we have 16 consecutive days
       expect(formattedResults).toHaveLength(16);
@@ -715,10 +727,12 @@ describe('convertSecondsToHumanReadableFormat', () => {
       }
 
       // Verify 361 days shows as 1Y 1d (not wrapping incorrectly)
-      const day361 = results.find((r) => r.description.includes('361 days'));
+      const day361 = results.find((r) =>
+        r.description.includes('361 days')
+      ) as (typeof results)[number];
 
-      expect(day361!.formatted).toContain('1Y');
-      expect(day361!.formatted).toContain('1d');
+      expect(day361.formatted).toContain('1Y');
+      expect(day361.formatted).toContain('1d');
     });
   });
 });

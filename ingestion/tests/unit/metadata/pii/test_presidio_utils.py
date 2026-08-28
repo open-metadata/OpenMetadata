@@ -11,6 +11,7 @@
 """
 Unit tests for Presidio utilities
 """
+
 from unittest.mock import Mock, patch
 
 from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
@@ -73,9 +74,7 @@ class TestAnalyzerEngine:
         result = build_analyzer_engine(ClassificationLanguage.en)
 
         # Verify NLP engine was loaded
-        mock_load_nlp.assert_called_once_with(
-            model_name="en_core_web_md", supported_language=SUPPORTED_LANG
-        )
+        mock_load_nlp.assert_called_once_with(model_name="en_core_web_md", supported_language=SUPPORTED_LANG)
 
         # Verify analyzer engine was created
         mock_engine_cls.assert_called_once_with(
@@ -88,23 +87,17 @@ class TestAnalyzerEngine:
 
     @patch("metadata.pii.algorithms.presidio_utils._get_all_pattern_recognizers")
     @patch("metadata.pii.algorithms.presidio_utils.load_nlp_engine")
-    def test_build_analyzer_engine_default_model(
-        self, mock_load_nlp, mock_get_recognizers
-    ):
+    def test_build_analyzer_engine_default_model(self, mock_load_nlp, mock_get_recognizers):
         """Test building analyzer engine with default model"""
         mock_nlp_engine = Mock(spec=SpacyNlpEngine)
         mock_load_nlp.return_value = mock_nlp_engine
         mock_get_recognizers.return_value = []
 
-        with patch(
-            "metadata.pii.algorithms.presidio_utils.AnalyzerEngine"
-        ) as mock_engine_cls:
+        with patch("metadata.pii.algorithms.presidio_utils.AnalyzerEngine") as mock_engine_cls:
             mock_engine = Mock(spec=AnalyzerEngine)
             mock_engine.registry = Mock()
             mock_engine_cls.return_value = mock_engine
 
-            result = build_analyzer_engine()
+            result = build_analyzer_engine()  # noqa: F841
 
-            mock_load_nlp.assert_called_once_with(
-                model_name=SPACY_EN_MODEL, supported_language=SUPPORTED_LANG
-            )
+            mock_load_nlp.assert_called_once_with(model_name=SPACY_EN_MODEL, supported_language=SUPPORTED_LANG)

@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Constants required for dbt 
+Constants required for dbt
 """
 
 from enum import Enum
@@ -159,7 +159,9 @@ class DbtCommonEnum(Enum):
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
     UPSTREAM = "upstream"
+    UPSTREAM_BY_NAME = "upstream_by_name"
     RESULTS = "results"
+    IS_FRESHNESS = "is_freshness"
     TEST_SUITE_NAME = "test_suite_name"
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
 

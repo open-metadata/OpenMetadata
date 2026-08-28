@@ -60,7 +60,7 @@ public class MigrationUtil {
       dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository.getDao().update(chart);
     } catch (Exception ex) {
-      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
+      LOG.warn("Chart {} exists, Exception Message: {}", chartName, ex.getMessage());
     }
   }
 
@@ -80,7 +80,7 @@ public class MigrationUtil {
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
+      LOG.warn("Chart {} exists, Exception Message: {}", chartName, ex.getMessage());
     }
   }
 
@@ -406,14 +406,12 @@ public class MigrationUtil {
         String triggerJson = JsonUtils.pojoToJson(workflowDefinition.getTrigger());
         JsonNode triggerNode = JsonUtils.readTree(triggerJson);
 
-        if (triggerNode instanceof ObjectNode) {
-          ObjectNode triggerObj = (ObjectNode) triggerNode;
+        if (triggerNode instanceof ObjectNode triggerObj) {
 
           // Check if config exists and add filter if missing
           if (triggerObj.has("config")) {
             JsonNode configNode = triggerObj.get("config");
-            if (configNode instanceof ObjectNode) {
-              ObjectNode configObj = (ObjectNode) configNode;
+            if (configNode instanceof ObjectNode configObj) {
               if (!configObj.has("filter")) {
                 configObj.put("filter", "");
 
@@ -610,9 +608,7 @@ public class MigrationUtil {
           }
           newOutput.add(UPDATED_BY_VARIABLE);
 
-          if (trigger instanceof EventBasedEntityTriggerDefinition) {
-            EventBasedEntityTriggerDefinition eventTrigger =
-                (EventBasedEntityTriggerDefinition) trigger;
+          if (trigger instanceof EventBasedEntityTriggerDefinition eventTrigger) {
             eventTrigger.setOutput(newOutput);
             LOG.info("Updated trigger output to include updatedBy: {}", newOutput);
           }

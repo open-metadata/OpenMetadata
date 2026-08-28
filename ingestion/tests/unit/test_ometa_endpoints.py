@@ -12,16 +12,35 @@
 """
 OpenMetadata high-level API endpoint test
 """
-from unittest import TestCase
 
+from unittest import TestCase
+from unittest.mock import MagicMock
+
+import pytest
+
+from metadata.generated.schema.api.ai.createAIApplication import (
+    CreateAIApplicationRequest,
+)
+from metadata.generated.schema.api.ai.createLLMModel import CreateLLMModelRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createLLMService import (
+    CreateLLMServiceRequest,
 )
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createTestCaseResult import (
+    CreateTestCaseResult,
+)
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -30,7 +49,7 @@ from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -40,12 +59,14 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.generated.schema.entity.services.llmService import LLMService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -92,18 +113,10 @@ class OMetaEndpointTest(TestCase):
         """
         Pass Services and test their suffix generation
         """
-        self.assertEqual(
-            self.metadata.get_suffix(DashboardService), "/services/dashboardServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(DatabaseService), "/services/databaseServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(MessagingService), "/services/messagingServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(PipelineService), "/services/pipelineServices"
-        )
+        self.assertEqual(self.metadata.get_suffix(DashboardService), "/services/dashboardServices")
+        self.assertEqual(self.metadata.get_suffix(DatabaseService), "/services/databaseServices")
+        self.assertEqual(self.metadata.get_suffix(MessagingService), "/services/messagingServices")
+        self.assertEqual(self.metadata.get_suffix(PipelineService), "/services/pipelineServices")
 
     def test_teams_suffix(self):
         """
@@ -117,13 +130,73 @@ class OMetaEndpointTest(TestCase):
         """
 
         entity = self.metadata.get_entity_from_create(CreateTopicRequest)
-        assert issubclass(entity, Topic)
+        assert entity is Topic
 
         entity = self.metadata.get_entity_from_create(CreateDatabaseServiceRequest)
-        assert issubclass(entity, DatabaseService)
+        assert entity is DatabaseService
 
         entity = self.metadata.get_entity_from_create(CreateUserRequest)
-        assert issubclass(entity, User)
+        assert entity is User
 
         entity = self.metadata.get_entity_from_create(CreateIngestionPipelineRequest)
-        assert issubclass(entity, IngestionPipeline)
+        assert entity is IngestionPipeline
+
+        entity = self.metadata.get_entity_from_create(CreateTestCaseResult)
+        assert entity is TestCaseResult
+
+        entity = self.metadata.get_entity_from_create(CreateTableProfileRequest)
+        assert entity is TableProfile
+
+
+@pytest.mark.parametrize(
+    ("entity", "expected_suffix"),
+    [
+        (LLMModel, "/llmModels"),
+        (CreateLLMModelRequest, "/llmModels"),
+        (AIApplication, "/aiApplications"),
+        (CreateAIApplicationRequest, "/aiApplications"),
+        (LLMService, "/services/llmServices"),
+        (CreateLLMServiceRequest, "/services/llmServices"),
+    ],
+)
+def test_ai_governance_entity_suffix(entity, expected_suffix):
+    assert OMetaEndpointTest.metadata.get_suffix(entity) == expected_suffix
+
+
+@pytest.mark.parametrize(
+    ("create_request", "expected_entity"),
+    [
+        (CreateLLMModelRequest, LLMModel),
+        (CreateAIApplicationRequest, AIApplication),
+    ],
+)
+def test_ai_governance_entity_from_create(create_request, expected_entity):
+    assert OMetaEndpointTest.metadata.get_entity_from_create(create_request) is expected_entity
+
+
+def test_ai_application_response_allows_unknown_shadow_model():
+    application = AIApplication.model_validate(
+        {
+            "id": "4f0888c4-e996-4f3f-8f6a-24e880fef807",
+            "name": "unknown-shadow-application",
+            "applicationType": "Chatbot",
+            "modelConfigurations": [],
+        }
+    )
+
+    assert application.modelConfigurations == []
+
+
+def test_get_context_builds_okf_markdown_path():
+    """get_context targets the per-entity /name/{fqn}/context endpoint, threads the
+    optional query, and returns the raw OKF markdown body."""
+    metadata = OpenMetadata(OMetaEndpointTest.server_config)
+    metadata.client = MagicMock()
+    response = MagicMock()
+    response.text = '---\ntype: "table"\n---\n'
+    metadata.client.get.return_value = response
+
+    result = metadata.get_context(Table, "svc.db.sch.orders", query="refund rules")
+
+    metadata.client.get.assert_called_once_with("/tables/name/svc.db.sch.orders/context?query=refund%20rules")
+    assert result == '---\ntype: "table"\n---\n'

@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByRole,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { findByRole, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act } from 'react';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
@@ -28,14 +23,14 @@ const mockOnCancel = jest.fn();
 const mockProps = {
   selectedData: {
     ...mockedGlossaryTerms[0],
-    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+    children: mockedGlossaryTerms[0].children?.map((child) => ({
       id: child.id,
       name: child.name,
       displayName: child.displayName,
       description: child.description,
       fullyQualifiedName: child.fullyQualifiedName,
       type: PageType.GlossaryTerm, // Required field for EntityReference
-      deleted: child.deleted || false,
+      deleted: (child as { deleted?: boolean }).deleted || false,
     })),
   },
   onCancel: mockOnCancel,
@@ -65,7 +60,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 

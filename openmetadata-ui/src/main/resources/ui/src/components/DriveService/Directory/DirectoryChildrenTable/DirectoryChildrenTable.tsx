@@ -12,7 +12,6 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,12 +21,14 @@ import {
   Directory,
   EntityReference,
 } from '../../../../generated/entity/data/directory';
-import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function DirectoryChildrenTable() {
   const { t } = useTranslation();

@@ -1,0 +1,53 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q -- '--no-verify'; then echo '{\"decision\": \"block\", \"reason\": \"Do not skip pre-commit hooks with --no-verify. Fix the underlying issue instead.\"}'; exit 2; fi",
+            "description": "Block --no-verify on git commits"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(openmetadata-ui/src/main/resources/ui/src/generated/|ingestion(-core)?/src/metadata/generated/|/target/generated-sources/)'; then echo '{\"decision\": \"block\", \"reason\": \"Blocked write to GENERATED output. This file is produced by code generation (jsonschema2pojo / datamodel-code-generator / quicktype / ANTLR); hand edits are overwritten by the next build and, for the committed UI types, reverted by the typescript-type-generation CI job. Edit the JSON Schema under openmetadata-spec/src/main/resources/json/schema/ and run make generate (a repo-root-only target). See .claude/rules/schema-first.md.\"}'; exit 2; fi",
+            "description": "Block edits to generated output; direct to the schema + make generate"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE 'docs/generated/(entity-index|api-reference)\\.md'; then echo '{\"decision\": \"block\", \"reason\": \"Blocked write to a GENERATED reference doc. docs/generated/entity-index.md and api-reference.md are produced by scripts/generate_entity_index.py and scripts/generate_api_reference.py; hand edits are reverted by the reference-docs freshness CI job. Change the source instead (JSON Schemas under openmetadata-spec/ for the entity index; the JAX-RS *Resource.java classes for the API reference) and run make generate-reference-docs.\"}'; exit 2; fi",
+            "description": "Block edits to generated reference docs; direct to the source + make generate-reference-docs"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(^|/)AGENTS\\.md$'; then echo '{\"decision\": \"block\", \"reason\": \"Blocked write to AGENTS.md. It is a symlink to CLAUDE.md; edit CLAUDE.md directly and do not replace the symlink with a regular file.\"}'; exit 2; fi",
+            "description": "Block edits to AGENTS.md; it is a symlink to CLAUDE.md"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(^|/)\\.github/workflows/'; then if [ \"${CLAUDE_ALLOW_WORKFLOW_EDITS:-}\" = \"1\" ]; then exit 0; fi; echo '{\"decision\": \"block\", \"reason\": \"Editing .github/workflows/** is not permitted without explicit user authorization \u2014 CI workflows are a supply-chain / prompt-injection surface, so the agent must not change them on its own. Ask the user to confirm. To authorize, the user sets CLAUDE_ALLOW_WORKFLOW_EDITS=1 in the environment (the agent cannot set this for the hook), or applies the change themselves.\"}'; exit 2; fi",
+            "description": "Block agent edits to .github/workflows/** unless the user set CLAUDE_ALLOW_WORKFLOW_EDITS=1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); UI=openmetadata-ui/src/main/resources/ui; case \"$FILE\" in *\"$UI\"/src/*.ts|*\"$UI\"/src/*.tsx) REL=\"${FILE#*$UI/}\"; cd \"$UI\" || exit 0; yarn --silent lint:base \"$REL\" || exit 2;; esac",
+            "description": "Lint a just-written UI file so the agent sees the same eslint errors CI would report, in the same turn"
+          }
+        ]
+      }
+    ]
+  }
+}

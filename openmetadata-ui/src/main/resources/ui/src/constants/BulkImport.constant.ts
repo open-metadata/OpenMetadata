@@ -20,7 +20,9 @@ export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.DATABASE_SCHEMA,
   ResourceEntity.GLOSSARY_TERM,
   ResourceEntity.GLOSSARY,
+  ResourceEntity.METRIC,
   ResourceEntity.TEST_CASE,
+  ResourceEntity.CLASSIFICATION,
 ];
 
 export enum VALIDATION_STEP {
@@ -31,15 +33,15 @@ export enum VALIDATION_STEP {
 
 export const ENTITY_IMPORT_STEPS = [
   {
-    name: 'label.upload-csv-uppercase-file',
+    name: 'label.upload',
     step: VALIDATION_STEP.UPLOAD,
   },
   {
-    name: 'label.preview-and-edit',
+    name: 'label.preview-and-validate',
     step: VALIDATION_STEP.EDIT_VALIDATE,
   },
   {
-    name: 'label.update',
+    name: 'label.import',
     step: VALIDATION_STEP.UPDATE,
   },
 ];

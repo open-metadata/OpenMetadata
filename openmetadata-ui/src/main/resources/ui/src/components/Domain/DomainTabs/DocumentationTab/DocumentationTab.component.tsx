@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../../components/common/EntityDescription/Description';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -24,15 +24,15 @@ import {
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
@@ -43,7 +43,6 @@ import {
   DocumentationEntity,
   DocumentationTabProps,
 } from './DocumentationTab.interface';
-
 const DocumentationTab = ({
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
@@ -144,7 +143,7 @@ const DocumentationTab = ({
         className:
           'domain-resizable-panel-container left-panel-documentation-tab',
         children: (
-          <DescriptionV1
+          <Description
             removeBlur
             wrapInCard
             description={description}

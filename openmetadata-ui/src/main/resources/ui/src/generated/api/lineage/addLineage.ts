@@ -136,6 +136,11 @@ export interface LineageDetails {
      */
     sqlQuery?: string;
     /**
+     * Lineage path through temporary/intermediate tables. Each element represents a hop with
+     * fromEntity and toEntity fields.
+     */
+    tempLineageTables?: TempLineageTable[];
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */
@@ -181,4 +186,19 @@ export enum Source {
     QueryLineage = "QueryLineage",
     SparkLineage = "SparkLineage",
     ViewLineage = "ViewLineage",
+}
+
+/**
+ * A single hop in a temporary table lineage path.
+ */
+export interface TempLineageTable {
+    /**
+     * Source entity or table name for this hop.
+     */
+    fromEntity: string;
+    /**
+     * Target entity or table name for this hop.
+     */
+    toEntity: string;
+    [property: string]: any;
 }

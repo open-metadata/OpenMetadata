@@ -25,10 +25,11 @@ import {
   TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Chart } from '../generated/entity/data/chart';
-import { getEntityLinkFromType } from './EntityUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
 import { SearchClassBase } from './SearchClassBase';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -37,10 +38,16 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteFQN: jest.fn(),
 }));
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn(),
-  getEntityName: jest.fn(),
+}));
+
+jest.mock('./EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn(),
+}));
+
+jest.mock('./EntityNameUtils', () => ({
+  getEntityName: jest.fn(),
 }));
 
 describe('SearchClassBase', () => {
@@ -112,17 +119,15 @@ describe('SearchClassBase', () => {
       SearchIndex.DATABASE_SCHEMA
     );
     expect(searchIndexMapping[EntityType.API_SERVICE]).toEqual(
-      SearchIndex.API_SERVICE_INDEX
+      SearchIndex.API_SERVICE
     );
     expect(searchIndexMapping[EntityType.API_COLLECTION]).toEqual(
-      SearchIndex.API_COLLECTION_INDEX
+      SearchIndex.API_COLLECTION
     );
     expect(searchIndexMapping[EntityType.API_ENDPOINT]).toEqual(
-      SearchIndex.API_ENDPOINT_INDEX
+      SearchIndex.API_ENDPOINT
     );
-    expect(searchIndexMapping[EntityType.METRIC]).toEqual(
-      SearchIndex.METRIC_SEARCH_INDEX
-    );
+    expect(searchIndexMapping[EntityType.METRIC]).toEqual(SearchIndex.METRIC);
   });
 
   it('should return dropdown item based on entity type', () => {
@@ -162,11 +167,11 @@ describe('SearchClassBase', () => {
       SearchIndex.DATABASE_SCHEMA
     );
     const apiEndpointItems = searchClassBase.getDropDownItems(
-      SearchIndex.API_ENDPOINT_INDEX
+      SearchIndex.API_ENDPOINT
     );
 
     const apiCollectionItems = searchClassBase.getDropDownItems(
-      SearchIndex.API_COLLECTION_INDEX
+      SearchIndex.API_COLLECTION
     );
 
     expect(tableItems).toEqual([
@@ -220,6 +225,21 @@ describe('SearchClassBase', () => {
     expect(databaseItems).toEqual(COMMON_DROPDOWN_ITEMS);
     expect(databaseSchemaItems).toEqual(COMMON_DROPDOWN_ITEMS);
     expect(apiCollectionItems).toEqual(COMMON_DROPDOWN_ITEMS);
+  });
+
+  it('should expose the data product quick filter for asset indices', () => {
+    const dataProductFilter = {
+      label: 'label.data-product-plural',
+      key: EntityFields.DATA_PRODUCT,
+      sourceFields: 'dataProducts.displayName',
+    };
+
+    expect(searchClassBase.getDropDownItems(SearchIndex.TABLE)).toContainEqual(
+      dataProductFilter
+    );
+    expect(
+      searchClassBase.getDropDownItems(SearchIndex.DATA_ASSET)
+    ).toContainEqual(dataProductFilter);
   });
 
   it('should return empty dropdown item based if index not related to explore items', () => {

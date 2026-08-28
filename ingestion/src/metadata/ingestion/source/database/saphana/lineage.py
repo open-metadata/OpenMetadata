@@ -11,10 +11,12 @@
 """
 SAP Hana lineage module
 """
+
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -69,9 +71,7 @@ class SaphanaLineageSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
-        self.engine = (
-            get_ssl_connection(self.service_connection) if get_engine else None
-        )
+        self.engine = get_ssl_connection(self.service_connection) if get_engine else None
 
         logger.info(
             "Initializing SAP Hana Lineage Source. Note that we'll parse the lineage from CDATA XML definition "
@@ -82,15 +82,11 @@ class SaphanaLineageSource(Source):
         """By default, there's nothing to prepare"""
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
-            raise InvalidSourceException(
-                f"Expected SapHanaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
         return cls(config, metadata)
 
     def close(self) -> None:
@@ -102,15 +98,25 @@ class SaphanaLineageSource(Source):
         and send it to the sink
         """
         with self.engine.connect() as conn:
-            result = conn.execution_options(
-                stream_results=True, max_row_buffer=100
-            ).execute(text(SAPHANA_LINEAGE))
+            try:
+                result = conn.execution_options(stream_results=True, max_row_buffer=100).execute(text(SAPHANA_LINEAGE))
+            except DBAPIError as exc:
+                # SAP HANA Cloud never has _SYS_REPO (classic repository, deprecated since 2018,
+                # never carried into Cloud) - only on-prem/HXE instances do. HANA raises 362
+                # (invalid schema name) or 259 (invalid table name) for that specific case - only
+                # swallow those. Anything else (connection drop, timeout, insufficient privilege)
+                # is a real failure and should not be silently reported as "no lineage found".
+                error_code = getattr(getattr(exc, "orig", None), "errorcode", None)
+                if error_code not in (362, 259):
+                    raise
+                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")
+                result = []
             for row in result:
                 try:
                     lineage_model = SapHanaLineageModel.validate(row._asdict())
 
                     if filter_by_table(
-                        self.source_config.tableFilterPattern,
+                        self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                         lineage_model.name,
                     ):
                         self.status.filter(
@@ -120,9 +126,7 @@ class SaphanaLineageSource(Source):
                         continue
 
                     logger.debug(f"Processing lineage for view: {lineage_model.name}")
-                    yield from self.parse_cdata(
-                        metadata=self.metadata, lineage_model=lineage_model
-                    )
+                    yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
                 except Exception as exc:
                     self.status.failed(
                         error=StackTraceError(

@@ -15,13 +15,17 @@ import { Button, Modal, Typography } from 'antd';
 import classNames from 'classnames';
 
 import { clone } from 'lodash';
-import { FC, useEffect, useState } from 'react';
+import { FC, lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import CloseIcon from '../CloseIcon.component';
 import './schema-modal.less';
 import { SchemaModalProp } from './SchemaModal.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const SchemaModal: FC<SchemaModalProp> = ({
   className,

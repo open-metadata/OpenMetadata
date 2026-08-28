@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { Edge } from 'reactflow';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
@@ -35,6 +34,8 @@ const mockUseLineageStore = {
   isEditMode: false,
   columnsInCurrentPages: new Map<string, string[]>(),
   isCanvasReady: false,
+  tracedNodes: new Set<string>(),
+  tracedColumns: new Set<string>(),
 };
 
 const mockUseLineageProvider = {
@@ -47,11 +48,6 @@ const mockUseReactFlow = {
 };
 
 const mockViewport = { x: 0, y: 0, zoom: 1 };
-
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  useTheme: jest.fn(),
-}));
 
 jest.mock('reactflow', () => ({
   ...jest.requireActual('reactflow'),
@@ -71,6 +67,14 @@ jest.mock('../../../hooks/useLineageStore', () => ({
   useLineageStore: () => mockUseLineageStore,
 }));
 
+jest.mock('../../../hooks/useLineageEdgeColors', () => ({
+  useLineageEdgeColors: () => ({
+    primary: '#1890ff',
+    columnHighlight: '#3F51B5',
+    dqHighlight: '#F44336',
+  }),
+}));
+
 jest.mock('../../../utils/EdgeStyleUtils', () => ({
   clearEdgeStyleCache: jest.fn(),
 }));
@@ -83,20 +87,15 @@ jest.mock('../../../utils/EdgeMidpointUtils', () => ({
   calculateEdgeMidpoints: jest.fn(() => []),
 }));
 
-const mockTheme = {
-  palette: {
-    primary: { main: '#1890ff' },
-  },
-};
-
 describe('CanvasEdgeRenderer', () => {
   let reactFlowContainer: HTMLElement;
   let pane: HTMLElement;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useTheme as jest.Mock).mockReturnValue(mockTheme);
     mockUseLineageStore.isEditMode = false;
+    mockUseLineageStore.tracedNodes = new Set<string>();
+    mockUseLineageStore.tracedColumns = new Set<string>();
     mockGetEdgeAtPoint.mockReturnValue(null);
     mockRedraw.mockClear();
 
@@ -172,7 +171,9 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} onEdgeClick={onEdgeClick} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
 
     await waitFor(() => {
       expect(currentPane).toBeInTheDocument();
@@ -201,7 +202,7 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    fireEvent(currentPane!, clickEvent);
+    fireEvent(currentPane, clickEvent);
 
     await waitFor(() => {
       expect(mockGetEdgeAtPoint).toHaveBeenCalled();
@@ -244,7 +245,9 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+    (document.querySelector('.react-flow__pane') as HTMLElement).dispatchEvent(
+      clickEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeClick).toHaveBeenCalledWith(
@@ -285,7 +288,10 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    fireEvent(document.querySelector('.react-flow__pane')!, moveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      moveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalled();
@@ -301,7 +307,10 @@ describe('CanvasEdgeRenderer', () => {
 
     const leaveEvent = new MouseEvent('mouseleave', { bubbles: true });
 
-    fireEvent(document.querySelector('.react-flow__pane')!, leaveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      leaveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalledWith(null);
@@ -323,7 +332,9 @@ describe('CanvasEdgeRenderer', () => {
     });
 
     await waitFor(() => {
-      document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+      (
+        document.querySelector('.react-flow__pane') as HTMLElement
+      ).dispatchEvent(clickEvent);
     });
 
     expect(onEdgeClick).not.toHaveBeenCalled();
@@ -386,9 +397,11 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
     const removeEventListenerSpy = jest.spyOn(
-      currentPane!,
+      currentPane,
       'removeEventListener'
     );
 
@@ -505,7 +518,9 @@ describe('CanvasEdgeRenderer', () => {
       expect(mockCalculateEdgeMidpoints).toHaveBeenCalledWith(
         mockEdges,
         mockGetNode,
-        mockUseLineageStore.columnsInCurrentPages
+        mockUseLineageStore.columnsInCurrentPages,
+        mockUseLineageStore.tracedNodes,
+        mockUseLineageStore.tracedColumns
       );
     });
 
@@ -521,6 +536,71 @@ describe('CanvasEdgeRenderer', () => {
         width: '20px',
         height: '20px',
       });
+    });
+
+    it('applies data-edge-state from the midpoint visualState', () => {
+      mockCalculateEdgeMidpoints.mockReturnValue([
+        {
+          id: 'edge-1',
+          dataTestId: 'edge-midpoint-1',
+          canvasX: 100,
+          canvasY: 200,
+          visualState: 'traced',
+        },
+        {
+          id: 'edge-2',
+          dataTestId: 'edge-midpoint-2',
+          canvasX: 150,
+          canvasY: 250,
+          visualState: 'dimmed',
+        },
+        {
+          id: 'edge-3',
+          dataTestId: 'edge-midpoint-3',
+          canvasX: 200,
+          canvasY: 300,
+          visualState: 'default',
+        },
+        {
+          id: 'edge-4',
+          dataTestId: 'edge-midpoint-4',
+          canvasX: 250,
+          canvasY: 350,
+          visualState: 'hidden',
+        },
+      ]);
+
+      renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
+
+      expect(
+        document.querySelector('[data-testid="edge-midpoint-1"]')
+      ).toHaveAttribute('data-edge-state', 'traced');
+      expect(
+        document.querySelector('[data-testid="edge-midpoint-2"]')
+      ).toHaveAttribute('data-edge-state', 'dimmed');
+      expect(
+        document.querySelector('[data-testid="edge-midpoint-3"]')
+      ).toHaveAttribute('data-edge-state', 'default');
+      expect(
+        document.querySelector('[data-testid="edge-midpoint-4"]')
+      ).toHaveAttribute('data-edge-state', 'hidden');
+    });
+
+    it('passes tracedNodes and tracedColumns to calculateEdgeMidpoints', () => {
+      const tracedNodes = new Set(['entity-a', 'entity-b']);
+      const tracedColumns = new Set(['col-x']);
+      mockUseLineageStore.tracedNodes = tracedNodes;
+      mockUseLineageStore.tracedColumns = tracedColumns;
+
+      renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
+
+      expect(mockCalculateEdgeMidpoints).toHaveBeenCalledWith(
+        mockEdges,
+        mockGetNode,
+        mockUseLineageStore.columnsInCurrentPages,
+        tracedNodes,
+        tracedColumns
+      );
     });
 
     it('does not render edge midpoint divs without dataTestId', () => {
@@ -618,7 +698,9 @@ describe('CanvasEdgeRenderer', () => {
         expect(mockCalculateEdgeMidpoints).toHaveBeenCalledWith(
           mockEdges,
           mockGetNode,
-          newColumnsMap
+          newColumnsMap,
+          mockUseLineageStore.tracedNodes,
+          mockUseLineageStore.tracedColumns
         );
       });
     });

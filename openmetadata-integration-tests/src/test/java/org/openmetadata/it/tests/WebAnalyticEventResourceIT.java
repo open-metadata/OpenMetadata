@@ -102,7 +102,7 @@ public class WebAnalyticEventResourceIT {
   void testSubmitWebAnalyticEventData(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    long timestamp = System.currentTimeMillis();
+    long timestamp = isolatedBaseTimestamp(ns);
 
     WebAnalyticEventData eventData =
         new WebAnalyticEventData()
@@ -132,7 +132,7 @@ public class WebAnalyticEventResourceIT {
   void testRetrieveWebAnalyticEventData(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    long currentTime = System.currentTimeMillis();
+    long currentTime = isolatedBaseTimestamp(ns);
     long startTime = currentTime - 1000;
     long endTime = currentTime + 1000;
 
@@ -175,7 +175,7 @@ public class WebAnalyticEventResourceIT {
   void testRetrieveMultipleWebAnalyticEvents(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    long baseTime = System.currentTimeMillis();
+    long baseTime = isolatedBaseTimestamp(ns);
     long startTime = baseTime - 5000;
     long endTime = baseTime + 5000;
 
@@ -221,7 +221,7 @@ public class WebAnalyticEventResourceIT {
   void testWebAnalyticEventDataTimeRangeFilter(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    long currentTime = System.currentTimeMillis();
+    long currentTime = isolatedBaseTimestamp(ns);
 
     WebAnalyticEventData oldEventData =
         new WebAnalyticEventData()
@@ -322,5 +322,9 @@ public class WebAnalyticEventResourceIT {
     assertNotNull(resultList, "Result list should not be null");
     assertNotNull(resultList.getData(), "Result data should not be null");
     assertTrue(resultList.getData().size() >= 2, "Should list at least two created events");
+  }
+
+  private long isolatedBaseTimestamp(TestNamespace ns) {
+    return System.currentTimeMillis() + Integer.toUnsignedLong(ns.shortPrefix().hashCode());
   }
 }

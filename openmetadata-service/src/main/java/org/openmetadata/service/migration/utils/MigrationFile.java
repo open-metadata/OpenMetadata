@@ -31,6 +31,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
   protected final MigrationDAO migrationDAO;
   protected final List<String> schemaChanges;
   protected final List<String> postDDLScripts;
+  private boolean reprocessing;
   public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
       "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
@@ -64,19 +65,12 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   public void parseSQLFiles() {
-    final ParsingContext parsingContext = new ParsingContext();
-    Configuration configuration = new ClassicConfiguration();
-    Parser parser = new PostgreSQLParser(configuration, parsingContext);
-    if (connectionType == ConnectionType.MYSQL) {
-      parser = new MySQLParser(configuration, parsingContext);
-    }
+    schemaChanges.clear();
+    postDDLScripts.clear();
 
     if (new File(getSchemaChangesFile()).isFile()) {
-      try (SqlStatementIterator schemaChangesIterator =
-          parser.parse(
-              new FileSystemResource(null, getSchemaChangesFile(), StandardCharsets.UTF_8, true))) {
-        while (schemaChangesIterator.hasNext()) {
-          String sqlStatement = schemaChangesIterator.next().getSql();
+      try {
+        for (String sqlStatement : parseSQLFile(new File(getSchemaChangesFile()), connectionType)) {
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
             schemaChanges.add(sqlStatement);
           }
@@ -87,11 +81,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
       }
     }
     if (new File(getPostDDLScriptFile()).isFile()) {
-      try (SqlStatementIterator postDDLIterator =
-          parser.parse(
-              new FileSystemResource(null, getPostDDLScriptFile(), StandardCharsets.UTF_8, true))) {
-        while (postDDLIterator.hasNext()) {
-          String sqlStatement = postDDLIterator.next().getSql();
+      try {
+        for (String sqlStatement : parseSQLFile(new File(getPostDDLScriptFile()), connectionType)) {
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
             postDDLScripts.add(sqlStatement);
           }
@@ -101,6 +92,28 @@ public class MigrationFile implements Comparable<MigrationFile> {
             "Failed to parse post DDL script file: " + getPostDDLScriptFile(), e);
       }
     }
+  }
+
+  public static List<String> parseSQLFile(File sqlFile, ConnectionType connectionType) {
+    List<String> statements = new ArrayList<>();
+    ParsingContext parsingContext = new ParsingContext();
+    Configuration configuration = new ClassicConfiguration();
+    Parser parser = new PostgreSQLParser(configuration, parsingContext);
+    if (connectionType == ConnectionType.MYSQL) {
+      parser = new MySQLParser(configuration, parsingContext);
+    }
+
+    try (SqlStatementIterator iterator =
+        parser.parse(
+            new FileSystemResource(
+                null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
+      while (iterator.hasNext()) {
+        statements.add(iterator.next().getSql());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse SQL file: " + sqlFile.getPath(), e);
+    }
+    return statements;
   }
 
   public String getMigrationProcessClassName() {
@@ -116,16 +129,12 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return clazzName;
   }
 
-  public String getMigrationProcessExtClassName() {
-    String clazzName =
-        String.format(
-            "io.collate.service.migration.%s.%s.Migration", dbPackageName, getVersionPackageName());
-    try {
-      Class.forName(clazzName);
-    } catch (ClassNotFoundException e) {
-      return null;
+  public String getVersionPackageName() {
+    StringBuilder arrayAsString = new StringBuilder();
+    for (int versionNumber : versionNumbers) {
+      arrayAsString.append(versionNumber);
     }
-    return clazzName;
+    return "v" + arrayAsString;
   }
 
   public String getMigrationsFilePath() {
@@ -186,12 +195,26 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return 0;
   }
 
-  private String getVersionPackageName() {
-    StringBuilder arrayAsString = new StringBuilder();
-    for (int versionNumber : versionNumbers) {
-      arrayAsString.append(versionNumber);
-    }
-    return "v" + arrayAsString;
+  public boolean isReprocessing() {
+    return reprocessing;
+  }
+
+  public void setReprocessing(boolean reprocessing) {
+    this.reprocessing = reprocessing;
+  }
+
+  public MigrationFile copyWithReprocessing(boolean reprocessing) {
+    MigrationFile copy =
+        new MigrationFile(
+            dir, migrationDAO, connectionType, openMetadataApplicationConfig, isExtension);
+    copy.schemaChanges.addAll(schemaChanges);
+    copy.postDDLScripts.addAll(postDDLScripts);
+    copy.setReprocessing(reprocessing);
+    return copy;
+  }
+
+  public boolean hasNewStatements() {
+    return !schemaChanges.isEmpty() || !postDDLScripts.isEmpty();
   }
 
   private boolean checkIfQueryPreviouslyRan(String query) {

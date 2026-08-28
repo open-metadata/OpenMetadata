@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 export const getBasePath = () => {
-  return window.BASE_PATH !== '${basePath}'
-    ? window.BASE_PATH?.slice(0, -1) ?? ''
-    : '';
+  return globalThis.BASE_PATH === '${basePath}'
+    ? ''
+    : globalThis.BASE_PATH?.slice(0, -1) ?? '';
 };

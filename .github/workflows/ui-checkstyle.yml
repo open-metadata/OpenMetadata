@@ -12,19 +12,646 @@
 name: UI Checkstyle
 
 on:
-  workflow_dispatch:
+  merge_group:
+  # Note: paths filter removed — the workflow always triggers so that the
+  # required status check (report) always completes. Path filtering is handled
+  # inside the workflow via dorny/paths-filter so PRs without UI changes skip
+  # the expensive jobs while still reporting a passing status.
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
 
 permissions:
   contents: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref }}
-  cancel-in-progress: true
+  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+
+env:
+  UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
+  CORE_COMPONENTS_WORKING_DIRECTORY: openmetadata-ui-core-components/src/main/resources/ui
+
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui-changed: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/ui-checkstyle.yml'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/**'
+
+  authorize:
+    needs: check-changes
+    if: |
+      needs.check-changes.outputs.ui-changed == 'true' &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.7.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+  checkstyle:
+    needs: authorize
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      lint_src_result: ${{ steps.lint_src.outcome }}
+      lint_src_changed_files: ${{ steps.lint_src.outputs.changed_files }}
+      license_result: ${{ steps.license.outcome }}
+      license_changed_files: ${{ steps.license.outputs.changed_files }}
+      i18n_result: ${{ steps.i18n.outcome }}
+      i18n_changed_files: ${{ steps.i18n.outputs.changed_files }}
+      app_docs_result: ${{ steps.app_docs.outcome }}
+      app_docs_changed_files: ${{ steps.app_docs.outputs.changed_files }}
+      lint_playwright_result: ${{ steps.lint_playwright.outcome }}
+      lint_playwright_changed_files: ${{ steps.lint_playwright.outputs.changed_files }}
+      lint_core_components_result: ${{ steps.lint_core_components.outcome }}
+      lint_core_components_changed_files: ${{ steps.lint_core_components.outputs.changed_files }}
+      i18n_core_result: ${{ steps.i18n_core.outcome }}
+      i18n_core_changed_files: ${{ steps.i18n_core.outputs.changed_files }}
+      tw_audit_result: ${{ steps.tw_audit.outcome }}
+      tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
+      tw_guard_result: ${{ steps.tw_guard.outcome }}
+      tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      eslint_has_findings: ${{ steps.lint_src.outputs.has_findings }}
+      eslint_summary: ${{ steps.lint_src.outputs.summary }}
+      eslint_details: ${{ steps.lint_src.outputs.details }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      # setup-node's built-in `cache: yarn` is exact-key only — a yarn.lock
+      # change leaves the cache completely cold and exposes installs to transient
+      # registry 5xx. An explicit cache with restore-keys falls back to the most
+      # recent lockfile's cache so a lockfile change only fetches the delta.
+      # RESTORE-ONLY: this workflow runs on PR refs whose exact key is never
+      # reused; saving here would duplicate ~700 MB per run and evict main-scoped
+      # caches. The main-scoped copy is saved by populate-playwright-apt-cache.yml.
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_WORKING_DIRECTORY)) }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+
+      - name: Install UI Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+
+      - name: Get changed src files
+        id: changed-src-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            src/generated/**
+            src/jsons/**
+          files: |
+            src/**/*.{ts,tsx,js,jsx,json}
+
+      - name: ESLint + Prettier + Organise Imports (src)
+        id: lint_src
+        if: steps.changed-src-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-src-files.outputs.all_changed_files }}
+        run: |
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
+          # Report findings BEFORE --fix, so the PR comment reflects what the
+          # contributor actually wrote. Reporting only; the gate is the git-diff
+          # check at the end of this step.
+          #
+          # Deliberately part of this step rather than its own: every `run:`
+          # executing PR-authored code in this pull_request_target job is a
+          # CodeQL "poisonable step" (there are already 5 in this file, and 22
+          # repo-wide). Adding a separate step would add a sixth for no gain in
+          # isolation — it would run the same command with the same privileges.
+          if [ -n "$TS_FILES" ]; then
+            yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
+            node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
+            yarn organize-imports:cli $TS_FILES
+          else
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          fi
+          yarn lint:base --fix $CHANGED_FILES
+          yarn pretty:base --write $CHANGED_FILES
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Get all changed UI files
+        id: changed-ui-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+
+      - name: Licence Header Check
+        id: license
+        if: steps.changed-ui-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES_ALL: ${{ steps.changed-ui-files.outputs.all_changed_files }}
+        run: |
+          if [ -z "$CHANGED_FILES_ALL" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          yarn license-header-fix $CHANGED_FILES_ALL
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: I18n Sync
+        id: i18n
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          yarn i18n
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: generate:app-docs
+        id: app_docs
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          yarn generate:app-docs
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Get changed Playwright files
+        id: changed-playwright-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            playwright/test-data/**
+          # Note sits outside `files` — it is a block scalar, every line a glob.
+          # The step also runs the rule-table drift check, so its inputs trigger it.
+          files: |
+            playwright/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}
+            playwright/**/*.md
+            playwright/eslint-rules/**
+            playwright.config.ts
+            eslint.config.mjs
+            eslint-suppressions.json
+            eslint-rules/**
+            scripts/generate-playwright-rule-table.mjs
+            package.json
+
+      - name: ESLint + Prettier + Organise Imports (playwright)
+        id: lint_playwright
+        if: steps.changed-playwright-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-playwright-files.outputs.all_changed_files }}
+        run: |
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+
+          # Catches empty-rule-list disables and inline `/* eslint <rule>: 0 */`
+          # config, both of which silence the guardrails and neither of which
+          # justified-rule-disable can self-police (ESLint applies inline config
+          # before rules run, and filters a rule's own reports on lines its own
+          # disable covers). Runs before --fix so it judges what was written.
+          # A path filter, not --exclude-dir: that matches a basename at any depth.
+          MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?[[:space:]]*(\*/|--|$)|eslint-disable.*om-playwright/justified-rule-disable|/\*[[:space:]]*eslint[[:space:]][^*]*(om-)?playwright/[a-z-]+[[:space:]]*:' \
+               playwright/ --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+               | grep -v '^playwright/eslint-rules/' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "$MATCHES"
+            echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$MATCHES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Non-pruning variant: --prune-suppressions rewrites the file and exits 0,
+          # so a fixed violation would never fail CI and the baseline never ratchets.
+          #
+          # Real violations and stale entries both exit non-zero, so they are split:
+          # violations land in errorCount on stdout, the stale notice only on stderr.
+          # A stale entry is main drifting under us, not a defect in this PR, so it
+          # warns; errorCount is what fails. Never key off the exit code alone -- it
+          # is 2 even when a real violation is also present, which would swallow it.
+          yarn lint:playwright -f json > /tmp/pw-lint.json 2> /tmp/pw-lint.err || true
+          ERRORS=$(node -e "
+            const fs=require('fs');
+            const m=/(\[[\s\S]*\])/.exec(fs.readFileSync('/tmp/pw-lint.json','utf8'));
+            const d=m?JSON.parse(m[1]):[];
+            console.log(d.reduce((n,f)=>n+f.errorCount,0));
+          ")
+          if grep -q 'suppressions left that do not occur anymore' /tmp/pw-lint.err; then
+            echo "::warning::Stale suppression entries -- main fixed violations under this branch. Run 'yarn lint:playwright:suppressions' and commit the pruned baseline."
+          fi
+          if { [ "$ERRORS" -eq 0 ] && \
+               yarn test:eslint-rules && \
+               node scripts/generate-playwright-rule-table.mjs --check; } > /tmp/pw-guardrails.out 2>&1; then
+            RESULT=0
+          else
+            RESULT=$?
+            [ "$ERRORS" -eq 0 ] || sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-lint.json | grep -E '"ruleId"' | head -20 >> /tmp/pw-guardrails.out
+          fi
+          if [ "$RESULT" -ne 0 ]; then
+            cat /tmp/pw-guardrails.out
+            # `|| true`: a grep matching nothing exits 1 under `bash -eo pipefail`.
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30) || true
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # organize-imports aborts on any file outside the TS project, so a .json
+          # kills the step — and the merge queue always lists eslint-suppressions.json.
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx)$/ { printf "%s ", $0 }')
+
+          # Return codes are captured rather than left to `bash -e`: organize-imports
+          # and prettier disagree permanently, so files are dirty between these lines.
+          # Aborting here would skip the cleanup below and leave that dirt for the
+          # next step's `git status` gate -- which is how a lint failure once turned
+          # the unrelated i18n job red.
+          RC=0
+          if [ -n "$TS_FILES" ]; then
+            yarn organize-imports:cli $TS_FILES || RC=$?
+          fi
+          yarn lint:base --fix $CHANGED_FILES || RC=$?
+          yarn pretty:base --write $CHANGED_FILES || RC=$?
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+          [ "$RC" -eq 0 ] || exit 1
+
+      - name: Install Core Components Yarn Packages
+        working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+
+      - name: I18n Sync (core-components)
+        id: i18n_core
+        continue-on-error: true
+        working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
+        run: |
+          yarn check-i18n-all
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Get changed core-components files
+        id: changed-core-components-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
+          files: |
+            src/**/*.{ts,tsx,js,jsx,json}
+
+      - name: ESLint + Prettier (core-components)
+        id: lint_core_components
+        if: steps.changed-core-components-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-core-components-files.outputs.all_changed_files }}
+        run: |
+          if [ -z "${CHANGED_FILES// }" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          yarn lint:base --fix $CHANGED_FILES
+          yarn pretty:base --write $CHANGED_FILES
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Tailwind Audit (no hardcoded values)
+        id: tw_audit
+        if: steps.changed-src-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-src-files.outputs.all_changed_files }}
+        run: |
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
+          if [ -z "${TS_FILES// }" ]; then
+            echo "No TSX/TS files to audit."
+            exit 0
+          fi
+          if ! node scripts/tw-audit.js $TS_FILES > /tmp/tw-audit.out 2>&1; then
+            cat /tmp/tw-audit.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/tw-audit.out | grep -E 'errors|Files with|^  +[0-9]' | head -30 | sed 's/^/  /')
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Antd + Less Deprecation Guard (no new debt)
+        id: tw_guard
+        if: steps.changed-ui-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          if ! node ${{ env.UI_WORKING_DIRECTORY }}/scripts/tw-deprecation-guard.js "$BASE_SHA" > /tmp/tw-guard.out 2>&1; then
+            cat /tmp/tw-guard.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/tw-guard.out | grep -E '^    ' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
   ui-checkstyle:
+    needs: [authorize, checkstyle]
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
-      - name: Render msg
-        run: echo "No checkstyle to run"
+      - name: Find existing summary comment
+        uses: peter-evans/find-comment@v4
+        id: fc
+        if: ${{ github.event_name == 'pull_request_target' }}
+        continue-on-error: true
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:ui-checkstyle-summary -->'
+
+      - name: Post or update summary comment
+        uses: actions/github-script@v8
+        if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
+        continue-on-error: true
+        with:
+          script: |
+            const checks = [
+              {
+                name:    'ESLint + Prettier + Organise Imports (src)',
+                reason:  'One or more source files have linting or formatting issues.',
+                result:  '${{ needs.checkstyle.outputs.lint_src_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.lint_src_changed_files) }} || '',
+              },
+              {
+                name:    'Licence Header',
+                reason:  'One or more files are missing or have an outdated Apache 2.0 licence header.',
+                result:  '${{ needs.checkstyle.outputs.license_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.license_changed_files) }} || '',
+              },
+              {
+                name:    'I18n Sync',
+                reason:  'Translation locale files are out of sync with `en-us.json`.',
+                result:  '${{ needs.checkstyle.outputs.i18n_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.i18n_changed_files) }} || '',
+              },
+              {
+                name:    'App Docs',
+                reason:  'Generated application docs are stale and need to be regenerated.',
+                result:  '${{ needs.checkstyle.outputs.app_docs_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.app_docs_changed_files) }} || '',
+              },
+              {
+                name:    'Playwright - Guardrails + ESLint + Prettier + Organise Imports',
+                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.mjs --check`.',
+                result:  '${{ needs.checkstyle.outputs.lint_playwright_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_changed_files) }} || '',
+              },
+              {
+                name:    'Core Components - ESLint + Prettier',
+                reason:  'One or more core-component files have linting or formatting issues.',
+                result:  '${{ needs.checkstyle.outputs.lint_core_components_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.lint_core_components_changed_files) }} || '',
+              },
+              {
+                name:    'Core Components - I18n Sync',
+                reason:  'Core-components `t()` keys, locale files, or language-set are out of sync. Run `yarn check-i18n-all` locally.',
+                result:  '${{ needs.checkstyle.outputs.i18n_core_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.i18n_core_changed_files) }} || '',
+              },
+              {
+                name:    'Tailwind Audit',
+                reason:  'Hardcoded Tailwind values found. Use a design-system utility (run `yarn tw-audit:report` for the token each value maps to).',
+                result:  '${{ needs.checkstyle.outputs.tw_audit_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.tw_audit_changed_files) }} || '',
+              },
+              {
+                name:    'Antd + Less Deprecation Guard',
+                reason:  'A new `antd` import or new `.less` file was added. Use UntitledUI + Tailwind for new work.',
+                result:  '${{ needs.checkstyle.outputs.tw_guard_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.tw_guard_changed_files) }} || '',
+              },
+            ];
+
+            const failures = checks.filter(c => c.result === 'failure');
+            const commentId = '${{ steps.fc.outputs.comment-id }}';
+
+            const eslintFindings = '${{ needs.checkstyle.outputs.eslint_has_findings }}' === 'true';
+            const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
+            const eslintDetails  = ${{ toJSON(needs.checkstyle.outputs.eslint_details) }} || '';
+
+            // Warnings do not fail the build, so a comment posted only on
+            // failure would hide them entirely — which defeats the warn tier.
+            if (failures.length === 0 && !eslintFindings) {
+              if (commentId) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: parseInt(commentId, 10),
+                });
+              }
+              return;
+            }
+
+            const sections = failures.map(c => {
+              const lines = [`#### ❌ ${c.name}`, c.reason];
+              if (c.files && c.files.trim()) {
+                lines.push('', '<details><summary>Affected files</summary>', '', c.files.trim(), '', '</details>');
+              }
+              return lines.join('\n');
+            });
+
+            const title = failures.length
+              ? '### ❌ UI Checkstyle Failed'
+              : '### ⚠️ UI Checkstyle passed — lint findings in changed files';
+
+            const eslintSection = eslintFindings
+              ? [
+                  `#### 🔍 ESLint findings in this PR's files — ${eslintSummary}`,
+                  '',
+                  'Errors block the build. Warnings do not yet — they are rules whose backlog is still',
+                  'being worked down, listed so this PR does not add to it. See `docs/ui-code-quality-gate.md`.',
+                  '',
+                  eslintDetails,
+                  '',
+                ]
+              : [];
+
+            const body = [
+              '<!-- check:ui-checkstyle-summary -->',
+              title,
+              '',
+              ...sections.flatMap(s => [s, '']),
+              ...eslintSection,
+              '---',
+              '**Fix locally (fast - only checks files changed in this branch):**',
+              '```bash',
+              'make ui-checkstyle-changed',
+              '```',
+            ].join('\n');
+
+            if (commentId) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: parseInt(commentId, 10),
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Check final results
+        if: always()
+        run: |
+          checkstyle_result="${{ needs.checkstyle.result }}"
+          if [[ "$checkstyle_result" != "success" && "$checkstyle_result" != "skipped" ]]; then
+            echo "Checkstyle job ended with status: $checkstyle_result"
+            exit 1
+          fi
+          if [ "${{ needs.checkstyle.outputs.lint_src_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.license_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.i18n_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.i18n_core_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.app_docs_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.lint_playwright_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ]; then
+            echo "One or more checks failed."
+            exit 1
+          fi
+          echo "All checks passed or were not required for this PR."

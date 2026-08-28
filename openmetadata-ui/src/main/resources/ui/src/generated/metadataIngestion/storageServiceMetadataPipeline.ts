@@ -19,6 +19,13 @@ export interface StorageServiceMetadataPipeline {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Fallback manifest applied to any bucket that does not have its own openmetadata.json
+     * file. If a bucket has a manifest file, that file takes precedence and this value is
+     * ignored for that bucket. Paste the same JSON you would place in a bucket's
+     * openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.
+     */
+    defaultManifest?: string;
+    /**
      * Optional configuration to toggle the tags ingestion.
      */
     includeTags?: boolean;
@@ -36,7 +43,12 @@ export interface StorageServiceMetadataPipeline {
      * source will not override the existing metadata in the OpenMetadata server. This is
      * applicable for fields like description, tags, owner and displayName
      */
-    overrideMetadata?:            boolean;
+    overrideMetadata?: boolean;
+    /**
+     * Global manifest source. When configured, entries here take precedence over any
+     * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+     * matches.
+     */
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
     /**
      * Pipeline type
@@ -61,6 +73,10 @@ export interface FilterPattern {
 }
 
 /**
+ * Global manifest source. When configured, entries here take precedence over any
+ * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+ * matches.
+ *
  * No manifest file available. Ingestion would look for bucket-level metadata file instead
  *
  * Storage Metadata Manifest file path config.

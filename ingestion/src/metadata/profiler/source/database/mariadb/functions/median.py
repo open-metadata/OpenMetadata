@@ -12,9 +12,12 @@ class MariaDBMedianFn(FunctionElement):
 
 @compiles(MariaDBMedianFn)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = compiler.process(elements.clauses.clauses[0])
-    percentile = elements.clauses.clauses[2].value
+    clauses = elements.clauses.clauses
+    col = compiler.process(clauses[0])
+    percentile = clauses[2].value
+    dimension_col = clauses[3].value if len(clauses) > 3 else None
+    over = f"OVER(PARTITION BY {dimension_col})" if dimension_col else "OVER()"
     # According to the documentation available at https://mariadb.com/kb/en/median/#description,
     # the PERCENTILE_CONT function can be utilized to calculate the median. Therefore, it is
     # being used in this context.
-    return f"PERCENTILE_CONT({percentile:.2f}) WITHIN GROUP (ORDER BY {col}) OVER()"
+    return f"PERCENTILE_CONT({percentile:.2f}) WITHIN GROUP (ORDER BY {col}) {over}"

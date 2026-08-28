@@ -12,7 +12,6 @@
  */
 
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -24,7 +23,8 @@ import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TableAntd from '../../components/common/Table/Table';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
   INITIAL_PAGING_VALUE,
@@ -56,23 +56,23 @@ import {
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import {
-  getColumnSorter,
-  getEntityBulkEditPath,
-  highlightSearchText,
-} from '../../utils/EntityUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { stringToHTML } from '../../utils/StringUtils';
 import {
+  certificationTableObject,
   dataProductTableObject,
   descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
+  tierTableObject,
 } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -280,6 +280,8 @@ function SchemaTablesTab({
       ...domainTableObject<Table>(),
       ...dataProductTableObject<Table>(),
       ...tagTableObject<Table>(),
+      ...tierTableObject<Table>(),
+      ...certificationTableObject<Table>(),
     ],
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );

@@ -35,15 +35,17 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
+import { getSelectedOptionLabelString } from '../../utils/AdvancedSearchPureUtils';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,
-  getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
@@ -52,7 +54,6 @@ import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
-
 const SearchDropdown: FC<SearchDropdownProps> = ({
   dropdownClassName,
   isSuggestionsLoading,
@@ -74,9 +75,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   triggerButtonSize = 'small',
   hideSearchBar = false,
   singleSelect = false,
+  immediateApply = false,
+  helperText,
+  getPopupContainer,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
+  // Used only to tear down open portal dropdowns during page navigation.
+  const { pathname } = useLocation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
@@ -89,12 +95,24 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
-    // Filtering out selected options
-    const selectedOptionsObj = independent
-      ? selectedOptions
-      : options.filter((option) =>
-          selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
-        );
+    // Filtering out selected options. Immediate-apply facets exclude their
+    // own field from the aggregation, so a selected value may not be in the
+    // fetched options — keep it visible (and uncheckable) regardless. When the
+    // value IS present in the fetched options, render that copy so the selected
+    // row keeps its aggregation count and human-readable label instead of the
+    // raw key with a 0 count.
+    const selectedOptionsObj =
+      independent || immediateApply
+        ? selectedOptions.map(
+            (selectedOpt) =>
+              options.find((option) => option.key === selectedOpt.key) ??
+              selectedOpt
+          )
+        : options.filter((option) =>
+            selectedOptions.some(
+              (selectedOpt) => option.key === selectedOpt.key
+            )
+          );
 
     if (fixedOrderOptions) {
       return options.map((item) => ({
@@ -144,6 +162,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     selectedOptions,
     fixedOrderOptions,
     independent,
+    immediateApply,
     searchText,
     hideCounts,
     singleSelect,
@@ -151,77 +170,132 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     highlight,
   ]);
 
+  // Handle dropdown close
+  const handleDropdownClose = () => {
+    setIsDropDownOpen(false);
+  };
+
+  // Build the onChange payload (prepending the null option when selected) and emit it
+  const emitChange = (
+    updatedOptions: SearchDropdownOption[],
+    isNullSelected: boolean
+  ) => {
+    if (isNullSelected) {
+      onChange(
+        [
+          { key: NULL_OPTION_KEY, label: nullLabelText },
+          ...(singleSelect ? [] : updatedOptions),
+        ],
+        searchKey
+      );
+    } else {
+      onChange(updatedOptions, searchKey);
+    }
+  };
+
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
     const option = options.find((op) => op.key === currentKey);
+    let updatedValues: SearchDropdownOption[];
+    let updatedNullSelected = nullOptionSelected;
 
     if (singleSelect) {
       const isAlreadySelected = selectedOptions.some(
         (opt) => opt.key === currentKey
       );
-      const updatedValues = !isAlreadySelected && option ? [option] : [];
-      setSelectedOptions(updatedValues);
+      updatedValues = !isAlreadySelected && option ? [option] : [];
       if (!isAlreadySelected && option) {
+        updatedNullSelected = false;
         setNullOptionSelected(false);
       }
     } else {
       const isAlreadySelected = selectedOptions.some(
-        (option) => option.key === currentKey
+        (opt) => opt.key === currentKey
       );
-      const updatedValues = isAlreadySelected
-        ? selectedOptions.filter((option) => option.key !== currentKey)
+      updatedValues = isAlreadySelected
+        ? selectedOptions.filter((opt) => opt.key !== currentKey)
         : [...selectedOptions, ...(option ? [option] : [])];
-      setSelectedOptions(updatedValues);
+    }
+
+    setSelectedOptions(updatedValues);
+
+    if (immediateApply) {
+      emitChange(updatedValues, updatedNullSelected);
+      if (singleSelect) {
+        handleDropdownClose();
+      }
     }
   };
 
   // handle clear all
   const handleClear = () => {
     setSelectedOptions([]);
+    if (immediateApply) {
+      emitChange([], nullOptionSelected);
+    }
   };
 
-  // handle search
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    onSearch(value, searchKey);
-  };
+  // Keep the latest search handler in a ref so the debounced function can stay
+  // stable across renders. Creating debounce() inline on every render resets
+  // its internal timer, which silently defeats debouncing the moment the
+  // component re-renders mid-typing.
+  const handleSearchRef = useRef<(value: string) => void>(() => undefined);
+  useEffect(() => {
+    handleSearchRef.current = (value: string) => {
+      setSearchText(value);
+      onSearch(value, searchKey);
+    };
+  }, [onSearch, searchKey]);
 
-  const debouncedOnSearch = debounce(handleSearch, 500);
+  const debouncedOnSearch = useMemo(
+    () => debounce((value: string) => handleSearchRef.current(value), 500),
+    []
+  );
 
-  // Handle dropdown close
-  const handleDropdownClose = () => {
+  // Cancel a pending trailing call on unmount so it can't fire onSearch /
+  // setSearchText after the dropdown is gone.
+  useEffect(() => () => debouncedOnSearch.cancel(), [debouncedOnSearch]);
+
+  // Close portal-based dropdowns when navigating to a different page.
+  useEffect(() => {
     setIsDropDownOpen(false);
-  };
+    setSearchText('');
+    debouncedOnSearch.cancel();
+  }, [pathname, debouncedOnSearch]);
+
+  // A queued search must not resolve into a closed dropdown: consumers share
+  // one options state, so it would repaint whichever dropdown opened next.
+  // Keyed on the open flag to cover every close path (Escape, Close, Update).
+  useEffect(() => {
+    if (!isDropDownOpen) {
+      debouncedOnSearch.cancel();
+    }
+  }, [isDropDownOpen, debouncedOnSearch]);
 
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {
     setNullOptionSelected(checked);
+    let updatedValues = selectedOptions;
     if (singleSelect && checked) {
+      updatedValues = [];
       setSelectedOptions([]);
+    }
+    if (immediateApply) {
+      emitChange(updatedValues, checked);
     }
   };
 
   // Handle update button click
   const handleUpdate = () => {
-    // call on change with updated value
-    if (nullOptionSelected) {
-      onChange(
-        [
-          { key: NULL_OPTION_KEY, label: nullLabelText },
-          ...(singleSelect ? [] : selectedOptions),
-        ],
-        searchKey
-      );
-    } else {
-      onChange(selectedOptions, searchKey);
-    }
+    emitChange(selectedOptions, nullOptionSelected);
     handleDropdownClose();
   };
 
+  // In immediate-apply mode the QUERY bar owns clearing.
   const showClearAllBtn = useMemo(
-    () => !singleSelect && selectedOptions.length > 1,
-    [singleSelect, selectedOptions]
+    () => !singleSelect && selectedOptions.length > 1 && !immediateApply,
+    [singleSelect, selectedOptions, immediateApply]
   );
 
   useEffect(() => {
@@ -274,13 +348,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     (menuNode: ReactNode) => (
       <Card
         bodyStyle={{ padding: 0 }}
-        className={classNames('custom-dropdown-render', dropdownClassName)}
-        data-testid="drop-down-menu"
-      >
+        className={classNames('custom-dropdown-render', dropdownClassName, {
+          'immediate-apply-dropdown': immediateApply,
+        })}
+        data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
           {!hideSearchBar && (
             <div className="p-t-sm p-x-sm">
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search box when the dropdown opens
                 autoFocus
                 data-testid="search-input"
                 placeholder={`${t('label.search-entity', {
@@ -300,8 +376,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 className="p-0 m-l-sm"
                 data-testid="clear-button"
                 type="link"
-                onClick={handleClear}
-              >
+                onClick={handleClear}>
                 {t('label.clear-entity', {
                   entity: t('label.all'),
                 })}
@@ -322,8 +397,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                     checked={nullOptionSelected}
                     className="d-flex flex-1"
                     data-testid="no-option-radio"
-                    onChange={(e) => handleNullOptionChange(e.target.checked)}
-                  >
+                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
                     {nullLabelText}
                   </Radio>
                 ) : (
@@ -331,8 +405,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                     checked={nullOptionSelected}
                     className="d-flex flex-1"
                     data-testid="no-option-checkbox"
-                    onChange={(e) => handleNullOptionChange(e.target.checked)}
-                  >
+                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
                     {nullLabelText}
                   </Checkbox>
                 )}
@@ -343,24 +416,34 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           )}
 
           {getDropdownBody(menuNode)}
-          <Space className="p-sm p-t-xss">
-            <Button
-              className="update-btn"
-              data-testid="update-btn"
-              size="small"
-              onClick={handleUpdate}
-            >
-              {t('label.update')}
-            </Button>
-            <Button
-              data-testid="close-btn"
-              size="small"
-              type="link"
-              onClick={handleDropdownClose}
-            >
-              {t('label.close')}
-            </Button>
-          </Space>
+          {immediateApply ? (
+            helperText ? (
+              <div
+                className="p-x-sm p-y-xss search-dropdown-helper-text"
+                data-testid="search-dropdown-helper-text">
+                <Typography.Text className="text-xs" type="secondary">
+                  {helperText}
+                </Typography.Text>
+              </div>
+            ) : null
+          ) : (
+            <Space className="p-sm p-t-xss">
+              <Button
+                className="update-btn"
+                data-testid="update-btn"
+                size="small"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+              <Button
+                data-testid="close-btn"
+                size="small"
+                type="link"
+                onClick={handleDropdownClose}>
+                {t('label.close')}
+              </Button>
+            </Space>
+          )}
         </Space>
       </Card>
     ),
@@ -379,6 +462,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       handleUpdate,
       handleDropdownClose,
       hideSearchBar,
+      immediateApply,
+      helperText,
     ]
   );
 
@@ -387,6 +472,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       destroyPopupOnHide
       data-testid={searchKey}
       dropdownRender={dropdownCardComponent}
+      getPopupContainer={getPopupContainer}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
@@ -398,26 +484,23 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           onGetInitialOptions(searchKey);
         setIsDropDownOpen(visible);
         setSearchText('');
-      }}
-    >
+      }}>
       <Tooltip
         mouseLeaveDelay={0}
         overlayClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
         placement="top"
         title={getSelectedOptionLabelString(selectedKeys, true)}
-        trigger="hover"
-      >
+        trigger="hover">
         <Button
           className="quick-filter-dropdown-trigger-btn"
-          size={triggerButtonSize}
-        >
+          data-testid={`search-dropdown-${searchKey}`}
+          size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space
               className={classNames({
                 active: selectedKeys.length > 0,
               })}
-              size={0}
-            >
+              size={0}>
               <Typography.Text className="filters-label font-medium">
                 {label}
               </Typography.Text>

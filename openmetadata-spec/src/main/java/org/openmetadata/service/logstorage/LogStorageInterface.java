@@ -15,7 +15,6 @@ package org.openmetadata.service.logstorage;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,15 +31,6 @@ public interface LogStorageInterface {
    * @param config Configuration map specific to the implementation
    */
   void initialize(Map<String, Object> config) throws IOException;
-
-  /**
-   * Get an output stream to write logs for a pipeline run.
-   * This allows remote pipelines to stream logs directly.
-   * @param pipelineFQN Fully qualified name of the pipeline
-   * @param runId Unique run identifier
-   * @return OutputStream for writing logs
-   */
-  OutputStream getLogOutputStream(String pipelineFQN, UUID runId) throws IOException;
 
   /**
    * Append log content for a pipeline run

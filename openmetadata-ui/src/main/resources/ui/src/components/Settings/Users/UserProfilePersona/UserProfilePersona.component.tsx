@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritIcon } from '../../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
@@ -54,15 +53,7 @@ const UserProfilePersonas = ({
     [isAdminUser, isLoggedInUser, userData.deleted]
   );
 
-  const activeDefaultPersona = useMemo(
-    () => userData.defaultPersona ?? userData.inheritedPersonas?.[0],
-    [userData]
-  );
-
-  const isInherited = useMemo(
-    () => !userData.defaultPersona && !!userData.inheritedPersonas?.length,
-    [userData]
-  );
+  const activeDefaultPersona = userData.defaultPersona;
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
@@ -93,15 +84,13 @@ const UserProfilePersonas = ({
         <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
           <div
             className="d-flex flex-center"
-            style={{ width: '16px', margin: '2px', cursor: 'pointer' }}
-          >
+            style={{ width: '16px', margin: '2px', cursor: 'pointer' }}>
             <PersonaIcon height={16} />
           </div>
           <div className="d-flex justify-between w-full">
             <Typography.Text
               className="text-sm font-medium"
-              data-testid="persona-list"
-            >
+              data-testid="persona-list">
               {t('label.default-persona')}
             </Typography.Text>
             <PersonaSelectableList
@@ -118,32 +107,18 @@ const UserProfilePersonas = ({
         </div>
         <div
           className="user-profile-card-body default-persona-text ml-8 d-flex items-center gap-2"
-          data-testid="default-persona-chip"
-        >
+          data-testid="default-persona-chip">
           <Chip
             showNoDataPlaceholder
             data={activeDefaultPersona ? [activeDefaultPersona] : []}
             entityType={EntityType.PERSONA}
             noDataPlaceholder={t('message.no-default-persona')}
           />
-          {isInherited && activeDefaultPersona && (
-            <Tooltip
-              title={t('label.inherited-entity', {
-                entity: t('label.persona'),
-              })}
-            >
-              <InheritIcon
-                className="inherit-icon cursor-pointer color-grey-muted"
-                width={14}
-              />
-            </Tooltip>
-          )}
         </div>
       </>
     ),
     [
       activeDefaultPersona,
-      isInherited,
       userData,
       hasEditPermission,
       combinedPersonas,
@@ -155,8 +130,7 @@ const UserProfilePersonas = ({
   return (
     <div
       className="d-flex flex-col mb-4 w-full  p-[20px] user-profile-card"
-      data-testid="persona-details-card"
-    >
+      data-testid="persona-details-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon cursor-pointer">
           <PersonaIcon height={16} style={{ paddingLeft: '2px' }} />
@@ -164,8 +138,7 @@ const UserProfilePersonas = ({
         <div className="d-flex justify-between w-full">
           <Typography.Text
             className="text-sm font-medium"
-            data-testid="persona-list"
-          >
+            data-testid="persona-list">
             {t('label.persona')}
           </Typography.Text>
           <PersonaSelectableList

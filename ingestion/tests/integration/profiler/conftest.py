@@ -56,9 +56,7 @@ def ingest_sample_data(localstack_container):
         {"id": "2", "name": "Bob"},
     ]
     for row in rows:
-        client.put_item(
-            TableName="test_table", Item={k: {"S": v} for k, v in row.items()}
-        )
+        client.put_item(TableName="test_table", Item={k: {"S": v} for k, v in row.items()})
 
 
 @pytest.fixture(scope="module")
@@ -79,6 +77,4 @@ def db_service(metadata, localstack_container):
     )
     service_entity = metadata.create_or_update(data=service)
     yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(DatabaseService, service_entity.id, recursive=True, hard_delete=True)

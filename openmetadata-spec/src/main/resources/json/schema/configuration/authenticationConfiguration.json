@@ -71,6 +71,14 @@
       "description": "Callback URL",
       "type": "string"
     },
+    "additionalTrustedRedirectUris": {
+      "title": "Additional Trusted Redirect URIs",
+      "description": "Additional redirect URIs allowed for the login flow, beyond the callback URL and the server's own callbacks. Each entry must exactly match the requested redirect URI (scheme, host, port, path, query). Use this to allow browser-extension login redirects such as 'https://<extension-id>.chromiumapp.org/<path>'.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "jwtPrincipalClaims": {
       "title": "Jwt Principal Claims",
       "description": "[DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the principal/subject of the token. Defaults are sub, email, preferred_username, name, upn, email_verified",
@@ -126,6 +134,19 @@
       "description": "Force secure flag on session cookies even when not using HTTPS directly. Enable this when running behind a proxy/load balancer that handles SSL termination.",
       "type": "boolean",
       "default": false
+    },
+    "sessionExpiry": {
+      "title": "Session Expiry",
+      "description": "Validity for the authenticated session across all auth providers. Minimum is 3600 seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when present, then to the default 604800-second expiry.",
+      "type": "integer",
+      "minimum": 3600
+    },
+    "maxActiveSessionsPerUser": {
+      "title": "Max Active Sessions Per User",
+      "description": "Maximum number of active authenticated sessions allowed per user. When the limit is exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata uses the default of 5.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
     },
     "enableAutoRedirect": {
       "title": "Enable Auto Redirect",

@@ -56,8 +56,8 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
-  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
+jest.mock('../../components/common/EntityDescription/Description', () =>
+  jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
@@ -82,6 +82,8 @@ jest.mock('../../utils/TableColumn.util', () => ({
   domainTableObject: jest.fn().mockReturnValue([]),
   dataProductTableObject: jest.fn().mockReturnValue([]),
   tagTableObject: jest.fn().mockReturnValue([]),
+  tierTableObject: jest.fn().mockReturnValue([]),
+  certificationTableObject: jest.fn().mockReturnValue([]),
   descriptionTableObject: jest.fn().mockReturnValue([
     {
       title: 'label.description',
@@ -184,7 +186,7 @@ describe('ServiceVersionMainTabContent tests', () => {
     const entityDescription = screen.getByTestId('viewer-container');
 
     expect(entityTable).toBeInTheDocument();
-    expect(screen.getByText('DescriptionV1')).toBeInTheDocument();
+    expect(screen.getByText('Description')).toBeInTheDocument();
     expect(screen.getByTestId('entity-right-panel')).toBeInTheDocument();
     expect(screen.queryByText('NextPrevious')).toBeNull();
     expect(screen.getAllByText('TagsContainerV2')).toHaveLength(2);

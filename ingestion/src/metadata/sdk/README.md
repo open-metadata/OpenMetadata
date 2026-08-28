@@ -1,448 +1,423 @@
 # OpenMetadata Python SDK
 
-A modern, fluent Python SDK for OpenMetadata that provides an intuitive API for all operations.
+A typed Python SDK for common OpenMetadata operations. The SDK wraps the
+generated Pydantic entity models with plural facade classes such as `Tables`,
+`Databases`, and `Users`.
 
 ## Installation
 
-The SDK is part of the openmetadata-ingestion package:
+The SDK is part of the `openmetadata-ingestion` package:
 
 ```bash
 pip install openmetadata-ingestion
 ```
 
-### Data Quality SDK Installation
+For data quality examples, install the extra that matches your workload:
 
-For running data quality tests, additional dependencies may be required:
-
-**DataFrame Validation:**
 ```bash
 pip install 'openmetadata-ingestion[pandas]'
+pip install 'openmetadata-ingestion[mysql]'
+pip install 'openmetadata-ingestion[postgres]'
 ```
 
-**Table-Based Testing:**
-```bash
-# Install the database extra matching your table's service type
-pip install 'openmetadata-ingestion[mysql]'        # For MySQL
-pip install 'openmetadata-ingestion[postgres]'     # For PostgreSQL
-pip install 'openmetadata-ingestion[snowflake]'    # For Snowflake
-pip install 'openmetadata-ingestion[clickhouse]'   # For ClickHouse
-```
+## Configure the SDK
 
-## Quick Start
-
-### Configure the SDK
-
-The simplest way to configure the SDK is using the `configure()` function:
+Use `configure()` for application code. It initializes the default client used
+by the entity facades.
 
 ```python
 from metadata.sdk import configure
 
-# Configure with explicit credentials
 configure(host="http://localhost:8585/api", jwt_token="your-jwt-token")
+```
 
-# Or configure from environment variables
-# Set OPENMETADATA_HOST and OPENMETADATA_JWT_TOKEN
+You can also configure the SDK from environment variables:
+
+```python
+from metadata.sdk import configure
+
+# Reads OPENMETADATA_HOST or OPENMETADATA_SERVER_URL.
+# Reads OPENMETADATA_JWT_TOKEN or OPENMETADATA_API_KEY.
 configure()
 ```
 
-The `configure()` function supports:
-- **`host`** or **`server_url`**: OpenMetadata server URL
-- **`jwt_token`**: JWT authentication token
-- Falls back to environment variables:
-  - `OPENMETADATA_HOST` or `OPENMETADATA_SERVER_URL` for the server URL
-  - `OPENMETADATA_JWT_TOKEN` or `OPENMETADATA_API_KEY` for authentication
-  - `OPENMETADATA_VERIFY_SSL`: Enable SSL verification (default: false)
-  - `OPENMETADATA_CA_BUNDLE`: Path to CA bundle
-  - `OPENMETADATA_CLIENT_TIMEOUT`: Client timeout in seconds (default: 30)
+Supported environment variables:
 
-### Alternative: Manual Initialization
+- `OPENMETADATA_HOST` or `OPENMETADATA_SERVER_URL`
+- `OPENMETADATA_JWT_TOKEN` or `OPENMETADATA_API_KEY`
+- `OPENMETADATA_VERIFY_SSL`
+- `OPENMETADATA_CA_BUNDLE`
+- `OPENMETADATA_CLIENT_TIMEOUT`
 
-For more control, you can manually initialize the SDK:
+For tests or advanced setup, you can initialize the client manually:
 
 ```python
 from metadata.sdk import OpenMetadata, OpenMetadataConfig
-from metadata.sdk.entities import Table, User
-from metadata.sdk.api import Search, Lineage, Bulk
 
-# Configure the client
 config = OpenMetadataConfig(
     server_url="http://localhost:8585/api",
-    jwt_token="your-jwt-token"
+    jwt_token="your-jwt-token",
 )
-
-# Initialize the client
 client = OpenMetadata.initialize(config)
-
-# Set default client for static APIs
-Table.set_default_client(client)
-User.set_default_client(client)
-Search.set_default_client(client)
-Lineage.set_default_client(client)
-Bulk.set_default_client(client)
 ```
 
-### Configuration from Environment Variables Only
+## Entity Facades and Generated Models
 
-You can also load configuration entirely from environment variables:
+The SDK facade classes are plural to avoid name conflicts with generated
+Pydantic entity classes.
 
 ```python
-from metadata.sdk.config import OpenMetadataConfig
+from metadata.sdk import Tables
+from metadata.generated.schema.entity.data.table import Table
 
-# Reads from OPENMETADATA_HOST, OPENMETADATA_JWT_TOKEN, etc.
-config = OpenMetadataConfig.from_env()
+table: Table = Tables.retrieve_by_name("service.database.schema.table")
 ```
 
-## Entity Operations
+Use the plural facade for SDK operations. The singular generated classes, such
+as `metadata.generated.schema.entity.data.table.Table`, are data models and do
+not expose SDK methods like `create()` or `update()`.
 
-### Tables
+## Table Operations
 
 ```python
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.sdk.entities.table import TableListParams
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.sdk import Tables
 
-# Create a table
 request = CreateTableRequest(
-    name="my_table",
-    databaseSchema="my_schema",
-    columns=[...]
-)
-table = Table.create(request)
-
-# Retrieve a table by ID
-table = Table.retrieve("table-id")
-
-# Retrieve by fully qualified name with specific fields
-table = Table.retrieve_by_name(
-    "service.database.schema.table",
-    fields=["owners", "tags", "columns"]
+    name="orders",
+    databaseSchema="service.database.schema",
+    columns=[
+        Column(name="id", dataType=DataType.BIGINT),
+        Column(name="status", dataType=DataType.VARCHAR, dataLength=255),
+    ],
 )
 
-# List tables with pagination
-for table in Table.list().auto_paging_iterable():
-    print(table.name)
+table = Tables.create(request)
 
-# List with filters
-params = TableListParams.builder() \
-    .limit(50) \
-    .database("my_database") \
-    .fields(["owners", "tags"]) \
-    .build()
-    
-tables = Table.list(params)
+table = Tables.retrieve(str(table.id.root), fields=["owners", "tags", "columns"])
+table = Tables.retrieve_by_name(
+    "service.database.schema.orders",
+    fields=["owners", "tags", "columns"],
+)
 
-# Update a table
-table.description = "Updated description"
-updated = Table.update(table.id, table)
+table.description = "Order facts loaded from the commerce warehouse"
+updated = Tables.update(table)
 
-# Delete a table
-Table.delete("table-id")
-
-# Delete with options
-Table.delete("table-id", recursive=True, hard_delete=True)
-
-# Export/Import CSV
-csv_data = Table.export_csv("table-name")
-Table.import_csv(csv_data, dry_run=False)
+Tables.delete(str(updated.id.root), recursive=True, hard_delete=True)
 ```
 
-### Users
+`Tables.update(entity)` expects the entity object only. It reads the current
+entity by `entity.id` and patches the changed fields through the underlying
+OpenMetadata client.
+
+## Listing and Pagination
+
+`list()` returns one page as an `EntityList` with `entities`, `after`, and
+`before` attributes.
+
+```python
+from metadata.sdk import Tables
+
+page = Tables.list(
+    limit=50,
+    fields=["owners", "tags"],
+    filters={"databaseSchema": "service.database.schema"},
+)
+
+for table in page.entities:
+    print(table.fullyQualifiedName)
+
+if page.after:
+    next_page = Tables.list(limit=50, after=page.after)
+```
+
+Use `list_all()` when you want the SDK to fetch every page.
+
+```python
+from metadata.sdk import Tables
+
+for table in Tables.list_all(
+    batch_size=100,
+    fields=["owners", "tags"],
+    filters={"databaseSchema": "service.database.schema"},
+):
+    print(table.name)
+```
+
+There is no `TableListParams` class and `EntityList` does not expose
+`auto_paging_iterable()`. Use the keyword arguments above instead.
+
+## Users
 
 ```python
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.sdk.entities.user import UserListParams
+from metadata.sdk import Users
 
-# Create a user
 request = CreateUserRequest(
     name="john.doe",
     email="john@example.com",
-    isAdmin=False
+    displayName="John Doe",
 )
-user = User.create(request)
 
-# Retrieve a user
-user = User.retrieve("user-id")
-user = User.retrieve_by_name("john.doe", fields=["teams", "roles"])
+user = Users.create(request)
+user = Users.retrieve_by_name("john.doe", fields=["teams", "roles"])
 
-# List users
-for user in User.list().auto_paging_iterable():
+for user in Users.list_all(batch_size=100):
     print(user.email)
 
-# List with filters
-params = UserListParams.builder() \
-    .team("engineering") \
-    .is_admin(False) \
-    .limit(100) \
-    .build()
-    
-users = User.list(params)
-
-# Update a user
-user.displayName = "John Doe"
-updated = User.update(user.id, user)
-
-# Delete a user
-User.delete("user-id")
+user.displayName = "John D."
+updated = Users.update(user)
 ```
 
-## Search Operations
+## Partial Updates
+
+The facade classes do not expose a `patch(entity_id, json_patch)` method. For
+partial updates, retrieve the entity, mutate a copy, and call `update(entity)`.
 
 ```python
-# Simple search
-results = Search.search("customer")
+from metadata.generated.schema.type.basic import Markdown
+from metadata.sdk import Tables
 
-# Search with parameters
+table = Tables.retrieve_by_name("service.database.schema.orders")
+updated_table = table.model_copy(deep=True)
+updated_table.description = Markdown("Orders curated by the analytics team")
+
+patched = Tables.update(updated_table)
+```
+
+For specialized patch flows that are not covered by a facade helper, use the
+underlying ingestion client from the SDK wrapper.
+
+```python
+from metadata.generated.schema.entity.data.table import Table
+from metadata.sdk import client
+
+metadata = client().ometa
+current = metadata.get_by_id(entity=Table, entity_id="table-id", fields=["tags"])
+destination = current.model_copy(deep=True)
+destination.tags = []
+
+patched = metadata.patch(entity=Table, source=current, destination=destination)
+```
+
+## Table Helpers
+
+`Tables` includes table-specific helpers that internally patch the entity.
+
+```python
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.sdk import Tables
+
+table = Tables.add_tag("table-id", "PII.Sensitive")
+table = Tables.update_column_description(
+    "table-id",
+    column_name="status",
+    description="Current order state",
+)
+
+sample_data = TableData(columns=["id", "status"], rows=[[1, "COMPLETE"]])
+Tables.add_sample_data("table-id", sample_data)
+table_with_sample_data = Tables.get_sample_data("table-id")
+```
+
+## Governance Tags
+
+Use the plural governance facades to create or retrieve classifications and
+tags, then assign tag FQNs to assets with `Tables.add_tag()` or `update()`.
+
+```python
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.sdk import Classifications, Tables, Tags
+
+classification = Classifications.create(
+    CreateClassificationRequest(
+        name="PII",
+        description="Personally identifiable information",
+    )
+)
+
+tag = Tags.create(
+    CreateTagRequest(
+        classification=classification.fullyQualifiedName.root,
+        name="Sensitive",
+        description="Sensitive customer data",
+    )
+)
+
+table = Tables.add_tag("table-id", tag.fullyQualifiedName.root)
+```
+
+To replace tags instead of appending one, retrieve the table with `fields=["tags"]`,
+mutate a copy, and call `Tables.update(destination)`.
+
+## CSV Import and Export
+
+CSV operations return operation objects. Call `execute()` to run them.
+
+```python
+from metadata.sdk import Glossaries, Tables
+
+csv_text = Tables.export_csv("service.database.schema.orders").execute()
+
+dry_run = (
+    Glossaries.import_csv("BusinessGlossary")
+    .with_data(csv_text)
+    .set_dry_run(True)
+    .execute()
+)
+```
+
+## Search
+
+```python
+from metadata.sdk.api import Search
+
 results = Search.search(
     query="customer",
     index="table_search_index",
     from_=0,
-    size=100,
+    size=25,
     sort_field="name.keyword",
-    sort_order="asc"
+    sort_order="asc",
 )
 
-# Get suggestions
 suggestions = Search.suggest("cust", size=10)
-
-# Aggregations
 aggregations = Search.aggregate(
-    "type:Table",
+    query="*",
     index="table_search_index",
-    field="database"
+    field="database.name.keyword",
 )
 
-# Advanced search with custom request
-search_request = {
-    "query": {
-        "match": {
-            "name": "customer"
-        }
-    },
-    "size": 50
-}
-results = Search.search_advanced(search_request)
-
-# Reindex operations
-Search.reindex("table")
-Search.reindex_all()
-
-# Using the builder
-results = Search.builder() \
-    .query("customer") \
-    .index("table_search_index") \
-    .from_(0) \
-    .size(100) \
-    .sort_field("name.keyword") \
-    .sort_order("asc") \
+builder_results = (
+    Search.builder()
+    .query("customer")
+    .index("table_search_index")
+    .size(25)
     .execute()
+)
 ```
 
-## Lineage Operations
+## Lineage
 
 ```python
-# Get lineage for an entity
-lineage = Lineage.get_lineage("entity-fqn", upstream_depth=3, downstream_depth=2)
+from metadata.generated.schema.entity.data.table import Table
+from metadata.sdk.api import Lineage
 
-# Get entity lineage by type and ID
-lineage = Lineage.get_entity_lineage(
-    entity_type="table",
-    entity_id="entity-id",
-    upstream_depth=3,
-    downstream_depth=2
+lineage = Lineage.get_lineage(
+    "service.database.schema.orders",
+    upstream_depth=1,
+    downstream_depth=1,
 )
 
-# Add lineage relationship
+lineage_by_id = Lineage.get_entity_lineage(
+    entity_type=Table,
+    entity_id="table-id",
+    upstream_depth=2,
+    downstream_depth=1,
+)
+
 Lineage.add_lineage(
-    from_entity_id="source-id",
+    from_entity_id="source-table-id",
     from_entity_type="table",
-    to_entity_id="target-id",
-    to_entity_type="dashboard",
-    description="Data flow from table to dashboard"
+    to_entity_id="target-table-id",
+    to_entity_type="table",
+    description="Curated order facts",
 )
-
-# Delete lineage
-Lineage.delete_lineage(
-    from_entity="entity1",
-    from_entity_type="table",
-    to_entity="entity2",
-    to_entity_type="dashboard"
-)
-
-# Export lineage
-export = Lineage.export_lineage("table", "entity-id")
-
-# Using the builder
-lineage = Lineage.builder() \
-    .entity_type("table") \
-    .entity_id("entity-id") \
-    .upstream_depth(3) \
-    .downstream_depth(2) \
-    .execute()
 ```
 
-## Bulk Operations
+## Supported Entity Facades
+
+The current SDK exports these facade classes:
+
+- Data assets: `APICollections`, `APIEndpoints`, `Charts`, `Containers`,
+  `DashboardDataModels`, `Dashboards`, `Databases`, `DatabaseSchemas`,
+  `DataContracts`, `Metrics`, `MLModels`, `Pipelines`, `Queries`,
+  `SearchIndexes`, `StoredProcedures`, `Tables`
+- Services: `DashboardServices`, `DatabaseServices`, `StorageServices`
+- Governance: `Classifications`, `DataProducts`, `Domains`, `Glossaries`,
+  `GlossaryTerms`, `Tags`
+- Teams and users: `Teams`, `Users`
+- Data quality: `TestCases`, `TestDefinitions`, `TestSuites`
+
+If a facade does not exist for an entity yet, use the underlying
+ingestion client returned by `metadata.sdk.client().ometa` or the ingestion
+client APIs directly.
+
+## Entity References
 
 ```python
-# Import CSV data
-csv_data = "name,description\ntable1,desc1\ntable2,desc2"
-result = Bulk.import_csv("table", csv_data, dry_run=True)
+from metadata.sdk import Teams, Users, to_entity_reference
 
-# Export CSV data
-csv = Bulk.export_csv("table")
+team = Teams.retrieve_by_name("engineering")
+user = Users.retrieve_by_name("john.doe")
 
-# Bulk add assets
-assets = [
-    {"name": "table1", "database": "db1"},
-    {"name": "table2", "database": "db1"}
-]
-Bulk.add_assets("table", assets)
-
-# Bulk patch
-patches = [
-    {"id": "id1", "patch": [{"op": "add", "path": "/description", "value": "Updated"}]},
-    {"id": "id2", "patch": [{"op": "add", "path": "/description", "value": "Another"}]}
-]
-Bulk.patch("table", patches)
-
-# Bulk delete
-ids = ["id1", "id2", "id3"]
-Bulk.delete("table", ids, hard_delete=True)
-
-# Bulk restore
-Bulk.restore("table", ids)
-
-# Using the builder
-result = Bulk.builder() \
-    .entity_type("table") \
-    .csv_data(csv_data) \
-    .dry_run(True) \
-    .execute()
-```
-
-## Async Operations
-
-All operations support async execution:
-
-```python
-import asyncio
-
-# Async entity operations
-table = await Table.create_async(request)
-table = await Table.retrieve_async("id")
-await Table.delete_async("id", recursive=True, hard_delete=True)
-
-# Async search
-results = await Search.search_async("query")
-suggestions = await Search.suggest_async("query")
-await Search.reindex_async("table")
-
-# Async lineage
-lineage = await Lineage.get_lineage_async("entity")
-await Lineage.add_lineage_async(
-    "id1", "table", "id2", "dashboard"
-)
-export = await Lineage.export_lineage_async("table", "id")
-
-# Async bulk operations
-result = await Bulk.import_csv_async("table", csv_data)
-deleted = await Bulk.delete_async("table", ids)
-
-# Run async operations
-async def main():
-    table = await Table.retrieve_async("table-id")
-    print(table.name)
-
-asyncio.run(main())
-```
-
-## Advanced Configuration
-
-```python
-# Full configuration options
-config = OpenMetadataConfig(
-    server_url="https://metadata.company.com",
-    jwt_token="jwt-token",
-    verify_ssl=True,
-    ca_bundle="/path/to/ca-bundle.crt",
-    client_timeout=30
-)
-
-# Using builder pattern
-config = OpenMetadataConfig.builder() \
-    .server_url("https://metadata.company.com") \
-    .jwt_token("jwt-token") \
-    .verify_ssl(True) \
-    .client_timeout(60) \
-    .build()
+team_ref = to_entity_reference(team)
+user_ref = to_entity_reference(user)
 ```
 
 ## Error Handling
 
 ```python
 from metadata.ingestion.ometa.client import APIError
+from metadata.sdk import Tables
 
 try:
-    table = Table.retrieve("table-id")
-except APIError as e:
-    if e.status_code == 404:
+    table = Tables.retrieve("table-id")
+except APIError as err:
+    if err.status_code == 404:
         print("Table not found")
-    elif e.status_code == 401:
+    elif err.status_code == 401:
         print("Authentication failed")
     else:
-        print(f"Error: {e}")
+        raise
 ```
-
-## Auto-Pagination
-
-The SDK automatically handles pagination for list operations:
-
-```python
-# Iterate through all tables
-for table in Table.list().auto_paging_iterable():
-    process_table(table)
-
-# Manual pagination control
-params = TableListParams.builder() \
-    .limit(100) \
-    .after("cursor-token") \
-    .build()
-    
-collection = Table.list(params)
-for table in collection.get_data():
-    print(table.name)
-```
-
-## Supported Entity Types
-
-The SDK provides the same fluent API for all OpenMetadata entity types:
-
-- **Data Assets**: Table, Database, DatabaseSchema, Dashboard, Pipeline, Topic, Container, Query, StoredProcedure, DashboardDataModel, SearchIndex, MlModel, Report
-- **Services**: DatabaseService, MessagingService, DashboardService, PipelineService, MlModelService, StorageService, SearchService, MetadataService, ApiService
-- **Teams & Users**: User, Team, Role, Policy
-- **Governance**: Glossary, GlossaryTerm, Classification, Tag, DataProduct, Domain
-- **Quality**: TestCase, TestSuite, TestDefinition, DataQualityDashboard
-- **Ingestion**: Ingestion, Workflow, Connection
-- **Other**: Type, Webhook, Kpi, Application, Persona, DocStore, Page, SearchQuery
-
-## Thread Safety
-
-The OpenMetadata client is thread-safe and can be shared across multiple threads. The static API methods use a shared default client instance.
 
 ## Testing
 
-Run the SDK tests:
+Run the SDK unit tests from the `ingestion` directory:
 
 ```bash
-# Run all SDK tests
 pytest tests/unit/sdk/
+```
 
-# Run specific test
-pytest tests/unit/sdk/test_sdk_entities.py
+Run the SDK integration tests against a local OpenMetadata server:
+
+```bash
+pytest tests/integration/sdk/test_sdk_integration.py -v
 ```
 
 ## Contributing
 
-Please read the main [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+To add a new entity facade:
+
+1. Create a new file in `metadata/sdk/entities/`.
+2. Extend `BaseEntity` with the generated entity type and create request type.
+3. Override `entity_type()`.
+4. Export the facade from `metadata/sdk/entities/__init__.py` and
+   `metadata/sdk/__init__.py`.
+5. Add unit tests under `tests/unit/sdk/`.
+
+Example:
+
+```python
+from typing import Type
+
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import Table
+from metadata.sdk.entities.base import BaseEntity
+
+
+class Tables(BaseEntity[Table, CreateTableRequest]):
+    @classmethod
+    def entity_type(cls) -> Type[Table]:
+        return Table
+```
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](../../LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See
+[`LICENSE`](../../LICENSE) for details.

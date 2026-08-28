@@ -28,19 +28,19 @@ jobs:
           fi
 
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
           cache: "yarn"
           cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
 
       - name: Install Yarn
-        run: npm install -g yarn
+        run: corepack enable
 
       - name: Install Dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -48,7 +48,7 @@ jobs:
 
       - name: Install Playwright Browsers
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx playwright install --with-deps
+        run: npx playwright install chromium --with-deps
 
       - name: Generate E2E Docs
         working-directory: openmetadata-ui/src/main/resources/ui

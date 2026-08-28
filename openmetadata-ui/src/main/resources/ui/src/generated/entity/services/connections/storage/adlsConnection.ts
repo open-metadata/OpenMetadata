@@ -21,10 +21,15 @@ export interface AdlsConnection {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
      * Azure Credentials
      */
     credentials:                 AzureCredentials;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */

@@ -45,6 +45,9 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     entityCount: 10,
     resourcesWithNonZeroCount: [],
   }),
+}));
+
+jest.mock('../../../../../utils/CuratedAssetsPureUtils', () => ({
   isValidElasticsearchQuery: jest.fn().mockReturnValue(true),
 }));
 

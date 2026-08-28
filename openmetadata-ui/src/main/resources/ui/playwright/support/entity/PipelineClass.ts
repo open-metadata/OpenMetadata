@@ -14,15 +14,20 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
+  EntityReference,
   EntityTypeEndpoint,
   ResponseDataType,
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface PipelineType extends ResponseDataWithServiceType {
+  tasks?: Array<EntityReference>;
+}
 export class PipelineClass extends EntityClass {
   private pipelineName: string;
   service: {
@@ -33,7 +38,7 @@ export class PipelineClass extends EntityClass {
         type: string;
         host: string;
         token: string;
-        timeout: string;
+        timeout: number;
         supportsMetadataExtraction: boolean;
       };
     };
@@ -48,11 +53,13 @@ export class PipelineClass extends EntityClass {
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: PipelineType = {} as PipelineType;
   ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string) {
+  constructor(
+    name?: string,
+    tasks?: Array<{ name: string; displayName: string }>
+  ) {
     super(EntityTypeEndpoint.Pipeline);
     this.type = 'Pipeline';
     this.childrenTabId = 'tasks';
@@ -68,15 +75,15 @@ export class PipelineClass extends EntityClass {
       connection: {
         config: {
           type: 'Dagster',
-          host: 'admin',
+          host: 'http://localhost:3000',
           token: 'admin',
-          timeout: '1000',
+          timeout: 1000,
           supportsMetadataExtraction: true,
         },
       },
     };
 
-    this.children = [
+    this.children = tasks ?? [
       { name: 'snowflake_task', displayName: 'Snowflake Task' },
       { name: 'presto_task', displayName: 'Presto Task' },
     ];
@@ -103,8 +110,14 @@ export class PipelineClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'PipelineClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'PipelineClass.create'
+    );
 
     return {
       service: serviceResponse.body,
@@ -119,17 +132,19 @@ export class PipelineClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'PipelineClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -171,20 +186,24 @@ export class PipelineClass extends EntityClass {
       }
     );
 
-    this.ingestionPipelineResponseData = await ingestionPipelineResponse.json();
+    this.ingestionPipelineResponseData = await okJson(
+      ingestionPipelineResponse,
+      'PipelineClass.createIngestionPipeline'
+    );
 
     return {
-      ingestionPipeline: await ingestionPipelineResponse.json(),
+      ingestionPipeline: await okJson(
+        ingestionPipelineResponse,
+        'PipelineClass.createIngestionPipeline'
+      ),
     };
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

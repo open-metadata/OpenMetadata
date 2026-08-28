@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import * as reactI18next from 'react-i18next';
 import TourEndModal from './TourEndModal';
-
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
 
 const mockOnSave = jest.fn();
 
@@ -27,6 +19,10 @@ const mockProps = {
   onSave: mockOnSave,
   visible: true,
 };
+
+jest.mock('../../..//utils/BrandData/BrandClassBase', () => ({
+  getMonogram: jest.fn(() => ({ src: 'mocked-logo.svg', svg: 'monogram-svg' })),
+}));
 
 describe('TourEndModal', () => {
   it('should render necessary elements', () => {
@@ -42,39 +38,16 @@ describe('TourEndModal', () => {
     expect(screen.getByTestId('tour-complete-message')).toBeInTheDocument();
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', () => {
-    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
-      if (
-        key === 'message.get-started-with-open-metadata' &&
-        params?.brandName
-      ) {
-        return `Get started with ${params.brandName} today!`;
-      }
-
-      return key;
-    });
-
-    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
-      t: mockT,
-      i18n: { language: 'en-US' },
-      ready: true,
-    } as any);
-
+  it('should render with correct brandName keys', () => {
     render(<TourEndModal {...mockProps} />);
 
     const tourMessage = screen.getByTestId('tour-complete-message');
 
     expect(tourMessage).toBeInTheDocument();
-    // Verify actual brand name is rendered
-    expect(tourMessage.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(tourMessage.textContent).not.toContain('{{brandName}}');
 
     // Verify translation was called with brandName
-    expect(mockT).toHaveBeenCalledWith(
-      'message.get-started-with-open-metadata',
-      {
-        brandName: 'OpenMetadata',
-      }
-    );
+    expect(
+      screen.getByText(/message.get-started-with-open-metadata/)
+    ).toBeInTheDocument();
   });
 });

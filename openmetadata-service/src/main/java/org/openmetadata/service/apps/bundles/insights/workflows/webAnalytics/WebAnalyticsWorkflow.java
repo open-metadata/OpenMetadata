@@ -24,6 +24,7 @@ import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.processors.CreateReportDataProcessor;
 import org.openmetadata.service.apps.bundles.insights.sinks.ReportDataSink;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.processors.WebAnalyticsEntityViewProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.processors.WebAnalyticsUserActivityAggregator;
@@ -34,7 +35,7 @@ import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 
 @Slf4j
-public class WebAnalyticsWorkflow {
+public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
   private final Long startTimestamp;
   private final Long endTimestamp;
   private final int batchSize;
@@ -43,6 +44,7 @@ public class WebAnalyticsWorkflow {
   private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
   private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
   private WebAnalyticsUserActivityProcessor webAnalyticsUserActivityProcessor;
+  private volatile boolean stopped;
 
   public record UserActivityData(
       String userName,
@@ -96,7 +98,7 @@ public class WebAnalyticsWorkflow {
   private void initialize() {
     Long pointerTimestamp = this.endTimestamp;
 
-    while (pointerTimestamp > startTimestamp) {
+    while (pointerTimestamp > startTimestamp && !stopped) {
       sources.add(
           new PaginatedWebAnalyticEventDataSource(
               batchSize,
@@ -107,6 +109,9 @@ public class WebAnalyticsWorkflow {
 
     int total = 0;
     for (PaginatedWebAnalyticEventDataSource source : sources) {
+      if (stopped) {
+        break;
+      }
       total += source.getTotalRecords();
     }
 
@@ -116,8 +121,9 @@ public class WebAnalyticsWorkflow {
     webAnalyticsUserActivityProcessor = new WebAnalyticsUserActivityProcessor(total);
   }
 
-  public void process() throws SearchIndexException {
-    if (!webAnalyticsConfig.getEnabled()) {
+  @Override
+  public void process() {
+    if (!webAnalyticsConfig.getEnabled() || stopped) {
       return;
     }
     LOG.info("[Data Insights] Processing App Analytics.");
@@ -125,6 +131,9 @@ public class WebAnalyticsWorkflow {
     Map<String, Object> contextData = new HashMap<>();
 
     for (PaginatedWebAnalyticEventDataSource source : sources) {
+      if (stopped) {
+        break;
+      }
       // TODO: Could the size of the Maps be an issue?
       Map<UUID, UserActivityData> userActivityData = new HashMap<>();
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData = new HashMap<>();
@@ -146,6 +155,9 @@ public class WebAnalyticsWorkflow {
       // Fills the entityViewReportData and userActivityData Maps
       Optional<String> processEventsError = processEvents(source, contextData);
 
+      if (stopped) {
+        break;
+      }
       if (processEventsError.isPresent()) {
         LOG.debug(processEventsError.get());
         continue;
@@ -157,6 +169,10 @@ public class WebAnalyticsWorkflow {
 
       processEntityViewDataError.ifPresent(LOG::debug);
 
+      if (stopped) {
+        break;
+      }
+
       Optional<String> processUserActivityError =
           processUserActivityData(userActivityData, userActivityReportData, contextData);
 
@@ -164,19 +180,20 @@ public class WebAnalyticsWorkflow {
     }
 
     // Prune WebAnalyticEvents older than retentionDays
-    pruneWebAnalyticEvents();
+    if (!stopped) {
+      pruneWebAnalyticEvents();
+    }
   }
 
   // TODO: How to better divide the two flows while keeping stats consistent and avoiding breaking
   // one flow if
   // the other one errors.
   private Optional<String> processEvents(
-      PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData)
-      throws SearchIndexException {
+      PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     String keysetCursor = null;
-    while (true) {
+    while (!stopped) {
       try {
         ResultList<WebAnalyticEventData> resultList = source.readNextKeyset(keysetCursor);
         keysetCursor = resultList.getPaging().getAfter();
@@ -210,7 +227,7 @@ public class WebAnalyticsWorkflow {
 
     CreateReportDataProcessor createReportDataProcessor =
         new CreateReportDataProcessor(
-            entityViewReportData.values().size(),
+            entityViewReportData.size(),
             "[WebAnalyticsWorkflow] Entity View Report Data Processor",
             ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
 
@@ -231,7 +248,7 @@ public class WebAnalyticsWorkflow {
     }
 
     // Sink EntityView ReportData
-    if (entityViewReportDataList.isPresent()) {
+    if (entityViewReportDataList.isPresent() && !stopped) {
       ReportDataSink reportDataSink =
           new ReportDataSink(
               entityViewReportDataList.get().size(),
@@ -275,7 +292,7 @@ public class WebAnalyticsWorkflow {
 
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
-            userActivityReportData.values().size(),
+            userActivityReportData.size(),
             "[WebAnalyticsWorkflow] User Activity Report Data Processor",
             ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
     Optional<List<ReportData>> userActivityReportDataList = Optional.empty();
@@ -297,7 +314,7 @@ public class WebAnalyticsWorkflow {
           createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
-    if (userActivityReportDataList.isPresent()) {
+    if (userActivityReportDataList.isPresent() && !stopped) {
       ReportDataSink reportDataSink =
           new ReportDataSink(
               userActivityReportDataList.get().size(),
@@ -327,6 +344,9 @@ public class WebAnalyticsWorkflow {
 
   private void pruneWebAnalyticEvents() {
     for (WebAnalyticEventType eventType : WebAnalyticEventType.values()) {
+      if (stopped) {
+        break;
+      }
       ((WebAnalyticEventRepository) Entity.getEntityRepository(Entity.WEB_ANALYTIC_EVENT))
           .deleteWebAnalyticEventData(
               eventType,
@@ -347,5 +367,10 @@ public class WebAnalyticsWorkflow {
             .sum();
 
     workflowStats.updateWorkflowStats(currentSuccess, currentFailed);
+  }
+
+  @Override
+  public void stop() {
+    stopped = true;
   }
 }

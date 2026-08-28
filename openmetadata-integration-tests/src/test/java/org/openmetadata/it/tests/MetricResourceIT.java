@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,10 +19,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.GlossaryTermTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
@@ -29,7 +36,9 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -152,6 +161,44 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     return SdkClients.adminClient().metrics().getVersion(id.toString(), version);
   }
 
+  @Test
+  void test_metricGlossaryTermRdfLink(TestNamespace ns) {
+    assumeTrue(
+        TestSuiteBootstrap.isFusekiEnabled(),
+        "Skipping RDF test: Fuseki not enabled (run with -DenableRdf=true)");
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm term = GlossaryTermTestFactory.createWithName(ns, glossary, "metricConcept");
+
+    Metric metric = createEntity(createRequest(ns.prefix("metricGlossary"), ns));
+
+    TagLabel glossaryTag =
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    metric.setTags(List.of(glossaryTag));
+    Metric updatedMetric = patchEntity(metric.getId().toString(), metric);
+
+    String metricUri = "https://open-metadata.org/entity/metric/" + updatedMetric.getId();
+    String termUri = "https://open-metadata.org/entity/glossaryTerm/" + term.getId();
+
+    String sparql =
+        String.format(
+            "PREFIX om: <https://open-metadata.org/ontology/> "
+                + "ASK { "
+                + "  GRAPH ?g { "
+                + "    <%s> om:hasGlossaryTerm <%s> . "
+                + "  } "
+                + "}",
+            metricUri, termUri);
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(() -> assertTrue(RdfTestUtils.executeSparqlAsk(sparql)));
+  }
+
   // ===================================================================
   // METRIC-SPECIFIC TESTS
   // ===================================================================
@@ -174,6 +221,80 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertNotNull(metric.getMetricExpression());
     assertEquals("sum(revenue)", metric.getMetricExpression().getCode());
     assertEquals(MetricExpressionLanguage.SQL, metric.getMetricExpression().getLanguage());
+  }
+
+  @Test
+  void put_metricCsvImportExport_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String metricName = ns.prefix("metric_csv");
+    String secondMetricName = ns.prefix("metric_csv_second");
+    String header =
+        "name*,displayName,description,metricType,unitOfMeasurement,customUnitOfMeasurement,"
+            + "granularity,expressionLanguage,expressionCode,relatedMetrics,tags,glossaryTerms,"
+            + "tiers,owners,reviewers,domains,dataProducts,entityStatus,extension";
+    String row =
+        String.join(
+            ",",
+            metricName,
+            "CSV Metric",
+            "Metric imported from CSV",
+            "OTHER",
+            "DOLLARS",
+            "",
+            "DAY",
+            "SQL",
+            "SUM(sales.amount)",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Approved",
+            "");
+    String secondRow =
+        String.join(
+            ",",
+            secondMetricName,
+            "Second CSV Metric",
+            "Second metric imported from CSV",
+            "SUM",
+            "DOLLARS",
+            "",
+            "DAY",
+            "SQL",
+            "SUM(sales.net_amount)",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Approved",
+            "");
+    String csv = header + "\n" + row + "\n" + secondRow + "\n";
+
+    CsvImportResult result =
+        new ObjectMapper()
+            .readValue(client.metrics().importCsv("*", csv, false), CsvImportResult.class);
+    assertEquals(2, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    Metric imported = getEntityByName(metricName);
+    assertNotNull(imported);
+    assertEquals(MetricExpressionLanguage.SQL, imported.getMetricExpression().getLanguage());
+    Metric secondImported = getEntityByName(secondMetricName);
+    assertNotNull(secondImported);
+    assertEquals(MetricExpressionLanguage.SQL, secondImported.getMetricExpression().getLanguage());
+
+    String exportedCsv = client.metrics().exportCsv("*");
+    assertTrue(exportedCsv.contains(metricName));
+    assertTrue(exportedCsv.contains(secondMetricName));
+    assertTrue(exportedCsv.contains("expressionCode"));
+    assertTrue(exportedCsv.contains("tiers"));
   }
 
   @Test

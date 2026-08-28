@@ -25,6 +25,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
@@ -43,6 +45,8 @@ import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class ApplicationHandler {
+
+  private static final String CACHE_WARMUP_APPLICATION = "CacheWarmupApplication";
 
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
@@ -72,9 +76,9 @@ public class ApplicationHandler {
   public void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
+    app.setEnabled(isEnabled(app.getName()));
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
-      app.setEnabled(appPrivateConfig.getEnabled());
 
       if (appPrivateConfig.getParameters() != null
           && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
@@ -88,6 +92,17 @@ public class ApplicationHandler {
   }
 
   public Boolean isEnabled(String appName) {
+    Boolean configuredEnabled = readConfiguredEnabled(appName);
+    if (Boolean.FALSE.equals(configuredEnabled)) {
+      return false;
+    }
+    if (CACHE_WARMUP_APPLICATION.equals(appName)) {
+      return isCacheWarmupAvailable();
+    }
+    return configuredEnabled;
+  }
+
+  private Boolean readConfiguredEnabled(String appName) {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(appName);
       return appPrivateConfig.getEnabled();
@@ -98,6 +113,14 @@ public class ApplicationHandler {
       LOG.error("Error reading config file for app {}", appName, e);
       return true;
     }
+  }
+
+  private boolean isCacheWarmupAvailable() {
+    CacheConfig cacheConfig = CacheBundle.getCacheConfig();
+    return cacheConfig != null
+        && cacheConfig.provider != CacheConfig.Provider.none
+        && CacheBundle.getCachedEntityDao() != null
+        && CacheBundle.getCacheProvider().available();
   }
 
   public void cleanupStaleJobs() {

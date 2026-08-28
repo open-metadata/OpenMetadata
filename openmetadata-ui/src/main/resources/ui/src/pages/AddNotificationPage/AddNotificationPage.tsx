@@ -74,7 +74,7 @@ import {
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -231,6 +231,20 @@ const AddNotificationPage = () => {
     [entityFunctions, selectedTrigger]
   );
 
+  const containerEntities = useMemo(
+    () =>
+      entityFunctions.find((resource) => resource.name === selectedTrigger)
+        ?.containerEntities,
+    [entityFunctions, selectedTrigger]
+  );
+
+  const supportedEventTypes = useMemo(
+    () =>
+      entityFunctions.find((resource) => resource.name === selectedTrigger)
+        ?.supportedEventTypes,
+    [entityFunctions, selectedTrigger]
+  );
+
   const shouldShowFiltersSection = useMemo(
     () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
     [selectedTrigger, supportedFilters]
@@ -377,6 +391,8 @@ const AddNotificationPage = () => {
                               </Col>
                               <Col span={24}>
                                 <ObservabilityFormFiltersItem
+                                  containerEntities={containerEntities}
+                                  supportedEventTypes={supportedEventTypes}
                                   supportedFilters={supportedFilters}
                                 />
                               </Col>

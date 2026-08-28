@@ -23,11 +23,62 @@ Usage:
     client = TrackedREST(client_config)
     response = client.get("/dashboards")  # Automatically tracked
 """
+
+import re
 from time import perf_counter
-from typing import Optional
+from typing import Any, Optional, Union
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.operation_metrics import OperationMetricsState
+
+# Patterns used to detect path segments that are entity identifiers so they can be
+# collapsed to "{id}". Source APIs that embed opaque IDs deep in the path (e.g. Sigma's
+# /workbooks/{id}/lineage/elements/{elementId}) would otherwise produce a distinct metric
+# key per entity, exploding the cardinality of "source_api_calls" and the dynamic field
+# count of the ingestion_pipeline search index mapping. See issue #29141.
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+_NUMERIC_RE = re.compile(r"^\d+$")
+_HEX_TOKEN_RE = re.compile(r"^[0-9a-f]{24,}$", re.IGNORECASE)  # Mongo ObjectId & longer hex
+_VERSION_RE = re.compile(r"^v\d+$", re.IGNORECASE)  # API version segment, e.g. /v1 - not an id
+# Opaque identifier: an id-charset token of reasonable length that contains at least one
+# digit. Plain path words ("workbooks", "elements", "lineage", ...) have no digit and so
+# are preserved; version segments are excluded above.
+#
+# Known, accepted trade-off: this heuristic also collapses static path words (length >= 4)
+# that happen to contain a digit (e.g. "oauth2", "utf8", "log4j", "s3api", or compound
+# versions like "v1beta1" that _VERSION_RE's exact "^v\d+$" does not cover). Those get merged
+# under a shared "{id}" metric key, which reduces metric granularity but never affects
+# correctness. Bounding cardinality is the explicit goal here (see issue #29141): the
+# ingestion_pipeline index is fully protected by "dynamic: false" regardless, so slightly
+# over-collapsing is preferable to an unbounded key space. Tighten the pattern (or add a
+# static-segment allowlist) only if finer per-endpoint metrics are needed.
+_OPAQUE_ID_RE = re.compile(r"^(?=.{4,}$)(?=.*\d)[A-Za-z0-9._~-]+$")
+
+
+def _is_id_segment(part: str) -> bool:
+    """Return True if a single path segment looks like an entity identifier."""
+    if _VERSION_RE.match(part):
+        return False
+    return bool(
+        _UUID_RE.match(part) or _NUMERIC_RE.match(part) or _HEX_TOKEN_RE.match(part) or _OPAQUE_ID_RE.match(part)
+    )
+
+
+def normalize_api_path(path: str) -> str:
+    """
+    Normalize an API path for metrics by replacing identifier segments with ``{id}``.
+
+    This keeps the cardinality of recorded operations bounded regardless of how many
+    source entities are walked.
+    Example: ``/workbooks/3f2a.../lineage/elements/ab12`` -> ``/workbooks/{id}/lineage/elements/{id}``
+    """
+    cleaned_parts = [
+        "{id}" if _is_id_segment(part) else part for part in path.split("?", maxsplit=1)[0].split("/") if part
+    ]
+    return "/" + "/".join(cleaned_parts) if cleaned_parts else "/"
 
 
 class TrackedREST(REST):
@@ -40,7 +91,7 @@ class TrackedREST(REST):
     Metrics are recorded asynchronously to minimize latency impact.
     """
 
-    def __init__(self, config: ClientConfig, source_name: Optional[str] = None):
+    def __init__(self, config: ClientConfig, source_name: Optional[str] = None):  # noqa: UP045
         """
         Initialize TrackedREST client.
 
@@ -75,28 +126,7 @@ class TrackedREST(REST):
         Replaces IDs and UUIDs with placeholders for better aggregation.
         Example: /dashboard/123-abc -> /dashboard/{id}
         """
-        import re
-
-        parts = path.split("?")[0].split("/")
-        cleaned_parts = []
-        for part in parts:
-            if not part:
-                continue
-            # Replace UUIDs and numeric IDs with {id}
-            if re.match(
-                r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-                part,
-                re.IGNORECASE,
-            ):
-                cleaned_parts.append("{id}")
-            elif re.match(r"^\d+$", part):
-                cleaned_parts.append("{id}")
-            elif re.match(r"^[a-f0-9]{24}$", part, re.IGNORECASE):
-                # MongoDB-style ObjectIds
-                cleaned_parts.append("{id}")
-            else:
-                cleaned_parts.append(part)
-        return "/" + "/".join(cleaned_parts) if cleaned_parts else "/"
+        return normalize_api_path(path)
 
     def _record_api_call(self, method: str, path: str, duration_ms: float) -> None:
         """Record an API call metric."""
@@ -118,11 +148,19 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("GET", path, duration_ms)
 
-    def post(self, path, data=None, json=None, headers=None):
+    def post(
+        self,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
+    ):
         """POST method with tracking."""
         start = perf_counter()
         try:
-            return super().post(path, data, json, headers)
+            return super().post(path, data, json, headers, timeout=timeout, retries=retries)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("POST", path, duration_ms)
@@ -136,20 +174,20 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PUT", path, duration_ms)
 
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """PATCH method with tracking."""
         start = perf_counter()
         try:
-            return super().patch(path, data)
+            return super().patch(path, data, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PATCH", path, duration_ms)
 
-    def delete(self, path, data=None, headers=None):
+    def delete(self, path, data=None, json=None, headers=None):
         """DELETE method with tracking."""
         start = perf_counter()
         try:
-            return super().delete(path, data, headers)
+            return super().delete(path, data, json, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("DELETE", path, duration_ms)

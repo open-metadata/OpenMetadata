@@ -29,10 +29,10 @@ import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
-import { Transi18next } from '../../utils/CommonUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-
 const UserPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -164,7 +164,7 @@ const UserPage = () => {
           // Omit the undefined values from the User object
           setUserData(omitBy(newUserData, isUndefined) as User);
         } else {
-          throw t('message.unexpected-error');
+          throw t('server.unexpected-error');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -199,7 +199,7 @@ const UserPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.user')}>
+    <PageLayoutV1 pageTitle={getEntityName(userData) || t('label.user')}>
       <Users
         afterDeleteAction={afterDeleteAction}
         handlePaginate={handleEntityPaginate}

@@ -11,8 +11,31 @@
  *  limitations under the License.
  */
 import { TableProps } from 'antd/lib/table';
+import type { DragAndDropHooks } from 'react-aria-components';
 import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
 import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
+
+/**
+ * Table types re-exported so this file is the single place that reaches into
+ * AntD's table typings. Call sites reference them from here, which is what lets
+ * the underlying table be swapped without touching ~100 files: only the
+ * right-hand side of these lines has to change.
+ */
+export type { TableProps } from 'antd/lib/table';
+export type {
+  ColumnGroupType,
+  ColumnsType,
+  ColumnTitle,
+  ColumnType,
+  ExpandableConfig,
+  FilterDropdownProps,
+  FilterValue,
+  SorterResult,
+  SortOrder,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+  TableRowSelection,
+} from 'antd/lib/table/interface';
 
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container
@@ -29,6 +52,17 @@ export interface TableComponentProps<T> extends TableProps<T> {
     showPagination: boolean;
   };
   entityType?: string;
+  /** CSS class applied to every data cell. Defaults to 'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top'. */
+  cellClassName?: string;
+  /** React Aria drag-and-drop hooks returned by `useDragAndDrop`. */
+  dragAndDropHooks?: DragAndDropHooks;
+  /**
+   * Called when a row is activated (clicked/Enter). When provided together with
+   * `rowSelection`, React Aria performs this action on row click while selection
+   * is limited to the selection checkbox — the row no longer toggles selection.
+   */
+  onRowAction?: (key: React.Key) => void;
+  'data-testid'?: string;
 }
 
 export interface TableColumnDropdownList {

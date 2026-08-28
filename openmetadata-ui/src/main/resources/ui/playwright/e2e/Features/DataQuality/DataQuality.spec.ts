@@ -26,27 +26,36 @@ import { performAdminLogin } from '../../../utils/admin';
 import {
   assignSingleSelectDomain,
   clickOutside,
+  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../../utils/common';
-import { getCurrentMillis } from '../../../utils/dateTime';
+import {
+  dismissTagSuggestions,
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
+  selectTestType,
+  waitForIncidentToBeIndexed,
+} from '../../../utils/dataQuality';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+} from '../../../utils/dateTime';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
+  submitTestCaseForm,
   verifyIncidentBreadcrumbsFromTablePageRedirect,
+  verifyTestCaseLastRunBanner,
   visitDataQualityTab,
+  waitForTestCaseDetailsResponse,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
-import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
-} from '../../../utils/dataQuality';
-
-const table1 = new TableClass();
-const table2 = new TableClass();
 
 // Test data for tags and glossary terms
 const testClassification = new ClassificationClass();
@@ -85,8 +94,13 @@ test.describe(
     ],
   },
   () => {
+    let table1: TableClass;
+    let table2: TableClass;
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      table1 = new TableClass();
+      table2 = new TableClass();
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = await table2.createTestCase(apiContext, {
@@ -186,12 +200,10 @@ test.describe(
        */
       await test.step('Create', async () => {
         await page.fill(
-          '[data-testid="test-case-name"]',
+          '[data-testid="test-case-name"] input',
           NEW_TABLE_TEST_CASE.name
         );
-        await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
-        await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
+        await selectTestType(page, NEW_TABLE_TEST_CASE.label);
         await page.fill(
           '#testCaseFormV1_params_columnName',
           NEW_TABLE_TEST_CASE.field
@@ -204,7 +216,7 @@ test.describe(
         // Add tags to test case
         await page.click('[data-testid="tags-selector"] input');
         const tagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -212,14 +224,14 @@ test.describe(
         );
         await tagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
         // Add glossary terms to test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const glossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -228,23 +240,12 @@ test.describe(
         await glossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
-        const ingestionPipelines = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines'
-        );
-        const deploy = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines/deploy/*'
-        );
-        await page.click('[data-testid="create-btn"]');
-
-        await ingestionPipelines;
-        await deploy;
-
-        await toastNotification(page, 'Test case created successfully.');
+        await dismissTagSuggestions(page);
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
       });
@@ -259,21 +260,24 @@ test.describe(
           .click();
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${NEW_TABLE_TEST_CASE.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${NEW_TABLE_TEST_CASE.name}`
+        );
 
-        await page.locator('#tableTestForm_params_columnName').clear();
-        await page.fill('#tableTestForm_params_columnName', 'new_column_name');
+        await page.locator('#testCaseFormV1_params_columnName').clear();
+        await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
 
         // Remove existing tag and add new one
-        await page.click(
-          `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
-        );
+        await page
+          .locator(
+            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
 
         await page.click('[data-testid="tags-selector"] input');
         const newTagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -281,18 +285,21 @@ test.describe(
         );
         await newTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one
-        await page.click(
-          `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
-        );
+        await page
+          .locator(
+            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const newGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -301,22 +308,21 @@ test.describe(
         await newGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
-        await toastNotification(page, 'Test case updated successfully.');
-        await page.waitForSelector('[data-testid="alert-bar"]', {
-          state: 'detached',
-        });
+        const updateSuccessMessage = 'Test case updated successfully.';
+        await toastNotification(page, updateSuccessMessage);
+        await waitForToastToDisappear(page, updateSuccessMessage);
 
         await page
           .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
@@ -328,10 +334,10 @@ test.describe(
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
         await testDefinitionResponse;
 
-        await page.waitForSelector('#tableTestForm_params_columnName');
+        await page.locator('#testCaseFormV1_params_columnName').waitFor();
 
         await expect(
-          page.locator('#tableTestForm_params_columnName')
+          page.locator('#testCaseFormV1_params_columnName')
         ).toHaveValue('new_column_name');
 
         await page.getByRole('button', { name: 'Cancel' }).click();
@@ -394,15 +400,18 @@ test.describe(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
         await page.click('[id="root\\/column"]');
-        await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         await page.fill(
-          '[data-testid="test-case-name"]',
+          '[data-testid="test-case-name"] input',
           NEW_COLUMN_TEST_CASE.name
         );
-        await page.click('[id="root\\/testType"]');
-        await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
+        await selectTestType(page, NEW_COLUMN_TEST_CASE.label);
         await page.fill(
           '#testCaseFormV1_params_minLength',
           NEW_COLUMN_TEST_CASE.min
@@ -419,7 +428,7 @@ test.describe(
         // Add tags to column test case
         await page.click('[data-testid="tags-selector"] input');
         const columnTagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -427,15 +436,15 @@ test.describe(
         );
         await columnTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
 
         // Add glossary terms to column test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -444,22 +453,15 @@ test.describe(
         await columnGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
 
-        await page.click('[data-testid="create-btn"]');
-        await toastNotification(page, 'Test case created successfully.');
+        await submitTestCaseForm(page);
 
-        await page.waitForSelector(
-          `[data-testid="${NEW_COLUMN_TEST_CASE.name}"]`
-        );
-
-        await expect(
-          page.locator(`[data-testid="${NEW_COLUMN_TEST_CASE.name}"]`)
-        ).toBeVisible();
+        await expect(page.getByTestId(NEW_COLUMN_TEST_CASE.name)).toBeVisible();
       });
 
       await test.step('Edit', async () => {
@@ -467,17 +469,20 @@ test.describe(
           .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
           .click();
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
-        await page.waitForSelector('#tableTestForm_params_minLength');
-        await page.locator('#tableTestForm_params_minLength').clear();
-        await page.fill('#tableTestForm_params_minLength', '4');
+        await page.locator('#testCaseFormV1_params_minLength').waitFor();
+        await page.locator('#testCaseFormV1_params_minLength').clear();
+        await page.fill('#testCaseFormV1_params_minLength', '4');
 
         // Remove existing tag and add new one for column test case
-        await page.click(
-          `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
-        );
+        await page
+          .locator(
+            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="tags-selector"] input');
         const columnNewTagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -485,18 +490,21 @@ test.describe(
         );
         await columnNewTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one for column test case
-        await page.click(
-          `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
-        );
+        await page
+          .locator(
+            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnNewGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -505,17 +513,17 @@ test.describe(
         await columnNewGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
         await toastNotification(page, 'Test case updated successfully.');
 
@@ -528,12 +536,10 @@ test.describe(
         );
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
         await testDefinitionResponse;
-        await page.waitForSelector('#tableTestForm_params_minLength');
-        const minLengthValue = await page
-          .locator('#tableTestForm_params_minLength')
-          .inputValue();
-
-        expect(minLengthValue).toBe('4');
+        await page.locator('#testCaseFormV1_params_minLength').waitFor();
+        await expect(
+          page.locator('#testCaseFormV1_params_minLength')
+        ).toHaveValue('4');
 
         await page.locator('button').getByText('Cancel').click();
       });
@@ -580,13 +586,13 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_0_value')
+          page.locator('#testCaseFormV1_params_allowedValues_0_value')
         ).toHaveValue('gmail');
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_1_value')
+          page.locator('#testCaseFormV1_params_allowedValues_1_value')
         ).toHaveValue('yahoo');
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_2_value')
+          page.locator('#testCaseFormV1_params_allowedValues_2_value')
         ).toHaveValue('collate');
       });
 
@@ -596,18 +602,25 @@ test.describe(
           'Table test case display name'
         );
 
-        await expect(page.locator('[id="root\\/selected-entity"]')).toHaveValue(
+        // In edit mode the immutable table / column / test-type fields are
+        // disabled react-aria comboboxes/selects: the prefilled value renders as
+        // a chip/label inside the field container (the underlying input is hidden
+        // and empty), so assert on the container text. The table chip shows the
+        // fully qualified name (which contains the table name) and the test-type
+        // chip shows the test definition name. The name field is a plain disabled
+        // text input, so its value is asserted directly.
+        await expect(page.getByTestId('selectedTable')).toContainText(
           table2.entityResponseData?.['name']
         );
-        await expect(page.locator('[id="root\\/column"]')).toHaveValue(
+        await expect(page.locator('[id="root\\/column"]')).toContainText(
           table2.entity?.columns[3].name
         );
         await expect(page.locator('[id="root\\/name"]')).toHaveValue(
           testCaseName
         );
-        await expect(
-          page.locator('[id="root\\/columnValuesToBeInSet"]')
-        ).toHaveValue('Column Values To Be In Set');
+        await expect(page.getByTestId('test-type')).toContainText(
+          'columnValuesToBeInSet'
+        );
 
         // Edit test case display name
         const updateTestCaseResponse = page.waitForResponse(
@@ -616,14 +629,14 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse1 = await updateTestCaseResponse;
         const body1 = await updateResponse1.request().postData();
 
         expect(body1).toEqual(
           JSON.stringify([
             {
-              op: 'add',
+              op: 'replace',
               path: '/displayName',
               value: 'Table test case display name',
             },
@@ -639,7 +652,7 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
         await testDefinitionResponse;
         await page
-          .getByTestId('edit-test-form')
+          .getByTestId('test-case-form-v1')
           .locator(descriptionBox)
           .fill('Test case description');
         const updateTestCaseResponse2 = page.waitForResponse(
@@ -648,7 +661,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse2 = await updateTestCaseResponse2;
         const body2 = await updateResponse2.request().postData();
 
@@ -671,16 +684,16 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
         await testDefinitionResponse3;
         await page
-          .locator('#tableTestForm_params_allowedValues_0_value')
+          .locator('#testCaseFormV1_params_allowedValues_0_value')
           .clear();
-        await page.fill('#tableTestForm_params_allowedValues_0_value', 'test');
+        await page.fill('#testCaseFormV1_params_allowedValues_0_value', 'test');
         const updateTestCaseResponse3 = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testCases/') &&
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse3 = await updateTestCaseResponse3;
         const body3 = await updateResponse3.request().postData();
 
@@ -706,21 +719,17 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
         );
         await page.fill(
-          '[data-testid="test-case-container"] [data-testid="searchbar"]',
+          '[data-testid="searchbar-component"] input',
           testCaseName
         );
         await searchTestCaseResponse;
-        await page.waitForSelector('.ant-spin', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toBeVisible();
+        await expect(page.getByTestId('form-heading')).toBeVisible();
 
         await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
@@ -729,13 +738,229 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', 'Updated display name');
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
           page.locator(`[data-testid="${testCaseName}"]`)
         ).toHaveText('Updated display name');
       });
+    });
+
+    test('shows exactly one banner for the latest test case run', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const lastRunTable = new TableClass();
+
+      try {
+        await lastRunTable.create(apiContext);
+        const testCase = await lastRunTable.createTestCase(apiContext, {
+          name: `last_run_banner_${uuid()}`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 1 },
+            { name: 'maxValue', value: 100 },
+          ],
+        });
+        const testCaseFqn = testCase['fullyQualifiedName'];
+        const testCaseDetailsPath = `/test-case/${encodeURIComponent(
+          testCaseFqn
+        )}/test-case-results`;
+        const banners = page.locator(
+          '[data-testid^="test-case-last-run-banner-"][role="status"]'
+        );
+        const waitForTestCaseDetails = () =>
+          page.waitForResponse((response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/name/')
+          );
+
+        await test.step('Show the no-run state before the first result', async () => {
+          const testCaseDetailsResponse = waitForTestCaseDetails();
+          await page.goto(testCaseDetailsPath);
+          await testCaseDetailsResponse;
+
+          const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
+
+          await expect(banners).toHaveCount(1);
+          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText(
+            'This test has not run yet. Add it to a pipeline to start collecting results.'
+          );
+          await expect(banner.getByTestId('test-case-next-run')).toHaveText(
+            /^Next · Not scheduled$/i
+          );
+        });
+
+        const runResults = [
+          {
+            bannerStatus: 'failed' as const,
+            result: 'Latest banner failed result',
+            testCaseStatus: 'Failed',
+            testResultValue: [],
+            timestamp: getCurrentMillis(),
+          },
+          {
+            bannerStatus: 'success' as const,
+            result: 'Latest banner success result',
+            testCaseStatus: 'Success',
+            testResultValue: [],
+            timestamp: getCurrentMillis() + 1_000,
+          },
+        ];
+
+        for (const [index, runResult] of runResults.entries()) {
+          await test.step(`Replace the banner with ${runResult.testCaseStatus}`, async () => {
+            const { bannerStatus, ...resultPayload } = runResult;
+            const resultResponse = await apiContext.post(
+              `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+                testCaseFqn
+              )}`,
+              { data: resultPayload }
+            );
+
+            expect(resultResponse.ok()).toBeTruthy();
+
+            const testCaseDetailsResponse = waitForTestCaseDetails();
+            await page.reload();
+            await testCaseDetailsResponse;
+
+            const banner = await verifyTestCaseLastRunBanner(
+              page,
+              bannerStatus
+            );
+
+            await expect(banners).toHaveCount(1);
+            await expect(banner).toContainText(
+              `Last Run ${runResult.testCaseStatus}`
+            );
+            await expect(banner).toContainText(runResult.result);
+
+            if (index === 0) {
+              await expect(banner).not.toContainText('Not run yet');
+            } else {
+              await expect(banner).not.toContainText(
+                runResults[index - 1].result
+              );
+            }
+          });
+        }
+      } finally {
+        await lastRunTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('shows every section for a scheduled failed test case run', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const failedRunTable = new TableClass();
+      const failureResult =
+        'Found 0 rows, but the scheduled test expected at least 1 row.';
+
+      try {
+        await failedRunTable.create(apiContext);
+        await failedRunTable.createTestSuiteAndPipelines(apiContext);
+
+        const testCase = await failedRunTable.createTestCase(apiContext, {
+          name: `complete_failed_run_banner_${uuid()}`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 1 },
+            { name: 'maxValue', value: 100 },
+          ],
+        });
+        const testCaseFqn = testCase['fullyQualifiedName'];
+        const failedTimestamp = getCurrentMillis();
+
+        await failedRunTable.addTestCaseResult(apiContext, testCaseFqn, {
+          result: failureResult,
+          testCaseStatus: 'Failed',
+          testResultValue: [
+            { name: 'minValue', predictedValue: '1', value: '0' },
+          ],
+          timestamp: failedTimestamp,
+        });
+        await waitForIncidentToBeIndexed(
+          apiContext,
+          testCaseFqn,
+          failedTimestamp
+        );
+
+        const testCaseDetailsResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/name/')
+        );
+        await page.goto(
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+        );
+        await testCaseDetailsResponse;
+
+        const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+
+        await expect(
+          page.locator(
+            '[data-testid^="test-case-last-run-banner-"][role="status"]'
+          )
+        ).toHaveCount(1);
+        await expect(
+          banner.getByTestId('test-case-last-run-icon')
+        ).toBeVisible();
+        await expect(
+          banner.getByTestId('test-case-last-run-prefix')
+        ).toHaveText('Last Run');
+        await expect(
+          banner.getByTestId('test-case-last-run-status')
+        ).toHaveText('Failed');
+        await expect(
+          banner.getByTestId('test-case-run-description')
+        ).toHaveText(failureResult);
+        await expect(
+          banner.getByTestId('test-case-result-expected')
+        ).toContainText('Result / Expected');
+        await expect(banner.getByTestId('test-case-result-value')).toHaveText(
+          '0 / 1'
+        );
+        await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
+          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+        );
+        await expect(banner.getByTestId('test-case-next-run')).toContainText(
+          'Next · in '
+        );
+        await expect(
+          banner.getByTestId('test-case-next-run')
+        ).not.toContainText('Not scheduled');
+
+        const incident = banner.getByTestId('test-case-last-run-incident');
+
+        await expect(incident).toBeVisible();
+        await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
+          /INC.*\d,/
+        );
+        await expect(
+          incident.getByTestId('test-case-incident-description')
+        ).toContainText('Request TestCase Failure Resolution for');
+        await expect(
+          incident.getByTestId('test-case-incident-description')
+        ).toContainText(testCase.name);
+        await expect(
+          incident.getByTestId('test-case-incident-status')
+        ).toHaveText('New');
+
+        const viewIncidentButton = incident.getByTestId('view-incident-button');
+
+        await expect(viewIncidentButton).toHaveText('View Incident');
+        await viewIncidentButton.click();
+        await expect(page).toHaveURL(/\/issues$/);
+        await expect(page.getByTestId('issue-tab-container')).toBeVisible();
+      } finally {
+        await failedRunTable.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('TestCase filters', async ({ page }) => {
@@ -855,9 +1080,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // get all the filters
         await page.click('[data-testid="advanced-filter"]');
@@ -875,10 +1098,10 @@ test.describe(
             url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
             url.url().includes(testCases[0])
         );
-        await page.fill(
-          '[data-testid="test-case-container"] [data-testid="searchbar"]',
-          testCases[0]
-        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill(testCases[0]);
         await searchTestCaseResponse;
 
         await expect(
@@ -889,12 +1112,43 @@ test.describe(
         const getTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.locator('.ant-input-clear-icon').click();
+        await page.getByTestId('searchbar-component').locator('input').clear();
         await getTestCaseResponse;
+
+        // A pasted URL is full of Lucene reserved characters. The server parses `q` as literal
+        // text, so it must answer 200 where a query_string returned a 500 query_shard_exception.
+        // This is the only test covering the UI and the server composing on a real stack.
+        const pastedUrl = 'https://localhost:8585/table/orders';
+        const reservedCharSearchResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/search/list') &&
+            response.url().includes('8585')
+        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill(pastedUrl);
+        const reservedCharSearch = await reservedCharSearchResponse;
+
+        // The term must reach the API verbatim: the UI no longer escapes or wraps it, so any
+        // reintroduced client-side escaping fails here rather than silently changing the query.
+        expect(decodeURIComponent(reservedCharSearch.url())).toContain(
+          pastedUrl
+        );
+        expect(reservedCharSearch.status()).toBe(200);
+
+        // clear the reserved-character search
+        const clearReservedCharSearch = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.getByTestId('searchbar-component').locator('input').clear();
+        await clearReservedCharSearch;
 
         // Test case filter by service name
         const serviceResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*index=database_service_search_index*'
+          '/api/v1/search/query?q=*index=databaseService*'
         );
         await page.fill('#serviceName', filterTable1.service.name);
         await serviceResponse;
@@ -923,7 +1177,7 @@ test.describe(
 
         // Test case filter by Tags
         const tagResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*index=tag_search_index*'
+          '/api/v1/search/query?q=*index=tag*'
         );
         await page
           .getByTestId('tags-select-filter')
@@ -978,7 +1232,7 @@ test.describe(
 
         // Test case filter by table name
         const tableSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=table_search_index*`
+          `/api/v1/search/query?q=*index=table*`
         );
         await page.fill('#tableFqn', filterTable1.entity.name);
         await tableSearchResponse;
@@ -1000,11 +1254,11 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('Column').click();
+        await page.getByTitle('Column', { exact: true }).click();
         await testCaseTypeByColumn;
 
         await expect(
-          page.locator('[data-testid="search-error-placeholder"]')
+          page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
         // Test case filter by test type table
@@ -1032,24 +1286,43 @@ test.describe(
         await testCaseTypeByAll;
 
         // Test case filter by status
-        const testCaseStatusBySuccess = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*`
-        );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Success').click();
+        const testCaseStatusBySuccess = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+            url.searchParams.get('testCaseStatus') === 'Success'
+          );
+        });
+        const statusFilter = page.getByTestId('status-select-filter');
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Success', { exact: true })
+          .click();
         await testCaseStatusBySuccess;
 
         await expect(
-          page.locator('[data-testid="search-error-placeholder"]')
+          page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
-        // Test case filter by status
-        const testCaseStatusByFailed = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*`
+        // Adding Failed must retain Success because selected statuses are combined with OR.
+        const testCaseStatusesBySuccessAndFailed = page.waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+              url.searchParams.get('testCaseStatus') === 'Success,Failed'
+            );
+          }
         );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Failed').click();
-        await testCaseStatusByFailed;
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Failed', { exact: true })
+          .click();
+        await testCaseStatusesBySuccessAndFailed;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
@@ -1062,7 +1335,7 @@ test.describe(
         await testCasePlatformByDBT;
 
         await expect(
-          page.locator('[data-testid="search-error-placeholder"]')
+          page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
         const getTestCaseWithoutPlatform = page.waitForResponse(
@@ -1085,11 +1358,10 @@ test.describe(
         const url = page.url();
         await page.reload();
 
-        await expect(page.url()).toBe(url);
+        expect(page.url()).toBe(url);
 
         await page.getByTestId('advanced-filter').click();
         await page.click('[value="testPlatforms"]');
-        await page.waitForTimeout(200);
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1103,7 +1375,7 @@ test.describe(
         await page.getByTestId('domain-dropdown').click();
 
         // Wait for the domain select dropdown to be visible
-        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'visible',
         });
 
@@ -1111,7 +1383,7 @@ test.describe(
         const domainSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*${encodeURIComponent(
             domain.responseData.name
-          )}*&index=domain_search_index*`
+          )}*&index=domain*`
         );
 
         await page
@@ -1128,9 +1400,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
         await visitDataQualityTab(page, filterTable1);
@@ -1188,9 +1458,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
         await page.click('[data-testid="test-cases"]');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await test.step('Verify pagination controls are visible', async () => {
           await expect(
@@ -1240,23 +1508,192 @@ test.describe(
         });
 
         await test.step('Test page size dropdown', async () => {
-          await expect(
-            page.locator('[data-testid="page-size-selection-dropdown"]')
-          ).toBeVisible();
+          const pageSizeDropdown = page.getByTestId(
+            'page-size-selection-dropdown'
+          );
+          const pageSizeMenu = page.locator(
+            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
+          );
 
-          await page.click('[data-testid="page-size-selection-dropdown"]');
-
-          // Wait for dropdown menu to be visible
-          await page.waitForSelector('.ant-dropdown-menu', {
-            state: 'visible',
-            timeout: 5000,
-          });
-
-          // Verify dropdown options are visible
-          await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
+          await expect(pageSizeDropdown).toBeVisible();
+          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
+          // button only runs its preventDefault handler and may not open the menu.
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
         await paginationTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Editing display name does not emit a phantom tags patch op', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const phantomTagsTable = new TableClass();
+
+      try {
+        await phantomTagsTable.create(apiContext);
+        await phantomTagsTable.createTestCase(apiContext, {
+          name: `phantom_tags_test_case_${uuid()}`,
+          entityLink: `<#E::table::${phantomTagsTable.entityResponseData?.['fullyQualifiedName']}::columns::${phantomTagsTable.entity?.columns[3].name}>`,
+          parameterValues: [
+            { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
+          ],
+          testDefinition: 'columnValuesToBeInSet',
+        });
+
+        const testCaseName =
+          phantomTagsTable.testCasesResponseData[0]?.['name'];
+
+        // Drop `tags` from the list response to mimic the search-backed
+        // listing that omits relationship fields, reproducing the regression.
+        await page.route(
+          /dataQuality\/testCases\/search\/list/,
+          async (route) => {
+            const response = await route.fetch();
+            const json = await response.json();
+            json.data = (json.data ?? []).map(
+              (item: Record<string, unknown>) => {
+                const strippedItem = { ...item };
+                delete strippedItem.tags;
+
+                return strippedItem;
+              }
+            );
+            await route.fulfill({ json, response });
+          }
+        );
+
+        await visitDataQualityTab(page, phantomTagsTable);
+
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toBeVisible();
+
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
+
+        await page.fill(
+          '[id="root\\/displayName"]',
+          'Phantom tags display name'
+        );
+
+        const updateResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('create-btn').click();
+        const patchRequest = await updateResponse;
+        const patchBody = JSON.parse(
+          (await patchRequest.request().postData()) ?? '[]'
+        );
+
+        expect(
+          patchBody.some((op: { path: string }) => op.path === '/tags')
+        ).toBe(false);
+        expect(patchBody).toContainEqual({
+          op: 'replace',
+          path: '/displayName',
+          value: 'Phantom tags display name',
+        });
+      } finally {
+        await phantomTagsTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Test result tooltip stays fixed while the pointer enters its incident link', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const tooltipTable = new TableClass();
+
+      try {
+        await tooltipTable.create(apiContext);
+        const testCase = await tooltipTable.createTestCase(apiContext);
+        const testCaseFqn = testCase.fullyQualifiedName as string;
+        const failedAt = Date.now();
+
+        await tooltipTable.addTestCaseResult(apiContext, testCaseFqn, {
+          result: 'Row count was outside the expected range.',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '10' }],
+          timestamp: failedAt,
+        });
+        await waitForIncidentToBeIndexed(apiContext, testCaseFqn, failedAt);
+
+        const detailsResponse = waitForTestCaseDetailsResponse(page);
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/testCaseResults/') &&
+            response.status() === 200
+        );
+
+        await page.goto(
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+        );
+        await Promise.all([detailsResponse, resultsResponse]);
+        await waitForAllLoadersToDisappear(page);
+
+        const point = page
+          .locator('[data-testid^="test-summary-point-"]')
+          .first();
+        const tooltip = page.getByTestId('test-summary-tooltip');
+
+        await expect(point).toBeVisible();
+        await point.scrollIntoViewIfNeeded();
+        const pointBox = await point.boundingBox();
+
+        if (!pointBox) {
+          throw new Error(
+            'Expected the test result point to have a bounding box'
+          );
+        }
+
+        // A nearby chart position must not inherit the dot's tooltip activation.
+        await page.mouse.move(
+          pointBox.x + pointBox.width + 3,
+          pointBox.y + pointBox.height / 2
+        );
+        await expect(tooltip).toBeHidden();
+
+        await point.hover();
+        await expect(tooltip).toBeVisible();
+
+        const incidentLink = tooltip.locator('a.tooltip-incident-link');
+
+        await expect(incidentLink).toBeVisible();
+        // Recharts used to move the tooltip during this browser-level pointer
+        // transition, preventing Playwright (and users) from reaching the link.
+        await incidentLink.hover();
+        await expect(incidentLink).toBeVisible();
+        await expect
+          .poll(() =>
+            incidentLink.evaluate((element) => element.matches(':hover'))
+          )
+          .toBe(true);
+
+        const incidentHref = await incidentLink.getAttribute('href');
+
+        if (!incidentHref) {
+          throw new Error('Expected the incident link to have a destination');
+        }
+
+        await Promise.all([
+          page.waitForURL((url) => url.pathname === incidentHref),
+          incidentLink.click(),
+        ]);
+      } finally {
+        await tooltipTable.delete(apiContext);
         await afterAction();
       }
     });

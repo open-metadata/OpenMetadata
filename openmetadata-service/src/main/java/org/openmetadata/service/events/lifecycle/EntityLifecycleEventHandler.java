@@ -13,10 +13,13 @@
 
 package org.openmetadata.service.events.lifecycle;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -25,6 +28,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * This allows for extensible behavior without modifying core repository logic.
  */
 public interface EntityLifecycleEventHandler {
+
+  /**
+   * Returns whether this handler needs the event. The dispatcher evaluates this before creating an
+   * asynchronous entity snapshot.
+   */
+  default boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+    return true;
+  }
 
   /**
    * Called after an entity is successfully created.
@@ -39,6 +50,41 @@ public interface EntityLifecycleEventHandler {
   default void onEntityUpdated(
       EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
     // Default empty implementation
+  }
+
+  default void onEntityUpdated(
+      EntityInterface entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext,
+      EntityUpdateContext updateContext) {
+    onEntityUpdated(entity, changeDescription, subjectContext);
+  }
+
+  /**
+   * Called after multiple entities are updated. Default implementation delegates to
+   * the single-entity onEntityUpdated for backward compatibility.
+   */
+  default void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    for (EntityInterface entity : entities) {
+      onEntityUpdated(
+          entity,
+          entity.getChangeDescription() != null ? entity.getChangeDescription() : changeDescription,
+          subjectContext);
+    }
+  }
+
+  default void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext,
+      EntityUpdateContext updateContext) {
+    onEntitiesUpdated(entities, changeDescription, subjectContext);
   }
 
   /**
@@ -109,7 +155,7 @@ public interface EntityLifecycleEventHandler {
    *
    * @return Set of entity types to handle, or empty for all types
    */
-  default java.util.Set<String> getSupportedEntityTypes() {
-    return java.util.Collections.emptySet();
+  default Set<String> getSupportedEntityTypes() {
+    return Collections.emptySet();
   }
 }

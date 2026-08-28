@@ -12,11 +12,12 @@
 Register error handlers
 """
 
+from werkzeug.exceptions import HTTPException
+
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import MissingArgException
 from openmetadata_managed_apis.utils.logger import api_logger
-from werkzeug.exceptions import HTTPException
 
 logger = api_logger()
 

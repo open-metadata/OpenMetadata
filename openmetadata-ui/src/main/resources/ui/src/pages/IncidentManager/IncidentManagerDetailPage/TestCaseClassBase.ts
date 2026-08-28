@@ -10,25 +10,65 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactElement } from 'react';
+import { FieldProp } from '@openmetadata/ui-core-components';
+import { lazy, ReactNode } from 'react';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
 import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import DimensionalityTab from '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab';
-import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
-import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
-import { FieldProp } from '../../../interface/FormUtils.interface';
-import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { TestCasePageTabs } from '../IncidentManager.interface';
+const DimensionalityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab'
+      )
+  )
+);
+const SqlQueryTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component'
+      )
+  )
+);
+const TestCaseIncidentTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component'
+      )
+  )
+);
+const TestCaseResultTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component'
+      )
+  )
+);
+
+export interface TestCaseTabProps {
+  /** Tags/Glossary rail visibility — consumed only by the results tab. */
+  showSidePanel?: boolean;
+  /**
+   * Chrome the params edit opens in: 'drawer' (OSS incident/detail page) or
+   * 'modal' (AskCollate AI renderer). Consumed only by the results tab.
+   */
+  editVariant?: 'drawer' | 'modal';
+}
 
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;
-  Tab: () => ReactElement;
+  Tab: (props: TestCaseTabProps) => ReactNode;
   key: TestCasePageTabs;
   isBeta?: boolean;
 }
@@ -45,7 +85,7 @@ class TestCaseClassBase {
     isVersionPage: boolean,
     showDimensionalityTab = false
   ): TestCaseTabType[] {
-    return [
+    const [firstTab, ...rest] = [
       {
         LabelComponent: TabsLabel,
         labelProps: {
@@ -84,6 +124,24 @@ class TestCaseClassBase {
             },
           ]),
     ];
+
+    return [
+      firstTab,
+      ...(this.showSqlQueryTab
+        ? [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'sql-query',
+                name: i18n.t('label.sql-uppercase-query'),
+              },
+              Tab: SqlQueryTab,
+              key: TestCasePageTabs.SQL_QUERY,
+            },
+          ]
+        : []),
+      ...rest,
+    ];
   }
 
   setShowSqlQueryTab(showSqlQueryTab: boolean) {
@@ -93,11 +151,16 @@ class TestCaseClassBase {
   public getFields(): string[] {
     return [
       TabSpecificField.TESTSUITE,
+      TabSpecificField.TEST_SUITES,
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
       TabSpecificField.TAGS,
+      TabSpecificField.DATA_PRODUCTS,
+      TabSpecificField.DOMAINS,
+      'inspectionQuery',
     ];
   }
 

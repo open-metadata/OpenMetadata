@@ -1,8 +1,10 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 
 @Slf4j
 public class StatsReconciler {
@@ -28,20 +30,30 @@ public class StatsReconciler {
     int readerFailed = safeGet(readerStats.getFailedRecords());
     int readerWarnings = safeGet(readerStats.getWarningRecords());
     int processFailed = processStats != null ? safeGet(processStats.getFailedRecords()) : 0;
+    int processWarnings = processStats != null ? safeGet(processStats.getWarningRecords()) : 0;
     int sinkSuccess = safeGet(sinkStats.getSuccessRecords());
     int sinkFailed = safeGet(sinkStats.getFailedRecords());
     int sinkWarnings = safeGet(sinkStats.getWarningRecords());
+    int jobWarnings = Math.max(readerWarnings, Math.max(processWarnings, sinkWarnings));
 
-    // Reconcile entity-level totals
+    // Reconcile entity-level totals (exclude TABLE_COLUMN — columns are indexed as a
+    // side effect of table processing and should not inflate the job-level totals)
     if (stats.getEntityStats() != null
         && stats.getEntityStats().getAdditionalProperties() != null) {
       int reconciledTotal = 0;
-      for (StepStats es : stats.getEntityStats().getAdditionalProperties().values()) {
-        int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
+      for (Map.Entry<String, StepStats> entry :
+          stats.getEntityStats().getAdditionalProperties().entrySet()) {
+        StepStats es = entry.getValue();
+        int actual =
+            safeGet(es.getSuccessRecords())
+                + safeGet(es.getFailedRecords())
+                + safeGet(es.getWarningRecords());
         if (actual > safeGet(es.getTotalRecords())) {
           es.setTotalRecords(actual);
         }
-        reconciledTotal += safeGet(es.getTotalRecords());
+        if (!Entity.TABLE_COLUMN.equals(entry.getKey())) {
+          reconciledTotal += safeGet(es.getTotalRecords());
+        }
       }
       if (reconciledTotal > readerTotal) {
         readerStats.setTotalRecords(reconciledTotal);
@@ -49,20 +61,18 @@ public class StatsReconciler {
       }
     }
 
-    int jobSuccess = sinkSuccess;
     int jobFailed = readerFailed + processFailed + sinkFailed;
     int jobTotal = readerTotal;
-    int jobWarnings = readerWarnings;
 
     jobStats.setTotalRecords(jobTotal);
-    jobStats.setSuccessRecords(jobSuccess);
+    jobStats.setSuccessRecords(sinkSuccess);
     jobStats.setFailedRecords(jobFailed);
     jobStats.setWarningRecords(jobWarnings);
 
-    int computedTotal = jobSuccess + jobFailed;
+    int computedTotal = sinkSuccess + jobFailed + jobWarnings;
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
-          "Stats discrepancy detected: total={}, success+failed={}. "
+          "Stats discrepancy detected: total={}, success+failed+warnings={}. "
               + "Reader: total={}, failed={}, warnings={}. Process: failed={}. Sink: success={}, failed={}, warnings={}",
           jobTotal,
           computedTotal,
@@ -92,14 +102,17 @@ public class StatsReconciler {
     int readerFailed = readerStats != null ? safeGet(readerStats.getFailedRecords()) : 0;
     int readerWarnings = readerStats != null ? safeGet(readerStats.getWarningRecords()) : 0;
     int processFailed = processStats != null ? safeGet(processStats.getFailedRecords()) : 0;
+    int processWarnings = processStats != null ? safeGet(processStats.getWarningRecords()) : 0;
     int sinkSuccess = sinkStats != null ? safeGet(sinkStats.getSuccessRecords()) : 0;
     int sinkFailed = sinkStats != null ? safeGet(sinkStats.getFailedRecords()) : 0;
+    int sinkWarnings = sinkStats != null ? safeGet(sinkStats.getWarningRecords()) : 0;
+    int jobWarnings = Math.max(readerWarnings, Math.max(processWarnings, sinkWarnings));
 
     return new StepStats()
         .withTotalRecords(readerTotal)
         .withSuccessRecords(sinkSuccess)
         .withFailedRecords(readerFailed + processFailed + sinkFailed)
-        .withWarningRecords(readerWarnings);
+        .withWarningRecords(jobWarnings);
   }
 
   public static boolean validateInvariants(Stats stats) {
@@ -115,24 +128,28 @@ public class StatsReconciler {
     int total = safeGet(jobStats.getTotalRecords());
     int success = safeGet(jobStats.getSuccessRecords());
     int failed = safeGet(jobStats.getFailedRecords());
+    int warnings = safeGet(jobStats.getWarningRecords());
 
-    boolean balanced = (total == success + failed);
+    boolean balanced = (total == success + failed + warnings);
     boolean successValid = success <= total;
     boolean failedValid = failed <= total;
+    boolean warningsValid = warnings <= total;
 
-    if (!balanced || !successValid || !failedValid) {
+    if (!balanced || !successValid || !failedValid || !warningsValid) {
       LOG.warn(
-          "Stats invariant violation: total={}, success={}, failed={}, "
-              + "balanced={}, successValid={}, failedValid={}",
+          "Stats invariant violation: total={}, success={}, failed={}, warnings={}, "
+              + "balanced={}, successValid={}, failedValid={}, warningsValid={}",
           total,
           success,
           failed,
+          warnings,
           balanced,
           successValid,
-          failedValid);
+          failedValid,
+          warningsValid);
     }
 
-    return balanced && successValid && failedValid;
+    return balanced && successValid && failedValid && warningsValid;
   }
 
   public static Stats fixInvariants(Stats stats) {
@@ -143,15 +160,17 @@ public class StatsReconciler {
     StepStats jobStats = stats.getJobStats();
     int success = safeGet(jobStats.getSuccessRecords());
     int failed = safeGet(jobStats.getFailedRecords());
+    int warnings = safeGet(jobStats.getWarningRecords());
 
-    int computedTotal = success + failed;
+    int computedTotal = success + failed + warnings;
     if (safeGet(jobStats.getTotalRecords()) != computedTotal) {
       LOG.info(
-          "Fixing stats total: was {}, setting to {} (success={}, failed={})",
+          "Fixing stats total: was {}, setting to {} (success={}, failed={}, warnings={})",
           jobStats.getTotalRecords(),
           computedTotal,
           success,
-          failed);
+          failed,
+          warnings);
       jobStats.setTotalRecords(computedTotal);
     }
 

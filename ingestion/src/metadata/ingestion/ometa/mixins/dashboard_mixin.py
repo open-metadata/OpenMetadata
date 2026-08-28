@@ -31,9 +31,7 @@ class OMetaDashboardMixin:
 
     client: REST
 
-    def publish_dashboard_usage(
-        self, dashboard: Dashboard, dashboard_usage_request: UsageRequest
-    ) -> None:
+    def publish_dashboard_usage(self, dashboard: Dashboard, dashboard_usage_request: UsageRequest) -> None:
         """
         POST usage details for a Dashboard
 

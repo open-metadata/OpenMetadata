@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +70,7 @@ public class FileRepository extends EntityRepository<File> {
   public static final String FILE_SAMPLE_DATA_EXTENSION = "file.sampleData";
   static final String PATCH_FIELDS = "columns";
   static final String UPDATE_FIELDS = "columns";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
 
   public FileRepository() {
     super(
@@ -76,8 +79,14 @@ public class FileRepository extends EntityRepository<File> {
         File.class,
         Entity.getCollectionDAO().fileDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -93,6 +102,10 @@ public class FileRepository extends EntityRepository<File> {
       file.setFullyQualifiedName(
           FullyQualifiedName.add(service.getFullyQualifiedName(), file.getName()));
     }
+    // Columns need their FQN set on the write path too, not only when read back in setFields:
+    // the update path compares columns by FQN, and a null one NPEs on every re-ingestion.
+    // listOrEmpty because non-tabular files (images, PDFs, ...) carry no columns.
+    ColumnUtil.setColumnFQN(file.getFullyQualifiedName(), listOrEmpty(file.getColumns()));
   }
 
   @Override
@@ -409,7 +422,7 @@ public class FileRepository extends EntityRepository<File> {
                   List.of(
                       Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 14))
+          .withDomains(getDomains(printer, csvRecord, 14, newFile.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 15));
       if (processRecord) {
         createEntity(printer, csvRecord, newFile, FILE);
@@ -449,7 +462,7 @@ public class FileRepository extends EntityRepository<File> {
     }
 
     private List<EntityReference> getDataProducts(
-        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
       String dataProductsStr = csvRecord.get(fieldNumber);
       if (nullOrEmpty(dataProductsStr)) {
         return null;
@@ -479,60 +492,41 @@ public class FileRepository extends EntityRepository<File> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "fileType",
-          () -> {
-            recordChange("fileType", original.getFileType(), updated.getFileType());
-          });
+          () -> recordChange("fileType", original.getFileType(), updated.getFileType()));
       compareAndUpdate(
           "mimeType",
-          () -> {
-            recordChange("mimeType", original.getMimeType(), updated.getMimeType());
-          });
+          () -> recordChange("mimeType", original.getMimeType(), updated.getMimeType()));
       compareAndUpdate(
           "fileExtension",
-          () -> {
-            recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
-          });
-      compareAndUpdate(
-          "path",
-          () -> {
-            recordChange("path", original.getPath(), updated.getPath());
-          });
-      compareAndUpdate(
-          "size",
-          () -> {
-            recordChange("size", original.getSize(), updated.getSize());
-          });
+          () ->
+              recordChange(
+                  "fileExtension", original.getFileExtension(), updated.getFileExtension()));
+      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
+      compareAndUpdate("size", () -> recordChange("size", original.getSize(), updated.getSize()));
       compareAndUpdate(
           "checksum",
-          () -> {
-            recordChange("checksum", original.getChecksum(), updated.getChecksum());
-          });
+          () -> recordChange("checksum", original.getChecksum(), updated.getChecksum()));
       compareAndUpdate(
           "webViewLink",
-          () -> {
-            recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink());
-          });
+          () -> recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink()));
       compareAndUpdate(
           "downloadLink",
-          () -> {
-            recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink());
-          });
+          () ->
+              recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink()));
       compareAndUpdate(
           "isShared",
-          () -> {
-            recordChange("isShared", original.getIsShared(), updated.getIsShared());
-          });
+          () -> recordChange("isShared", original.getIsShared(), updated.getIsShared()));
       compareAndUpdate(
           "fileVersion",
-          () -> {
-            recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
-          });
+          () -> recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion()));
       compareAndUpdate(
           "columns",
-          () -> {
-            updateColumns(
-                COLUMN_FIELD, original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
-          });
+          () ->
+              updateColumns(
+                  COLUMN_FIELD,
+                  original.getColumns(),
+                  updated.getColumns(),
+                  EntityUtil.columnMatch));
     }
   }
 }

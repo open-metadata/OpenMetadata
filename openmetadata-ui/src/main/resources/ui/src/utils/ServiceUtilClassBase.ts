@@ -11,117 +11,20 @@
  *  limitations under the License.
  */
 
-import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, isEmpty, toLower } from 'lodash';
+import { ObjectFieldTemplatePropertyType, RJSFSchema } from '@rjsf/utils';
+import { MenuProps } from 'antd';
+import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import type { ComponentType } from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
+import ChartIcon from '../assets/svg/chart.svg';
+import KnowledgeCenterIcon from '../assets/svg/context-center.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
+import QuickLinkIcon from '../assets/svg/ic-quick-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
-import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
-import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
-import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
-import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
-import {
-  AIRBYTE,
-  AIRFLOW,
-  ALATIONSINK,
-  AMAZON_S3,
-  AMUNDSEN,
-  ATHENA,
-  ATLAS,
-  AZURESQL,
-  BIGQUERY,
-  BIGTABLE,
-  BURSTIQ,
-  CASSANDRA,
-  CLICKHOUSE,
-  COCKROACH,
-  COUCHBASE,
-  CUSTOM_DRIVE_DEFAULT,
-  CUSTOM_SEARCH_DEFAULT,
-  CUSTOM_STORAGE_DEFAULT,
-  DAGSTER,
-  DASHBOARD_DEFAULT,
-  DATABASE_DEFAULT,
-  DATABRICK,
-  DATALAKE,
-  DBT,
-  DEFAULT_SERVICE,
-  DELTALAKE,
-  DOMO,
-  DORIS,
-  DRUID,
-  DYNAMODB,
-  ELASTIC_SEARCH,
-  EXASOL,
-  FIVETRAN,
-  FLINK,
-  GCS,
-  GLUE,
-  GOOGLE_DRIVE,
-  GRAFANA,
-  GREENPLUM,
-  HEX,
-  HIVE,
-  IBMDB2,
-  ICEBERGE,
-  IMPALA,
-  KAFKA,
-  KINESIS,
-  LIGHT_DASH,
-  LOGO,
-  LOOKER,
-  MARIADB,
-  METABASE,
-  MICROSTRATEGY,
-  MLFLOW,
-  ML_MODEL_DEFAULT,
-  MODE,
-  MONGODB,
-  MSSQL,
-  MYSQL,
-  NIFI,
-  OPENLINEAGE,
-  OPEN_SEARCH,
-  ORACLE,
-  PINOT,
-  PIPELINE_DEFAULT,
-  POSTGRES,
-  POWERBI,
-  PRESTO,
-  QLIK_SENSE,
-  QUICKSIGHT,
-  REDASH,
-  REDPANDA,
-  REDSHIFT,
-  REST_SERVICE,
-  SAGEMAKER,
-  SALESFORCE,
-  SAP_ERP,
-  SAP_HANA,
-  SAS,
-  SCIKIT,
-  SFTP,
-  SIGMA,
-  SINGLESTORE,
-  SNOWFLAKE,
-  SPARK,
-  SPLINE,
-  SQLITE,
-  STARROCKS,
-  SUPERSET,
-  SYNAPSE,
-  TABLEAU,
-  TERADATA,
-  TIMESCALE,
-  TOPIC_DEFAULT,
-  TRINO,
-  UNITYCATALOG,
-  VERTICA,
-} from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -135,9 +38,14 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
+import {
+  Connection as ConfigObject,
+  WorkflowType,
+} from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -149,24 +57,32 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { EntityReference } from '../generated/entity/type';
+import { PageType } from '../interface/knowledge-center.interface';
+import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
   ConfigData,
   ExtraInfoType,
   ServicesType,
 } from '../interface/service.interface';
-import { getAPIConfig } from './APIServiceUtils';
-import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServiceUtils';
-import { getDriveConfig } from './DriveServiceUtils';
-import { getMessagingConfig } from './MessagingServiceUtils';
-import { getMetadataConfig } from './MetadataServiceUtils';
-import { getMlmodelConfig } from './MlmodelServiceUtils';
-import { getPipelineConfig } from './PipelineServiceUtils';
-import { getSearchServiceConfig } from './SearchServiceUtils';
-import { getSecurityConfig } from './SecurityServiceUtils';
-import { getSearchIndexFromService } from './ServiceUtils';
-import { getStorageConfig } from './StorageServiceUtils';
-import { customServiceComparator } from './StringsUtils';
+import { getServiceIcon } from './ServiceIconUtils';
+import { getDefaultInsightsTabWidgets } from './ServiceInsightsWidgets';
+import {
+  getSearchIndexFromService,
+  getTestConnectionName,
+} from './ServicePureUtils';
+import { customServiceComparator } from './StringUtils';
+
+type ServiceLogoStyle = {
+  iconURL?: string;
+};
+
+type ServiceLogoSource = {
+  serviceType?: string;
+  entityType?: string;
+  style?: ServiceLogoStyle;
+  service?: Partial<EntityReference> & { style?: ServiceLogoStyle };
+};
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -188,7 +104,6 @@ class ServiceUtilClassBase {
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
     PipelineServiceType.Snowplow,
-    DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.Informix,
     DatabaseServiceType.ServiceNow,
@@ -197,6 +112,11 @@ class ServiceUtilClassBase {
     PipelineServiceType.Mulesoft,
     DatabaseServiceType.MicrosoftFabric,
     PipelineServiceType.MicrosoftFabricPipeline,
+    DatabaseServiceType.MicrosoftAccess,
+    DashboardServiceType.SapS4Hana,
+    DatabaseServiceType.SapSuccessFactors,
+    DatabaseServiceType.SapBw4Hana,
+    PipelineServiceType.SapBw4HanaPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -319,6 +239,13 @@ class ServiceUtilClassBase {
     return null;
   }
 
+  public validateSecretPrefixFields(
+    _schema: RJSFSchema,
+    _formData: Record<string, unknown>
+  ): { path: (string | number)[]; message: string }[] {
+    return [];
+  }
+
   public getSupportedServiceFromList() {
     return {
       databaseServices: this.filterUnsupportedServiceType(
@@ -405,346 +332,68 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  public getServiceLogo(type: string): string {
+  private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
-    switch (toLower(type)) {
-      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
-        return DATABASE_DEFAULT;
-      case this.DatabaseServiceTypeSmallCase.Mysql:
-        return MYSQL;
 
-      case this.DatabaseServiceTypeSmallCase.Redshift:
-        return REDSHIFT;
-
-      case this.DatabaseServiceTypeSmallCase.BigQuery:
-        return BIGQUERY;
-
-      case this.DatabaseServiceTypeSmallCase.BigTable:
-        return BIGTABLE;
-
-      case this.DatabaseServiceTypeSmallCase.Hive:
-        return HIVE;
-
-      case this.DatabaseServiceTypeSmallCase.Impala:
-        return IMPALA;
-
-      case this.DatabaseServiceTypeSmallCase.Postgres:
-        return POSTGRES;
-
-      case this.DatabaseServiceTypeSmallCase.Oracle:
-        return ORACLE;
-
-      case this.DatabaseServiceTypeSmallCase.Snowflake:
-        return SNOWFLAKE;
-
-      case this.DatabaseServiceTypeSmallCase.Mssql:
-        return MSSQL;
-
-      case this.DatabaseServiceTypeSmallCase.Athena:
-        return ATHENA;
-
-      case this.DatabaseServiceTypeSmallCase.Presto:
-        return PRESTO;
-
-      case this.DatabaseServiceTypeSmallCase.Trino:
-        return TRINO;
-
-      case this.DatabaseServiceTypeSmallCase.Glue:
-        return GLUE;
-
-      case this.DatabaseServiceTypeSmallCase.DomoDatabase:
-        return DOMO;
-
-      case this.DatabaseServiceTypeSmallCase.MariaDB:
-        return MARIADB;
-
-      case this.DatabaseServiceTypeSmallCase.Vertica:
-        return VERTICA;
-
-      case this.DatabaseServiceTypeSmallCase.AzureSQL:
-        return AZURESQL;
-
-      case this.DatabaseServiceTypeSmallCase.Clickhouse:
-        return CLICKHOUSE;
-
-      case this.DatabaseServiceTypeSmallCase.Databricks:
-        return DATABRICK;
-
-      case this.DatabaseServiceTypeSmallCase.UnityCatalog:
-        return UNITYCATALOG;
-
-      case this.DatabaseServiceTypeSmallCase.Db2:
-        return IBMDB2;
-
-      case this.DatabaseServiceTypeSmallCase.Doris:
-        return DORIS;
-
-      case this.DatabaseServiceTypeSmallCase.StarRocks:
-        return STARROCKS;
-
-      case this.DatabaseServiceTypeSmallCase.Druid:
-        return DRUID;
-
-      case this.DatabaseServiceTypeSmallCase.DynamoDB:
-        return DYNAMODB;
-
-      case this.DatabaseServiceTypeSmallCase.Exasol:
-        return EXASOL;
-
-      case this.DatabaseServiceTypeSmallCase.SingleStore:
-        return SINGLESTORE;
-
-      case this.DatabaseServiceTypeSmallCase.SQLite:
-        return SQLITE;
-
-      case this.DatabaseServiceTypeSmallCase.Salesforce:
-        return SALESFORCE;
-
-      case this.DatabaseServiceTypeSmallCase.SapHana:
-        return SAP_HANA;
-
-      case this.DatabaseServiceTypeSmallCase.SapERP:
-        return SAP_ERP;
-
-      case this.DatabaseServiceTypeSmallCase.DeltaLake:
-        return DELTALAKE;
-
-      case this.DatabaseServiceTypeSmallCase.PinotDB:
-        return PINOT;
-
-      case this.DatabaseServiceTypeSmallCase.Datalake:
-        return DATALAKE;
-
-      case this.DatabaseServiceTypeSmallCase.MongoDB:
-        return MONGODB;
-
-      case this.DatabaseServiceTypeSmallCase.Cassandra:
-        return CASSANDRA;
-
-      case this.DatabaseServiceTypeSmallCase.SAS:
-        return SAS;
-
-      case this.DatabaseServiceTypeSmallCase.Couchbase:
-        return COUCHBASE;
-
-      case this.DatabaseServiceTypeSmallCase.Cockroach:
-        return COCKROACH;
-
-      case this.DatabaseServiceTypeSmallCase.Greenplum:
-        return GREENPLUM;
-
-      case this.DatabaseServiceTypeSmallCase.Iceberg:
-        return ICEBERGE;
-
-      case this.DatabaseServiceTypeSmallCase.Teradata:
-        return TERADATA;
-
-      case this.DatabaseServiceTypeSmallCase.Synapse:
-        return SYNAPSE;
-
-      case this.DatabaseServiceTypeSmallCase.BurstIQ:
-        return BURSTIQ;
-
-      case this.MessagingServiceTypeSmallCase.CustomMessaging:
-        return TOPIC_DEFAULT;
-
-      case this.MessagingServiceTypeSmallCase.Kafka:
-        return KAFKA;
-
-      case this.MessagingServiceTypeSmallCase.Redpanda:
-        return REDPANDA;
-
-      case this.MessagingServiceTypeSmallCase.Kinesis:
-        return KINESIS;
-
-      case this.DashboardServiceTypeSmallCase.CustomDashboard:
-        return DASHBOARD_DEFAULT;
-
-      case this.DashboardServiceTypeSmallCase.Superset:
-        return SUPERSET;
-
-      case this.DashboardServiceTypeSmallCase.Looker:
-        return LOOKER;
-
-      case this.DashboardServiceTypeSmallCase.Tableau:
-        return TABLEAU;
-
-      case this.DashboardServiceTypeSmallCase.Hex:
-        return HEX;
-
-      case this.DashboardServiceTypeSmallCase.Redash:
-        return REDASH;
-
-      case this.DashboardServiceTypeSmallCase.Metabase:
-        return METABASE;
-
-      case this.DashboardServiceTypeSmallCase.PowerBI:
-        return POWERBI;
-
-      case this.DashboardServiceTypeSmallCase.QuickSight:
-        return QUICKSIGHT;
-
-      case this.DashboardServiceTypeSmallCase.DomoDashboard:
-        return DOMO;
-
-      case this.DashboardServiceTypeSmallCase.Mode:
-        return MODE;
-
-      case this.DashboardServiceTypeSmallCase.QlikSense:
-        return QLIK_SENSE;
-
-      case this.DashboardServiceTypeSmallCase.QlikCloud:
-        return QLIK_SENSE;
-
-      case this.DashboardServiceTypeSmallCase.Lightdash:
-        return LIGHT_DASH;
-
-      case this.DashboardServiceTypeSmallCase.Sigma:
-        return SIGMA;
-
-      case this.PipelineServiceTypeSmallCase.CustomPipeline:
-        return PIPELINE_DEFAULT;
-
-      case this.PipelineServiceTypeSmallCase.Airflow:
-        return AIRFLOW;
-
-      case this.PipelineServiceTypeSmallCase.Airbyte:
-        return AIRBYTE;
-
-      case this.PipelineServiceTypeSmallCase.Dagster:
-        return DAGSTER;
-
-      case this.PipelineServiceTypeSmallCase.Fivetran:
-        return FIVETRAN;
-
-      case this.PipelineServiceTypeSmallCase.DBTCloud:
-        return DBT;
-
-      case this.PipelineServiceTypeSmallCase.GluePipeline:
-        return GLUE;
-
-      case this.PipelineServiceTypeSmallCase.KafkaConnect:
-        return KAFKA;
-
-      case this.PipelineServiceTypeSmallCase.Spark:
-        return SPARK;
-
-      case this.PipelineServiceTypeSmallCase.Spline:
-        return SPLINE;
-
-      case this.PipelineServiceTypeSmallCase.Nifi:
-        return NIFI;
-
-      case this.PipelineServiceTypeSmallCase.DomoPipeline:
-        return DOMO;
-
-      case this.PipelineServiceTypeSmallCase.DatabricksPipeline:
-        return DATABRICK;
-
-      case this.PipelineServiceTypeSmallCase.OpenLineage:
-        return OPENLINEAGE;
-
-      case this.PipelineServiceTypeSmallCase.Flink:
-        return FLINK;
-
-      case this.MlModelServiceTypeSmallCase.CustomMlModel:
-        return ML_MODEL_DEFAULT;
-
-      case this.MlModelServiceTypeSmallCase.Mlflow:
-        return MLFLOW;
-
-      case this.MlModelServiceTypeSmallCase.Sklearn:
-        return SCIKIT;
-
-      case this.MlModelServiceTypeSmallCase.SageMaker:
-        return SAGEMAKER;
-
-      case this.MetadataServiceTypeSmallCase.Amundsen:
-        return AMUNDSEN;
-
-      case this.MetadataServiceTypeSmallCase.Atlas:
-        return ATLAS;
-
-      case this.MetadataServiceTypeSmallCase.AlationSink:
-        return ALATIONSINK;
-
-      case this.MetadataServiceTypeSmallCase.OpenMetadata:
-        return LOGO;
-
-      case this.StorageServiceTypeSmallCase.CustomStorage:
-        return CUSTOM_STORAGE_DEFAULT;
-
-      case this.StorageServiceTypeSmallCase.S3:
-        return AMAZON_S3;
-
-      case this.StorageServiceTypeSmallCase.Gcs:
-        return GCS;
-
-      case this.SearchServiceTypeSmallCase.CustomSearch:
-        return CUSTOM_SEARCH_DEFAULT;
-
-      case this.SearchServiceTypeSmallCase.ElasticSearch:
-        return ELASTIC_SEARCH;
-
-      case this.SearchServiceTypeSmallCase.OpenSearch:
-        return OPEN_SEARCH;
-
-      case this.ApiServiceTypeSmallCase.REST:
-        return REST_SERVICE;
-
-      case this.DashboardServiceTypeSmallCase.MicroStrategy:
-        return MICROSTRATEGY;
-
-      case this.DashboardServiceTypeSmallCase.Grafana:
-        return GRAFANA;
-
-      case this.DriveServiceTypeSmallCase.CustomDrive:
-        return CUSTOM_DRIVE_DEFAULT;
-
-      case this.DriveServiceTypeSmallCase.GoogleDrive:
-        return GOOGLE_DRIVE;
-
-      case this.DriveServiceTypeSmallCase.Sftp:
-        return SFTP;
-
-      case this.DatabaseServiceTypeSmallCase.Timescale:
-        return TIMESCALE;
-
-      default: {
-        let logo;
-        if (serviceTypes.messagingServices.includes(type)) {
-          logo = TOPIC_DEFAULT;
-        } else if (serviceTypes.dashboardServices.includes(type)) {
-          logo = DASHBOARD_DEFAULT;
-        } else if (serviceTypes.pipelineServices.includes(type)) {
-          logo = PIPELINE_DEFAULT;
-        } else if (serviceTypes.databaseServices.includes(type)) {
-          logo = DATABASE_DEFAULT;
-        } else if (serviceTypes.mlmodelServices.includes(type)) {
-          logo = ML_MODEL_DEFAULT;
-        } else if (serviceTypes.storageServices.includes(type)) {
-          logo = CUSTOM_STORAGE_DEFAULT;
-        } else if (serviceTypes.searchServices.includes(type)) {
-          logo = CUSTOM_SEARCH_DEFAULT;
-        } else if (serviceTypes.securityServices.includes(type)) {
-          logo = DEFAULT_SERVICE;
-        } else if (serviceTypes.driveServices.includes(type)) {
-          logo = CUSTOM_DRIVE_DEFAULT;
-        } else {
-          logo = DEFAULT_SERVICE;
-        }
-
-        return logo;
-      }
+    if (serviceTypes.messagingServices.includes(type)) {
+      return getServiceIcon('topicdefault');
     }
+    if (serviceTypes.dashboardServices.includes(type)) {
+      return getServiceIcon('dashboarddefault');
+    }
+    if (serviceTypes.pipelineServices.includes(type)) {
+      return getServiceIcon('pipelinedefault');
+    }
+    if (serviceTypes.databaseServices.includes(type)) {
+      return getServiceIcon('databasedefault');
+    }
+    if (serviceTypes.mlmodelServices.includes(type)) {
+      return getServiceIcon('mlmodeldefault');
+    }
+    if (serviceTypes.storageServices.includes(type)) {
+      return getServiceIcon('storagedefault');
+    }
+    if (serviceTypes.searchServices.includes(type)) {
+      return getServiceIcon('searchdefault');
+    }
+    if (serviceTypes.securityServices.includes(type)) {
+      return getServiceIcon('securitydefault');
+    }
+    if (serviceTypes.driveServices.includes(type)) {
+      return getServiceIcon('drivedefault');
+    }
+    if (serviceTypes.apiServices.includes(type)) {
+      return getServiceIcon('restservice');
+    }
+
+    return getServiceIcon('defaultservice');
   }
 
-  public getServiceTypeLogo(searchSource: {
-    serviceType?: string;
-    entityType?: string;
-  }): string {
+  public getServiceLogo(type: string) {
+    return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
+  }
+
+  public getServiceTypeLogo(searchSource?: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
+
+    if (searchSource?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const isQuickLink =
+        (searchSource as KnowledgePageSearchSource)?.pageType ===
+        PageType.QUICK_LINK;
+
+      return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
+    }
+
+    const ownIcon = searchSource?.style?.iconURL;
+    if (ownIcon) {
+      return ownIcon;
+    }
+
+    const serviceIcon = searchSource?.service?.style?.iconURL;
+    if (serviceIcon) {
+      return serviceIcon;
+    }
 
     // Handle entities that don't have serviceType by using entity-specific icons
     if (isEmpty(type)) {
@@ -764,6 +413,10 @@ class ServiceUtilClassBase {
         default:
           return this.getServiceLogo('');
       }
+    }
+
+    if (entityType === EntityType.CHART) {
+      return ChartIcon;
     }
 
     return this.getServiceLogo(type);
@@ -825,58 +478,74 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getPipelineServiceConfig(type: PipelineServiceType) {
+  public async getPipelineServiceConfig(type: PipelineServiceType) {
+    const { getPipelineConfig } = await import('./PipelineServiceUtils');
+
     return getPipelineConfig(type);
   }
 
-  public getDatabaseServiceConfig(type: DatabaseServiceType) {
+  public async getDatabaseServiceConfig(type: DatabaseServiceType) {
+    const { getDatabaseConfig } = await import('./DatabaseServicePureUtils');
+
     return getDatabaseConfig(type);
   }
 
-  public getDashboardServiceConfig(type: DashboardServiceType) {
+  public async getDashboardServiceConfig(type: DashboardServiceType) {
+    const { getDashboardConfig } = await import('./DashboardServiceUtils');
+
     return getDashboardConfig(type);
   }
 
-  public getMessagingServiceConfig(type: MessagingServiceType) {
+  public async getMessagingServiceConfig(type: MessagingServiceType) {
+    const { getMessagingConfig } = await import('./MessagingServiceUtils');
+
     return getMessagingConfig(type);
   }
 
-  public getMlModelServiceConfig(type: MlModelServiceType) {
+  public async getMlModelServiceConfig(type: MlModelServiceType) {
+    const { getMlmodelConfig } = await import('./MlmodelServiceUtils');
+
     return getMlmodelConfig(type);
   }
 
-  public getSearchServiceConfig(type: SearchServiceType) {
+  public async getSearchServiceConfig(type: SearchServiceType) {
+    const { getSearchServiceConfig } = await import('./SearchServiceUtils');
+
     return getSearchServiceConfig(type);
   }
 
-  public getStorageServiceConfig(type: StorageServiceType) {
+  public async getStorageServiceConfig(type: StorageServiceType) {
+    const { getStorageConfig } = await import('./StorageServiceUtils');
+
     return getStorageConfig(type);
   }
 
-  public getMetadataServiceConfig(type: MetadataServiceType) {
+  public async getMetadataServiceConfig(type: MetadataServiceType) {
+    const { getMetadataConfig } = await import('./MetadataServiceUtils');
+
     return getMetadataConfig(type);
   }
 
-  public getAPIServiceConfig(type: APIServiceType) {
+  public async getAPIServiceConfig(type: APIServiceType) {
+    const { getAPIConfig } = await import('./APIServiceUtils');
+
     return getAPIConfig(type);
   }
 
-  public getSecurityServiceConfig(type: SecurityServiceType) {
+  public async getSecurityServiceConfig(type: SecurityServiceType) {
+    const { getSecurityConfig } = await import('./SecurityServiceUtils');
+
     return getSecurityConfig(type);
   }
-  public getDriveServiceConfig(type: DriveServiceType) {
+
+  public async getDriveServiceConfig(type: DriveServiceType) {
+    const { getDriveConfig } = await import('./DriveServiceUtils');
+
     return getDriveConfig(type);
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgets: Record<string, React.ComponentType<any>> = {
-      AgentsStatusWidget,
-      PlatformInsightsWidget,
-      TotalDataAssetsWidget,
-    };
-
-    return widgets;
+    return getDefaultInsightsTabWidgets();
   }
 
   public getExtraInfo(): Promise<void> {
@@ -915,13 +584,20 @@ class ServiceUtilClassBase {
     return updatedData;
   }
 
-  public getAgentsTabWidgets() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgets: Record<string, React.ComponentType<any>> = {
-      MetadataAgentsWidget,
-    };
+  public getAgentsTabWidgets(): Record<
+    string,
+    ComponentType<Record<string, unknown>>
+  > {
+    return {};
+  }
 
-    return widgets;
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {

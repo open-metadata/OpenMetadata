@@ -21,8 +21,8 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
@@ -46,7 +46,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
-  const { entityRules } = useEntityRules(entityType);
+  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
+
+  // Hold the strict domain-scoped behavior until the rules have actually loaded
+  // (an empty rule set from the backend is indistinguishable from "not fetched
+  // yet"), otherwise a cross-domain product could be selected before an enabled
+  // rule resolves and then rejected by the backend on save.
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
 
   const {
     isEditing,
@@ -95,14 +102,17 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const fetchAPI = useCallback(
     async (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQNs =
-        displayActiveDomains?.map(
-          (domain) => domain.fullyQualifiedName ?? ''
-        ) ?? [];
+      // When the "Data Product Domain Validation" rule is disabled, list Data
+      // Products across all domains instead of scoping to the asset's domains.
+      const domainFQNs = requireDomainForDataProduct
+        ? displayActiveDomains?.map(
+            (domain) => domain.fullyQualifiedName ?? ''
+          ) ?? []
+        : [];
 
       return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [displayActiveDomains]
+    [displayActiveDomains, requireDomainForDataProduct]
   );
 
   const handleSaveWithDataProducts = useCallback(
@@ -205,7 +215,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       return editingState;
     }
 
-    if (!displayActiveDomains || displayActiveDomains.length === 0) {
+    if (
+      requireDomainForDataProduct &&
+      (!displayActiveDomains || displayActiveDomains.length === 0)
+    ) {
       return (
         <Typography.Text className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
@@ -220,7 +233,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         })}
       </span>
     );
-  }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
+  }, [
+    isLoading,
+    isEditing,
+    editingState,
+    displayActiveDomains,
+    requireDomainForDataProduct,
+    t,
+  ]);
 
   const dataProductsDisplay = useMemo(
     () => (
@@ -275,11 +295,11 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return dataProductsDisplay;
   }, [isLoading, isEditing, editingState, dataProductsDisplay]);
 
+  const canAssignDataProduct =
+    displayActiveDomains?.length > 0 || !requireDomainForDataProduct;
+
   const canShowEditButton =
-    showEditButton &&
-    hasPermission &&
-    !isLoading &&
-    displayActiveDomains?.length > 0;
+    showEditButton && hasPermission && !isLoading && canAssignDataProduct;
 
   if (!displayDataProducts?.length) {
     return (

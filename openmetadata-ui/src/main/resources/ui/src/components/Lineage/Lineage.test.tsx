@@ -190,6 +190,21 @@ jest.mock('../Entity/EntityLineage/LineageLayers/LineageLayers', () => ({
   default: jest.fn(() => <div data-testid="lineage-layers">Layers</div>),
 }));
 
+jest.mock('./LineageSkeleton.component', () => ({
+  __esModule: true,
+  default: jest.fn(() => (
+    <div data-testid="lineage-skeleton">LineageSkeleton</div>
+  )),
+}));
+
+jest.mock('../../hooks/useLineageEdgeColors', () => ({
+  useLineageEdgeColors: () => ({
+    primary: '#1570ef',
+    columnHighlight: '#444ce7',
+    dqHighlight: '#d92d20',
+  }),
+}));
+
 jest.mock('reactflow', () => ({
   __esModule: true,
   default: jest.fn(
@@ -203,6 +218,7 @@ jest.mock('reactflow', () => ({
     }) => (
       <div
         data-testid="react-flow-component"
+        role="presentation"
         onClick={(e) => {
           if ((e.target as HTMLElement).dataset.testid === 'react-flow-node') {
             onNodeClick?.(e, { id: 'node-1' });
@@ -257,6 +273,9 @@ jest.mock('reactflow', () => ({
 jest.mock('../../utils/EntityLineageUtils', () => ({
   customEdges: {},
   nodeTypes: {},
+}));
+
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   dragHandle: jest.fn(),
   onNodeContextMenu: jest.fn(),
   onNodeMouseEnter: jest.fn(),
@@ -301,7 +320,7 @@ describe('Lineage Component', () => {
       expect(screen.getByTestId('react-flow-minimap')).toBeInTheDocument();
     });
 
-    it('should render loader when init is false', () => {
+    it('should render skeleton when init is false', () => {
       (useLineageProvider as jest.Mock).mockReturnValue({
         ...mockLineageProviderValues,
         init: false,
@@ -309,7 +328,7 @@ describe('Lineage Component', () => {
 
       render(<Lineage {...defaultProps} />);
 
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(screen.getByTestId('lineage-skeleton')).toBeInTheDocument();
       expect(
         screen.queryByTestId('react-flow-component')
       ).not.toBeInTheDocument();
@@ -331,6 +350,13 @@ describe('Lineage Component', () => {
       render(<Lineage {...defaultProps} />);
 
       expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
+    });
+
+    it('should keep lineage graph mounted when controls are hidden', () => {
+      render(<Lineage {...defaultProps} showControls={false} />);
+
+      expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
+      expect(screen.getByTestId('react-flow-component')).toBeInTheDocument();
     });
 
     it('should apply edit mode class when isEditMode is true', () => {
@@ -424,7 +450,10 @@ describe('Lineage Component', () => {
       fireEvent(reactFlow, dragOverEvent);
 
       expect(preventDefaultSpy).toHaveBeenCalled();
-      expect((dragOverEvent as any).dataTransfer.dropEffect).toBe('move');
+      expect(
+        (dragOverEvent as unknown as { dataTransfer: { dropEffect: string } })
+          .dataTransfer.dropEffect
+      ).toBe('move');
     });
 
     it('should handle node drop event', () => {

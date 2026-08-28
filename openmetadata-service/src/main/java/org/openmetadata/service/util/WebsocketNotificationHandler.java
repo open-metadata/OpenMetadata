@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.USER;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,12 +27,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Announcement;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -140,73 +140,76 @@ public class WebsocketNotificationHandler {
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {
-    int responseCode = responseContext.getStatus();
-    if (responseCode == Response.Status.CREATED.getStatusCode()
-        && responseContext.getEntity() != null
-        && responseContext.getEntity().getClass().equals(Thread.class)) {
-      Thread thread = (Thread) responseContext.getEntity();
-      switch (thread.getType()) {
-        case Task -> handleTaskNotification(thread);
-        case Conversation -> handleConversationNotification(thread);
-        case Announcement -> handleAnnouncementNotification(thread);
-      }
+    if (responseContext.getStatus() != Response.Status.CREATED.getStatusCode()
+        || responseContext.getEntity() == null) {
+      return;
+    }
+
+    Object entity = responseContext.getEntity();
+    if (entity instanceof Task task) {
+      handleTaskNotification(task);
+    } else if (entity instanceof Conversation conversation) {
+      handleConversationNotification(conversation);
+    } else if (entity instanceof ConversationReply reply) {
+      handleConversationReplyNotification(reply);
+    } else if (entity instanceof Announcement announcement) {
+      handleAnnouncementNotification(announcement);
     }
   }
 
-  public static void handleTaskNotification(Thread thread) {
-    String jsonThread = JsonUtils.pojoToJson(thread);
-    if (thread.getPostsCount() == 0) {
-      List<EntityReference> assignees = thread.getTask().getAssignees();
-      Set<UUID> receiversList = new HashSet<>();
-      // Update Assignee
-      assignees.forEach(
-          e -> {
-            if (Entity.USER.equals(e.getType())) {
-              receiversList.add(e.getId());
-            } else if (Entity.TEAM.equals(e.getType())) {
-              // fetch all that are there in the team
-              List<CollectionDAO.EntityRelationshipRecord> records =
-                  Entity.getCollectionDAO()
-                      .relationshipDAO()
-                      .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-              records.forEach(eRecord -> receiversList.add(eRecord.getId()));
-            }
-          });
-
-      // Send WebSocket Notification
-      WebSocketManager.getInstance()
-          .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
-    } else {
-      List<MessageParser.EntityLink> mentions;
-      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
-      notifyMentionedUsers(mentions, jsonThread);
+  /**
+   * Handle WebSocket notification for new Task entity (new task system).
+   * Sends notification to all assignees of the task.
+   */
+  public static void handleTaskNotification(Task task) {
+    String jsonTask = JsonUtils.pojoToJson(task);
+    List<EntityReference> assignees = task.getAssignees();
+    if (assignees == null || assignees.isEmpty()) {
+      return;
     }
-  }
 
-  private void handleAnnouncementNotification(Thread thread) {
-    String jsonThread = JsonUtils.pojoToJson(thread);
-    AnnouncementDetails announcementDetails = thread.getAnnouncement();
-    Long currentTimestamp = Instant.now().getEpochSecond();
-    if (announcementDetails.getStartTime() <= currentTimestamp
-        && currentTimestamp <= announcementDetails.getEndTime()) {
-      WebSocketManager.getInstance()
-          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
-    }
-  }
+    Set<UUID> receiversList = new HashSet<>();
+    assignees.forEach(
+        e -> {
+          if (Entity.USER.equals(e.getType())) {
+            receiversList.add(e.getId());
+          } else if (Entity.TEAM.equals(e.getType())) {
+            // Fetch all users in the team
+            List<CollectionDAO.EntityRelationshipRecord> records =
+                Entity.getCollectionDAO()
+                    .relationshipDAO()
+                    .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+            records.forEach(eRecord -> receiversList.add(eRecord.getId()));
+          }
+        });
 
-  private void handleConversationNotification(Thread thread) {
-    String jsonThread = JsonUtils.pojoToJson(thread);
+    // Send WebSocket Notification
     WebSocketManager.getInstance()
-        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
-    List<MessageParser.EntityLink> mentions;
-    if (thread.getPostsCount() == 0) {
-      mentions = MessageParser.getEntityLinks(thread.getMessage());
-    } else {
-      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+        .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonTask);
+  }
+
+  private void handleAnnouncementNotification(Announcement announcement) {
+    String jsonAnnouncement = JsonUtils.pojoToJson(announcement);
+    long currentTimestamp = System.currentTimeMillis();
+    if (announcement.getStartTime() <= currentTimestamp
+        && currentTimestamp <= announcement.getEndTime()) {
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonAnnouncement);
     }
-    notifyMentionedUsers(mentions, jsonThread);
+  }
+
+  private void handleConversationNotification(Conversation conversation) {
+    String jsonConversation = JsonUtils.pojoToJson(conversation);
+    WebSocketManager.getInstance()
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonConversation);
+    notifyMentionedUsers(MessageParser.getEntityLinks(conversation.getMessage()), jsonConversation);
+  }
+
+  private void handleConversationReplyNotification(ConversationReply reply) {
+    String jsonReply = JsonUtils.pojoToJson(reply);
+    WebSocketManager.getInstance()
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonReply);
+    notifyMentionedUsers(MessageParser.getEntityLinks(reply.getMessage()), jsonReply);
   }
 
   private static void notifyMentionedUsers(
@@ -314,6 +317,45 @@ public class WebsocketNotificationHandler {
     }
   }
 
+  public static void sendQueryRunnerCompleteNotification(
+      String jobId, UUID userId, String workflowId, Double duration, String executedQuery) {
+    QueryRunnerMessage message =
+        new QueryRunnerMessage(jobId, "COMPLETED", workflowId, null, null, duration, executedQuery);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendQueryRunnerFailedNotification(
+      String jobId, UUID userId, String errorMessage) {
+    QueryRunnerMessage message =
+        new QueryRunnerMessage(jobId, "FAILED", null, errorMessage, null, null, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
+  /**
+   * Intermediate progress message for a Query Runner job — e.g. "Executing query…",
+   * "Uploading results…". UI's WebSocket hook reads the {@code message} field and surfaces it
+   * as {@code executionStatusMessage}. {@code status} stays "RUNNING" so the UI doesn't treat
+   * this as a terminal event.
+   */
+  public static void sendQueryRunnerProgressNotification(
+      String jobId, UUID userId, String workflowId, String message) {
+    QueryRunnerMessage msg =
+        new QueryRunnerMessage(jobId, "RUNNING", workflowId, null, message, null, null);
+    String jsonMessage = JsonUtils.pojoToJson(msg);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void sendDeleteOperationCompleteNotification(
       String jobId, SecurityContext securityContext, EntityInterface entity) {
     DeleteEntityMessage message =
@@ -347,6 +389,48 @@ public class WebsocketNotificationHandler {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
     }
+  }
+
+  public static void sendRestoreOperationCompleteNotification(
+      String jobId, UUID userId, EntityInterface entity) {
+    RestoreEntityMessage message =
+        new RestoreEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    LOG.info(
+        "[AsyncRestore] Restore operation completed - jobId: {}, userId: {}, entity: {}",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendRestoreOperationFailedNotification(
+      String jobId, UUID userId, String entityName, String error) {
+    RestoreEntityMessage message = new RestoreEntityMessage(jobId, "FAILED", entityName, error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    LOG.error(
+        "[AsyncRestore] Restore operation failed - jobId: {}, userId: {}, entity: {}, error: {}",
+        jobId,
+        userId,
+        entityName,
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  /**
+   * Resolve the WebSocket user id for the given security context. Call this on the
+   * request thread (i.e., before submitting an async task) so the lookup runs while the
+   * SecurityContext is still valid — JAX-RS may invalidate request-scoped state after the
+   * response returns.
+   */
+  public static UUID resolveUserId(SecurityContext securityContext) {
+    return getUserIdFromSecurityContext(securityContext);
   }
 
   public static void sendMoveOperationCompleteNotification(

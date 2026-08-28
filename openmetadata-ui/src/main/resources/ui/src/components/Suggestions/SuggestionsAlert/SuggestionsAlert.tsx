@@ -15,7 +15,7 @@ import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
-import { SuggestionType } from '../../../generated/entity/feed/suggestion';
+import { SuggestionType } from '../../../types/taskSuggestion';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';

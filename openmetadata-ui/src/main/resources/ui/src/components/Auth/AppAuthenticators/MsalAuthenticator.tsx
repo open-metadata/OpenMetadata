@@ -20,17 +20,15 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { ROUTES } from '../../../constants/constants';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   msalLoginRequest,
   parseMSALResponse,
 } from '../../../utils/AuthProvider.util';
-import { getPopupSettingLink } from '../../../utils/BrowserUtils';
-import { Transi18next } from '../../../utils/CommonUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
@@ -50,7 +48,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       try {
-        const isInIframe = globalThis.self !== window.top;
+        const isInIframe = window.self !== window.top;
 
         if (isInIframe) {
           // Use popup login when in iframe to avoid redirect issues
@@ -69,14 +67,14 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       try {
+        for (const key in localStorage) {
+          if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } finally {
+        // Cleanup application state
         handleSuccessfulLogout();
-        await instance.logoutRedirect({
-          account: account ?? accounts[0],
-          logoutHint: (account ?? accounts[0])?.username,
-          postLogoutRedirectUri: globalThis.location.origin + ROUTES.SIGNIN,
-        });
-      } catch {
-        // logoutRedirect failed; app state already cleaned up above
       }
     };
 
@@ -84,11 +82,12 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       shouldFallbackToPopup = false
     ): Promise<OidcUser> => {
       const tokenRequest = {
-        account: account || accounts[0], // This is an example - Select account based on your app's requirements
+        account: account || accounts[0],
         scopes: msalLoginRequest.scopes,
+        forceRefresh: shouldFallbackToPopup,
       };
       try {
-        const response = await instance.ssoSilent(tokenRequest);
+        const response = await instance.acquireTokenSilent(tokenRequest);
         const msalResponse = await parseMSALResponse(response);
 
         return msalResponse;
@@ -97,29 +96,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
           error instanceof InteractionRequiredAuthError &&
           shouldFallbackToPopup
         ) {
-          const response = await instance
-            .loginPopup(tokenRequest)
-            .catch((e) => {
-              // eslint-disable-next-line no-console
-              console.error(e);
-              if (e?.message?.includes('popup_window_error')) {
-                showErrorToast(
-                  <Transi18next
-                    i18nKey="message.popup-block-message"
-                    renderElement={
-                      <a
-                        href={getPopupSettingLink()}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      />
-                    }
-                  />
-                );
-              }
-
-              throw e;
-            });
-
+          const response = await instance.acquireTokenPopup(tokenRequest);
           const msalResponse = await parseMSALResponse(response);
 
           return msalResponse;
@@ -132,17 +109,27 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const renewIdToken = async () => {
-      const user = await fetchIdToken();
+    const renewIdToken = useCallback(async () => {
+      const user = await fetchIdToken(true);
 
       return user.id_token;
-    };
+    }, [account, accounts, instance]);
 
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewIdToken,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Azure/MSAL.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(renewIdToken);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [renewIdToken]);
 
     // Need to capture redirect and parse ID token
     // Call login success callback

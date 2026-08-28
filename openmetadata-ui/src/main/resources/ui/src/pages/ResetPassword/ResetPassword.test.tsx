@@ -42,15 +42,9 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
-jest.mock('../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn().mockReturnValue({
-    alert: null,
-  }),
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       const translations: Record<string, string> = {
         'label.reset-your-password': 'Reset Your Password',
         'label.password-not-match': 'Passwords do not match',

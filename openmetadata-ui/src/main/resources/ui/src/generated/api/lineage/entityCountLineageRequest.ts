@@ -24,6 +24,17 @@ export interface EntityCountLineageRequest {
      */
     direction: LineageDirection;
     /**
+     * Maximum downstream depth to compute pagination info for when requested
+     */
+    downstreamDepth?: number;
+    /**
+     * Filter lineage edges by observed time window (epoch millis), inclusive upper bound;
+     * matched via range overlap on edge createdAt/updatedAt. Set endTime alone (startTime
+     * unset) for an as-of/point-in-time query: edges that existed on or before this instant.
+     * See startTime for the hard-prune and preservePaths interaction notes.
+     */
+    endTime?: number;
+    /**
      * Entity Fqn to search lineage
      */
     fqn: string;
@@ -35,6 +46,10 @@ export interface EntityCountLineageRequest {
      * Include deleted entities
      */
     includeDeleted?: boolean;
+    /**
+     * Include pagination totals and depth counts in the response
+     */
+    includePaginationInfo?: boolean;
     /**
      * Include source fields
      */
@@ -65,6 +80,21 @@ export interface EntityCountLineageRequest {
      * Number of entities to return in this page
      */
     size?: number;
+    /**
+     * Filter lineage edges by observed time window (epoch millis), inclusive lower bound;
+     * matched via range overlap on edge createdAt/updatedAt. Note: the window is applied as a
+     * hard prune during graph traversal (point-in-time semantics) - an out-of-window edge
+     * severs discovery of everything reachable only through it, in both upstream and downstream
+     * directions. This means preservePaths does NOT extend to the time window: a node is shown
+     * only if it is reachable from the root through edges that are all in-window. Legacy edges
+     * with no timestamps always match any window (back-compat); a window query over mixed
+     * legacy and temporal data therefore returns all legacy edges.
+     */
+    startTime?: number;
+    /**
+     * Maximum upstream depth to compute pagination info for when requested
+     */
+    upstreamDepth?: number;
 }
 
 /**

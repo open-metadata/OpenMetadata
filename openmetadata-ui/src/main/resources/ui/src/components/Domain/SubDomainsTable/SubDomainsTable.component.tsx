@@ -11,23 +11,28 @@
  *  limitations under the License.
  */
 
-import { Box, Paper, TableContainer, useTheme } from '@mui/material';
-import { isEmpty } from 'lodash';
-import { useEffect, useMemo } from 'react';
+import {
+  Box,
+  Card,
+  Input,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
+import { SearchLg } from '@untitledui/icons';
+import { debounce, isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
+import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
-import { useSearch } from '../../common/atoms/navigation/useSearch';
-import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
-import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
-import { useCardView } from '../../common/atoms/table/useCardView';
-import { useDataTable } from '../../common/atoms/table/useDataTable';
+import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
+import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ViewToggle, { ViewMode } from '../../common/ViewToggle/ViewToggle';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
@@ -39,12 +44,10 @@ const SubDomainsTable = ({
   onDeleteSubDomain,
 }: SubDomainsTableProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const subdomainListing = useSubdomainListingData({
     parentDomainFqn: domainFqn,
   });
 
-  // Use the same domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
     aggregations: subdomainListing.aggregations || undefined,
@@ -52,7 +55,6 @@ const SubDomainsTable = ({
     onFilterChange: subdomainListing.handleFilterChange,
   });
 
-  // Use the filter selection hook for displaying selected filters
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: subdomainListing.urlState,
     filterConfigs: defaultFilters,
@@ -60,44 +62,35 @@ const SubDomainsTable = ({
     onFilterChange: subdomainListing.handleFilterChange,
   });
 
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.sub-domain-plural',
-    count: subdomainListing.totalEntities,
-    loading: subdomainListing.loading,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    subdomainListing.urlState.searchQuery ?? ''
+  );
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search-entity', {
-      entity: t('label.sub-domain'),
-    }),
-    onSearchChange: subdomainListing.handleSearchChange,
-    initialSearchQuery: subdomainListing.urlState.searchQuery,
-  });
+  const debouncedSearch = useMemo(
+    () => debounce(subdomainListing.handleSearchChange, 300),
+    [subdomainListing.handleSearchChange]
+  );
 
-  const { view, viewToggle } = useViewToggle();
-  const { domainCardTemplate } = useDomainCardTemplates();
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(subdomainListing.urlState.searchQuery ?? '');
+  }, [subdomainListing.urlState.searchQuery, debouncedSearch]);
 
-  const { dataTable } = useDataTable({
-    listing: subdomainListing,
-    enableSelection: true,
-    entityLabelKey: 'label.sub-domain',
-  });
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
-  const { cardView } = useCardView({
-    listing: subdomainListing,
-    cardTemplate: domainCardTemplate,
-  });
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const { renderDomainCard } = useDomainCardTemplates();
 
-  const { paginationControls } = usePaginationControls({
-    currentPage: subdomainListing.currentPage,
-    totalPages: subdomainListing.totalPages,
-    totalEntities: subdomainListing.totalEntities,
-    pageSize: subdomainListing.pageSize,
-    onPageChange: subdomainListing.handlePageChange,
-    loading: subdomainListing.loading,
-  });
+  const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
+    useDomainTableColumns({
+      nameLabelKey: 'label.sub-domain',
+      tagSize: 'lg',
+    });
 
-  // Map selected IDs to actual entities for the delete hook
   const selectedSubdomainEntities = useMemo(
     () =>
       subdomainListing.entities.filter((entity) =>
@@ -123,8 +116,22 @@ const SubDomainsTable = ({
     }
   }, [subDomainsCount]);
 
+  const isSearchOrFilterActive = useCallback(
+    () => hasActiveSearchOrFilter(subdomainListing.urlState),
+    [subdomainListing.urlState]
+  );
+
   const content = useMemo(() => {
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
+      if (isSearchOrFilterActive()) {
+        return (
+          <ErrorPlaceHolder
+            className="border-none"
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      }
+
       return (
         <ErrorPlaceHolder
           buttonId="subdomain-add-button"
@@ -135,34 +142,62 @@ const SubDomainsTable = ({
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={onAddSubDomain}
         />
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
-          {dataTable}
-          {paginationControls}
+          <EntityListingTable
+            ariaLabel={t('label.sub-domain')}
+            columns={subDomainColumns}
+            entities={subdomainListing.entities}
+            loading={subdomainListing.loading}
+            renderCell={renderSubDomainCell}
+            selectedEntities={subdomainListing.selectedEntities}
+            onEntityClick={subdomainListing.actionHandlers.onEntityClick}
+            onSelect={subdomainListing.handleSelect}
+            onSelectAll={subdomainListing.handleSelectAll}
+          />
+          <PaginationCardDefault
+            page={subdomainListing.currentPage}
+            total={subdomainListing.totalPages}
+            onPageChange={subdomainListing.handlePageChange}
+          />
         </>
       );
     }
 
     return (
       <>
-        {cardView}
-        {paginationControls}
+        <EntityCardView
+          entities={subdomainListing.entities}
+          loading={subdomainListing.loading}
+          renderCard={renderDomainCard}
+          onEntityClick={subdomainListing.actionHandlers.onEntityClick}
+        />
+        <PaginationCardDefault
+          page={subdomainListing.currentPage}
+          total={subdomainListing.totalPages}
+          onPageChange={subdomainListing.handlePageChange}
+        />
       </>
     );
   }, [
     subdomainListing.loading,
     subdomainListing.entities,
+    subdomainListing.selectedEntities,
+    subdomainListing.actionHandlers,
+    subdomainListing.currentPage,
+    subdomainListing.totalPages,
+    subdomainListing.handlePageChange,
+    isSearchOrFilterActive,
     view,
-    dataTable,
-    cardView,
-    paginationControls,
+    renderSubDomainCell,
+    renderDomainCard,
     permissions.Create,
     onAddSubDomain,
     t,
@@ -170,29 +205,33 @@ const SubDomainsTable = ({
 
   return (
     <>
-      <TableContainer component={Paper} sx={{ mb: 5 }}>
+      <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            px: 6,
-            py: 4,
-            borderBottom: `1px solid`,
-            borderColor: theme.palette.allShades?.gray?.[200],
-          }}>
-          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-            {titleAndCount}
-            {search}
+          className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
+          direction="col"
+          gap={4}>
+          <Box align="center" direction="row" gap={5}>
+            <Input
+              className="tw:max-w-60"
+              icon={SearchLg}
+              placeholder={t('label.search-entity', {
+                entity: t('label.sub-domain'),
+              })}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
             {quickFilters}
-            <Box ml="auto" />
-            {viewToggle}
+            <Box className="tw:ml-auto" />
+            <ViewToggle value={view} onChange={setView} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}
         </Box>
         {content}
-      </TableContainer>
+      </Card>
       {deleteModal}
     </>
   );

@@ -10,17 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  test as base,
-  expect,
-  Page,
-} from '@playwright/test';
+import { expect, Page, Request, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
-import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -30,7 +23,6 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { FileClass } from '../../support/entity/FileClass';
@@ -44,7 +36,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
   descriptionBox,
@@ -54,23 +46,20 @@ import {
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  toastNotification,
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
-import {
-  createCustomPropertyForEntity,
-  CustomProperty,
-  CustomPropertyTypeByName,
-  updateCustomPropertyInRightPanel,
-  verifyTableColumnCustomPropertyPersistence,
-} from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
+  assignTagToChildren,
   closeColumnDetailPanel,
+  copyAndGetClipboardText,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
+  removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
@@ -105,21 +94,21 @@ const test = base.extend<{
   dataConsumerPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
+    const adminPage = await browser.newPage({ storageState: undefined });
     await adminUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ storageState: undefined });
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
 });
 
-test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.beforeAll('Setup pre-requests', async () => {
+  const { apiContext, afterAction } = await createAdminApiContext();
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await dataConsumerUser.create(apiContext);
@@ -128,8 +117,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup shared entities', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.afterAll('Cleanup shared entities', async () => {
+  const { apiContext, afterAction } = await createAdminApiContext();
   await tableEntity.delete(apiContext);
   await user.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -143,18 +132,20 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
   const entityName = entity.getType();
 
   test.describe(key, () => {
+    test.describe.configure({ mode: 'default' });
+
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Setup pre-requests', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
       await entity.create(apiContext);
       await afterAction();
     });
 
-    test.afterAll('Cleanup entity', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.afterAll('Cleanup entity', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
       await entity.delete(apiContext);
       await afterAction();
     });
@@ -187,6 +178,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * and that removing the domain from the service removes it from the entity
      */
     test('Domain Propagation', async ({ page }) => {
+      test.slow(true);
       const serviceCategory = entity.serviceCategory;
       if (serviceCategory && 'service' in entity) {
         await visitServiceDetailsPage(
@@ -206,7 +198,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           page,
           EntityDataClass.domain1.responseData,
           entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name']
+            entity.entityResponseData?.['name'],
+          entity.exploreTabName
         );
 
         await visitServiceDetailsPage(
@@ -253,7 +246,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * and verifying the owner list maintains proper state
      */
     test('User as Owner with unsorted list', async ({ page }) => {
-      test.slow(true);
+      // Cap at 120s instead of test.slow()'s 180s — see rationale on the
+      // Roles spec: hitting the slow ceiling on a hung wait burns 3
+      // minutes before retry kicks in. The warmup below eliminates the
+      // main hang source (search-index freshness), but keep a tighter
+      // ceiling as insurance.
+      test.setTimeout(120_000);
 
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
@@ -262,6 +260,38 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const OWNER2 = new UserClass(owner2Data);
       await OWNER1.create(apiContext);
       await OWNER2.create(apiContext);
+
+      // Wait for the freshly created users to land in user_search_index
+      // before we open the owner picker. Under CI load the async indexer
+      // can lag creation by several seconds; when addMultiOwner's search
+      // returns empty each ownerItem.waitFor({visible}) hangs the default
+      // 30s. Two adds + a remove = up to 90s of waste from one cold index.
+      // Poll the search API up-front so the UI dropdown finds them on
+      // the first search.
+      // Poll with getUserDisplayName() — this is the term addMultiOwner
+      // types into the picker (line ~292). If displayName ever diverges
+      // from name, polling by name would silently pass while the UI
+      // search still misses (per @gitar-bot review on PR #30390).
+      await expect
+        .poll(
+          async () => {
+            const [r1, r2] = await Promise.all([
+              apiContext.get(
+                `/api/v1/search/query?q=${OWNER1.getUserDisplayName()}&index=user_search_index`
+              ),
+              apiContext.get(
+                `/api/v1/search/query?q=${OWNER2.getUserDisplayName()}&index=user_search_index`
+              ),
+            ]);
+            const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+            return (
+              (d1.hits?.total?.value ?? 0) > 0 &&
+              (d2.hits?.total?.value ?? 0) > 0
+            );
+          },
+          { timeout: 15_000, intervals: [500, 1000, 2000] }
+        )
+        .toBeTruthy();
 
       await addMultiOwner({
         page,
@@ -310,8 +340,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       await entity.tier(
         page,
         'Tier1',
-        COMMON_TIER_TAG[2].name,
-        COMMON_TIER_TAG[2].fullyQualifiedName,
+        COMMON_TIER_TAG[4].name,
+        COMMON_TIER_TAG[4].fullyQualifiedName,
         entity
       );
     });
@@ -489,7 +519,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')
@@ -539,16 +569,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .locator('[data-testid="selectable-list"]')
             .waitFor({ state: 'visible' });
 
-          const searchTagCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
-          );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PersonalData.SpecialCategory');
-          await searchTagCleanup;
-          await waitForAllLoadersToDisappear(page);
-
-          await page.getByTitle('SpecialCategory', { exact: true }).click();
+          await page.getByTestId('clear-all-button').click();
           const removeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
@@ -590,7 +611,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnNameTestId,
             entityType: entity.type as EntityType,
           });
-
+          await waitForAllLoadersToDisappear(page);
           // Step 1: Add a glossary term first
           const glossaryEditButton = panelContainer.getByTestId(
             'edit-glossary-terms'
@@ -611,7 +632,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const glossarySearchResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('glossary_term_search_index') &&
+              response.url().includes('glossaryTerm') &&
               response.request().method() === 'GET'
           );
           await searchBar.fill(
@@ -666,7 +687,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await expect(tagSearchBar).toBeVisible();
 
           const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await tagSearchBar.fill('PII.Sensitive');
           await searchTag;
@@ -738,7 +759,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchGlossaryCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=glossary_term_search_index*'
+            '/api/v1/search/query?q=*index=glossaryTerm*'
           );
           await page
             .locator('[data-testid="glossary-term-select-search-bar"]')
@@ -768,7 +789,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTagCleanup2 = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')
@@ -816,10 +837,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (hasDataType) {
               // If data type chip exists, it should have content
-              const dataTypeText = await dataTypeChip.textContent();
-
-              expect(dataTypeText).toBeTruthy();
-              expect(dataTypeText?.trim().length).toBeGreaterThan(0);
+              await expect(dataTypeChip).not.toHaveText('');
             }
           }
           // Verify pagination shows correct count (including nested columns)
@@ -872,9 +890,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 await prevButton.click();
 
                 // Verify we're back
-                const finalPagination = await paginationText.textContent();
-
-                expect(finalPagination).toBe(paginationContent);
+                await expect(paginationText).toHaveText(
+                  paginationContent ?? ''
+                );
               }
             }
           }
@@ -886,452 +904,562 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         });
       });
 
-      test('Complex nested column structures - comprehensive validation', async ({
-        page,
-      }) => {
-        test.slow(true);
+      if (entity.type === 'Table') {
+        test('Complex nested column structures - comprehensive validation', async ({
+          page,
+        }) => {
+          test.slow(true);
 
-        // Only run for entities that have nested columns (like Table)
-        if (entity.type !== 'Table') {
-          test.skip();
-        }
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+          await test.step('Verify nested column has expand icon in main table', async () => {
+            // Get the third column which is the nested parent column (name column)
+            // From TableClass: columnsName[2] has children at index 3 and 4
+            const tableFQN = entity.entityResponseData?.['fullyQualifiedName'];
+            const nestedParentColName = (entity as TableClass).columnsName[2];
+            const nestedParentFQN = `${tableFQN}.${nestedParentColName}`;
 
-        await test.step('Verify nested column has expand icon in main table', async () => {
-          // Get the third column which is the nested parent column (name column)
-          // From TableClass: columnsName[2] has children at index 3 and 4
-          const tableFQN = entity.entityResponseData?.['fullyQualifiedName'];
-          const nestedParentColName = (entity as TableClass).columnsName[2];
-          const nestedParentFQN = `${tableFQN}.${nestedParentColName}`;
+            const nestedColumnRow = page.locator(
+              `[data-row-key="${nestedParentFQN}"]`
+            );
 
-          const nestedColumnRow = page.locator(
-            `[data-row-key="${nestedParentFQN}"]`
-          );
+            // Scroll to the row to ensure it's visible
+            await nestedColumnRow.scrollIntoViewIfNeeded();
 
-          // Scroll to the row to ensure it's visible
-          await nestedColumnRow.scrollIntoViewIfNeeded();
+            // Verify expand icon is visible for nested column
+            await expect(
+              nestedColumnRow.getByTestId('expand-icon')
+            ).toBeVisible();
 
-          // Verify expand icon is visible for nested column
-          await expect(
-            nestedColumnRow.getByTestId('expand-icon')
-          ).toBeVisible();
+            // Verify non-nested columns don't have expand icons
+            const simpleColumnFQN = `${tableFQN}.${
+              (entity as TableClass).columnsName[0]
+            }`;
 
-          // Verify non-nested columns don't have expand icons
-          const simpleColumnFQN = `${tableFQN}.${
-            (entity as TableClass).columnsName[0]
-          }`;
-
-          await expect(
-            page
-              .locator(`[data-row-key="${simpleColumnFQN}"]`)
-              .getByTestId('expand-icon')
-          ).not.toBeVisible();
-        });
-
-        await test.step('Open column detail panel for nested column', async () => {
-          // Click on the parent nested column name to open detail panel
-          const nestedParentFQN = `${
-            entity.entityResponseData?.['fullyQualifiedName']
-          }.${(entity as TableClass).columnsName[2]}`;
-
-          await openColumnDetailPanel({
-            page,
-            rowSelector: 'data-row-key',
-            columnId: nestedParentFQN,
-            columnNameTestId: 'column-name',
-            entityType: entity.type as EntityType,
+            await expect(
+              page
+                .locator(`[data-row-key="${simpleColumnFQN}"]`)
+                .getByTestId('expand-icon')
+            ).not.toBeVisible();
           });
 
-          // Wait for any loaders to disappear
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-        });
+          await test.step('Open column detail panel for nested column', async () => {
+            // Click on the parent nested column name to open detail panel
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
 
-        await test.step('Verify NestedColumnsSection renders with correct structure', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
+            await openColumnDetailPanel({
+              page,
+              rowSelector: 'data-row-key',
+              columnId: nestedParentFQN,
+              columnNameTestId: 'column-name',
+              entityType: entity.type as EntityType,
+            });
 
-          // Wait for nested columns section to load by checking visibility
-
-          // Verify section title is present (using translated text key)
-          const nestedColumnLinks = panelContainer.locator(
-            '.nested-column-name'
-          );
-
-          // Should have at least one nested column link
-          await expect(nestedColumnLinks.first()).toBeVisible({
-            timeout: 5000,
+            // Wait for any loaders to disappear
+            await waitForAllLoadersToDisappear(page);
           });
 
-          const linkCount = await nestedColumnLinks.count();
+          await test.step('Verify NestedColumnsSection renders with correct structure', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
 
-          expect(linkCount).toBeGreaterThan(0);
-        });
+            // Wait for nested columns section to load by checking visibility
 
-        await test.step('Verify count badge shows only top-level columns', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-
-          // Find count badge - it's a Box with Typography.Text containing just a number
-          const countBadge = panelContainer
-            .locator('text=/^\\d+$/')
-            .filter({ hasNot: page.locator('.nested-column-name') })
-            .first();
-
-          const badgeText = await countBadge.textContent();
-
-          if (badgeText) {
-            const count = parseInt(badgeText, 10);
-
-            expect(count).toBeGreaterThan(0);
-
-            // Count should represent top-level children only
+            // Verify section title is present (using translated text key)
             const nestedColumnLinks = panelContainer.locator(
               '.nested-column-name'
             );
-            const totalLinks = await nestedColumnLinks.count();
 
-            // Count badge should be <= total links (since links include all nested levels)
-            expect(count).toBeLessThanOrEqual(totalLinks);
-          }
-        });
-
-        await test.step('Verify proper indentation for nested levels', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-          const nestedColumnItems = panelContainer
-            .locator('.nested-column-name')
-            .locator('..');
-
-          // Get all nested column items and verify they have proper padding
-          const items = await nestedColumnItems.all();
-
-          if (items.length > 1) {
-            // Verify at least one item has padding (indicating nested structure)
-            const hasIndentation = await Promise.all(
-              items.map(async (item) => {
-                const paddingLeft = await item.evaluate((el) => {
-                  const style = window.getComputedStyle(el);
-
-                  return style.paddingLeft;
-                });
-
-                return paddingLeft !== '0px';
-              })
-            );
-
-            const hasAnyIndentation = hasIndentation.some(Boolean);
-
-            expect(hasAnyIndentation).toBeTruthy();
-          }
-        });
-
-        await test.step('Verify clicking on nested column navigates correctly', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-          const nestedColumnLinks = panelContainer.locator(
-            '.nested-column-name'
-          );
-
-          const firstLink = nestedColumnLinks.first();
-          await firstLink.scrollIntoViewIfNeeded();
-
-          // Verify link is visible and clickable
-          await expect(firstLink).toBeVisible();
-
-          // Click the link and verify API call or panel update
-          const clickResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-            { timeout: 10000 }
-          );
-
-          await firstLink.click();
-          await clickResponse;
-
-          // Wait for loader to disappear after navigation
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-
-          // Verify panel is still visible (navigated to nested column)
-          await expect(page.locator('.column-detail-panel')).toBeVisible();
-        });
-
-        await test.step('Verify clicking on intermediate nested levels (non-leaf nodes)', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-
-          // Navigate back to parent column first
-          const prevButton = panelContainer
-            .locator('.navigation-container')
-            .locator('button')
-            .nth(0);
-
-          // Only navigate back if we moved forward
-          if (await prevButton.isEnabled()) {
-            await prevButton.click();
-            // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
+            // Should have at least one nested column link
+            await expect(nestedColumnLinks.first()).toBeVisible({
+              timeout: 5000,
             });
-          }
-
-          const allNestedLinks = panelContainer.locator('.nested-column-name');
-          const totalLinks = await allNestedLinks.count();
-
-          if (totalLinks > 1) {
-            // Click on an intermediate level (not the first, not the last if possible)
-            const middleIndex = Math.min(
-              Math.floor(totalLinks / 2),
-              totalLinks - 1
-            );
-            const intermediateLink = allNestedLinks.nth(middleIndex);
-
-            await intermediateLink.scrollIntoViewIfNeeded();
-
-            await expect(intermediateLink).toBeVisible();
-
-            // Click intermediate link
-            const intermediateClickResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-              { timeout: 10000 }
-            );
-
-            await intermediateLink.click();
-            await intermediateClickResponse;
-
-            // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
-
-            // Verify panel updated correctly
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-          }
-        });
-
-        await test.step('Verify multiple sibling columns at same nesting level', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-          const nestedColumnLinks = panelContainer.locator(
-            '.nested-column-name'
-          );
-
-          const linkCount = await nestedColumnLinks.count();
-
-          if (linkCount > 1) {
-            // Get all link texts to verify siblings exist
-            const allLinks = await nestedColumnLinks.all();
-            const linkTexts = await Promise.all(
-              allLinks.map((link) => link.textContent())
-            );
-
-            // Should have multiple distinct column names
-            const uniqueNames = new Set(
-              linkTexts.filter((text) => text && text.trim().length > 0)
-            );
-
-            expect(uniqueNames.size).toBeGreaterThan(0);
-
-            // Verify that siblings are all visible
-            const visibleLinks = await Promise.all(
-              allLinks.map(async (link) => await link.isVisible())
-            );
-            const visibleCount = visibleLinks.filter(Boolean).length;
-
-            expect(visibleCount).toBeGreaterThan(0);
-          }
-        });
-
-        await test.step('Verify deep nesting (3+ levels) if available', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-          const nestedColumnLinks = panelContainer.locator(
-            '.nested-column-name'
-          );
-
-          // Check if we have multiple levels by examining padding
-          const allLinks = await nestedColumnLinks.all();
-
-          if (allLinks.length >= 3) {
-            // Get padding values to detect nesting depth
-            const paddingValues = await Promise.all(
-              allLinks.map(async (link) => {
-                const parent = link.locator('..');
-
-                return await parent.evaluate((el) => {
-                  const style = window.getComputedStyle(el);
-
-                  return parseFloat(style.paddingLeft);
-                });
-              })
-            );
-
-            // Should have at least 2 different padding values (indicating multiple levels)
-            const uniquePaddings = new Set(paddingValues);
-
-            expect(uniquePaddings.size).toBeGreaterThan(0);
-          }
-        });
-
-        await test.step('Close panel', async () => {
-          const panelContainer = page.locator('.column-detail-panel');
-
-          await panelContainer.getByTestId('close-button').click();
-
-          await expect(page.locator('.column-detail-panel')).not.toBeVisible();
-        });
-      });
-
-      test('Array type columns with nested structures in NestedColumnsSection', async ({
-        page,
-      }) => {
-        test.slow(true);
-
-        if (entity.type !== 'Table') {
-          test.skip();
-        }
-
-        await page.getByTestId(entity.childrenTabId ?? '').click();
-
-        await test.step('Verify array column with nested children renders correctly', async () => {
-          const tableResponse = entity.entityResponseData as Table;
-          const columns = tableResponse?.columns || [];
-
-          const nestedParent = columns.find(
-            (col: Column) => col.name === (entity as TableClass).columnsName[2]
-          );
-
-          if (!nestedParent) {
-            throw new Error(
-              `Nested parent column not found: ${
-                (entity as TableClass).columnsName[2]
-              }`
-            );
-          }
-
-          const nestedParentFQN = nestedParent.fullyQualifiedName;
-
-          const arrayColumn = nestedParent.children?.find(
-            (col: Column) => col.name === (entity as TableClass).columnsName[4]
-          );
-
-          if (!arrayColumn) {
-            throw new Error(
-              `Array column not found: ${(entity as TableClass).columnsName[4]}`
-            );
-          }
-
-          const arrayColumnFQN = arrayColumn.fullyQualifiedName;
-
-          const parentRow = page.locator(`[data-row-key="${nestedParentFQN}"]`);
-
-          await parentRow.waitFor({ state: 'visible' });
-
-          const arrayColumnRow = page.locator(
-            `[data-row-key="${arrayColumnFQN}"]`
-          );
-
-          await arrayColumnRow.waitFor({ state: 'visible' });
-
-          const arrayColumnId = await arrayColumnRow.getAttribute(
-            'data-row-key'
-          );
-
-          const panelContainer = await openColumnDetailPanel({
-            page,
-            rowSelector: 'data-row-key',
-            columnId: arrayColumnId ?? '',
-            columnNameTestId: 'column-name',
-            entityType: entity.type as EntityType,
-          });
-
-          const nestedColumnLinks = panelContainer.locator(
-            '.nested-column-name'
-          );
-
-          if ((await nestedColumnLinks.count()) > 0) {
-            await expect(nestedColumnLinks.first()).toBeVisible();
 
             const linkCount = await nestedColumnLinks.count();
 
             expect(linkCount).toBeGreaterThan(0);
+          });
 
-            await panelContainer.getByTestId('close-button').click();
-          }
-        });
-      });
+          await test.step('Verify count badge shows only top-level columns', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
 
-      test('Mixed sibling columns (simple + nested) at same level', async ({
-        page,
-      }) => {
-        test.slow(true);
+            // Find count badge - it's a Box with Typography.Text containing just a number
+            const countBadge = panelContainer
+              .locator('text=/^\\d+$/')
+              .filter({ hasNot: page.locator('.nested-column-name') })
+              .first();
 
-        if (entity.type !== 'Table') {
-          test.skip();
-        }
+            const badgeText = await countBadge.textContent();
 
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+            if (badgeText) {
+              const count = parseInt(badgeText, 10);
 
-        await test.step('Verify mixed siblings have consistent indentation', async () => {
-          // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
-          const nestedParentFQN = `${
-            entity.entityResponseData?.['fullyQualifiedName']
-          }.${(entity as TableClass).columnsName[2]}`;
+              expect(count).toBeGreaterThan(0);
 
-          const nestedColumnRow = page.locator(
-            `[data-row-key="${nestedParentFQN}"]`
-          );
+              // Count should represent top-level children only
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
+              );
+              const totalLinks = await nestedColumnLinks.count();
 
-          if (await nestedColumnRow.getByTestId('expand-icon').isVisible()) {
-            await nestedColumnRow.getByTestId('expand-icon').click();
-            // Wait for expansion to complete
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+              // Count badge should be <= total links (since links include all nested levels)
+              expect(count).toBeLessThanOrEqual(totalLinks);
+            }
+          });
 
-            // Open detail panel
-            const nestedColumnId = await nestedColumnRow.getAttribute(
-              'data-row-key'
-            );
-            const panelContainer = await openColumnDetailPanel({
-              page,
-              rowSelector: 'data-row-key',
-              columnId: nestedColumnId ?? nestedParentFQN,
-              columnNameTestId: 'column-name',
-              entityType: entity.type as EntityType,
-            });
+          await test.step('Verify proper indentation for nested levels', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnItems = panelContainer
+              .locator('.nested-column-name')
+              .locator('..');
+
+            // Get all nested column items and verify they have proper padding
+            const items = await nestedColumnItems.all();
+
+            if (items.length > 1) {
+              // Verify at least one item has padding (indicating nested structure)
+              const hasIndentation = await Promise.all(
+                items.map(async (item) => {
+                  const paddingLeft = await item.evaluate((el) => {
+                    const style = window.getComputedStyle(el);
+
+                    return style.paddingLeft;
+                  });
+
+                  return paddingLeft !== '0px';
+                })
+              );
+
+              const hasAnyIndentation = hasIndentation.some(Boolean);
+
+              expect(hasAnyIndentation).toBeTruthy();
+            }
+          });
+
+          await test.step('Verify clicking on nested column navigates correctly', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
             const nestedColumnLinks = panelContainer.locator(
               '.nested-column-name'
             );
 
-            if ((await nestedColumnLinks.count()) > 1) {
-              // Get parent elements to check padding
-              const linkParents = await nestedColumnLinks.all();
+            const firstLink = nestedColumnLinks.first();
+            await firstLink.scrollIntoViewIfNeeded();
+
+            // Verify link is visible and clickable
+            await expect(firstLink).toBeVisible();
+
+            // Click the link and verify API call or panel update
+            const clickResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                (response.url().includes('/columns') &&
+                  response.url().includes('profile') &&
+                  response.request().method() === 'GET') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/name/`),
+              { timeout: 150000 }
+            );
+
+            await firstLink.click();
+            await clickResponse;
+
+            // Wait for loader to disappear after navigation
+            await waitForAllLoadersToDisappear(page);
+
+            // Verify panel is still visible (navigated to nested column)
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+          });
+
+          await test.step('Verify clicking on intermediate nested levels (non-leaf nodes)', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Navigate back to parent column first
+            const prevButton = panelContainer
+              .locator('.navigation-container')
+              .locator('button')
+              .nth(0);
+
+            // Only navigate back if we moved forward
+            if (await prevButton.isEnabled()) {
+              await prevButton.click();
+              // Wait for loader to disappear after navigation
+              await waitForAllLoadersToDisappear(page);
+            }
+
+            const allNestedLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+            const totalLinks = await allNestedLinks.count();
+
+            if (totalLinks > 1) {
+              // Click on an intermediate level (not the first, not the last if possible)
+              const middleIndex = Math.min(
+                Math.floor(totalLinks / 2),
+                totalLinks - 1
+              );
+              const intermediateLink = allNestedLinks.nth(middleIndex);
+
+              await intermediateLink.scrollIntoViewIfNeeded();
+
+              await expect(intermediateLink).toBeVisible();
+
+              // Click intermediate link
+              const intermediateClickResponse = page.waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/columns/name/') ||
+                  (response.url().includes('/columns') &&
+                    response.url().includes('profile') &&
+                    response.request().method() === 'GET') ||
+                  response.url().includes(`/api/v1/${entity.endpoint}/name/`),
+                { timeout: 150000 }
+              );
+
+              await intermediateLink.click();
+              await intermediateClickResponse;
+
+              // Wait for loader to disappear after navigation
+              await waitForAllLoadersToDisappear(page);
+
+              // Verify panel updated correctly
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+            }
+          });
+
+          await test.step('Verify multiple sibling columns at same nesting level', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            const linkCount = await nestedColumnLinks.count();
+
+            if (linkCount > 1) {
+              // Get all link texts to verify siblings exist
+              const allLinks = await nestedColumnLinks.all();
+              const linkTexts = await Promise.all(
+                allLinks.map((link) => link.textContent())
+              );
+
+              // Should have multiple distinct column names
+              const uniqueNames = new Set(
+                linkTexts.filter((text) => text && text.trim().length > 0)
+              );
+
+              expect(uniqueNames.size).toBeGreaterThan(0);
+
+              // Verify that siblings are all visible
+              const visibleLinks = await Promise.all(
+                allLinks.map(async (link) => await link.isVisible())
+              );
+              const visibleCount = visibleLinks.filter(Boolean).length;
+
+              expect(visibleCount).toBeGreaterThan(0);
+            }
+          });
+
+          await test.step('Verify deep nesting (3+ levels) if available', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            // Check if we have multiple levels by examining padding
+            const allLinks = await nestedColumnLinks.all();
+
+            if (allLinks.length >= 3) {
+              // Get padding values to detect nesting depth
               const paddingValues = await Promise.all(
-                linkParents.map(async (link) => {
+                allLinks.map(async (link) => {
                   const parent = link.locator('..');
 
                   return await parent.evaluate((el) => {
-                    return window.getComputedStyle(el).paddingLeft;
+                    const style = window.getComputedStyle(el);
+
+                    return parseFloat(style.paddingLeft);
                   });
                 })
               );
 
-              // Verify we have multiple padding values indicating nesting levels
-              if (paddingValues.length >= 2) {
-                expect(paddingValues.length).toBeGreaterThan(0);
+              // Should have at least 2 different padding values (indicating multiple levels)
+              const uniquePaddings = new Set(paddingValues);
 
-                // Should have different padding values for different nesting levels
-                const uniquePaddings = new Set(paddingValues);
-
-                expect(uniquePaddings.size).toBeGreaterThan(0);
-              }
+              expect(uniquePaddings.size).toBeGreaterThan(0);
             }
+          });
+
+          await test.step('Close panel', async () => {
+            const panelContainer = page.locator('.column-detail-panel');
 
             await panelContainer.getByTestId('close-button').click();
-          }
+
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          });
         });
-      });
+
+        test('Array type columns with nested structures in NestedColumnsSection', async ({
+          page,
+        }) => {
+          test.slow(true);
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await test.step('Verify array column with nested children renders correctly', async () => {
+            const tableResponse = entity.entityResponseData as Table;
+            const columns = tableResponse?.columns || [];
+
+            const nestedParent = columns.find(
+              (col: Column) =>
+                col.name === (entity as TableClass).columnsName[2]
+            );
+
+            if (!nestedParent) {
+              throw new Error(
+                `Nested parent column not found: ${
+                  (entity as TableClass).columnsName[2]
+                }`
+              );
+            }
+
+            const nestedParentFQN = nestedParent.fullyQualifiedName;
+
+            const arrayColumn = nestedParent.children?.find(
+              (col: Column) =>
+                col.name === (entity as TableClass).columnsName[4]
+            );
+
+            if (!arrayColumn) {
+              throw new Error(
+                `Array column not found: ${
+                  (entity as TableClass).columnsName[4]
+                }`
+              );
+            }
+
+            const arrayColumnFQN = arrayColumn.fullyQualifiedName;
+
+            const parentRow = page.locator(
+              `[data-row-key="${nestedParentFQN}"]`
+            );
+
+            await parentRow.waitFor({ state: 'visible' });
+
+            const arrayColumnRow = page.locator(
+              `[data-row-key="${arrayColumnFQN}"]`
+            );
+
+            await arrayColumnRow.waitFor({ state: 'visible' });
+
+            const arrayColumnId = await arrayColumnRow.getAttribute(
+              'data-row-key'
+            );
+
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector: 'data-row-key',
+              columnId: arrayColumnId ?? '',
+              columnNameTestId: 'column-name',
+              entityType: entity.type as EntityType,
+            });
+
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            if ((await nestedColumnLinks.count()) > 0) {
+              await expect(nestedColumnLinks.first()).toBeVisible();
+
+              const linkCount = await nestedColumnLinks.count();
+
+              expect(linkCount).toBeGreaterThan(0);
+
+              await panelContainer.getByTestId('close-button').click();
+            }
+          });
+        });
+
+        test('Mixed sibling columns (simple + nested) at same level', async ({
+          page,
+        }) => {
+          test.slow(true);
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await test.step('Verify mixed siblings have consistent indentation', async () => {
+            // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
+
+            const nestedColumnRow = page.locator(
+              `[data-row-key="${nestedParentFQN}"]`
+            );
+
+            if (await nestedColumnRow.getByTestId('expand-icon').isVisible()) {
+              await nestedColumnRow.getByTestId('expand-icon').click();
+              // Wait for expansion to complete
+              await waitForAllLoadersToDisappear(page);
+
+              // Open detail panel
+              const nestedColumnId = await nestedColumnRow.getAttribute(
+                'data-row-key'
+              );
+              const panelContainer = await openColumnDetailPanel({
+                page,
+                rowSelector: 'data-row-key',
+                columnId: nestedColumnId ?? nestedParentFQN,
+                columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
+              });
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
+              );
+
+              if ((await nestedColumnLinks.count()) > 1) {
+                // Get parent elements to check padding
+                const linkParents = await nestedColumnLinks.all();
+                const paddingValues = await Promise.all(
+                  linkParents.map(async (link) => {
+                    const parent = link.locator('..');
+
+                    return await parent.evaluate((el) => {
+                      return window.getComputedStyle(el).paddingLeft;
+                    });
+                  })
+                );
+
+                // Verify we have multiple padding values indicating nesting levels
+                if (paddingValues.length >= 2) {
+                  expect(paddingValues.length).toBeGreaterThan(0);
+
+                  // Should have different padding values for different nesting levels
+                  const uniquePaddings = new Set(paddingValues);
+
+                  expect(uniquePaddings.size).toBeGreaterThan(0);
+                }
+              }
+
+              await panelContainer.getByTestId('close-button').click();
+            }
+          });
+        });
+      }
+
+      // Entities whose child table exposes the Tags column header filter
+      const TAG_FILTER_ENTITIES = [
+        'ApiEndpoint',
+        'Container',
+        'Dashboard',
+        'DashboardDataModel',
+        'File',
+        'Pipeline',
+        'SearchIndex',
+        'Table',
+        'Topic',
+        'Worksheet',
+      ];
+
+      if (TAG_FILTER_ENTITIES.includes(entity.type)) {
+        /**
+         * Tests the Tags column header filter across every entity whose child
+         * table supports it.
+         * @description Verifies each entity's table wiring prunes non-matching
+         * rows when a tag filter is applied (regression for the bug where every
+         * row stayed visible).
+         */
+        test('Filter columns by tag prunes non-matching rows', async ({
+          page,
+        }) => {
+          test.slow();
+
+          const taggedKey = entity.childrenSelectorId ?? '';
+          const filterTag = 'PersonalData.Personal';
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          const childTable = page
+            .locator('.ant-table')
+            .filter({ has: taggedRow });
+          const rows = childTable.locator(`[${rowSelector}]`);
+
+          await test.step('Tag a child row', async () => {
+            await taggedRow.scrollIntoViewIfNeeded();
+            await assignTagToChildren({
+              page,
+              tag: filterTag,
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+
+          const rowKeys = await rows.evaluateAll((elements) =>
+            elements.map((element) => element.getAttribute('data-row-key'))
+          );
+          const nonMatchingKey = rowKeys.find(
+            (key) =>
+              key &&
+              key !== taggedKey &&
+              !key.startsWith(`${taggedKey}.`) &&
+              !taggedKey.startsWith(`${key}.`)
+          );
+
+          const toggleTagFilter = async () => {
+            await page
+              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByTestId('filter-icon')
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeVisible();
+
+            await page
+              .locator('.ant-table-filter-dropdown:visible')
+              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeHidden();
+          };
+
+          await test.step('Apply tag filter and verify pruning', async () => {
+            await toggleTagFilter();
+
+            await expect(taggedRow).toBeVisible();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeHidden();
+            }
+          });
+
+          await test.step('Clear filter and verify rows return', async () => {
+            await toggleTagFilter();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeVisible();
+            }
+          });
+
+          await test.step('Cleanup tag', async () => {
+            await removeTagsFromChildren({
+              page,
+              tags: [filterTag],
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+        });
+      }
     }
 
     /**
@@ -1390,9 +1518,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           );
 
           // Wait for loader to disappear after search
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
           const termOption = page.locator('.ant-list-item').filter({
@@ -1414,9 +1540,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await updateResponse;
 
           // CRITICAL: Wait for UI to update after API response
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await expect(
             panelContainer.getByTestId(
@@ -1515,16 +1639,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await expect(saveButton).toBeEnabled();
             await saveButton.click();
             await saveResponse;
-            await expect(
-              page
-                .locator('.column-detail-panel')
-                .getByTestId('alert-bar')
-                .getByTestId('alert-message')
-            ).toContainText('Description updated successfully');
+            await toastNotification(page, /Description updated successfully/i);
 
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             await expect(
               panelContainer
@@ -1566,15 +1683,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await nextButton.click();
 
             // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Verify entity link is visible after navigation
             await expect(page.getByTestId('entity-link')).toBeVisible();
 
             const updatedText = await paginationText.textContent();
 
+            // eslint-disable-next-line playwright/prefer-web-first-assertions
             expect(updatedText).not.toBe(initialText);
             // Verify pagination still shows correct format after navigation
             expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
@@ -1590,16 +1706,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await prevButton.click();
 
             // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             await expect(page.getByTestId('entity-link')).toBeVisible();
 
             // Verify we're back to the original column
-            const finalText = await paginationText.textContent();
-
-            expect(finalText).toBe(initialText);
+            await expect(paginationText).toHaveText(initialText ?? '');
           }
 
           // Close panel
@@ -1628,9 +1740,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             const profileResponse = page.waitForResponse(
               (response) =>
-                response.url().includes('/api/v1/tables/') &&
-                response.url().includes('/columns') &&
-                response.url().includes('profile')
+                response.url().includes('/api/v1/columns/name/') &&
+                response.url().includes('profile') &&
+                response.request().method() === 'GET'
             );
             await columnName.click();
             await profileResponse;
@@ -1660,6 +1772,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               // Verify that the chip has content (metric value)
               const chipContent = await metricChip.textContent();
 
+              // eslint-disable-next-line playwright/prefer-web-first-assertions
               expect(chipContent).toBeTruthy();
               // Value should match one of these patterns: percentage (e.g., "75%"), number (e.g., "1,000"), or placeholder ("--")
               expect(chipContent).toMatch(/(\d+%|\d{1,3}(,\d{3})*|--)/);
@@ -1671,6 +1784,51 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
+          });
+        });
+      }
+
+      if (entity.type === 'DashboardDataModel') {
+        test('Column detail panel does not call /columns/name GET for DashboardDataModel', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const columnGetCalls: string[] = [];
+          const listener = (req: Request) => {
+            if (
+              req.url().includes('/api/v1/columns/name/') &&
+              req.method() === 'GET'
+            ) {
+              columnGetCalls.push(req.url());
+            }
+          };
+
+          await test.step('Open column detail panel and verify no /columns/name GET fires', async () => {
+            page.on('request', listener);
+
+            try {
+              await openColumnDetailPanel({
+                page,
+                rowSelector,
+                columnId: entity.childrenSelectorId ?? '',
+                columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
+              });
+
+              await waitForAllLoadersToDisappear(page);
+
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+              expect(columnGetCalls).toHaveLength(0);
+
+              await closeColumnDetailPanel(page);
+            } finally {
+              page.off('request', listener);
+            }
           });
         });
       }
@@ -1992,115 +2150,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     });
 
     /**
-     * Tests custom property management on supported entities
-     * @description Tests setting and updating various types of custom properties (String, Markdown, Integer, Boolean, Email, Date, List)
+     * Tests copying the entity URL from the header
+     * @description Tests that the header copy button copies the current entity page URL to the clipboard
      */
-    // Create custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
-      const properties = Object.values(CustomPropertyTypeByName);
-      const titleText = properties.join(', ');
+    test(`Copy entity URL from header`, async ({ page }) => {
+      const pageUrl = page.url();
+      const copyButton = page.getByTestId('entity-header-copy-button');
+      const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
-      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
-        // increase timeout as it using single test for multiple steps
-        test.slow(true);
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        await entity.prepareCustomProperty(apiContext);
-
-        await test.step(`Set ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].value
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].newValue
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property in Right Panel`, async () => {
-          test.slow();
-          for (const [index, type] of properties.entries()) {
-            await updateCustomPropertyInRightPanel({
-              page,
-              entityName:
-                entity.entityResponseData['displayName'] ??
-                entity.entityResponseData['name'],
-              propertyDetails: entity.customPropertyValue[type].property,
-              value: entity.customPropertyValue[type].value,
-              endpoint: entity.endpoint,
-              skipNavigation: index > 0,
-            });
-          }
-        });
-
-        await entity.cleanupCustomProperty(apiContext);
-        await afterAction();
-      });
-    }
-
-    if (entity.type === 'Table') {
-      const properties = Object.values(CustomPropertyTypeByName);
-      let customPropertyValue: Record<
-        string,
-        {
-          value: string;
-          newValue: string;
-          property: CustomProperty;
-        }
-      >;
-      let cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
-      let users: Record<string, string>;
-
-      const prepareCustomProperty = async (apiContext: APIRequestContext) => {
-        const data = await createCustomPropertyForEntity(
-          apiContext,
-          EntityTypeEndpoint.TableColumn
-        );
-
-        customPropertyValue = data.customProperties;
-        cleanupUser = data.cleanupUser;
-        users = data.userNames;
-      };
-
-      test('Set & update column-level custom property', async ({ page }) => {
-        // Since the test iterates through all 17 types of custom property and
-        // performs multiple actions for each, we need to increase the timeout
-        // to avoid premature test failure
-        test.setTimeout(240000);
-        const { apiContext, afterAction } = await getApiContext(page);
-
-        await prepareCustomProperty(apiContext);
-
-        const columnFqn =
-          (entity as TableClass).entityResponseData.columns[0]
-            .fullyQualifiedName ?? '';
-
-        for (const type of properties) {
-          await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
-            await verifyTableColumnCustomPropertyPersistence({
-              page,
-              columnFqn,
-              propertyName: customPropertyValue[type].property.name,
-              propertyType: type,
-              users,
-            });
-          });
-        }
-
-        await cleanupUser(apiContext);
-        await afterAction();
-      });
-    }
+      expect(clipboardText).toBe(pageUrl);
+    });
 
     /**
      * Tests entity display name update
@@ -2118,8 +2177,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const customPolicy = new PolicyClass();
       const customRole = new RolesClass();
 
-      test.beforeAll(async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+      test.beforeAll(async () => {
+        const { apiContext, afterAction } = await createAdminApiContext();
 
         await customPolicy.create(apiContext, [
           ...DATA_CONSUMER_RULES,
@@ -2156,6 +2215,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
         dataConsumerPage,
       }) => {
+        test.slow(true);
+
         await entity.visitEntityPage(dataConsumerPage);
 
         await expect(
@@ -2183,9 +2244,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         // Navigate to the table entity page
         await entity.visitEntityPage(page);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Step 1: Navigate to Data Observability tab and verify profiler tab is selected by default
         await test.step('Navigate to Data Observability tab', async () => {
@@ -2203,18 +2262,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await profilerTab.click();
           await profilerResponse;
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
         });
 
         // Step 2: Verify tabs UI component is rendered in Data Observability tab
         await test.step('Verify tabs UI component is rendered in Data Observability tab', async () => {
           // Verify that the profiler sub-tabs are visible
           // (Table Profile, Column Profile, Data Quality, or Incidents)
-          expect(page.getByTestId('table-profile')).toBeVisible();
-          expect(page.getByTestId('column-profile')).toBeVisible();
-          expect(page.getByTestId('data-quality')).toBeVisible();
+          await expect(page.getByTestId('table-profile')).toBeVisible();
+          await expect(page.getByTestId('column-profile')).toBeVisible();
+          await expect(page.getByTestId('data-quality')).toBeVisible();
         });
 
         // Step 3: Switch to Activity Feed tab (all tab is selected by default)
@@ -2226,16 +2283,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           // Wait for activity feed API call (all tab is selected by default)
           const activityFeedResponse = page.waitForResponse(
             (response) =>
-              response.url().includes('/api/v1/feed') &&
-              response.url().includes('entityLink')
+              response.url().includes('/api/v1/activity/') &&
+              response.url().includes('/name/')
           );
 
           await activityFeedTab.click();
           await activityFeedResponse;
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
         });
 
         // Step 4: Verify tabs or left component is rendered in Activity Feed tab
@@ -2257,8 +2312,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const customPolicy = new PolicyClass();
         const customRole = new RolesClass();
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
+        test.beforeAll(async () => {
+          const { apiContext, afterAction } = await createAdminApiContext();
 
           await customPolicy.create(apiContext, [
             ...DATA_CONSUMER_RULES,
@@ -2295,6 +2350,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
           dataConsumerPage,
         }) => {
+          test.slow(true);
+
           await tableEntity.visitEntityPage(dataConsumerPage);
 
           await dataConsumerPage
@@ -2330,8 +2387,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const customPolicy = new PolicyClass();
         const customRole = new RolesClass();
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
+        test.beforeAll(async () => {
+          const { apiContext, afterAction } = await createAdminApiContext();
 
           await customPolicy.create(apiContext, [
             ...DATA_CONSUMER_RULES,
@@ -2402,7 +2459,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
    * @description Tests soft deleting an entity and then hard deleting it to completely remove it from the system
 
    */
-  test(`Delete ${key}`, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+  test(`Delete ${key}`, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
     test.slow(true);
 

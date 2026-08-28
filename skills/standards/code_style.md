@@ -125,9 +125,9 @@ All Python files must start with:
 
 ## Formatting
 
-- Python: `black` + `isort` + `pycln` (run `make py_format`)
+- Python: `ruff` (lint + format, run `make py_format` to apply, `make py_format_check` to verify)
 - Java: `spotless` (run `mvn spotless:apply`)
-- Line length: 88 (black default)
+- Line length: 120
 
 **Always run formatting before committing**:
 ```bash

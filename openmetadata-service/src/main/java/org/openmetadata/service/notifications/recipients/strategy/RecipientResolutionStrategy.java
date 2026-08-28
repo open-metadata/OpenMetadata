@@ -67,4 +67,17 @@ public interface RecipientResolutionStrategy {
    * @return the SubscriptionCategory this strategy implements
    */
   SubscriptionDestination.SubscriptionCategory getCategory();
+
+  /**
+   * Collect a recipient, skipping it when the user or team carried no contact information for the
+   * destination type (no email address, or no webhook configured in the profile).
+   *
+   * @param recipients the set being built
+   * @param recipient the resolved recipient, possibly null
+   */
+  default void addIfResolved(Set<Recipient> recipients, Recipient recipient) {
+    if (recipient != null) {
+      recipients.add(recipient);
+    }
+  }
 }

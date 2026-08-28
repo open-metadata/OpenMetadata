@@ -13,6 +13,11 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
 import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
+import {
   getRandomFirstName,
   uuid,
   visitGlossaryPage,
@@ -61,35 +66,27 @@ export class Glossary extends EntityClass {
 
   async create(apiContext: APIRequestContext) {
     const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owners']);
-    const response = await apiContext.post('/api/v1/glossaries', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'Glossary.create',
+      createPath: '/api/v1/glossaries',
+      fqnSegments: [this.data.name],
       data: apiData,
     });
-
-    if (!response.ok()) {
-      throw new Error(
-        `Glossary.create() failed with status ${response.status()}: ${await response.text()}`
-      );
-    }
-
-    this.responseData = await response.json();
 
     return this.responseData;
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/glossaries/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/glossaries/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
-
-    return await response.json();
+    this.responseData = await okJson(response, 'Glossary.patch');
   }
 
   get() {
@@ -105,14 +102,6 @@ export class Glossary extends EntityClass {
         fqn
       )}?recursive=true&hardDelete=true`
     );
-
-    if (!response.ok()) {
-      const errorText = await response.text();
-
-      throw new Error(
-        `Failed to delete glossary "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
-      );
-    }
 
     return await response.json();
   }

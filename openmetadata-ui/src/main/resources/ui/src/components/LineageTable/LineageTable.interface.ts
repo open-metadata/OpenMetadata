@@ -1,6 +1,9 @@
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { SearchSourceAlias } from '../../interface/search.interface';
-import { LineageNode } from '../Lineage/Lineage.interface';
+import {
+  ColumnLevelLineageNode,
+  LineageNode,
+} from '../Lineage/Lineage.interface';
 
 /*
  *  Copyright 2025 Collate.
@@ -35,8 +38,8 @@ export interface LineageTableState {
   searchValue: string;
   dialogVisible: boolean;
   impactLevel: EImpactLevel;
-  upstreamColumnLineageNodes: LineageNode[];
-  downstreamColumnLineageNodes: LineageNode[];
+  upstreamColumnLineageNodes: ColumnLevelLineageNode[];
+  downstreamColumnLineageNodes: ColumnLevelLineageNode[];
   lineageDirection: LineageDirection;
   lineagePagingInfo: LineagePagingInfo | null;
   nodeDepth?: number;
@@ -49,11 +52,20 @@ export type LineageTableAction =
   | { type: 'SET_SEARCH_VALUE'; payload: string }
   | { type: 'SET_DIALOG_VISIBLE'; payload: boolean }
   | { type: 'SET_IMPACT_LEVEL'; payload: EImpactLevel }
-  | { type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES'; payload: LineageNode[] }
-  | { type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES'; payload: LineageNode[] }
+  | {
+      type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES';
+      payload: ColumnLevelLineageNode[];
+    }
+  | {
+      type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES';
+      payload: ColumnLevelLineageNode[];
+    }
   | {
       type: 'SET_COLUMN_LINEAGE_NODES';
-      payload: { upstream: LineageNode[]; downstream: LineageNode[] };
+      payload: {
+        upstream: ColumnLevelLineageNode[];
+        downstream: ColumnLevelLineageNode[];
+      };
     }
   | { type: 'SET_LINEAGE_DIRECTION'; payload: LineageDirection }
   | { type: 'RESET_FILTERS' }

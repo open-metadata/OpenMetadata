@@ -12,7 +12,6 @@ SqlGlot Limitations:
 -------------------
 1. PostgreSQL COPY command - Not supported, returns empty source tables
    - test_postgres_copy_with_jsonb: test_sqlglot=False
-   - test_postgres_copy_with_jsonb_to_target: test_sqlglot=False
 
 2. CREATE PROCEDURE syntax - Not supported (Oracle, SQL Server)
    - test_oracle_create_procedure_insert_select: test_sqlglot=False
@@ -28,24 +27,24 @@ SqlGlot Limitations:
 
 SqlFluff Limitations:
 --------------------
-1. ClickHouse CREATE TABLE AS SELECT with CTEs - Returns empty source tables
-   - test_clickhouse_create_table_with_ctes: test_sqlfluff=False
-
-2. PostgreSQL DDL statements - UnsupportedStatementException for SET/ALTER SEQUENCE
+1. PostgreSQL DDL statements - UnsupportedStatementException for SET/ALTER SEQUENCE
    - test_postgres_ddl_statements: test_sqlfluff=False
 
-3. Snowflake bind parameters - InvalidSyntaxException with :param syntax in INSERT
+2. Snowflake bind parameters - InvalidSyntaxException with :param syntax in INSERT
    - test_snowflake_insert_with_cte_and_sequence: test_sqlfluff=False
    - test_snowflake_insert_parse_xml: test_sqlfluff=False
 
-4. Snowflake LATERAL FLATTEN - IndexError when parsing JSON flattening syntax
+3. Snowflake LATERAL FLATTEN - IndexError when parsing JSON flattening syntax
    - test_snowflake_lateral_flatten_json: test_sqlfluff=False
 
-5. Oracle CREATE PROCEDURE - InvalidSyntaxException for procedure syntax
+4. Oracle CREATE PROCEDURE - InvalidSyntaxException for procedure syntax
    - test_oracle_create_procedure_insert_select: test_sqlfluff=False
 
-6. Nested subquery wildcards - KeyError in wildcard handler for complex nested queries
+5. Nested subquery wildcards - SubQuery error on wildcard handling in deeply nested queries
    - test_copy_grants_with_complex_case: test_sqlfluff=False
+
+6. Deeply nested UNION ALL column lineage - Returns empty column lineage (~5% of runs)
+   - test_complex_postgres_view: test_sqlfluff=False
 
 SqlParse Limitations:
 --------------------
@@ -59,25 +58,26 @@ SqlParse Limitations:
 3. Complex UPDATE with subqueries - Returns empty source tables
    - test_snowflake_update_with_nested_select: test_sqlparse=False
 
-4. JSON path expressions - Doesn't parse Snowflake JSON paths correctly
+4. JSON path expressions - Returns raw alias (v → v) instead of resolved column names
    - test_snowflake_lateral_flatten_json: test_sqlparse=False
 
 5. CREATE PROCEDURE - Not supported, returns empty source tables
    - test_oracle_create_procedure_insert_select: test_sqlparse=False
 
-6. COPY FROM file - Doesn't recognize COPY FROM as a write operation
-   - test_postgres_copy_with_jsonb_to_target: test_sqlparse=False
+6. BigQuery CLONE statement - Returns empty source tables
+   - test_bigquery_clone_table_with_digit_starting_name: test_sqlparse=False
 
 Graph Comparison Skips (skip_graph_check=True):
 -----------------------------------------------
 Used when parsers produce valid lineage but with different internal graph structures:
 
 1. test_postgres_copy_with_jsonb - Different node structures between SqlFluff/SqlParse
-2. test_snowflake_insert_with_cte_and_sequence - Different CTE handling SqlGlot/SqlParse
-3. test_snowflake_insert_parse_xml - Different bind parameter handling
-4. test_postgres_create_table - Different DDL representations
-5. test_bigquery_with_cte_window_functions - Different CTE graph structures
-6. test_complex_postgres_view - Same nodes/edges but different graph structure
+2. test_postgres_copy_with_jsonb_to_target (column) - SqlFluff graph differs from SqlGlot/SqlParse
+3. test_snowflake_insert_with_cte_and_sequence - Different CTE handling SqlGlot/SqlParse
+4. test_snowflake_insert_parse_xml - Different bind parameter handling
+5. test_postgres_create_table - Different DDL representations
+6. test_bigquery_with_cte_window_functions - Different CTE graph structures
+7. test_clickhouse_ctas_engine_union_all_not_in - SqlFluff graph differs (24n/33e vs 26n/35e)
 
 Column Lineage Categories:
 --------------------------
@@ -96,15 +96,14 @@ Special Cases:
 
 Test Coverage:
 -------------
-- Total Tests: 18
-- Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle
+- Total Tests: 52
+- Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle, StarRocks
 - Parsers: SqlGlot, SqlFluff, SqlParse
 - All tests validate both table lineage AND column lineage
 """
 
 from unittest import TestCase
 
-import pytest
 from collate_sqllineage.core.models import Location, Path
 
 from ingestion.tests.unit.lineage.queries.helpers import (
@@ -112,7 +111,10 @@ from ingestion.tests.unit.lineage.queries.helpers import (
     assert_column_lineage_equal,
     assert_table_lineage_equal,
 )
-from metadata.ingestion.lineage.models import Dialect
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarrocksType,
+)
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 
 
 class TestSpecificDialectQueries(TestCase):
@@ -187,13 +189,13 @@ class TestSpecificDialectQueries(TestCase):
         )
 
         # All columns are masked literals - no meaningful source column lineage
-        # SqlFluff crashes with KeyError on wildcard handling for nested subqueries
+        # SqlFluff crashes with SubQuery error on wildcard handling for nested subqueries
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.SNOWFLAKE.value,
             test_sqlparse=False,
-            test_sqlfluff=False,  # SqlFluff crashes with KeyError on SubQuery wildcard handling
+            test_sqlfluff=False,
         )
 
     def test_dbt_model_style_create_view(self):
@@ -360,8 +362,6 @@ class TestSpecificDialectQueries(TestCase):
             },
             {"atlas.dbt.int_inventory_juvo"},
             dialect=Dialect.CLICKHOUSE.value,
-            # SqlFluff returns empty source tables for ClickHouse CREATE TABLE AS SELECT with CTEs
-            test_sqlfluff=False,
             # SqlParse incorrectly includes CTE name 'sku_cost' as source table
             test_sqlparse=False,
         )
@@ -379,19 +379,14 @@ class TestSpecificDialectQueries(TestCase):
                 ),
                 (
                     TestColumnQualifierTuple("location_id", "dbt.stg_location"),
-                    TestColumnQualifierTuple(
-                        "location_id", "atlas.dbt.int_inventory_juvo"
-                    ),
+                    TestColumnQualifierTuple("location_id", "atlas.dbt.int_inventory_juvo"),
                 ),
                 (
                     TestColumnQualifierTuple("avg_unit_cost", "dbt.stg_sku_cost"),
-                    TestColumnQualifierTuple(
-                        "avg_cost_usd", "atlas.dbt.int_inventory_juvo"
-                    ),
+                    TestColumnQualifierTuple("avg_cost_usd", "atlas.dbt.int_inventory_juvo"),
                 ),
             ],
             dialect=Dialect.CLICKHOUSE.value,
-            test_sqlfluff=False,
             test_sqlparse=False,
         )
 
@@ -474,19 +469,15 @@ class TestSpecificDialectQueries(TestCase):
             {Path("/data/exports/customers.csv")},
             {"public.customer_data"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot does not support PostgreSQL COPY command
-            test_sqlglot=False,
-            # SqlParse doesn't recognize COPY FROM as a write operation
-            test_sqlparse=False,
         )
 
         # No column lineage expected - COPY FROM file
+        # SqlFluff column graph differs from SqlGlot/SqlParse, skip graph check
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
-            test_sqlglot=False,
-            test_sqlparse=False,
+            skip_graph_check=True,
         )
 
     def test_column_lineage_extraction(self):
@@ -515,9 +506,6 @@ class TestSpecificDialectQueries(TestCase):
             dialect=Dialect.MYSQL.value,
         )
 
-    @pytest.mark.skip(
-        "SqlFluff returning empty column lineage unexpectedly in rare cases (5% of runs)"
-    )
     def test_complex_postgres_view(self):
         """Test complex PostgreSQL CREATE VIEW with UNION ALL, nested subqueries, and JSON functions"""
         query = """create view stg_globalv2_default.b2c_order_operational_converted as
@@ -595,32 +583,24 @@ class TestSpecificDialectQueries(TestCase):
                 # Legacy orders path: tb_jobs -> view
                 (
                     TestColumnQualifierTuple("job_id", "raw_legacy_mysql_mena.tb_jobs"),
-                    TestColumnQualifierTuple(
-                        "job_id", "stg_globalv2_default.b2c_order_operational_converted"
-                    ),
+                    TestColumnQualifierTuple("job_id", "stg_globalv2_default.b2c_order_operational_converted"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "order_id", "raw_legacy_mysql_mena.tb_jobs"
-                    ),
+                    TestColumnQualifierTuple("order_id", "raw_legacy_mysql_mena.tb_jobs"),
                     TestColumnQualifierTuple(
                         "customer_id",
                         "stg_globalv2_default.b2c_order_operational_converted",
                     ),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "job_status", "raw_legacy_mysql_mena.tb_jobs"
-                    ),
+                    TestColumnQualifierTuple("job_status", "raw_legacy_mysql_mena.tb_jobs"),
                     TestColumnQualifierTuple(
                         "job_status",
                         "stg_globalv2_default.b2c_order_operational_converted",
                     ),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "creation_datetime", "raw_legacy_mysql_mena.tb_jobs"
-                    ),
+                    TestColumnQualifierTuple("creation_datetime", "raw_legacy_mysql_mena.tb_jobs"),
                     TestColumnQualifierTuple(
                         "creation_datetime",
                         "stg_globalv2_default.b2c_order_operational_converted",
@@ -629,9 +609,7 @@ class TestSpecificDialectQueries(TestCase):
                 # New orders path: orders -> view
                 (
                     TestColumnQualifierTuple("id", "raw_globalv2_ms_order.orders"),
-                    TestColumnQualifierTuple(
-                        "job_id", "stg_globalv2_default.b2c_order_operational_converted"
-                    ),
+                    TestColumnQualifierTuple("job_id", "stg_globalv2_default.b2c_order_operational_converted"),
                 ),
                 (
                     TestColumnQualifierTuple("user_id", "raw_globalv2_ms_order.orders"),
@@ -648,9 +626,7 @@ class TestSpecificDialectQueries(TestCase):
                     ),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "created_at", "raw_globalv2_ms_order.orders"
-                    ),
+                    TestColumnQualifierTuple("created_at", "raw_globalv2_ms_order.orders"),
                     TestColumnQualifierTuple(
                         "creation_datetime",
                         "stg_globalv2_default.b2c_order_operational_converted",
@@ -659,7 +635,7 @@ class TestSpecificDialectQueries(TestCase):
             ],
             dialect=Dialect.POSTGRES.value,
             test_sqlglot=False,  # SqlGlot doesn't extract column lineage for UNION ALL
-            skip_graph_check=True,  # SqlFluff and SqlParse have same nodes/edges but different graph structure
+            test_sqlfluff=False,  # SqlFluff returns empty column lineage for deeply nested UNION ALL (~5% of runs)
         )
 
     def test_postgres_ddl_statements(self):
@@ -687,7 +663,11 @@ CREATE SEQUENCE public.group_logs_id_seq
             set(),  # DDL statements don't have target tables for lineage
             dialect=Dialect.POSTGRES.value,
             # SqlFluff raises UnsupportedStatementException for SET and ALTER SEQUENCE statements
+            # SqlGlot: since collate-sqllineage 2.1.5 it also raises rather than silently
+            # returning empty lineage for statements it cannot parse, such as
+            # "SET client_min_messages=notice"
             test_sqlfluff=False,
+            test_sqlglot=False,
         )
 
         # No column lineage expected - DDL statements with no source or target tables
@@ -696,6 +676,7 @@ CREATE SEQUENCE public.group_logs_id_seq
             [],
             dialect=Dialect.POSTGRES.value,
             test_sqlfluff=False,
+            test_sqlglot=False,
         )
 
     def test_snowflake_insert_with_cte_and_sequence(self):
@@ -830,15 +811,11 @@ LATERAL FLATTEN (INPUT => V) a"""
             [
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "accountcategorycode", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("accountcategorycode", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "accountclassificationcode", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("accountclassificationcode", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
@@ -846,33 +823,23 @@ LATERAL FLATTEN (INPUT => V) a"""
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "accountnumber", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("accountnumber", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_city", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_city", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_country", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_country", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_line1", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_line1", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_postalcode", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_postalcode", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
@@ -909,7 +876,7 @@ LATERAL FLATTEN (INPUT => V) a"""
             ],
             dialect=Dialect.SNOWFLAKE.value,
             test_sqlfluff=False,
-            # SqlParse doesn't parse JSON path expressions correctly, returns just "v" column
+            # SqlParse returns v → v (the raw column) instead of v → named output columns
             test_sqlparse=False,
         )
 
@@ -940,25 +907,18 @@ LATERAL FLATTEN (INPUT => V) a"""
             query,
             [
                 (
-                    TestColumnQualifierTuple(
-                        "source_id", "dev_edw_db.cqiqfu_trf.trf_base_year_type_20"
-                    ),
-                    TestColumnQualifierTuple(
-                        "end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"
-                    ),
+                    TestColumnQualifierTuple("source_id", "dev_edw_db.cqiqfu_trf.trf_base_year_type_20"),
+                    TestColumnQualifierTuple("end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "start_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"
-                    ),
-                    TestColumnQualifierTuple(
-                        "end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"
-                    ),
+                    TestColumnQualifierTuple("start_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"),
+                    TestColumnQualifierTuple("end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"),
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
             test_sqlparse=False,
-            test_sqlglot=False,  # SqlGlot doesn't extract column lineage for UPDATE
+            # SqlGlot returns empty column lineage for UPDATE statements
+            test_sqlglot=False,
         )
 
     def test_snowflake_insert_parse_xml(self):
@@ -1154,9 +1114,7 @@ END;"""
 
     def test_snowflake_copy_into_fully_qualified_stage(self):
         """Test COPY INTO table FROM @db.schema.stage with fully qualified stage name"""
-        query = (
-            "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
-        )
+        query = "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
 
         assert_table_lineage_equal(
             query,
@@ -1169,4 +1127,784 @@ END;"""
             query,
             [],
             dialect=Dialect.SNOWFLAKE.value,
+        )
+
+    # -----------------------------------------------------------------------
+    # collate-sqllineage 2.1.1 regression tests
+    # Release: https://github.com/open-metadata/collate-sqllineage/releases/tag/2.1.1-release
+    # -----------------------------------------------------------------------
+
+    def test_ctas_union_all_inside_cte_column_lineage(self):
+        """Test CTAS where the CTE body is a UNION ALL — column lineage maps both branches.
+
+        Verifies that when a CTE wraps a UNION ALL and the outer SELECT reads from that
+        CTE, column lineage correctly flows from both UNION ALL input tables to the
+        CTAS write target (not to the CTE name or a wrong intermediate table).
+        All 3 parsers produce identical graphs (19n/26e).
+        """
+        query = """CREATE TABLE analytics.fact_orders AS
+WITH combined_data AS (
+    SELECT order_id, amount, status FROM staging.orders_source_a
+    UNION ALL
+    SELECT order_id, amount, status FROM staging.orders_source_b
+)
+SELECT order_id, amount, status FROM combined_data"""
+
+        assert_table_lineage_equal(
+            query,
+            {"staging.orders_source_a", "staging.orders_source_b"},
+            {"analytics.fact_orders"},
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("order_id", "staging.orders_source_a"),
+                    TestColumnQualifierTuple("order_id", "analytics.fact_orders"),
+                ),
+                (
+                    TestColumnQualifierTuple("amount", "staging.orders_source_a"),
+                    TestColumnQualifierTuple("amount", "analytics.fact_orders"),
+                ),
+                (
+                    TestColumnQualifierTuple("status", "staging.orders_source_a"),
+                    TestColumnQualifierTuple("status", "analytics.fact_orders"),
+                ),
+                (
+                    TestColumnQualifierTuple("order_id", "staging.orders_source_b"),
+                    TestColumnQualifierTuple("order_id", "analytics.fact_orders"),
+                ),
+                (
+                    TestColumnQualifierTuple("amount", "staging.orders_source_b"),
+                    TestColumnQualifierTuple("amount", "analytics.fact_orders"),
+                ),
+                (
+                    TestColumnQualifierTuple("status", "staging.orders_source_b"),
+                    TestColumnQualifierTuple("status", "analytics.fact_orders"),
+                ),
+            ],
+        )
+
+    def test_clickhouse_ctas_engine_union_all_not_in(self):
+        """Test ClickHouse CTAS with ENGINE clause, UNION ALL, and NOT IN subquery.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/21953.
+        Verifies that CTAS queries combining ENGINE = ..., CTEs, UNION ALL and a NOT IN
+        subfilter produce correct source/target table lineage and column lineage.
+        SqlFluff graph structure differs from SqlGlot/SqlParse (24n/33e vs 26n/35e),
+        requiring skip_graph_check.
+        """
+        query = """CREATE TABLE analytics_mart.dim_entity ENGINE = ReplacingMergeTree() AS
+WITH source_a AS (
+    SELECT entity_id, entity_name, source_system FROM staging.int_entity__source_a
+),
+source_b AS (
+    SELECT entity_id, entity_name, source_system FROM staging.int_entity__source_b
+)
+SELECT entity_id, entity_name, source_system FROM source_a
+WHERE entity_id NOT IN (SELECT entity_id FROM source_b)
+UNION ALL
+SELECT entity_id, entity_name, source_system FROM source_b"""
+
+        assert_table_lineage_equal(
+            query,
+            {"staging.int_entity__source_a", "staging.int_entity__source_b"},
+            {"analytics_mart.dim_entity"},
+            dialect=Dialect.CLICKHOUSE.value,
+            skip_graph_check=True,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("entity_id", "staging.int_entity__source_a"),
+                    TestColumnQualifierTuple("entity_id", "analytics_mart.dim_entity"),
+                ),
+                (
+                    TestColumnQualifierTuple("entity_name", "staging.int_entity__source_a"),
+                    TestColumnQualifierTuple("entity_name", "analytics_mart.dim_entity"),
+                ),
+                (
+                    TestColumnQualifierTuple("source_system", "staging.int_entity__source_a"),
+                    TestColumnQualifierTuple("source_system", "analytics_mart.dim_entity"),
+                ),
+                (
+                    TestColumnQualifierTuple("entity_id", "staging.int_entity__source_b"),
+                    TestColumnQualifierTuple("entity_id", "analytics_mart.dim_entity"),
+                ),
+                (
+                    TestColumnQualifierTuple("entity_name", "staging.int_entity__source_b"),
+                    TestColumnQualifierTuple("entity_name", "analytics_mart.dim_entity"),
+                ),
+                (
+                    TestColumnQualifierTuple("source_system", "staging.int_entity__source_b"),
+                    TestColumnQualifierTuple("source_system", "analytics_mart.dim_entity"),
+                ),
+            ],
+            dialect=Dialect.CLICKHOUSE.value,
+            skip_graph_check=True,
+        )
+
+    def test_bigquery_clone_table_with_digit_starting_name(self):
+        """Test BigQuery CREATE OR REPLACE TABLE ... CLONE where source name starts with digit.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/23338.
+        BigQuery allows identifiers that start with digits (e.g. 1st_layer___name).
+        SqlParse returns empty sources for CLONE statements so it is excluded.
+        SqlGlot and SqlFluff produce isomorphic graphs (3n/2e).
+        """
+        query = "CREATE OR REPLACE TABLE analytics_ref.region_summary_v2 CLONE analytics_source.1st_layer___region_summary_v2"
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics_source.1st_layer___region_summary_v2"},
+            {"analytics_ref.region_summary_v2"},
+            dialect=Dialect.BIGQUERY.value,
+            test_sqlparse=False,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.BIGQUERY.value,
+            test_sqlparse=False,
+        )
+
+    def test_snowflake_copy_into_table_with_column_list_from_stage_subquery(self):
+        """Test COPY INTO table (col1, col2) FROM (SELECT ... FROM @stage) with explicit column list.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/27380.
+        Verifies that the stage reference is resolved as a Location source even when the
+        COPY INTO target specifies an explicit column list and the subquery uses Snowflake
+        positional column syntax ($1:field). Internal graph structures differ across parsers.
+        """
+        query = """COPY INTO PROD_DB.STAGING.RAW_EVENTS (EVENT_ID, EVENT_DATA)
+FROM (SELECT $1:event_id, $2:event_data FROM @PROD_DB.STAGING.STG_EVENTS_ROOT)
+FILE_FORMAT = (TYPE = PARQUET)"""
+
+        assert_table_lineage_equal(
+            query,
+            {Location("@PROD_DB.STAGING.STG_EVENTS_ROOT")},
+            {"prod_db.staging.raw_events"},
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+    def test_snowflake_copy_into_stage_subpath_with_external_file_format(self):
+        """Test COPY INTO from @stage/subpath/file.csv with an external named FILE_FORMAT.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/27380.
+        Verifies that the stage subpath (CDL/delivery_data/file.csv) is stripped so the
+        source resolves to the stage root (@stage), and that a fully-qualified external
+        FILE_FORMAT reference (db.schema.format) does not interfere with lineage.
+        Internal graph structures differ across parsers.
+        """
+        query = """COPY INTO LOAD_DB.PUBLIC.FACT_DELIVERIES
+FROM (SELECT $1, $2, $3 FROM @LOAD_DB.STAGING.STG_DELIVERIES/CDL/delivery_data/file.csv)
+FILE_FORMAT = LOAD_DB.PUBLIC.CSV_FORMAT
+FORCE = TRUE
+ON_ERROR = CONTINUE"""
+
+        assert_table_lineage_equal(
+            query,
+            {Location("@LOAD_DB.STAGING.STG_DELIVERIES")},
+            {"load_db.public.fact_deliveries"},
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+    def test_snowflake_copy_into_stage_subpath_date_partitioned(self):
+        """Test COPY INTO from @stage/YYYY/MM/DD/file.csv date-partitioned path.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/27380.
+        Verifies that date-partitioned stage subpaths (e.g. /2026/04/11/events.csv) are
+        stripped so the source resolves to the stage root rather than the full path.
+        Internal graph structures differ across parsers.
+        """
+        query = """COPY INTO ANALYTICS_DB.PUBLIC.FACT_EVENTS
+FROM (SELECT $1 FROM @ANALYTICS_DB.PUBLIC.STG_EVENTS/2026/04/11/events.csv)
+FILE_FORMAT = (TYPE = CSV)"""
+
+        assert_table_lineage_equal(
+            query,
+            {Location("@ANALYTICS_DB.PUBLIC.STG_EVENTS")},
+            {"analytics_db.public.fact_events"},
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+    # -----------------------------------------------------------------------
+    # StarRocks dialect tests
+    # Regression for https://github.com/open-metadata/OpenMetadata/issues/28934
+    # StarRocks queries (e.g. from Metabase) use StarRocks-specific functions
+    # and optimizer hints and must be parsed with the StarRocks dialect, not
+    # MySQL, for lineage extraction to succeed.
+    # -----------------------------------------------------------------------
+
+    def test_starrocks_connection_type_maps_to_starrocks_dialect(self):
+        """StarRocks connection type resolves to the StarRocks dialect, not MySQL."""
+        assert ConnectionTypeDialectMapper.dialect_of(StarrocksType.StarRocks.value) == Dialect.STARROCKS
+        assert Dialect.STARROCKS.value == "starrocks"
+
+    def test_starrocks_bitmap_functions_with_set_var_hint(self):
+        """Test StarRocks SELECT with to_bitmap/bitmap_union_count and a SET_VAR optimizer hint.
+
+        These StarRocks-specific functions and the /*+ SET_VAR(...) */ hint previously
+        failed lineage extraction when parsed with the MySQL dialect.
+        """
+        query = """SELECT /*+ SET_VAR(query_timeout = 60) */
+            region,
+            bitmap_union_count(to_bitmap(user_id)) AS uv
+        FROM analytics.user_events
+        GROUP BY region"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics.user_events"},
+            set(),  # No target table for SELECT query
+            dialect=Dialect.STARROCKS.value,
+        )
+        # A SELECT has no target table, so column lineage is empty.
+        assert_column_lineage_equal(query, [], dialect=Dialect.STARROCKS.value)
+
+    def test_starrocks_ctas_bitmap_union(self):
+        """Test StarRocks CREATE TABLE AS SELECT with bitmap aggregation."""
+        query = """CREATE TABLE analytics.uv_daily AS
+        SELECT
+            dt,
+            bitmap_union(to_bitmap(user_id)) AS uv
+        FROM analytics.user_events
+        GROUP BY dt"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics.user_events"},
+            {"analytics.uv_daily"},
+            dialect=Dialect.STARROCKS.value,
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("dt", "analytics.user_events"),
+                    TestColumnQualifierTuple("dt", "analytics.uv_daily"),
+                ),
+                (
+                    TestColumnQualifierTuple("user_id", "analytics.user_events"),
+                    TestColumnQualifierTuple("uv", "analytics.uv_daily"),
+                ),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_ctas_with_distributed_and_properties(self):
+        """Test StarRocks CREATE TABLE AS SELECT with DISTRIBUTED BY and PROPERTIES.
+
+        These StarRocks table-creation clauses must be parsed with the StarRocks
+        dialect for both table and column lineage to be extracted.
+        """
+        query = """CREATE TABLE analytics.uv_daily
+        DISTRIBUTED BY HASH(dt) BUCKETS 10
+        PROPERTIES ("replication_num" = "1")
+        AS SELECT
+            dt,
+            bitmap_union(to_bitmap(user_id)) AS uv
+        FROM analytics.user_events
+        GROUP BY dt"""
+
+        # SqlFluff does not support the StarRocks PROPERTIES clause. SqlGlot and
+        # SqlParse both extract the lineage under the StarRocks dialect.
+        assert_table_lineage_equal(
+            query,
+            {"analytics.user_events"},
+            {"analytics.uv_daily"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("dt", "analytics.user_events"),
+                    TestColumnQualifierTuple("dt", "analytics.uv_daily"),
+                ),
+                (
+                    TestColumnQualifierTuple("user_id", "analytics.user_events"),
+                    TestColumnQualifierTuple("uv", "analytics.uv_daily"),
+                ),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_duplicate_key_table(self):
+        """Test StarRocks Duplicate Key table CTAS.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/duplicate_key_table/
+        """
+        query = """CREATE TABLE analytics.t
+        DUPLICATE KEY(a)
+        DISTRIBUTED BY HASH(a) BUCKETS 4
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the DUPLICATE KEY clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_aggregate_key_table(self):
+        """Test StarRocks Aggregate table CTAS with a SUM value column.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/aggregate_table/
+        """
+        query = """CREATE TABLE analytics.t (a INT, s BIGINT SUM)
+        AGGREGATE KEY(a)
+        DISTRIBUTED BY HASH(a)
+        AS SELECT a, sum(b) AS s FROM analytics.src GROUP BY a"""
+
+        # Only SqlParse handles the AGGREGATE KEY column-aggregate DDL today.
+        assert_table_lineage_equal(
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("s", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_unique_key_table(self):
+        """Test StarRocks Unique Key table CTAS.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/unique_key_table/
+        """
+        query = """CREATE TABLE analytics.t
+        UNIQUE KEY(a)
+        DISTRIBUTED BY HASH(a)
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the UNIQUE KEY clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_primary_key_table(self):
+        """Test StarRocks Primary Key table CTAS.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/primary_key_table/
+        """
+        query = """CREATE TABLE analytics.t
+        PRIMARY KEY(a)
+        DISTRIBUTED BY HASH(a)
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the PRIMARY KEY clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_range_partition(self):
+        """Test StarRocks CTAS with range partitioning.
+
+        Docs: https://docs.starrocks.io/docs/table_design/data_distribution/
+        """
+        query = """CREATE TABLE analytics.t
+        PARTITION BY RANGE(dt) (PARTITION p1 VALUES LESS THAN ('2024-01-01'))
+        DISTRIBUTED BY HASH(id)
+        AS SELECT id, dt FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the PARTITION BY RANGE clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
+                (TestColumnQualifierTuple("dt", "analytics.src"), TestColumnQualifierTuple("dt", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_expression_partition(self):
+        """Test StarRocks CTAS with expression partitioning.
+
+        Docs: https://docs.starrocks.io/docs/table_design/data_distribution/expression_partitioning/
+        """
+        query = """CREATE TABLE analytics.t
+        PARTITION BY date_trunc('day', dt)
+        DISTRIBUTED BY HASH(id)
+        AS SELECT id, dt FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for expression partitioning.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
+                (TestColumnQualifierTuple("dt", "analytics.src"), TestColumnQualifierTuple("dt", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_sort_key_order_by(self):
+        """Test StarRocks CTAS with an ORDER BY sort key.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/table_bucket_part_index/CREATE_TABLE/
+        """
+        query = """CREATE TABLE analytics.t
+        DISTRIBUTED BY HASH(id)
+        ORDER BY (id)
+        AS SELECT id, v FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the ORDER BY sort key clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
+                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("v", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_random_bucketing(self):
+        """Test StarRocks CTAS with random bucketing.
+
+        Docs: https://docs.starrocks.io/docs/table_design/data_distribution/
+        """
+        query = """CREATE TABLE analytics.t
+        DISTRIBUTED BY RANDOM
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for DISTRIBUTED BY RANDOM.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_create_view(self):
+        """Test StarRocks CREATE VIEW.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/View/CREATE_VIEW/
+        """
+        query = """CREATE VIEW analytics.v AS SELECT a, b FROM analytics.src"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.v"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.v")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.v")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_create_materialized_view(self):
+        """Test StarRocks asynchronous CREATE MATERIALIZED VIEW.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/materialized_view/CREATE_MATERIALIZED_VIEW/
+        """
+        query = """CREATE MATERIALIZED VIEW analytics.mv
+        DISTRIBUTED BY HASH(id) REFRESH ASYNC
+        AS SELECT id, sum(v) AS c FROM analytics.src GROUP BY id"""
+
+        # SqlFluff has no StarRocks grammar for the materialized view refresh clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.mv"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.mv")),
+                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("c", "analytics.mv")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_insert_into_select(self):
+        """Test StarRocks INSERT INTO ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT INTO analytics.t SELECT a, b FROM analytics.src"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_insert_with_label(self):
+        """Test StarRocks INSERT INTO ... WITH LABEL ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT INTO analytics.t WITH LABEL lbl1 SELECT a, b FROM analytics.src"""
+
+        # Only SqlParse handles the WITH LABEL insert clause today.
+        assert_table_lineage_equal(
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_insert_overwrite(self):
+        """Test StarRocks INSERT OVERWRITE ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT OVERWRITE analytics.t SELECT a, b FROM analytics.src"""
+
+        # SqlFluff does not extract lineage from INSERT OVERWRITE today.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_insert_with_column_list(self):
+        """Test StarRocks INSERT INTO ... (columns) ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT INTO analytics.t (a, b) SELECT a, b FROM analytics.src"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_hll_union_agg(self):
+        """Test StarRocks HLL approximate distinct functions.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/aggregate-functions/hll_union_agg/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT region, hll_union_agg(hll_hash(uid)) AS uv FROM analytics.src GROUP BY region"""
+
+        # SqlParse does not trace the argument of the HLL aggregate into uv.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlparse=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("region", "analytics.src"),
+                    TestColumnQualifierTuple("region", "analytics.t"),
+                ),
+                (TestColumnQualifierTuple("uid", "analytics.src"), TestColumnQualifierTuple("uv", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlparse=False,
+        )
+
+    def test_starrocks_approx_count_distinct(self):
+        """Test StarRocks approx_count_distinct.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/aggregate-functions/approx_count_distinct/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT region, approx_count_distinct(uid) AS uv FROM analytics.src GROUP BY region"""
+
+        # SqlParse does not trace the argument of the aggregate into uv.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlparse=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("region", "analytics.src"),
+                    TestColumnQualifierTuple("region", "analytics.t"),
+                ),
+                (TestColumnQualifierTuple("uid", "analytics.src"), TestColumnQualifierTuple("uv", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlparse=False,
+        )
+
+    def test_starrocks_percentile_approx(self):
+        """Test StarRocks percentile_approx.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/aggregate-functions/percentile_approx/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT region, percentile_approx(v, 0.99) AS p99 FROM analytics.src GROUP BY region"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("region", "analytics.src"),
+                    TestColumnQualifierTuple("region", "analytics.t"),
+                ),
+                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("p99", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_array_map_lambda(self):
+        """Test StarRocks array_map with a lambda expression.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/array-functions/array_map/
+        Lambda: https://docs.starrocks.io/docs/sql-reference/sql-functions/Lambda_expression/
+        """
+        query = """INSERT INTO analytics.t SELECT array_map(x -> x + 1, arr) AS r FROM analytics.src"""
+
+        # SqlFluff additionally maps the lambda parameter as a source column.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("arr", "analytics.src"), TestColumnQualifierTuple("r", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_cte(self):
+        """Test StarRocks common table expression feeding an INSERT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/table_bucket_part_index/SELECT/
+        """
+        query = """INSERT INTO analytics.t WITH c AS (SELECT a FROM analytics.src) SELECT a FROM c"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        # Parsers model the CTE node differently, so compare endpoints only.
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            skip_graph_check=True,
+        )
+
+    def test_starrocks_join(self):
+        """Test StarRocks JOIN feeding an INSERT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/table_bucket_part_index/SELECT/SELECT_JOIN/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT a.id AS id FROM analytics.s1 a JOIN analytics.s2 b ON a.id = b.id"""
+
+        assert_table_lineage_equal(
+            query, {"analytics.s1", "analytics.s2"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.s1"), TestColumnQualifierTuple("id", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
         )

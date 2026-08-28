@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.type.SearchConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating SearchService entities in integration tests.
@@ -38,7 +39,8 @@ public class SearchServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test ElasticSearch service");
 
-    return SdkClients.adminClient().searchServices().create(request);
+    return ns.trackRoot(
+        Entity.SEARCH_SERVICE, SdkClients.adminClient().searchServices().create(request));
   }
 
   /**
@@ -62,7 +64,8 @@ public class SearchServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test OpenSearch service");
 
-    return SdkClients.adminClient().searchServices().create(request);
+    return ns.trackRoot(
+        Entity.SEARCH_SERVICE, SdkClients.adminClient().searchServices().create(request));
   }
 
   /** Get search service by ID. */

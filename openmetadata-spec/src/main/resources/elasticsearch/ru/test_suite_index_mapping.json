@@ -1,5 +1,6 @@
 {
   "settings": {
+    "index": {},
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -10,6 +11,17 @@
             "letter",
             "digit"
           ]
+        },
+        "substring_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 4,
+          "token_chars": [
+            "letter",
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
         }
       },
       "normalizer": {
@@ -48,6 +60,13 @@
             "compound_word_delimiter_graph",
             "lowercase",
             "flatten_graph"
+          ]
+        },
+        "om_substring": {
+          "type": "custom",
+          "tokenizer": "substring_ngram_tokenizer",
+          "filter": [
+            "lowercase"
           ]
         }
       },
@@ -91,8 +110,38 @@
   },
   "mappings": {
     "properties": {
-      "id": {
+      "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
+      "id": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -110,6 +159,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -156,6 +209,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -170,6 +227,9 @@
         }
       },
       "lastResultTimestamp": {
+        "type": "long"
+      },
+      "testsRevision": {
         "type": "long"
       },
       "owners": {
@@ -259,7 +319,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -272,6 +333,46 @@
           },
           "state": {
             "type": "keyword"
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },

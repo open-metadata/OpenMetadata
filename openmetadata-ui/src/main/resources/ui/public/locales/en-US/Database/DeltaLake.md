@@ -70,28 +70,28 @@ $$section
 
 In this configuration we will be pointing to the Hive Metastore database directly.
 
-#### Hive Metastore Database ($id="metastoreDb")
+### Hive Metastore Database
 
 JDBC connection to the metastore database.
 
 It should be a properly formatted database URL, which will be used in the Spark Configuration under `spark.hadoop.javax.jdo.option.ConnectionURL`.
 
-#### Connection UserName ($id="username")
+#### Connection UserName
 
 Username to use against the metastore database. The value will be used in the Spark Configuration under `spark.hadoop.javax.jdo.option.ConnectionUserName`.
 
-#### Connection Password ($id="password")
+#### Connection Password
 
 Password to use against metastore database. The value will be used in the Spark Configuration under `spark.hadoop.javax.jdo.option.ConnectionPassword`.
 
-#### Connection Driver Name ($id="driverName")
+#### Connection Driver Name
 
 Driver class name for JDBC metastore. The value will be used in the Spark Configuration under `spark.hadoop.javax.jdo.option.ConnectionDriverName`,
 e.g., `org.mariadb.jdbc.Driver`.
 
 You will need to provide the driver to the ingestion image, and pass the Class path as explained below.
 
-#### JDBC Driver Class Path ($id="jdbcDriverClassPath")
+#### JDBC Driver Class Path
 
 Class path to JDBC driver required for the JDBC connection. The value will be used in the Spark Configuration under `spark.driver.extraClassPath`.
 

@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.12.0-SNAPSHOT</version>
+  <version>2.0.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -73,7 +73,10 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <jackson.version>2.18.6</jackson.version>
+    <jackson.version>2.18.9</jackson.version>
+    <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
+         import below and by openmetadata-service's BOM import. -->
+    <awssdk.version>2.41.30</awssdk.version>
     <dropwizard.version>5.0.0</dropwizard.version>
     <dropwizard-jdbi3.version>5.0.0</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
@@ -94,26 +97,39 @@
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
-    <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
-    <gson.version>2.11.0</gson.version>
+    <redshift-jdbc.version>2.2.2</redshift-jdbc.version>
+    <gson.version>2.13.1</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.7</postgres.connector.version>
-    <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
+    <postgres.connector.version>42.7.12</postgres.connector.version>
+    <jsonschema2pojo.version>1.3.1</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
-    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <tomcat-jdbc.version>11.0.11</tomcat-jdbc.version>
     <hikaricp.version>7.0.2</hikaricp.version>
+    <!-- CVE-2026-15687: Directory Traversal in copyDirectoryFromPod, vulnerable [,25.0.1).
+         Lives at the root because two modules consume it — openmetadata-service and
+         openmetadata-integration-tests. Keep it here so a bump cannot miss one of them. -->
+    <kubernetes-client.version>25.0.1</kubernetes-client.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.11</spring.version>
-    <log4j.version>2.25.3</log4j.version>
+    <spring.version>7.0.9</spring.version>
+    <log4j.version>2.25.5</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
+    <org.junit.platform.version>1.11.4</org.junit.platform.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
-    <handlebars.version>4.5.0</handlebars.version>
+    <handlebars.version>4.5.2</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
+    <!-- Apache Jena RDF client libraries. Pinned project-wide so
+         openmetadata-service and openmetadata-integration-tests stay on the
+         same classpath; the previous split (4.10.0 vs 5.0.0) forced
+         JenaFusekiStorage to abstract over API differences between Jena 4 and
+         Jena 5 with a CompletableFuture wrapper around every RDFConnection
+         call. Jena 6 requires Java 21 — already our project minimum, so no
+         JDK bump needed. -->
+    <jena.version>5.6.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -126,6 +142,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
+    <micrometer.version>1.16.7</micrometer.version>
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
@@ -134,7 +151,7 @@
     <freemarker.version>2.3.33</freemarker.version>
     <passay.version>1.6.6</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
-    <simplejavamail.version>8.12.2</simplejavamail.version>
+    <simplejavamail.version>8.12.6</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <unboundsdk.version>6.0.11</unboundsdk.version>
@@ -144,14 +161,14 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.25</logback-core.version>
-    <logback-classic.version>1.5.25</logback-classic.version>
+    <logback-core.version>1.5.36</logback-core.version>
+    <logback-classic.version>1.5.36</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>12.1.6</jetty.version>
+    <jetty.version>12.1.10</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.17.1</mcp-sdk.version>
+    <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
@@ -169,6 +186,25 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Pin every org.eclipse.jetty:* to one patched line. Declaring individual artifacts
+           with ${jetty.version} only covers the ones named explicitly; the rest arrive
+           transitively from dropwizard-core and stay unmanaged on its older line (e.g.
+           jetty-security, CVE-2026-10050 digest authentication bypass). Imported before
+           anything that pulls dropwizard so the patched line wins. -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.ee10</groupId>
+        <artifactId>jetty-ee10-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <!-- Security: Force newer versions to fix vulnerabilities -->
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -180,15 +216,64 @@
         <artifactId>okhttp</artifactId>
         <version>4.12.0</version>
       </dependency>
+      <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
+           which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
+           artifact, so it would sit on the classpath duplicating the pinned okhttp 4.12.0 jar
+           (split package, resolved by classpath order). client-java 25.0.1 references the exact
+           same 118 okhttp/okio members as 24.0.0, so 4.12.0 satisfies it. Drop this pin only as
+           part of a real okhttp 5 migration. -->
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>logging-interceptor</artifactId>
+        <version>4.12.0</version>
+      </dependency>
+      <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
+           azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7
+           and reactor-netty 1.3.7 are the aligned release, so mixing lines is avoided. -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-core</artifactId>
+        <version>3.8.7</version>
+      </dependency>
+      <!-- CVE-2026-47874: reactor-netty-http < 1.3.7. The fix ships only on the 1.3.x line (1.2.18
+           is the last 1.2.x GA, no backport), and reactor-netty 1.3.x requires Netty 4.2.x — see
+           the netty-bom pin below, raised to 4.2.x in lockstep so 1.3.x's Netty 4.2 APIs resolve.
+           Pin -core alongside -http so a path that reaches -core directly cannot drag the 1.2 line
+           back in. This mirrors ai-platform's ADR-0018, which moves the same three together. -->
+      <dependency>
+        <groupId>io.projectreactor.netty</groupId>
+        <artifactId>reactor-netty-core</artifactId>
+        <version>1.3.7</version>
+      </dependency>
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
-        <version>1.2.14</version>
+        <version>1.3.7</version>
+      </dependency>
+      <!-- CVE-2026-45292: opentelemetry-api 1.37.0 (transitive of
+           co.elastic.clients:elasticsearch-java, shaded into elasticsearch-deps)
+           is vulnerable; import the BOM to pin -api and -context to the fix. -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>1.62.0</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>org.eclipse.angus</groupId>
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
+      </dependency>
+      <!-- CVE-2026-43869 + CVE-2026-45112 (unbounded read) + CVE-2026-48586 (zlib data
+           amplification): pin to 0.24.0, the first release carrying all three fixes. No Jena
+           release ships a fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be
+           retired by upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
+           statically references TException. -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>0.24.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -259,7 +344,12 @@
       </dependency>
       <dependency>
         <groupId>io.modelcontextprotocol.sdk</groupId>
-        <artifactId>mcp</artifactId>
+        <artifactId>mcp-core</artifactId>
+        <version>${mcp-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.modelcontextprotocol.sdk</groupId>
+        <artifactId>mcp-json-jackson2</artifactId>
         <version>${mcp-sdk.version}</version>
       </dependency>
       <dependency>
@@ -301,6 +391,11 @@
             <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.dropwizard</groupId>
+        <artifactId>dropwizard-http2</artifactId>
+        <version>${dropwizard.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -470,11 +565,14 @@
         <version>${dropwizard.version}</version>
       </dependency>
 
-      <!-- For Prometheus support -->
+      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.16.x
+           (pulls client_java 1.4.3); a mismatched version splits the prometheus-metrics
+           family so one layer calls config APIs absent in the other
+           (NoSuchMethodError at runtime). Drives -core/-config across all modules. -->
       <dependency>
         <groupId>io.prometheus</groupId>
         <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
-        <version>1.3.6</version>
+        <version>1.4.3</version>
       </dependency>
 
 
@@ -586,9 +684,9 @@
         <version>${jackson.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.lmax</groupId>
-        <artifactId>disruptor</artifactId>
-        <version>3.4.4</version>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jakarta-jsonp</artifactId>
+        <version>${jackson.version}</version>
       </dependency>
       <dependency>
         <groupId>io.github.resilience4j</groupId>
@@ -660,10 +758,15 @@
         <artifactId>azure-identity</artifactId>
         <version>1.15.2</version>
       </dependency>
+      <!-- Pin all transitive io.netty:* to one patched line via the BOM (netty-codec-http et al.
+           arrive transitively through reactor-netty-http and others). Held on the 4.2.x line
+           because reactor-netty 1.3.x (pinned above) is built against Netty 4.2; 4.2.17.Final is
+           newer than the 4.1.137.Final we previously held, so it still clears the CorsHandler
+           Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.129.Final</version>
+        <version>4.2.17.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -678,7 +781,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.dataformat</groupId>
         <artifactId>jackson-dataformat-yaml</artifactId>
-        <version>2.17.2</version>
+        <version>${jackson.version}</version>
         <exclusions>
           <exclusion>
             <groupId>org.yaml</groupId>
@@ -715,6 +818,77 @@
         <artifactId>flyway-mysql</artifactId>
         <version>${flyway.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5</artifactId>
+        <version>5.4.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5-h2</artifactId>
+        <version>5.4.3</version>
+      </dependency>
+      <!--
+        Keep this in step with the httpcore5 pin above - Apache releases the two together
+        and mixing lines breaks search. httpclient5 5.5/5.5.2 are built against httpcore5
+        5.3.x; on 5.4.x their I/O reactor dispatchers die silently, leaking connection-pool
+        leases until every request fails with DeadlineTimeoutException. 5.6.3 declares
+        httpcore5 5.4.3, so client and core match.
+
+        5.6.3 is also the first release outside the CVE-2026-64607 range (affects
+        5.0-alpha1 through 5.6.2: the classic i/o client leaks a connection when a response
+        carries an invalid Content-Encoding).
+
+        The 5.6 line enables automatic content decompression in the async client, which the
+        search transports also do - see disableContentCompression() in OpenSearchClient and
+        ElasticSearchClient. Do not drop those when touching this pin.
+      -->
+      <dependency>
+        <groupId>org.apache.httpcomponents.client5</groupId>
+        <artifactId>httpclient5</artifactId>
+        <version>5.6.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>1.26.0</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk18on</artifactId>
+        <version>1.85</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>1.85</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcutil-jdk18on</artifactId>
+        <version>1.85</version>
+      </dependency>
+      <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
+           3.1.5 adds CVE-2026-59889. jsonschema2pojo-core is scope=provided so none of this
+           reaches the runtime classpath, but Snyk's Maven scanner walks the provided tree. -->
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>3.1.5</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+<!-- AWS SDK v2 BOM at root so every module resolves the patched line.
+           openmetadata-dist / -mcp / -k8s-operator are siblings that depend on
+           -service (not children of it), so -service's BOM alone does not reach
+           them. Clears cloudfront (SNYK-JAVA-SOFTWAREAMAZONAWSSDK-15810116). -->
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${awssdk.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -727,7 +901,7 @@
         <enabled>false</enabled>
       </snapshots>
       <id>central</id>
-      <url>https://repo1.maven.org/maven2/</url>
+      <url>https://repo.maven.apache.org/maven2/</url>
     </repository>
     <repository>
       <releases>
@@ -1008,9 +1182,11 @@
               <include>org.openmetadata.service.apps.*.java</include>
               <include>org.openmetadata.service.cache.*.java</include>
               <include>org.openmetadata.service.events.*.java</include>
+              <include>org.openmetadata.service.formatter.**.*.java</include>
               <include>org.openmetadata.service.governance.*.java</include>
               <include>org.openmetadata.service.jdbi3.*.java</include>
               <include>org.openmetadata.service.monitoring.*.java</include>
+              <include>org.openmetadata.service.notifications.**.*.java</include>
               <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
               <include>org.openmetadata.service.rules.*.java</include>

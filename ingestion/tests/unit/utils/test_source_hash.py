@@ -11,6 +11,7 @@
 """
 Test source hash stability and normalization
 """
+
 import uuid
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -52,10 +53,7 @@ class TestNormalizeWhitespace:
             id INT,
             name VARCHAR(100)
         )"""
-        assert (
-            _normalize_whitespace(text)
-            == "CREATE TABLE foo ( id INT, name VARCHAR(100) )"
-        )
+        assert _normalize_whitespace(text) == "CREATE TABLE foo ( id INT, name VARCHAR(100) )"
 
     def test_normalize_whitespace_tabs(self):
         assert _normalize_whitespace("col1\t\tcol2\n\ncol3") == "col1 col2 col3"
@@ -134,11 +132,7 @@ class TestRemoveVolatileFields:
         assert result == {"name": "owner"}
 
     def test_remove_nested_volatile(self):
-        data = {
-            "owners": [
-                {"name": "user1", "href": "http://example.com/user1", "deleted": False}
-            ]
-        }
+        data = {"owners": [{"name": "user1", "href": "http://example.com/user1", "deleted": False}]}
         result = _remove_volatile_fields(data)
         assert result == {"owners": [{"name": "user1"}]}
 
@@ -276,11 +270,7 @@ class TestNormalizeForHash:
         assert result["schemaDefinition"] == "CREATE TABLE foo ( id INT )"
 
     def test_normalize_removes_volatile_fields(self):
-        data = {
-            "owners": [
-                {"name": "user1", "href": "http://example.com", "deleted": False}
-            ]
-        }
+        data = {"owners": [{"name": "user1", "href": "http://example.com", "deleted": False}]}
         result = _normalize_for_hash(data)
         assert "href" not in result["owners"][0]
         assert "deleted" not in result["owners"][0]
@@ -348,12 +338,8 @@ class TestGenerateSourceHash:
         assert generate_source_hash(request1) == generate_source_hash(request2)
 
     def test_hash_stable_with_constraint_order_variation(self):
-        constraint_pk = TableConstraint(
-            constraintType=ConstraintType.PRIMARY_KEY, columns=["id"]
-        )
-        constraint_unique = TableConstraint(
-            constraintType=ConstraintType.UNIQUE, columns=["name"]
-        )
+        constraint_pk = TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["id"])
+        constraint_unique = TableConstraint(constraintType=ConstraintType.UNIQUE, columns=["name"])
         request1 = CreateTableRequest(
             name="test_table",
             databaseSchema="service.db.schema",
@@ -375,12 +361,8 @@ class TestGenerateSourceHash:
         assert generate_source_hash(request1) == generate_source_hash(request2)
 
     def test_hash_stable_with_owner_order_variation(self):
-        owner1 = EntityReference(
-            id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_a"
-        )
-        owner2 = EntityReference(
-            id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_b"
-        )
+        owner1 = EntityReference(id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_a")
+        owner2 = EntityReference(id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_b")
         request1 = CreateTableRequest(
             name="test_table",
             databaseSchema="service.db.schema",
@@ -502,10 +484,6 @@ class TestGenerateSourceHash:
             description="Description 2",
         )
         hash_without_exclude = generate_source_hash(request1)
-        hash_with_exclude = generate_source_hash(
-            request1, exclude_fields={"description": True}
-        )
+        hash_with_exclude = generate_source_hash(request1, exclude_fields={"description": True})
         assert hash_without_exclude != generate_source_hash(request2)
-        assert hash_with_exclude == generate_source_hash(
-            request2, exclude_fields={"description": True}
-        )
+        assert hash_with_exclude == generate_source_hash(request2, exclude_fields={"description": True})

@@ -19,12 +19,12 @@ import {
   Table as AntdTable,
   Typography,
 } from 'antd';
-import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
   forwardRef,
   Ref,
+  RefAttributes,
   useCallback,
   useEffect,
   useMemo,
@@ -40,20 +40,22 @@ import {
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
+  ColumnsType,
+  ColumnType,
   TableColumnDropdownList,
   TableComponentProps,
 } from './Table.interface';
 import './table.less';
 
-type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
+type TableProps<T extends object> = TableComponentProps<T>;
 
-const Table = <T extends Record<string, unknown>>(
+const Table = <T extends object>(
   {
     loading,
     searchProps,
@@ -341,4 +343,6 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-export default forwardRef<HTMLDivElement, TableProps<any>>(Table);
+export default forwardRef(Table) as <T extends object>(
+  props: TableProps<T> & RefAttributes<HTMLDivElement>
+) => ReturnType<typeof Table>;

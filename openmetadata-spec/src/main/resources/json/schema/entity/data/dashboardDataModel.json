@@ -29,8 +29,12 @@
         "QuickSightDataModel",
         "SigmaDataModel",
         "PowerBIDataFlow",
+        "PowerBIDatamart",
         "MicroStrategyDataset",
-        "ThoughtSpotDataModel"
+        "ThoughtSpotDataModel",
+        "SapS4HanaCdsView",
+        "SsrsDataModel",
+        "OmniDataModel"
       ],
       "javaEnums": [
         {
@@ -70,10 +74,22 @@
           "name": "PowerBIDataFlow"
         },
         {
+          "name": "PowerBIDatamart"
+        },
+        {
           "name": "MicroStrategyDataset"
         },
         {
           "name": "ThoughtSpotDataModel"
+        },
+        {
+          "name": "SapS4HanaCdsView"
+        },
+        {
+          "name": "SsrsDataModel"
+        },
+        {
+          "name": "OmniDataModel"
         }
       ]
     }
@@ -127,6 +143,10 @@
     "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "tags": {
       "description": "Tags for this data model.",

@@ -23,6 +23,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
 import java.io.StringReader;
@@ -39,14 +40,34 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 @Slf4j
 public class EsUtils {
 
   private static final ObjectMapper mapper;
+  private static final JacksonJsonpMapper jsonpMapper;
+
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
 
   static {
     mapper = new ObjectMapper();
+    jsonpMapper = new JacksonJsonpMapper(mapper);
+  }
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built on a raw {@code
+   * SearchRequest.Builder}. Non-memory documents are unaffected.
+   */
+  static Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((ElasticQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
   }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
@@ -67,7 +88,7 @@ public class EsUtils {
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid JSON input", e);
     }
-    return JsonData.of(docMap);
+    return JsonData.of(docMap, jsonpMapper);
   }
 
   public static String parseJsonQuery(String jsonQuery) throws JsonProcessingException {
@@ -247,7 +268,10 @@ public class EsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -272,6 +296,19 @@ public class EsUtils {
       Pair<String, String> hasToFqnPair,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntityByKey(
+        client, direction, indexAlias, keyName, hasToFqnPair, null, fieldsToRemove);
+  }
+
+  public static Map<String, Object> searchEntityByKey(
+      ElasticsearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Pair<String, String> hasToFqnPair,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
     Map<String, Object> result =
         searchEntitiesByKey(
             client,
@@ -281,6 +318,7 @@ public class EsUtils {
             Set.of(hasToFqnPair.getLeft()),
             0,
             1,
+            fieldsToInclude,
             fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
@@ -302,18 +340,82 @@ public class EsUtils {
       int size,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntitiesByKey(
+        client, direction, indexAlias, keyName, keyValues, from, size, null, fieldsToRemove, null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      ElasticsearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        fieldsToInclude,
+        fieldsToRemove,
+        null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      ElasticsearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        null,
+        fieldsToRemove,
+        queryFilter);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      ElasticsearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
     Map<String, Object> result = new HashMap<>();
     SearchRequest searchRequest =
         getSearchRequest(
             direction,
             indexAlias,
-            null,
+            queryFilter,
             null,
             Map.of(keyName, keyValues),
             from,
             size,
             null,
-            null,
+            fieldsToInclude,
             fieldsToRemove);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
@@ -370,7 +472,10 @@ public class EsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -395,8 +500,13 @@ public class EsUtils {
     Query deletedQuery =
         Query.of(q -> q.term(t -> t.field("deleted").value(!nullOrEmpty(deleted) && deleted)));
 
+    // Platform lineage returns each hit's raw _source and runs without a SubjectContext, so it
+    // cannot tell whose restricted memory a document is: only org-wide memories may come back.
     SearchRequest.Builder searchRequestBuilder =
-        new SearchRequest.Builder().index(indexName).query(deletedQuery).size(10000);
+        new SearchRequest.Builder()
+            .index(indexName)
+            .query(restrictToOrgWideMemories(deletedQuery))
+            .size(10000);
 
     // Apply query filter
     buildSearchSourceFilter(queryFilter, searchRequestBuilder);
@@ -441,6 +551,104 @@ public class EsUtils {
       } catch (Exception ex) {
         LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
+    }
+  }
+
+  /**
+   * Enriches an Elasticsearch index mapping with vector search support. When the mapping contains
+   * a {@code fingerprint} field (the signal that this index stores embedded entity docs), injects a
+   * {@code dense_vector} embedding field and records {@code _meta} with the model ID and dimension.
+   *
+   * <p>The embedding dimension is resolved from the active {@link
+   * org.openmetadata.service.search.vector.client.EmbeddingClient}. If embeddings are disabled or
+   * the client is unavailable the mapping is returned unchanged.
+   *
+   * <p><b>Failure modes:</b>
+   *
+   * <ul>
+   *   <li>{@link IllegalArgumentException} — {@code indexMappingContent} is null or empty.
+   *   <li>{@link IllegalStateException} — the existing mapping declares an embedding dimension
+   *       (via {@code _meta.embedding_dimension} or {@code properties.embedding.dims}) that
+   *       differs from what the active embedding client reports. {@code dense_vector.dims} is
+   *       immutable on an existing Elasticsearch index, so callers must drop and reindex the
+   *       affected index (e.g., by running the SearchIndexing application) before enrichment
+   *       can succeed.
+   * </ul>
+   */
+  public static String enrichIndexMappingForElasticsearch(String indexMappingContent) {
+    if (nullOrEmpty(indexMappingContent)) {
+      throw new IllegalArgumentException("Empty Index Mapping Content.");
+    }
+    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+    addDenseVectorSettings(rootNode);
+    return rootNode.toString();
+  }
+
+  static void addDenseVectorSettings(JsonNode rootNode) {
+    JsonNode properties = rootNode.path("mappings").path("properties");
+    if (properties.isMissingNode() || !properties.has("fingerprint")) {
+      return;
+    }
+
+    org.openmetadata.service.search.SearchRepository searchRepository =
+        org.openmetadata.service.Entity.getSearchRepository();
+    if (searchRepository == null
+        || !searchRepository.isVectorEmbeddingEnabled()
+        || searchRepository.getEmbeddingClient() == null) {
+      return;
+    }
+
+    int dimension = searchRepository.getEmbeddingClient().getDimension();
+
+    // dense_vector.dims is immutable on an existing ES index. If the client now reports
+    // a different dimension than what the index was built with, silently rewriting dims
+    // would either be rejected by ES (putMapping) or produce a mapping that disagrees
+    // with stored vectors. Hard-fail so the operator runs an explicit reindex.
+    // Check both _meta.embedding_dimension and properties.embedding.dims — either may
+    // be present on an existing index/template.
+    JsonNode existingMeta = rootNode.path("mappings").path("_meta");
+    if (!existingMeta.isMissingNode() && existingMeta.has("embedding_dimension")) {
+      assertDimensionMatches(existingMeta.get("embedding_dimension").asInt(), dimension);
+    }
+    JsonNode existingEmbedding = properties.path("embedding");
+    if (!existingEmbedding.isMissingNode() && existingEmbedding.has("dims")) {
+      assertDimensionMatches(existingEmbedding.get("dims").asInt(), dimension);
+    }
+
+    com.fasterxml.jackson.databind.node.ObjectNode embeddingNode = mapper.createObjectNode();
+    embeddingNode.put("type", "dense_vector");
+    embeddingNode.put("dims", dimension);
+    embeddingNode.put("index", true);
+    embeddingNode.put("similarity", "cosine");
+    ((com.fasterxml.jackson.databind.node.ObjectNode) properties).set("embedding", embeddingNode);
+
+    JsonNode mappings = rootNode.path("mappings");
+    if (!mappings.isMissingNode() && mappings.isObject()) {
+      // Preserve any existing _meta fields; only upsert embedding_model / embedding_dimension.
+      com.fasterxml.jackson.databind.node.ObjectNode mappingsNode =
+          (com.fasterxml.jackson.databind.node.ObjectNode) mappings;
+      JsonNode existingMetaNode = mappingsNode.get("_meta");
+      com.fasterxml.jackson.databind.node.ObjectNode metaNode;
+      if (existingMetaNode instanceof com.fasterxml.jackson.databind.node.ObjectNode existing) {
+        metaNode = existing;
+      } else {
+        metaNode = mappingsNode.putObject("_meta");
+      }
+      metaNode
+          .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
+          .put("embedding_dimension", dimension);
+    }
+  }
+
+  private static void assertDimensionMatches(int existing, int client) {
+    if (existing != client) {
+      throw new IllegalStateException(
+          String.format(
+              "Embedding dimension mismatch: existing=%d, embedding client=%d. "
+                  + "dense_vector.dims is immutable on an existing Elasticsearch index. "
+                  + "Run a reindex (drop + recreate via SearchIndexing app) to align "
+                  + "the index with the new embedding model.",
+              existing, client));
     }
   }
 }

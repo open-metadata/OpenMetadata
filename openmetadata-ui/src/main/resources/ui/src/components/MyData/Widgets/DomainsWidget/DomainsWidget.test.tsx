@@ -22,6 +22,7 @@ import {
   Domain,
   DomainType,
 } from '../../../../generated/entity/domains/domain';
+import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import DomainsWidget from './DomainsWidget';
@@ -69,17 +70,19 @@ const mockDomains: Domain[] = [
   },
 ];
 
+type SearchQueryResponse = Awaited<ReturnType<typeof searchQuery>>;
+
 const mockSearchResponse = {
   hits: {
     hits: mockDomains.map((domain) => ({
       _source: domain,
-      _index: 'domain_search_index',
+      _index: 'domain',
       _id: domain.id,
     })),
     total: { value: mockDomains.length },
   },
   aggregations: {},
-} as any;
+} as unknown as SearchQueryResponse;
 
 // Mock API functions
 jest.mock('../../../../rest/searchAPI', () => ({
@@ -121,6 +124,7 @@ const mockApplySortToData = applySortToData as jest.MockedFunction<
 describe('DomainsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient.clear();
 
     // Default mock implementations
     mockGetSortField.mockReturnValue('updatedAt');
@@ -213,7 +217,7 @@ describe('DomainsWidget', () => {
         pageSize: PAGE_SIZE_MEDIUM,
         sortField: 'updatedAt',
         sortOrder: 'desc',
-        searchIndex: 'domain_search_index',
+        searchIndex: 'domain',
       });
     });
   });
@@ -332,13 +336,13 @@ describe('DomainsWidget', () => {
       hits: {
         hits: manyDomains.map((domain) => ({
           _source: domain,
-          _index: 'domain_search_index',
+          _index: 'domain',
           _id: domain.id,
         })),
         total: { value: manyDomains.length },
       },
       aggregations: {},
-    });
+    } as unknown as SearchQueryResponse);
 
     renderDomainsWidget();
 
@@ -387,14 +391,14 @@ describe('DomainsWidget', () => {
         hits: [
           {
             _source: domainWithNoAssets,
-            _index: 'domain_search_index',
+            _index: 'domain',
             _id: domainWithNoAssets.id,
           },
         ],
         total: { value: 1 },
       },
       aggregations: {},
-    });
+    } as unknown as SearchQueryResponse);
     mockGetAllDomainsWithAssetsCount.mockResolvedValue({
       clients: 0,
     });
@@ -407,6 +411,25 @@ describe('DomainsWidget', () => {
 
     // Should display 0 for domains with no assets
     expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
+  it('serves domain asset counts from cache on remount within staleTime', async () => {
+    const { unmount } = renderDomainsWidget();
+
+    await waitFor(() => {
+      expect(screen.getByText('Clients')).toBeInTheDocument();
+    });
+
+    expect(mockGetAllDomainsWithAssetsCount).toHaveBeenCalledTimes(1);
+
+    unmount();
+    renderDomainsWidget();
+
+    await waitFor(() => {
+      expect(screen.getByText('Clients')).toBeInTheDocument();
+    });
+
+    expect(mockGetAllDomainsWithAssetsCount).toHaveBeenCalledTimes(1);
   });
 
   it('calls sort utility functions correctly', async () => {

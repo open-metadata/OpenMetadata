@@ -15,7 +15,7 @@ Validator for column values to match regex test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -55,7 +55,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             count, match_count = self._run_results(
                 (Metrics.valuesCount, Metrics.regexCount),
                 column,
@@ -72,7 +72,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -81,9 +81,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -132,9 +130,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the in-set test condition
 
         For in-set test, behavior depends on match_enum flag:
@@ -155,9 +151,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToMatchRegex._evaluate_test_condition"
-            )
+            raise ValueError("test_params is required for columnValuesToMatchRegex._evaluate_test_condition")
         match_regex_count = metric_values[Metrics.regexCount.name]
         count = metric_values[Metrics.valuesCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
@@ -176,8 +170,8 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for in-set test
 
@@ -197,10 +191,10 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column."
             )
-        else:
+        else:  # noqa: RET505
             return f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for in-set test
 
         Args:
@@ -217,13 +211,11 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(
-        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
-    ):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         """Compute row count for the given column
 
         Args:

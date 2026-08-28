@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Pipeline entity with full mock coverage.
 """
+
 import unittest
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -131,9 +132,7 @@ class TestPipelineEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.pipeline_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=PipelineEntity, fqn=self.pipeline_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=PipelineEntity, fqn=self.pipeline_fqn, fields=None)
 
     def test_update_pipeline(self):
         """Test updating a pipeline"""
@@ -145,11 +144,7 @@ class TestPipelineEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(pipeline_to_update))
-        current_entity.id = (
-            pipeline_to_update.id
-            if hasattr(pipeline_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = pipeline_to_update.id if hasattr(pipeline_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity

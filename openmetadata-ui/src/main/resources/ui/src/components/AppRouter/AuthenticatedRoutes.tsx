@@ -1,0 +1,97 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { isEmpty } from 'lodash';
+import { lazy } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
+import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import AppContainer from '../AppContainer/AppContainer';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
+
+const PageNotFound = withPageSuspenseFallback(
+  lazy(() => import('../../pages/PageNotFound/PageNotFound'))
+);
+
+const LogoutPage = withPageSuspenseFallback(
+  lazy(() =>
+    import('../../pages/LogoutPage/LogoutPage').then((module) => ({
+      default: module.LogoutPage,
+    }))
+  )
+);
+
+const AccessNotAllowedPage = withPageSuspenseFallback(
+  lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
+);
+
+const SignUpPage = withPageSuspenseFallback(
+  lazy(() => import('../../pages/SignUp/SignUpPage'))
+);
+
+const SamlCallback = withPageSuspenseFallback(
+  lazy(() => import('../../pages/SamlCallback'))
+);
+
+export const AuthenticatedRoutes = () => {
+  const { currentUser } = useApplicationStore(
+    useShallow((state) => ({
+      currentUser: state.currentUser,
+    }))
+  );
+
+  const { plugins = [] } = useApplicationsProvider() ?? {};
+
+  return (
+    <Routes>
+      <Route element={<PageNotFound />} path={APP_ROUTER_ROUTES.NOT_FOUND} />
+      <Route element={<LogoutPage />} path={APP_ROUTER_ROUTES.LOGOUT} />
+      <Route
+        element={<AccessNotAllowedPage />}
+        path={APP_ROUTER_ROUTES.UNAUTHORISED}
+      />
+      <Route
+        element={
+          isEmpty(currentUser) ? (
+            <SignUpPage />
+          ) : (
+            <Navigate replace to={APP_ROUTER_ROUTES.HOME} />
+          )
+        }
+        path={APP_ROUTER_ROUTES.SIGNUP}
+      />
+      <Route
+        element={<SamlCallback />}
+        path={APP_ROUTER_ROUTES.AUTH_CALLBACK}
+      />
+
+      {/* Render APP position plugin routes (they handle their own layouts) */}
+      {plugins?.flatMap((plugin) => {
+        const routes = plugin.getRoutes?.() || [];
+        // Filter routes with APP position
+        const appRoutes = routes.filter(
+          (route) => route.position === RoutePosition.APP
+        );
+
+        return appRoutes.map((route) => (
+          <Route key={`${plugin.name}-app-${route.path}`} {...route} />
+        ));
+      })}
+
+      <Route element={<AppContainer />} path="*" />
+    </Routes>
+  );
+};

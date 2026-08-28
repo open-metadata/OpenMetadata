@@ -29,10 +29,17 @@
 
 # Assets
 *.gif
+*.avif
+*.bmp
+*.jpeg
+*.jpg
 *.svg
 *.png
+*.webp
 *.ico
 *.ttf
+*.mp4
+*.webm
 
 # Ignore files
 ".dockerignore"
@@ -62,6 +69,7 @@
 # Miscellaneous
 *.json
 *.txt
+*.xml
 
 # Docs, READMEs
 *.md
@@ -82,6 +90,9 @@ Thumbs.db
 
 # ignore antlr generated source
 src/generated/antlr
+
+# ignore generated dereferenced JSON schemas
+src/jsons
 
 # Snapshots
 *.snap

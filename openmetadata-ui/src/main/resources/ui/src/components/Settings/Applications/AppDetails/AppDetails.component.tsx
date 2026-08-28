@@ -51,6 +51,7 @@ import {
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/entity/type';
 import { Include } from '../../../../generated/type/include';
+import { useAuth } from '../../../../hooks/authHooks';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   configureApp,
@@ -61,9 +62,12 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+import {
+  isCacheWarmupApplication,
+  isMcpApplication,
+} from '../../../../utils/ApplicationUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -73,10 +77,12 @@ import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
+import AppLiveIndexing from '../AppLiveIndexing/AppLiveIndexing.component';
 import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
+import McpApplicationConfiguration from '../McpApplicationConfiguration/McpApplicationConfiguration';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
@@ -98,6 +104,13 @@ const AppDetails = () => {
   });
   const { getResourceLimit } = useLimitStore();
   const { plugins } = useApplicationsProvider();
+  const { isAdminUser } = useAuth();
+  const isRuntimeDisabled = appData?.enabled === false && !appData.deleted;
+  const runtimeDisabledReason =
+    isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
+      ? t('message.cache-service-not-configured-message')
+      : undefined;
+  const isAppUnavailable = Boolean(appData?.deleted) || isRuntimeDisabled;
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -108,19 +121,25 @@ const AppDetails = () => {
       });
       setAppData(data);
 
-      const schema = await applicationsClassBase.importSchema(fqn);
-
-      setJsonSchema(schema);
+      try {
+        const schema = await applicationsClassBase.importSchema(fqn);
+        setJsonSchema(schema);
+      } catch {
+        setJsonSchema(undefined);
+        showErrorToast(
+          t('server.no-application-schema-found', { appName: fqn })
+        );
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setLoadingState((prev) => ({ ...prev, isFetchLoading: false }));
     }
-  }, [fqn, setLoadingState]);
+  }, [fqn, setLoadingState, t]);
 
-  const onBrowseAppsClick = () => {
+  const onBrowseAppsClick = useCallback(() => {
     navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
-  };
+  }, [navigate]);
 
   const handleRestore = useCallback(async () => {
     if (appData) {
@@ -138,7 +157,7 @@ const AppDetails = () => {
         onBrowseAppsClick();
       }
     }
-  }, [appData]);
+  }, [appData, onBrowseAppsClick, t]);
 
   const onConfirmAction = useCallback(async () => {
     try {
@@ -167,7 +186,15 @@ const AppDetails = () => {
     } finally {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
     }
-  }, [appData, action, setLoadingState]);
+  }, [
+    action,
+    appData,
+    getResourceLimit,
+    handleRestore,
+    onBrowseAppsClick,
+    setLoadingState,
+    t,
+  ]);
 
   const manageButtonContent: ItemType[] = [
     ...(appData?.deleted
@@ -220,7 +247,6 @@ const AppDetails = () => {
               <ManageButtonItemLabel
                 description={t('message.uninstall-app', {
                   app: getEntityName(appData),
-                  brandName: brandClassBase.getPageTitle(),
                 })}
                 icon={DeleteIcon}
                 id="uninstall-button"
@@ -237,70 +263,74 @@ const AppDetails = () => {
         ]),
   ];
 
-  const onConfigSave = async (
-    data: IChangeEvent & { ingestionRunner?: EntityReference }
-  ) => {
-    if (appData) {
-      setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
+  const onConfigSave = useCallback(
+    async (data: IChangeEvent & { ingestionRunner?: EntityReference }) => {
+      if (appData) {
+        setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
 
-      const { formData, ingestionRunner } = data;
+        const { formData, ingestionRunner } = data;
 
-      const updatedFormData = formatFormDataForSubmit(formData);
-      const updatedData = {
-        ...appData,
-        appConfiguration: updatedFormData,
-        ...(ingestionRunner && { ingestionRunner }),
-      };
+        const updatedFormData = formatFormDataForSubmit(formData);
+        const updatedData = {
+          ...appData,
+          appConfiguration: updatedFormData,
+          ...(ingestionRunner && { ingestionRunner }),
+        };
 
-      const jsonPatch = compare(appData, updatedData);
+        const jsonPatch = compare(appData, updatedData);
 
-      try {
-        const response = await patchApplication(appData.id, jsonPatch);
-        // call configure endpoint also to update configuration
-        await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
-        setAppData(response);
-        showSuccessToast(
-          t('message.entity-saved-successfully', {
-            entity: t('label.configuration'),
-          })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
+        try {
+          const response = await patchApplication(appData.id, jsonPatch);
+          // call configure endpoint also to update configuration
+          await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
+          setAppData(response);
+          showSuccessToast(
+            t('message.entity-saved-successfully', {
+              entity: t('label.configuration'),
+            })
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        } finally {
+          setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
+        }
       }
-    }
-  };
+    },
+    [appData, t]
+  );
 
-  const onAppScheduleSave = async (cron: string) => {
-    if (appData) {
-      const updatedData = {
-        ...appData,
-        appSchedule: {
-          scheduleTimeline: isEmpty(cron)
-            ? ScheduleTimeline.None
-            : ScheduleTimeline.Custom,
-          ...(cron ? { cronExpression: cron } : {}),
-        },
-      };
+  const onAppScheduleSave = useCallback(
+    async (cron: string) => {
+      if (appData) {
+        const updatedData = {
+          ...appData,
+          appSchedule: {
+            scheduleTimeline: isEmpty(cron)
+              ? ScheduleTimeline.None
+              : ScheduleTimeline.Custom,
+            ...(cron ? { cronExpression: cron } : {}),
+          },
+        };
 
-      const jsonPatch = compare(appData, updatedData);
+        const jsonPatch = compare(appData, updatedData);
 
-      try {
-        const response = await patchApplication(appData.id, jsonPatch);
-        setAppData(response);
-        showSuccessToast(
-          t('message.entity-saved-successfully', {
-            entity: t('label.schedule'),
-          })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+        try {
+          const response = await patchApplication(appData.id, jsonPatch);
+          setAppData(response);
+          showSuccessToast(
+            t('message.entity-saved-successfully', {
+              entity: t('label.schedule'),
+            })
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [appData, t]
+  );
 
-  const onDemandTrigger = async () => {
+  const onDemandTrigger = useCallback(async () => {
     try {
       setLoadingState((prev) => ({ ...prev, isRunLoading: true }));
       await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
@@ -314,9 +344,9 @@ const AppDetails = () => {
     } finally {
       setLoadingState((prev) => ({ ...prev, isRunLoading: false }));
     }
-  };
+  }, [appData?.fullyQualifiedName, t]);
 
-  const onDeployTrigger = async () => {
+  const onDeployTrigger = useCallback(async () => {
     try {
       setLoadingState((prev) => ({ ...prev, isDeployLoading: true }));
       await deployApp(appData?.fullyQualifiedName ?? '');
@@ -331,7 +361,7 @@ const AppDetails = () => {
     } finally {
       setLoadingState((prev) => ({ ...prev, isDeployLoading: false }));
     }
-  };
+  }, [appData?.fullyQualifiedName, fetchAppDetails, t]);
 
   // Check if there's a plugin app details component for this app
   const pluginAppDetailsComponent = useMemo(() => {
@@ -347,9 +377,26 @@ const AppDetails = () => {
   const tabs = useMemo(() => {
     const ApplicationConfigurationComponent =
       applicationsClassBase.getApplicationConfigurationComponent();
+    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
 
+    // The MCP app stores no configuration of its own. Its settings live in the `mcpConfiguration`
+    // system setting, which is admin-only, so its tab uses a dedicated component and is hidden
+    // from non-admins rather than letting them submit a request the server will reject.
+    const showMcpConfigTab = Boolean(
+      isMcpApplication(appData?.name) &&
+        isAdminUser &&
+        jsonSchema &&
+        !isRuntimeDisabled
+    );
+    const showAppConfigTab = Boolean(
+      !showMcpConfigTab &&
+        appData?.appConfiguration &&
+        appData.allowConfiguration &&
+        jsonSchema &&
+        !isRuntimeDisabled
+    );
     const tabConfiguration =
-      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
+      showMcpConfigTab || showAppConfigTab
         ? [
             {
               label: (
@@ -359,19 +406,22 @@ const AppDetails = () => {
                 />
               ),
               key: ApplicationTabs.CONFIGURATION,
-              children: (
+              children: showMcpConfigTab ? (
+                <McpApplicationConfiguration
+                  appName={appData?.name ?? ''}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
+              ) : (
                 <ApplicationConfigurationComponent
-                  appData={appData}
+                  appData={appData as App}
                   isLoading={loadingState.isSaveLoading}
-                  jsonSchema={jsonSchema}
+                  jsonSchema={jsonSchema as RJSFSchema}
                   onConfigSave={onConfigSave}
                 />
               ),
             },
           ]
         : [];
-
-    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
 
     return [
       ...(showScheduleTab
@@ -389,6 +439,8 @@ const AppDetails = () => {
                   {appData && (
                     <AppSchedule
                       appData={appData}
+                      disabled={isRuntimeDisabled}
+                      disabledReason={runtimeDisabledReason}
                       jsonSchema={jsonSchema as RJSFSchema}
                       loading={{
                         isRunLoading: loadingState.isRunLoading,
@@ -405,7 +457,7 @@ const AppDetails = () => {
           ]
         : []),
       ...tabConfiguration,
-      ...(!appData?.deleted && showScheduleTab
+      ...(!isAppUnavailable && showScheduleTab
         ? [
             {
               label: (
@@ -424,8 +476,37 @@ const AppDetails = () => {
             },
           ]
         : []),
+      ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.LIVE_INDEXING}
+                  name={t('label.live-indexing')}
+                />
+              ),
+              key: ApplicationTabs.LIVE_INDEXING,
+              children: <AppLiveIndexing appData={appData} />,
+            },
+          ]
+        : []),
     ];
-  }, [appData, jsonSchema, loadingState]);
+  }, [
+    appData,
+    isAdminUser,
+    isAppUnavailable,
+    isRuntimeDisabled,
+    jsonSchema,
+    loadingState.isDeployLoading,
+    loadingState.isRunLoading,
+    loadingState.isSaveLoading,
+    onAppScheduleSave,
+    onConfigSave,
+    onDemandTrigger,
+    onDeployTrigger,
+    runtimeDisabledReason,
+    t,
+  ]);
 
   const actionText = useMemo(() => {
     switch (action) {
@@ -438,7 +519,7 @@ const AppDetails = () => {
       default:
         return '';
     }
-  }, [action]);
+  }, [action, t]);
 
   useEffect(() => {
     fetchAppDetails();
@@ -451,7 +532,7 @@ const AppDetails = () => {
   return (
     <PageLayoutV1
       className="app-details-page-layout"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={getEntityName(appData) || t('label.application-plural')}>
       <Row>
         <Col className="d-flex" flex="auto">
           <Button
@@ -506,6 +587,16 @@ const AppDetails = () => {
               <Typography.Title level={4}>
                 {getEntityName(appData)}
               </Typography.Title>
+              {isRuntimeDisabled && (
+                <Tooltip title={runtimeDisabledReason}>
+                  <div
+                    className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
+                    data-testid="runtime-disabled-badge">
+                    <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+                    {t('label.disabled')}
+                  </div>
+                </Tooltip>
+              )}
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>

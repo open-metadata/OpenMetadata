@@ -11,8 +11,9 @@
 """
 Integration tests for Rule Library SQL Expression validator on MySQL
 """
+
 from dataclasses import dataclass
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -39,7 +40,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import generate_name
+from ..integration_base import generate_name  # noqa: TID252
 
 NUMERIC_DATA_TYPES = [
     DataType.INT,
@@ -66,9 +67,7 @@ def mysql_rule_library_test_definition(
     test_def = metadata.create_or_update(
         CreateTestDefinitionRequest(
             name=test_def_name,
-            description=Markdown(
-                root="Rule library test definition for custom SQL expression validation"
-            ),
+            description=Markdown(root="Rule library test definition for custom SQL expression validation"),
             entityType=EntityType.COLUMN,
             testPlatforms=[TestPlatform.OpenMetadata],
             supportedDataTypes=NUMERIC_DATA_TYPES,
@@ -93,7 +92,7 @@ def mysql_rule_library_test_definition(
 
 @pytest.fixture()
 def get_mysql_rule_library_test_suite_config(workflow_config, sink_config):
-    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):
+    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):  # noqa: UP006
         return {
             "source": {
                 "type": "mysql",
@@ -107,9 +106,7 @@ def get_mysql_rule_library_test_suite_config(workflow_config, sink_config):
             },
             "processor": {
                 "type": "orm-test-runner",
-                "config": {
-                    "testCases": [obj.model_dump() for obj in test_case_definitions]
-                },
+                "config": {"testCases": [obj.model_dump() for obj in test_case_definitions]},
             },
             "sink": sink_config,
             "workflowConfig": workflow_config,
@@ -150,15 +147,9 @@ class MySQLRuleLibraryTestParameter:
     ],
     ids=lambda x: x.test_case_definition.name,
 )
-def mysql_rule_library_parameters(
-    request, db_service, mysql_rule_library_test_definition
-):
-    request.param.entity_fqn = request.param.entity_fqn.format(
-        database_service_fqn=db_service.fullyQualifiedName.root
-    )
-    request.param.test_case_definition.testDefinitionName = (
-        mysql_rule_library_test_definition.name.root
-    )
+def mysql_rule_library_parameters(request, db_service, mysql_rule_library_test_definition):
+    request.param.entity_fqn = request.param.entity_fqn.format(database_service_fqn=db_service.fullyQualifiedName.root)
+    request.param.test_case_definition.testDefinitionName = mysql_rule_library_test_definition.name.root
     return request.param
 
 
@@ -206,7 +197,4 @@ def test_mysql_rule_library_sql_expression_validator(
     cleanup_fqns(TestCase, test_case.fullyQualifiedName.root)
 
     assert test_case.testCaseResult is not None
-    assert (
-        test_case.testCaseResult.testCaseStatus
-        == mysql_rule_library_parameters.expected_status
-    )
+    assert test_case.testCaseResult.testCaseStatus == mysql_rule_library_parameters.expected_status

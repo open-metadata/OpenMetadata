@@ -12,7 +12,6 @@
  */
 
 import { ServicesUpdateRequest } from 'Models';
-import { FormSubmitType } from '../enums/form.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
@@ -145,15 +144,22 @@ export interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;
   serviceCategory: ServiceCategory;
   workflowData: IngestionWorkflowData;
-  operationType: FormSubmitType;
   cancelText?: string;
   okText?: string;
   className?: string;
+  hideFooter?: boolean;
   onCancel: () => void;
   onFocus: (fieldId: string) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
+  // Fired once the lazily loaded RJSF templates have resolved and the form is
+  // mounted, i.e. the imperative `submit()` handle is safe to call.
+  onReady?: () => void;
   serviceData?: ServicesUpdateRequest;
+}
+
+export interface IngestionWorkflowFormHandle {
+  submit: () => void;
 }
 
 export type ExtraInfoType = {

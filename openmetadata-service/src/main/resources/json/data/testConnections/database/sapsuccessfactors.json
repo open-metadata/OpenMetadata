@@ -1,0 +1,21 @@
+{
+    "name": "SapSuccessFactors",
+    "displayName": "SAP SuccessFactors Test Connection",
+    "description": "This Test Connection validates the access against the SAP SuccessFactors OData API and basic metadata extraction of entity types.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description": "Validate that we can properly reach the SAP SuccessFactors OData API and authenticate with the given credentials by fetching the $metadata endpoint.",
+            "errorMessage": "Failed to connect to SAP SuccessFactors. Please validate the base URL, company ID, and credentials.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetEntities",
+            "description": "Validate that we can parse the OData $metadata response and discover at least one EntitySet (table).",
+            "errorMessage": "Failed to parse SAP SuccessFactors $metadata. The response may be empty or malformed.",
+            "shortCircuit": false,
+            "mandatory": true
+        }
+    ]
+}

@@ -20,7 +20,7 @@ Replaces the bash/YAML-based tests previously in owner_config_tests/ directory.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -37,12 +37,12 @@ from metadata.generated.schema.type.basic import (
 
 
 def build_owner_config(
-    default: Optional[str] = None,
+    default: Optional[str] = None,  # noqa: UP045
     enable_inheritance: bool = True,
-    database: Optional[Union[str, Dict[str, Any]]] = None,
-    database_schema: Optional[Union[str, Dict[str, Any]]] = None,
-    table: Optional[Union[str, Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    database: Optional[Union[str, Dict[str, Any]]] = None,  # noqa: UP006, UP007, UP045
+    database_schema: Optional[Union[str, Dict[str, Any]]] = None,  # noqa: UP006, UP007, UP045
+    table: Optional[Union[str, Dict[str, Any]]] = None,  # noqa: UP006, UP007, UP045
+) -> Dict[str, Any]:  # noqa: UP006
     """
     Build owner configuration dictionary for testing.
 
@@ -56,7 +56,7 @@ def build_owner_config(
     Returns:
         Owner configuration dictionary
     """
-    config: Dict[str, Any] = {"enableInheritance": enable_inheritance}
+    config: Dict[str, Any] = {"enableInheritance": enable_inheritance}  # noqa: UP006
 
     if default:
         config["default"] = default
@@ -72,10 +72,10 @@ def build_owner_config(
 
 def build_test_workflow_config(
     service_name: str,
-    owner_config: Dict[str, Any],
+    owner_config: Dict[str, Any],  # noqa: UP006
     host_port: str = "localhost:5432",
     database: str = "finance_db",
-) -> Dict[str, Any]:
+) -> Dict[str, Any]:  # noqa: UP006
     """
     Build complete workflow configuration for testing.
 
@@ -174,43 +174,29 @@ class TestOwnerConfig(TestCase):
             "david": self._create_mock_user("david", "david@example.com"),
             "emma": self._create_mock_user("emma", "emma@example.com"),
             "frank": self._create_mock_user("frank", "frank@example.com"),
-            "marketing-user-1": self._create_mock_user(
-                "marketing-user-1", "marketing1@example.com"
-            ),
-            "marketing-user-2": self._create_mock_user(
-                "marketing-user-2", "marketing2@example.com"
-            ),
+            "marketing-user-1": self._create_mock_user("marketing-user-1", "marketing1@example.com"),
+            "marketing-user-2": self._create_mock_user("marketing-user-2", "marketing2@example.com"),
         }
 
         mock_teams = {
-            "data-platform-team": self._create_mock_team(
-                "data-platform-team", "Data Platform Team"
-            ),
+            "data-platform-team": self._create_mock_team("data-platform-team", "Data Platform Team"),
             "finance-team": self._create_mock_team("finance-team", "Finance Team"),
-            "marketing-team": self._create_mock_team(
-                "marketing-team", "Marketing Team"
-            ),
-            "accounting-team": self._create_mock_team(
-                "accounting-team", "Accounting Team"
-            ),
+            "marketing-team": self._create_mock_team("marketing-team", "Marketing Team"),
+            "accounting-team": self._create_mock_team("accounting-team", "Accounting Team"),
             "treasury-team": self._create_mock_team("treasury-team", "Treasury Team"),
             "revenue-team": self._create_mock_team("revenue-team", "Revenue Team"),
             "expense-team": self._create_mock_team("expense-team", "Expense Team"),
-            "investment-team": self._create_mock_team(
-                "investment-team", "Investment Team"
-            ),
+            "investment-team": self._create_mock_team("investment-team", "Investment Team"),
             "audit-team": self._create_mock_team("audit-team", "Audit Team"),
-            "compliance-team": self._create_mock_team(
-                "compliance-team", "Compliance Team"
-            ),
-            "treasury-ops-team": self._create_mock_team(
-                "treasury-ops-team", "Treasury Operations Team"
-            ),
+            "compliance-team": self._create_mock_team("compliance-team", "Compliance Team"),
+            "treasury-ops-team": self._create_mock_team("treasury-ops-team", "Treasury Operations Team"),
         }
 
         def get_by_name_side_effect(
-            entity: Any, fqn: str, fields: Optional[List[str]] = None
-        ) -> Optional[Union[User, Team]]:
+            entity: Any,
+            fqn: str,
+            fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        ) -> Optional[Union[User, Team]]:  # noqa: UP007, UP045
             """Mock get_by_name to return users/teams or None"""
             if fqn in mock_users:
                 return mock_users[fqn]
@@ -268,17 +254,12 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-01-basic", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-01-basic", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
         assert config.source.sourceConfig.config.ownerConfig is not None
-        assert (
-            config.source.sourceConfig.config.ownerConfig.default
-            == "data-platform-team"
-        )
+        assert config.source.sourceConfig.config.ownerConfig.default == "data-platform-team"
         assert config.source.sourceConfig.config.ownerConfig.enableInheritance is True
         assert config.source.sourceConfig.config.ownerConfig.database is not None
         assert config.source.sourceConfig.config.ownerConfig.databaseSchema is not None
@@ -306,9 +287,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-02-fqn", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-02-fqn", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -341,9 +320,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-03-multiple-users", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-03-multiple-users", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -379,9 +356,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-04-validation", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-04-validation", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -412,9 +387,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-05-inheritance-on", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-05-inheritance-on", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -446,9 +419,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-06-inheritance-off", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-06-inheritance-off", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -479,9 +450,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-07-partial", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-07-partial", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -489,9 +458,7 @@ class TestOwnerConfig(TestCase):
         table_config = config.source.sourceConfig.config.ownerConfig.table
 
         if isinstance(table_config, dict):
-            revenue_owners = unwrap_owner_value(
-                table_config.get("finance_db.accounting.revenue")
-            )
+            revenue_owners = unwrap_owner_value(table_config.get("finance_db.accounting.revenue"))
             assert revenue_owners is not None
             assert isinstance(revenue_owners, list)
             assert len(revenue_owners) == 4
@@ -524,9 +491,7 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-08-complex", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-08-complex", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
@@ -565,17 +530,13 @@ class TestOwnerConfig(TestCase):
             },
         )
 
-        workflow_config = build_test_workflow_config(
-            "postgres-test-formats", owner_config
-        )
+        workflow_config = build_test_workflow_config("postgres-test-formats", owner_config)
 
         config = OpenMetadataWorkflowConfig.model_validate(workflow_config)
 
         assert config.source.sourceConfig.config.ownerConfig is not None
 
-        db_config = unwrap_owner_value(
-            config.source.sourceConfig.config.ownerConfig.database
-        )
+        db_config = unwrap_owner_value(config.source.sourceConfig.config.ownerConfig.database)
         assert db_config == "default-db-owner"
 
         schema_config = config.source.sourceConfig.config.ownerConfig.databaseSchema

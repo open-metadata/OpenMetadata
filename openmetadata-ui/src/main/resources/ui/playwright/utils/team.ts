@@ -21,14 +21,173 @@ import {
   assignDomain,
   descriptionBox,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from './common';
-import { addMultiOwner, addOwner } from './entity';
+import {
+  addMultiOwner,
+  addOwner,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { validateFormNameFieldInput } from './form';
 import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
+
+const ADD_TEAM_MODAL = '[role="dialog"].ant-modal';
+// A success toast self-dismisses after 3.5s; give it a beat past that.
+const TOAST_DISMISS_TIMEOUT = 6_000;
+const MODAL_OPEN_TIMEOUT = 10_000;
+const MODAL_RETRY_TIMEOUT = 60_000;
+
+type AddTeamTrigger = 'add-team' | 'add-placeholder-button';
+
+/**
+ * Click an add-team trigger and return the modal it opens.
+ *
+ * The backend fans async-delete/job notifications out to every socket of the
+ * logged-in user, so a parallel worker's toast can drop over the button in the
+ * window between Playwright's hit-target check and the dispatched click — the
+ * toast swallows the click and the modal never opens. Success toasts carry no
+ * close button, so let them expire and click again; clicking with `force` only
+ * dispatches INTO the toast.
+ */
+export const openAddTeamModal = async (
+  page: Page,
+  trigger: AddTeamTrigger = 'add-team'
+) => {
+  const addButton = page.getByTestId(trigger);
+  const addTeamModal = page.locator(ADD_TEAM_MODAL).last();
+
+  await expect(async () => {
+    await page
+      .getByTestId('alert-bar')
+      .first()
+      .waitFor({ state: 'detached', timeout: TOAST_DISMISS_TIMEOUT })
+      .catch(() => undefined);
+
+    await expect(addButton).toBeEnabled();
+    await addButton.click();
+
+    await expect(addTeamModal).toBeVisible({ timeout: MODAL_OPEN_TIMEOUT });
+  }).toPass({ timeout: MODAL_RETRY_TIMEOUT, intervals: [1_000] });
+
+  return addTeamModal;
+};
+
+/**
+ * Land on Settings > Teams with the hierarchy table settled.
+ *
+ * The table spins on its own child-teams fetch plus the per-team asset-count
+ * aggregation, so navigation alone is not enough — a caller that acts right
+ * after the click drags rows that are still being repainted. Wait on the two
+ * calls that gate the first paint, then on the table itself.
+ */
+export const visitTeamsPage = async (page: Page) => {
+  const organizationResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/name/') && response.ok()
+  );
+  const permissionResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/permissions/team/name/') && response.ok()
+  );
+
+  await settingClick(page, GlobalSettingOptions.TEAMS);
+  await Promise.all([permissionResponse, organizationResponse]);
+
+  await expect(page.getByTestId('team-hierarchy-table')).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+};
+
+interface TeamCleanupFailure {
+  teamName: string;
+  reason: string;
+}
+
+/**
+ * Hard-delete one team created through the UI, children included.
+ *
+ * Reports a failure rather than throwing so a caller cleaning up several teams
+ * still attempts the rest — a throw here would leave the remaining teams behind
+ * and recreate the accumulation this cleanup exists to prevent.
+ *
+ * Specs that build teams through the UI have no entity handle to call
+ * `TeamClass.delete` on, so the id is resolved by name first. Delete-by-name is
+ * not an option: `TeamResource` pins that route to `recursive=false`, and these
+ * teams are nested by the time cleanup runs.
+ *
+ * 404 on the lookup is the one tolerated outcome — the spec may have deleted
+ * the team as part of what it asserts, and a recursive delete of its parent
+ * takes its children with it.
+ */
+const hardDeleteTeamByName = async (
+  apiContext: APIRequestContext,
+  teamName: string
+): Promise<TeamCleanupFailure | undefined> => {
+  let failure: TeamCleanupFailure | undefined;
+
+  try {
+    const teamResponse = await apiContext.get(
+      `/api/v1/teams/name/${encodeURIComponent(teamName)}`
+    );
+
+    if (!teamResponse.ok()) {
+      if (teamResponse.status() !== 404) {
+        failure = {
+          teamName,
+          reason: `lookup returned ${teamResponse.status()} ${await teamResponse.text()}`,
+        };
+      }
+    } else {
+      const { id } = await teamResponse.json();
+      const deleteResponse = await apiContext.delete(
+        `/api/v1/teams/${id}?hardDelete=true&recursive=true`
+      );
+
+      if (!deleteResponse.ok()) {
+        failure = {
+          teamName,
+          reason: `delete returned ${deleteResponse.status()} ${await deleteResponse.text()}`,
+        };
+      }
+    }
+  } catch (error) {
+    failure = { teamName, reason: (error as Error).message };
+  }
+
+  return failure;
+};
+
+/**
+ * Hard-delete teams created through the UI, children included.
+ *
+ * Deletes are sequential: a recursive delete takes a team's children with it,
+ * so issuing them in parallel would race the ones already removed. Every name
+ * is attempted before anything is asserted, and the assertion then names every
+ * team that survived — cleanup that fails quietly is what lets teams pile up on
+ * a long-lived deployment in the first place.
+ */
+export const hardDeleteTeamsByName = async (
+  apiContext: APIRequestContext,
+  teamNames: string[]
+) => {
+  const failures: TeamCleanupFailure[] = [];
+
+  for (const teamName of teamNames) {
+    const failure = await hardDeleteTeamByName(apiContext, teamName);
+
+    if (failure) {
+      failures.push(failure);
+    }
+  }
+
+  expect(
+    failures,
+    `Failed to clean up teams: ${failures
+      .map(({ teamName, reason }) => `"${teamName}" (${reason})`)
+      .join(', ')}`
+  ).toEqual([]);
+};
 
 interface SearchTeamOptions {
   expectEmptyResults?: boolean;
@@ -72,7 +231,7 @@ export const createTeam = async (
     ...overrides,
   };
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
+  await page.locator('[role="dialog"].ant-modal').waitFor();
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -98,9 +257,7 @@ export const createTeam = async (
   const response = await createTeamResponse;
   const createdTeam = await response.json();
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   return {
     ...teamData,
@@ -118,12 +275,7 @@ export const softDeleteTeam = async (page: Page) => {
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.waitForLoadState('domcontentloaded');
-
-  await expect(page.getByTestId('confirmation-text-input')).toBeVisible();
-
-  await page.click('[data-testid="soft-delete-option"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.getByTestId('delete-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=false&recursive=true'
@@ -131,25 +283,29 @@ export const softDeleteTeam = async (page: Page) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
-
-  await toastNotification(page, /deleted successfully!/);
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page) => {
+export const hardDeleteTeam = async (
+  page: Page,
+  teamName: string,
+  isSoftDeleted = false
+) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  // A live team shows the radio-based modal (defaults to soft delete), so the
+  // hard-delete option must be selected. An already soft-deleted team shows the
+  // hard-delete-only modal where the radio is absent.
+  if (!isSoftDeleted) {
+    await page.click('[data-testid="hard-delete"]');
+  }
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'
@@ -157,9 +313,10 @@ export const hardDeleteTeam = async (page: Page) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 
-  await toastNotification(page, /deleted successfully!/);
+  await searchTeam(page, teamName, { expectEmptyResults: true });
 };
 
 export const getNewTeamDetails = (teamName: string) => {
@@ -251,16 +408,12 @@ export const addTeamHierarchy = async (
   index?: number,
   isHierarchy = false
 ) => {
-  const getTeamsResponse = page.waitForResponse('/api/v1/teams*');
+  const addTeamModal = await openAddTeamModal(
+    page,
+    index && index > 0 ? 'add-placeholder-button' : 'add-team'
+  );
 
-  // Fetching the add button and clicking on it
-  if (index && index > 0) {
-    await page.click('[data-testid="add-placeholder-button"]');
-  } else {
-    await page.click('[data-testid="add-team"]');
-  }
-
-  await getTeamsResponse;
+  await expect(page.locator('[data-testid="name"]')).toBeVisible();
 
   // Entering team details
   await validateFormNameFieldInput({
@@ -284,9 +437,30 @@ export const addTeamHierarchy = async (
   await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
-  const saveTeamResponse = page.waitForResponse('/api/v1/teams');
+  const saveTeamResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams') &&
+      response.request().method() === 'POST' &&
+      response.ok()
+  );
+  const teamsListResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams?parentTeam=') &&
+      response.url().includes('fields=') &&
+      response.request().method() === 'GET'
+  );
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+  const teamsListResponseResult = await teamsListResponse;
+
+  expect(teamsListResponseResult.status()).toBe(200);
+  await expect(addTeamModal).toBeHidden({ timeout: 60000 });
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.locator(`[data-row-key="${teamDetails.name}"]`)
+  ).toBeVisible({
+    timeout: 60000,
+  });
 };
 
 export const removeOrganizationPolicyAndRole = async (
@@ -315,8 +489,10 @@ export const searchTeam = async (
   teamName: string,
   options?: SearchTeamOptions
 ) => {
-  const searchBar = await openTeamsPage(page);
+  await openTeamsPage(page);
   await page.fill('[data-testid="searchbar"]', teamName);
+
+  const teamNameLinks = page.locator('[data-testid^="team-name-"]');
 
   if (options?.expectEmptyResults) {
     await expect
@@ -326,28 +502,37 @@ export const searchTeam = async (
             .getByTestId('search-error-placeholder')
             .isVisible()
             .catch(() => false);
-          const matchingRows = await page.getByRole('cell', { name: teamName }).count();
+          const matchingCount = await teamNameLinks
+            .filter({ hasText: teamName })
+            .count();
 
-          return hasPlaceholder || matchingRows === 0;
+          return hasPlaceholder || matchingCount === 0;
         },
         { timeout: 30000, intervals: [500, 1000, 2000] }
       )
       .toBe(true);
   } else if (options?.expectNotFound) {
     await expect
-      .poll(
-        async () => page.getByRole('cell', { name: teamName }).count(),
-        { timeout: 30000, intervals: [500, 1000, 2000] }
-      )
+      .poll(async () => teamNameLinks.filter({ hasText: teamName }).count(), {
+        timeout: 30000,
+        intervals: [500, 1000, 2000],
+      })
       .toBe(0);
   } else {
     await expect
       .poll(
-        async () =>
-          page
-            .getByRole('cell', { name: teamName })
-            .isVisible()
-            .catch(() => false),
+        async () => {
+          const matchingCells = page.getByRole('cell', { name: teamName });
+          const count = await matchingCells.count();
+
+          return (
+            count > 0 &&
+            (await matchingCells
+              .first()
+              .isVisible()
+              .catch(() => false))
+          );
+        },
         { timeout: 30000, intervals: [500, 1000, 2000] }
       )
       .toBe(true);
@@ -431,7 +616,11 @@ export const verifyTeamListingAssetCount = async (
 export const addUserInTeam = async (page: Page, user: UserClass) => {
   const userName = user.data.email.split('@')[0];
   const fetchUsersResponse = page.waitForResponse(
-    '/api/v1/users?limit=25&isBot=false'
+    (response) =>
+      response.url().includes('/api/v1/users') &&
+      response.url().includes('limit=25') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
   );
   await page.locator('[data-testid="add-new-user"]').click();
   await fetchUsersResponse;
@@ -497,10 +686,7 @@ export const addEmailTeam = async (page: Page, email: string) => {
   // Reload the page
   await page.reload();
 
-
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   // Check for updated email
   await expect(page.locator('[data-testid="email-value"]')).toContainText(
@@ -517,7 +703,11 @@ export const addUserTeam = async (
   await page.locator('[data-testid="users"]').click();
 
   const fetchUsersResponse = page.waitForResponse(
-    '/api/v1/users?limit=25&isBot=false'
+    (response) =>
+      response.url().includes('/api/v1/users') &&
+      response.url().includes('limit=25') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
   );
   await page.locator('[data-testid="add-new-user"]').click();
   await fetchUsersResponse;
@@ -582,14 +772,11 @@ export const executionOnOwnerTeam = async (
 
   await addEmailTeam(page, data.email);
 
-  await page.getByTestId('add-placeholder-button').click();
+  await openAddTeamModal(page, 'add-placeholder-button');
 
   const newTeamData = await createTeam(page);
 
-
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByRole('cell', { name: newTeamData.displayName })

@@ -19,10 +19,13 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
+from metadata.ingestion.source.database.sas.settings import sas_settings
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+_VERIFY_SSL = sas_settings.verify_ssl
 
 
 class SASClient:
@@ -32,16 +35,14 @@ class SASClient:
 
     def __init__(self, config: SASConnection):
         self.config: SASConnection = config
-        self.auth_token = self.get_token(
-            config.serverHost, config.username, config.password.get_secret_value()
-        )
+        self.auth_token = self.get_token(config.serverHost, config.username, config.password.get_secret_value())
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(config.serverHost),
             auth_header="Authorization",
             auth_token=self.get_auth_token,
             api_version="",
             allow_redirects=True,
-            verify=False,
+            verify=_VERIFY_SSL,
         )
         self.client = TrackedREST(client_config, source_name="sas")
         # custom setting
@@ -73,7 +74,7 @@ class SASClient:
             "Accept": "application/vnd.sas.metadata.instance.entity.detail+json",
         }
         response = self.client.get(path=endpoint, headers=headers)
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         return response
 
@@ -95,16 +96,12 @@ class SASClient:
             asset_filter = self.custom_filter_dataflows
 
         logger.debug(
-            f"Configuration for {assets}: enable {assets} - {enable_asset}, "
-            f"custom {assets} filter - {asset_filter}"
+            f"Configuration for {assets}: enable {assets} - {enable_asset}, custom {assets} filter - {asset_filter}"
         )
-        endpoint = (
-            f"catalog/search?indices={assets}&q="
-            f"{asset_filter if str(asset_filter) != 'None' else '*'}"
-        )
+        endpoint = f"catalog/search?indices={assets}&q={asset_filter if str(asset_filter) != 'None' else '*'}"
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client.get(path=endpoint, headers=headers)
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         return response["items"]
 
@@ -116,7 +113,7 @@ class SASClient:
         }
         logger.info(f"{query}")
         response = self.client.post(path=endpoint, data=query, headers=headers)
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(f"{response}")
         return response
 
@@ -126,7 +123,7 @@ class SASClient:
         }
         response = self.client.get(path=endpoint, headers=headers)
         logger.info(f"{response}")
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         return response
 
@@ -141,24 +138,24 @@ class SASClient:
     def get_report_relationship(self, report_id):
         endpoint = f"reports/commons/relationships/reports/{report_id}"
         response = self.client.get(endpoint)
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         dependencies = []
         for item in response["items"]:
             if item["type"] == "Dependent":
-                dependencies.append(item)
+                dependencies.append(item)  # noqa: PERF401
         return dependencies
 
     def get_resource(self, endpoint):
         response = self.client.get(endpoint)
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         return response
 
     def get_instances_with_param(self, data):
         endpoint = f"catalog/instances?{data}"
         response = self.client.get(endpoint)
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         return response["items"]
 
@@ -173,11 +170,5 @@ class SASClient:
             "Authorization": "Basic c2FzLmNsaTo=",
         }
         url = base_url + endpoint
-        response = requests.request(
-            "POST", url, headers=headers, data=payload, verify=False, timeout=10
-        )
-        text_response = response.json()
-        logger.info(
-            f"this is user: {user}, password: {password}, text: {text_response}"
-        )
+        response = requests.request("POST", url, headers=headers, data=payload, verify=_VERIFY_SSL, timeout=10)
         return response.json()["access_token"]

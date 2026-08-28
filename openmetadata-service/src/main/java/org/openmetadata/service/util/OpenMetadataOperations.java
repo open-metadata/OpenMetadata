@@ -27,6 +27,7 @@ import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
@@ -78,6 +80,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
@@ -87,6 +90,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -112,6 +116,8 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -124,12 +130,26 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.fitness.FitnessVerdict;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.dbtune.AutoTuner;
+import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
+import org.openmetadata.service.util.dbtune.DbTuneReport;
+import org.openmetadata.service.util.dbtune.DbTuneResult;
+import org.openmetadata.service.util.dbtune.Diagnostic;
+import org.openmetadata.service.util.dbtune.MysqlAutoTuner;
+import org.openmetadata.service.util.dbtune.MysqlDiagnostic;
+import org.openmetadata.service.util.dbtune.PostgresAutoTuner;
+import org.openmetadata.service.util.dbtune.PostgresDiagnostic;
+import org.openmetadata.service.util.dbtune.TableRecommendation;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
@@ -146,6 +166,14 @@ import picocli.CommandLine.Option;
         "Creates or Migrates Database/Search Indexes. ReIndex the existing data into Elastic Search "
             + "or OpenSearch. Re-Deploys the service pipelines.")
 public class OpenMetadataOperations implements Callable<Integer> {
+
+  private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
+  private static final String UNKNOWN_VERSION = "unknown";
+  private static final String DEFAULT_VERSION = "1.8.0-SNAPSHOT";
+  private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
+  private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
+  private static final String STATUS_FAILED = "FAILED";
+  private static final int STATUS_COLUMN_INDEX = 3;
 
   private OpenMetadataApplicationConfig config;
   private Jdbi jdbi;
@@ -172,11 +200,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
+            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'search-fitness', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
+        "Use 'db-tune' for a per-table autovacuum / InnoDB stats tuning report; add --apply to "
+            + "execute the recommendations, --analyze to refresh planner stats on changed tables, "
+            + "and --diagnose to surface unused indexes, bloat, slow queries, and other DBA findings");
+    LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
+    LOG.info(
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
+            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -210,9 +245,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .fields()
               .forEachRemaining(
                   entry -> {
-                    if (!columns.contains(entry.getKey())) {
-                      columns.add(entry.getKey());
-                    }
+                    columns.add(entry.getKey());
                     row.add(entry.getValue().toString());
                   });
         }
@@ -225,6 +258,133 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed due to ", e);
       return 1;
+    }
+  }
+
+  @Command(
+      name = "search-fitness",
+      description =
+          "Diagnose whether the configured Elasticsearch/OpenSearch cluster is sized for the "
+              + "current OpenMetadata data footprint. Reports per-index size + avg doc bytes, "
+              + "disk watermarks, heap/CPU, thread-pool rejections, circuit breakers, shard "
+              + "layout, and capacity recommendations.")
+  public Integer searchFitness(
+      @Option(
+              names = {"--json"},
+              defaultValue = "false",
+              description = "Print the full report as JSON to stdout instead of an ASCII summary.")
+          boolean jsonOutput) {
+    try {
+      parseConfig();
+      SearchClusterFitnessAnalyzer analyzer = new SearchClusterFitnessAnalyzer(searchRepository);
+      SearchClusterFitnessReport report = analyzer.analyze();
+      if (jsonOutput) {
+        System.out.println(JsonUtils.pojoToJson(report, true));
+      } else {
+        printSearchFitnessReport(report);
+      }
+      return report.getOverallVerdict() == FitnessVerdict.OVERLOADED ? 2 : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to compute search fitness due to ", e);
+      return 1;
+    }
+  }
+
+  private void printSearchFitnessReport(SearchClusterFitnessReport report) {
+    LOG.info("=== Search Cluster Fitness ===");
+    LOG.info(
+        "Verdict: {} — {}",
+        report.getOverallVerdict(),
+        report.getSummary() == null ? "" : report.getSummary());
+    LOG.info(
+        "Cluster: {} {} ({}), status={}, nodes={}, data nodes={}, OM indices matched={}, cluster reports={} total indices, shards={}",
+        report.getSearchDistribution(),
+        report.getSearchVersion(),
+        report.getClusterName(),
+        report.getClusterStatus(),
+        report.getTotalNodes(),
+        report.getDataNodes(),
+        report.getTotalIndices(),
+        report.getClusterIndicesCount() == null ? "?" : report.getClusterIndicesCount(),
+        report.getTotalShards());
+    if (report.getSizingGuidance() != null) {
+      var g = report.getSizingGuidance();
+      LOG.info(
+          "Sizing: {} | observed {} data node(s); recommended ≥{} | recommended heap/node {} | recommended disk/node {}",
+          g.getVerdict(),
+          g.getObservedDataNodes(),
+          g.getRecommendedDataNodes(),
+          g.getRecommendedHeapPerNodeBytes() == null
+              ? "?"
+              : (g.getRecommendedHeapPerNodeBytes() / (1024 * 1024)) + "MB",
+          g.getRecommendedDiskPerNodeBytes() == null
+              ? "?"
+              : (g.getRecommendedDiskPerNodeBytes() / (1024 * 1024)) + "MB");
+      LOG.info("Sizing rationale: {}", g.getRationale());
+    }
+    List<List<String>> indexRows = new ArrayList<>();
+    if (report.getIndices() != null) {
+      for (var idx : report.getIndices()) {
+        indexRows.add(
+            List.of(
+                idx.getIndexName(),
+                idx.getDocsCount() == null ? "-" : String.valueOf(idx.getDocsCount()),
+                idx.getPrimarySizeBytes() == null
+                    ? "-"
+                    : (idx.getPrimarySizeBytes() / (1024 * 1024)) + " MB",
+                idx.getAvgDocBytes() == null ? "-" : (idx.getAvgDocBytes() / 1024) + " KB",
+                idx.getPrimaryShards() == null
+                    ? "-"
+                    : idx.getPrimaryShards() + "/" + idx.getReplicaShards(),
+                idx.getHealth() == null ? "-" : idx.getHealth()));
+      }
+    }
+    printToAsciiTable(
+        List.of("index", "docs", "primary", "avg/doc", "shards (p/r)", "health"),
+        indexRows,
+        "No OpenMetadata-managed indices found");
+    List<List<String>> signalRows = new ArrayList<>();
+    if (report.getSignals() != null) {
+      for (var s : report.getSignals()) {
+        signalRows.add(
+            List.of(
+                s.getSeverity() == null ? "-" : s.getSeverity().name(),
+                s.getName() == null ? "-" : s.getName(),
+                s.getObserved() == null ? "-" : s.getObserved(),
+                s.getThreshold() == null ? "-" : s.getThreshold(),
+                s.getRecommendation() == null ? "" : s.getRecommendation()));
+      }
+    }
+    printToAsciiTable(
+        List.of("severity", "signal", "observed", "threshold", "recommendation"),
+        signalRows,
+        "No signals fired — cluster looks healthy");
+    if (report.getOtherIndicesOnCluster() != null && !report.getOtherIndicesOnCluster().isEmpty()) {
+      LOG.info(
+          "No OpenMetadata indices matched. Top indices actually present on the cluster (for diagnosis):");
+      List<List<String>> otherRows = new ArrayList<>();
+      for (var idx : report.getOtherIndicesOnCluster()) {
+        otherRows.add(
+            List.of(
+                idx.getIndexName(),
+                idx.getDocsCount() == null ? "-" : String.valueOf(idx.getDocsCount()),
+                idx.getPrimarySizeBytes() == null
+                    ? "-"
+                    : (idx.getPrimarySizeBytes() / (1024 * 1024)) + " MB",
+                idx.getPrimaryShards() == null
+                    ? "-"
+                    : idx.getPrimaryShards() + "/" + idx.getReplicaShards(),
+                idx.getHealth() == null ? "-" : idx.getHealth()));
+      }
+      printToAsciiTable(
+          List.of("index (observed)", "docs", "primary", "shards (p/r)", "health"),
+          otherRows,
+          "(none)");
+    }
+    if (report.getInaccessibleMetrics() != null && !report.getInaccessibleMetrics().isEmpty()) {
+      LOG.info(
+          "Note: the following metrics were not accessible on this cluster (likely managed-service restrictions): {}",
+          String.join(", ", report.getInaccessibleMetrics()));
     }
   }
 
@@ -570,7 +730,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       LOG.info("Reading security configuration from file: {}", configFile);
-      String yamlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+      String yamlContent = Files.readString(file.toPath());
 
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       SecurityConfiguration securityConfig =
@@ -773,8 +933,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-      if (!authProvider.equals(AuthProvider.BASIC)) {
-        LOG.error("Authentication is not set to basic. User creation is not supported.");
+      if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
+        LOG.error(
+            "Authentication provider {} does not support native password user creation.",
+            authProvider);
         return 1;
       }
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -860,9 +1022,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getInstance()
-                .getCurrentAuthConfig()
-                .getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -880,7 +1040,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(Map.of());
+            .withAppConfiguration(Map.of())
+            .withAllowBotImpersonation(Boolean.TRUE.equals(definition.getAllowBotImpersonation()));
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -929,8 +1090,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
       }
-      jdbi.open().getConnection();
-      return 0;
+      boolean connectionValid = jdbi.withHandle(handle -> handle.getConnection().isValid(5));
+      return connectionValid ? 0 : 1;
     } catch (Exception e) {
       LOG.error("Failed to check connection due to ", e);
       return 1;
@@ -951,6 +1112,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("create indexes.");
       searchRepository.createIndexes();
       searchRepository.createOrUpdateIndexTemplates();
@@ -989,10 +1151,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
-      if (!authProvider.equals(AuthProvider.BASIC)) {
-        LOG.error("Auth Provider is Not Basic. Cannot apply Password");
+      if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
+        LOG.error(
+            "Authentication provider {} does not support native password reset.", authProvider);
         return 1;
       }
+
+      initOrganization();
 
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
@@ -1030,6 +1195,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Running Flowable schema upgrade.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
@@ -1282,11 +1449,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum size of the payload in bytes.")
           long payloadSize,
       @Option(
-              names = {"--recreate-indexes"},
-              defaultValue = "true",
-              description = "Flag to determine if indexes should be recreated.")
-          boolean recreateIndexes,
-      @Option(
               names = {"--producer-threads"},
               defaultValue = "10",
               description = "Number of threads to use for processing.")
@@ -1328,6 +1490,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   "Enable automatic performance tuning based on cluster capabilities and database entity count. When enabled, overrides manual parameter settings.")
           boolean autoTune,
       @Option(
+              names = {"--recreate-indexes"},
+              defaultValue = "true",
+              description =
+                  "Deprecated only here for backward compatibilty, won't have any effect.")
+          boolean recreateIndexes,
+      @Option(
               names = {"--force"},
               defaultValue = "false",
               description = "Force reindexing even if no index mapping changes are detected.")
@@ -1349,11 +1517,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String slackChannel) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1364,12 +1531,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      AppScheduler.getInstance().start();
 
       // Prepare search repository for reindexing (e.g., initialize vector services)
       searchRepository.prepareForReindex();
@@ -1386,7 +1557,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           entities,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1459,6 +1629,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       var omConfig = OpenMetadataApplicationConfigHolder.getInstance();
       ApplicationHandler.initialize(omConfig);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance()
           .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
@@ -1636,7 +1807,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         }
         for (EntityInterface entity : task.batch().getData()) {
           try {
-            vecService.updateEntityEmbedding(entity, entityIndexName);
+            vecService.updateEntityEmbeddings(entity, entityIndexName);
             processedCounts
                 .computeIfAbsent(
                     entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
@@ -1754,7 +1925,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       Set<String> entities,
       int batchSize,
       long payloadSize,
-      boolean recreateIndexes,
       int producerThreads,
       int consumerThreads,
       int queueSize,
@@ -1773,73 +1943,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
     IndexMappingVersionTracker versionTracker = null;
     boolean shouldUpdateVersions = false;
     ReindexingProgressMonitor progressMonitor = null;
+    boolean shouldReindex = true;
 
-    if (!force && recreateIndexes) {
+    if (!force) {
       try {
-        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
-        versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
+        versionTracker =
+            new IndexMappingVersionTracker(collectionDAO, getCurrentServerVersion(), "system");
+        boolean upgradeRequiresFullReindex = versionTracker.requiresFullReindexForVersionUpgrade();
+        List<String> changedMappings =
+            upgradeRequiresFullReindex ? List.of() : versionTracker.getChangedMappings();
 
-        List<String> changedMappings = versionTracker.getChangedMappings();
-
-        if (changedMappings.isEmpty()) {
-          LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
-          recreateIndexes = false;
-
-          // Send Slack notification if configured
-          if (slackBotToken != null
-              && !slackBotToken.isEmpty()
-              && slackChannel != null
-              && !slackChannel.isEmpty()) {
-            try {
-              String instanceUrl = getInstanceUrlFromSettings();
-              SlackWebApiClient slackClient =
-                  new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
-              slackClient.sendNoChangesNotification();
-            } catch (Exception e) {
-              LOG.warn("Failed to send Slack notification for no changes", e);
-            }
-          }
-        } else {
-          shouldUpdateVersions = true;
-
-          // If 'all' entities were requested, only reindex changed ones
-          if (entities.contains("all")) {
-            entities = new HashSet<>(changedMappings);
-          } else {
-            // If specific entities were requested, check if any have changed mappings
-            Set<String> requestedAndChanged = new HashSet<>(entities);
-            requestedAndChanged.retainAll(changedMappings);
-            if (requestedAndChanged.isEmpty()) {
-              LOG.info(
-                  "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
-              recreateIndexes = false;
-              shouldUpdateVersions = false;
-
-              // Send Slack notification if configured
-              if (slackBotToken != null
-                  && !slackBotToken.isEmpty()
-                  && slackChannel != null
-                  && !slackChannel.isEmpty()) {
-                try {
-                  String instanceUrl = getInstanceUrlFromSettings();
-                  SlackWebApiClient slackClient =
-                      new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
-                  slackClient.sendNoChangesNotification();
-                } catch (Exception e) {
-                  LOG.warn("Failed to send Slack notification for no changes", e);
-                }
-              }
-            } else {
-              entities = requestedAndChanged;
-            }
-          }
-
-          // Initialize progress monitor for entities that will be reindexed
-          if (recreateIndexes) {
-            progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
-            progressMonitor.printInitialSummary();
-          }
-        }
+        SmartReindexPlan plan =
+            planSmartReindex(entities, upgradeRequiresFullReindex, changedMappings);
+        entities = plan.entities();
+        shouldReindex = plan.shouldReindex();
+        shouldUpdateVersions = plan.updateVersions();
+        progressMonitor = reportSmartReindexPlan(plan, slackBotToken, slackChannel);
       } catch (Exception e) {
         LOG.warn("⚠️  Smart reindexing unavailable: {}", e.getMessage());
         LOG.info("🔄 Falling back to standard reindexing for all requested entities");
@@ -1847,18 +1966,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     // Initialize progress monitor for force mode as well to get clean output
-    if (progressMonitor == null && recreateIndexes && force) {
-      progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
-      LOG.info("");
-      LOG.info("🔄 Force Reindexing");
-      LOG.info("═".repeat(80));
-      LOG.info("🎯 Entities to reindex: {}", String.join(", ", entities));
-      LOG.info("⏳ Reindexing in progress...");
-      LOG.info("");
+    if (progressMonitor == null && force) {
+      progressMonitor = startFullReindex("Force Reindexing", entities);
     }
 
-    // If recreateIndexes is false, we should not proceed with reindexing
-    if (!recreateIndexes) {
+    // If no mapping changes were detected, we should not proceed with reindexing
+    if (!shouldReindex) {
       LOG.info("Reindexing skipped - no changes detected");
       return 0; // Success - no reindexing needed
     }
@@ -1868,7 +1981,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
-            .withRecreateIndex(recreateIndexes)
             .withProducerThreads(producerThreads)
             .withConsumerThreads(consumerThreads)
             .withQueueSize(queueSize)
@@ -1892,8 +2004,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
     }
 
-    // Trigger Application
+    // Trigger Application. Clear any on-demand job left behind by a previous run that died
+    // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
@@ -1901,7 +2015,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Update mapping versions after successful reindexing
     if (result == 0 && shouldUpdateVersions && versionTracker != null) {
       try {
-        versionTracker.updateMappingVersions();
+        persistReindexedMappingVersions(versionTracker, entities);
         LOG.info(
             "✅ Smart reindexing: Updated mapping versions in database for future change detection");
       } catch (Exception e) {
@@ -1911,6 +2025,122 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     return result;
+  }
+
+  private String getCurrentServerVersion() {
+    String version =
+        VersionUtils.getOpenMetadataServerVersion(CATALOG_VERSION_RESOURCE).getVersion();
+    if (nullOrEmpty(version) || UNKNOWN_VERSION.equals(version)) {
+      version = System.getProperty("project.version", DEFAULT_VERSION);
+    }
+    return version;
+  }
+
+  private void persistReindexedMappingVersions(
+      IndexMappingVersionTracker versionTracker, Set<String> reindexedEntities) throws IOException {
+    if (reindexedEntities.contains(SearchIndexEntityTypes.ALL)) {
+      versionTracker.updateMappingVersions();
+    } else {
+      versionTracker.updateMappingVersions(reindexedEntities);
+    }
+  }
+
+  enum SmartReindexAction {
+    SKIP_NO_MAPPING_CHANGES,
+    SKIP_NO_REQUESTED_CHANGES,
+    REINDEX_CHANGED,
+    REINDEX_ALL_FOR_UPGRADE
+  }
+
+  record SmartReindexPlan(SmartReindexAction action, Set<String> entities, boolean updateVersions) {
+    boolean shouldReindex() {
+      return action == SmartReindexAction.REINDEX_CHANGED
+          || action == SmartReindexAction.REINDEX_ALL_FOR_UPGRADE;
+    }
+  }
+
+  static SmartReindexPlan planSmartReindex(
+      Set<String> requestedEntities,
+      boolean upgradeRequiresFullReindex,
+      List<String> changedMappings) {
+    SmartReindexPlan plan;
+    if (upgradeRequiresFullReindex) {
+      plan =
+          new SmartReindexPlan(SmartReindexAction.REINDEX_ALL_FOR_UPGRADE, requestedEntities, true);
+    } else if (changedMappings.isEmpty()) {
+      plan =
+          new SmartReindexPlan(
+              SmartReindexAction.SKIP_NO_MAPPING_CHANGES, requestedEntities, false);
+    } else {
+      Set<String> resolvedEntities = resolveChangedEntities(requestedEntities, changedMappings);
+      boolean hasEntitiesToReindex = !resolvedEntities.isEmpty();
+      SmartReindexAction action =
+          hasEntitiesToReindex
+              ? SmartReindexAction.REINDEX_CHANGED
+              : SmartReindexAction.SKIP_NO_REQUESTED_CHANGES;
+      plan = new SmartReindexPlan(action, resolvedEntities, hasEntitiesToReindex);
+    }
+    return plan;
+  }
+
+  static Set<String> resolveChangedEntities(
+      Set<String> requestedEntities, List<String> changedMappings) {
+    Set<String> resolvedEntities;
+    if (requestedEntities.contains(SearchIndexEntityTypes.ALL)) {
+      resolvedEntities = new HashSet<>(changedMappings);
+    } else {
+      resolvedEntities = new HashSet<>(requestedEntities);
+      resolvedEntities.retainAll(changedMappings);
+    }
+    return resolvedEntities;
+  }
+
+  private ReindexingProgressMonitor reportSmartReindexPlan(
+      SmartReindexPlan plan, String slackBotToken, String slackChannel) {
+    ReindexingProgressMonitor progressMonitor = null;
+    switch (plan.action()) {
+      case REINDEX_ALL_FOR_UPGRADE -> progressMonitor =
+          startFullReindex("Major/Minor Version Upgrade Reindexing", plan.entities());
+      case REINDEX_CHANGED -> {
+        progressMonitor = new ReindexingProgressMonitor(plan.entities().stream().sorted().toList());
+        progressMonitor.printInitialSummary();
+      }
+      case SKIP_NO_MAPPING_CHANGES -> {
+        LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
+        sendNoChangesSlackNotification(slackBotToken, slackChannel);
+      }
+      case SKIP_NO_REQUESTED_CHANGES -> {
+        LOG.info(
+            "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
+        sendNoChangesSlackNotification(slackBotToken, slackChannel);
+      }
+    }
+    return progressMonitor;
+  }
+
+  private ReindexingProgressMonitor startFullReindex(String title, Set<String> entities) {
+    ReindexingProgressMonitor progressMonitor =
+        new ReindexingProgressMonitor(entities.stream().sorted().toList());
+    LOG.info("");
+    LOG.info("🔄 {}", title);
+    LOG.info("═".repeat(80));
+    LOG.info("🎯 Entities to reindex: {}", String.join(", ", entities));
+    LOG.info("⏳ Reindexing in progress...");
+    LOG.info("");
+    return progressMonitor;
+  }
+
+  private void sendNoChangesSlackNotification(String slackBotToken, String slackChannel) {
+    if (!nullOrEmpty(slackBotToken) && !nullOrEmpty(slackChannel)) {
+      try {
+        String instanceUrl = getInstanceUrlFromSettings();
+        SlackWebApiClient slackClient =
+            new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
+        slackClient.sendNoChangesNotification();
+      } catch (Exception e) {
+        LOG.warn("Failed to send Slack notification for no changes", e);
+      }
+    }
   }
 
   @Command(
@@ -1944,10 +2174,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      AppScheduler.getInstance().start();
       return executeDataInsightsReindexApp(
           batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
     } catch (Exception e) {
@@ -1982,13 +2216,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);
 
-    // Trigger Application
+    // Trigger Application. Clear any on-demand job left behind by a previous run that died
+    // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
-
-    return result;
+    return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
   @SneakyThrows
@@ -2159,40 +2392,70 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
-  public Integer deployPipelines() {
+  public Integer deployPipelines(
+      @Option(
+              names = {"--chunk-size"},
+              defaultValue = "20",
+              description =
+                  "Number of pipelines sent to the bulk deploy endpoint per request. The server "
+                      + "deploys them sequentially, so a larger chunk needs a proportionally "
+                      + "longer deadline.")
+          int chunkSize,
+      @Option(
+              names = {"--seconds-per-pipeline"},
+              defaultValue = "30",
+              description =
+                  "Deploy deadline budgeted for each pipeline in a chunk. The request timeout is "
+                      + "this value multiplied by the chunk size.")
+          int secondsPerPipeline) {
+    int exitCode = 1;
     try {
       LOG.info("Deploying Pipelines via API");
-      parseConfig();
-      IngestionPipelineRepository pipelineRepository =
-          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-      List<IngestionPipeline> pipelines =
-          pipelineRepository.listAll(
-              new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
-              new ListFilter(Include.NON_DELETED));
-      LOG.debug(String.format("Pipelines %d", pipelines.size()));
-      List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
-      List<List<String>> pipelineStatuses = new ArrayList<>();
-
-      if (!pipelines.isEmpty()) {
-        deployPipelinesViaAPI(pipelines, pipelineStatuses);
+      if (isValidDeployOptions(chunkSize, secondsPerPipeline)) {
+        parseConfig();
+        exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline);
       }
-
-      printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
-
-      // Check if any pipeline deployments failed by examining the status column
-      boolean hasFailures =
-          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
-
-      if (hasFailures) {
-        LOG.error("Some pipeline deployments failed. Check the table above for details.");
-        return 1;
-      }
-
-      return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
-      return 1;
     }
+    return exitCode;
+  }
+
+  static boolean isValidDeployOptions(final int chunkSize, final int secondsPerPipeline) {
+    boolean valid = true;
+    if (chunkSize < 1) {
+      LOG.error("--chunk-size must be at least 1, got {}", chunkSize);
+      valid = false;
+    }
+    if (secondsPerPipeline < 1) {
+      LOG.error("--seconds-per-pipeline must be at least 1, got {}", secondsPerPipeline);
+      valid = false;
+    }
+    return valid;
+  }
+
+  private int runPipelineDeployment(final int chunkSize, final int secondsPerPipeline) {
+    final IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    final List<IngestionPipeline> pipelines =
+        pipelineRepository.listAll(
+            new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
+            new ListFilter(Include.NON_DELETED));
+    LOG.debug("Pipelines size {}", pipelines.size());
+    final List<List<String>> pipelineStatuses = new ArrayList<>();
+    if (!pipelines.isEmpty()) {
+      deployPipelinesViaAPI(pipelines, pipelineStatuses, chunkSize, secondsPerPipeline);
+    }
+    printToAsciiTable(
+        Arrays.asList("Name", "Type", "Service Name", "Status"),
+        pipelineStatuses,
+        "No Pipelines Found");
+    int exitCode = 0;
+    if (hasDeployFailures(pipelineStatuses)) {
+      LOG.error("Some pipeline deployments failed. Check the table above for details.");
+      exitCode = 1;
+    }
+    return exitCode;
   }
 
   @Command(
@@ -2280,10 +2543,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Dropping data assets data streams...");
       dataInsightsApp.deleteDataAssetsDataStream();
 
-      // Drop data quality indexes
-      LOG.info("Dropping data quality indexes...");
-      dataInsightsApp.deleteDataQualityDataIndex();
-
       LOG.info("Data Insights indexes and data streams dropped successfully.");
     } catch (Exception e) {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
@@ -2301,10 +2560,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop data assets data streams
       LOG.info("Create/Update data assets data streams...");
       dataInsightsApp.createOrUpdateDataAssetsDataStream();
-
-      // Drop data quality indexes
-      LOG.info("Create/Updated data quality indexes...");
-      dataInsightsApp.createDataQualityDataIndex();
 
       LOG.info("Data Insights indexes and data streams created successfully.");
     } catch (Exception e) {
@@ -2461,6 +2716,223 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(
+      name = "db-tune",
+      description =
+          "Generate a per-table autovacuum / InnoDB stats tuning report and optionally apply it. "
+              + "Default mode is read-only — pass --apply to execute the ALTER TABLE statements, "
+              + "--analyze to refresh planner stats on changed tables, and --diagnose to also "
+              + "surface unused indexes, bloat, slow queries, and other read-only DBA findings.")
+  public Integer dbTune(
+      @Option(
+              names = {"--apply"},
+              defaultValue = "false",
+              description =
+                  "Apply the recommendations. Without this flag the command only prints the report.")
+          boolean apply,
+      @Option(
+              names = {"--yes", "-y"},
+              defaultValue = "false",
+              description = "Skip the interactive confirmation when applying.")
+          boolean skipPrompt,
+      @Option(
+              names = {"--analyze"},
+              defaultValue = "false",
+              description =
+                  "After --apply, run ANALYZE on each changed table so planner stats reflect the new settings.")
+          boolean runAnalyze,
+      @Option(
+              names = {"--diagnose"},
+              defaultValue = "false",
+              description =
+                  "Also run a read-only diagnostic pass (unused indexes, bloat, low cache hit, "
+                      + "stale ANALYZE, seq-scan-heavy tables, slow queries). Pure inspection — "
+                      + "never modifies anything.")
+          boolean runDiagnose) {
+    try {
+      parseConfig();
+      String driverClass = config.getDataSourceFactory().getDriverClass();
+      ConnectionType connType = ConnectionType.from(driverClass);
+      if (connType == null) {
+        LOG.error(
+            "db-tune does not support driver class '{}'. Only the bundled MySQL and PostgreSQL drivers are recognised.",
+            driverClass);
+        return 1;
+      }
+      AutoTuner tuner = autoTunerFor(connType);
+      DbTuneResult result = jdbi.withHandle(tuner::analyze);
+      LOG.info("\n{}", DbTuneReport.render(result));
+      if (runDiagnose) {
+        Diagnostic diagnostic = diagnosticFor(connType);
+        DbTuneDiagnosis diagnosis = jdbi.withHandle(diagnostic::diagnose);
+        LOG.info("\n{}", DbTuneReport.renderDiagnosis(diagnosis));
+      }
+      if (!apply) {
+        return 0;
+      }
+      List<TableRecommendation> actionable = result.actionableRecommendations();
+      if (actionable.isEmpty()) {
+        if (result.tableRecommendations().isEmpty()) {
+          LOG.info("Nothing to apply — no tracked tables exist on this database.");
+        } else {
+          LOG.info(
+              "Nothing to apply — every tracked table already matches its recommended settings.");
+        }
+        return 0;
+      }
+      if (!skipPrompt && !confirmApply(tuner, actionable)) {
+        LOG.info("Operation cancelled.");
+        return 0;
+      }
+      applyRecommendations(tuner, actionable, runAnalyze);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("db-tune failed due to ", e);
+      return 1;
+    }
+  }
+
+  private AutoTuner autoTunerFor(final ConnectionType connType) {
+    return switch (connType) {
+      case POSTGRES -> new PostgresAutoTuner();
+      case MYSQL -> new MysqlAutoTuner();
+    };
+  }
+
+  private Diagnostic diagnosticFor(final ConnectionType connType) {
+    return switch (connType) {
+      case POSTGRES -> new PostgresDiagnostic();
+      case MYSQL -> new MysqlDiagnostic();
+    };
+  }
+
+  private boolean confirmApply(final AutoTuner tuner, final List<TableRecommendation> actionable) {
+    LOG.info("About to apply {} ALTER statements:", actionable.size());
+    LOG.info("\n{}", DbTuneReport.renderAlterStatements(tuner, actionable));
+    @SuppressWarnings("resource")
+    Scanner scanner = new Scanner(System.in);
+    LOG.info("Apply now? [y/N]: ");
+    // nextLine() (not next()) so a bare Enter — which the [y/N] convention implies as "no" —
+    // doesn't block waiting for a non-whitespace token. Treat empty / EOF as "no".
+    String input = scanner.hasNextLine() ? scanner.nextLine().trim().toLowerCase() : "";
+    return input.equals("y") || input.equals("yes");
+  }
+
+  private void applyRecommendations(
+      final AutoTuner tuner, final List<TableRecommendation> actionable, final boolean runAnalyze) {
+    List<List<String>> rows = new ArrayList<>();
+    for (TableRecommendation rec : actionable) {
+      rows.add(applyOne(tuner, rec, runAnalyze));
+    }
+    printToAsciiTable(
+        List.of("Table", "Action", "Status", "Details"), rows, "No recommendations applied");
+  }
+
+  private List<String> applyOne(
+      final AutoTuner tuner, final TableRecommendation rec, final boolean runAnalyze) {
+    try {
+      jdbi.useHandle(handle -> tuner.apply(handle, rec));
+      if (runAnalyze) {
+        jdbi.useHandle(handle -> tuner.analyzeOne(handle, rec.tableName()));
+        return List.of(rec.tableName(), rec.action().name(), "OK", "Applied + analyzed");
+      }
+      return List.of(rec.tableName(), rec.action().name(), "OK", "Applied");
+    } catch (Exception e) {
+      LOG.error("Failed to apply recommendation for {}: {}", rec.tableName(), e.getMessage(), e);
+      String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+      return List.of(rec.tableName(), rec.action().name(), "FAILED", detail);
+    }
+  }
+
+  /**
+   * Unlike most ops commands (e.g. deploy-pipelines) that delegate to the server API, this command
+   * operates directly on the database. This is intentional: when JWT signing keys have been rotated,
+   * all existing bot tokens — including the ingestion-bot token we'd use to authenticate against the
+   * server — are invalid. We must bypass the server to regenerate tokens in this scenario.
+   */
+  @Command(
+      name = "regenerate-bot-tokens",
+      description =
+          "Regenerates JWT tokens for all bot users. "
+              + "Use this after rotating JWT signing keys or changing the cluster name.")
+  public Integer regenerateBotTokens(
+      @Option(
+              names = {"--expiry"},
+              description =
+                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                      + "Defaults to Unlimited.",
+              defaultValue = "Unlimited")
+          JWTTokenExpiry expiry) {
+    try {
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+
+      JWTTokenGenerator.getInstance()
+          .init(
+              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+
+      initOrganization();
+
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+      List<Bot> bots =
+          botRepository.listAll(
+              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
+
+      List<List<String>> rows = new ArrayList<>();
+
+      for (Bot listedBot : bots) {
+        String botName = listedBot.getName();
+        try {
+          // Fetch individually so that setFields populates the botUser relationship
+          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
+
+          if (bot.getBotUser() == null) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
+            continue;
+          }
+
+          User botUser =
+              userRepository.getByName(
+                  null,
+                  bot.getBotUser().getFullyQualifiedName(),
+                  new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
+
+          if (botUser.getAuthenticationMechanism() == null
+              || botUser.getAuthenticationMechanism().getAuthType()
+                  != AuthenticationMechanism.AuthType.JWT) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
+            continue;
+          }
+
+          JWTAuthMechanism newJwtAuth =
+              JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
+          botUser.setAuthenticationMechanism(
+              new AuthenticationMechanism()
+                  .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                  .withConfig(newJwtAuth));
+          UserUtil.addOrUpdateUser(botUser);
+
+          rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
+        } catch (Exception e) {
+          LOG.error("Failed to regenerate token for bot: {}", botName, e);
+          rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
+        }
+      }
+
+      boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
+      printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
+      return hasFailures ? 1 : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to regenerate bot tokens due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
       name = "cleanup-flowable-history",
       description =
           "Cleans up old workflow deployments and history. "
@@ -2523,7 +2995,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void deployPipelinesViaAPI(
-      List<IngestionPipeline> pipelines, List<List<String>> pipelineStatuses) {
+      List<IngestionPipeline> pipelines,
+      List<List<String>> pipelineStatuses,
+      int chunkSize,
+      int secondsPerPipeline) {
     try {
       // Get ingestion-bot JWT token
       String jwtToken = getIngestionBotToken();
@@ -2538,14 +3013,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       LOG.info("Deploying pipelines to server URL: {}", serverUrl);
 
-      // Create HTTP client
-      HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+      HttpClient client = HttpClient.newBuilder().connectTimeout(DEPLOY_CONNECT_TIMEOUT).build();
+      Duration chunkTimeout = deployChunkTimeout(chunkSize, secondsPerPipeline);
+      DeployRequest deployRequest = new DeployRequest(client, jwtToken, serverUrl, chunkTimeout);
 
-      // Process pipelines in chunks of 20
-      int chunkSize = 20;
       int totalPipelines = pipelines.size();
       LOG.info(
-          "Deploying {} pipelines via bulk API calls in chunks of {}", totalPipelines, chunkSize);
+          "Deploying {} pipelines via bulk API calls in chunks of {} with a {}s deadline per chunk",
+          totalPipelines,
+          chunkSize,
+          chunkTimeout.toSeconds());
 
       List<List<IngestionPipeline>> pipelineChunks = chunkList(pipelines, chunkSize);
 
@@ -2558,7 +3035,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             chunkIndex * chunkSize + 1,
             Math.min((chunkIndex + 1) * chunkSize, totalPipelines));
 
-        deployPipelineChunk(client, jwtToken, serverUrl, chunk, pipelineStatuses);
+        deployPipelineChunk(deployRequest, chunk, pipelineStatuses);
       }
 
       LOG.info("Completed bulk deployment of {} pipelines", totalPipelines);
@@ -2577,11 +3054,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void deployPipelineChunk(
-      HttpClient client,
-      String jwtToken,
-      String serverUrl,
+      DeployRequest deployRequest,
       List<IngestionPipeline> pipelineChunk,
       List<List<String>> pipelineStatuses) {
+    final String serverUrl = deployRequest.serverUrl();
     try {
       // Collect pipeline IDs for this chunk
       List<UUID> pipelineIds =
@@ -2597,13 +3073,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
       HttpRequest request =
           HttpRequest.newBuilder()
               .uri(URI.create(normalizedServerUrl + COLLECTION_PATH + "bulk/deploy"))
-              .header("Authorization", "Bearer " + jwtToken)
+              .header("Authorization", "Bearer " + deployRequest.jwtToken())
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-              .timeout(Duration.ofMinutes(2))
+              .timeout(deployRequest.chunkTimeout())
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response =
+          deployRequest.client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         LOG.debug("Chunk deployment completed successfully");
@@ -2636,7 +3113,32 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  /**
+   * The bulk deploy endpoint registers each pipeline in a chunk sequentially, so the request
+   * deadline has to grow with the chunk size. A fixed deadline silently becomes too short as a
+   * catalog grows, and reports a timeout on deployments that are still progressing server side.
+   */
+  static Duration deployChunkTimeout(final int chunkSize, final int secondsPerPipeline) {
+    final Duration budgeted = Duration.ofSeconds((long) chunkSize * secondsPerPipeline);
+    Duration timeout = MIN_DEPLOY_CHUNK_TIMEOUT;
+    if (budgeted.compareTo(MIN_DEPLOY_CHUNK_TIMEOUT) > 0) {
+      timeout = budgeted;
+    }
+    return timeout;
+  }
+
+  static boolean hasDeployFailures(final List<List<String>> pipelineStatuses) {
+    return pipelineStatuses.stream()
+        .anyMatch(status -> status.get(STATUS_COLUMN_INDEX).startsWith(STATUS_FAILED));
+  }
+
+  private record DeployRequest(
+      HttpClient client, String jwtToken, String serverUrl, Duration chunkTimeout) {}
+
   private <T> List<List<T>> chunkList(List<T> list, int chunkSize) {
+    if (chunkSize < 1) {
+      throw new IllegalArgumentException("chunkSize must be at least 1, got " + chunkSize);
+    }
     List<List<T>> chunks = new ArrayList<>();
     for (int i = 0; i < list.size(); i += chunkSize) {
       int end = Math.min(list.size(), i + chunkSize);
@@ -2768,7 +3270,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -2776,7 +3282,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     config =
         factory.build(
             new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+                new FileConfigurationSourceProvider(),
+                new EnvironmentVariableSubstitutor(false, true)),
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
@@ -2841,7 +3348,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS " + tableName);
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {} ", tableName, e);
                   }
                 });
         handle.execute("SET FOREIGN_KEY_CHECKS = 1");
@@ -2856,7 +3363,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS \"" + tableName + "\" CASCADE");
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {}", tableName, e);
                   }
                 });
       }
@@ -2927,7 +3434,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
           roleRepository.initializeEntity(role);
         }
-        teamRepository.initOrganization();
       } catch (Exception ex) {
         LOG.error("Failed to initialize organization due to ", ex);
         throw new RuntimeException(ex);
@@ -2935,6 +3441,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         rootLogger.setLevel(originalLevel);
       }
     }
+    teamRepository.initOrganization();
   }
 
   public static void printToAsciiTable(

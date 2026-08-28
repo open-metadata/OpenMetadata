@@ -21,17 +21,20 @@ import {
   RJSFSchema,
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Card, Typography } from 'antd';
+import { Check, UploadCloud02, X } from '@untitledui/icons';
+import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
+  MAX_XML_SIZE,
   NON_OIDC_SPECIFIC_FIELDS,
   OIDC_SPECIFIC_FIELDS,
   VALIDATION_STATUS,
@@ -52,7 +55,7 @@ import {
 import {
   createScrollToErrorHandler,
   transformErrors,
-} from '../../../utils/formUtils';
+} from '../../../utils/formPureUtils';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
@@ -67,6 +70,7 @@ import {
   handleClientTypeChange,
   hasFieldValidationErrors,
   isValidNonBasicProvider,
+  parseSamlMetadataXml,
   parseValidationErrors,
   removeRequiredFields,
   removeSchemaFields,
@@ -81,6 +85,7 @@ import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTem
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -88,6 +93,8 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
+import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -96,11 +103,77 @@ import {
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
+interface MetadataUploadStatusCardProps {
+  status: 'success' | 'error';
+  fileName: string;
+  onChangeFile: () => void;
+}
+
+interface SsoTestResult {
+  status: 'success' | 'failed';
+  errorCount: number;
+}
+
+const MetadataUploadStatusCard = ({
+  status,
+  fileName,
+  onChangeFile,
+}: MetadataUploadStatusCardProps) => {
+  const { t } = useTranslation();
+  const isSuccess = status === 'success';
+
+  return (
+    <div className="flex items-center justify-between p-xs metadata-upload-status-container">
+      <div className="flex items-center gap-2">
+        <div
+          className={classNames(
+            'flex-shrink flex items-center justify-center rounded-full w-6 h-6',
+            {
+              'metadata-upload-status-icon-success': isSuccess,
+              'metadata-upload-status-icon-error': !isSuccess,
+            }
+          )}>
+          {isSuccess ? (
+            <Check className="text-white" size={16} />
+          ) : (
+            <X className="text-white" size={16} />
+          )}
+        </div>
+        <Typography.Text className="text-grey-body text-sm font-medium">
+          {t(
+            isSuccess
+              ? 'message.metadata-xml-file-parsed-success'
+              : 'message.metadata-xml-file-parsed-error',
+            { fileName }
+          )}
+        </Typography.Text>
+      </div>
+      <Button
+        data-testid="change-metadata-xml-btn"
+        size="small"
+        type="link"
+        onClick={onChangeFile}>
+        {t('label.change-entity', { entity: t('label.file') })}
+      </Button>
+    </div>
+  );
+};
 
 const widgets = {
   SelectWidget: SelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
+
+// Providers whose public-client login can be exercised end-to-end in the browser
+// for an interactive Test Login (the browser obtains an id_token directly).
+const OIDC_TEST_LOGIN_PROVIDERS: AuthProvider[] = [
+  AuthProvider.Google,
+  AuthProvider.Okta,
+  AuthProvider.Azure,
+  AuthProvider.Auth0,
+  AuthProvider.AwsCognito,
+  AuthProvider.CustomOidc,
+];
 
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
@@ -128,6 +201,21 @@ const SSOConfigurationFormRJSF = ({
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
   const [errorClearTrigger, setErrorClearTrigger] = useState<number>(0);
+  const [metadataUploadStatus, setMetadataUploadStatus] = useState<
+    'success' | 'error' | null
+  >(null);
+  const [metadataUploadFileName, setMetadataUploadFileName] =
+    useState<string>('');
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<SsoTestResult | undefined>();
+  const [showTestLoginModal, setShowTestLoginModal] = useState<boolean>(false);
+  const {
+    isTesting: isTestingLogin,
+    result: testLoginResult,
+    error: testLoginError,
+    runTestLogin,
+    reset: resetTestLogin,
+  } = useSsoTestLogin();
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -221,6 +309,8 @@ const SSOConfigurationFormRJSF = ({
     // Clear all existing state first
     setHasExistingConfig(false);
     setSavedData(undefined);
+    setMetadataUploadStatus(null);
+    setMetadataUploadFileName('');
 
     // Initialize fresh form data for the selected provider
     setCurrentProvider(selectedProvider);
@@ -249,6 +339,77 @@ const SSOConfigurationFormRJSF = ({
   const handleClearFieldError = useCallback((fieldPath: string) => {
     clearFieldError(fieldErrorsRef, fieldPath);
   }, []);
+
+  const handleMetadataFileUpload = useCallback(
+    (files: FileList) => {
+      const file = files[0];
+      if (!file) {
+        return;
+      }
+
+      if (file.size > MAX_XML_SIZE) {
+        showErrorToast(t('message.file-size-exceeded', { size: '1 MB' }));
+
+        return;
+      }
+
+      const updateIdpFields = (fields: {
+        entityId?: string;
+        ssoLoginUrl?: string;
+        idpX509Certificate?: string;
+      }) => {
+        setInternalData((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            authenticationConfiguration: {
+              ...prev.authenticationConfiguration,
+              samlConfiguration: {
+                ...prev.authenticationConfiguration?.samlConfiguration,
+                idp: {
+                  ...(prev.authenticationConfiguration.samlConfiguration
+                    ?.idp as object),
+                  ...fields,
+                },
+              },
+            },
+          };
+        });
+      };
+
+      file
+        .text()
+        .then((xmlContent) => {
+          try {
+            const parsed = parseSamlMetadataXml(xmlContent);
+
+            updateIdpFields({
+              entityId: parsed.entityId,
+              ssoLoginUrl: parsed.ssoLoginUrl,
+              idpX509Certificate: parsed.idpX509Certificate,
+            });
+            setMetadataUploadFileName(file.name);
+            setMetadataUploadStatus('success');
+          } catch {
+            updateIdpFields({
+              entityId: '',
+              ssoLoginUrl: '',
+              idpX509Certificate: '',
+            });
+            setMetadataUploadFileName(file.name);
+            setMetadataUploadStatus('error');
+          }
+        })
+        .catch(() => {
+          setMetadataUploadFileName(file.name);
+          setMetadataUploadStatus('error');
+        });
+    },
+    [t]
+  );
 
   const handleValidationErrors = useCallback(
     (
@@ -314,10 +475,9 @@ const SSOConfigurationFormRJSF = ({
     }
 
     // Provider-specific schema modifications
-    if (provider === AuthProvider.Saml) {
-      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
-      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
-    } else if (provider === AuthProvider.LDAP) {
+    if (
+      [AuthProvider.Saml, AuthProvider.LDAP].includes(provider as AuthProvider)
+    ) {
       removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
       removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
     } else if (provider === AuthProvider.CustomOidc) {
@@ -512,45 +672,49 @@ const SSOConfigurationFormRJSF = ({
   ]);
 
   // Handle form data changes
-  const handleOnChange = (e: IChangeEvent<FormData>) => {
-    if (e.formData) {
-      const newFormData = { ...e.formData };
-      const authConfig = newFormData.authenticationConfiguration;
-
-      // Clear field-specific errors for changed fields
-      if (
-        fieldErrorsRef.current &&
-        Object.keys(fieldErrorsRef.current).length > 0
-      ) {
-        const changedFields = findChangedFields(internalData, newFormData);
-        if (changedFields.length > 0) {
-          for (const fieldPath of changedFields) {
-            handleClearFieldError(fieldPath);
-          }
-          // Force form to re-render and re-validate with cleared errors
-          setErrorClearTrigger((prev) => prev + 1);
-        }
-      }
-
-      // Handle client type changes (Confidential ↔ Public transitions)
-      const previousClientType =
-        internalData?.authenticationConfiguration?.clientType;
-      const newClientType = authConfig?.clientType;
-
-      handleClientTypeChange(authConfig, previousClientType, newClientType);
-
-      setInternalData(newFormData);
-
-      // Check if provider changed
-      const newProvider = newFormData?.authenticationConfiguration?.provider;
-      if (newProvider && newProvider !== currentProvider) {
-        setCurrentProvider(newProvider);
-        // Notify parent component about provider change
-        if (onProviderSelect) {
-          onProviderSelect(newProvider as AuthProvider);
-        }
-      }
+  const clearErrorsForChangedFields = (newFormData: FormData) => {
+    // Clear field-specific errors for changed fields
+    if (
+      !fieldErrorsRef.current ||
+      Object.keys(fieldErrorsRef.current).length === 0
+    ) {
+      return;
     }
+    const changedFields = findChangedFields(internalData, newFormData);
+    if (changedFields.length > 0) {
+      for (const fieldPath of changedFields) {
+        handleClearFieldError(fieldPath);
+      }
+      // Force form to re-render and re-validate with cleared errors
+      setErrorClearTrigger((prev) => prev + 1);
+    }
+  };
+
+  const handleProviderChange = (newFormData: FormData) => {
+    const newProvider = newFormData?.authenticationConfiguration?.provider;
+    if (newProvider && newProvider !== currentProvider) {
+      setCurrentProvider(newProvider);
+      onProviderSelect?.(newProvider as AuthProvider);
+    }
+  };
+
+  const handleOnChange = (e: IChangeEvent<FormData>) => {
+    if (!e.formData) {
+      return;
+    }
+    const newFormData = { ...e.formData };
+    const authConfig = newFormData.authenticationConfiguration;
+
+    clearErrorsForChangedFields(newFormData);
+
+    handleClientTypeChange(
+      authConfig,
+      internalData?.authenticationConfiguration?.clientType,
+      authConfig?.clientType
+    );
+
+    setInternalData(newFormData);
+    handleProviderChange(newFormData);
   };
 
   // Add DOM event listeners for field focus tracking
@@ -562,13 +726,13 @@ const SSOConfigurationFormRJSF = ({
     // Add event listeners when form is shown
     if (showForm) {
       document.addEventListener('focusin', handleDOMFocus);
-      document.addEventListener('click', handleDOMClick);
+      document.addEventListener('click', handleDOMClick, true);
       document.addEventListener('keydown', handleKeyDown, true);
     }
 
     return () => {
       document.removeEventListener('focusin', handleDOMFocus);
-      document.removeEventListener('click', handleDOMClick);
+      document.removeEventListener('click', handleDOMClick, true);
       document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [showForm]);
@@ -703,29 +867,108 @@ const SSOConfigurationFormRJSF = ({
     [hasExistingConfig, isModalSave, t, setIsAuthenticated, setCurrentUser]
   );
 
+  // Helper: Build the cleaned form data + security configuration payload
+  const buildPayload = useCallback(():
+    | { cleanedFormData: FormData; payload: SecurityConfiguration }
+    | undefined => {
+    const cleanedFormData = cleanupProviderSpecificFields(
+      internalData,
+      internalData?.authenticationConfiguration?.provider as string
+    );
+
+    if (!cleanedFormData) {
+      return undefined;
+    }
+
+    const payload: SecurityConfiguration = {
+      authenticationConfiguration: cleanedFormData.authenticationConfiguration,
+      authorizerConfiguration: cleanedFormData.authorizerConfiguration,
+    };
+
+    return { cleanedFormData, payload };
+  }, [internalData]);
+
+  const getTestResultDescription = useCallback(
+    (result: SsoTestResult): string => {
+      if (result.status === 'success') {
+        return t('message.sso-configuration-test-success');
+      }
+
+      if (result.errorCount > 0) {
+        return t('message.sso-configuration-test-failed-with-count', {
+          count: result.errorCount,
+        });
+      }
+
+      return t('message.sso-configuration-test-failed-description');
+    },
+    [t]
+  );
+
+  // Run the existing backend validation without persisting the configuration
+  const handleTestConfiguration = async () => {
+    setIsTesting(true);
+    setTestResult(undefined);
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
+
+    const built = buildPayload();
+    if (!built) {
+      setIsTesting(false);
+
+      return;
+    }
+
+    try {
+      const response = await validateSecurityConfiguration(built.payload);
+      const validationResult = response.data;
+      const errors = validationResult.errors ?? [];
+      const isSuccess =
+        errors.length === 0 &&
+        validationResult.status === VALIDATION_STATUS.SUCCESS;
+
+      if (isSuccess) {
+        setTestResult({ status: 'success', errorCount: 0 });
+      } else {
+        handleValidationErrors(validationResult);
+        setTestResult({ status: 'failed', errorCount: errors.length });
+      }
+    } catch (error) {
+      // handleApiError already surfaces the failure (toast or per-field errors)
+      handleApiError(error);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // Interactive round-trip: sign in via the IdP in an isolated popup and confirm
+  // the resolved identity, without ever touching the admin's current session.
+  const handleTestLogin = () => {
+    const built = buildPayload();
+    if (!built) {
+      return;
+    }
+
+    resetTestLogin();
+    setShowTestLoginModal(true);
+    runTestLogin(built.payload);
+  };
+
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
     setErrorClearTrigger(0);
+    setTestResult(undefined);
 
     try {
-      // Prepare payload
-      const cleanedFormData = cleanupProviderSpecificFields(
-        internalData,
-        internalData?.authenticationConfiguration?.provider as string
-      );
-
-      if (!cleanedFormData) {
+      const built = buildPayload();
+      if (!built) {
         updateLoadingState(isModalSave, setIsLoading, false);
 
         return;
       }
 
-      const payload: SecurityConfiguration = {
-        authenticationConfiguration:
-          cleanedFormData.authenticationConfiguration,
-        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
-      };
+      const { cleanedFormData, payload } = built;
 
       // Save configuration (PATCH for existing, PUT with validation for new)
       try {
@@ -839,6 +1082,85 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   };
 
+  const isOidcPublicClientProvider =
+    !!currentProvider &&
+    OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
+    internalData?.authenticationConfiguration?.clientType === ClientType.Public;
+
+  const renderFormActions = () =>
+    isEditMode ? (
+      <>
+        {(!hasExistingConfig || testResult) && (
+          <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
+            {!hasExistingConfig && (
+              <InlineAlert
+                alertClassName="sso-save-warning"
+                description={t('message.sso-new-config-save-warning')}
+                heading={t('label.warning')}
+                type="warning"
+              />
+            )}
+            {testResult && (
+              <InlineAlert
+                alertClassName="sso-test-result"
+                description={getTestResultDescription(testResult)}
+                heading={
+                  testResult.status === 'success'
+                    ? t('label.success')
+                    : t('label.failed')
+                }
+                type={testResult.status === 'success' ? 'success' : 'error'}
+                onClose={() => setTestResult(undefined)}
+              />
+            )}
+          </div>
+        )}
+        <div className="form-actions-bottom">
+          <Button
+            className="cancel-sso-configuration text-md"
+            data-testid="cancel-sso-configuration"
+            type="link"
+            onClick={handleCancelClick}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            className="test-sso-configuration text-md"
+            data-testid="test-sso-configuration"
+            disabled={isLoading || isTesting || !currentProvider}
+            loading={isTesting}
+            onClick={handleTestConfiguration}>
+            {t('label.test-entity', { entity: t('label.configuration') })}
+          </Button>
+          {isOidcPublicClientProvider && (
+            <Button
+              className="test-login-sso-configuration text-md"
+              data-testid="test-login-sso-configuration"
+              disabled={isLoading || isTestingLogin || !currentProvider}
+              loading={isTestingLogin}
+              onClick={handleTestLogin}>
+              {t('label.test-login')}
+            </Button>
+          )}
+          <Button
+            className="save-sso-configuration text-md"
+            data-testid="save-sso-configuration"
+            disabled={isLoading}
+            loading={isLoading}
+            type="primary"
+            onClick={handleSave}>
+            {t('label.save')}
+          </Button>
+        </div>
+        <SsoTestLoginModal
+          error={testLoginError}
+          isTesting={isTestingLogin}
+          open={showTestLoginModal}
+          result={testLoginResult}
+          onClose={() => setShowTestLoginModal(false)}
+        />
+      </>
+    ) : null;
+
   if (isInitializing) {
     return <Loader data-testid="loader" />;
   }
@@ -858,8 +1180,63 @@ const SSOConfigurationFormRJSF = ({
     );
   }
 
+  const isSamlProvider = currentProvider === AuthProvider.Saml;
+
   const formContent = (
     <>
+      {isEditMode && showForm && isSamlProvider && (
+        <div className="m-b-md">
+          {metadataUploadStatus === null && (
+            <Upload.Dragger
+              accept=".xml,application/xml,text/xml"
+              beforeUpload={(file) => {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                handleMetadataFileUpload(dataTransfer.files);
+
+                return false;
+              }}
+              className="saml-metadata-upload-drop-zone"
+              data-testid="file-uploader"
+              multiple={false}
+              showUploadList={false}>
+              <div
+                className="flex flex-center flex-column gap-1"
+                data-testid="file-upload-drop-zone">
+                <div
+                  className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
+                  style={{ width: '40px', height: '40px' }}>
+                  <UploadCloud02 className="text-grey-600" size={20} />
+                </div>
+                <div
+                  className="flex align-center flex-wrap gap-4 justify-center"
+                  style={{ maxWidth: '220px' }}>
+                  <Typography.Text className="font-medium">
+                    {t('label.click-to')}{' '}
+                    <Button
+                      className="h-auto p-0 font-semibold"
+                      size="small"
+                      type="link">
+                      {t('label.upload-lowercase')}
+                    </Button>{' '}
+                    {t('label.or-drag-and-drop-an-xml-file-here')}
+                  </Typography.Text>
+                </div>
+                <Typography.Text className="text-grey-muted text-xs">
+                  {t('message.upload-saml-metadata-xml-description')}
+                </Typography.Text>
+              </div>
+            </Upload.Dragger>
+          )}
+          {metadataUploadStatus !== null && (
+            <MetadataUploadStatusCard
+              fileName={metadataUploadFileName}
+              status={metadataUploadStatus}
+              onChangeFile={() => setMetadataUploadStatus(null)}
+            />
+          )}
+        </div>
+      )}
       {isEditMode && showForm && (
         <Form
           focusOnFirstError
@@ -923,26 +1300,7 @@ const SSOConfigurationFormRJSF = ({
             children: (
               <>
                 {formContent}
-                {isEditMode && (
-                  <div className="form-actions-bottom">
-                    <Button
-                      className="cancel-sso-configuration text-md"
-                      data-testid="cancel-sso-configuration"
-                      type="link"
-                      onClick={handleCancelClick}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      className="save-sso-configuration text-md"
-                      data-testid="save-sso-configuration"
-                      disabled={isLoading}
-                      loading={isLoading}
-                      type="primary"
-                      onClick={handleSave}>
-                      {t('label.save')}
-                    </Button>
-                  </div>
-                )}
+                {renderFormActions()}
               </>
             ),
             minWidth: 400,
@@ -958,7 +1316,8 @@ const SSOConfigurationFormRJSF = ({
             ),
             minWidth: 400,
             flex: 0.5,
-            className: 'm-t-xs',
+            className:
+              'service-doc-panel content-resizable-panel-container m-t-xs',
           }}
         />
       </>
@@ -1022,26 +1381,7 @@ const SSOConfigurationFormRJSF = ({
             <>
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
-              {isEditMode && (
-                <div className="form-actions-bottom">
-                  <Button
-                    className="cancel-sso-configuration text-md"
-                    data-testid="cancel-sso-configuration"
-                    type="link"
-                    onClick={handleCancelClick}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    className="save-sso-configuration text-md"
-                    data-testid="save-sso-configuration"
-                    disabled={isLoading}
-                    loading={isLoading}
-                    type="primary"
-                    onClick={handleSave}>
-                    {t('label.save')}
-                  </Button>
-                </div>
-              )}
+              {renderFormActions()}
             </>
           ),
           minWidth: 700,
@@ -1056,6 +1396,7 @@ const SSOConfigurationFormRJSF = ({
             />
           ),
           minWidth: 400,
+          className: 'service-doc-panel content-resizable-panel-container',
         }}
       />
     </>

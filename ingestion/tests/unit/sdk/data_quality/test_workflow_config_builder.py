@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Unit tests for WorkflowConfigBuilder"""
+
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -46,9 +47,7 @@ from metadata.sdk.data_quality.workflow_config_builder import WorkflowConfigBuil
 def mock_ometa_client(mock_table, mock_service):
     """Mock OpenMetadata client"""
     client = MagicMock()
-    client.config = OpenMetadataConnection.model_construct(
-        hostPort="http://localhost:8585/api"
-    )
+    client.config = OpenMetadataConnection.model_construct(hostPort="http://localhost:8585/api")
     client.get_by_name.return_value = mock_table
     client.get_by_id.return_value = mock_service
     return client
@@ -58,9 +57,7 @@ def mock_ometa_client(mock_table, mock_service):
 def mock_ometa_client_without_entities():
     """Mock OpenMetadata client"""
     client = MagicMock()
-    client.config = OpenMetadataConnection.model_construct(
-        hostPort="http://localhost:8585/api"
-    )
+    client.config = OpenMetadataConnection.model_construct(hostPort="http://localhost:8585/api")
     return client
 
 
@@ -154,9 +151,7 @@ def test_builder_initialization(mock_ometa_client):
     assert builder.enable_streamable_logs is False
 
 
-def test_with_table_fetches_table_and_service(
-    mock_ometa_client, mock_table, mock_service
-):
+def test_with_table_fetches_table_and_service(mock_ometa_client, mock_table, mock_service):
     """Test that with_table() fetches table and service connection"""
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
     result = builder.with_table("MySQL.default.test_db.test_table")
@@ -179,9 +174,7 @@ def test_add_test_definition_single(mock_ometa_client, test_definition_1):
     assert builder.test_definitions[0] == test_definition_1
 
 
-def test_add_test_definitions_multiple(
-    mock_ometa_client, test_definition_1, test_definition_2
-):
+def test_add_test_definitions_multiple(mock_ometa_client, test_definition_1, test_definition_2):
     """Test adding multiple test definitions"""
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
 
@@ -192,22 +185,16 @@ def test_add_test_definitions_multiple(
     assert builder.test_definitions[1] == test_definition_2
 
 
-def test_add_test_definitions_chaining(
-    mock_ometa_client, test_definition_1, test_definition_2
-):
+def test_add_test_definitions_chaining(mock_ometa_client, test_definition_1, test_definition_2):
     """Test that add_test_definitions supports method chaining"""
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
 
-    builder.add_test_definitions([test_definition_1]).add_test_definitions(
-        [test_definition_2]
-    )
+    builder.add_test_definitions([test_definition_1]).add_test_definitions([test_definition_2])
 
     assert len(builder.test_definitions) == 2
 
 
-def test_build_creates_valid_config(
-    mock_ometa_client, mock_table, mock_service, test_definition_1, test_definition_2
-):
+def test_build_creates_valid_config(mock_ometa_client, mock_table, mock_service, test_definition_1, test_definition_2):
     """Test that build creates a complete and valid workflow configuration"""
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
     builder.with_table("MySQL.default.test_db.test_table")
@@ -222,9 +209,7 @@ def test_build_creates_valid_config(
     assert config.workflowConfig is not None
 
 
-def test_build_source_configuration(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_source_configuration(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that source configuration is correctly set"""
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
     builder.with_table("MySQL.default.test_db.test_table")
@@ -251,10 +236,7 @@ def test_build_source_config_contains_test_suite_pipeline(
     assert config.source.sourceConfig is not None
     assert isinstance(config.source.sourceConfig.config, TestSuitePipeline)
     assert config.source.sourceConfig.config.type.value == "TestSuite"
-    assert (
-        config.source.sourceConfig.config.entityFullyQualifiedName.root
-        == mock_table.fullyQualifiedName.root
-    )
+    assert config.source.sourceConfig.config.entityFullyQualifiedName.root == mock_table.fullyQualifiedName.root
 
 
 def test_build_includes_test_definitions_in_processor(
@@ -274,9 +256,7 @@ def test_build_includes_test_definitions_in_processor(
     assert len(config.processor.config.root["testCases"]) == 2
 
 
-def test_build_processor_config_structure(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_processor_config_structure(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that processor config has correct structure"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -291,9 +271,7 @@ def test_build_processor_config_structure(
     assert len(test_cases[0]["parameterValues"]) == 2
 
 
-def test_build_sets_correct_source_type(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_sets_correct_source_type(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that source type matches table service type"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -306,9 +284,7 @@ def test_build_sets_correct_source_type(
     assert config.source.type == mock_table.serviceType.value
 
 
-def test_build_sink_configuration(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_sink_configuration(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that sink configuration is correctly set"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -320,9 +296,7 @@ def test_build_sink_configuration(
     assert config.sink.type == "metadata-rest"
 
 
-def test_build_workflow_config_settings(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_workflow_config_settings(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that workflow config has correct logger and server settings"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -348,9 +322,7 @@ def test_build_with_no_test_definitions(mock_ometa_client, mock_table, mock_serv
     assert config.processor.config.root["testCases"] == []
 
 
-def test_build_uses_table_fqn_in_source_config(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_uses_table_fqn_in_source_config(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that table FQN is correctly propagated to source config"""
     expected_fqn = "MySQL.default.test_db.test_table"
     assert mock_table.fullyQualifiedName.root == expected_fqn
@@ -366,9 +338,7 @@ def test_build_uses_table_fqn_in_source_config(
     assert source_config.entityFullyQualifiedName.root == expected_fqn
 
 
-def test_with_force_test_update(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_with_force_test_update(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that force_test_update flag is correctly set"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -381,9 +351,7 @@ def test_with_force_test_update(
     assert config.processor.config.root["forceUpdate"] is True
 
 
-def test_with_force_test_update_chaining(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_with_force_test_update_chaining(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that with_force_test_update supports method chaining"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -398,9 +366,7 @@ def test_with_force_test_update_chaining(
     assert builder.force_test_update is True
 
 
-def test_build_preserves_table_service_name(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_preserves_table_service_name(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that table service name is preserved in config"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -413,9 +379,7 @@ def test_build_preserves_table_service_name(
     assert config.source.serviceName == mock_table.service.name
 
 
-def test_build_multiple_times_produces_same_config(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_build_multiple_times_produces_same_config(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that calling build multiple times produces equivalent configs"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -428,9 +392,7 @@ def test_build_multiple_times_produces_same_config(
     assert config1.source.type == config2.source.type
     assert config1.processor.type == config2.processor.type
     assert config1.sink.type == config2.sink.type
-    assert len(config1.processor.config.root["testCases"]) == len(
-        config2.processor.config.root["testCases"]
-    )
+    assert len(config1.processor.config.root["testCases"]) == len(config2.processor.config.root["testCases"])
 
 
 def test_with_log_level(mock_ometa_client, mock_table, mock_service, test_definition_1):
@@ -456,9 +418,7 @@ def test_with_log_level_chaining(mock_ometa_client):
     assert builder.log_level == LogLevels.WARN
 
 
-def test_with_raise_on_error(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_with_raise_on_error(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that raise_on_error flag is correctly set"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -481,9 +441,7 @@ def test_with_raise_on_error_chaining(mock_ometa_client):
     assert builder.raise_on_error is True
 
 
-def test_with_success_threshold(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_with_success_threshold(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that success threshold is correctly set"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -506,9 +464,7 @@ def test_with_success_threshold_chaining(mock_ometa_client):
     assert builder.success_threshold == 80
 
 
-def test_with_enable_streamable_logs(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_with_enable_streamable_logs(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that enable_streamable_logs flag is correctly set"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)
@@ -560,9 +516,7 @@ def test_builder_full_configuration_chain(
     assert len(config.processor.config.root["testCases"]) == 2
 
 
-def test_default_workflow_config_values(
-    mock_ometa_client, mock_table, mock_service, test_definition_1
-):
+def test_default_workflow_config_values(mock_ometa_client, mock_table, mock_service, test_definition_1):
     """Test that default workflow config values are applied when not overridden"""
 
     builder = WorkflowConfigBuilder(client=mock_ometa_client)

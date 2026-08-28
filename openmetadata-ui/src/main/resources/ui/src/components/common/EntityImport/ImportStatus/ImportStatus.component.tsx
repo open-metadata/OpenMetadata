@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { BadgeWithIcon } from '@openmetadata/ui-core-components';
+import { CheckCircle, XCircle } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 interface ImportStatusProps {
@@ -21,33 +22,37 @@ export const ImportStatus = ({ csvImportResult }: ImportStatusProps) => {
   const { t } = useTranslation();
 
   return (
-    <Space>
+    <div className="csv-import-status">
       <div>
-        <Typography.Text type="secondary">{`${t(
+        <span className="csv-import-status-label">{`${t(
           'label.number-of-rows'
-        )}: `}</Typography.Text>
+        )}: `}</span>
         <span className="font-semibold" data-testid="processed-row">
           {csvImportResult.numberOfRowsProcessed}
         </span>
       </div>
-      {' | '}
-      <div>
-        <Typography.Text type="secondary">{`${t(
-          'label.passed'
-        )}: `}</Typography.Text>
-        <span className="font-semibold passed-row" data-testid="passed-row">
+      <BadgeWithIcon
+        className="csv-import-status-chip csv-import-status-chip-success"
+        color="success"
+        iconLeading={CheckCircle}
+        size="lg"
+        type="pill-color">
+        <span data-testid="passed-row">
           {csvImportResult.numberOfRowsPassed}
         </span>
-      </div>
-      {' | '}
-      <div>
-        <Typography.Text type="secondary">{`${t(
-          'label.failed'
-        )}: `}</Typography.Text>
-        <span className="font-semibold failed-row" data-testid="failed-row">
+        {` ${t('label.passed')}`}
+      </BadgeWithIcon>
+      <BadgeWithIcon
+        className="csv-import-status-chip csv-import-status-chip-error"
+        color="error"
+        iconLeading={XCircle}
+        size="lg"
+        type="pill-color">
+        <span data-testid="failed-row">
           {csvImportResult.numberOfRowsFailed}
         </span>
-      </div>
-    </Space>
+        {` ${t('label.failed')}`}
+      </BadgeWithIcon>
+    </div>
   );
 };

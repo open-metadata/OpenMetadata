@@ -12,7 +12,9 @@
  */
 import { chromium, request } from '@playwright/test';
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({ storageState: 'playwright/.auth/admin.json' });
+const context = await browser.newContext({
+  storageState: 'playwright/.auth/admin.json',
+});
 const page = await context.newPage();
 await page.goto('http://localhost:8585/my-data');
 await page.waitForLoadState('networkidle');
@@ -41,7 +43,7 @@ const token = await page.evaluate(async () => {
     req.onupgradeneeded = () => resolve('');
   });
 });
-console.log('token?', token ? token.slice(0,40) + '...' : '<empty>');
+console.log('token?', token ? token.slice(0, 40) + '...' : '<empty>');
 const api = await request.newContext({
   baseURL: 'http://localhost:8585',
   extraHTTPHeaders: { Authorization: `Bearer ${token}` },

@@ -21,6 +21,7 @@ import {
   selectDomain,
   setupAssetsForDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
@@ -30,16 +31,15 @@ const test = base.extend<{
   ingestionBotPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { afterAction, page } = await performAdminLogin(browser);
+    const { afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     await use(page);
     await afterAction();
   },
   ingestionBotPage: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    const page = await browser.newPage();
-    await page.goto('/');
 
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
@@ -48,9 +48,22 @@ const test = base.extend<{
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
 
+    const page = await browser.newPage();
+    await page.goto('/signin');
+    // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
+    // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
+    // registers a SW -- there is no clients.claim() race to wait out there.
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker.controller),
+      undefined,
+      { timeout: 30_000 }
+    );
+
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
-    await page.waitForSelector('loader', { state: 'hidden' });
+    await page.locator('loader').waitFor({ state: 'hidden' });
 
     await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
 
@@ -66,8 +79,7 @@ test.describe('Ingestion Bot ', () => {
   const domain3 = new Domain();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -95,17 +107,13 @@ test.describe('Ingestion Bot ', () => {
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1, true, true);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2, true, true);
     });
@@ -143,18 +151,14 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
       ]);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,
       ]);

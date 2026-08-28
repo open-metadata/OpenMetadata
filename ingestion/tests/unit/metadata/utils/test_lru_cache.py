@@ -1,4 +1,5 @@
 """Tests for the LRU cache class"""
+
 from typing import Any
 
 import pytest
@@ -40,7 +41,7 @@ class TestLRUCache:
         cache = LRUCache(2)
         cache.put(1, None)
         cache.put(2, None)
-        1 in cache
+        1 in cache  # noqa: B015
         cache.put(3, None)
         assert 1 in cache
         assert 2 not in cache

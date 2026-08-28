@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import {
   cloneDeep,
@@ -22,7 +21,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
@@ -37,28 +36,37 @@ import {
   Worksheet,
 } from '../../../../generated/entity/data/worksheet';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../utils/TableTags/TableTags.utils';
-import {
-  getTableExpandableConfig,
-  prepareConstraintIcon,
   pruneEmptyChildren,
   updateFieldDescription,
   updateFieldTags,
+} from '../../../../utils/TablePureUtils';
+import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
+import {
+  getTableExpandableConfig,
+  prepareConstraintIcon,
 } from '../../../../utils/TableUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 function WorksheetColumnsTable() {
   const { t } = useTranslation();
@@ -149,6 +157,9 @@ function WorksheetColumnsTable() {
       TagFilterOptions[]
     >;
   }, [schema]);
+
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(schema);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -266,7 +277,7 @@ function WorksheetColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={worksheetDetails.fullyQualifiedName ?? ''}
@@ -289,7 +300,7 @@ function WorksheetColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={worksheetDetails.fullyQualifiedName ?? ''}
@@ -314,6 +325,7 @@ function WorksheetColumnsTable() {
       editWorksheetColumnDescription,
       getEntityName,
       handleWorksheetColumnTagChange,
+      tagFilterState,
     ]
   );
 
@@ -327,7 +339,7 @@ function WorksheetColumnsTable() {
         className="align-table-filter-left"
         columns={columns}
         data-testid="worksheet-data-model-table"
-        dataSource={schema}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -338,6 +350,7 @@ function WorksheetColumnsTable() {
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editWorksheetColumnDescription && (
         <EntityAttachmentProvider

@@ -17,10 +17,10 @@ import { WidgetProps } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import { forwardRef, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
-import { transformErrors } from '../../../utils/formUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import { ArrayFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ArrayFieldTemplate';
 import DescriptionFieldTemplate from '../Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
@@ -36,6 +36,7 @@ import Loader from '../Loader/Loader';
 export interface Props extends FormProps {
   okText: string;
   isLoading?: boolean;
+  isSubmitDisabled?: boolean;
   hideCancelButton?: boolean;
   cancelText: string;
   serviceCategory: ServiceCategory;
@@ -46,6 +47,11 @@ export interface Props extends FormProps {
   capitalizeOptionLabel?: boolean;
 }
 
+const renderSelectWidget = (
+  props: WidgetProps,
+  capitalizeOptionLabel?: boolean
+) => <SelectWidget {...props} capitalizeOptionLabel={capitalizeOptionLabel} />;
+
 const FormBuilder = forwardRef<Form, Props>(
   (
     {
@@ -54,15 +60,19 @@ const FormBuilder = forwardRef<Form, Props>(
       okText,
       cancelText,
       isLoading,
+      isSubmitDisabled = false,
       hideCancelButton = false,
       showFormHeader = false,
       status = 'initial',
       onCancel,
+      onChange,
       onSubmit,
       uiSchema,
       onFocus,
       useSelectWidget = false,
       capitalizeOptionLabel = false,
+      templates: templatesOverride,
+      widgets: widgetsOverride,
       children,
       ...props
     },
@@ -76,19 +86,20 @@ const FormBuilder = forwardRef<Form, Props>(
       formatFormDataForRender(formData ?? {})
     );
 
+    useEffect(() => {
+      setLocalFormData(formatFormDataForRender(formData ?? {}));
+    }, [formData]);
+
     const widgets = {
       PasswordWidget: PasswordWidget,
       autoComplete: AsyncSelectWidget,
       queryBuilder: QueryBuilderWidget,
       code: CodeWidget,
       ...(useSelectWidget && {
-        SelectWidget: (props: WidgetProps) => (
-          <SelectWidget
-            {...props}
-            capitalizeOptionLabel={capitalizeOptionLabel}
-          />
-        ),
+        SelectWidget: (props: WidgetProps) =>
+          renderSelectWidget(props, capitalizeOptionLabel),
       }),
+      ...widgetsOverride,
     };
 
     const handleCancel = () => {
@@ -100,7 +111,7 @@ const FormBuilder = forwardRef<Form, Props>(
 
     const handleFormChange = (e: IChangeEvent<ConfigData>) => {
       setLocalFormData(e.formData);
-      props.onChange && props.onChange(e);
+      onChange?.(e);
     };
 
     const submitButton = useMemo(() => {
@@ -127,6 +138,7 @@ const FormBuilder = forwardRef<Form, Props>(
           <Button
             className="font-medium p-x-md p-y-xxs h-auto rounded-6"
             data-testid="submit-btn"
+            disabled={isSubmitDisabled}
             htmlType="submit"
             loading={isLoading}
             type="primary">
@@ -134,7 +146,7 @@ const FormBuilder = forwardRef<Form, Props>(
           </Button>
         );
       }
-    }, [status, isLoading, okText]);
+    }, [status, isLoading, isSubmitDisabled, okText]);
 
     return (
       <Form
@@ -155,6 +167,7 @@ const FormBuilder = forwardRef<Form, Props>(
           ObjectFieldTemplate: ObjectFieldTemplate,
           DescriptionFieldTemplate: DescriptionFieldTemplate,
           FieldErrorTemplate: FieldErrorTemplate,
+          ...templatesOverride,
         }}
         transformErrors={transformErrors}
         uiSchema={uiSchema}

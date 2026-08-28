@@ -13,15 +13,15 @@
 @import '../../../styles/variables.less';
 
 .field-container-header {
-  padding: 20px;
-  border-radius: 10px;
+  padding: var(--om-space-20);
+  border-radius: var(--om-radius-10);
 }
 
 .field-weightage {
   background-color: @team-avatar-bg;
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
   color: @blue-3;
-  gap: 6px;
+  gap: var(--om-space-6);
 }
 
 .field-weightage-text {
@@ -31,8 +31,8 @@
 .add-boost-btn {
   background-color: @blue-14;
   border: 1px solid @blue-14;
-  border-radius: 8px;
-  padding: 18px 16px;
+  border-radius: var(--om-radius-lg);
+  padding: var(--om-space-18) var(--om-space-16);
   color: @primary-heading-color;
   &:hover {
     background-color: @blue-14;
@@ -45,13 +45,13 @@
 }
 
 .custom-panel .ant-collapse-content-box {
-  padding: 0 12px !important;
+  padding: 0 var(--om-space-12) !important;
 }
 
 .ant-collapse-borderless {
   > .ant-collapse-item:last-child {
     border: 1px solid @border-color-5;
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
   }
 }
 
@@ -63,7 +63,7 @@
   color: @red-12;
   border: none;
   background-color: transparent;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   &:hover {
     color: @red-12;
     border: none;

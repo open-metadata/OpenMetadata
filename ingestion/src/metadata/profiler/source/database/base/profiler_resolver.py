@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Type
+from typing import Tuple, Type  # noqa: UP035
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
@@ -20,7 +20,7 @@ class ProfilerResolver(ABC):
     @abstractmethod
     def resolve(
         processing_engine: ProcessingEngine, service_type: ServiceType, source_type: str
-    ) -> Tuple[Type[SamplerInterface], Type[ProfilerInterface]]:
+    ) -> Tuple[Type[SamplerInterface], Type[ProfilerInterface]]:  # noqa: UP006
         """Resolve the sampler and profiler based on the processing engine."""
         raise NotImplementedError
 
@@ -31,7 +31,7 @@ class DefaultProfilerResolver(ProfilerResolver):
     @staticmethod
     def resolve(
         processing_engine: ProcessingEngine, service_type: ServiceType, source_type: str
-    ) -> Tuple[Type[SamplerInterface], Type[ProfilerInterface]]:
+    ) -> Tuple[Type[SamplerInterface], Type[ProfilerInterface]]:  # noqa: UP006
         """Resolve the sampler and profiler based on the processing engine."""
         sampler_class = import_sampler_class(service_type, source_type=source_type)
         profiler_class = import_profiler_class(service_type, source_type=source_type)

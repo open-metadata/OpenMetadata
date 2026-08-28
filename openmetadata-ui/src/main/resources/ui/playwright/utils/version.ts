@@ -24,6 +24,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { waitForAllLoadersToDisappear } from './entity';
 
 const ENTITY_ROUTE_PATHS: Partial<Record<EntityTypeEndpoint, string>> = {
   [EntityTypeEndpoint.API_COLLECTION]: 'apiCollection',
@@ -75,7 +76,7 @@ export const visitVersionedEntityPage = async (
   fullyQualifiedName: string
 ) => {
   await page.goto(getEntityRoute(endpoint, fullyQualifiedName));
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('version-button')).toBeVisible({
     timeout: 30000,
   });
@@ -86,16 +87,15 @@ export const openEntityVersion = async (page: Page, version: string) => {
     .poll(
       async () => {
         const versionButton = page.getByTestId('version-button');
-        const buttonText = (await versionButton.textContent().catch(() => '')) ?? '';
+        const buttonText =
+          (await versionButton.textContent().catch(() => '')) ?? '';
 
         if (buttonText.includes(version)) {
           return buttonText;
         }
 
         await page.reload();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         return (await versionButton.textContent().catch(() => '')) ?? '';
       },
@@ -108,7 +108,8 @@ export const openEntityVersion = async (page: Page, version: string) => {
 
   const versionDetailResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(`/versions/${version}`) && response.status() === 200
+      response.url().includes(`/versions/${version}`) &&
+      response.status() === 200
   );
   await page.getByTestId('version-button').click();
   await versionDetailResponse;

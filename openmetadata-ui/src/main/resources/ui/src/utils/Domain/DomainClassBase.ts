@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { FieldProp } from '@openmetadata/ui-core-components';
+import { createElement } from 'react';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -18,6 +21,7 @@ import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/Asset
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { DOMAIN_DUMMY_DATA } from '../../constants/Domain.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -28,9 +32,10 @@ import { Domain } from '../../generated/entity/domains/domain';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
 import i18n from '../i18next/LocalUtil';
+import { LazyDataQualityDashboard } from './LazyDomainComponents';
 
 export interface DomainDetailPageTabProps {
   domain: Domain;
@@ -39,7 +44,8 @@ export interface DomainDetailPageTabProps {
   subDomainsCount: number;
   dataProductsCount: number;
   assetCount: number;
-  activeTab: EntityTabs;
+  // Undefined when no tab is explicitly selected (landing URL / tree view).
+  activeTab?: EntityTabs;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
   onDeleteSubDomain: () => void;
@@ -67,7 +73,8 @@ type DomainWidgetKeys =
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.EXPERTS
   | DetailPageWidgetKeys.DOMAIN_TYPE
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class DomainClassBase {
   defaultWidgetHeight: Record<DomainWidgetKeys, number>;
@@ -83,13 +90,35 @@ class DomainClassBase {
       [DetailPageWidgetKeys.EXPERTS]: 2,
       [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
   public getDomainDetailPageTabs(
     domainDetailsPageProps: DomainDetailPageTabProps
   ): TabProps[] {
-    return getDomainDetailTabs(domainDetailsPageProps);
+    const baseTabs = getDomainDetailTabs(domainDetailsPageProps);
+
+    if (domainDetailsPageProps.isVersionsView) {
+      return baseTabs;
+    }
+
+    const dqTab: TabProps = {
+      label: createElement(TabsLabel, {
+        id: EntityTabs.DATA_OBSERVABILITY,
+        name: i18n.t('label.data-observability'),
+      }),
+      key: EntityTabs.DATA_OBSERVABILITY,
+      children: createElement(LazyDataQualityDashboard, {
+        isGovernanceView: true,
+        className: 'data-quality-governance-tab-wrapper',
+        initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
+          ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
+          : undefined,
+      }),
+    };
+
+    return [...baseTabs, dqTab];
   }
 
   public getDomainDetailPageTabsIds(): Tab[] {
@@ -100,6 +129,7 @@ class DomainClassBase {
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.ASSETS,
       EntityTabs.CUSTOM_PROPERTIES,
+      EntityTabs.DATA_OBSERVABILITY,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
@@ -228,11 +258,16 @@ class DomainClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDomainWidgetsFromKey(widgetConfig);
+  }
+
+  public getCoverImageField(): FieldProp | null {
+    return null;
   }
 
   public getWidgetHeight(widgetName: string) {

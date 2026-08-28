@@ -33,7 +33,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import DataProductNode from './DataProductNode.component';
@@ -220,7 +220,7 @@ const PortsLineageView = ({
           className="m-t-0"
           icon={
             <AddPlaceHolderIcon
-              className="tw:w-12 tw:h-12"
+              className="tw:w-16 tw:h-16"
               data-testid="no-ports-placeholder"
             />
           }

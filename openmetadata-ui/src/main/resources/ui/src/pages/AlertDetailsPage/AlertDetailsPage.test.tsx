@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -95,8 +101,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>AlertRecentEventsTab</div>)
 );
 
-jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () =>
-  jest.fn().mockImplementation(() => <div>DeleteWidgetModal</div>)
+jest.mock('../../components/common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockImplementation(() => <div>DeleteModal</div>)
 );
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -175,7 +181,7 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
     expect(screen.getByText('label.configuration')).toBeInTheDocument();
     expect(screen.getByText('label.recent-event-plural')).toBeInTheDocument();
-    expect(screen.getByText('DeleteWidgetModal')).toBeInTheDocument();
+    expect(screen.getByText('DeleteModal')).toBeInTheDocument();
   });
 
   it('should render the description if alert description is present', async () => {
@@ -275,5 +281,52 @@ describe('AlertDetailsPage', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('should refetch alert details when fqn prop changes', async () => {
+    const getObservabilityAlertByFQNSpy = jest.spyOn(
+      ObservabilityAPIs,
+      'getObservabilityAlertByFQN'
+    );
+    const getAlertEventsDiagnosticsInfoSpy = jest.spyOn(
+      ObservabilityAPIs,
+      'getAlertEventsDiagnosticsInfo'
+    );
+
+    const { rerender } = render(
+      <AlertDetailsPage fqn="firstAlert" isNotificationAlert={false} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    await waitFor(() => {
+      expect(getObservabilityAlertByFQNSpy).toHaveBeenCalledWith('firstAlert', {
+        fields: 'owners',
+      });
+    });
+
+    expect(getAlertEventsDiagnosticsInfoSpy).toHaveBeenCalledWith({
+      fqn: 'firstAlert',
+      listCountOnly: true,
+    });
+
+    rerender(
+      <AlertDetailsPage fqn="secondAlert" isNotificationAlert={false} />
+    );
+
+    await waitFor(() => {
+      expect(getObservabilityAlertByFQNSpy).toHaveBeenCalledWith(
+        'secondAlert',
+        {
+          fields: 'owners',
+        }
+      );
+    });
+
+    expect(getAlertEventsDiagnosticsInfoSpy).toHaveBeenCalledWith({
+      fqn: 'secondAlert',
+      listCountOnly: true,
+    });
   });
 });

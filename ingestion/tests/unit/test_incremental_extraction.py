@@ -12,6 +12,7 @@
 """
 Check incremental extraction
 """
+
 from datetime import datetime
 from unittest import TestCase
 from unittest.mock import create_autospec, patch
@@ -40,17 +41,14 @@ INCREMENTAL_CONFIG_ENABLED = {
             PipelineStatus(runId="1", pipelineState=PipelineState.failed),
             PipelineStatus(
                 runId="2",
-                startDate=Timestamp(
-                    int(datetime.timestamp(datetime(2024, 1, 1)) * 1000)
-                ),
+                startDate=Timestamp(int(datetime.timestamp(datetime(2024, 1, 1)) * 1000)),
                 pipelineState=PipelineState.success,
             ),
         ],
     },
     "output": IncrementalConfig(
         enabled=True,
-        start_timestamp=int(datetime.timestamp(datetime(2024, 1, 1)) * 1000)
-        - MILLISECONDS_IN_ONE_DAY,
+        start_timestamp=int(datetime.timestamp(datetime(2024, 1, 1)) * 1000) - MILLISECONDS_IN_ONE_DAY,
     ),
 }
 
@@ -68,9 +66,7 @@ class IncrementalConfigCreatorTest(TestCase):
             metadata=create_autospec(OpenMetadata),
         )
 
-        self.assertEqual(
-            incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED
-        )
+        self.assertEqual(incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED)
 
     def test_create_returns_incremental_config_disabled_when_no_pipeline_exists(self):
         """Returns IncrementalConfig(enabled=False) when no pipeline_name is provided."""
@@ -80,9 +76,7 @@ class IncrementalConfigCreatorTest(TestCase):
             metadata=create_autospec(OpenMetadata),
         )
 
-        self.assertEqual(
-            incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED
-        )
+        self.assertEqual(incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED)
 
     def test_create_returns_incremental_config_disabled_when_incremental_is_set_disabled(
         self,
@@ -94,26 +88,20 @@ class IncrementalConfigCreatorTest(TestCase):
             metadata=create_autospec(OpenMetadata),
         )
 
-        self.assertEqual(
-            incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED
-        )
+        self.assertEqual(incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED)
 
     def test_create_returns_incremental_config_disabled_when_no_pipeline_status_is_found(
         self,
     ):
         """Returns IncrementalConfig(enabled=False) when self._get_pipeline_statuses() returns None."""
-        with patch.object(
-            IncrementalConfigCreator, "_get_pipeline_statuses", return_value=None
-        ):
+        with patch.object(IncrementalConfigCreator, "_get_pipeline_statuses", return_value=None):
             incremental_config_creator = IncrementalConfigCreator(
                 incremental=Incremental(enabled=True),
                 pipeline_name="noop",
                 metadata=create_autospec(OpenMetadata),
             )
 
-            self.assertEqual(
-                incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED
-            )
+            self.assertEqual(incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED)
 
     def test_create_returns_incremental_config_disabled_when_no_pipeline_status_success_is_found(
         self,
@@ -136,9 +124,7 @@ class IncrementalConfigCreatorTest(TestCase):
                 metadata=create_autospec(OpenMetadata),
             )
 
-            self.assertEqual(
-                incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED
-            )
+            self.assertEqual(incremental_config_creator.create(), INCREMENTAL_CONFIG_DISABLED)
 
     def test_create_returns_proper_incremental_configuration_when_enabled(self):
         """Returns the proper incremental configuration when enabled."""

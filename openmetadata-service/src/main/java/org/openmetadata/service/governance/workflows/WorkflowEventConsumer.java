@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -54,9 +55,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
   // TODO: Understand if we need to consider ENTITY_NO_CHANGE, ENTITY_FIELDS_CHANGED or
   // ENTITY_RESTORED.
-  private static List<EventType> validEventTypes =
+  private static final List<EventType> validEventTypes =
       List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
-  private static List<String> validEntityTypes =
+  private static final List<String> validEntityTypes =
       List.of(
           Entity.GLOSSARY_TERM,
           Entity.TABLE,
@@ -100,7 +101,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.METRIC,
           Entity.DATA_INSIGHT_CHART,
           Entity.DATA_CONTRACT,
-          Entity.PAGE);
+          Entity.PAGE,
+          Entity.AI_APPLICATION,
+          Entity.LLM_MODEL,
+          Entity.MCP_SERVER);
 
   private static final Registry<Function<ChangeEvent, Map<String, Object>>> handlerRegistry =
       new Registry<>(WorkflowEventConsumer::defaultHandler);
@@ -185,6 +189,12 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
                 retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
             .run();
       }
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Skipping workflow event for {} {} - entity {} was deleted before processing",
+          eventType,
+          entityType,
+          event.getEntityId());
     } catch (Exception exc) {
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
@@ -213,7 +223,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       } catch (EntityNotFoundException e) {
         // Entity was deleted between event creation and processing - skip workflow trigger
         LOG.debug(
-            "Skipping workflow trigger for event {} on {}  - entity {} no longer exists",
+            "Skipping workflow trigger for event {} on {} - entity {} no longer exists",
             eventType,
             entityType,
             event.getEntityFullyQualifiedName());
@@ -226,6 +236,12 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       variables.put(
           getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
           entityLink.getLinkString());
+
+      // Record the immutable entity id alongside the FQN link so workflow nodes can resolve the
+      // entity by id (move/rename-proof) instead of the mutable FQN.
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE),
+          entityReference.getId().toString());
 
       // Set the updatedBy variable from the change event userName
       if (event.getUserName() != null) {
@@ -272,7 +288,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendTestMessage() throws EventPublisherException {}
+  public void sendTestMessage() {}
 
   @Override
   public SubscriptionDestination getSubscriptionDestination() {

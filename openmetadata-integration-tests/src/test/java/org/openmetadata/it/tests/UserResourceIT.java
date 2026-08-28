@@ -21,15 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.azure.core.exception.HttpResponseException;
 import java.net.URI;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -48,12 +43,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for User entity operations.
@@ -2161,130 +2157,49 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         "Admin should not be able to generate token for regular user");
   }
 
+  // ===================================================================
+  // ONLINE USERS ENDPOINT
+  // ===================================================================
+
   @Test
-  void testUserContextCachePerformance(TestNamespace ns) throws HttpResponseException {
-    // Create a test user with multiple roles and teams to properly test cache performance
-    CreateUser createUser =
-        createRequest(ns.prefix("cache-perf-test-user"), ns)
-            .withRoles(List.of(dataStewardRole().getId(), dataConsumerRole().getId()))
-            .withTeams(List.of(testTeam1().getId(), shared().TEAM21.getId()));
-    User testUser = createEntity(createUser);
-    String userName = testUser.getName();
+  void test_listOnlineUsers_allTimeWindow_includesUserWithNoActivity(TestNamespace ns) {
+    String name = ns.prefix("onlineAllTime");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(name)
+            .withEmail(toValidEmail(name))
+            .withDescription("User with no login activity for online-users test");
+    User user = createEntity(createRequest);
+    UUID userId = user.getId();
 
-    SubjectCache.invalidateAll();
+    ResultList<User> withWindow = listOnlineUsers(5, 1_000_000);
+    assertNotNull(withWindow.getData(), "withWindow response must contain a data list");
+    assertFalse(
+        withWindow.getData().stream().anyMatch(u -> userId.equals(u.getId())),
+        "User with null lastLoginTime/lastActivityTime must not appear in a finite-window response");
 
-    // Warm up JVM (exclude from measurements)
-    for (int i = 0; i < 3; i++) {
-      SubjectContext.getSubjectContext(userName);
-    }
-    SubjectCache.invalidateAll();
-
-    // Test 1: Cache Miss (First call - should be slower)
-    long cacheMissStartTime = System.nanoTime();
-    SubjectContext context1 = SubjectContext.getSubjectContext(userName);
-    double cacheMissTime = (System.nanoTime() - cacheMissStartTime) / 1_000_000.0;
-    assertNotNull(context1);
-    assertEquals(userName, context1.user().getName());
-
-    // Test 2: Cache Hit (Multiple subsequent calls - should be much faster)
-    List<Double> cacheHitTimes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      long cacheHitStartTime = System.nanoTime();
-      SubjectContext context = SubjectContext.getSubjectContext(userName);
-      double cacheHitTime = (System.nanoTime() - cacheHitStartTime) / 1_000_000.0;
-
-      cacheHitTimes.add(cacheHitTime);
-      assertNotNull(context);
-      assertEquals(userName, context.user().getName());
-    }
-
-    // Calculate cache hit performance statistics
-    double avgCacheHitTime =
-        cacheHitTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-
-    // Performance assertions
-    double performanceImprovement =
-        cacheMissTime > 0 ? ((cacheMissTime - avgCacheHitTime) / cacheMissTime) * 100 : 0.0;
-
-    // Assert significant performance improvement
+    ResultList<User> allTime = listOnlineUsers(0, 1_000_000);
+    assertNotNull(allTime.getData(), "allTime response must contain a data list");
     assertTrue(
-        performanceImprovement > 30.0,
-        String.format(
-            "Expected >30%% improvement, got %.1f%% (%.3fms -> %.3fms)",
-            performanceImprovement, cacheMissTime, avgCacheHitTime));
+        allTime.getData().stream().anyMatch(u -> userId.equals(u.getId())),
+        "timeWindow=0 must return all non-bot users, including those with no recorded activity");
     assertTrue(
-        avgCacheHitTime < 200,
-        String.format("Cache hits should be <200ms, got %.3fms", avgCacheHitTime));
-
-    // Test 3: Concurrent Access Performance
-    int threadCount = 5;
-    int callsPerThread = 10;
-    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-
-    long concurrentStartTime = System.nanoTime();
-    List<CompletableFuture<List<Double>>> futures = new ArrayList<>();
-
-    for (int threadId = 0; threadId < threadCount; threadId++) {
-      CompletableFuture<List<Double>> future =
-          CompletableFuture.supplyAsync(
-              () -> {
-                List<Double> threadTimes = new ArrayList<>();
-                for (int call = 0; call < callsPerThread; call++) {
-                  long callStart = System.nanoTime();
-                  SubjectContext context = SubjectContext.getSubjectContext(userName);
-                  double callTime = (System.nanoTime() - callStart) / 1_000_000.0;
-
-                  threadTimes.add(callTime);
-                  assertNotNull(context);
-                  assertEquals(userName, context.user().getName());
-                }
-                return threadTimes;
-              },
-              executor);
-
-      futures.add(future);
-    }
-
-    // Wait for all threads to complete
-    try {
-      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
-    } catch (Exception e) {
-      throw new RuntimeException("Concurrent test failed", e);
-    }
-
-    double totalConcurrentTime = (System.nanoTime() - concurrentStartTime) / 1_000_000.0;
-    executor.shutdown();
-
-    // Collect all concurrent timing data
-    List<Double> allConcurrentTimes = new ArrayList<>();
-    for (CompletableFuture<List<Double>> future : futures) {
-      try {
-        allConcurrentTimes.addAll(future.get());
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to get concurrent results", e);
-      }
-    }
-
-    double avgConcurrentTime =
-        allConcurrentTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-    int totalCalls = threadCount * callsPerThread;
-    double callsPerSecond = (double) totalCalls / (totalConcurrentTime / 1000.0);
-
-    // Performance assertions for concurrent access
-    assertTrue(
-        avgConcurrentTime < 300,
-        String.format(
-            "Average concurrent call time should be <300ms, got %.2fms", avgConcurrentTime));
-    assertTrue(
-        callsPerSecond > 20,
-        String.format("Should handle >20 calls/sec, got %.1f", callsPerSecond));
-
-    // Test 4: Cache Statistics
-    String cacheStats = SubjectCache.getCacheStats();
-
-    // Cleanup: Remove the test user
-    deleteEntity(testUser.getId().toString());
+        allTime.getData().stream().noneMatch(u -> Boolean.TRUE.equals(u.getIsBot())),
+        "Online users response must exclude bots");
   }
+
+  private ResultList<User> listOnlineUsers(int timeWindow, int limit) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("timeWindow", String.valueOf(timeWindow))
+            .queryParam("limit", String.valueOf(limit))
+            .build();
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/v1/users/online", null, UserResultList.class, options);
+  }
+
+  private static class UserResultList extends ResultList<User> {}
 
   // ===================================================================
   // VERSION HISTORY SUPPORT

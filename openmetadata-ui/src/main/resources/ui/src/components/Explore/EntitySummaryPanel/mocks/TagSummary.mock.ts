@@ -1,0 +1,34 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Tag } from '../../../../generated/entity/classification/tag';
+
+export const mockTagEntityDetails: Tag = {
+  id: 'tag-id-456',
+  name: 'SensitiveData',
+  fullyQualifiedName: 'PII.SensitiveData',
+  displayName: 'Sensitive Data',
+  description: 'Tag for sensitive data classification',
+  version: 0.1,
+  updatedAt: 1672668265493,
+  updatedBy: 'admin',
+  href: 'http://openmetadata-server:8585/api/v1/tags/tag-id-456',
+  deprecated: false,
+  classification: {
+    id: 'classification-id',
+    type: 'classification',
+    name: 'PII',
+    fullyQualifiedName: 'PII',
+    deleted: false,
+  },
+};

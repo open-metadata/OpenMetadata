@@ -12,6 +12,8 @@
  */
 import { SupersetFormType } from '../support/interfaces/ServiceForm.interface';
 
+export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
+
 export const supersetFormDetails1: SupersetFormType = {
   hostPort: 'http://localhost:8088',
   connectionType: 'SupersetApiConnection',
@@ -67,5 +69,4 @@ export const lookerFormDetails = {
 // This is derived from actual scenario where the certificate file content is large enough
 // to cause overflow issue in the file upload field
 export const CERT_FILE =
-  // eslint-disable-next-line max-len
   '-----BEGIN ENCRYPTED PRIVATE KEY-----OEMIIFJDBWBEIEOELRKEIREOROJKELOQMDKDKDOPWWMKSLLSMDHMFRQXBHQTREFrlpPELhGbNAICCAAwDAYIKoZIhvcNAgkFADAUBggqhkiG9w0DBWTEYEWEIWOWEIUEUWIWIEUEEHEIEOEKELEPOWKWPOQPEKEOEKEPWKWOWPKEOEOEKOEKEOKWKFPLKPFLKPLKPLKPLKPKPLKPLKPLKP.crt';

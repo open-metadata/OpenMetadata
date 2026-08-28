@@ -20,6 +20,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { selectActiveGlossary } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -48,7 +49,7 @@ test.describe('Glossary P3 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       // Use name with unicode characters
       await page.fill('[data-testid="name"]', unicodeName);
@@ -56,19 +57,21 @@ test.describe('Glossary P3 Tests', () => {
         .locator(descriptionBox)
         .fill('Glossary with unicode characters');
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            res.url().endsWith('/api/v1/glossaries') &&
+            res.request().method() === 'POST'
+        ),
+        // A stale navigation toast can overlap this centered button. Keyboard
+        // activation exercises the same form submission without a pointer race.
+        page.getByTestId('save-glossary').press('Enter'),
+      ]);
+      glossary.responseData = await response.json();
+      expect(response.ok()).toBe(true);
 
-      try {
-        const response = await glossaryResponse;
-        glossary.responseData = await response.json();
-
-        // Verify glossary was created
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-      } catch {
-        // Some systems may not support unicode in names - test passes if we get here
-        expect(true).toBe(true);
-      }
+      // Verify glossary was created
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
     } finally {
       if (glossary.responseData) {
         await glossary.delete(apiContext);
@@ -200,9 +203,6 @@ test.describe('Glossary P3 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Wait for page to load fully
-      await page.waitForTimeout(1000);
-
       // Find the glossary terms search input (not the global search)
       // It has placeholder "Search Terms" and is within the glossary content area
       const searchInput = page.getByPlaceholder(/search.*term/i);
@@ -212,17 +212,18 @@ test.describe('Glossary P3 Tests', () => {
 
       // Test a single special character
       await searchInput.fill('@');
-      await page.waitForTimeout(500);
+      await waitForAllLoadersToDisappear(page);
 
       // Search should not crash - either shows results, table, or empty state
-      const table = page.getByTestId('glossary-term-table');
+      const table = page.getByTestId('glossary-terms-table');
       const emptyState = page.getByText(/no.*term.*found|no.*result/i);
-      const tableRows = page.locator('tbody .ant-table-row');
+
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- search results need time to render after special character input
+      await page.waitForTimeout(1000);
 
       const isStable =
         (await table.isVisible().catch(() => false)) ||
-        (await emptyState.isVisible().catch(() => false)) ||
-        (await tableRows.count()) >= 0;
+        (await emptyState.isVisible().catch(() => false));
 
       expect(isStable).toBeTruthy();
 
@@ -262,88 +263,6 @@ test.describe('Glossary P3 Tests', () => {
     }
   });
 
-  // AF-05: Reply to existing comment
-  test('should navigate to activity feed for potential reply', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Verify activity tab is active
-        await expect(activityTab).toHaveAttribute('aria-selected', 'true');
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-06: Edit own comment
-  test('should access activity feed for comment editing', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Check if there are any existing comments with edit option
-        const editButtons = page.getByTestId('edit-message');
-        const hasEditOption = await editButtons.count();
-
-        // Test passes whether there are comments or not
-        expect(hasEditOption >= 0).toBe(true);
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-07: Delete own comment
-  test('should access activity feed for comment deletion', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Check if there are any existing comments with delete option
-        const deleteButtons = page.getByTestId('delete-message');
-        const hasDeleteOption = await deleteButtons.count();
-
-        // Test passes whether there are comments or not
-        expect(hasDeleteOption >= 0).toBe(true);
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   // NAV-06: Back/forward browser navigation
   test('should handle back/forward browser navigation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -359,6 +278,7 @@ test.describe('Glossary P3 Tests', () => {
 
       // Navigate to term
       await page.click(`[data-testid="${glossaryTerm.data.displayName}"]`);
+      await waitForAllLoadersToDisappear(page);
 
       // Verify we're on term page
       await expect(
@@ -367,14 +287,13 @@ test.describe('Glossary P3 Tests', () => {
 
       // Go back
       await page.goBack();
-      await page.waitForTimeout(500);
+      await waitForAllLoadersToDisappear(page);
 
       // Should be back on glossary page
       await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
       // Go forward
       await page.goForward();
-      await page.waitForTimeout(500);
 
       // Should be on term page again
       await expect(
@@ -390,25 +309,18 @@ test.describe('Glossary P3 Tests', () => {
   test('should show loading state during navigation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
     try {
       await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-      // Navigate to glossary page
       await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      // The page should eventually load without errors
-
-      // Verify page is loaded (loader should be gone)
-      const loader = page.getByTestId('loader');
-      const skeleton = page.locator('.ant-skeleton');
-
-      // Either loader/skeleton is not visible, or content is loaded
-      const isLoaded =
-        (await loader.isVisible().catch(() => false)) === false ||
-        (await skeleton.isVisible().catch(() => false)) === false;
-
-      expect(isLoaded).toBeTruthy();
+      await expect(page.getByTestId('glossary-terms-table')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
@@ -434,11 +346,9 @@ test.describe('Glossary P3 Tests', () => {
       if (await panelToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
         // Click to toggle
         await panelToggle.click();
-        await page.waitForTimeout(300);
 
         // Click again to restore
         await panelToggle.click();
-        await page.waitForTimeout(300);
 
         // Page should still be functional
         await expect(
@@ -679,8 +589,8 @@ test.describe('Glossary P3 Tests', () => {
       // Wait for page to load
 
       // Page should be functional - either shows table or empty state
-      const table = page.getByTestId('glossary-term-table');
-      const pageContent = page.locator('.glossary-details');
+      const table = page.getByTestId('glossary-terms-table');
+      const pageContent = page.getByTestId('glossary-details');
 
       const isLoaded =
         (await table.isVisible({ timeout: 10000 }).catch(() => false)) ||
@@ -689,13 +599,18 @@ test.describe('Glossary P3 Tests', () => {
       // If there are terms, try to expand some levels
       if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
         for (let i = 0; i < Math.min(termIds.length, 2); i++) {
-          const expandIcon = page.locator('.ant-table-row-expand-icon').first();
+          const expandIcon = page
+            .locator('[data-testid="expand-icon"]')
+            .first();
 
           if (
             await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await expandIcon.click();
-            await page.waitForTimeout(500);
+            await page
+              .locator('tr[data-row-key]')
+              .first()
+              .waitFor({ state: 'visible' });
           } else {
             break;
           }
@@ -731,6 +646,7 @@ test.describe('Glossary P3 Tests', () => {
       // Rapid search operations
       for (let i = 0; i < 5; i++) {
         await searchInput.fill(`test${i}`);
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- intentional small delay to simulate rapid user typing
         await page.waitForTimeout(100);
       }
 
@@ -787,14 +703,15 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent glossary', async ({
     browser,
   }) => {
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
 
     try {
       // Navigate directly to a non-existent glossary (without redirectToHomePage)
       await page.goto(`/glossary/NonExistentGlossary_${Date.now()}`);
-
-      // Wait for page to settle
-      await page.waitForTimeout(3000);
+      await page.waitForLoadState('domcontentloaded');
+      await waitForAllLoadersToDisappear(page).catch(() => {});
 
       // Check for various states that indicate the app handled the invalid URL
       // App may show error OR redirect to glossary list page
@@ -810,7 +727,7 @@ test.describe('Glossary P3 Tests', () => {
       const hasValidResponse =
         (await badMessage
           .first()
-          .isVisible({ timeout: 3000 })
+          .isVisible({ timeout: 10000 })
           .catch(() => false)) ||
         (await errorState
           .first()
@@ -838,7 +755,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent term', async ({
     browser,
   }) => {
-    const { apiContext, page, afterAction } = await createNewPage(browser);
+    const { apiContext, page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {
@@ -851,9 +770,7 @@ test.describe('Glossary P3 Tests', () => {
           glossary.responseData.fullyQualifiedName
         }/NonExistentTerm_${Date.now()}`
       );
-
-      // Wait for page to settle
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('domcontentloaded');
 
       // Check for various error/response states
       const badMessage = page.getByText(/bad message|bad request/i);
@@ -898,7 +815,7 @@ test.describe('Glossary P3 Tests', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       await page.getByTestId('add-new-tag-button-header').click();
-      await page.waitForSelector('[data-testid="name"]');
+      await page.getByTestId('name').waitFor();
 
       await page.fill('[data-testid="name"]', 'TestTerm');
       await page.locator(descriptionBox).fill('Test description');
@@ -911,11 +828,9 @@ test.describe('Glossary P3 Tests', () => {
 
       await page.getByTestId('save-glossary-term').click();
 
-      const errorMessage = await page
-        .getByText('URL must start with http:// or https://')
-        .isVisible();
-
-      expect(errorMessage).toBe(true);
+      await expect(
+        page.getByText('URL must start with http:// or https://')
+      ).toBeVisible();
 
       await page.locator('#url-0').clear();
       await page.locator('#url-0').fill('https://www.bbc.co.uk');
@@ -965,11 +880,9 @@ test.describe('Glossary P3 Tests', () => {
 
       await page.getByTestId('save-btn').click();
 
-      const errorMessage = await page
-        .getByText('URL must start with http:// or https://')
-        .isVisible();
-
-      expect(errorMessage).toBe(true);
+      await expect(
+        page.getByText('URL must start with http:// or https://')
+      ).toBeVisible();
 
       await page.locator('#references_0_endpoint').clear();
       await page

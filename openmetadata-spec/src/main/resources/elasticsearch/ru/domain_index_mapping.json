@@ -94,6 +94,15 @@
   },
   "mappings": {
     "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
         "type": "text",
         "fields": {
@@ -293,7 +302,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -379,7 +389,8 @@
         "dynamic": false
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "certification": {
         "type": "object",
@@ -462,6 +473,24 @@
             "type": "keyword"
           }
         }
+      },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
       },
       "ownerDisplayName": {
         "type": "keyword",

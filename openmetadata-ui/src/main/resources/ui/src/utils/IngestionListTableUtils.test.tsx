@@ -12,15 +12,17 @@
  */
 import { render, screen } from '@testing-library/react';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
+import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
 import {
   renderNameField,
   renderScheduleField,
   renderTypeField,
 } from './IngestionListTableUtils';
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.name || ''),
+}));
+jest.mock('./EntitySearchUtils', () => ({
   highlightSearchText: jest.fn((text, searchText) => {
     if (searchText) {
       return text.replace(
@@ -34,12 +36,12 @@ jest.mock('./EntityUtils', () => ({
   }),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('./date-time/DateTimeUtils', () => ({
-  getScheduleDescriptionTexts: jest.fn().mockReturnValue({
+jest.mock('../hooks/useScheduleDescriptionTexts', () => ({
+  useScheduleDescriptionTexts: jest.fn().mockReturnValue({
     descriptionFirstPart: 'Every day',
     descriptionSecondPart: 'at 12:00 AM',
   }),
@@ -104,10 +106,10 @@ describe('renderScheduleField', () => {
     expect(screen.getByText('at 12:00 AM')).toBeInTheDocument();
   });
 
-  it('should call getScheduleDescriptionTexts with correct schedule interval', () => {
+  it('should call useScheduleDescriptionTexts with correct schedule interval', () => {
     render(renderScheduleField('', mockRecord));
 
-    expect(getScheduleDescriptionTexts).toHaveBeenCalledWith('0 0 * * *');
+    expect(useScheduleDescriptionTexts).toHaveBeenCalledWith('0 0 * * *');
   });
 
   it('should render no data placeholder when schedule interval is not available', () => {

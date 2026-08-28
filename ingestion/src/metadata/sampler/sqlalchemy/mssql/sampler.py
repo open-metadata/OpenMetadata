@@ -13,12 +13,16 @@ Helper module to handle data sampling
 for the profiler
 """
 
+from typing import List, Optional  # noqa: UP035
 
-from sqlalchemy import Table, text
+from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
+from metadata.generated.schema.entity.data.table import TableData, TableType
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.tsql import get_temporal_column_names
 
 
 class MssqlSampler(SQASampler):
@@ -27,26 +31,35 @@ class MssqlSampler(SQASampler):
     run the query in the whole table.
     """
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
         Args:
-            selectable (Table): _description_
+            static (StaticSamplingConfig): sampling configuration
+            selectable (Table): table to sample
         """
-        if self.entity.tableType != TableType.View:
-            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-                return selectable.tablesample(
-                    text(f"{self.sample_config.profileSample or 100} PERCENT")
-                )
+        if self.entity.tableType != TableType.View:  # pyright: ignore[reportAttributeAccessIssue]
+            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+                return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 
-            return selectable.tablesample(
-                text(f"{int(self.sample_config.profileSample or 100)} ROWS")
-            )
+            return selectable.tablesample(text(f"{int(static.profileSample or 100 if static else 100)} ROWS"))
         return selectable
 
-    def get_sample_query(self, *, column=None) -> CTE:
+    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
+        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
+
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+        """Period columns are catalogued but kept out of the sample: they are row-validity
+        bookkeeping, not user data, and classifying them adds noise (issue #21329).
+        """
+        if not columns:
+            return super().fetch_sample_data(columns)
+        temporal_cols = get_temporal_column_names(self)
+        sampled = [col for col in columns if col.name not in temporal_cols]
+        if not sampled:
+            # The base method reads an empty list as "caller gave me nothing, use them all"
+            return TableData(columns=[], rows=[])
+        return super().fetch_sample_data(sampled)

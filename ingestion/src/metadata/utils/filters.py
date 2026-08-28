@@ -15,19 +15,20 @@ Most of these methods are applying the same logic,
 but assigning specific names helps better follow the
 code.
 """
+
 import re
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
-class InvalidPatternException(Exception):
+class InvalidPatternException(Exception):  # noqa: N818
     """
     Raised when an invalid pattern is configured in the workflow
     """
 
 
-def validate_regex(regex_list: Optional[List[str]]) -> None:
+def validate_regex(regex_list: Optional[List[str]]) -> None:  # noqa: UP006, UP045
     """
     Check that the given include/exclude regexes
     are well formatted
@@ -40,11 +41,12 @@ def validate_regex(regex_list: Optional[List[str]]) -> None:
             raise InvalidPatternException(msg) from err
 
 
-def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> bool:
+def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> bool:  # noqa: UP045
     """
     Return True if the name needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include: a name matching both an include and an
+    exclude pattern is filtered out.
 
     :param filter_pattern: Model defining filtering logic
     :param name: table or schema name
@@ -62,36 +64,20 @@ def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> boo
     validate_regex(filter_pattern.excludes)
 
     if filter_pattern.includes and filter_pattern.excludes:
-        return not any(
-            name
-            for regex in filter_pattern.includes
-            if (re.match(regex, name, re.IGNORECASE))
-        ) or any(
-            name
-            for regex in filter_pattern.excludes
-            if (re.match(regex, name, re.IGNORECASE))
+        return not any(name for regex in filter_pattern.includes if re.match(regex, name, re.IGNORECASE)) or any(
+            name for regex in filter_pattern.excludes if re.match(regex, name, re.IGNORECASE)
         )
 
     if filter_pattern.includes:
-        return not any(
-            name
-            for regex in filter_pattern.includes
-            if (re.match(regex, name, re.IGNORECASE))
-        )
+        return not any(name for regex in filter_pattern.includes if re.match(regex, name, re.IGNORECASE))
 
     if filter_pattern.excludes:
-        return any(
-            name
-            for regex in filter_pattern.excludes
-            if (re.match(regex, name, re.IGNORECASE))
-        )
+        return any(name for regex in filter_pattern.excludes if re.match(regex, name, re.IGNORECASE))
 
     return False
 
 
-def filter_by_schema(
-    schema_filter_pattern: Optional[FilterPattern], schema_name: str
-) -> bool:
+def filter_by_schema(schema_filter_pattern: Optional[FilterPattern], schema_name: str) -> bool:  # noqa: UP045
     """
     Return True if the schema needs to be filtered, False otherwise
 
@@ -104,9 +90,7 @@ def filter_by_schema(
     return _filter(schema_filter_pattern, schema_name)
 
 
-def filter_by_table(
-    table_filter_pattern: Optional[FilterPattern], table_name: str
-) -> bool:
+def filter_by_table(table_filter_pattern: Optional[FilterPattern], table_name: str) -> bool:  # noqa: UP045
     """
     Return True if the table needs to be filtered, False otherwise
 
@@ -119,9 +103,7 @@ def filter_by_table(
     return _filter(table_filter_pattern, table_name)
 
 
-def filter_by_chart(
-    chart_filter_pattern: Optional[FilterPattern], chart_name: str
-) -> bool:
+def filter_by_chart(chart_filter_pattern: Optional[FilterPattern], chart_name: str) -> bool:  # noqa: UP045
     """
     Return True if the chart needs to be filtered, False otherwise
 
@@ -134,9 +116,7 @@ def filter_by_chart(
     return _filter(chart_filter_pattern, chart_name)
 
 
-def filter_by_topic(
-    topic_filter_pattern: Optional[FilterPattern], topic_name: str
-) -> bool:
+def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic_name: str) -> bool:  # noqa: UP045
     """
     Return True if the topic needs to be filtered, False otherwise
 
@@ -149,9 +129,7 @@ def filter_by_topic(
     return _filter(topic_filter_pattern, topic_name)
 
 
-def filter_by_dashboard(
-    dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
-) -> bool:
+def filter_by_dashboard(dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str) -> bool:  # noqa: UP045
     """
     Return True if the dashboard needs to be filtered, False otherwise
 
@@ -165,7 +143,8 @@ def filter_by_dashboard(
 
 
 def filter_by_stored_procedure(
-    stored_procedure_filter_pattern: Optional[FilterPattern], stored_procedure_name: str
+    stored_procedure_filter_pattern: FilterPattern | None,
+    stored_procedure_name: str,
 ) -> bool:
     """
     Return True if the stored procedure needs to be filtered, False otherwise
@@ -179,7 +158,7 @@ def filter_by_stored_procedure(
     return _filter(stored_procedure_filter_pattern, stored_procedure_name)
 
 
-def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
+def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:  # noqa: UP045
     """
     Return True if the FQN needs to be filtered, False otherwise
 
@@ -192,9 +171,7 @@ def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool
     return _filter(fqn_filter_pattern, fqn)
 
 
-def filter_by_database(
-    database_filter_pattern: Optional[FilterPattern], database_name: str
-) -> bool:
+def filter_by_database(database_filter_pattern: Optional[FilterPattern], database_name: str) -> bool:  # noqa: UP045
     """
     Return True if the schema needs to be filtered, False otherwise
 
@@ -207,9 +184,7 @@ def filter_by_database(
     return _filter(database_filter_pattern, database_name)
 
 
-def filter_by_pipeline(
-    pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str
-) -> bool:
+def filter_by_pipeline(pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str) -> bool:  # noqa: UP045
     """
     Return True if the schema needs to be filtered, False otherwise
 
@@ -222,9 +197,7 @@ def filter_by_pipeline(
     return _filter(pipeline_filter_pattern, pipeline_name)
 
 
-def filter_by_mlmodel(
-    mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_name: str
-) -> bool:
+def filter_by_mlmodel(mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_name: str) -> bool:  # noqa: UP045
     """
     Return True if the mlmodel needs to be filtered, False otherwise
 
@@ -237,9 +210,7 @@ def filter_by_mlmodel(
     return _filter(mlmodel_filter_pattern, mlmodel_name)
 
 
-def filter_by_container(
-    container_filter_pattern: Optional[FilterPattern], container_name: str
-) -> bool:
+def filter_by_container(container_filter_pattern: Optional[FilterPattern], container_name: str) -> bool:  # noqa: UP045
     """
     Return True if the container needs to be filtered, False otherwise
 
@@ -252,9 +223,7 @@ def filter_by_container(
     return _filter(container_filter_pattern, container_name)
 
 
-def filter_by_datamodel(
-    datamodel_filter_pattern: Optional[FilterPattern], datamodel_name: str
-) -> bool:
+def filter_by_datamodel(datamodel_filter_pattern: Optional[FilterPattern], datamodel_name: str) -> bool:  # noqa: UP045
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -267,9 +236,7 @@ def filter_by_datamodel(
     return _filter(datamodel_filter_pattern, datamodel_name)
 
 
-def filter_by_project(
-    project_filter_pattern: Optional[FilterPattern], project_name: str
-) -> bool:
+def filter_by_project(project_filter_pattern: Optional[FilterPattern], project_name: str) -> bool:  # noqa: UP045
     """
     Return True if the project needs to be filtered, False otherwise
 
@@ -282,9 +249,7 @@ def filter_by_project(
     return _filter(project_filter_pattern, project_name)
 
 
-def filter_by_search_index(
-    search_index_filter_pattern: Optional[FilterPattern], search_index_name: str
-) -> bool:
+def filter_by_search_index(search_index_filter_pattern: Optional[FilterPattern], search_index_name: str) -> bool:  # noqa: UP045
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -297,9 +262,7 @@ def filter_by_search_index(
     return _filter(search_index_filter_pattern, search_index_name)
 
 
-def filter_by_classification(
-    classification_pattern: Optional[FilterPattern], classification_name: str
-) -> bool:
+def filter_by_classification(classification_pattern: Optional[FilterPattern], classification_name: str) -> bool:  # noqa: UP045
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -312,9 +275,42 @@ def filter_by_classification(
     return _filter(classification_pattern, classification_name)
 
 
-def filter_by_collection(
-    collection_pattern: Optional[FilterPattern], collection_name: str
+def _any_match(regex_list: Optional[List[str]], names: List[str]) -> bool:  # noqa: UP006, UP045
+    """Return True if any name matches any regex in the list (case-insensitive)."""
+    validate_regex(regex_list)
+    return any(re.match(regex, name, re.IGNORECASE) for regex in regex_list or [] for name in names)
+
+
+def filter_by_classifications(
+    classification_pattern: FilterPattern | None,
+    classification_names: List[str],  # noqa: UP006
 ) -> bool:
+    """
+    Return True if an entity carrying these classification tags must be filtered
+    out, False otherwise. Unlike ``filter_by_classification`` this evaluates the
+    whole set of tags an entity holds, so a single matching tag is enough to keep
+    (or, for excludes, to drop) the entity.
+
+    Exclude takes precedence over include:
+      - drop if ANY tag matches an exclude pattern
+      - otherwise, when includes are set, drop unless AT LEAST ONE tag matches an
+        include pattern
+
+    :param classification_pattern: Model defining classification filtering logic
+    :param classification_names: the entity's tag names (or FQNs)
+    :return: True for filtering out, False otherwise
+    """
+    result = False
+    if classification_pattern:
+        names = [name for name in classification_names if name]
+        if _any_match(classification_pattern.excludes, names):
+            result = True
+        elif classification_pattern.includes and not _any_match(classification_pattern.includes, names):
+            result = True
+    return result
+
+
+def filter_by_collection(collection_pattern: Optional[FilterPattern], collection_name: str) -> bool:  # noqa: UP045
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -327,9 +323,7 @@ def filter_by_collection(
     return _filter(collection_pattern, collection_name)
 
 
-def filter_by_endpoint(
-    endpoint_pattern: Optional[FilterPattern], endpoint_name: str
-) -> bool:
+def filter_by_endpoint(endpoint_pattern: Optional[FilterPattern], endpoint_name: str) -> bool:  # noqa: UP045
     """
     Return True if the endpoint needs to be filtered, False otherwise
 
@@ -342,7 +336,7 @@ def filter_by_endpoint(
     return _filter(endpoint_pattern, endpoint_name)
 
 
-def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
+def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:  # noqa: UP045
     """
     Return True if the models needs to be filtered, False otherwise
 
@@ -355,9 +349,7 @@ def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
     return _filter(tag_pattern, tag_name)
 
 
-def filter_by_spreadsheet(
-    spreadsheet_filter_pattern: Optional[FilterPattern], spreadsheet_name: str
-) -> bool:
+def filter_by_spreadsheet(spreadsheet_filter_pattern: Optional[FilterPattern], spreadsheet_name: str) -> bool:  # noqa: UP045
     """
     Return True if the spreadsheet needs to be filtered, False otherwise
 
@@ -370,9 +362,7 @@ def filter_by_spreadsheet(
     return _filter(spreadsheet_filter_pattern, spreadsheet_name)
 
 
-def filter_by_directory(
-    directory_filter_pattern: Optional[FilterPattern], directory_name: str
-) -> bool:
+def filter_by_directory(directory_filter_pattern: Optional[FilterPattern], directory_name: str) -> bool:  # noqa: UP045
     """
     Return True if the directory needs to be filtered, False otherwise
 
@@ -385,9 +375,7 @@ def filter_by_directory(
     return _filter(directory_filter_pattern, directory_name)
 
 
-def filter_by_file(
-    file_filter_pattern: Optional[FilterPattern], file_name: str
-) -> bool:
+def filter_by_file(file_filter_pattern: Optional[FilterPattern], file_name: str) -> bool:  # noqa: UP045
     """
     Return True if the file needs to be filtered, False otherwise
 
@@ -400,9 +388,7 @@ def filter_by_file(
     return _filter(file_filter_pattern, file_name)
 
 
-def filter_by_worksheet(
-    worksheet_filter_pattern: Optional[FilterPattern], worksheet_name: str
-) -> bool:
+def filter_by_worksheet(worksheet_filter_pattern: Optional[FilterPattern], worksheet_name: str) -> bool:  # noqa: UP045
     """
     Return True if the worksheet needs to be filtered, False otherwise
 
@@ -413,3 +399,28 @@ def filter_by_worksheet(
     :return: True for filtering, False otherwise
     """
     return _filter(worksheet_filter_pattern, worksheet_name)
+
+
+def filter_by_server(server_filter_pattern: Optional[FilterPattern], server_name: str) -> bool:  # noqa: UP045
+    """
+    Return True if the MCP server needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param server_filter_pattern: Model defining server filtering logic
+    :param server_name: server name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(server_filter_pattern, server_name)
+
+
+def filter_pattern_enabled(filter_pattern: Optional[FilterPattern]) -> bool:  # noqa: UP045
+    """
+    Return True when the pattern would actually include or exclude something,
+    i.e. the user configured includes or excludes. An unset (None) or empty
+    pattern returns False.
+
+    :param filter_pattern: Model defining filtering logic
+    :return: True when includes/excludes are configured, False otherwise
+    """
+    return bool(filter_pattern and (filter_pattern.includes or filter_pattern.excludes))

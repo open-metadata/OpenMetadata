@@ -6,13 +6,18 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 /**
@@ -26,12 +31,14 @@ public class RuleEvaluator {
   private final ResourceContextInterface resourceContext;
 
   private final boolean expressionValidation;
+  private final boolean isUpdate;
 
-  public RuleEvaluator() {
+  public RuleEvaluator(boolean isUpdate) {
     this.policyContext = null;
     this.subjectContext = null;
     this.resourceContext = null;
     this.expressionValidation = true;
+    this.isUpdate = isUpdate;
   }
 
   public RuleEvaluator(
@@ -42,6 +49,7 @@ public class RuleEvaluator {
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
     this.expressionValidation = false;
+    this.isUpdate = false;
   }
 
   @Function(
@@ -81,10 +89,66 @@ public class RuleEvaluator {
     if (expressionValidation) {
       return false;
     }
-    if (subjectContext == null || resourceContext == null || resourceContext.getEntity() == null) {
+    // On CREATE the entity is caller-supplied and not yet persisted, so its fields (e.g. reviewers)
+    // cannot be trusted to grant authorization. Only evaluate against already persisted entities.
+    if (subjectContext == null
+        || resourceContext == null
+        || resourceContext instanceof CreateResourceContext
+        || resourceContext.getEntity() == null) {
       return false;
     }
     return subjectContext.isReviewer(resourceContext.getEntity().getReviewers());
+  }
+
+  @Function(
+      name = "isTaskFiler",
+      input = "none",
+      description =
+          "Returns true if the logged in user filed (created) the task being accessed. "
+              + "Only applies when the resource is a task.",
+      examples = {"isTaskFiler()", "!isTaskFiler()"})
+  public boolean isTaskFiler() {
+    Task task = currentTask();
+    boolean filer = false;
+    if (task != null && task.getCreatedBy() != null) {
+      filer = subjectContext.isOwner(List.of(task.getCreatedBy()));
+    }
+    return filer;
+  }
+
+  @Function(
+      name = "isTaskAssignee",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is an assignee of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskAssignee()", "!isTaskAssignee()"})
+  public boolean isTaskAssignee() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getAssignees());
+  }
+
+  @Function(
+      name = "isTaskReviewer",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is a reviewer of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskReviewer()", "!isTaskReviewer()"})
+  public boolean isTaskReviewer() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getReviewers());
+  }
+
+  private Task currentTask() {
+    Task task = null;
+    if (!expressionValidation && subjectContext != null && resourceContext != null) {
+      EntityInterface entity = resourceContext.getEntity();
+      if (entity instanceof Task t) {
+        task = t;
+      }
+    }
+    return task;
   }
 
   @Function(
@@ -152,21 +216,9 @@ public class RuleEvaluator {
       return false;
     }
 
-    for (EntityReference userDomain : userDomains) {
-      for (EntityReference resourceDomain : resourceDomains) {
-        if (userDomain.getId() != null && userDomain.getId().equals(resourceDomain.getId())) {
-          LOG.info(
-              "hasDomain() - Domain match found by ID: {}, returning true", userDomain.getId());
-          return true;
-        }
-        if (userDomain.getFullyQualifiedName() != null
-            && userDomain.getFullyQualifiedName().equals(resourceDomain.getFullyQualifiedName())) {
-          LOG.info(
-              "hasDomain() - Domain match found by FQN: {}, returning true",
-              userDomain.getFullyQualifiedName());
-          return true;
-        }
-      }
+    if (subjectContext.hasDomains(resourceDomains)) {
+      LOG.info("hasDomain() - Domain hierarchy match found, returning true");
+      return true;
     }
 
     LOG.info("hasDomain() - No matching domains found, returning false");
@@ -201,7 +253,7 @@ public class RuleEvaluator {
   public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
+        validateEntityReference(Entity.TAG, tagFqn);
       }
       return false;
     }
@@ -239,7 +291,7 @@ public class RuleEvaluator {
   public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
+        validateEntityReference(Entity.TAG, tagFqn);
       }
       return false;
     }
@@ -273,7 +325,7 @@ public class RuleEvaluator {
   public boolean matchAnyCertification(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
+        validateEntityReference(Entity.TAG, tagFqn);
       }
       return false;
     }
@@ -281,8 +333,12 @@ public class RuleEvaluator {
       return false;
     }
 
-    Optional<AssetCertification> oCertification =
-        Optional.ofNullable(resourceContext.getEntity().getCertification());
+    EntityInterface entity = resourceContext.getEntity();
+    if (entity == null) {
+      return false;
+    }
+
+    Optional<AssetCertification> oCertification = Optional.ofNullable(entity.getCertification());
 
     if (oCertification.isEmpty()) {
       LOG.debug(
@@ -332,7 +388,7 @@ public class RuleEvaluator {
   public boolean inAnyTeam(String... teams) {
     if (expressionValidation) {
       for (String team : teams) {
-        Entity.getEntityByName(Entity.TEAM, team, "", NON_DELETED);
+        validateEntityByName(Entity.TEAM, team);
       }
       return false;
     }
@@ -362,7 +418,7 @@ public class RuleEvaluator {
   public boolean hasAnyRole(String... roles) {
     if (expressionValidation) {
       for (String role : roles) {
-        Entity.getEntityReferenceByName(Entity.ROLE, role, NON_DELETED);
+        validateEntityReference(Entity.ROLE, role);
       }
       return false;
     }
@@ -376,5 +432,80 @@ public class RuleEvaluator {
       }
     }
     return false;
+  }
+
+  @Function(
+      name = "isAdminUser",
+      input = "none",
+      description =
+          "Returns true if the user being accessed as a resource is an admin. Use with the "
+              + "Impersonate operation to control whether bots can impersonate admin users.",
+      examples = {"isAdminUser()", "!isAdminUser()"})
+  @SuppressWarnings("unused")
+  public boolean isAdminUser() {
+    return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsAdmin()));
+  }
+
+  @Function(
+      name = "isBotUser",
+      input = "none",
+      description =
+          "Returns true if the user being accessed as a resource is a bot. Use with the "
+              + "Impersonate operation to control whether bots can impersonate other bots.",
+      examples = {"isBotUser()", "!isBotUser()"})
+  @SuppressWarnings("unused")
+  public boolean isBotUser() {
+    return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsBot()));
+  }
+
+  private boolean matchesUserResource(Predicate<User> predicate) {
+    boolean result = false;
+    if (!expressionValidation
+        && resourceContext != null
+        && Entity.USER.equals(resourceContext.getResource())
+        && resourceContext.getEntity() instanceof User user) {
+      result = predicate.test(user);
+    }
+    return result;
+  }
+
+  private void validateEntityReference(String entityType, String fqn) {
+    try {
+      Entity.getEntityReferenceByName(entityType, fqn, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // Tags and glossary terms both appear as tag labels on entities,
+      // so matchAnyTag/matchAllTags conditions may reference either type.
+      if (Entity.TAG.equals(entityType)) {
+        try {
+          Entity.getEntityReferenceByName(Entity.GLOSSARY_TERM, fqn, NON_DELETED);
+          return;
+        } catch (EntityNotFoundException ignored) {
+          // Fall through to stale-reference handling
+        }
+      }
+      if (!isUpdate) {
+        throw e;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: {} '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          entityType,
+          fqn);
+    }
+  }
+
+  private void validateEntityByName(String entityType, String name) {
+    try {
+      Entity.getEntityByName(entityType, name, "", NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      if (!isUpdate) {
+        throw e;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: {} '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          entityType,
+          name);
+    }
   }
 }

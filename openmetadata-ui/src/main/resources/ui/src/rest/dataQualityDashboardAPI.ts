@@ -11,24 +11,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { omit } from 'lodash';
 import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   buildDataQualityDashboardFilters,
+  buildDataQualityTableFilters,
+  buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
-} from '../utils/DataQuality/DataQualityUtils';
+  buildMustEsFilterForTier,
+} from '../utils/DataQuality/DataQualityPureUtils';
+import { batchedDataQualityReport } from './dataQualityReportBatcher';
 import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (
   filters?: DataQualityDashboardChartFilters,
   unhealthy = false
 ) => {
-  const mustFilter = buildDataQualityDashboardFilters({ filters, unhealthy });
+  // The selected status filters test-case charts, but must not redefine the
+  // Healthy (Success + Queued) and Unhealthy (Failed + Aborted) asset groups.
+  const assetFilters = filters ? omit(filters, 'testCaseStatus') : undefined;
+  const mustFilter = buildDataQualityDashboardFilters({
+    filters: assetFilters,
+    unhealthy,
+  });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -45,12 +56,11 @@ export const fetchEntityCoveredWithDQ = (
 export const fetchTotalEntityCount = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = buildDataQualityDashboardFilters({
-    filters,
-    isTableApi: true,
-  });
+  // The table index does not contain test-case-only fields such as entityLink,
+  // result status, dimension, platform, or last-run timestamp.
+  const mustFilter = buildDataQualityTableFilters(filters);
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -69,7 +79,7 @@ export const fetchTestCaseSummary = (
 ) => {
   const mustFilter = buildDataQualityDashboardFilters({ filters });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -89,7 +99,7 @@ export const fetchTestCaseSummaryByDimension = (
 ) => {
   const mustFilter = buildDataQualityDashboardFilters({ filters });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -107,16 +117,13 @@ export const fetchTestCaseSummaryByDimension = (
 export const fetchTestCaseSummaryByNoDimension = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = [];
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags));
-  }
+  // Apply every active test-case filter except dimension, then select documents
+  // where the dimension field is absent for the dedicated No Dimension card.
+  const mustFilter = buildDataQualityDashboardFilters({
+    filters: filters ? omit(filters, 'dataQualityDimension') : undefined,
+  });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -140,13 +147,19 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -180,13 +193,19 @@ export const fetchIncidentTimeMetrics = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -229,10 +248,16 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
   if (filters?.entityFQN) {
     mustFilter.push({
@@ -244,7 +269,7 @@ export const fetchTestCaseStatusMetricsByDays = (
     });
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {

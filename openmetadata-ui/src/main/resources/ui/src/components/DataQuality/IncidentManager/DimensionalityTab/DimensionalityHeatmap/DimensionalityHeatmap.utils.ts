@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { format } from 'date-fns';
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
 import {
   DimensionResultWithTimestamp,
@@ -19,6 +18,33 @@ import {
   HeatmapRowData,
   HeatmapStatus,
 } from './DimensionalityHeatmap.interface';
+
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+const formatDateUTC = (date: Date): string => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateLabelUTC = (date: Date): string => {
+  return `${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCDate()}`;
+};
 
 /**
  * Generates an array of dates in chronological order (oldest first, newest last)
@@ -57,8 +83,8 @@ export const generateDateRange = (startTs: number, endTs: number): string[] => {
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
-    dates.push(format(currentDate, 'yyyy-MM-dd'));
-    currentDate.setDate(currentDate.getDate() + 1);
+    dates.push(formatDateUTC(currentDate));
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   return dates;
@@ -109,7 +135,7 @@ export const transformDimensionResultsToHeatmapData = (
     dimensionValues.add(dimensionValue);
 
     if (result.timestamp) {
-      const resultDate = format(new Date(result.timestamp), 'yyyy-MM-dd');
+      const resultDate = formatDateUTC(new Date(result.timestamp));
       const key = `${dimensionValue}|${resultDate}`;
       resultMap.set(key, result);
     }
@@ -143,9 +169,9 @@ export const transformDimensionResultsToHeatmapData = (
 };
 
 export const getDateLabel = (dateStr: string): string => {
-  const date = new Date(dateStr);
+  const date = new Date(dateStr + 'T00:00:00Z');
 
-  return format(date, 'MMM d');
+  return formatDateLabelUTC(date);
 };
 
 export const getStatusLabel = (

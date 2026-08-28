@@ -69,7 +69,11 @@ public final class LineageAPI {
   // ==================== Lineage Builders ====================
 
   public static LineageQuery for$(String entityType, String entityId) {
-    return new LineageQuery(getClient(), entityType, entityId);
+    return new LineageQuery(getClient(), entityType, entityId, false);
+  }
+
+  public static LineageQuery forName$(String entityType, String fqn) {
+    return new LineageQuery(getClient(), entityType, fqn, true);
   }
 
   public static LineageConnector connect() {
@@ -97,15 +101,17 @@ public final class LineageAPI {
   public static class LineageQuery {
     private final OpenMetadataClient client;
     private final String entityType;
-    private final String entityId;
+    private final String identifier;
+    private final boolean isFqn;
     private int upstreamDepth = 1;
     private int downstreamDepth = 1;
     private boolean includeDeleted = false;
 
-    LineageQuery(OpenMetadataClient client, String entityType, String entityId) {
+    LineageQuery(OpenMetadataClient client, String entityType, String identifier, boolean isFqn) {
       this.client = client;
       this.entityType = entityType;
-      this.entityId = entityId;
+      this.identifier = identifier;
+      this.isFqn = isFqn;
     }
 
     public LineageQuery upstream(int depth) {
@@ -130,14 +136,26 @@ public final class LineageAPI {
     }
 
     public LineageGraph fetch() {
-      String result =
-          client
-              .lineage()
-              .getEntityLineage(
-                  entityType,
-                  entityId,
-                  String.valueOf(upstreamDepth),
-                  String.valueOf(downstreamDepth));
+      String result;
+      if (isFqn) {
+        result =
+            client
+                .lineage()
+                .getLineageByName(
+                    entityType,
+                    identifier,
+                    String.valueOf(upstreamDepth),
+                    String.valueOf(downstreamDepth));
+      } else {
+        result =
+            client
+                .lineage()
+                .getEntityLineage(
+                    entityType,
+                    identifier,
+                    String.valueOf(upstreamDepth),
+                    String.valueOf(downstreamDepth));
+      }
       return new LineageGraph(result, client);
     }
   }

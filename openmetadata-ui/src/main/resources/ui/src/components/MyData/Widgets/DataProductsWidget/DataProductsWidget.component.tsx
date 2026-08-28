@@ -16,8 +16,8 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product-new.svg';
 import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as DataProductIcon } from '../../../../assets/svg/widget/data-products.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -30,7 +30,6 @@ import {
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
-import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
@@ -39,9 +38,8 @@ import {
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
-import { getEntityTypeExploreQueryFilter } from '../../../../utils/CommonUtils';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
-import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -104,12 +102,7 @@ const DataProductsWidget = ({
 
   const handleDataProductClick = useCallback(
     (dataProduct: DataProduct) => {
-      navigate(
-        getEntityDetailsPath(
-          EntityType.DATA_PRODUCT,
-          dataProduct.fullyQualifiedName ?? ''
-        )
-      );
+      navigate(getDataProductDetailsPath(dataProduct.fullyQualifiedName ?? ''));
     },
     [navigate]
   );
@@ -135,7 +128,7 @@ const DataProductsWidget = ({
   }, []);
 
   const handleTitleClick = useCallback(() => {
-    navigate(`${ROUTES.EXPLORE}?tab=data_product`);
+    navigate(ROUTES.DATA_PRODUCT);
   }, [navigate]);
 
   const emptyState = useMemo(
@@ -225,7 +218,7 @@ const DataProductsWidget = ({
         </div>
       </div>
     ),
-    [dataProducts, isFullSize]
+    [assetsCounts, dataProducts, handleDataProductClick, isFullSize]
   );
 
   const showWidgetFooterMoreButton = useMemo(
@@ -233,20 +226,16 @@ const DataProductsWidget = ({
     [dataProducts, loading]
   );
 
-  const footer = useMemo(() => {
-    const quickFilter = encodeURIComponent(
-      getEntityTypeExploreQueryFilter('dataproduct')
-    );
-    const exploreUrl = `${ROUTES.EXPLORE}?quickFilter=${quickFilter}`;
-
-    return (
+  const footer = useMemo(
+    () => (
       <WidgetFooter
-        moreButtonLink={exploreUrl}
+        moreButtonLink={ROUTES.DATA_PRODUCT}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
-    );
-  }, [t, showWidgetFooterMoreButton]);
+    ),
+    [t, showWidgetFooterMoreButton]
+  );
 
   const widgetHeader = useMemo(
     () => (
@@ -257,8 +246,8 @@ const DataProductsWidget = ({
         icon={
           <DataProductIcon
             className="data-products-widget-icon"
-            height={22}
-            width={22}
+            height={24}
+            width={24}
           />
         }
         isEditView={isEditView}

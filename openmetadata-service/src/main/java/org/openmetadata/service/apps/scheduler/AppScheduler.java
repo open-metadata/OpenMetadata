@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -25,9 +26,13 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
@@ -80,6 +85,7 @@ public class AppScheduler {
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
+  private final ScheduledExecutorService errorTriggerResetScheduler;
   private static final @Getter CronMapper cronMapper = CronMapper.fromUnixToQuartz();
   private static final @Getter CronParser cronParser =
       new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
@@ -103,12 +109,17 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler =
+    // Daemon thread + retained reference so shutDown() can stop it. Previously this pool was a
+    // local with a non-daemon thread that was never shut down, so it survived shutDown() and
+    // blocked JVM exit (and leaked another pool on each re-initialize in embedded/test contexts).
+    this.errorTriggerResetScheduler =
         Executors.newScheduledThreadPool(
-            1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
-    threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+            1, Thread.ofPlatform().daemon().name("om-app-error-trigger-reset").factory());
+    this.errorTriggerResetScheduler.scheduleAtFixedRate(
+        this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+  }
 
-    // Start Scheduler
+  public void start() throws SchedulerException {
     this.scheduler.start();
   }
 
@@ -237,6 +248,7 @@ public class AppScheduler {
   public static void shutDown() throws SchedulerException {
     if (instance != null) {
       instance.scheduler.shutdown();
+      instance.errorTriggerResetScheduler.shutdownNow();
     }
   }
 
@@ -275,7 +287,8 @@ public class AppScheduler {
       String triggerIdentity;
 
       String uniqueId = getUniqueJobIdentifier(config);
-      if (allowConcurrent && uniqueId != null) {
+      boolean concurrentJob = allowConcurrent && uniqueId != null;
+      if (concurrentJob) {
         // For apps that allow concurrent execution, use a unique identifier per job
         jobIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
         triggerIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
@@ -324,11 +337,113 @@ public class AppScheduler {
               .withIdentity(triggerIdentity, APPS_TRIGGER_GROUP)
               .startNow()
               .build();
-      scheduler.scheduleJob(newJobDetail, trigger);
+      scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
+    }
+  }
+
+  /**
+   * Schedule the on-demand job, recovering from a stale Quartz entry left by a crashed pod.
+   *
+   * <p>The on-demand job is non-durable, so a clean run auto-deletes its {@code JobDetail}. But a
+   * pod that crashed (or was wedged) mid-execution leaves the persisted {@code QRTZ_*} job/trigger
+   * behind. Because the store is clustered, a retrigger from <em>any</em> pod then hits
+   * {@link ObjectAlreadyExistsException} and is rejected with "Job is already running" even though
+   * nothing is actually running. We distinguish the two cases using the DB-backed {@link
+   * AppRunRecord} (cross-pod truth): if the latest run is genuinely active we rethrow; otherwise the
+   * entry is stale, so we clear it and reschedule once.
+   *
+   * <p>Recovery is applied only to non-concurrent jobs. Concurrent jobs use a unique identity per
+   * run, so a collision there is not a stale entry and the app-wide latest run record is not a
+   * reliable signal for a specific run.
+   *
+   * <p>The check-then-act (read run record → delete → reschedule) is not atomic across a clustered
+   * deployment. If two pods race, the recovery {@code scheduleJob} may itself collide; we treat that
+   * second collision as "another pod won" and rethrow so the caller reports the standard message
+   * rather than deleting a job the other pod just scheduled.
+   *
+   * <p>"Active" is defined by {@link #TERMINAL_RUN_STATUSES}: any non-terminal status (including
+   * {@code ACTIVE_ERROR}, which is in-flight — set by apps that are still progressing and only
+   * normalized to {@code FAILED} when the run actually finishes) is treated as a live run we must
+   * not clear. Erring toward "active" is deliberate: leaving a stale entry is recoverable, while
+   * deleting a job another pod is genuinely running risks a duplicate/disrupted execution.
+   */
+  private void scheduleOnDemandJob(
+      App application,
+      JobDetail jobDetail,
+      Trigger trigger,
+      String triggerIdentity,
+      boolean concurrent)
+      throws SchedulerException {
+    try {
+      scheduler.scheduleJob(jobDetail, trigger);
+    } catch (ObjectAlreadyExistsException ex) {
+      if (concurrent || hasActiveAppRun(application)) {
+        throw ex;
+      }
+      LOG.warn(
+          "Stale Quartz job/trigger for app {} with no active run record; clearing and rescheduling",
+          application.getName());
+      scheduler.deleteJob(jobDetail.getKey());
+      scheduler.unscheduleJob(new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP));
+      scheduler.scheduleJob(jobDetail, trigger);
+    }
+  }
+
+  /** Statuses that mean a run has finished; anything else (incl. ACTIVE_ERROR) is in-flight. */
+  private static final Set<AppRunRecord.Status> TERMINAL_RUN_STATUSES =
+      Set.of(
+          AppRunRecord.Status.SUCCESS,
+          AppRunRecord.Status.FAILED,
+          AppRunRecord.Status.STOPPED,
+          AppRunRecord.Status.COMPLETED);
+
+  private boolean hasActiveAppRun(App application) {
+    boolean active;
+    try {
+      active =
+          new AppRepository()
+              .getLatestAppRunsOptional(application)
+              .map(
+                  run ->
+                      run.getStatus() != null && !TERMINAL_RUN_STATUSES.contains(run.getStatus()))
+              .orElse(false);
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not read latest run for app {}; treating as active to avoid clearing a live job",
+          application.getName(),
+          e);
+      active = true;
+    }
+    return active;
+  }
+
+  /**
+   * Clears a persisted on-demand job/trigger for the given app from the Quartz store so a fresh
+   * on-demand trigger can be scheduled without hitting "Job is already running". Used by the CLI
+   * reindex commands to remove a leftover from a previous run that died before completing. A job
+   * that is currently executing is left untouched, so a genuinely running run is never cleared.
+   */
+  public void deleteOnDemandJob(App app) {
+    JobKey onDemandJobKey =
+        new JobKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+    try {
+      for (JobExecutionContext context : scheduler.getCurrentlyExecutingJobs()) {
+        if (context.getJobDetail().getKey().equals(onDemandJobKey)) {
+          LOG.info(
+              "On-demand job for app {} is currently executing; leaving it in place.",
+              app.getName());
+          return;
+        }
+      }
+      scheduler.deleteJob(onDemandJobKey);
+      scheduler.unscheduleJob(
+          new TriggerKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP));
+    } catch (SchedulerException ex) {
+      LOG.warn("Could not clear existing on-demand job for app {}", app.getName(), ex);
     }
   }
 
@@ -357,6 +472,14 @@ public class AppScheduler {
         }
       }
       if (!isJobRunning) {
+        // Quartz doesn't see the job, but a distributed indexing job may still be
+        // running independently. Try to stop it via the coordinator directly.
+        if (tryStopViaApp(application)) {
+          LOG.info(
+              "No Quartz job found for {}, but stopped running distributed job via coordinator",
+              application.getName());
+          return;
+        }
         LOG.error(
             "No running job found for application: {}. Scheduled key: {}, OnDemand key: {}",
             application.getName(),
@@ -429,6 +552,19 @@ public class AppScheduler {
     }
   }
 
+  private boolean tryStopViaApp(App application) {
+    try {
+      AbstractNativeApplication appInstance =
+          ApplicationHandler.getInstance()
+              .runAppInit(
+                  application, Entity.getCollectionDAO(), Entity.getSearchRepository(), true);
+      return appInstance.tryStopOutsideQuartz();
+    } catch (Exception e) {
+      LOG.error("Failed to stop app via fallback: {}", application.getName(), e);
+      return false;
+    }
+  }
+
   private void updateAndBroadcastStoppedStatus(JobExecutionContext context) {
     try {
       JobDataMap dataMap = context.getJobDetail().getJobDataMap();
@@ -440,7 +576,7 @@ public class AppScheduler {
       if (runRecord != null) {
         // Update status to STOPPED
         runRecord.withStatus(AppRunRecord.Status.STOPPED);
-        runRecord.withEndTime(System.currentTimeMillis());
+        OmAppJobListener.fillTerminalTimings(runRecord);
 
         // Get WebSocket channel name
         String webSocketChannelName =

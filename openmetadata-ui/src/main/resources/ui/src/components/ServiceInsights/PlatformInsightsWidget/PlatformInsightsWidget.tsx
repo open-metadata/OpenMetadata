@@ -22,11 +22,22 @@ import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHARTS } from '../../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
-import { getReadableCountString } from '../../../utils/ServiceUtils';
+import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
+import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
+
+const renderViewMoreExpandIcon = (
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <div className="expand-icon-container">
+    <Typography.Text className="text-primary">
+      {t('label.view-more')}
+    </Typography.Text>
+    <ArrowSvg className="text-primary" height={14} width={14} />
+  </div>
+);
 
 function PlatformInsightsWidget({
   chartsData,
@@ -59,14 +70,7 @@ function PlatformInsightsWidget({
     <Collapse
       className="service-insights-collapse-widget platform-insights-card"
       defaultActiveKey={['1']}
-      expandIcon={() => (
-        <div className="expand-icon-container">
-          <Typography.Text className="text-primary">
-            {t('label.view-more')}
-          </Typography.Text>
-          <ArrowSvg className="text-primary" height={14} width={14} />
-        </div>
-      )}
+      expandIcon={() => renderViewMoreExpandIcon(t)}
       expandIconPosition="end">
       <Collapse.Panel
         header={
@@ -76,7 +80,7 @@ function PlatformInsightsWidget({
                 entity: t('label.platform'),
               })}
             </Typography.Text>
-            <Typography.Text className="text-grey-muted text-sm">
+            <Typography.Text className="tw:text-tertiary text-sm">
               {t('message.platform-insight-description')}
             </Typography.Text>
           </div>

@@ -12,11 +12,14 @@
  */
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
+import i18next from '../utils/i18next/LocalUtil';
 import {
   getAuthorityUrl,
   getCallbackUrl,
   getServerUrl,
 } from '../utils/SSOURLUtils';
+
+export const MAX_XML_SIZE = 1 * 1024 * 1024;
 
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
@@ -44,7 +47,9 @@ export const SAML_SSO_DEFAULTS = {
   authority: getAuthorityUrl(),
   clientType: 'public',
   jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-  idp: {},
+  idp: {
+    authorityUrl: '',
+  },
   sp: {
     entityId: getServerUrl(),
     acs: getCallbackUrl(),
@@ -194,11 +199,17 @@ export const LDAP_UI_SCHEMA = {
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
     groupAttributeValue: { 'ui:title': 'Group Attribute Value' },
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
+    recursiveGroupMembership: {
+      'ui:title': 'Recursive Group Membership',
+      'ui:help':
+        'Enable this for Active Directory nested groups. OpenMetadata will use AD transitive membership matching when checking role mappings.',
+    },
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
       'ui:widget': 'LdapRoleMappingWidget',
-      'ui:help':
-        'Map LDAP groups to OpenMetadata roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.',
+      'ui:help': `Map LDAP groups to ${i18next.t(
+        'label.brand-name'
+      )} roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.`,
     },
     authReassignRoles: {
       'ui:title': 'Auth Reassign Roles',
@@ -836,23 +847,6 @@ export const getSSOUISchema = (
 
   return commonSchema;
 };
-
-export enum ValidationStatus {
-  SUCCESS = 'success',
-  FAILED = 'failed',
-}
-
-export interface SecurityValidationResult {
-  component: string;
-  status: ValidationStatus;
-  message: string;
-}
-
-export interface SecurityValidationResponse {
-  status: ValidationStatus;
-  message: string;
-  results: SecurityValidationResult[];
-}
 
 export const VALIDATION_STATUS = {
   SUCCESS: 'success',

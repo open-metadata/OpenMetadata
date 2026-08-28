@@ -93,11 +93,71 @@ export interface OpenLineageInputDataset {
  * Dataset facets containing metadata like schema.
  */
 export interface DatasetFacets {
+    columnLineage?: ColumnLineageFacet;
     datasource?:    DatasourceFacet;
     documentation?: DocumentationFacet;
     ownership?:     OwnershipFacet;
     schema?:        SchemaFacet;
     symlinks?:      SymlinksFacet;
+    [property: string]: any;
+}
+
+/**
+ * Column lineage facet describing how output columns are derived from input columns.
+ *
+ * Base facet that all facets extend from.
+ */
+export interface ColumnLineageFacet {
+    /**
+     * URI identifying the producer of this metadata.
+     */
+    _producer?: string;
+    /**
+     * URI pointing to the schema definition for this facet.
+     */
+    _schemaURL?: string;
+    /**
+     * Map of output field names to their lineage information.
+     */
+    fields: { [key: string]: ColumnLineageField };
+    [property: string]: any;
+}
+
+/**
+ * Column lineage information for a single output field.
+ */
+export interface ColumnLineageField {
+    /**
+     * List of input fields that contribute to this output field.
+     */
+    inputFields: InputField[];
+    /**
+     * Human-readable description of the transformation.
+     */
+    transformationDescription?: string;
+    /**
+     * Type of transformation (e.g., DIRECT, AGGREGATION).
+     */
+    transformationType?: string;
+    [property: string]: any;
+}
+
+/**
+ * A reference to an input column in column lineage.
+ */
+export interface InputField {
+    /**
+     * The name of the input field/column.
+     */
+    field: string;
+    /**
+     * The name of the input dataset.
+     */
+    name: string;
+    /**
+     * The namespace of the input dataset.
+     */
+    namespace: string;
     [property: string]: any;
 }
 
@@ -148,7 +208,7 @@ export interface DocumentationFacet {
 }
 
 /**
- * Ownership facet providing owner information for the dataset.
+ * Ownership facet providing owner information for the dataset or job.
  *
  * Base facet that all facets extend from.
  */
@@ -287,7 +347,8 @@ export interface OpenLineageJob {
  * Facets that can be attached to a job.
  */
 export interface JobFacets {
-    sql?: SQLJobFacet;
+    ownership?: OwnershipFacet;
+    sql?:       SQLJobFacet;
     [property: string]: any;
 }
 
@@ -344,65 +405,6 @@ export interface OpenLineageOutputDataset {
  */
 export interface OutputDatasetFacets {
     columnLineage?: ColumnLineageFacet;
-    [property: string]: any;
-}
-
-/**
- * Column lineage facet describing how output columns are derived from input columns.
- *
- * Base facet that all facets extend from.
- */
-export interface ColumnLineageFacet {
-    /**
-     * URI identifying the producer of this metadata.
-     */
-    _producer?: string;
-    /**
-     * URI pointing to the schema definition for this facet.
-     */
-    _schemaURL?: string;
-    /**
-     * Map of output field names to their lineage information.
-     */
-    fields: { [key: string]: ColumnLineageField };
-    [property: string]: any;
-}
-
-/**
- * Column lineage information for a single output field.
- */
-export interface ColumnLineageField {
-    /**
-     * List of input fields that contribute to this output field.
-     */
-    inputFields: InputField[];
-    /**
-     * Human-readable description of the transformation.
-     */
-    transformationDescription?: string;
-    /**
-     * Type of transformation (e.g., DIRECT, AGGREGATION).
-     */
-    transformationType?: string;
-    [property: string]: any;
-}
-
-/**
- * A reference to an input column in column lineage.
- */
-export interface InputField {
-    /**
-     * The name of the input field/column.
-     */
-    field: string;
-    /**
-     * The name of the input dataset.
-     */
-    name: string;
-    /**
-     * The namespace of the input dataset.
-     */
-    namespace: string;
     [property: string]: any;
 }
 

@@ -13,54 +13,54 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
-test.describe(
-  'Table & Data Model columns table pagination',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  () => {
-    test('Page size should persist across different pages', async ({
-      dataConsumerPage: page,
-    }) => {
-      await page.goto(
-        '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-      );
+test.describe('Table & Data Model columns table pagination', () => {
+  test('Page size should persist across different pages', async ({
+    dataConsumerPage: page,
+  }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await waitForAllLoadersToDisappear(page);
 
-      // Change page size to 25
-      await page.getByTestId('page-size-selection-dropdown').click();
-      await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    // Change page size to 25
+    const tablePageSizeDropdown = page.getByTestId(
+      'page-size-selection-dropdown'
+    );
+    await tablePageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(tablePageSizeDropdown).toBeVisible();
+    await tablePageSizeDropdown.hover();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    const tablePageSizeOption = page
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .getByRole('menuitem', { name: '25 / Page' });
+    await expect(tablePageSizeOption).toBeVisible();
+    await tablePageSizeOption.click();
 
-      // Go to Explore Page
-      await sidebarClick(page, SidebarItem.EXPLORE);
+    await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    // Go to Explore Page
+    await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await expect(page.getByText('25 / page')).toBeVisible();
+    await waitForAllLoadersToDisappear(page);
 
-      // Change page size to 50
-      await page.locator('.ant-pagination-options-size-changer').click();
-      await page.getByTitle('50 / Page').click();
+    const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
+    await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
 
-      // Go to Users Page
-      await settingClick(page, GlobalSettingOptions.USERS);
+    // Change page size to 50
+    await rowsPerPageDropdown.click();
+    await page.getByTestId('rows-per-page-option-50').click();
+    await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    // Go to Users Page
+    await settingClick(page, GlobalSettingOptions.USERS);
 
-      await expect(page.getByText('50 / page')).toBeVisible();
-    });
-  }
-);
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByText('50 / page')).toBeVisible();
+  });
+});

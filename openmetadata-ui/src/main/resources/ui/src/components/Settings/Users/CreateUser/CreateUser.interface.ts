@@ -12,12 +12,14 @@
  */
 
 import { CreateUser } from '../../../../generated/api/teams/createUser';
-import { Role } from '../../../../generated/entity/teams/role';
+
+export type CreateUserFormData = CreateUser & {
+  allowImpersonation?: boolean;
+};
 
 export interface CreateUserProps {
   isLoading?: boolean;
-  roles: Array<Role>;
-  onSave: (data: CreateUser) => void;
+  onSave: (data: CreateUserFormData) => void;
   onCancel: () => void;
   forceBot: boolean;
 }

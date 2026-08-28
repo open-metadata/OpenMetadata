@@ -32,7 +32,7 @@ import {
   permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
-} from './GlossaryUtils';
+} from './GlossaryPureUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -236,11 +236,8 @@ describe('Glossary Utils', () => {
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [
           {
-            about: '<#E::glossaryTerm::"Glossary"."Term">',
-            task: {
-              id: 17,
-              assignees: [{ id: 'user-1' }],
-            },
+            id: 'task-uuid-1',
+            assignees: [{ id: 'user-1' }],
           },
         ],
       } as never
@@ -248,7 +245,30 @@ describe('Glossary Utils', () => {
 
     expect(result).toEqual({
       permission: true,
-      taskId: 17,
+      taskId: 'task-uuid-1',
+    });
+  });
+
+  it('should deny glossary review actions when the current user is only a reviewer and not a remaining task assignee', () => {
+    const result = permissionForApproveOrReject(
+      {
+        fullyQualifiedName: '"Glossary"."Term"',
+        reviewers: [{ id: 'user-1' }],
+      } as ModifiedGlossaryTerm,
+      { id: 'user-1' } as never,
+      {
+        '<#E::glossaryTerm::"Glossary"."Term">': [
+          {
+            id: 'task-uuid-1',
+            assignees: [{ id: 'user-2' }],
+          },
+        ],
+      } as never
+    );
+
+    expect(result).toEqual({
+      permission: false,
+      taskId: 'task-uuid-1',
     });
   });
 });
@@ -385,29 +405,16 @@ describe('Glossary Utils - findAndUpdateNested', () => {
 });
 
 describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
-  it('should return columnsWidth object based on Table width', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+  it('should return fixed pixel column widths matching the classification table', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      description: 210,
-      name: 300,
-      owners: 170,
-      reviewers: 330,
-      status: 200,
-      synonyms: 330,
-    });
-  });
-
-  it('should return columnsWidth object based on Table width when not having create permission', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
-
-    expect(columnWidthObject).toEqual({
-      description: 330,
-      name: 300,
-      owners: 170,
-      reviewers: 330,
-      status: 200,
-      synonyms: 330,
+      description: 350,
+      name: 250,
+      owners: 280,
+      reviewers: 220,
+      status: 150,
+      synonyms: 220,
     });
   });
 

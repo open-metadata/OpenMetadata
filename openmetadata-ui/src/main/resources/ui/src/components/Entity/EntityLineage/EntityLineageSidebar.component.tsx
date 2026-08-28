@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
-import { FC, HTMLAttributes } from 'react';
+import { FC, HTMLAttributes, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { ReactComponent as DragIconDotted } from '../../../assets/svg/dots-six-bold.svg';
@@ -34,7 +34,11 @@ interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
 }
 
-const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
+const EntityNodeInternal: FC<EntityNodeProps> = ({
+  type,
+  label,
+  draggable,
+}) => {
   const { theme } = useApplicationStore();
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
@@ -43,6 +47,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
 
   return (
     <div className=" m-b-sm text-center">
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- drag source; no keyboard equivalent */}
       <div
         className={classNames('sidebar-icon-container', {
           'cursor-not-allowed opacity-50': !draggable,
@@ -51,6 +56,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
         onDragStart={(event) => onDragStart(event, type)}>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- nested drag source */}
         <span
           className="d-flex"
           onDragStart={(e) => {
@@ -76,8 +82,14 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   );
 };
 
+const EntityNode = memo(EntityNodeInternal);
+
 const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
   const { t } = useTranslation();
+
+  if (!show) {
+    return null;
+  }
 
   return (
     <div

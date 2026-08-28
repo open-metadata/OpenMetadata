@@ -83,6 +83,11 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -238,7 +243,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     // Collect unique spreadsheet IDs
     Set<UUID> spreadsheetIds =
         worksheets.stream()
-            .map(w -> w.getSpreadsheet())
+            .map(Worksheet::getSpreadsheet)
             .filter(Objects::nonNull)
             .map(EntityReference::getId)
             .collect(Collectors.toSet());
@@ -450,7 +455,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                   List.of(
                       Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(12, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 13))
+          .withDomains(getDomains(printer, csvRecord, 13, newWorksheet.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 14));
 
       if (processRecord) {
@@ -506,7 +511,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     }
 
     private List<EntityReference> getDataProducts(
-        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
       String dataProductsStr = csvRecord.get(fieldNumber);
       if (nullOrEmpty(dataProductsStr)) {
         return Collections.emptyList();
@@ -539,24 +544,15 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       LOG.info("WorksheetUpdater.entitySpecificUpdate called");
       compareAndUpdate(
           "worksheetId",
-          () -> {
-            recordChange("worksheetId", original.getWorksheetId(), updated.getWorksheetId());
-          });
+          () -> recordChange("worksheetId", original.getWorksheetId(), updated.getWorksheetId()));
       compareAndUpdate(
-          "index",
-          () -> {
-            recordChange("index", original.getIndex(), updated.getIndex());
-          });
+          "index", () -> recordChange("index", original.getIndex(), updated.getIndex()));
       compareAndUpdate(
           "rowCount",
-          () -> {
-            recordChange("rowCount", original.getRowCount(), updated.getRowCount());
-          });
+          () -> recordChange("rowCount", original.getRowCount(), updated.getRowCount()));
       compareAndUpdate(
           "columnCount",
-          () -> {
-            recordChange("columnCount", original.getColumnCount(), updated.getColumnCount());
-          });
+          () -> recordChange("columnCount", original.getColumnCount(), updated.getColumnCount()));
       compareAndUpdate(
           "columns",
           () -> {
@@ -570,14 +566,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
           });
       compareAndUpdate(
           "isHidden",
-          () -> {
-            recordChange("isHidden", original.getIsHidden(), updated.getIsHidden());
-          });
+          () -> recordChange("isHidden", original.getIsHidden(), updated.getIsHidden()));
       compareAndUpdate(
           "sampleData",
-          () -> {
-            recordChange("sampleData", original.getSampleData(), updated.getSampleData());
-          });
+          () -> recordChange("sampleData", original.getSampleData(), updated.getSampleData()));
     }
   }
 }

@@ -39,17 +39,17 @@ public class JwtTokenCacheManager {
     String token = logoutRequest.getToken();
     if (tokenEventMap.containsKey(token)) {
       LOG.info(
-          String.format(
-              "Log out token for user [%s] is already present in the cache",
-              logoutRequest.getUsername()));
+          "Log out token for user [{}] is already present in the cache",
+          logoutRequest.getUsername());
 
     } else {
       Date tokenExpiryDate = JWTTokenGenerator.getInstance().getTokenExpiryFromJWT(token);
       long ttlForToken = getTTLForToken(tokenExpiryDate);
       LOG.info(
-          String.format(
-              "Logout token cache set for [%s] with a TTL of [%s] seconds. Token is due expiry at [%s]",
-              logoutRequest.getUsername(), ttlForToken, tokenExpiryDate));
+          "Logout token cache set for [{}] with a TTL of [{}] seconds. Token is due expiry at [{}]",
+          logoutRequest.getUsername(),
+          ttlForToken,
+          tokenExpiryDate);
       tokenEventMap.put(token, logoutRequest, ttlForToken, TimeUnit.SECONDS);
     }
   }

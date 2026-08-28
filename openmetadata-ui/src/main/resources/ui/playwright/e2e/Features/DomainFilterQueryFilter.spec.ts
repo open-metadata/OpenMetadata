@@ -13,6 +13,7 @@
 
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { Query } from '../../../src/generated/entity/data/query';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -20,6 +21,7 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import {
   getApiContext,
   redirectToExplorePage,
@@ -36,15 +38,70 @@ import {
   verifyActiveDomainIsDefault,
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
 });
+
+const getDomainMustClauses = (queryFilter: string): unknown[] => {
+  try {
+    return get(JSON.parse(queryFilter), 'query.bool.must', []);
+  } catch {
+    return [];
+  }
+};
+
+const expectQueryVisibleForDomain = async (
+  page: Page,
+  table: TableClass,
+  domain: Domain,
+  queryText: string
+) => {
+  await table.visitEntityPage(page);
+  await selectDomainFromNavbar(page, domain.responseData);
+
+  const queryResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryFilter = url.searchParams.get('query_filter') ?? '';
+
+    if (
+      !url.pathname.endsWith('/api/v1/search/query') ||
+      url.searchParams.get('index')?.includes('query') !== true
+    ) {
+      return false;
+    }
+
+    const mustClauses = getDomainMustClauses(queryFilter);
+    const domainFqn = domain.responseData.fullyQualifiedName;
+
+    return mustClauses.some((mustClause) =>
+      get(mustClause, 'bool.should', []).some(
+        (domainClause: unknown) =>
+          get(domainClause, ['term', 'domains.fullyQualifiedName']) ===
+            domainFqn ||
+          get(domainClause, ['prefix', 'domains.fullyQualifiedName']) ===
+            `${domainFqn}.`
+      )
+    );
+  });
+  const queriesTab = page.getByTestId('table_queries');
+
+  await expect(queriesTab).toBeEnabled();
+  await queriesTab.click();
+  expect((await queryResponse).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.getByTestId('query-card').filter({ hasText: queryText })
+  ).toBeVisible();
+};
 
 test.describe('Domain Filter - User Behavior Tests', () => {
   test.slow(true);
@@ -75,6 +132,83 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await domainTable.delete(apiContext);
       await nonDomainTable.delete(apiContext);
       await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Queries should inherit every associated table domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const firstDomain = new Domain();
+    const secondDomain = new Domain();
+    const firstTable = new TableClass();
+    const secondTable = new TableClass();
+    const queryText = `select query_domain_inheritance_${Date.now()}`;
+    let queryId: string | undefined;
+
+    try {
+      await firstDomain.create(apiContext);
+      await secondDomain.create(apiContext);
+      await firstTable.create(apiContext);
+      await secondTable.create(apiContext);
+      await firstTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: firstDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+      await secondTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: secondDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+
+      const response = await apiContext.post('/api/v1/queries', {
+        data: {
+          query: queryText,
+          queryUsedIn: [
+            { id: firstTable.entityResponseData.id, type: 'table' },
+            { id: secondTable.entityResponseData.id, type: 'table' },
+          ],
+          queryDate: Date.now(),
+          service: firstTable.serviceResponseData.name,
+        },
+      });
+      queryId = (await okJson<Query>(response, 'create multi-table query')).id;
+
+      await redirectToHomePage(page);
+      await expectQueryVisibleForDomain(
+        page,
+        firstTable,
+        firstDomain,
+        queryText
+      );
+      await expectQueryVisibleForDomain(
+        page,
+        secondTable,
+        secondDomain,
+        queryText
+      );
+    } finally {
+      if (queryId) {
+        await apiContext.delete(
+          `/api/v1/queries/${queryId}?recursive=true&hardDelete=true`
+        );
+      }
+      await firstTable.delete(apiContext);
+      await secondTable.delete(apiContext);
+      await firstDomain.delete(apiContext);
+      await secondDomain.delete(apiContext);
       await afterAction();
     }
   });
@@ -261,14 +395,14 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       // Select SubDomain from navbar (requires expanding parent domain tree)
       await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
 
       const searchDomainRes6 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
+          response.url().includes('index=domain')
       );
       await page
         .getByTestId('domain-selectable-tree')
@@ -341,7 +475,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByText(domainTable.entityResponseData.fullyQualifiedName ?? '')
+        page
+          .getByTestId('group-table')
+          .getByTestId('data-name')
+          .filter({
+            hasText: domainTable.entityResponseData.fullyQualifiedName ?? '',
+          })
       ).toBeVisible();
 
       const nonDomainTableName = get(
@@ -463,14 +602,15 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Step 1: Apply Tier1 quick filter
       await page.getByTestId('search-dropdown-Tier').click();
       await waitForAllLoadersToDisappear(page);
-      const tier1Option = page.getByTestId('Tier.Tier1');
+      const tier1Option = page.getByTestId('tier.tier1');
       await tier1Option.waitFor({ state: 'visible' });
-      await tier1Option.click();
 
+      // Arm before selecting: immediate-apply fires the query on the click
       const quickFilterApplyRes = page.waitForResponse(
         '/api/v1/search/query?*index=dataAsset*'
       );
-      await page.getByTestId('update-btn').click();
+      await tier1Option.click();
+      await clickUpdateButtonIfVisible(page);
       await quickFilterApplyRes;
       await waitForAllLoadersToDisappear(page);
 
@@ -490,7 +630,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Step 3: Clear domain filter by selecting "All Domains"
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
       await page.getByTestId('all-domains-selector').click();
@@ -619,11 +759,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify the Data Products count is 2 (domainA + subDomainA)
-      const dataProductsCount = await page
-        .getByTestId('data_products')
-        .getByTestId('count')
-        .textContent();
-      expect(dataProductsCount).toBe('2');
+      await expect(
+        page.getByTestId('data_products').getByTestId('count')
+      ).toHaveText('2');
 
       // Verify domainA's data product IS visible (use first link to avoid summary panel duplicate)
       await expect(
@@ -717,7 +855,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Tier/i }).click();
       await page.click('[data-testid="search-dropdown-Tier"]');
-      await page.waitForSelector('[data-testid="drop-down-menu"]', {
+      await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
       const checkbox = page.getByTestId(`${tier}-checkbox`);
@@ -736,7 +874,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Tag/i }).click();
       await page.click('[data-testid="search-dropdown-Tag"]');
-      await page.waitForSelector('[data-testid="drop-down-menu"]', {
+      await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
       await page
@@ -756,8 +894,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const applyEntityTypeFilter = async (entityType: string) => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Entity Type/i }).click();
-      await page.click('[data-testid="search-dropdown-Entity Type"]');
-      await page.waitForSelector('[data-testid="drop-down-menu"]', {
+      await page.click('[data-testid="search-dropdown-entityType"]');
+      await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
       const checkbox = page.getByTestId(`${entityType}-checkbox`);
@@ -957,7 +1095,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     );
 
     // --- SubDomain1: Tier5 Filter ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
     );
@@ -1062,7 +1200,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     );
 
     // --- SubSubDomain: Tier5 Filter ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectVisible(
       subSubDomainTable1.entityResponseData?.fullyQualifiedName
     );
@@ -1159,7 +1297,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
 
     // --- SubDomain2: Tier5 Filter ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
     await expectNotVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
@@ -1215,7 +1353,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
 
     // --- RootDomain: Tier1 Filter (only rootTable has Tier1) ---
-    await applyTierFilter('Tier.Tier1');
+    await applyTierFilter('tier.tier1');
     await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
     await expectNotVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
@@ -1229,7 +1367,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await clearFilters();
 
     // --- RootDomain: Tier5 Filter (multiple tables have Tier5) ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
     await expectVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName

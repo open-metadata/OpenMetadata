@@ -86,7 +86,11 @@ export const getTagImageSrc = (iconURL: string): string => {
 // Map of icon names to their components
 export const ICON_MAP: Record<
   string,
-  ComponentType<{ size?: number; style?: React.CSSProperties }>
+  ComponentType<{
+    size?: number;
+    className?: string;
+    style?: React.CSSProperties;
+  }>
 > = {
   Cube01: Cube01,
   Home02: Home02,
@@ -151,57 +155,6 @@ export const createIconWithStroke = (
   );
 };
 
-interface RenderIconOptions {
-  size?: number;
-  className?: string;
-  style?: React.CSSProperties;
-  strokeWidth?: number;
-}
-
-/**
- * Utility function to render an icon from either a URL or an icon name
- * @param iconValue - Either a URL string or an icon name from ICON_MAP
- * @param options - Options for rendering the icon
- * @returns React element of the icon or image, or null if invalid
- */
-export const renderIcon = (
-  iconValue: string | undefined,
-  options: RenderIconOptions = {}
-) => {
-  const { size = 24, className = '', style = {}, strokeWidth = 1.5 } = options;
-
-  if (!iconValue) {
-    return null;
-  }
-
-  // Check if it's a known icon name
-  const IconComponent = ICON_MAP[iconValue];
-  if (IconComponent) {
-    // Return the icon component directly without wrapper
-    return <IconComponent size={size} style={{ strokeWidth, ...style }} />;
-  }
-
-  // Only render as image if it looks like a valid URL/path or has an image extension
-  if (!IMAGE_URL_PATTERN.test(iconValue)) {
-    return null;
-  }
-
-  // Render as image with error handling
-  return (
-    <img
-      alt="icon"
-      className={className}
-      src={getTagImageSrc(iconValue)}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-        ...style,
-      }}
-    />
-  );
-};
-
 /**
  * Get the default icon for an entity type
  * @param entityType - The type of entity
@@ -216,15 +169,23 @@ export const getDefaultIconForEntityType = (entityType?: string): FC => {
 };
 
 export const getEntityAvatarProps = (entity: {
-  style?: { iconURL?: string };
+  style?: { iconURL?: string; color?: string };
   entityType?: string;
-}) => ({
-  src:
-    entity.style?.iconURL?.startsWith('http') ||
-    entity.style?.iconURL?.startsWith('/')
-      ? entity.style.iconURL
-      : undefined,
-  placeholderIcon: getDefaultIconForEntityType(entity.entityType) as FC<{
-    className?: string;
-  }>,
-});
+}) => {
+  const iconURL = entity.style?.iconURL;
+  const isUrl = iconURL?.startsWith('http') || iconURL?.startsWith('/');
+  const iconComponent = iconURL ? ICON_MAP[iconURL] : undefined;
+
+  return {
+    src: isUrl ? iconURL : undefined,
+    className: 'tw:text-white',
+    style: {
+      backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
+    },
+    placeholderIcon: (isUrl
+      ? undefined
+      : iconComponent ?? getDefaultIconForEntityType(entity.entityType)) as FC<{
+      className?: string;
+    }>,
+  };
+};

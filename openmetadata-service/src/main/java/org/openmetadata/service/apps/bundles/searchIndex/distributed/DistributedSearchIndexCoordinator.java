@@ -19,13 +19,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
@@ -35,6 +38,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.Enti
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.ServerStatsRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.RestUtil;
 
 /**
  * Coordinates distributed search index jobs across multiple OpenMetadata server instances.
@@ -82,13 +88,33 @@ public class DistributedSearchIndexCoordinator {
    */
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
 
+  /** Throttle interval for touching job.updatedAt from partition completions */
+  private static final long JOB_TOUCH_INTERVAL_MS = TimeUnit.MINUTES.toMillis(2);
+
   private final CollectionDAO collectionDAO;
   private final PartitionCalculator partitionCalculator;
   private final String serverId;
   private EntityCompletionTracker entityTracker;
+  private final AtomicLong lastJobTouchTime = new AtomicLong(0);
 
   /** Monotonic counter to guarantee unique claimedAt values across concurrent worker threads. */
   private final AtomicLong claimCounter = new AtomicLong(0);
+
+  /**
+   * Per-job, per-entity precomputed partition-boundary cursors. Replaces the per-
+   * PartitionWorker call to {@code EntityRepository.getCursorAtOffset(filter,
+   * partitionStart)} which underneath uses SQL {@code OFFSET partitionStart} —
+   * O(partitionStart) per worker, total O(N²) across all partitions. We now walk each
+   * entity table once via keyset pagination at job start, recording the cursor at every
+   * partition boundary. Workers read in O(1) from this map.
+   *
+   * <p>Key: jobId. Value: map of entityType → (rangeStart → encoded keyset cursor).
+   * Scoped by jobId so cursors precomputed for an earlier job on this server cannot
+   * falsely match a later job that was initialized on another server (which would skip
+   * or duplicate rows).
+   */
+  private final ConcurrentHashMap<UUID, Map<String, Map<Long, String>>> partitionStartCursors =
+      new ConcurrentHashMap<>();
 
   public DistributedSearchIndexCoordinator(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
@@ -190,6 +216,144 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
+   * Look up the precomputed keyset cursor at a partition's start. Returns null when the
+   * cache has not been populated for this jobId+entityType (e.g., this server picked up
+   * a partition created by another server, or precomputation failed) — callers fall back
+   * to the slower OFFSET-based EntityRepository.getCursorAtOffset path.
+   */
+  public String getPartitionStartCursor(UUID jobId, String entityType, long rangeStart) {
+    if (rangeStart <= 0 || jobId == null) {
+      return null;
+    }
+    Map<String, Map<Long, String>> jobCache = partitionStartCursors.get(jobId);
+    if (jobCache == null) {
+      return null;
+    }
+    Map<Long, String> entityCursors = jobCache.get(entityType);
+    if (entityCursors == null) {
+      return null;
+    }
+    return entityCursors.get(rangeStart);
+  }
+
+  /**
+   * Walk each entity type's table once via keyset pagination, recording the cursor at
+   * every partition's rangeStart. Time-series entities are skipped — their PartitionWorker
+   * uses a synthetic offset cursor that doesn't require a real keyset lookup.
+   */
+  private void precomputePartitionStartCursors(UUID jobId, List<SearchIndexPartition> partitions) {
+    Map<String, List<SearchIndexPartition>> byEntity =
+        partitions.stream()
+            .filter(p -> p.getEntityType() != null)
+            .filter(p -> !SearchIndexEntityTypes.isTimeSeriesEntity(p.getEntityType()))
+            .collect(Collectors.groupingBy(SearchIndexPartition::getEntityType));
+
+    Map<String, Map<Long, String>> jobCache = new HashMap<>();
+    for (Map.Entry<String, List<SearchIndexPartition>> e : byEntity.entrySet()) {
+      try {
+        jobCache.put(e.getKey(), walkBoundaries(e.getKey(), e.getValue()));
+      } catch (Exception ex) {
+        // Workers fall back to OFFSET path; don't block job initialization.
+        LOG.warn(
+            "Failed to precompute partition start cursors for entity {}; workers will fall back to OFFSET path",
+            e.getKey(),
+            ex);
+      }
+    }
+    partitionStartCursors.put(jobId, jobCache);
+  }
+
+  private Map<Long, String> walkBoundaries(
+      String entityType, List<SearchIndexPartition> entityPartitions) {
+    List<Long> sortedTargets = sortedDistinctTargets(entityPartitions);
+    Map<Long, String> result = new HashMap<>();
+    if (sortedTargets.isEmpty()) {
+      return result;
+    }
+    EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+    walkAndRecord(repo, sortedTargets, result);
+    LOG.debug("Precomputed {} boundary cursors for entity {}", result.size(), entityType);
+    return result;
+  }
+
+  private static List<Long> sortedDistinctTargets(List<SearchIndexPartition> partitions) {
+    return partitions.stream()
+        .map(SearchIndexPartition::getRangeStart)
+        .filter(r -> r > 0)
+        .sorted()
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Walk forward via keyset pagination (NOT SQL OFFSET), advancing through batches and
+   * recording the encoded cursor at each {@code sortedTargets} offset. First call uses
+   * empty-string cursors to match {@code parseCursorMap("")} semantics — using NULL would
+   * make the {@code name > :afterName} predicate evaluate to NULL/false and return zero
+   * rows.
+   */
+  private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
+      EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
+    ListFilter filter = repo.getReindexFilter();
+    String afterName = "";
+    String afterId = "";
+    long currentOffset = 0;
+    int targetIdx = 0;
+    long nextTarget = sortedTargets.get(targetIdx);
+    final int batchSize = 10_000;
+
+    while (targetIdx < sortedTargets.size()) {
+      long need = nextTarget - currentOffset;
+      if (need <= 0) {
+        // Walked past this target — record the most recent cursor as best-effort.
+        // Unreachable with uniform partition sizes (fetch <= need), but defensive: if a
+        // future caller passes overlapping or out-of-order targets we still emit a
+        // boundary instead of silently dropping the partition.
+        if (!afterName.isEmpty()) {
+          result.put(nextTarget, encodeBoundaryCursor(afterName, afterId));
+        }
+        targetIdx++;
+        nextTarget = (targetIdx < sortedTargets.size()) ? sortedTargets.get(targetIdx) : -1;
+        continue;
+      }
+      int fetch = (int) Math.min(need, batchSize);
+      List<String> batch = repo.getDao().listAfter(filter, fetch, afterName, afterId);
+      if (batch.isEmpty()) {
+        break;
+      }
+      T lastEntity = repo.getEntityClass().cast(deserializeLast(repo, batch));
+      currentOffset += batch.size();
+      afterName =
+          org.openmetadata.service.util.FullyQualifiedName.unquoteName(lastEntity.getName());
+      afterId = lastEntity.getId() == null ? "" : lastEntity.getId().toString();
+
+      if (currentOffset >= nextTarget) {
+        result.put(nextTarget, RestUtil.encodeCursor(repo.getCursorValue(lastEntity)));
+        targetIdx++;
+        nextTarget = (targetIdx < sortedTargets.size()) ? sortedTargets.get(targetIdx) : -1;
+      }
+      if (batch.size() < fetch) {
+        break; // entity exhausted
+      }
+    }
+  }
+
+  private <T extends org.openmetadata.schema.EntityInterface> Object deserializeLast(
+      EntityRepository<T> repo, List<String> batch) {
+    return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
+  }
+
+  private static String encodeBoundaryCursor(String name, String id) {
+    // Used only on the unreachable defensive branch in walkAndRecord — we've already
+    // advanced past the entity so we don't have the live object to call
+    // repo.getCursorValue() on. Build the {name,id} cursor map manually instead.
+    Map<String, String> cursorMap = new HashMap<>();
+    cursorMap.put("name", name);
+    cursorMap.put("id", id);
+    return RestUtil.encodeCursor(JsonUtils.pojoToJson(cursorMap));
+  }
+
+  /**
    * Initialize partitions for a job.
    *
    * @param jobId The job ID
@@ -228,6 +392,11 @@ public class DistributedSearchIndexCoordinator {
           partitions.size(),
           jobId,
           entityTypes.size());
+
+      // Precompute keyset cursors at every partition boundary in a single keyset walk per
+      // entity type. Replaces per-worker EntityRepository.getCursorAtOffset(SQL OFFSET) calls
+      // — O(N²) total scan cost across all partitions — with one O(N) keyset traversal here.
+      precomputePartitionStartCursors(jobId, partitions);
     }
 
     // Calculate staggered claimableAt timestamps for partitions
@@ -420,6 +589,19 @@ public class DistributedSearchIndexCoordinator {
    * @param failedCount Number of failed entities
    */
   public void completePartition(UUID partitionId, long successCount, long failedCount) {
+    completePartition(partitionId, successCount, failedCount, 0);
+  }
+
+  /**
+   * Mark a partition as completed.
+   *
+   * @param partitionId The partition ID
+   * @param successCount Number of successfully indexed entities
+   * @param failedCount Number of failed entities
+   * @param warningCount Number of skipped warning entities
+   */
+  public void completePartition(
+      UUID partitionId, long successCount, long failedCount, long warningCount) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
 
     SearchIndexPartitionRecord record = partitionDAO.findById(partitionId.toString());
@@ -429,27 +611,48 @@ public class DistributedSearchIndexCoordinator {
     }
 
     long now = System.currentTimeMillis();
-    partitionDAO.update(
-        partitionId.toString(),
-        PartitionStatus.COMPLETED.name(),
-        record.rangeEnd(),
-        successCount + failedCount,
-        successCount,
-        failedCount,
-        record.assignedServer(),
-        record.claimedAt(),
-        record.startedAt(),
-        now,
-        now,
-        record.lastError(),
-        record.retryCount());
+    // Status-guarded write: a worker on another server might be the one calling this
+    // moments after requestStop already wrote CANCELLED via cancelInFlightPartitions.
+    // updateIfProcessing returns 0 when the row is no longer PROCESSING, leaving the
+    // CANCELLED state authoritative.
+    int updated =
+        partitionDAO.updateIfProcessing(
+            partitionId.toString(),
+            PartitionStatus.COMPLETED.name(),
+            record.rangeEnd(),
+            successCount + failedCount + warningCount,
+            successCount,
+            failedCount,
+            record.assignedServer(),
+            record.claimedAt(),
+            record.startedAt(),
+            now,
+            now,
+            record.lastError(),
+            record.retryCount());
+
+    if (updated == 0) {
+      LOG.info(
+          "Skipped completion of partition {} (entity {}) — row no longer PROCESSING (likely "
+              + "cancelled by Stop); leaving authoritative state intact.",
+          partitionId,
+          record.entityType());
+      return;
+    }
 
     LOG.info(
-        "Completed partition {} for entity type {} (success: {}, failed: {})",
+        "Completed partition {} for entity type {} (success: {}, failed: {}, warnings: {})",
         partitionId,
         record.entityType(),
         successCount,
-        failedCount);
+        failedCount,
+        warningCount);
+
+    // Keep job.updatedAt fresh so OrphanJobMonitor doesn't mark it as orphaned.
+    // This is especially important after recovery when no coordinator lock-refresh loop is running.
+    // Throttled to avoid excessive DB writes — ABANDONED_LOCK_THRESHOLD is 10 min, so every 2 min
+    // is safe.
+    touchJobThrottled(record.jobId(), now);
 
     // Record partition completion for per-entity index promotion
     if (entityTracker != null) {
@@ -464,6 +667,18 @@ public class DistributedSearchIndexCoordinator {
 
     // Check if job should be marked as complete
     checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
+  }
+
+  private void touchJobThrottled(String jobId, long now) {
+    long last = lastJobTouchTime.get();
+    if (now - last < JOB_TOUCH_INTERVAL_MS || !lastJobTouchTime.compareAndSet(last, now)) {
+      return;
+    }
+    try {
+      collectionDAO.searchIndexJobDAO().touchJob(jobId, now);
+    } catch (Exception e) {
+      LOG.debug("Failed to touch job updatedAt for {}: {}", jobId, e.getMessage());
+    }
   }
 
   /**
@@ -483,24 +698,33 @@ public class DistributedSearchIndexCoordinator {
 
     long now = System.currentTimeMillis();
 
-    // Check if we should retry
+    // Status-guarded write — if requestStop already moved this row to CANCELLED,
+    // updateIfProcessing returns 0 and we leave the cancellation authoritative
+    // instead of resurrecting the row to PENDING (retry) or FAILED (terminal).
     if (record.retryCount() < MAX_PARTITION_RETRIES) {
-      // Reset to pending for retry
-      partitionDAO.update(
-          partitionId.toString(),
-          PartitionStatus.PENDING.name(),
-          record.cursor(),
-          record.processedCount(),
-          record.successCount(),
-          record.failedCount(),
-          null,
-          null,
-          null,
-          null,
-          now,
-          errorMessage,
-          record.retryCount() + 1);
-
+      int updated =
+          partitionDAO.updateIfProcessing(
+              partitionId.toString(),
+              PartitionStatus.PENDING.name(),
+              record.cursor(),
+              record.processedCount(),
+              record.successCount(),
+              record.failedCount(),
+              null,
+              null,
+              null,
+              null,
+              now,
+              errorMessage,
+              record.retryCount() + 1);
+      if (updated == 0) {
+        LOG.info(
+            "Skipped retry-requeue of partition {} (entity {}) — row no longer PROCESSING "
+                + "(likely cancelled by Stop); leaving authoritative state intact.",
+            partitionId,
+            record.entityType());
+        return;
+      }
       LOG.warn(
           "Partition {} failed, queued for retry ({}/{}): {}",
           partitionId,
@@ -508,21 +732,29 @@ public class DistributedSearchIndexCoordinator {
           MAX_PARTITION_RETRIES,
           errorMessage);
     } else {
-      // Mark as permanently failed
-      partitionDAO.update(
-          partitionId.toString(),
-          PartitionStatus.FAILED.name(),
-          record.cursor(),
-          record.processedCount(),
-          record.successCount(),
-          record.failedCount(),
-          record.assignedServer(),
-          record.claimedAt(),
-          record.startedAt(),
-          now,
-          now,
-          errorMessage,
-          record.retryCount());
+      int updated =
+          partitionDAO.updateIfProcessing(
+              partitionId.toString(),
+              PartitionStatus.FAILED.name(),
+              record.cursor(),
+              record.processedCount(),
+              record.successCount(),
+              record.failedCount(),
+              record.assignedServer(),
+              record.claimedAt(),
+              record.startedAt(),
+              now,
+              now,
+              errorMessage,
+              record.retryCount());
+      if (updated == 0) {
+        LOG.info(
+            "Skipped terminal-failure of partition {} (entity {}) — row no longer PROCESSING "
+                + "(likely cancelled by Stop); leaving authoritative state intact.",
+            partitionId,
+            record.entityType());
+        return;
+      }
 
       LOG.error(
           "Partition {} permanently failed after {} retries: {}",
@@ -591,19 +823,24 @@ public class DistributedSearchIndexCoordinator {
       return;
     }
 
+    long now = System.currentTimeMillis();
     SearchIndexJob stopping =
-        job.toBuilder()
-            .status(IndexJobStatus.STOPPING)
-            .updatedAt(System.currentTimeMillis())
-            .build();
+        job.toBuilder().status(IndexJobStatus.STOPPING).updatedAt(now).build();
 
     updateJob(jobDAO, stopping);
 
-    // Cancel all pending partitions
+    // Cancel both PENDING and PROCESSING partitions. The previous cancelPendingPartitions
+    // left PROCESSING rows orphaned: workerExecutor.shutdownNow() killed the worker threads
+    // but did not update partition status, so checkAndUpdateJobCompletion (which requires
+    // processing.isEmpty()) never flipped STOPPING → STOPPED. The strategy's monitor loop
+    // kept polling forever and the UI showed "Running" with a ticking timer.
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-    partitionDAO.cancelPendingPartitions(jobId.toString());
+    int cancelled = partitionDAO.cancelInFlightPartitions(jobId.toString(), now);
+    LOG.info("Requested stop for job {} ({} in-flight partitions cancelled)", jobId, cancelled);
 
-    LOG.info("Requested stop for job {}", jobId);
+    // Drive STOPPING → STOPPED immediately so monitorDistributedJob exits without
+    // waiting for the next poll tick.
+    checkAndUpdateJobCompletion(jobId);
   }
 
   /**
@@ -638,6 +875,15 @@ public class DistributedSearchIndexCoordinator {
     // Get per-entity stats
     List<EntityStatsRecord> entityStatsList = partitionDAO.getEntityStats(jobId.toString());
 
+    // Per-entity timing comes from search_index_server_stats (the per-stage tracker), keyed
+    // by entityType. Lookup once into a map to avoid an O(N*M) match in the loop below.
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> entityTimingByType =
+        new HashMap<>();
+    for (CollectionDAO.SearchIndexServerStatsDAO.EntityStats e :
+        collectionDAO.searchIndexServerStatsDAO().getStatsByEntityType(jobId.toString())) {
+      entityTimingByType.put(e.entityType(), e);
+    }
+
     Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap = new HashMap<>();
     // Calculate totals from entity stats for consistency (entity stats are always accurate)
     long totalProcessed = 0;
@@ -645,21 +891,45 @@ public class DistributedSearchIndexCoordinator {
     long totalFailed = 0;
 
     for (EntityStatsRecord es : entityStatsList) {
+      CollectionDAO.SearchIndexServerStatsDAO.EntityStats timing =
+          entityTimingByType.get(es.entityType());
+      long partitionWarnings =
+          Math.max(0, es.processedRecords() - es.successRecords() - es.failedRecords());
+      long timingWarnings = timing != null ? timing.readerWarnings() : 0;
+      long maxWarnings = Math.max(0, es.totalRecords() - es.successRecords() - es.failedRecords());
+      long entityWarnings = Math.min(Math.max(partitionWarnings, timingWarnings), maxWarnings);
+      long entityProcessed =
+          Math.max(
+              es.processedRecords(), es.successRecords() + es.failedRecords() + entityWarnings);
+      entityProcessed = Math.min(es.totalRecords(), entityProcessed);
       entityStatsMap.put(
           es.entityType(),
           SearchIndexJob.EntityTypeStats.builder()
               .entityType(es.entityType())
               .totalRecords(es.totalRecords())
-              .processedRecords(es.processedRecords())
+              .processedRecords(entityProcessed)
               .successRecords(es.successRecords())
               .failedRecords(es.failedRecords())
+              .warningRecords(entityWarnings)
               .totalPartitions(es.totalPartitions())
               .completedPartitions(es.completedPartitions())
               .failedPartitions(es.failedPartitions())
+              .readerTimeMs(timing != null ? timing.readerTimeMs() : 0)
+              .processTimeMs(timing != null ? timing.processTimeMs() : 0)
+              .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
+              .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
-      totalProcessed += es.processedRecords();
+      totalProcessed += entityProcessed;
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
+    }
+
+    // Per-server timing comes from search_index_server_stats grouped by serverId.
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats> serverTimingById =
+        new HashMap<>();
+    for (CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats s :
+        collectionDAO.searchIndexServerStatsDAO().getStatsByServer(jobId.toString())) {
+      serverTimingById.put(s.serverId(), s);
     }
 
     // Get per-server stats for distributed visibility
@@ -673,6 +943,8 @@ public class DistributedSearchIndexCoordinator {
           ss.processedRecords(),
           ss.successRecords(),
           ss.failedRecords());
+      CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats timing =
+          serverTimingById.get(ss.serverId());
       serverStatsMap.put(
           ss.serverId(),
           SearchIndexJob.ServerStats.builder()
@@ -683,6 +955,10 @@ public class DistributedSearchIndexCoordinator {
               .totalPartitions(ss.totalPartitions())
               .completedPartitions(ss.completedPartitions())
               .processingPartitions(ss.processingPartitions())
+              .readerTimeMs(timing != null ? timing.readerTimeMs() : 0)
+              .processTimeMs(timing != null ? timing.processTimeMs() : 0)
+              .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
+              .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
     }
 
@@ -740,44 +1016,99 @@ public class DistributedSearchIndexCoordinator {
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name());
     List<SearchIndexPartitionRecord> processing =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
-    List<SearchIndexPartitionRecord> failed =
-        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name());
-    List<SearchIndexPartitionRecord> cancelled =
-        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name());
-
     if (pending.isEmpty() && processing.isEmpty()) {
-      // All partitions are done
-      IndexJobStatus newStatus;
-      if (job.getStatus() == IndexJobStatus.STOPPING) {
-        newStatus = IndexJobStatus.STOPPED;
-      } else if (!failed.isEmpty() || !cancelled.isEmpty()) {
-        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
-      } else {
-        newStatus = IndexJobStatus.COMPLETED;
-      }
+      // All partitions finished. A stop request terminates immediately; every other job hands off
+      // to
+      // the promotion phase instead of completing. PROMOTING is non-terminal, so the coordinator
+      // and
+      // its pod stay alive until markPromotionComplete() runs after every staged index is promoted.
+      // This closes the race where the pod was torn down on COMPLETED mid-promotion, leaving the
+      // tail
+      // of entities on stale pre-reindex indexes (fielddata/nested mapping errors after an
+      // upgrade).
+      boolean stopping = job.getStatus() == IndexJobStatus.STOPPING;
+      IndexJobStatus newStatus = stopping ? IndexJobStatus.STOPPED : IndexJobStatus.PROMOTING;
 
-      // Get final aggregated stats
-      AggregatedStatsRecord stats = partitionDAO.getAggregatedStats(jobId.toString());
+      writeJobStatusWithStats(jobDAO, job, newStatus, stopping);
 
-      SearchIndexJob completed =
-          job.toBuilder()
-              .status(newStatus)
-              .processedRecords(stats != null ? stats.processedRecords() : 0)
-              .successRecords(stats != null ? stats.successRecords() : 0)
-              .failedRecords(stats != null ? stats.failedRecords() : 0)
-              .completedAt(System.currentTimeMillis())
-              .updatedAt(System.currentTimeMillis())
-              .build();
+      // Partitions are all terminal now, so the precomputed cursor cache can never be re-claimed;
+      // drop it to avoid leaking ~one entry per reindex run for the process lifetime.
+      partitionStartCursors.remove(jobId);
 
-      updateJob(jobDAO, completed);
-
-      LOG.info(
-          "Job {} completed with status {} (success: {}, failed: {})",
-          jobId,
-          newStatus,
-          completed.getSuccessRecords(),
-          completed.getFailedRecords());
+      LOG.info("Job {} finished processing, status -> {}", jobId, newStatus);
     }
+  }
+
+  /**
+   * Flip a job from PROMOTING to its terminal status once the strategy has finished promoting every
+   * staged index: COMPLETED when everything promoted cleanly, COMPLETED_WITH_ERRORS when a partition
+   * failed/was cancelled or some staged index could not be promoted. No-op unless the job is still
+   * PROMOTING, so it is idempotent and safe if another server already terminalized the job.
+   */
+  public void markPromotionComplete(UUID jobId, boolean allPromoted) {
+    SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+    SearchIndexJobRecord jobRecord = jobDAO.findById(jobId.toString());
+    if (jobRecord == null || recordToJob(jobRecord).getStatus() != IndexJobStatus.PROMOTING) {
+      return;
+    }
+
+    IndexJobStatus finalStatus =
+        allPromoted && !hasFailedOrCancelledPartitions(jobId)
+            ? IndexJobStatus.COMPLETED
+            : IndexJobStatus.COMPLETED_WITH_ERRORS;
+
+    writeJobStatusWithStats(jobDAO, recordToJob(jobRecord), finalStatus, true);
+    LOG.info(
+        "Job {} promotion finished, status -> {} (allPromoted={})",
+        jobId,
+        finalStatus,
+        allPromoted);
+  }
+
+  /**
+   * Terminalize a finished-but-orphaned job (RUNNING with all partitions terminal, or stuck
+   * PROMOTING) as COMPLETED_WITH_ERRORS: it processed its data, but a cold recovery cannot confirm
+   * its staged indexes were promoted, so the run is not treated as a clean rebuild. No-op if the job
+   * is already terminal.
+   */
+  public void markOrphanedJobCompletedWithErrors(UUID jobId) {
+    SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+    SearchIndexJobRecord jobRecord = jobDAO.findById(jobId.toString());
+    if (jobRecord == null || recordToJob(jobRecord).isTerminal()) {
+      return;
+    }
+    writeJobStatusWithStats(
+        jobDAO, recordToJob(jobRecord), IndexJobStatus.COMPLETED_WITH_ERRORS, true);
+    partitionStartCursors.remove(jobId);
+    LOG.info(
+        "Job {} terminalized as COMPLETED_WITH_ERRORS (orphaned before promotion was confirmed)",
+        jobId);
+  }
+
+  private boolean hasFailedOrCancelledPartitions(UUID jobId) {
+    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    return !partitionDAO
+            .findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name())
+            .isEmpty()
+        || !partitionDAO
+            .findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name())
+            .isEmpty();
+  }
+
+  private void writeJobStatusWithStats(
+      SearchIndexJobDAO jobDAO, SearchIndexJob job, IndexJobStatus status, boolean terminal) {
+    AggregatedStatsRecord stats =
+        collectionDAO.searchIndexPartitionDAO().getAggregatedStats(job.getId().toString());
+    SearchIndexJob updated =
+        job.toBuilder()
+            .status(status)
+            .processedRecords(stats != null ? stats.processedRecords() : 0)
+            .successRecords(stats != null ? stats.successRecords() : 0)
+            .failedRecords(stats != null ? stats.failedRecords() : 0)
+            .completedAt(terminal ? System.currentTimeMillis() : null)
+            .updatedAt(System.currentTimeMillis())
+            .build();
+    updateJob(jobDAO, updated);
   }
 
   /**
@@ -1000,6 +1331,10 @@ public class DistributedSearchIndexCoordinator {
 
     // Partitions are deleted via CASCADE
     jobDAO.delete(jobId.toString());
+    // Defensive: checkAndUpdateJobCompletion already evicts on terminal transition,
+    // but a job can be inserted, terminate, and then be deleted across server restarts —
+    // remove here too so this path is self-sufficient.
+    partitionStartCursors.remove(jobId);
 
     LOG.info("Deleted job {} and its partitions", jobId);
   }

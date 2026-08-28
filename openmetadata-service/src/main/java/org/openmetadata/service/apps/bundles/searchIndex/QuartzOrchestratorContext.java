@@ -92,7 +92,7 @@ public class QuartzOrchestratorContext implements OrchestratorContext {
   }
 
   @Override
-  public ReindexingJobContext createReindexingContext(boolean distributed) {
-    return new QuartzJobContext(ctx, app, distributed);
+  public ReindexingJobContext createReindexingContext() {
+    return new QuartzJobContext(ctx, app);
   }
 }

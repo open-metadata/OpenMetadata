@@ -28,6 +28,9 @@
       "oneOf": [
         {
           "$ref": "matillion/matillionETL.json"
+        },
+        {
+          "$ref": "matillion/matillionDPC.json"
         }
       ]
     },
@@ -35,6 +38,14 @@
       "description": "Regex exclude pipelines.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default Pipeline Filter Pattern"
+    },
+    "lineageLookbackDays": {
+      "title": "Lineage Lookback Days",
+      "description": "Number of days to look back when fetching lineage events from Matillion DPC OpenLineage API.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 365
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

@@ -10,39 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ENTITY_PATH } from '../../constants/constants';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../utils/date-time/DateTimeUtils';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityOverview,
-  hasLineageTab,
-} from '../../utils/EntityUtils';
-
-import { AxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
-import { ENTITY_PATH } from '../../constants/constants';
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
+import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../utils/EntityLink';
+import { hasLineageTab } from '../../utils/EntityPermissionUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
+import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
@@ -64,6 +63,7 @@ import {
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
   entityType,
+  summaryEntityType = entityType,
   isLoading = false,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   onOwnerUpdate,
@@ -173,6 +173,44 @@ export const DataAssetSummaryPanelV1 = ({
     [entityType]
   );
 
+  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+
+  const {
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams,
+  } = useMemo(() => {
+    if (!isColumnEntity) {
+      return {
+        changeSummaryEntityType: entityType,
+        changeSummaryEntityId: dataAsset.id ?? '',
+        changeSummaryParams: { fieldPrefix: 'description', limit: 1 },
+      };
+    }
+    const columnData = dataAsset as typeof dataAsset & {
+      table?: { id?: string };
+    };
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      dataAsset.fullyQualifiedName ?? '',
+      false
+    );
+
+    return {
+      changeSummaryEntityType: EntityType.TABLE,
+      changeSummaryEntityId: columnData.table?.id ?? '',
+      changeSummaryParams: {
+        fieldPrefix: `columns.${columnName}.description`,
+        limit: 1,
+      },
+    };
+  }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
+
+  const { changeSummary } = useChangeSummary(
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams
+  );
+
   const fetchIncidentCount = useCallback(async () => {
     if (
       dataAsset?.fullyQualifiedName &&
@@ -261,7 +299,9 @@ export const DataAssetSummaryPanelV1 = ({
   };
   // Columns inherit owners, domains, tier, and data products from their parent table
   // These fields should not be editable on columns
-  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+  // Extension entities can reuse a built-in summary layout, but their update APIs
+  // are not part of the base entity patch map. Keep mapped layouts read-only.
+  const canEditSummary = summaryEntityType === entityType;
 
   const {
     editDomainPermission,
@@ -275,34 +315,43 @@ export const DataAssetSummaryPanelV1 = ({
     () => ({
       // Columns inherit domain from table - not editable
       editDomainPermission:
+        canEditSummary &&
         !isColumnEntity &&
         entityPermissions?.EditAll &&
         !dataAsset.deleted &&
         panelPath !== ENTITY_PATH.dataProductsTab,
       editDescriptionPermission:
+        canEditSummary &&
         (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
         !dataAsset.deleted,
       editGlossaryTermsPermission:
+        canEditSummary &&
         (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
         !dataAsset.deleted,
       // Columns inherit owners from table - not editable
       editOwnerPermission:
+        canEditSummary &&
         !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
         !dataAsset.deleted,
       // Columns inherit tier from table - not editable
       editTierPermission:
+        canEditSummary &&
         !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
         !dataAsset.deleted,
       editTagsPermission:
+        canEditSummary &&
         (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
         !dataAsset.deleted,
       // Columns inherit data products from table - not editable
       editDataProductPermission:
-        !isColumnEntity && entityPermissions?.EditAll && !dataAsset.deleted,
+        canEditSummary &&
+        !isColumnEntity &&
+        entityPermissions?.EditAll &&
+        !dataAsset.deleted,
     }),
-    [entityPermissions, dataAsset, isColumnEntity]
+    [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]
   );
 
   const init = useCallback(async () => {
@@ -368,7 +417,11 @@ export const DataAssetSummaryPanelV1 = ({
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
-    switch (entityType) {
+    const descriptionChangeSummaryEntry = isColumnEntity
+      ? changeSummary?.[changeSummaryParams.fieldPrefix]
+      : changeSummary?.description;
+
+    switch (summaryEntityType) {
       case EntityType.API_COLLECTION:
       case EntityType.API_ENDPOINT:
       case EntityType.API_SERVICE:
@@ -412,6 +465,9 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.WORKFLOW_DEFINITION:
       case EntityType.DATA_CONTRACT:
       case EntityType.QUERY:
+      case EntityType.AI_APPLICATION:
+      case EntityType.LLM_MODEL:
+      case EntityType.MCP_SERVER:
       case EntityType.APPLICATION:
       case EntityType.ALERT:
       case EntityType.EVENT_SUBSCRIPTION:
@@ -463,6 +519,7 @@ export const DataAssetSummaryPanelV1 = ({
               />
             )}
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -579,6 +636,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <span className="d-none" data-testid="KnowledgePageSummary" />
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -626,6 +684,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -712,6 +771,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -759,11 +819,13 @@ export const DataAssetSummaryPanelV1 = ({
     }
   }, [
     entityType,
+    summaryEntityType,
     dataAsset,
     entityInfo,
     componentType,
     statusCounts,
     entityPermissions,
+    changeSummary,
   ]);
 
   useEffect(() => {

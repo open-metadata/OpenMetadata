@@ -13,6 +13,7 @@
 
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 
 export interface DescriptionProps {
   entityName?: string;
@@ -33,4 +34,9 @@ export interface DescriptionProps {
   className?: string;
   showSuggestions?: boolean;
   isDescriptionExpanded?: boolean;
+  /**
+   * Description change attribution ("Authored by …") — passed explicitly
+   * by pages without a GenericProvider; context supplies it otherwise.
+   */
+  changeSummaryEntry?: ChangeSummaryEntry;
 }

@@ -12,16 +12,15 @@
  */
 
 import Icon from '@ant-design/icons';
-import i18next from 'i18next';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
-import { ThreadType } from '../../generated/api/feed/createThread';
+import i18n from '../../utils/i18next/LocalUtil';
 
 export const tabsInfo = [
   {
-    name: i18next.t('label.task-plural'),
+    name: i18n.t('label.task-plural'),
     key: NotificationTabsKey.TASK,
     icon: (
       <Icon
@@ -33,7 +32,7 @@ export const tabsInfo = [
     ),
   },
   {
-    name: i18next.t('label.mention-plural'),
+    name: i18n.t('label.mention-plural'),
     key: NotificationTabsKey.CONVERSATION,
     icon: (
       <Icon
@@ -46,10 +45,13 @@ export const tabsInfo = [
   },
 ];
 
-export const getFilters = (activeTab: ThreadType) => ({
-  threadType: activeTab === ThreadType.Task ? activeTab : undefined,
+export const getFilters = (activeTab: NotificationTabsKey) => ({
+  threadType:
+    activeTab === NotificationTabsKey.TASK
+      ? NotificationTabsKey.TASK
+      : undefined,
   feedFilter:
-    activeTab === ThreadType.Task
+    activeTab === NotificationTabsKey.TASK
       ? FeedFilter.ASSIGNED_TO
       : FeedFilter.MENTIONS,
 });

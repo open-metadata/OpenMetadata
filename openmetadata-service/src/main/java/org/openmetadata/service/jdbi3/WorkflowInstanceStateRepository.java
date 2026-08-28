@@ -18,7 +18,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceStateResource;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -183,31 +182,9 @@ public class WorkflowInstanceStateRepository
    */
   public void markInstanceStatesAsFailed(UUID workflowInstanceId, String reason) {
     try {
-      // Get workflow definition to query states
-      WorkflowInstanceRepository workflowInstanceRepository =
-          (WorkflowInstanceRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-      WorkflowInstance instance =
-          JsonUtils.readValue(
-              workflowInstanceRepository.getTimeSeriesDao().getById(workflowInstanceId),
-              WorkflowInstance.class);
+      List<WorkflowInstanceState> instanceStates = listAllStatesForInstance(workflowInstanceId);
 
-      WorkflowDefinitionRepository workflowDefinitionRepository =
-          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-      WorkflowDefinition workflowDefinition =
-          workflowDefinitionRepository.get(
-              null, instance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
-
-      // Query all states for this workflow instance
-      long endTs = System.currentTimeMillis();
-      long startTs = endTs - (7L * 24 * 60 * 60 * 1000);
-
-      ResultList<WorkflowInstanceState> instanceStates =
-          listWorkflowInstanceStateForInstance(
-              workflowDefinition.getName(), workflowInstanceId, null, startTs, endTs, 1000, false);
-
-      // Mark all states as FAILURE
-      for (WorkflowInstanceState state : instanceStates.getData()) {
+      for (WorkflowInstanceState state : instanceStates) {
         WorkflowInstanceState updatedState =
             state.withStatus(WorkflowInstance.WorkflowStatus.FAILURE).withException(reason);
 
@@ -220,6 +197,43 @@ public class WorkflowInstanceStateRepository
           workflowInstanceId,
           e.getMessage());
     }
+  }
+
+  /**
+   * Marks all states of a workflow instance as SUPERSEDED when a newer run replaces it. The
+   * exception field is left untouched — supersede is not a failure, so the reason lives on the
+   * WorkflowInstance's variables map, not in an exception field.
+   */
+  public void markInstanceStatesAsSuperseded(UUID workflowInstanceId, String reason) {
+    try {
+      List<WorkflowInstanceState> instanceStates = listAllStatesForInstance(workflowInstanceId);
+
+      for (WorkflowInstanceState state : instanceStates) {
+        WorkflowInstanceState updatedState =
+            state.withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED);
+
+        getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
+      }
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark states as superseded for instance {} (reason={}): {}",
+          workflowInstanceId,
+          reason,
+          e.getMessage());
+    }
+  }
+
+  public List<WorkflowInstanceState> listAllStatesForInstance(UUID workflowInstanceId) {
+    List<WorkflowInstanceState> states = new ArrayList<>();
+    List<String> jsons =
+        ((CollectionDAO.WorkflowInstanceStateTimeSeriesDAO) timeSeriesDao)
+            .listAllStatesForInstance(workflowInstanceId.toString());
+
+    for (String json : jsons) {
+      states.add(JsonUtils.readValue(json, WorkflowInstanceState.class));
+    }
+    return states;
   }
 
   private String buildWorkflowInstanceFqn(

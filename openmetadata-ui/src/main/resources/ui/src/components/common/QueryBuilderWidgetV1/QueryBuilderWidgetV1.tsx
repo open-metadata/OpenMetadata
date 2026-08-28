@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,46 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
+import {
+  Alert,
+  Card,
+  Divider,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Actions,
   Builder,
+  BuilderProps,
+  ButtonProps,
   Config,
+  ConfigContext,
   ImmutableTree,
   JsonTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
+} from '@react-awesome-query-builder/ui';
+import '@react-awesome-query-builder/ui/css/styles.css';
+import { InfoCircle } from '@untitledui/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty, isUndefined } from 'lodash';
+import { debounce, isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEmptyJsonTreeForQueryBuilder } from '../../../utils/AdvancedSearchPureUtils';
+import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
 import {
-  getEmptyJsonTreeForQueryBuilder,
-  getTreeConfig,
-} from '../../../utils/AdvancedSearchUtils';
-import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
+  elasticSearchFormat,
+  hasUnfinishedRule,
+} from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
   READONLY_SETTINGS,
-} from '../../../utils/QueryBuilderUtils';
+} from '../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -64,11 +74,14 @@ const QueryBuilderWidgetV1: FC<{
   readonly?: boolean;
   getQueryActions?: (actions: Actions) => void;
   label?: string;
+  showCountPreview?: boolean;
   tree?: JsonTree;
+  onValidityChange?: (isValid: boolean) => void;
 }> = ({
   onChange,
   entityType = EntityType.ALL,
   outputType = SearchOutputType.ElasticSearch,
+  showCountPreview = true,
   value,
   fields,
   ...props
@@ -97,19 +110,54 @@ const QueryBuilderWidgetV1: FC<{
       shouldCreateEmptyGroup: true,
     },
   });
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
     QbUtils.checkTree(
       QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
       config
     )
   );
+  const configRef = useRef(config);
+  const lastEmittedTreeRef = useRef<JsonTree>();
+
+  useEffect(() => {
+    const nextConfig: Config = {
+      ...baseConfig,
+      fields: fields ?? baseConfig.fields,
+      settings: {
+        ...baseConfig.settings,
+        ...(props.readonly ? READONLY_SETTINGS : {}),
+        removeEmptyGroupsOnLoad: false,
+        removeEmptyRulesOnLoad: false,
+        shouldCreateEmptyGroup: true,
+      },
+    };
+    configRef.current = nextConfig;
+    setConfig(nextConfig);
+    setTreeInternal((currentTree) =>
+      QbUtils.checkTree(currentTree, nextConfig)
+    );
+  }, [baseConfig, fields, props.readonly]);
+
+  useEffect(() => {
+    if (isEqual(props.tree, lastEmittedTreeRef.current)) {
+      return;
+    }
+    lastEmittedTreeRef.current = undefined;
+    setTreeInternal(
+      QbUtils.checkTree(
+        QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
+        configRef.current
+      )
+    );
+  }, [props.tree]);
 
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
-  const [queryActions, setQueryActions] = useState<Actions>();
+  const queryActionsRef = useRef<Actions>();
 
   const onTreeUpdate = (nTree: ImmutableTree, nConfig: Config) => {
     setTreeInternal(nTree);
+    configRef.current = nConfig;
     setConfig(nConfig);
   };
 
@@ -125,10 +173,9 @@ const QueryBuilderWidgetV1: FC<{
         config
       ).fixedTree;
 
-      const queryFilterString = !isEmpty(tree)
-        ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
-        : '';
-
+      const queryFilterString = isEmpty(tree)
+        ? ''
+        : Qs.stringify({ queryFilter: JSON.stringify(tree) });
       setQueryURL(`${getExplorePath({})}${queryFilterString}`);
 
       try {
@@ -145,7 +192,7 @@ const QueryBuilderWidgetV1: FC<{
         });
         setSearchResults(res.hits.total.value ?? 0);
       } catch {
-        setSearchResults(0); // fallback to 0 on error
+        setSearchResults(0);
       } finally {
         setIsCountLoading(false);
       }
@@ -160,22 +207,26 @@ const QueryBuilderWidgetV1: FC<{
 
   const showFilteredResourceCount = useMemo(
     () =>
+      showCountPreview &&
       outputType === SearchOutputType.ElasticSearch &&
       !isUndefined(value) &&
       searchResults !== undefined &&
       !isCountLoading,
-    [outputType, value, isCountLoading]
+    [isCountLoading, outputType, showCountPreview, value]
   );
 
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
+      // Same tree and config the emitted filter is built from, so the caller can block a save that
+      // would otherwise drop an unfinished condition and silently widen the filter.
+      props.onValidityChange?.(!hasUnfinishedRule(nTree, config));
       const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
       };
-      if (data) {
+      if (data && showCountPreview) {
         const qFilterWithEntityType = addEntityTypeFilter(
           qFilter as unknown as QueryFilterInterface,
           entityType
@@ -184,11 +235,16 @@ const QueryBuilderWidgetV1: FC<{
         debouncedFetchEntityCount(
           qFilterWithEntityType as unknown as Record<string, unknown>
         );
+      } else {
+        setSearchResults(undefined);
       }
 
-      onChange?.(!isEmpty(data) ? JSON.stringify(qFilter) : '');
+      const jsonTree = QbUtils.getTree(nTree);
+      lastEmittedTreeRef.current = jsonTree;
+      onChange?.(isEmpty(data) ? '' : JSON.stringify(qFilter), jsonTree);
     } else {
       const jsonTree = QbUtils.getTree(nTree);
+      lastEmittedTreeRef.current = jsonTree;
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
         onChange?.(JSON.stringify(jsonLogic.logic ?? ''), jsonTree);
@@ -199,91 +255,106 @@ const QueryBuilderWidgetV1: FC<{
   };
 
   useEffect(() => {
-    if (props.getQueryActions && queryActions) {
-      props.getQueryActions(queryActions);
+    if (props.getQueryActions && queryActionsRef.current) {
+      props.getQueryActions(queryActionsRef.current);
     }
-  }, [queryActions]);
+  }, [treeInternal, props.getQueryActions]);
+
+  const hasOnlyOneRule = useMemo(
+    () => (QbUtils.getTree(treeInternal).children1?.length ?? 0) <= 1,
+    [treeInternal]
+  );
+
+  const renderBuilder = useCallback(
+    (builderProps: BuilderProps) => {
+      queryActionsRef.current = builderProps.actions;
+      const builderConfig = {
+        ...builderProps.config,
+        settings: {
+          ...builderProps.config?.settings,
+          renderButton: (btnProps: ButtonProps, ctx?: ConfigContext) => {
+            if (
+              (hasOnlyOneRule && btnProps.type === 'delRule') ||
+              !builderProps.config?.settings?.renderButton
+            ) {
+              return null as unknown as ReactElement<typeof btnProps>;
+            }
+
+            return builderProps.config?.settings?.renderButton?.(btnProps, ctx);
+          },
+        },
+      };
+
+      return (
+        <div className="query-builder-container query-builder qb-lite">
+          <Builder {...builderProps} config={builderConfig} />
+        </div>
+      );
+    },
+    [hasOnlyOneRule]
+  );
 
   return (
     <div
       className="query-builder-form-field"
       data-testid="query-builder-form-field">
       <Card className={classNames('query-builder-card', outputType)}>
-        <Row gutter={[8, 8]}>
-          <Col
+        <Card.Content>
+          {outputType === SearchOutputType.JSONLogic && props.label && (
+            <>
+              <Typography
+                as="span"
+                className="query-filter-label tw:text-tertiary"
+                size="text-sm">
+                {props.label}
+              </Typography>
+              <Divider className="tw:my-2" />
+            </>
+          )}
+
+          <div
             className={classNames({
-              'p-t-sm': outputType === SearchOutputType.ElasticSearch,
-            })}
-            span={24}>
-            {outputType === SearchOutputType.JSONLogic && (
-              <>
-                <Typography.Text className="query-filter-label text-grey-muted">
-                  {props.label}
-                </Typography.Text>
-                <Divider className="m-y-sm" />
-              </>
-            )}
+              'tw:pt-2': outputType === SearchOutputType.ElasticSearch,
+            })}>
             <Query
               {...config}
-              renderBuilder={(props) => {
-                // Store the actions for external access
-                if (!queryActions) {
-                  setQueryActions(props.actions);
-                }
-
-                return (
-                  <div className="query-builder-container query-builder qb-lite">
-                    <Builder {...props} />
-                  </div>
-                );
-              }}
+              renderBuilder={renderBuilder}
               value={treeInternal}
               onChange={handleChange}
             />
+          </div>
 
-            {isCountLoading && (
-              <Skeleton
-                active
-                className="m-t-sm"
-                loading={isCountLoading}
-                paragraph={false}
-                title={{ style: { height: '32px' } }}
-              />
-            )}
+          {isCountLoading && (
+            <Skeleton
+              animation="pulse"
+              className="tw:mt-2"
+              height={32}
+              variant="rectangular"
+            />
+          )}
 
-            {showFilteredResourceCount && (
-              <div className="m-t-sm">
-                <Button
-                  className="w-full p-0 text-left h-auto"
-                  data-testid="view-assets-banner-button"
-                  disabled={false}
-                  href={queryURL}
-                  target="_blank"
-                  type="link">
-                  <Alert
-                    closable
-                    showIcon
-                    icon={<InfoCircleOutlined height={16} />}
-                    message={
-                      <div className="d-flex flex-wrap items-center gap-1">
-                        <Typography.Text>
-                          {t('message.search-entity-count', {
-                            count: searchResults,
-                          })}
-                        </Typography.Text>
-
-                        <Typography.Text className="text-xs text-grey-muted">
-                          {t('message.click-here-to-view-assets-on-explore')}
-                        </Typography.Text>
-                      </div>
-                    }
-                    type="info"
-                  />
-                </Button>
-              </div>
-            )}
-          </Col>
-        </Row>
+          {showFilteredResourceCount && (
+            <a
+              aria-label={t('message.click-here-to-view-assets-on-explore')}
+              className="tw:mt-2 tw:block tw:no-underline"
+              data-testid="view-assets-banner-button"
+              href={queryURL}
+              rel="noreferrer"
+              target="_blank">
+              <Alert
+                closable
+                icon={InfoCircle}
+                title={t('message.search-entity-count', {
+                  count: searchResults,
+                })}
+                variant="brand">
+                <Typography as="span" size="text-xs">
+                  {t('message.click-here-to-view-assets-on-explore')}
+                </Typography>
+              </Alert>
+            </a>
+          )}
+        </Card.Content>
       </Card>
     </div>
   );

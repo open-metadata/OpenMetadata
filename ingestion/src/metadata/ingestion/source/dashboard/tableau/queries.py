@@ -27,6 +27,9 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
         id
         name
         description
+        ... on PublishedDatasource {{
+          projectName
+        }}
         tags {{
           name
         }}
@@ -39,6 +42,9 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
             remoteType
           }}
           description
+          ... on CalculatedField {{
+            formula
+          }}
         }}
       }}
       fields {{
@@ -50,6 +56,9 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
           remoteType
         }}
         description
+        ... on CalculatedField {{
+          formula
+        }}
       }}
       upstreamTables {{
         id

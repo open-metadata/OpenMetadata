@@ -10,24 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { Edge } from 'reactflow';
 import {
   clearEdgeStyleCache,
   computeEdgeStyle,
+  computeEdgeVisualState,
   invalidateEdgeStyles,
+  LineageEdgeColors,
 } from './EdgeStyleUtils';
 
-const createMockTheme = (): Theme =>
-  ({
-    palette: {
-      primary: { main: '#1890ff' },
-      allShades: {
-        indigo: { 600: '#3F51B5' },
-        error: { 600: '#F44336' },
-      },
-    },
-  } as unknown as Theme);
+const createMockColors = (): LineageEdgeColors => ({
+  primary: '#1890ff',
+  columnHighlight: '#3F51B5',
+  dqHighlight: '#F44336',
+});
 
 const createMockEdge = (
   id: string,
@@ -46,10 +42,10 @@ const createMockEdge = (
 });
 
 describe('EdgeStyleUtils', () => {
-  let theme: Theme;
+  let colors: LineageEdgeColors;
 
   beforeEach(() => {
-    theme = createMockTheme();
+    colors = createMockColors();
     clearEdgeStyleCache();
   });
 
@@ -66,7 +62,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -89,11 +85,11 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
-      expect(style.stroke).toBe(theme.palette.primary.main);
+      expect(style.stroke).toBe(colors.primary);
       expect(style.opacity).toBe(1);
     });
 
@@ -109,7 +105,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -128,13 +124,13 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         true,
         'col1',
         'col2'
       );
 
-      expect(style.stroke).toBe(theme.palette.primary.main);
+      expect(style.stroke).toBe(colors.primary);
       expect(style.opacity).toBe(1);
     });
 
@@ -150,13 +146,13 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         'col1',
-        theme,
+        colors,
         true,
         'col1',
         'col2'
       );
 
-      expect(style.stroke).toBe(theme.palette.allShades.indigo[600]);
+      expect(style.stroke).toBe(colors.columnHighlight);
     });
 
     it('highlights DQ edges with error color', () => {
@@ -171,11 +167,11 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
-      expect(style.stroke).toBe(theme.palette.allShades.error[600]);
+      expect(style.stroke).toBe(colors.dqHighlight);
       expect(style.opacity).toBe(1);
     });
 
@@ -191,14 +187,14 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false,
         undefined,
         undefined,
         true
       );
 
-      expect(style.stroke).toBe(theme.palette.primary.main);
+      expect(style.stroke).toBe(colors.primary);
     });
 
     it('caches edge styles', () => {
@@ -213,7 +209,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -223,11 +219,86 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
       expect(style1).toBe(style2);
+    });
+
+    it('evicts the oldest edge style when the cache reaches its limit', () => {
+      const tracedNodes = new Set<string>();
+      const tracedColumns = new Set<string>();
+      const dqHighlightedEdges = new Set<string>();
+      const firstEdge = createMockEdge('first-edge', 'entity1', 'entity2');
+      const firstStyle = computeEdgeStyle(
+        firstEdge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        colors,
+        false
+      );
+
+      for (let index = 0; index < 1_000; index++) {
+        computeEdgeStyle(
+          createMockEdge(`edge-${index}`, 'entity1', 'entity2'),
+          tracedNodes,
+          tracedColumns,
+          dqHighlightedEdges,
+          undefined,
+          colors,
+          false
+        );
+      }
+
+      const recomputedStyle = computeEdgeStyle(
+        firstEdge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        colors,
+        false
+      );
+
+      expect(recomputedStyle).not.toBe(firstStyle);
+    });
+
+    it('recomputes cached styles when colors change', () => {
+      const edge = createMockEdge('edge1', 'entity1', 'entity2');
+      const tracedNodes = new Set(['entity1', 'entity2']);
+      const tracedColumns = new Set<string>();
+      const dqHighlightedEdges = new Set<string>();
+
+      const style1 = computeEdgeStyle(
+        edge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        colors,
+        false
+      );
+
+      expect(style1.stroke).toBe(colors.primary);
+
+      const updatedColors: LineageEdgeColors = {
+        ...colors,
+        primary: '#abcdef',
+      };
+      const style2 = computeEdgeStyle(
+        edge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        updatedColors,
+        false
+      );
+
+      expect(style2.stroke).toBe('#abcdef');
     });
 
     it('returns different styles for different cache keys', () => {
@@ -243,7 +314,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -253,7 +324,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -278,7 +349,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -298,7 +369,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         true,
         'col1',
         'col3'
@@ -319,7 +390,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -338,11 +409,11 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
-      expect(style.stroke).toBe(theme.palette.allShades.error[600]);
+      expect(style.stroke).toBe(colors.dqHighlight);
     });
 
     it('maintains consistent strokeWidth', () => {
@@ -357,7 +428,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -378,7 +449,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -390,7 +461,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -413,7 +484,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -423,7 +494,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -435,7 +506,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -445,7 +516,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -467,7 +538,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -477,7 +548,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -487,7 +558,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -499,7 +570,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -518,7 +589,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -530,7 +601,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -549,7 +620,7 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
@@ -561,11 +632,107 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
+        colors,
         false
       );
 
       expect(style1).toBe(style2);
+    });
+  });
+
+  describe('computeEdgeVisualState', () => {
+    const nodeEdge = (id: string, fromId: string, toId: string): Edge => ({
+      id,
+      source: fromId,
+      target: toId,
+      data: {
+        isColumnLineage: false,
+        edge: {
+          fromEntity: { id: fromId },
+          toEntity: { id: toId },
+        },
+      },
+    });
+
+    const columnEdge = (
+      id: string,
+      fromEntityId: string,
+      toEntityId: string,
+      sourceHandle: string,
+      targetHandle: string
+    ): Edge => ({
+      id,
+      source: fromEntityId,
+      target: toEntityId,
+      sourceHandle,
+      targetHandle,
+      data: {
+        isColumnLineage: true,
+        edge: {
+          fromEntity: { id: fromEntityId },
+          toEntity: { id: toEntityId },
+        },
+      },
+    });
+
+    it('returns "default" when no tracing context is active', () => {
+      const edge = nodeEdge('e1', 'a', 'b');
+
+      expect(computeEdgeVisualState(edge, new Set(), new Set())).toBe(
+        'default'
+      );
+    });
+
+    describe('node mode (tracedNodes populated, tracedColumns empty)', () => {
+      it('returns "traced" for a node edge between two traced nodes', () => {
+        const edge = nodeEdge('e1', 'a', 'b');
+
+        expect(
+          computeEdgeVisualState(edge, new Set(['a', 'b']), new Set())
+        ).toBe('traced');
+      });
+
+      it('returns "dimmed" for a node edge whose endpoints are not both traced', () => {
+        const edge = nodeEdge('e1', 'a', 'b');
+
+        expect(computeEdgeVisualState(edge, new Set(['a']), new Set())).toBe(
+          'dimmed'
+        );
+      });
+
+      it('returns "hidden" for a column edge when a node is selected', () => {
+        const edge = columnEdge('e1', 'a', 'b', 'colA', 'colB');
+
+        expect(
+          computeEdgeVisualState(edge, new Set(['a', 'b']), new Set())
+        ).toBe('hidden');
+      });
+    });
+
+    describe('column mode (tracedColumns populated, tracedNodes empty)', () => {
+      it('returns "traced" for a column edge whose handles are both traced', () => {
+        const edge = columnEdge('e1', 'a', 'b', 'colA', 'colB');
+
+        expect(
+          computeEdgeVisualState(edge, new Set(), new Set(['colA', 'colB']))
+        ).toBe('traced');
+      });
+
+      it('returns "hidden" for a column edge whose handles are not both traced', () => {
+        const edge = columnEdge('e1', 'a', 'b', 'colA', 'colB');
+
+        expect(computeEdgeVisualState(edge, new Set(), new Set(['colA']))).toBe(
+          'hidden'
+        );
+      });
+
+      it('returns "dimmed" for a node edge when a column is selected', () => {
+        const edge = nodeEdge('e1', 'a', 'b');
+
+        expect(computeEdgeVisualState(edge, new Set(), new Set(['colA']))).toBe(
+          'dimmed'
+        );
+      });
     });
   });
 });

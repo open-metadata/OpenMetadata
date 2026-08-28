@@ -19,12 +19,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { capitalize, isUndefined } from 'lodash';
 import { useState } from 'react';
-import DataGrid from 'react-data-grid';
-import 'react-data-grid/lib/styles.css';
+import type { Column } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 import { renderColumnDataEditor } from '../../../../utils/CSV/CSV.utils';
+import { getCsvGridRowHeight } from '../../../../utils/CSV/CSVPureUtils';
+import { LazyDataGrid } from '../../../common/DataGrid/LazyDataGrid';
 
 interface BulkImportVersionSummaryProps {
   csvImportResult: CSVImportResult;
@@ -161,9 +162,17 @@ export const BulkImportVersionSummary = ({
                   style={{ height: '60vh', maxHeight: 700 }}>
                   {tableData && (
                     <div className="om-rdg tw:flex-1 tw:min-h-0">
-                      <DataGrid
+                      <LazyDataGrid
                         className="rdg-light"
                         columns={tableData.columns}
+                        rowHeight={(row: Record<string, string>) =>
+                          getCsvGridRowHeight(
+                            row,
+                            tableData.columns as unknown as Column<
+                              Record<string, string>
+                            >[]
+                          )
+                        }
                         rows={tableData.dataSource}
                         style={{ height: '100%' }}
                       />

@@ -26,13 +26,20 @@ import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-setting
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { DISPLAY_NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { useAsyncDeleteProvider } from '../../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import { hardDeleteEntity } from '../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
-import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
+import {
+  EntityName,
+  EntityNameValidationRule,
+} from '../../../Modals/EntityNameModal/EntityNameModal.interface';
+import DeleteModal from '../../DeleteModal/DeleteModal';
+import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
+import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
@@ -63,20 +70,64 @@ const ManageButton: FC<ManageButtonProps> = ({
   deleteButtonDescription,
   deleteOptions,
   onProfilerSettingUpdate,
+  trigger,
 }) => {
   const { t } = useTranslation();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEntityRestoring, setIsEntityRestoring] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const isProfilerSupported = useMemo(
     () =>
-      [EntityType.DATABASE, EntityType.DATABASE_SCHEMA].includes(
-        entityType as EntityType
-      ) && !deleted,
+      [EntityType.DATABASE, EntityType.DATABASE_SCHEMA].includes(entityType) &&
+      !deleted,
     [entityType, deleted]
   );
+
+  const handleHardDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      if (isAsyncDelete) {
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName: displayName ?? entityName,
+          entityId: entityId ?? '',
+          entityType,
+          deleteType: DeleteType.HARD_DELETE,
+          prepareType,
+          isRecursiveDelete: isRecursiveDelete ?? false,
+          afterDeleteAction,
+        });
+      } else {
+        const isSuccess = await hardDeleteEntity(
+          displayName ?? entityName,
+          entityId ?? '',
+          entityType,
+          { isRecursiveDelete, prepareType, successMessage }
+        );
+        if (isSuccess) {
+          afterDeleteAction?.(false);
+        }
+      }
+    } finally {
+      setIsDelete(false);
+      setIsDeleting(false);
+    }
+  }, [
+    isAsyncDelete,
+    handleOnAsyncEntityDeleteConfirm,
+    displayName,
+    entityName,
+    entityId,
+    entityType,
+    isRecursiveDelete,
+    prepareType,
+    successMessage,
+    afterDeleteAction,
+  ]);
 
   const handleRestore = async () => {
     try {
@@ -105,7 +156,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   const showAnnouncementOption = useMemo(
     () =>
       onAnnouncementClick &&
-      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
+      ANNOUNCEMENT_ENTITIES.includes(entityType) &&
       !deleted,
     [onAnnouncementClick, entityType, deleted]
   );
@@ -138,6 +189,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             onClick: (e) => {
               if (canDelete) {
                 e.domEvent.stopPropagation();
+                setIsDropdownOpen(false);
                 setShowReactiveModal(true);
               }
             },
@@ -159,6 +211,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
+              setIsDropdownOpen(false);
               !isUndefined(onAnnouncementClick) && onAnnouncementClick();
             },
             key: 'announcement-button',
@@ -181,6 +234,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
+              setIsDropdownOpen(false);
               setIsDisplayNameEditing(true);
             },
             key: 'rename-button',
@@ -204,6 +258,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
+              setIsDropdownOpen(false);
               onProfilerSettingUpdate?.();
             },
             key: 'profiler-setting-button',
@@ -229,6 +284,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             onClick: (e) => {
               if (canDelete) {
                 e.domEvent.stopPropagation();
+                setIsDropdownOpen(false);
                 setIsDelete(true);
               }
             },
@@ -243,62 +299,101 @@ const ManageButton: FC<ManageButtonProps> = ({
     [entityType]
   );
 
-  return (
-    <>
-      {items.length ? (
-        // Used Button to stop click propagation event in the
-        // TeamDetailsV1 and User.component collapsible panel.
-        <Button
-          className="remove-button-default-styling p-0"
-          onClick={(e) => e.stopPropagation()}>
+  const renderDropdownTrigger = () => {
+    if (trigger) {
+      return (
+        <>
+          {trigger(() => setIsDropdownOpen((prev) => !prev))}
           <Dropdown
-            align={{ targetOffset: [-12, 0] }}
+            align={{ targetOffset: [0, -16] }}
             dropdownRender={renderDropdownContainer}
             menu={{ items }}
+            open={isDropdownOpen}
             overlayClassName="manage-dropdown-list-container"
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
-            trigger={['click']}>
-            <Tooltip
-              placement="topRight"
-              title={t('label.manage-entity', {
-                entity: formattedEntityType,
-              })}>
-              <Button
-                className={classNames('flex-center px-1.5', buttonClassName)}
-                data-testid="manage-button"
-                type="default">
-                <IconDropdown className="anticon self-center manage-dropdown-icon" />
-              </Button>
-            </Tooltip>
+            trigger={['click']}
+            onOpenChange={setIsDropdownOpen}>
+            <span />
           </Dropdown>
-        </Button>
-      ) : (
-        <></>
-      )}
-      {isDelete && (
-        <DeleteWidgetModal
-          afterDeleteAction={afterDeleteAction}
-          allowSoftDelete={allowSoftDelete}
-          deleteMessage={deleteMessage}
-          deleteOptions={deleteOptions}
-          entityId={entityId ?? ''}
-          entityName={displayName ?? entityName}
-          entityType={entityType}
-          hardDeleteMessagePostFix={hardDeleteMessagePostFix}
-          isAsyncDelete={isAsyncDelete}
-          isRecursiveDelete={isRecursiveDelete}
-          prepareType={prepareType}
-          softDeleteMessagePostFix={softDeleteMessagePostFix}
-          successMessage={successMessage}
-          visible={isDelete}
-          onCancel={() => setIsDelete(false)}
-        />
-      )}
+        </>
+      );
+    }
+
+    // Used Button to stop click propagation event in the
+    // TeamDetailsV1 and User.component collapsible panel.
+    return (
+      <Button
+        className="remove-button-default-styling p-0"
+        onClick={(e) => e.stopPropagation()}>
+        <Dropdown
+          align={{ targetOffset: [-12, 0] }}
+          dropdownRender={renderDropdownContainer}
+          menu={{ items }}
+          overlayClassName="manage-dropdown-list-container"
+          overlayStyle={{ width: '350px' }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: formattedEntityType,
+            })}>
+            <Button
+              className={classNames('flex-center px-1.5', buttonClassName)}
+              data-testid="manage-button"
+              type="default">
+              <IconDropdown className="anticon self-center manage-dropdown-icon" />
+            </Button>
+          </Tooltip>
+        </Dropdown>
+      </Button>
+    );
+  };
+
+  return (
+    <>
+      {items.length ? renderDropdownTrigger() : null}
+      {isDelete &&
+        (allowSoftDelete === false ? (
+          <DeleteModal
+            entityTitle={displayName ?? entityName}
+            isDeleting={isDeleting}
+            message={
+              deleteMessage ??
+              t('message.permanently-delete-common-message', {
+                entity: (displayName ?? entityName)?.toLowerCase() ?? '',
+              })
+            }
+            open={isDelete}
+            onCancel={() => setIsDelete(false)}
+            onDelete={handleHardDelete}
+          />
+        ) : (
+          <DeleteEntityModal
+            afterDeleteAction={afterDeleteAction}
+            allowSoftDelete={allowSoftDelete}
+            deleteMessage={deleteMessage}
+            deleteOptions={deleteOptions}
+            entityId={entityId ?? ''}
+            entityName={displayName ?? entityName}
+            entityType={entityType}
+            hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+            isAsyncDelete={isAsyncDelete}
+            isRecursiveDelete={isRecursiveDelete}
+            prepareType={prepareType}
+            softDeleteMessagePostFix={softDeleteMessagePostFix}
+            successMessage={successMessage}
+            visible={isDelete}
+            onCancel={() => setIsDelete(false)}
+          />
+        ))}
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
-          displayNameValidationRules={DISPLAY_NAME_FIELD_RULES}
+          displayNameValidationRules={
+            DISPLAY_NAME_FIELD_RULES as EntityNameValidationRule[]
+          }
           entity={{
             name: entityName,
             displayName,

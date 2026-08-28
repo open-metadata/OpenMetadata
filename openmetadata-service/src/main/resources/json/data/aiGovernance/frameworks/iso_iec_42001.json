@@ -1,0 +1,97 @@
+{
+  "framework": {
+    "name": "iso_iec_42001",
+    "displayName": "ISO/IEC 42001",
+    "description": "ISO/IEC 42001:2023 — international management-system standard for Artificial Intelligence. Establishes requirements for an AIMS (AI Management System) within an organization.",
+    "reference": "ISO/IEC 42001:2023",
+    "region": "Global",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "Annual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "regions": [],
+      "riskClasses": [],
+      "deploymentStages": ["Production"]
+    }
+  },
+  "controls": [
+    {
+      "code": "clause-4",
+      "name": "clause-4",
+      "displayName": "Clause 4 — Context of the organization",
+      "category": "Governance",
+      "description": "Determine external and internal issues, interested parties, and the scope of the AIMS.",
+      "evidenceRequirements": [
+        "AIMS scope statement",
+        "Stakeholder register"
+      ]
+    },
+    {
+      "code": "clause-5",
+      "name": "clause-5",
+      "displayName": "Clause 5 — Leadership",
+      "category": "Governance",
+      "description": "Top management demonstrates leadership and commitment with respect to the AIMS.",
+      "evidenceRequirements": [
+        "Leadership commitment record",
+        "AI policy statement"
+      ]
+    },
+    {
+      "code": "clause-6",
+      "name": "clause-6",
+      "displayName": "Clause 6 — Planning",
+      "category": "Process",
+      "description": "Plan actions to address AI risks and opportunities; AI objectives are established.",
+      "evidenceRequirements": [
+        "AI risk treatment plan",
+        "Objectives & KPIs"
+      ]
+    },
+    {
+      "code": "clause-7",
+      "name": "clause-7",
+      "displayName": "Clause 7 — Support",
+      "category": "Process",
+      "description": "Resources, competence, awareness, communication, and documented information needed for the AIMS.",
+      "evidenceRequirements": [
+        "Training records",
+        "Documented procedures"
+      ]
+    },
+    {
+      "code": "clause-8",
+      "name": "clause-8",
+      "displayName": "Clause 8 — Operation",
+      "category": "Process",
+      "description": "Plan, implement and control processes to meet AIMS requirements; operate AI systems within defined parameters.",
+      "evidenceRequirements": [
+        "Operational procedures",
+        "Change control records"
+      ]
+    },
+    {
+      "code": "clause-9",
+      "name": "clause-9",
+      "displayName": "Clause 9 — Performance evaluation",
+      "category": "Quality",
+      "description": "Monitor, measure, analyze, and evaluate the AIMS; internal audit and management review.",
+      "evidenceRequirements": [
+        "Internal audit report",
+        "Management review minutes"
+      ]
+    },
+    {
+      "code": "clause-10",
+      "name": "clause-10",
+      "displayName": "Clause 10 — Improvement",
+      "category": "Process",
+      "description": "Address nonconformities and continually improve the suitability, adequacy, and effectiveness of the AIMS.",
+      "evidenceRequirements": [
+        "Nonconformity log",
+        "Corrective action record"
+      ]
+    }
+  ]
+}

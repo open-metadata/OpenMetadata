@@ -35,13 +35,13 @@
     }
 
     .group-or-rule-container.rule-container {
-      padding: 0px;
+      padding: 0;
       min-height: 32px;
 
       .rule.group-or-rule {
         .rule--header {
           .ant-btn-group {
-            margin: 0px;
+            margin: 0;
             align-self: flex-start;
           }
         }
@@ -49,10 +49,10 @@
     }
 
     .group-or-rule-container.group-container {
-      padding: 0px;
+      padding: 0;
       .group.rule_group {
         .group--field {
-          margin: 0px;
+          margin: 0;
           flex: 0 1 25%;
 
           .ant-select {
@@ -64,14 +64,14 @@
       & > .group.group-or-rule {
         display: flex;
         flex-direction: column;
-        margin-top: 24px;
+        margin-top: var(--om-space-24);
 
         & > .group--header {
           order: 9999;
 
           .group--actions.group--actions--tr {
             justify-content: flex-start;
-            margin: 0px;
+            margin: 0;
           }
 
           .action.action--ADD-GROUP {
@@ -83,26 +83,26 @@
 
           .action.action--ADD-RULE {
             position: static;
-            margin-top: 8px;
+            margin-top: var(--om-space-8);
           }
         }
 
         .rule--body--wrapper {
           .rule--body {
-            margin: 0px;
+            margin: 0;
             display: flex;
-            gap: 16px;
+            gap: var(--om-space-16);
 
             .group--field,
             .rule--field,
             .rule--operator,
             .rule--value,
             .widget--widget {
-              margin: 0px;
+              margin: 0;
               flex: 1;
 
               .ant-col {
-                padding: 0px !important; // remove padding from ant-col inline styling by antd
+                padding: 0 !important; // remove padding from ant-col inline styling by antd
               }
             }
 
@@ -124,15 +124,15 @@
     }
 
     .group--children {
-      padding: 0px;
-      margin: 0px;
+      padding: 0;
+      margin: 0;
 
       .group-or-rule-container.group-container,
       .group-or-rule-container.rule-container {
         .group.group-or-rule,
         .rule.group-or-rule {
           background: inherit;
-          padding: 0px;
+          padding: 0;
           border: none;
 
           .group--header {
@@ -143,8 +143,8 @@
               .ant-btn-group {
                 button {
                   min-height: 32px;
-                  padding-top: 0px;
-                  padding-bottom: 0px;
+                  padding-top: 0;
+                  padding-bottom: 0;
                 }
               }
             }
@@ -156,11 +156,11 @@
             background-color: @primary-button-background !important;
             color: @primary-7;
             border: none;
-            border-radius: 8px !important;
-            padding-top: 4px;
-            padding-bottom: 4px;
+            border-radius: var(--om-radius-lg) !important;
+            padding-top: var(--om-space-4);
+            padding-bottom: var(--om-space-4);
             height: 32px;
-            font-weight: 600;
+            font-weight: var(--om-font-weight-semibold);
           }
 
           .action.action--DELETE {
@@ -169,7 +169,7 @@
           }
 
           &:not(:first-child) {
-            padding: 16px 8px;
+            padding: var(--om-space-16) var(--om-space-8);
           }
         }
       }

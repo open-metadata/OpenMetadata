@@ -12,10 +12,10 @@
  */
 
 import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -34,18 +34,21 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { getColumnSorter, highlightSearchText } from './EntityUtils';
+import { highlightSearchText } from './EntitySearchUtils';
+import { getColumnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
 import {
+  certificationTableObject,
   dataProductTableObject,
   descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
+  tierTableObject,
 } from './TableColumn.util';
-import { getUsagePercentile } from './TableUtils';
+import { getUsagePercentile } from './TablePureUtils';
 
 export const getServiceMainTabColumns = (
   serviceCategory: ServiceTypes,
@@ -97,6 +100,8 @@ export const getServiceMainTabColumns = (
   ...domainTableObject<ServicePageData>(),
   ...dataProductTableObject<ServicePageData>(),
   ...tagTableObject<ServicePageData>(),
+  ...tierTableObject<ServicePageData>(),
+  ...certificationTableObject<ServicePageData>(),
   ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {

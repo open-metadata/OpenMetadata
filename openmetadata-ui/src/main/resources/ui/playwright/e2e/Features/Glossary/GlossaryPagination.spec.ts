@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
@@ -19,7 +20,9 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Glossary tests', () => {
+test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.describe.configure({ mode: 'default' });
+
   const glossary = new Glossary();
   const glossaryTerms: GlossaryTerm[] = [];
   let parentTerm: GlossaryTerm;
@@ -68,21 +71,21 @@ test.describe('Glossary tests', () => {
   });
 
   test('should check for glossary term search', async ({ page }) => {
-    test.slow(true);
-
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Test 1: Search for specific term
-    const searchInput = page.getByPlaceholder(/search.*term/i);
-    const searchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const searchInput = page.getByTestId('search-glossary-terms-input');
+    const searchResponse = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('SearchTestTerm5');
 
     await searchResponse;
     const table = page.getByTestId('glossary-terms-table');
-    const filteredTerms = await table.locator('tbody .ant-table-row').count();
+    const filteredTerms = await table.locator('tbody tr[data-row-key]').count();
 
     expect(filteredTerms).toBe(1);
     await expect(
@@ -98,12 +101,14 @@ test.describe('Glossary tests', () => {
     await searchInput.clear();
     await clearResponse;
 
-    const partialSearchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const partialSearchResponse = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('TestTerm');
     await partialSearchResponse;
 
     const partialFilteredTerms = await table
-      .locator('tbody .ant-table-row')
+      .locator('tbody tr[data-row-key]')
       .count();
 
     expect(partialFilteredTerms).toBeGreaterThan(0);
@@ -118,31 +123,37 @@ test.describe('Glossary tests', () => {
   });
 
   test('should check for nested glossary term search', async ({ page }) => {
-    test.slow(true);
-
     // Navigate to glossary
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Navigate to parent term
     await page.click(
       `[data-testid="glossary-terms-table"] >> text="${parentTerm.responseData.displayName}"`
     );
 
-    // Click on Terms tab to see child terms
+    // Click on Terms tab to see child terms and wait for the tab body to
+    // mount — the search input below only exists once `GlossaryTermTab`
+    // renders, and filling it before the mount silently misses the input
+    // (the `waitForResponse` then hangs to the test-level timeout).
     await page.click('[data-testid="terms"]');
+    await page
+      .getByTestId('glossary-terms-scroll-container')
+      .waitFor({ state: 'visible' });
 
-    // Test 1: Search within parent term for child terms
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    // Test 1: Search within parent term for child terms — use the specific
+    // testid rather than a placeholder regex; the regex previously matched
+    // an ambiguous input, causing the fill to hit the wrong element.
+    const searchInput = page.getByTestId('search-glossary-terms-input');
     const searchRes1 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('ChildSearchTerm');
     await searchRes1;
 
     const nestedTable = page.getByTestId('glossary-terms-table');
     const filteredTerms = await nestedTable
-      .locator('tbody .ant-table-row')
+      .locator('tbody tr[data-row-key]')
       .count();
 
     expect(filteredTerms).toBe(5);
@@ -183,9 +194,9 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search with lowercase
     const lowerRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
@@ -235,12 +246,14 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search for a term that doesn't exist
-    const noResultsRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const noResultsRes = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('NonExistentTermXYZ12345');
     await noResultsRes;
 
@@ -262,21 +275,19 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Open status filter dropdown
     const dropdownButton = page.getByTestId('glossary-status-dropdown');
     await dropdownButton.click();
 
     // Select InReview status
-    const inReviewCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'In Review',
-    });
+    const inReviewCheckbox = page.getByTestId(
+      'glossary-status-option-In Review'
+    );
     await inReviewCheckbox.click();
 
-    const saveButton = page.locator('.ant-btn-primary', {
-      hasText: 'Save',
-    });
+    const saveButton = page.getByTestId('glossary-status-save-btn');
     await saveButton.click();
 
     // Verify filter is applied (may show no results if no InReview terms exist)
@@ -297,25 +308,21 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Open status filter dropdown
     const dropdownButton = page.getByTestId('glossary-status-dropdown');
     await dropdownButton.click();
 
     // Select both Approved and Draft statuses
-    const approvedCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'Approved',
-    });
-    const draftCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'Draft',
-    });
+    const approvedCheckbox = page.getByTestId(
+      'glossary-status-option-Approved'
+    );
+    const draftCheckbox = page.getByTestId('glossary-status-option-Draft');
     await approvedCheckbox.click();
     await draftCheckbox.click();
 
-    const saveButton = page.locator('.ant-btn-primary', {
-      hasText: 'Save',
-    });
+    const saveButton = page.getByTestId('glossary-status-save-btn');
     await saveButton.click();
 
     // Wait for filter to apply

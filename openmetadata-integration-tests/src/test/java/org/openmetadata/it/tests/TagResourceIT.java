@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -10,13 +11,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -24,14 +29,19 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -55,6 +65,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   {
     supportsFollowers = false; // Tags don't support followers
     supportsTags = false; // Tags don't support tags on themselves
+    supportsDataProductAssetsSearch = false;
     supportsListHistoryByTimestamp = true;
   }
 
@@ -198,6 +209,85 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         Exception.class,
         () -> createEntity(request),
         "Creating tag without classification should fail");
+  }
+
+  @Test
+  void patch_tagWhileClassificationDisabled_doesNotStrandTag(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    Tag tag = createTagUnder(classification, ns, "tag_disable_inheritance");
+
+    setClassificationDisabled(classification.getId().toString(), true);
+
+    // While the parent Classification is disabled the Tag reports disabled by inheritance
+    Tag disabledTag = getEntityByName(tag.getFullyQualifiedName());
+    assertTrue(
+        Boolean.TRUE.equals(disabledTag.getDisabled()),
+        "Tag should report disabled while its Classification is disabled");
+
+    // Any unrelated write to the Tag must not persist that inherited value
+    disabledTag.setDescription("Updated while the parent Classification was disabled");
+    patchEntity(disabledTag.getId().toString(), disabledTag);
+
+    setClassificationDisabled(classification.getId().toString(), false);
+
+    // Assert the precondition separately from the behaviour under test. If the re-enable did
+    // not take effect the Tag is correctly still inheriting disabled, and conflating the two
+    // makes the failure look like the fix regressed when it did not.
+    Classification parentAfter =
+        SdkClients.adminClient().classifications().get(classification.getId().toString());
+    assertFalse(
+        Boolean.TRUE.equals(parentAfter.getDisabled()),
+        "precondition: Classification should be re-enabled, but disabled="
+            + parentAfter.getDisabled());
+
+    Tag reEnabledTag = getEntityByName(tag.getFullyQualifiedName());
+    assertFalse(
+        Boolean.TRUE.equals(reEnabledTag.getDisabled()),
+        "Tag must be usable again once its Classification is re-enabled."
+            + " If this fails the Tag was written while the parent was disabled by something"
+            + " other than this test - the details below identify the writer."
+            + " tag.version="
+            + reEnabledTag.getVersion()
+            + " tag.updatedBy="
+            + reEnabledTag.getUpdatedBy()
+            + " tag.changeDescription="
+            + reEnabledTag.getChangeDescription());
+  }
+
+  @Test
+  void patch_tagDisabledIndividually_survivesClassificationDisableCycle(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    Tag tag = createTagUnder(classification, ns, "tag_own_disable");
+
+    // Disable the Tag on its own, while its Classification is enabled
+    tag.setDisabled(true);
+    patchEntity(tag.getId().toString(), tag);
+
+    setClassificationDisabled(classification.getId().toString(), true);
+    Tag disabledTag = getEntityByName(tag.getFullyQualifiedName());
+    disabledTag.setDescription("Updated while the parent Classification was disabled");
+    patchEntity(disabledTag.getId().toString(), disabledTag);
+    setClassificationDisabled(classification.getId().toString(), false);
+
+    Tag afterCycle = getEntityByName(tag.getFullyQualifiedName());
+    assertTrue(
+        Boolean.TRUE.equals(afterCycle.getDisabled()),
+        "A Tag disabled on its own must stay disabled after a Classification disable cycle");
+  }
+
+  private Tag createTagUnder(Classification classification, TestNamespace ns, String name) {
+    CreateTag request = new CreateTag();
+    request.setName(ns.shortPrefix(name));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag used to verify disabled inheritance handling");
+    return createEntity(request);
+  }
+
+  private void setClassificationDisabled(String classificationId, boolean disabled) {
+    Classification classification =
+        SdkClients.adminClient().classifications().get(classificationId);
+    classification.setDisabled(disabled);
+    SdkClients.adminClient().classifications().update(classificationId, classification);
   }
 
   @Test
@@ -662,7 +752,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
-    String displayName = "PW Classification " + ns.uniqueShortId();
+    String searchToken = ("xqz" + RandomStringUtils.randomAlphabetic(16)).toLowerCase(Locale.ROOT);
+    String displayName = "PW Classification " + searchToken;
 
     Classification classification =
         client
@@ -681,12 +772,12 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                 .withDescription("Tag for classification display name search"));
 
     Awaitility.await("Tag should be searchable by classification display name")
-        .atMost(java.time.Duration.ofSeconds(30))
+        .atMost(java.time.Duration.ofSeconds(90))
         .pollInterval(java.time.Duration.ofMillis(500))
         .untilAsserted(
             () -> {
               String response =
-                  client.search().query(displayName).index("tag_search_index").size(25).execute();
+                  client.search().query(searchToken).index("tag_search_index").size(25).execute();
               JsonNode root = mapper.readTree(response);
               JsonNode hits = root.path("hits").path("hits");
               boolean found =
@@ -754,6 +845,96 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         fetchedTag1.getDisabled(), "Tag1 should not be disabled after classification is enabled");
     assertFalse(
         fetchedTag2.getDisabled(), "Tag2 should not be disabled after classification is enabled");
+  }
+
+  @Test
+  void test_putPreservesRecognizers_ingestionScenario(TestNamespace ns) {
+    // A metadata connector re-creates a source tag with a bare PUT (name + classification +
+    // description only, no recognizers). This must NOT wipe the tag's configured recognizers
+    // nor turn off autoClassificationEnabled.
+    Classification classification = createClassification(ns);
+
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("pii_tag"));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag with recognizers");
+    createTag.setAutoClassificationEnabled(true);
+    createTag.setRecognizers(
+        List.of(
+            new Recognizer()
+                .withName("email_pattern_recognizer")
+                .withEnabled(true)
+                .withRecognizerConfig(
+                    new PredefinedRecognizer()
+                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER))));
+
+    Tag tag = createEntity(createTag);
+    Tag created = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertNotNull(created.getRecognizers());
+    assertEquals(1, created.getRecognizers().size());
+    assertTrue(created.getAutoClassificationEnabled());
+
+    // Byte-for-byte the ingestion sink's body: CreateTagRequest.model_dump_json() with no
+    // exclude_none, so every unset field is serialized as its Pydantic default.
+    String ingestionBody =
+        "{\"classification\":\""
+            + classification.getFullyQualifiedName()
+            + "\",\"parent\":null,\"name\":\""
+            + tag.getName()
+            + "\",\"displayName\":null,\"description\":\"Updated by metadata ingestion\","
+            + "\"style\":null,\"associatedTags\":null,\"provider\":null,\"mutuallyExclusive\":false,"
+            + "\"domains\":null,\"owners\":null,\"reviewers\":null,\"recognizers\":null,"
+            + "\"autoClassificationEnabled\":false,\"autoClassificationPriority\":50}";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags", ingestionBody, Tag.class);
+
+    Tag afterIngestion =
+        getEntityWithFields(tag.getId().toString(), "recognizers,autoClassificationEnabled");
+    int recognizerCount =
+        afterIngestion.getRecognizers() == null ? -1 : afterIngestion.getRecognizers().size();
+    assertEquals(
+        1,
+        recognizerCount,
+        "Bare PUT from ingestion must not drop recognizers (-1 means the field was deleted);"
+            + " autoClassificationEnabled is now "
+            + afterIngestion.getAutoClassificationEnabled());
+    assertTrue(
+        afterIngestion.getAutoClassificationEnabled(),
+        "Bare PUT from ingestion must not disable autoClassificationEnabled");
+
+    // A PUT that does name recognizers is an intentional write and must still apply.
+    CreateTag explicitUpsert =
+        new CreateTag()
+            .withName(tag.getName())
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Explicit recognizer update")
+            .withRecognizers(
+                List.of(
+                    new Recognizer()
+                        .withName("us_ssn_recognizer")
+                        .withEnabled(true)
+                        .withRecognizerConfig(
+                            new PredefinedRecognizer()
+                                .withName(PredefinedRecognizer.Name.US_SSN_RECOGNIZER))));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags", explicitUpsert, Tag.class);
+
+    Tag afterExplicitPut = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertEquals(1, afterExplicitPut.getRecognizers().size());
+    assertEquals(
+        "us_ssn_recognizer",
+        afterExplicitPut.getRecognizers().get(0).getName(),
+        "PUT naming recognizers must replace them");
+
+    // An explicit PATCH clearing recognizers must still delete them.
+    afterExplicitPut.setRecognizers(null);
+    patchEntity(afterExplicitPut.getId().toString(), afterExplicitPut);
+    Tag afterPatch = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertTrue(
+        afterPatch.getRecognizers() == null || afterPatch.getRecognizers().isEmpty(),
+        "Explicit PATCH clearing recognizers must still delete them");
   }
 
   @Test
@@ -1488,5 +1669,640 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     assertEquals(35, allRecognizers.size());
     assertEquals(tag.getRecognizers(), allRecognizers);
+  }
+
+  @Test
+  void test_certificationTagNotLeakingIntoTagsField(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.classification.Classification certClassification =
+        client.classifications().getByName("Certification", null);
+    assertNotNull(certClassification, "Certification classification must exist");
+
+    String certTagName = ns.shortPrefix("cert_leak_tag");
+    CreateTag createCertTag = new CreateTag();
+    createCertTag.setName(certTagName);
+    createCertTag.setClassification(certClassification.getFullyQualifiedName());
+    createCertTag.setDescription("Cert tag for leak test");
+    Tag certTag = SdkClients.adminClient().tags().create(createCertTag);
+
+    org.openmetadata.schema.entity.classification.Classification regularClassification =
+        createClassification(ns);
+    CreateTag createRegularTag = new CreateTag();
+    createRegularTag.setName(ns.shortPrefix("regular_tag"));
+    createRegularTag.setClassification(regularClassification.getFullyQualifiedName());
+    createRegularTag.setDescription("Regular tag for leak test");
+    Tag regularTag = SdkClients.adminClient().tags().create(createRegularTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "cert_leak_svc");
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.TagLabel certTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(certTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    org.openmetadata.schema.type.TagLabel regularTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(regularTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    schema.setCertification(new AssetCertification().withTagLabel(certTagLabel));
+    schema.setTags(List.of(regularTagLabel));
+    DatabaseSchema tagged = client.databaseSchemas().update(schema.getId().toString(), schema);
+    assertNotNull(tagged);
+
+    // GET single entity: cert tag must not appear in `tags`
+    DatabaseSchema fetched =
+        client.databaseSchemas().get(tagged.getId().toString(), "tags,certification");
+    assertNotNull(fetched.getCertification(), "Certification field must be populated");
+    List<org.openmetadata.schema.type.TagLabel> singleTags = fetched.getTags();
+    assertNotNull(singleTags);
+    assertTrue(
+        singleTags.stream()
+            .noneMatch(t -> t.getTagFQN().startsWith(certClassification.getFullyQualifiedName())),
+        "GET: cert tag must not appear in tags field");
+    assertTrue(
+        singleTags.stream().anyMatch(t -> t.getTagFQN().equals(regularTag.getFullyQualifiedName())),
+        "GET: regular tag must still be present in tags field");
+
+    // LIST entities (batch path): cert tag must not appear in `tags` of the listed entity
+    org.openmetadata.sdk.models.ListParams listParams =
+        new org.openmetadata.sdk.models.ListParams()
+            .setDatabase(db.getFullyQualifiedName())
+            .setFields("tags,certification");
+    org.openmetadata.sdk.models.ListResponse<DatabaseSchema> listed =
+        client.databaseSchemas().list(listParams);
+    assertNotNull(listed.getData());
+    DatabaseSchema listedSchema =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schema.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listedSchema, "Schema must appear in list result");
+    List<org.openmetadata.schema.type.TagLabel> listTags = listedSchema.getTags();
+    assertNotNull(listTags);
+    assertTrue(
+        listTags.stream()
+            .noneMatch(t -> t.getTagFQN().startsWith(certClassification.getFullyQualifiedName())),
+        "LIST (batch): cert tag must not appear in tags field");
+    assertTrue(
+        listTags.stream().anyMatch(t -> t.getTagFQN().equals(regularTag.getFullyQualifiedName())),
+        "LIST (batch): regular tag must still be present in tags field");
+  }
+
+  @Test
+  void test_certBatch_bulkFetchReturnsCorrectCertsPerEntity(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.classification.Classification certClassification =
+        client.classifications().getByName("Certification", null);
+    assertNotNull(certClassification, "Certification classification must exist");
+
+    CreateTag createCertTag = new CreateTag();
+    createCertTag.setName(ns.shortPrefix("cert_bulk_tag"));
+    createCertTag.setClassification(certClassification.getFullyQualifiedName());
+    createCertTag.setDescription("Cert tag for bulk fetch test");
+    Tag certTag = SdkClients.adminClient().tags().create(createCertTag);
+
+    org.openmetadata.schema.entity.classification.Classification regularClassification =
+        createClassification(ns);
+    CreateTag createRegularTag = new CreateTag();
+    createRegularTag.setName(ns.shortPrefix("regular_bulk_tag"));
+    createRegularTag.setClassification(regularClassification.getFullyQualifiedName());
+    createRegularTag.setDescription("Non-cert tag for bulk fetch test");
+    Tag regularTag = SdkClients.adminClient().tags().create(createRegularTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "cert_bulk_svc");
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+
+    DatabaseSchema schemaWithCert =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_with");
+    DatabaseSchema schemaWithoutCert =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_without");
+    DatabaseSchema schemaWithRegularTag =
+        createDatabaseSchemaNamed(ns, db.getFullyQualifiedName(), "cert_bulk_regular");
+
+    org.openmetadata.schema.type.TagLabel certTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(certTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    schemaWithCert.setCertification(new AssetCertification().withTagLabel(certTagLabel));
+    client.databaseSchemas().update(schemaWithCert.getId().toString(), schemaWithCert);
+
+    org.openmetadata.schema.type.TagLabel regularTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(regularTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    schemaWithRegularTag.setTags(List.of(regularTagLabel));
+    client.databaseSchemas().update(schemaWithRegularTag.getId().toString(), schemaWithRegularTag);
+
+    org.openmetadata.sdk.models.ListParams listParams =
+        new org.openmetadata.sdk.models.ListParams()
+            .setDatabase(db.getFullyQualifiedName())
+            .setFields("certification");
+    org.openmetadata.sdk.models.ListResponse<DatabaseSchema> listed =
+        client.databaseSchemas().list(listParams);
+    assertNotNull(listed.getData());
+
+    DatabaseSchema listedWithCert =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schemaWithCert.getId()))
+            .findFirst()
+            .orElse(null);
+    DatabaseSchema listedWithoutCert =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schemaWithoutCert.getId()))
+            .findFirst()
+            .orElse(null);
+    DatabaseSchema listedWithRegularTag =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schemaWithRegularTag.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(listedWithCert);
+    assertNotNull(listedWithoutCert);
+    assertNotNull(listedWithRegularTag);
+
+    assertNotNull(listedWithCert.getCertification(), "cert-tagged schema: certification missing");
+    assertEquals(
+        certTag.getFullyQualifiedName(),
+        listedWithCert.getCertification().getTagLabel().getTagFQN());
+
+    assertNull(listedWithoutCert.getCertification(), "untagged schema: false-positive cert");
+    assertNull(
+        listedWithRegularTag.getCertification(),
+        "non-cert tag from another classification leaked as certification");
+  }
+
+  private org.openmetadata.schema.entity.data.DatabaseSchema createDatabaseSchemaNamed(
+      TestNamespace ns, String databaseFqn, String name) {
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    createSchema.setName(ns.shortPrefix(name));
+    createSchema.setDatabase(databaseFqn);
+    return SdkClients.adminClient().databaseSchemas().create(createSchema);
+  }
+
+  @Test
+  void test_certificationTagRenamePropagatesToEntityAndSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    // Step 1: Get the existing Certification classification (seeded by the system)
+    org.openmetadata.schema.entity.classification.Classification certClassification =
+        client.classifications().getByName("Certification", null);
+    assertNotNull(certClassification, "Certification classification must exist as a system entity");
+
+    // Step 2: Create a new tag under Certification
+    String originalTagName = ns.shortPrefix("cert_tag");
+    CreateTag createTag = new CreateTag();
+    createTag.setName(originalTagName);
+    createTag.setClassification(certClassification.getFullyQualifiedName());
+    createTag.setDescription("Tag for rename propagation test");
+    Tag certTag = SdkClients.adminClient().tags().create(createTag);
+    String originalTagFqn = certTag.getFullyQualifiedName();
+    assertEquals("Certification." + originalTagName, originalTagFqn);
+
+    // Step 3: Create the DB hierarchy and a DatabaseSchema
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "cert_rename_svc");
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    // Step 4: Apply the certification tag to the DatabaseSchema via setCertification()
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(originalTagFqn)
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    schema.setCertification(new AssetCertification().withTagLabel(tagLabel));
+    DatabaseSchema taggedSchema =
+        client.databaseSchemas().update(schema.getId().toString(), schema);
+
+    assertNotNull(taggedSchema);
+    // Certification tags are stored in the `certification` field, not in `tags`.
+    // Verify via a fresh fetch with fields=certification.
+    DatabaseSchema schemaWithCert =
+        client.databaseSchemas().get(taggedSchema.getId().toString(), "certification");
+    assertNotNull(
+        schemaWithCert.getCertification(),
+        "Schema must have a certification after tag application");
+    assertEquals(
+        originalTagFqn,
+        schemaWithCert.getCertification().getTagLabel().getTagFQN(),
+        "Schema certification tagFQN must match the applied certification tag");
+
+    // Step 5: Verify search finds the schema by the original tag FQN
+    // Certification tags are indexed under certification.tagLabel.tagFQN, not tags.tagFQN
+    String tagFilterBefore =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"certification.tagLabel.tagFQN\":\"%s\"}}]}}}",
+            originalTagFqn);
+    Awaitility.await("Schema should be searchable by original tag FQN")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String resp =
+                  client
+                      .search()
+                      .query("*")
+                      .index("database_schema_search_index")
+                      .queryFilter(tagFilterBefore)
+                      .size(10)
+                      .execute();
+              JsonNode hits = mapper.readTree(resp).path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(),
+                  "Schema should be findable by original tag FQN before rename");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (schema
+                    .getFullyQualifiedName()
+                    .equals(hit.path("_source").path("fullyQualifiedName").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(found, "Schema should appear in search results under original tag FQN");
+            });
+
+    // Step 6: Rename the certification tag (change its name — this changes the FQN)
+    String renamedTagName = ns.shortPrefix("cert_tag_renamed");
+    certTag.setName(renamedTagName);
+    Tag renamedTag = SdkClients.adminClient().tags().update(certTag.getId().toString(), certTag);
+    assertEquals(renamedTagName, renamedTag.getName());
+    String newTagFqn = renamedTag.getFullyQualifiedName();
+    assertEquals("Certification." + renamedTagName, newTagFqn);
+
+    // Step 7: Wait until certification tagFQN propagates to the entity
+    // (name/FQN change must propagate to all referencing entities' certification field)
+    Awaitility.await("Schema certification tagFQN should update after tag rename")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              DatabaseSchema fetched =
+                  client
+                      .databaseSchemas()
+                      .getByName(schema.getFullyQualifiedName(), "certification");
+              assertNotNull(fetched, "Schema must be fetchable by name after tag rename");
+              assertNotNull(
+                  fetched.getCertification(),
+                  "Schema must still have certification after tag rename");
+              assertNotNull(
+                  fetched.getCertification().getTagLabel(), "Certification must have a tagLabel");
+              assertEquals(
+                  newTagFqn,
+                  fetched.getCertification().getTagLabel().getTagFQN(),
+                  "Tag FQN on schema certification must be updated to new FQN after name rename");
+            });
+
+    // Step 8: Search must find the schema under the new tag FQN
+    String tagFilterAfter =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"certification.tagLabel.tagFQN\":\"%s\"}}]}}}",
+            newTagFqn);
+    Awaitility.await("Schema should be searchable by new tag FQN after rename")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String resp =
+                  client
+                      .search()
+                      .query("*")
+                      .index("database_schema_search_index")
+                      .queryFilter(tagFilterAfter)
+                      .size(10)
+                      .execute();
+              JsonNode hits = mapper.readTree(resp).path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(),
+                  "Schema should be findable by new tag FQN after name rename");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (schema
+                    .getFullyQualifiedName()
+                    .equals(hit.path("_source").path("fullyQualifiedName").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Schema should appear in search results under new tag FQN after name rename");
+            });
+
+    // Step 9: Delete the certification tag and verify the schema no longer has a certification
+    SdkClients.adminClient().tags().delete(certTag.getId().toString());
+
+    DatabaseSchema schemaAfterTagDelete =
+        client.databaseSchemas().getByName(schema.getFullyQualifiedName(), "certification");
+    assertNotNull(
+        schemaAfterTagDelete, "Schema must still be fetchable after certification tag deletion");
+    assertNull(
+        schemaAfterTagDelete.getCertification(),
+        "Schema must not have a certification after the certification tag is deleted");
+  }
+
+  @Test
+  void test_ownerPropagationFromClassificationToTagSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Classification classification = createClassification(ns);
+    Tag tag =
+        createEntity(
+            new CreateTag()
+                .withName(ns.shortPrefix("owner_prop_tag"))
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Tag for owner propagation test"));
+
+    Classification fetched =
+        client.classifications().get(classification.getId().toString(), "owners");
+    fetched.setOwners(List.of(testUser1Ref()));
+    client.classifications().update(fetched.getId().toString(), fetched);
+
+    UUID tagId = tag.getId();
+    Awaitility.await("Tag search index should reflect inherited owner from classification")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollDelay(java.time.Duration.ofMillis(500))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client.search().query("id:" + tagId).index("tag_search_index").size(1).execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Tag should be in tag_search_index");
+
+              JsonNode source = null;
+              for (JsonNode hit : hits) {
+                if (tagId.toString().equals(hit.path("_id").asText())
+                    || tagId.toString().equals(hit.path("_source").path("id").asText())) {
+                  source = hit.path("_source");
+                  break;
+                }
+              }
+              assertNotNull(source, "Tag document not found in search hits");
+
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isArray() && !owners.isEmpty(),
+                  "Owners should be propagated to tag search index");
+              assertTrue(
+                  StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> testUser1().getId().toString().equals(o.path("id").asText())),
+                  "Owner should match the user set on the classification");
+            });
+  }
+
+  // ===================================================================
+  // BULK REMOVE TAG FROM ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunTrue_doesNotRemove(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_true");
+    Table table = createTableTaggedWith(ns, tag, "dr_true");
+
+    AddTagToAssetsRequest dryRunRemove =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunRemove, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunFalse_removes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_false");
+    Table table = createTableTaggedWith(ns, tag, "dr_false");
+
+    AddTagToAssetsRequest realRemove =
+        new AddTagToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, realRemove, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag should be removed from asset when dryRun=false")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(45))
+        .untilAsserted(() -> assertFalse(tableHasTag(client, tableId, tagFqn)));
+  }
+
+  @Test
+  void test_bulkAddTagToAssets_dryRunTrue_doesNotApply(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_dr_true");
+    Table table = createBareTable(ns, "add_dr_true");
+
+    AddTagToAssetsRequest dryRunAdd =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must NOT be applied to asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_omit");
+    Table table = createTableTaggedWith(ns, tag, "dr_omit");
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset when dryRun is omitted (default preview)")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
+  private Tag createTagForBulk(TestNamespace ns, String suffix) {
+    Classification classification = createClassification(ns);
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("br_" + suffix));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag for bulk remove dryRun test");
+    return createEntity(createTag);
+  }
+
+  private Table createBareTable(TestNamespace ns, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "br_svc_" + suffix);
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("br_tbl_" + suffix));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    return client.tables().create(createTable);
+  }
+
+  private Table createTableTaggedWith(TestNamespace ns, Tag tag, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    fetched.setTags(List.of(tagLabel));
+    Table tagged = client.tables().update(table.getId().toString(), fetched);
+    assertNotNull(tagged.getTags(), "Patched table should expose tags");
+    assertTrue(
+        tableHasTag(client, table.getId(), tag.getFullyQualifiedName()),
+        "Patched table should already have the tag applied");
+    return tagged;
+  }
+
+  private boolean tableHasTag(OpenMetadataClient client, UUID tableId, String tagFqn) {
+    Table refreshed = client.tables().get(tableId.toString(), "tags");
+    return refreshed.getTags() != null
+        && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+  }
+
+  // ===================================================================
+  // Issue #28696 (tag analogue): renaming a tag so the new name keeps the old
+  // name as a PREFIX must rewrite that tag's FQN on linked assets and must NOT
+  // corrupt a sibling tag under the same classification that merely shares the
+  // textual prefix. Tag asset propagation runs through the shared, now
+  // boundary-aware UPDATE_FQN_PREFIX_SCRIPT (propagateToRelatedEntities, gated
+  // on the displayName change a UI rename sends) — single-pass, so the exact
+  // rename was already fine; the sibling assertion is what the boundary fix
+  // protects.
+  // ===================================================================
+  @Test
+  void test_renameTagPrefixExtension_rewritesAssetTagButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Classification classification = createClassification(ns);
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptag")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("tag renamed via prefix extension (#28696)"));
+    Tag sibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptagx")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("sibling tag sharing the textual prefix"));
+    String oldTagFqn = tag.getFullyQualifiedName();
+    String siblingFqn = sibling.getFullyQualifiedName();
+
+    Table asset = createTableTaggedWith(ns, tag, "p");
+    Table assetSibling = createTableTaggedWith(ns, sibling, "px");
+
+    awaitTableTag(client, mapper, asset.getId().toString(), oldTagFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+
+    tag.setName("ptag renamed");
+    tag.setDisplayName("Renamed Tag");
+    Tag renamed = patchEntity(tag.getId().toString(), tag);
+    String newTagFqn = renamed.getFullyQualifiedName();
+    assertTrue(
+        !oldTagFqn.equals(newTagFqn) && newTagFqn.startsWith(oldTagFqn),
+        "rename must extend the FQN as a prefix: " + newTagFqn);
+
+    // The renamed tag's FQN follows on the linked asset...
+    awaitTableTag(client, mapper, asset.getId().toString(), newTagFqn);
+    // ...and the prefix-sharing sibling tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
+            });
   }
 }

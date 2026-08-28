@@ -238,14 +238,13 @@ public class RecognizerFeedbackRepository {
       String fieldName = parsedLink.getFieldName();
       String arrayFieldName = parsedLink.getArrayFieldName();
 
-      EntityRepository repository = (EntityRepository) Entity.getEntityRepository(entityType);
+      EntityRepository repository = Entity.getEntityRepository(entityType);
       if (repository == null) {
         return null;
       }
 
       org.openmetadata.schema.EntityInterface entity =
-          (org.openmetadata.schema.EntityInterface)
-              repository.getByName(null, entityFQN, repository.getFields("tags"));
+          repository.getByName(null, entityFQN, repository.getFields("tags"));
 
       List<TagLabel> tagsToCheck = null;
 
@@ -317,14 +316,13 @@ public class RecognizerFeedbackRepository {
       String fieldName = parsedLink.getFieldName();
       String arrayFieldName = parsedLink.getArrayFieldName();
 
-      EntityRepository repository = (EntityRepository) Entity.getEntityRepository(entityType);
+      EntityRepository repository = Entity.getEntityRepository(entityType);
       if (repository == null) {
         throw new IllegalArgumentException("Unknown entity type: " + entityType);
       }
 
       org.openmetadata.schema.EntityInterface entity =
-          (org.openmetadata.schema.EntityInterface)
-              repository.getByName(null, entityFQN, repository.getFields("tags"));
+          repository.getByName(null, entityFQN, repository.getFields("tags"));
 
       List<TagLabel> tagsToCheck = null;
 
@@ -400,15 +398,14 @@ public class RecognizerFeedbackRepository {
       String fieldName = parsedLink.getFieldName();
       String arrayFieldName = parsedLink.getArrayFieldName();
 
-      EntityRepository repository = (EntityRepository) Entity.getEntityRepository(entityType);
+      EntityRepository repository = Entity.getEntityRepository(entityType);
       if (repository == null) {
         LOG.error("Unknown entity type: {}", entityType);
         return;
       }
 
       org.openmetadata.schema.EntityInterface entity =
-          (org.openmetadata.schema.EntityInterface)
-              repository.getByName(null, entityFQN, repository.getFields("tags"));
+          repository.getByName(null, entityFQN, repository.getFields("tags"));
 
       org.openmetadata.schema.EntityInterface originalEntity =
           JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());

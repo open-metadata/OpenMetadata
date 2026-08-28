@@ -16,7 +16,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';

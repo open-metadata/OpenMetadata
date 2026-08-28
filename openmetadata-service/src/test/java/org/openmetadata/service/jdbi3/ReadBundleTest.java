@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
@@ -51,7 +52,7 @@ class ReadBundleTest {
 
     bundle.putExtension(entityId, null);
     assertTrue(bundle.hasExtension(entityId));
-    assertEquals(null, bundle.getExtensionOrNull(entityId));
+    assertNull(bundle.getExtensionOrNull(entityId));
   }
 
   @Test

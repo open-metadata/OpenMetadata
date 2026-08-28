@@ -11,24 +11,12 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
-
-export type Theme = 'light' | 'dark';
-
-interface BrandColors {
-  primaryColor?: string;
-  hoverColor?: string;
-  selectedColor?: string;
-  errorColor?: string;
-  successColor?: string;
-  warningColor?: string;
-  infoColor?: string;
-}
-
-interface ThemeContextType {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  BrandColors,
+  Theme,
+  ThemeContextType,
+} from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -70,7 +58,7 @@ interface ThemeProviderProps {
  * Utility classes like `tw:bg-brand-solid` reference these `--tw-*` vars at runtime,
  * so we override them directly to update the brand color system-wide.
  *
- * Mapping (matches what generateAllMuiPalettes uses for consistency):
+ * Mapping:
  *   primaryColor  → brand-600 (solid bg, fg-brand-primary, borders)
  *   hoverColor    → brand-100 (light bg tints)
  *   selectedColor → brand-700 (solid hover, selected state)
@@ -96,7 +84,10 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-color-utility-brand-600_alt', primaryColor);
     root.style.setProperty('--tw-color-fg-brand-primary', primaryColor);
     root.style.setProperty('--tw-color-fg-brand-primary_alt', primaryColor);
-    root.style.setProperty('--tw-color-fg-brand-secondary_hover', primaryColor);
+    root.style.setProperty(
+      '--tw-color-fg-brand-secondary_hover',
+      hoverColor ?? primaryColor
+    );
     root.style.setProperty('--tw-color-bg-brand-solid', primaryColor);
     root.style.setProperty('--tw-color-border-brand_alt', primaryColor);
     root.style.setProperty('--tw-color-text-brand-tertiary', primaryColor);
@@ -120,6 +111,10 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-ring-color-brand_alt', primaryColor);
     root.style.setProperty('--tw-ring-color-bg-brand-solid', primaryColor);
     root.style.setProperty('--tw-outline-color-brand-solid', primaryColor);
+    // Borders are drawn with `outline` now, so each themed ring colour needs an outline
+    // counterpart or the border ignores custom branding. `bg-brand-solid` needs no entry:
+    // `tw:outline-bg-brand-solid` resolves to `--tw-color-bg-brand-solid`, set above.
+    root.style.setProperty('--tw-outline-color-brand_alt', primaryColor);
   }
 
   if (selectedColor) {
@@ -162,12 +157,6 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-color-utility-brand-100_alt', hoverColor);
     root.style.setProperty('--tw-color-bg-brand-secondary', hoverColor);
     root.style.setProperty('--tw-background-color-brand-secondary', hoverColor);
-    root.style.setProperty('--tw-color-text-secondary_on-brand', hoverColor);
-    root.style.setProperty('--tw-color-text-tertiary_on-brand', hoverColor);
-    root.style.setProperty('--tw-color-icon-fg-brand_on-brand', hoverColor);
-    root.style.setProperty('--tw-text-color-secondary_on-brand', hoverColor);
-    root.style.setProperty('--tw-text-color-tertiary_on-brand', hoverColor);
-    root.style.setProperty('--tw-text-color-brand-secondary_hover', hoverColor);
   }
 
   if (errorColor) {
@@ -243,7 +232,7 @@ export const ThemeProvider = ({
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof globalThis !== 'undefined') {
       const savedTheme = localStorage.getItem(storageKey) as Theme | null;
 
       if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -257,7 +246,7 @@ export const ThemeProvider = ({
   });
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = globalThis.document.documentElement;
 
     root.classList.toggle(darkModeClass, theme === 'dark');
 
@@ -269,7 +258,7 @@ export const ThemeProvider = ({
   }, [theme, darkModeClass, storageKey]);
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = globalThis.document.documentElement;
 
     clearBrandCssVars(root);
     if (brandColors && Object.values(brandColors).some(Boolean)) {
@@ -285,9 +274,12 @@ export const ThemeProvider = ({
     brandColors?.infoColor,
   ]);
 
+  const values = useMemo(
+    () => ({ theme, brandColors, setTheme }),
+    [theme, brandColors]
+  );
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={values}>{children}</ThemeContext.Provider>
   );
 };

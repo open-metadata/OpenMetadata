@@ -12,22 +12,31 @@
  */
 
 import {
-  Box,
   Button,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-} from '@mui/material';
-import { Form } from 'antd';
-import React, { FC, useState } from 'react';
+  FieldProp,
+  FieldTypes,
+  getField,
+  HelperTextType,
+  HookForm,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { FC, useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
-import { iconTooltipDataRender } from '../../../utils/DomainUtils';
-import { MUIColorPicker } from '../../common/ColorPicker';
-import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
-import Loader from '../../common/Loader/Loader';
+import { AVAILABLE_ICONS, DEFAULT_TAG_ICON } from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
+
+const ICON_OPTIONS = [
+  DEFAULT_TAG_ICON,
+  ...AVAILABLE_ICONS.filter((icon) => icon.name !== DEFAULT_TAG_ICON.name),
+].map((icon) => ({
+  icon: icon.component,
+  id: icon.name,
+  label: icon.name,
+}));
 
 const IconColorModal: FC<StyleModalProps> = ({
   open,
@@ -36,113 +45,97 @@ const IconColorModal: FC<StyleModalProps> = ({
   style,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
-  const [saving, setSaving] = useState<boolean>(false);
+  const form = useForm<Style>({
+    defaultValues: {
+      iconURL: style?.iconURL,
+      color: style?.color,
+    },
+  });
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const selectedColor = Form.useWatch('color', form);
+  // The parent keeps this modal mounted and only toggles `open`, so
+  // useForm's defaultValues (captured once at mount) go stale across
+  // reopens with a different `style` — reset on every open to pick up
+  // the latest values.
+  useEffect(() => {
+    if (open) {
+      form.reset({ iconURL: style?.iconURL, color: style?.color });
+    }
+  }, [open]);
+
+  const selectedColor = useWatch({ control: form.control, name: 'color' });
 
   const handleSubmit = async (values: Style) => {
     try {
-      setSaving(true);
+      setIsSaving(true);
       await onSubmit(values);
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
+  const iconField: FieldProp = {
+    helperText: t('message.icon-aspect-ratio'),
+    helperTextType: HelperTextType.TOOLTIP,
+    id: 'root/iconURL',
+    label: t('label.icon'),
+    name: 'iconURL',
+    placeholder: t('label.icon-url'),
+    props: {
+      allowUrl: true,
+      backgroundColor: selectedColor,
+      'data-testid': 'icon-picker-btn',
+      defaultIcon: DEFAULT_TAG_ICON,
+      options: ICON_OPTIONS,
+    },
+    type: FieldTypes.ICON_PICKER,
+  };
+
+  const colorField: FieldProp = {
+    id: 'root/color',
+    label: t('label.color'),
+    name: 'color',
+    type: FieldTypes.COLOR_PICKER,
+  };
+
   return (
-    <Dialog
-      open={open}
-      slotProps={{
-        paper: {
-          'data-testid': 'icon-color-modal',
-          sx: {
-            borderRadius: 1,
-            width: 520,
-            maxWidth: '100%',
-          },
-        } as React.HTMLAttributes<HTMLDivElement>,
-      }}
-      onClose={saving ? undefined : onCancel}>
-      <Box data-testid="icon-color-modal-content">
-        <DialogTitle
-          sx={{
-            '&.MuiDialogTitle-root': {
-              px: 6,
-              py: 4,
-            },
-          }}>
-          {t('label.edit-entity', { entity: t('label.style') })}
-        </DialogTitle>
-        <DialogContent
-          dividers
-          sx={{
-            '&.MuiDialogContent-root': { p: 6, pb: 0 },
-          }}>
-          <Form
-            form={form}
-            id="style-modal-new"
-            initialValues={{
-              iconURL: style?.iconURL,
-              color: style?.color,
-            }}
-            layout="vertical"
-            onFinish={handleSubmit}>
-            <Box sx={{ mb: 3 }}>
-              <Form.Item
-                name="iconURL"
-                trigger="onChange"
-                valuePropName="value">
-                <MUIIconPicker
-                  allowUrl
-                  backgroundColor={selectedColor}
-                  data-testid="icon-picker-btn"
-                  defaultIcon={DEFAULT_TAG_ICON}
-                  label={t('label.icon')}
-                  placeholder={t('label.icon-url')}
-                  toolTip={iconTooltipDataRender()}
-                />
-              </Form.Item>
-            </Box>
+    <ModalOverlay
+      isDismissable={!isSaving}
+      isOpen={open}
+      onOpenChange={(v) => !v && !isSaving && onCancel()}>
+      <Modal data-testid="icon-color-modal">
+        <Dialog title={t('label.edit-entity', { entity: t('label.style') })}>
+          <Dialog.Content>
+            <HookForm
+              form={form}
+              id="style-modal-new"
+              onSubmit={form.handleSubmit(handleSubmit)}>
+              <div className="tw:mb-6">{getField(iconField)}</div>
+              <div className="tw:mb-6">{getField(colorField)}</div>
+            </HookForm>
+          </Dialog.Content>
 
-            <Box sx={{ mb: 3 }}>
-              <Form.Item name="color" trigger="onChange" valuePropName="value">
-                <MUIColorPicker label={t('label.color')} />
-              </Form.Item>
-            </Box>
-          </Form>
-        </DialogContent>
-
-        <DialogActions
-          sx={{
-            '&.MuiDialogActions-root': {
-              display: 'flex',
-              gap: 3,
-              px: 6,
-              py: 4,
-            },
-          }}>
-          <Button
-            data-testid="cancel-button"
-            disabled={saving}
-            variant="text"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            data-testid="save-button"
-            disabled={saving}
-            form="style-modal-new"
-            loading={saving}
-            loadingIndicator={<Loader size="x-small" type="white" />}
-            type="submit"
-            variant="contained"
-            onClick={() => form.submit()}>
-            {t('label.save')}
-          </Button>
-        </DialogActions>
-      </Box>
-    </Dialog>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="cancel-button"
+              isDisabled={isSaving}
+              onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              showTextWhileLoading
+              color="primary"
+              data-testid="save-button"
+              isDisabled={isSaving}
+              isLoading={isSaving}
+              onPress={() => form.handleSubmit(handleSubmit)()}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

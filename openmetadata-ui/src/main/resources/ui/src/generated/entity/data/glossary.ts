@@ -20,6 +20,10 @@ export interface Glossary {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -81,6 +85,11 @@ export interface Glossary {
      * Name of the glossary
      */
     name: string;
+    /**
+     * Namespace prefix to IRI mappings for terms imported from an external ontology. Used to
+     * render CURIEs and preserve identity when re-exporting the glossary as RDF/OWL.
+     */
+    namespaces?: Namespace[];
     /**
      * Owners of this glossary.
      */
@@ -187,14 +196,16 @@ export interface FieldChange {
 }
 
 /**
- * List of data products this entity is part of.
+ * Reference to the data contract for this entity.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * List of data products this entity is part of.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -250,11 +261,23 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+export interface Namespace {
+    /**
+     * Full namespace IRI the prefix expands to (e.g., `http://example.com/ontology/hcp#`).
+     */
+    namespace?: string;
+    /**
+     * Short prefix for the namespace (e.g., `hcp`).
+     */
+    prefix?: string;
 }
 
 /**
@@ -350,6 +373,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  AntdConfig,
   AsyncFetchListValuesResult,
   Config,
   FieldOrGroup,
@@ -19,7 +18,7 @@ import {
   ListItem,
   Operators,
   SelectFieldSettings,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { get, sortBy, toLower } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
@@ -32,6 +31,7 @@ import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
+  KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
   TABLE_ENTITY_FIELDS_KEYS,
 } from '../constants/JSONLogicSearch.constants';
 import {
@@ -44,13 +44,12 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
-import {
-  getFieldsByKeys,
-  renderJSONLogicQueryBuilderButtons,
-} from './QueryBuilderUtils';
+import { OMConfig } from './QueryBuilderOMConfig';
+import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
-  baseConfig = AntdConfig as Config;
+  baseConfig = OMConfig as Config;
   configTypes: Config['types'] = {
     ...this.baseConfig.types,
     multiselect: {
@@ -322,11 +321,32 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.COLUMN_TAG]: {
+        label: t('label.column-tag-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
       [EntityReferenceFields.TIER]: {
         label: t('label.tier'),
         type: '!group',
         mode: 'some',
-        fieldName: 'tags',
         defaultField: 'tagFQN',
         subfields: {
           tagFQN: {
@@ -450,6 +470,13 @@ class JSONLogicSearchClassBase {
           showSearch: true,
           useAsyncSearch: false,
         },
+      },
+
+      [EntityReferenceFields.TEST_SUITE]: {
+        label: t('label.test-suite'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: ['is_null', 'is_not_null'],
       },
 
       [EntityReferenceFields.REVIEWERS]: {
@@ -658,6 +685,10 @@ class JSONLogicSearchClassBase {
         TABLE_ENTITY_FIELDS_KEYS,
         this.mapFields
       ),
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: getFieldsByKeys(
+        KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
       [SearchIndex.GLOSSARY_TERM]: getFieldsByKeys(
         GLOSSARY_ENTITY_FIELDS_KEYS,
         this.mapFields
@@ -733,9 +764,18 @@ class JSONLogicSearchClassBase {
     };
   };
 
-  // Custom handling for array_not_contains operator
-  // Check the tree structure to determine if array_not_contains was used
-  // Return the rule with negation applied at group level
+  // Custom handling for array_not_contains and is_null (Is Not Set) operators
+  // on group/some fields (e.g. Owners, Domain, Data Product).
+  // react-awesome-query-builder emits `{"some": [var, condition]}` for these
+  // fields, and JsonLogic's `some` is vacuously false on an empty array. That
+  // is correct for `array_not_contains`/`select_not_any_in` once negation is
+  // lifted outside `some`, but for `is_null` it means "Is Not Set" always
+  // evaluates false — even when the array is genuinely empty — because there
+  // is no element for `some` to satisfy. We rewrite that shape to
+  // `{"!": {"some": [var, {"!=": [field, null]}]}}`, which is the negation of
+  // the (already-correct) "Is Set" check and is true exactly when the array
+  // is empty.
+  // Return the rule with negation applied at group level.
   getNegativeQueryForNotContainsReverserOperation = (
     logic: Record<string, unknown>
   ) => {
@@ -754,23 +794,39 @@ class JSONLogicSearchClassBase {
           Record<string, unknown>
         ];
 
-        // Check if the condition has a negated contains (indicating array_not_contains was used)
+        if (condition && condition['!'] && typeof condition['!'] === 'object') {
+          const negated = condition['!'] as Record<string, unknown>;
+
+          if (negated.contains) {
+            return {
+              '!': {
+                some: [variable, { contains: negated.contains }],
+              },
+            };
+          }
+
+          if (negated.in) {
+            return {
+              '!': {
+                some: [variable, { in: negated.in }],
+              },
+            };
+          }
+        }
+
+        // Pattern generated by the "Is Not Set" (is_null) operator:
+        // {"some": [var, {"==": [field, null]}]}
+        const equalsNullArgs = condition?.['=='];
         if (
-          condition &&
-          condition['!'] &&
-          typeof condition['!'] === 'object' &&
-          (condition['!'] as Record<string, unknown>).contains
+          Array.isArray(equalsNullArgs) &&
+          equalsNullArgs.length === 2 &&
+          equalsNullArgs[1] === null
         ) {
-          // Transform to NOT around the entire some operation
+          const [field] = equalsNullArgs;
+
           return {
             '!': {
-              some: [
-                variable,
-                {
-                  contains: (condition['!'] as Record<string, unknown>)
-                    .contains,
-                },
-              ],
+              some: [variable, { '!=': [field, null] }],
             },
           };
         }

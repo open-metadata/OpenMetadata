@@ -54,11 +54,15 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
 
   return (
     <button
+      aria-label={pipelineData?.fullyQualifiedName}
       key={`popover-${hoveredButton.edgeId}`}
       style={{
         ...position,
         pointerEvents: 'all',
         zIndex: 1000,
+        background: 'none',
+        border: 'none',
+        padding: 0,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}>

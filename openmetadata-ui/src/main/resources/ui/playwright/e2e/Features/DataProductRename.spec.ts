@@ -16,13 +16,13 @@ import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
 } from '../../utils/common';
 import {
@@ -46,7 +46,6 @@ test.describe('Data Product Rename', () => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
       await table.create(apiContext);
@@ -57,11 +56,13 @@ test.describe('Data Product Rename', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -75,7 +76,6 @@ test.describe('Data Product Rename', () => {
     await table.delete(apiContext);
     await dataProduct.delete(apiContext);
     await domain.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await adminUser.delete(apiContext);
     await afterAction();
   });
@@ -154,7 +154,6 @@ test.describe('Data Product Rename', () => {
         `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
       )
       .click();
-
 
     // Navigate back to data product and verify assets tab still shows the asset
     await page.goBack();
@@ -246,11 +245,13 @@ test.describe('Data Product Rename', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -331,7 +332,6 @@ test.describe('Data Product Rename', () => {
         )
         .click();
 
-
       // Navigate back and verify assets still there
       await page.goBack();
       await page.getByTestId('assets').click();
@@ -401,13 +401,7 @@ test.describe('Data Product Rename', () => {
       // Verify the response status is 400 (Bad Request)
       expect(response.status()).toBe(400);
 
-      // Verify an error alert is shown
-      await expect(page.getByTestId('alert-bar')).toBeVisible();
-
-      // Verify the error message contains information about the duplicate name
-      await expect(page.getByTestId('alert-message')).toContainText(
-        'already exists'
-      );
+      await toastNotification(page, /already exists/i);
     } finally {
       await dataProduct1.delete(apiContext);
       await dataProduct2.delete(apiContext);

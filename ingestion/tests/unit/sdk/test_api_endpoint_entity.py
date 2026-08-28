@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for API Endpoint entity.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -69,9 +70,7 @@ class TestAPIEndpointEntity(unittest.TestCase):
         result = APIEndpoints.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=APIEndpointEntity, fqn=self.entity_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=APIEndpointEntity, fqn=self.entity_fqn, fields=None)
 
     def test_update_api_endpoint(self):
         """Test updating a api endpoint"""
@@ -81,11 +80,7 @@ class TestAPIEndpointEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(entity_to_update))
-        current_entity.id = (
-            entity_to_update.id
-            if hasattr(entity_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = entity_to_update.id if hasattr(entity_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity

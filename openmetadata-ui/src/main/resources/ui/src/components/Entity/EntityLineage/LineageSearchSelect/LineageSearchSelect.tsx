@@ -27,8 +27,9 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
-import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
@@ -46,7 +47,7 @@ const LineageSearchSelect = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const generateNodeOptions = useCallback(() => {
-    const options: DefaultOptionType[] = [];
+    const optionsMap: Map<string, DefaultOptionType> = new Map();
 
     nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
@@ -70,7 +71,7 @@ const LineageSearchSelect = () => {
         value: node.fullyQualifiedName,
         dataLabel: getEntityName(node),
       };
-      options.push(nodeOption);
+      optionsMap.set(nodeOption.value, nodeOption);
 
       const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
@@ -94,9 +95,10 @@ const LineageSearchSelect = () => {
                 <RightOutlined className="text-grey-muted text-xss" />
               </div>
               <div className="d-flex items-center gap-1 ">
-                <div className="flex-center w-4 h-4 text-base-color">
-                  {searchClassBase.getEntityIcon(node.entityType ?? '')}
-                </div>
+                {searchClassBase.getEntityIconWithBg(
+                  node.entityType ?? '',
+                  EntityIconSize.Size14
+                )}
                 <Typography.Text>{getEntityName(column)}</Typography.Text>
               </div>
             </div>
@@ -104,11 +106,11 @@ const LineageSearchSelect = () => {
           value: column.fullyQualifiedName,
           dataLabel: getEntityName(column),
         };
-        options.push(columnOption);
+        optionsMap.set(columnOption.value, columnOption);
       });
     });
 
-    return options;
+    return Array.from(optionsMap.values());
   }, [nodes]);
 
   useEffect(() => {

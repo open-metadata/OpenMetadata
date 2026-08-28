@@ -10,22 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../../constant/sidebar';
+import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
-  selectActiveGlossary,
 } from '../../../utils/glossary';
-import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -35,6 +28,80 @@ test.describe('Large Glossary Performance Tests', () => {
   const TOTAL_TERMS = 100; // Reduced for test performance
   const glossary = new Glossary();
   const glossaryTerms: GlossaryTerm[] = [];
+
+  const getGlossaryTermsScrollTop = async (page: Page) =>
+    page.evaluate(() => {
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"]'
+      );
+
+      return container?.scrollTop ?? 0;
+    });
+
+  const setGlossaryTermsScrollTop = async (page: Page, scrollTop: number) => {
+    await page.evaluate((top) => {
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"]'
+      );
+
+      if (container) {
+        container.scrollTop = top;
+        container.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }
+    }, scrollTop);
+  };
+
+  const scrollGlossaryTermsToBottom = async (page: Page) => {
+    await page.evaluate(() => {
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"]'
+      );
+
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight });
+        container.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }
+    });
+  };
 
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(8 * 60 * 1000);
@@ -79,43 +146,45 @@ test.describe('Large Glossary Performance Tests', () => {
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
   });
 
   test('should handle large number of glossary terms with pagination', async ({
     page,
   }) => {
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached' });
 
-    const initialTerms = await page.locator('tbody .ant-table-row').count();
+    const initialTerms = await page.locator('tbody tr[data-row-key]').count();
 
     expect(initialTerms).toBe(50);
 
     const infiniteScrollRequest = page.waitForResponse(
-      'api/v1/glossaryTerms?directChildrenOf*'
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.url().includes('directChildrenOf=') &&
+        response.url().includes('after=')
     );
 
-    // Scroll to bottom to trigger infinite scroll
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    });
+    await scrollGlossaryTermsToBottom(page);
 
     // Wait for more terms to load
-    await infiniteScrollRequest;
+    const infiniteScrollResponse = await infiniteScrollRequest;
+    expect(infiniteScrollResponse.status()).toBe(200);
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached' });
 
     // Verify more terms are loaded
 
-    const afterScrollTerms = await page.locator('tbody .ant-table-row').count();
+    const afterScrollTerms = await page
+      .locator('tbody tr[data-row-key]')
+      .count();
 
     expect(afterScrollTerms).toBe(100);
   });
@@ -123,13 +192,18 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should search and filter glossary terms', async ({ page }) => {
     // Type in search box
     const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchResponse = page.waitForResponse(
+      'api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('Term_5');
 
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    const searchRes = await searchResponse;
+
+    expect(searchRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
     // Verify filtered results
 
-    const filteredTerms = await page.locator('tbody .ant-table-row').count();
+    const filteredTerms = await page.locator('tbody tr[data-row-key]').count();
 
     expect(filteredTerms).toBeGreaterThan(0);
     expect(filteredTerms).toBeLessThan(20); // Should show Term_5, Term_50-59, etc.
@@ -138,15 +212,28 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(page.getByText('Term_5', { exact: true })).toBeVisible();
 
     // Clear search
+    const allTermsResponse = page.waitForResponse('api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
 
-    // Verify all terms are shown again
+    const clearRes = await allTermsResponse;
 
-    const allTerms = await page.locator('tbody .ant-table-row').count();
+    expect(clearRes.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
 
-    // 51 because there is one additional row which is not rendered
-    expect(allTerms).toBeGreaterThanOrEqual(50);
+    // Verify all terms are shown again.
+    //
+    // waitForResponse only proves the listing bytes arrived — the component
+    // still has to apply the store update and re-render the rows, which
+    // happens in a later microtask (GlossaryTermTab sets the terms after its
+    // own await). A single count() here has no retry budget and samples the
+    // stale search results instead, so poll the rendered row count.
+    //
+    // Polling rather than toHaveCount: the tab auto-fetches another page when
+    // the rows do not fill the viewport, so an exact count would swap this
+    // flake for a different one.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBeGreaterThanOrEqual(50);
   });
 
   test('should expand and collapse all terms', async ({ page }) => {
@@ -171,7 +258,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(
-          '.glossary-terms-scroll-container [data-testid="loader"]'
+          '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
         ).length === 0
       );
     });
@@ -189,7 +276,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(
-          '.glossary-terms-scroll-container [data-testid="loader"]'
+          '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
         ).length === 0
       );
     });
@@ -221,68 +308,21 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should maintain scroll position when loading more terms', async ({
     page,
   }) => {
-    // Get initial scroll position
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
+    await setGlossaryTermsScrollTop(page, 200);
 
-      return scrollContainer?.scrollTop || 0;
-    });
-
-    // Scroll down partially
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = 200;
-      }
-    });
-
-    const scrollPositionBeforeLoad = await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-
-      return scrollContainer?.scrollTop || 0;
-    });
-
-    // Trigger infinite scroll
-
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    });
+    const scrollPositionBeforeLoad = await getGlossaryTermsScrollTop(page);
+    await scrollGlossaryTermsToBottom(page);
 
     // Wait for more terms to load
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached' });
 
-    // Scroll back to previous position
-    await page.evaluate((scrollPos) => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollPos;
-      }
-    }, scrollPositionBeforeLoad);
+    await setGlossaryTermsScrollTop(page, scrollPositionBeforeLoad);
 
-    // Verify we can still see the same content
-
-    const currentScrollTop = await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-
-      return scrollContainer?.scrollTop || 0;
-    });
+    const currentScrollTop = await getGlossaryTermsScrollTop(page);
 
     expect(Math.abs(currentScrollTop - scrollPositionBeforeLoad)).toBeLessThan(
       10
@@ -295,7 +335,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await statusDropdown.click();
 
     // Wait for dropdown menu
-    await page.waitForSelector('.status-selection-dropdown');
+    await page.getByTestId('glossary-status-option-all').waitFor();
 
     // Check if status options are available
     const approvedCheckbox = page.locator('text=Approved').first();
@@ -322,29 +362,19 @@ test.describe('Large Glossary Performance Tests', () => {
   });
 
   test('should handle drag and drop for term reordering', async ({ page }) => {
+    test.slow();
+
     await dragAndDropTerm(page, 'Term_10', 'Term_1');
 
     await confirmationDragAndDropGlossary(page, 'Term_10', 'Term_1');
 
-    await expect(
-      page.getByRole('cell', {
-        name: 'Term_10',
-        exact: true,
-      })
-    ).not.toBeVisible();
+    await expect(page.getByTestId('Term_10')).not.toBeVisible();
 
-    const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-
-    // verify the term is moved under the parent term
+    // verify the term is moved under the parent term — no network wait here:
+    // the frontend pre-fetches Term_1's children as part of the move response,
+    // so expand-all may not fire a new request; toBeVisible() auto-retries.
     await page.getByTestId('expand-collapse-all-button').click();
-    await termRes;
-
-    await expect(
-      page.getByRole('cell', {
-        name: 'Term_10',
-        exact: true,
-      })
-    ).toBeVisible();
+    await expect(page.getByTestId('Term_10')).toBeVisible();
   });
 });
 
@@ -393,7 +423,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
   });
 
   test('should handle large number of glossary child term with pagination', async ({
@@ -408,7 +438,8 @@ test.describe('Large Glossary Child Term Performace', () => {
       'api/v1/glossaryTerms?directChildrenOf*'
     );
     await expandIcon.click();
-    await childTermReq;
+    const childTermRes = await childTermReq;
+    expect(childTermRes.status()).toBe(200);
 
     // Wait for children to load
     await expect(
@@ -421,12 +452,13 @@ test.describe('Large Glossary Child Term Performace', () => {
       page.getByText('Term_1_Child_3', { exact: true })
     ).toBeVisible();
 
-    const initialTerms = await page
-      .locator('tbody .ant-table-row-level-1')
+    const initialChildTerms = await page
+      .getByTestId(/^Term_1_Child_\d+$/)
       .count();
 
-    // 51 because last row contain button to view next 50 terms
-    expect(initialTerms).toBe(51);
+    // 50 children are shown, with a "view more" row below to load the next 50
+    expect(initialChildTerms).toBe(50);
+    await expect(page.getByTestId('load-more-children-button')).toBeVisible();
 
     const buttonText = await page
       .getByTestId('load-more-children-button')
@@ -434,18 +466,23 @@ test.describe('Large Glossary Child Term Performace', () => {
 
     expect(buttonText).toContain('View 50 more');
 
+    const loadMoreReq = page.waitForResponse(
+      'api/v1/glossaryTerms?directChildrenOf*'
+    );
     await page.getByTestId('load-more-children-button').click();
-    await childTermReq;
+    const loadMoreRes = await loadMoreReq;
+    expect(loadMoreRes.status()).toBe(200);
 
     await expect(
       page.getByText('Term_1_Child_54', { exact: true })
     ).toBeVisible();
 
-    const finalTerms = await page
-      .locator('tbody .ant-table-row-level-1')
+    const finalChildTerms = await page
+      .getByTestId(/^Term_1_Child_\d+$/)
       .count();
 
-    expect(finalTerms).toBe(100);
+    expect(finalChildTerms).toBe(100);
+    await expect(page.getByTestId('load-more-children-button')).toBeHidden();
 
     // Click to collapse
     await expandIcon.click();

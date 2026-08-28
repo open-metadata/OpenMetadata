@@ -10,21 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node, Position, Viewport } from 'reactflow';
+import type { Edge, Node, Viewport } from 'reactflow';
+import { Position } from 'reactflow';
 import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
-import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../constants/constants';
 import {
   COLUMN_NODE_HEIGHT,
+  LINEAGE_CHILD_ITEMS_PER_PAGE,
+  NODE_BASE_HEIGHT,
   NODE_HEIGHT,
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
+  TEMP_LINEAGE_NODE_HEIGHT,
 } from '../constants/Lineage.constants';
 import { EntityType } from '../enums/entity.enum';
 import { useLineageStore } from '../hooks/useLineageStore';
-import {
-  getEdgePathData,
-  getEntityChildrenAndLabel,
-} from './EntityLineageUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getEntityChildrenAndLabel } from './EntityLineageNodeUtils';
 
 export interface BoundingBox {
   minX: number;
@@ -65,7 +66,7 @@ export function setupCanvas(
 
 const getBaseNodeHeightFromType = (
   entityType: string,
-  isRootNode: boolean = false,
+  isRootNode: boolean,
   children: { children: EntityChildren }
 ) => {
   const childrenPresent = children.children.length !== 0;
@@ -85,7 +86,7 @@ const getBaseNodeHeightFromType = (
     case EntityType.SEARCH_SERVICE:
     case EntityType.SECURITY_SERVICE:
     case EntityType.API_SERVICE:
-      baseHeight = 48;
+      baseHeight = NODE_BASE_HEIGHT;
 
       break;
   }
@@ -93,12 +94,25 @@ const getBaseNodeHeightFromType = (
   return isRootNode ? baseHeight + 10 : baseHeight;
 };
 
+const getNodeYPadding = (node: Node): number => {
+  const { children } = getEntityChildrenAndLabel(node.data.node);
+
+  const sourceYPadding = children.length > 0 ? 48 : 0;
+
+  return sourceYPadding;
+};
+
 export function getNodeHeight(
   node: Node,
-  isColumnLineage: boolean,
+  isColumnLineage?: boolean,
   columnCount?: number
-) {
+): number {
   const isRootNode = node.data?.isRootNode ?? false;
+  const isTempTable = node.data?.node?.isTempTable ?? false;
+
+  if (isTempTable) {
+    return TEMP_LINEAGE_NODE_HEIGHT;
+  }
 
   const visibleColumnCount = isColumnLineage
     ? columnCount ?? LINEAGE_CHILD_ITEMS_PER_PAGE
@@ -124,15 +138,6 @@ export function getNodeHeight(
   return height;
 }
 
-const getNodeYPadding = (node: Node): number => {
-  const { children } = getEntityChildrenAndLabel(node.data.node);
-
-  const sourceYPadding = children.length > 0 ? 48 : 0;
-
-  // Add padding for the node's border
-  return sourceYPadding;
-};
-
 interface ColumnLineageData {
   columnIds: string[];
   columnIndex: number;
@@ -149,7 +154,7 @@ function getColumnLineageData(
   nodeFilterMap: Map<string, boolean>
 ): ColumnLineageData | null {
   const columnIds = columnsInCurrentPages.get(nodeId) || [];
-  const columnIndex = columnIds.findIndex((id) => id === handleId);
+  const columnIndex = handleId ? columnIds.indexOf(handleId) : -1;
 
   if (columnIndex === -1) {
     return null;
@@ -180,11 +185,10 @@ function calculateColumnPosition(
   const columnCenterOffset =
     COLUMN_NODE_HEIGHT * columnIndex + COLUMN_NODE_HEIGHT / 2;
 
-  const navigationOffset = columnFilterActive
-    ? 0
-    : columnIndex >= LINEAGE_CHILD_ITEMS_PER_PAGE
-    ? 17
-    : 0;
+  let navigationOffset = 0;
+  if (!columnFilterActive && columnIndex >= LINEAGE_CHILD_ITEMS_PER_PAGE) {
+    navigationOffset = 17;
+  }
 
   const yPadding = navigationNeeded
     ? getNodeYPadding(node) + 28
@@ -505,10 +509,10 @@ export function getBezierEndTangentAngle(
   }
 
   if (lastMatch) {
-    const c2x = parseFloat(lastMatch[3]);
-    const c2y = parseFloat(lastMatch[4]);
-    const tx = parseFloat(lastMatch[5]);
-    const ty = parseFloat(lastMatch[6]);
+    const c2x = Number.parseFloat(lastMatch[3]);
+    const c2y = Number.parseFloat(lastMatch[4]);
+    const tx = Number.parseFloat(lastMatch[5]);
+    const ty = Number.parseFloat(lastMatch[6]);
     const dx = tx - c2x;
     const dy = ty - c2y;
 
@@ -530,15 +534,15 @@ export function getCubicBezierMidpoint(
   const cubicRe =
     /[Cc]\s*([-\d.e+]+)[,\s]+([-\d.e+]+)[,\s]+([-\d.e+]+)[,\s]+([-\d.e+]+)[,\s]+([-\d.e+]+)[,\s]+([-\d.e+]+)/;
 
-  const match = pathString.match(cubicRe);
+  const match = new RegExp(cubicRe).exec(pathString);
 
   if (match) {
-    const c1x = parseFloat(match[1]);
-    const c1y = parseFloat(match[2]);
-    const c2x = parseFloat(match[3]);
-    const c2y = parseFloat(match[4]);
-    const tx = parseFloat(match[5]);
-    const ty = parseFloat(match[6]);
+    const c1x = Number.parseFloat(match[1]);
+    const c1y = Number.parseFloat(match[2]);
+    const c2x = Number.parseFloat(match[3]);
+    const c2y = Number.parseFloat(match[4]);
+    const tx = Number.parseFloat(match[5]);
+    const ty = Number.parseFloat(match[6]);
 
     const t = 0.5;
     const mt = 1 - t;
@@ -653,3 +657,82 @@ export const computePathDataForEdge = (
 export const clearPathDataCache = (): void => {
   pathDataCache.clear();
 };
+
+export function drawEdgesForExport(
+  edges: Edge[],
+  nodeMap: Map<string, Node>,
+  exportViewport: Viewport,
+  imageWidth: number,
+  imageHeight: number,
+  padding: number,
+  pixelRatio: number,
+  columnsInCurrentPages: Map<string, string[]>
+): HTMLCanvasElement {
+  const finalWidth = imageWidth + padding * 2;
+  const finalHeight = imageHeight + padding * 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = finalWidth * pixelRatio;
+  canvas.height = finalHeight * pixelRatio;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return canvas;
+  }
+
+  ctx.save();
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.translate(exportViewport.x + padding, exportViewport.y + padding);
+  ctx.scale(exportViewport.zoom, exportViewport.zoom);
+
+  for (const edge of edges) {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    const pathData = computePathDataForEdge(
+      edge,
+      sourceNode,
+      targetNode,
+      columnsInCurrentPages
+    );
+
+    if (!pathData) {
+      continue;
+    }
+
+    const isColumnLineage = edge.data?.isColumnLineage ?? false;
+    const strokeColor = 'rgb(177, 177, 183)';
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = isColumnLineage ? 1 : 2;
+    ctx.setLineDash(edge.animated ? [6, 4] : []);
+    ctx.globalAlpha = 1;
+
+    ctx.stroke(new Path2D(pathData.edgePath));
+    ctx.setLineDash([]);
+
+    if (
+      pathData.targetX !== undefined &&
+      pathData.targetY !== undefined &&
+      pathData.sourceX !== undefined &&
+      pathData.sourceY !== undefined
+    ) {
+      drawArrowMarker(
+        ctx,
+        pathData.targetX,
+        pathData.targetY,
+        getBezierEndTangentAngle(
+          pathData.edgePath,
+          pathData.sourceX,
+          pathData.sourceY,
+          pathData.targetX,
+          pathData.targetY
+        ),
+        strokeColor
+      );
+    }
+  }
+
+  ctx.restore();
+
+  return canvas;
+}

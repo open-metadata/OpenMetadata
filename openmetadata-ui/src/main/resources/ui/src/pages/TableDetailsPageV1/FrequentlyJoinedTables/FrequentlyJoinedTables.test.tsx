@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables.component';
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getJoinsFromTableJoins: jest.fn().mockReturnValue([
     {
       name: 'test',

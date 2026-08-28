@@ -24,7 +24,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
-import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -34,13 +33,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.type.EntityReference;
@@ -48,15 +47,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
@@ -65,6 +59,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
 
   public SearchIndexRepository() {
     super(
@@ -73,8 +68,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         SearchIndex.class,
         Entity.getCollectionDAO().searchIndexDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
@@ -261,8 +261,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Then, if fields are requested, also fetch field-level tags
     if (fields.contains("fields")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(
-          searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(searchIndexes, SearchIndex::getFields);
     }
   }
 
@@ -312,6 +311,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private void setFieldFQN(String parentFQN, List<SearchIndexField> fields) {
     fields.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(fieldFqn);
           if (c.getChildren() != null) {
@@ -390,109 +390,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     return allTags;
   }
 
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("fields")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new FieldDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new FieldTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class FieldDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final SearchIndexField schemaField;
-
-    FieldDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      schemaField =
-          getSchemaField(
-              (SearchIndex) threadContext.getAboutEntity(),
-              threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      schemaField.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class FieldTagWorkflow extends TagTaskWorkflow {
-    private final SearchIndexField schemaField;
-
-    FieldTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      schemaField =
-          getSchemaField(
-              (SearchIndex) threadContext.getAboutEntity(),
-              threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      schemaField.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  private static SearchIndexField getSchemaField(SearchIndex searchIndex, String fieldName) {
-    String schemaName = fieldName;
-    List<SearchIndexField> schemaFields = searchIndex.getFields();
-    String childSchemaName = "";
-    if (fieldName.contains(".")) {
-      String fieldNameWithoutQuotes = fieldName.substring(1, fieldName.length() - 1);
-      schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childSchemaName =
-          fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
-    }
-    SearchIndexField schemaField = null;
-    for (SearchIndexField field : schemaFields) {
-      if (field.getName().equals(schemaName)) {
-        schemaField = field;
-        break;
-      }
-    }
-    if (!"".equals(childSchemaName) && schemaField != null) {
-      schemaField = getChildSchemaField(schemaField.getChildren(), childSchemaName);
-    }
-    if (schemaField == null) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldName("schema", fieldName));
-    }
-    return schemaField;
-  }
-
-  private static SearchIndexField getChildSchemaField(
-      List<SearchIndexField> fields, String childSchemaName) {
-    SearchIndexField childrenSchemaField = null;
-    for (SearchIndexField field : fields) {
-      if (field.getName().equals(childSchemaName)) {
-        childrenSchemaField = field;
-        break;
-      }
-    }
-    if (childrenSchemaField == null) {
-      for (SearchIndexField field : fields) {
-        if (field.getChildren() != null) {
-          childrenSchemaField = getChildSchemaField(field.getChildren(), childSchemaName);
-          if (childrenSchemaField != null) {
-            break;
-          }
-        }
-      }
-    }
-    return childrenSchemaField;
-  }
-
   private Map<UUID, List<EntityReference>> batchFetchFollowers(List<SearchIndex> searchIndexes) {
     Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
     if (searchIndexes == null || searchIndexes.isEmpty()) {
@@ -547,28 +444,24 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           });
       compareAndUpdate(
           "searchIndexSettings",
-          () -> {
-            recordChange(
-                "searchIndexSettings",
-                original.getSearchIndexSettings(),
-                updated.getSearchIndexSettings());
-          });
+          () ->
+              recordChange(
+                  "searchIndexSettings",
+                  original.getSearchIndexSettings(),
+                  updated.getSearchIndexSettings()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "indexType",
-          () -> {
-            recordChange("indexType", original.getIndexType(), updated.getIndexType());
-          });
+          () -> recordChange("indexType", original.getIndexType(), updated.getIndexType()));
     }
 
     private void updateSearchIndexFields(
@@ -615,53 +508,59 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         if (stored == null) { // New field added
           continue;
         }
-        updateFieldDescription(stored, updated);
-        updateFieldDataTypeDisplay(stored, updated);
-        updateFieldDisplayName(stored, updated);
+        String searchFieldPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        updateFieldDescription(searchFieldPrefix, stored, updated);
+        updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
+        updateFieldDisplayName(searchFieldPrefix, stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+            EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
             stored.getTags(),
             updated.getTags());
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
           updateSearchIndexFields(
-              childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
+              searchFieldPrefix, stored.getChildren(), updated.getChildren(), fieldMatch);
         }
       }
       majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
     }
 
-    private void updateFieldDescription(SearchIndexField origField, SearchIndexField updatedField) {
+    private void updateFieldDescription(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
         updatedField.setDescription(origField.getDescription());
         return;
       }
-      String field = getSearchIndexField(original, origField, FIELD_DESCRIPTION);
-      recordChange(field, origField.getDescription(), updatedField.getDescription());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DESCRIPTION),
+          origField.getDescription(),
+          updatedField.getDescription());
     }
 
-    private void updateFieldDisplayName(SearchIndexField origField, SearchIndexField updatedField) {
-      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
+    private void updateFieldDisplayName(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
         updatedField.setDisplayName(origField.getDisplayName());
         return;
       }
-      String field = getSearchIndexField(original, origField, FIELD_DISPLAY_NAME);
-      recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DISPLAY_NAME),
+          origField.getDisplayName(),
+          updatedField.getDisplayName());
     }
 
     private void updateFieldDataTypeDisplay(
-        SearchIndexField origField, SearchIndexField updatedField) {
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
-        // Revert the non-empty field dataTypeDisplay if being updated by a bot
         updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
         return;
       }
-      String field = getSearchIndexField(original, origField, FIELD_DATA_TYPE_DISPLAY);
-      recordChange(field, origField.getDataTypeDisplay(), updatedField.getDataTypeDisplay());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DATA_TYPE_DISPLAY),
+          origField.getDataTypeDisplay(),
+          updatedField.getDataTypeDisplay());
     }
   }
 }

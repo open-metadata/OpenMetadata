@@ -14,12 +14,12 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
+import { getEncodedFqn } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
 import { SubDomain } from './SubDomain';
-import { getEncodedFqn } from '../../utils/entity';
 
 type UserTeamRef = {
   name: string;
@@ -45,6 +45,7 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
   experts?: UserTeamRef[];
+  dataProductType?: string;
 };
 
 export class DataProduct extends EntityClass {
@@ -72,6 +73,7 @@ export class DataProduct extends EntityClass {
       domains: [],
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"${dataName}\"`,
+      dataProductType: 'DATASET',
     };
   }
 
@@ -133,6 +135,10 @@ export class DataProduct extends EntityClass {
     return response.body;
   }
 
+  getDomains(): Domain[] {
+    return this.domains;
+  }
+
   private getFqn() {
     return this.data?.fullyQualifiedName ?? this.data.name;
   }
@@ -145,6 +151,9 @@ export class DataProduct extends EntityClass {
       }
     );
 
+    // A 400 here is a bulk-operation report (numberOfRowsFailed and a
+    // failedRequest list), not a transport failure, so the caller inspects the
+    // body rather than having it raised.
     const data = await response.json();
     this.responseData = data;
 

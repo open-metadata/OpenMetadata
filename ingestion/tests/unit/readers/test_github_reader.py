@@ -12,6 +12,7 @@
 """
 Test GitHub Reader
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.githubCredentials import (
@@ -29,24 +30,8 @@ class TestGitHubReader(TestCase):
         """
         We build the headers correctly
         """
-        creds = GitHubCredentials(
-            repositoryName="name", repositoryOwner="owner", token="token"
-        )
+        creds = GitHubCredentials(repositoryName="name", repositoryOwner="owner", token="token")
 
         reader = GitHubReader(creds)
 
         self.assertEqual(reader.auth_headers, {"Authorization": "Bearer token"})
-
-    def x_test_read(self):
-        """
-        We can read the OM README
-
-        disabling this test as it is flakey and fails with error rate limit exceeded
-        """
-        creds = GitHubCredentials(
-            repositoryName="OpenMetadata",
-            repositoryOwner="open-metadata",
-        )
-
-        reader = GitHubReader(creds)
-        self.assertIsNotNone(reader.read("README.md"))

@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -68,10 +62,8 @@ const teamProps = {
 };
 
 describe('TeamsHeadingLabel', () => {
-  it('should render Teams Heading Label', async () => {
-    await act(async () => {
-      render(<TeamsHeadingLabel {...teamProps} />);
-    });
+  it('should render Teams Heading Label', () => {
+    render(<TeamsHeadingLabel {...teamProps} />);
     const teamHeading = screen.getByTestId('team-heading');
 
     expect(teamHeading).toHaveTextContent('Test Team');

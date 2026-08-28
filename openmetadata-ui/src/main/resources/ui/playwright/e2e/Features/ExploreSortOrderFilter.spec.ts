@@ -16,7 +16,11 @@ import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
+import {
+  clickUpdateButtonIfVisible,
+  selectSortOrder,
+  verifyEntitiesAreSorted,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.describe(
@@ -27,19 +31,18 @@ test.describe(
       test(`${name}`, async ({ browser }) => {
         test.slow(true);
 
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
 
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.EXPLORE);
 
-
         await page.getByTestId('search-dropdown-Data Assets').click();
-        await page.waitForSelector(
-          '[data-testid="drop-down-menu"] [data-testid="loader"]',
-          {
-            state: 'detached',
-          }
-        );
+        await page
+          .getByTestId('drop-down-menu')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
 
         const dataAssetDropdownRequest = page.waitForResponse(
           '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
@@ -50,22 +53,20 @@ test.describe(
           .fill(filter.toLowerCase());
         await dataAssetDropdownRequest;
         await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-        await page.waitForSelector(
-          `[data-testid="${filter.toLowerCase()}-checkbox"]`,
-          {
-            state: 'visible',
-          }
-        );
+        await page
+          .getByTestId(`${filter.toLowerCase()}-checkbox`)
+          .waitFor({ state: 'visible' });
 
         await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-        await page.getByTestId('update-btn').click();
+        await clickUpdateButtonIfVisible(page);
+        await page.keyboard.press('Escape');
 
         await selectSortOrder(page, 'Name');
         await verifyEntitiesAreSorted(page);
 
-        const clearFilters = page.getByTestId('clear-filters');
+        const clearFilters = page.getByTestId('clear-all-chips');
 
-        expect(clearFilters).toBeVisible();
+        await expect(clearFilters).toBeVisible();
 
         await clearFilters.click();
 

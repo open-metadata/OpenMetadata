@@ -190,6 +190,67 @@ public class TagLabelUtil {
     }
   }
 
+  public static void applyTagCommonFieldsBatch(List<TagLabel> labels) {
+    if (nullOrEmpty(labels)) {
+      return;
+    }
+
+    Set<String> classificationFqns = new HashSet<>();
+    Set<String> glossaryFqns = new HashSet<>();
+    for (TagLabel label : labels) {
+      if (label.getTagFQN() == null) {
+        continue;
+      }
+      if (label.getSource() == TagSource.CLASSIFICATION) {
+        classificationFqns.add(label.getTagFQN());
+      } else if (label.getSource() == TagSource.GLOSSARY) {
+        glossaryFqns.add(label.getTagFQN());
+      }
+    }
+
+    Map<String, TagLabel> enrichedByFqn = new HashMap<>();
+
+    if (!classificationFqns.isEmpty()) {
+      try {
+        getTags(new ArrayList<>(classificationFqns))
+            .forEach(
+                tag -> {
+                  TagLabel enriched = EntityUtil.toTagLabel(tag);
+                  if (enriched != null) {
+                    enrichedByFqn.put(tag.getFullyQualifiedName(), enriched);
+                  }
+                });
+      } catch (Exception ex) {
+        LOG.warn("Failed to batch fetch classification tags: {}", ex.getMessage());
+      }
+    }
+
+    if (!glossaryFqns.isEmpty()) {
+      try {
+        getGlossaryTerms(new ArrayList<>(glossaryFqns))
+            .forEach(
+                term -> {
+                  TagLabel enriched = EntityUtil.toTagLabel(term);
+                  if (enriched != null) {
+                    enrichedByFqn.put(term.getFullyQualifiedName(), enriched);
+                  }
+                });
+      } catch (Exception ex) {
+        LOG.warn("Failed to batch fetch glossary terms: {}", ex.getMessage());
+      }
+    }
+
+    for (TagLabel label : labels) {
+      TagLabel enriched = enrichedByFqn.get(label.getTagFQN());
+      if (enriched != null) {
+        label.setName(enriched.getName());
+        label.setDisplayName(enriched.getDisplayName());
+        label.setDescription(enriched.getDescription());
+        label.setStyle(enriched.getStyle());
+      }
+    }
+  }
+
   /** Returns true if the parent of the tag label is mutually exclusive */
   public static boolean mutuallyExclusive(TagLabel label) {
     String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());
@@ -239,42 +300,24 @@ public class TagLabelUtil {
     return updatedTagLabels;
   }
 
-  /**
-   * Add derived tags to the given tag labels with graceful error handling. This method is used in
-   * READ operations (getByName, list) and will log a warning but continue if any derived tags
-   * cannot be fetched due to missing entities.
-   *
-   * @param tagLabels the tag labels to add derived tags to
-   * @return the tag labels with derived tags added (missing derived tags are skipped)
-   */
+  /** Add derived tags using a single batch query. Falls back to non-derived tags on failure. */
   public static List<TagLabel> addDerivedTagsGracefully(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
-
-    List<TagLabel> filteredTags =
-        tagLabels.stream()
-            .filter(Objects::nonNull)
-            .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
-            .toList();
-
-    List<TagLabel> updatedTagLabels = new ArrayList<>();
-    EntityUtil.mergeTags(updatedTagLabels, filteredTags);
-    for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null) {
-        try {
-          EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
-        } catch (Exception ex) {
-          LOG.warn(
-              "Failed to fetch derived tags for {} '{}'. Skipping derived tags for this label. Error: {}",
-              tagLabel.getSource(),
-              tagLabel.getTagFQN(),
-              ex.getMessage());
-        }
-      }
+    try {
+      Map<String, List<TagLabel>> derivedTagsMap = batchFetchDerivedTags(tagLabels);
+      return addDerivedTagsWithPreFetched(tagLabels, derivedTagsMap);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags. Returning tags without derived. Error: {}",
+          ex.getMessage());
+      return tagLabels.stream()
+          .filter(Objects::nonNull)
+          .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
+          .sorted(compareTagLabel)
+          .collect(Collectors.toList());
     }
-    updatedTagLabels.sort(compareTagLabel);
-    return updatedTagLabels;
   }
 
   private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
@@ -288,19 +331,12 @@ public class TagLabelUtil {
     return Collections.emptyList();
   }
 
-  /**
-   * Batch fetch derived tags for all glossary term tags in the provided list. This is an
-   * optimization to fetch all derived tags in a single query instead of N queries.
-   *
-   * @param tagLabels the tag labels to fetch derived tags for
-   * @return a map from glossary term FQN to its derived tags
-   */
+  /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQNHash → derived tags. */
   public static Map<String, List<TagLabel>> batchFetchDerivedTags(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return Collections.emptyMap();
     }
 
-    // Collect all unique glossary term FQNs
     List<String> glossaryTermFqns =
         tagLabels.stream()
             .filter(Objects::nonNull)
@@ -313,17 +349,20 @@ public class TagLabelUtil {
       return Collections.emptyMap();
     }
 
-    return Entity.getCollectionDAO().tagUsageDAO().getDerivedTagsBatch(glossaryTermFqns);
+    int batchSize = 5000;
+    if (glossaryTermFqns.size() <= batchSize) {
+      return Entity.getCollectionDAO().tagUsageDAO().getDerivedTagsBatch(glossaryTermFqns);
+    }
+    Map<String, List<TagLabel>> result = new HashMap<>();
+    for (int i = 0; i < glossaryTermFqns.size(); i += batchSize) {
+      List<String> chunk =
+          glossaryTermFqns.subList(i, Math.min(i + batchSize, glossaryTermFqns.size()));
+      result.putAll(Entity.getCollectionDAO().tagUsageDAO().getDerivedTagsBatch(chunk));
+    }
+    return result;
   }
 
-  /**
-   * Add derived tags using a pre-fetched map. This avoids N+1 queries when processing multiple
-   * entities in batch operations.
-   *
-   * @param tagLabels the tag labels to add derived tags to
-   * @param derivedTagsMap pre-fetched map from glossary term FQN to derived tags
-   * @return the tag labels with derived tags added
-   */
+  /** Add derived tags using a pre-fetched map to avoid per-tag DB lookups. */
   public static List<TagLabel> addDerivedTagsWithPreFetched(
       List<TagLabel> tagLabels, Map<String, List<TagLabel>> derivedTagsMap) {
     if (nullOrEmpty(tagLabels)) {
@@ -342,7 +381,8 @@ public class TagLabelUtil {
     for (TagLabel tagLabel : tagLabels) {
       if (tagLabel != null && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
         List<TagLabel> derivedTags =
-            derivedTagsMap.getOrDefault(tagLabel.getTagFQN(), Collections.emptyList());
+            derivedTagsMap.getOrDefault(
+                FullyQualifiedName.buildHash(tagLabel.getTagFQN()), Collections.emptyList());
         EntityUtil.mergeTags(updatedTagLabels, derivedTags);
       }
     }

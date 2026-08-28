@@ -323,6 +323,7 @@ CREATE TABLE public.entity_relationship (
     fromentity character varying(256) NOT NULL,
     toentity character varying(256) NOT NULL,
     relation smallint NOT NULL,
+    relationtype character varying(64) DEFAULT ''::character varying NOT NULL,
     jsonschema character varying(256),
     json jsonb,
     deleted boolean DEFAULT false NOT NULL
@@ -838,7 +839,7 @@ ALTER TABLE public.tag OWNER TO openmetadata_user;
 
 CREATE TABLE public.tag_usage (
     source smallint NOT NULL,
-    tagfqn character varying(256) NOT NULL,
+    tagfqn character varying(512) NOT NULL,
     labeltype smallint NOT NULL,
     state smallint NOT NULL,
     tagfqnhash character varying(382),
@@ -1326,7 +1327,7 @@ ALTER TABLE ONLY public.entity_extension
 --
 
 ALTER TABLE ONLY public.entity_relationship
-    ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromid, toid, relation);
+    ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromid, toid, relation, relationtype);
 
 
 -- Name: event_subscription_entity event_subscription_entity_namehash_key; Type: CONSTRAINT; Schema: public; Owner: openmetadata_user

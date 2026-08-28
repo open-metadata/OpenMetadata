@@ -157,6 +157,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
             <Slider
               max={100}
               min={0}
+              step={0.1}
               tooltip={{ open: false }}
               value={factor}
               onChange={handleFactorChange}

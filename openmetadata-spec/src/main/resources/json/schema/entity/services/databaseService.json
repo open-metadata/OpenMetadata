@@ -23,6 +23,7 @@
         "Postgres",
         "Timescale",
         "Mssql",
+        "MicrosoftAccess",
         "Oracle",
         "Athena",
         "Hive",
@@ -49,6 +50,7 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
+        "SapSuccessFactors",
         "MongoDB",
         "Cassandra",
         "Couchbase",
@@ -57,7 +59,6 @@
         "StarRocks",
         "UnityCatalog",
         "SAS",
-        "Iceberg",
         "Teradata",
         "SapErp",
         "Synapse",
@@ -69,7 +70,10 @@
         "Dremio",
         "MicrosoftFabric",
         "BurstIQ",
-        "Informix"
+        "Informix",
+        "Iomete",
+        "QuestDB",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -95,6 +99,9 @@
         },
         {
           "name": "Mssql"
+        },
+        {
+          "name": "MicrosoftAccess"
         },
         {
           "name": "Oracle"
@@ -175,6 +182,9 @@
           "name": "SapHana"
         },
         {
+          "name": "SapSuccessFactors"
+        },
+        {
           "name": "MongoDB"
         },
         {
@@ -197,9 +207,6 @@
         },
         {
           "name": "SAS"
-        },
-        {
-          "name": "Iceberg"
         },
         {
           "name": "Teradata"
@@ -236,6 +243,15 @@
         },
         {
           "name": "Informix"
+        },
+        {
+          "name": "Iomete"
+        },
+        {
+          "name": "QuestDB"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -295,6 +311,9 @@
               "$ref": "./connections/database/mssqlConnection.json"
             },
             {
+              "$ref": "./connections/database/microsoftAccessConnection.json"
+            },
+            {
               "$ref": "./connections/database/mysqlConnection.json"
             },
             {
@@ -317,6 +336,9 @@
             },
             {
               "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapSuccessFactorsConnection.json"
             },
             {
               "$ref": "./connections/database/singleStoreConnection.json"
@@ -370,9 +392,6 @@
               "$ref": "./connections/database/sasConnection.json"
             },
             {
-              "$ref": "./connections/database/icebergConnection.json"
-            },
-            {
               "$ref": "./connections/database/teradataConnection.json"
             },
             {
@@ -407,6 +426,15 @@
             },
             {
               "$ref": "./connections/database/informixConnection.json"
+            },
+            {
+              "$ref": "./connections/database/iometeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }
@@ -458,6 +486,9 @@
       },
       "default": []
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -506,6 +537,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "domains" : {
       "description": "Domains the Database service belongs to.",

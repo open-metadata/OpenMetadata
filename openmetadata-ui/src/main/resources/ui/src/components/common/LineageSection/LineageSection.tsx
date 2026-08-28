@@ -18,7 +18,7 @@ import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-do
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
 import { LineagePagingInfo } from '../../../components/LineageTable/LineageTable.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
-import { getEntityCountAtDepth } from '../../../utils/EntityLineageUtils';
+import { getEntityCountAtDepth } from '../../../utils/EntityLineageNodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import {
@@ -36,7 +36,8 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
 
   return (
     <Button
-      color="tertiary"
+      className="tw:gap-2.5"
+      color="link-color"
       data-testid={`${type}-lineage`}
       iconLeading={<Icon height={14} width={14} />}
       size="sm"
@@ -127,7 +128,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     }
 
     return (
-      <div className="tw:flex tw:flex-row tw:gap-3">
+      <div className="tw:flex tw:flex-row tw:gap-4">
         <LineageItem
           Icon={UpstreamIcon}
           count={upstreamCount}
@@ -147,11 +148,13 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
   return (
     <div
-      className="tw:px-3.25 tw:pb-4 tw:border-b tw:border-gray-200"
+      className="tw:px-3.25 tw:pb-4 tw:border-b-[0.6px] tw:border-gray-200"
       data-testid="lineage-section">
-      <Typography as="p" className="tw:font-bold tw:text-gray-400">
-        {t('label.lineage')}
-      </Typography>
+      <div className="tw:mb-3">
+        <Typography as="p" className="tw:font-semibold">
+          {t('label.lineage')}
+        </Typography>
+      </div>
       {renderContent}
     </div>
   );
