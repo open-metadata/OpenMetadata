@@ -259,6 +259,144 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_departmentRejectsDirectUsersOnCreate(TestNamespace ns) {
+    User user = createTestUser(ns, "departmentCreateUser");
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("departmentWithUsers"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withUsers(List.of(user.getId()))
+            .withDescription("Department cannot have direct users");
+
+    Exception exception = assertThrows(Exception.class, () -> createEntity(create));
+
+    assertTrue(exception.getMessage().contains("Department"));
+  }
+
+  @Test
+  void test_departmentRejectsDirectUsersOnPatch(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentPatch"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    User user = createTestUser(ns, "departmentPatchUser");
+
+    Team update = SdkClients.adminClient().teams().get(department.getId().toString(), "users");
+    update.setUsers(List.of(user.getEntityReference()));
+
+    Exception exception =
+        assertThrows(Exception.class, () -> patchEntity(update.getId().toString(), update));
+
+    assertTrue(exception.getMessage().contains("Department"));
+  }
+
+  @Test
+  void test_userCannotBeAssignedToDepartment(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentUser"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    CreateUser create =
+        new CreateUser()
+            .withName(ns.prefix("assignedDepartmentUser"))
+            .withEmail(toValidEmail(ns.prefix("assignedDepartmentUser")))
+            .withTeams(List.of(department.getId()));
+
+    Exception exception =
+        assertThrows(Exception.class, () -> SdkClients.adminClient().users().create(create));
+
+    assertTrue(exception.getMessage().contains("Department"));
+  }
+
+  @Test
+  void test_departmentRejectsBulkUserAddition(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentBulk"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    User user = createTestUser(ns, "departmentBulkUser");
+    BulkAssets request = new BulkAssets().withAssets(List.of(user.getEntityReference()));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> bulkAddAssetsWithResult(SdkClients.adminClient(), department.getName(), request));
+
+    assertTrue(exception.getMessage().contains("Department"));
+  }
+
+  @Test
+  void test_userCannotBeUpdatedToDepartment(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentUserUpdate"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    User user = createTestUser(ns, "departmentUserUpdate");
+    User update = SdkClients.adminClient().users().get(user.getId().toString(), "teams");
+    update.setTeams(List.of(department.getEntityReference()));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> SdkClients.adminClient().users().update(user.getId().toString(), update));
+
+    assertTrue(exception.getMessage().contains("Department"));
+  }
+
+  @Test
+  void test_groupCanUpdateUsers(TestNamespace ns) {
+    Team group =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("groupUpdateUsers"))
+                .withTeamType(TeamType.GROUP)
+                .withDescription("Group can update direct users"));
+    User user = createTestUser(ns, "groupUpdateUser");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/teams/" + group.getId() + "/users",
+            List.of(user.getEntityReference()),
+            null);
+
+    Team updated = SdkClients.adminClient().teams().get(group.getId().toString(), "users");
+    assertTrue(updated.getUsers().stream().anyMatch(member -> member.getId().equals(user.getId())));
+  }
+
+  @Test
+  void test_groupCanRemoveUser(TestNamespace ns) {
+    User user = createTestUser(ns, "groupRemoveUser");
+    Team group =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("groupRemoveUser"))
+                .withTeamType(TeamType.GROUP)
+                .withUsers(List.of(user.getId()))
+                .withDescription("Group can remove direct users"));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE, "/v1/teams/" + group.getId() + "/users/" + user.getId(), null, null);
+
+    Team updated = SdkClients.adminClient().teams().get(group.getId().toString(), "users");
+    assertTrue(
+        updated.getUsers() == null
+            || updated.getUsers().stream()
+                .noneMatch(member -> member.getId().equals(user.getId())));
+  }
+
+  @Test
   void test_userCountStaleAfterMemberSoftDeleted(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
