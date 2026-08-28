@@ -444,7 +444,7 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.39.0",
+    "basedpyright==1.39.3",
     # For publishing
     "twine",
     "build",
