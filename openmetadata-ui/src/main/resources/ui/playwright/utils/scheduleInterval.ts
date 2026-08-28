@@ -40,6 +40,15 @@ export const selectScheduleFrequency = async (
   await page.getByTestId(`frequency-${frequency}`).click();
 };
 
+export const expectScheduleFrequencySelected = async (
+  page: Page,
+  frequency: ScheduleFrequency
+) => {
+  await expect(
+    page.getByTestId(`frequency-${frequency}`).getByTestId('selected-indicator')
+  ).toBeVisible();
+};
+
 const selectOption = async (page: Page, testId: string, option: string) => {
   await page.getByTestId(testId).getByRole('button').click();
   await page.getByRole('option', { name: option, exact: true }).click();

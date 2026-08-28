@@ -19,6 +19,7 @@ import {
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectScheduleFrequency } from '../../utils/scheduleInterval';
 import {
   confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
@@ -92,8 +93,7 @@ test(
 
       await page.getByTestId(testCaseName).click();
 
-      await page.getByTestId('cron-type').locator('div').click();
-      await page.getByTitle('Week').click();
+      await selectScheduleFrequency(page, 'week');
 
       await expect(page.getByTestId('deploy-button')).toBeVisible();
 
