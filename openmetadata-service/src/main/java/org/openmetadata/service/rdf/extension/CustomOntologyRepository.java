@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfCustomOntologyDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfCustomOntologyDAO;
 
 /** Durable storage for user-authored ontology extensions. */
 public final class CustomOntologyRepository {

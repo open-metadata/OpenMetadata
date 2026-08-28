@@ -27,7 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO.AppExtensionTimeSeries;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 class RdfProjectionStateResolverTest {
   private final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);

@@ -22,8 +22,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyEditLockDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyEditLockRow;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyEditLockDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyEditLockRow;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy.LeaseIdentity;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy.LeaseRequest;
 

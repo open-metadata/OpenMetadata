@@ -28,7 +28,7 @@ import org.openmetadata.schema.type.OntologyAnnexRevision;
 import org.openmetadata.schema.type.OntologyAnnexSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyAnnexRow;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexRow;
 
 @Slf4j
 public final class OntologyAnnexService {

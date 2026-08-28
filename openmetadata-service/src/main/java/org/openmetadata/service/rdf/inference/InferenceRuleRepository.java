@@ -24,8 +24,8 @@ import java.util.Optional;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfInferenceRuleDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfInferenceRuleDAO.RdfInferenceRuleRow;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfInferenceRuleDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfInferenceRuleDAO.RdfInferenceRuleRow;
 
 /** Durable inference-rule definitions and materialization state. */
 public final class InferenceRuleRepository implements InferenceDirtyMarker {

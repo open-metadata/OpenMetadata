@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntologyClass;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfCustomOntologyDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfCustomOntologyDAO;
 
 class CustomOntologyRepositoryTest {
   private static final long NOW = 1_750_000_000_000L;

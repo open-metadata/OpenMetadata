@@ -58,11 +58,11 @@ import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.SemanticReference;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyAnnexDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyAnnexRow;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexRow;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 
 public final class GlossaryOntologyExporter {

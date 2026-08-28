@@ -30,8 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAnnexRevision;
 import org.openmetadata.schema.type.OntologyAnnexSource;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyAnnexDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyAnnexRow;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexRow;
 
 class OntologyAnnexServiceTest {
   private static final long NOW = 1_750_000_000_000L;

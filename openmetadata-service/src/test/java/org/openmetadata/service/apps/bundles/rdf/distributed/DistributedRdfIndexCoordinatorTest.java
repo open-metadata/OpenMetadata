@@ -51,12 +51,12 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobSta
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexJobDAO.RdfIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexServerStatsDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexJobDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexJobDAO.RdfIndexJobRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexServerStatsDAO;
 
 @ExtendWith(MockitoExtension.class)
 class DistributedRdfIndexCoordinatorTest {

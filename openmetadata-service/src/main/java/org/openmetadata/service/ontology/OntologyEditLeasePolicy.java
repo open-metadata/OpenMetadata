@@ -16,7 +16,7 @@ package org.openmetadata.service.ontology;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
 import java.util.UUID;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyEditLockRow;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyEditLockRow;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 
 public final class OntologyEditLeasePolicy {

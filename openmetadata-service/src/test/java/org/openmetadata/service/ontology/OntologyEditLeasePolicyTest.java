@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import jakarta.ws.rs.ClientErrorException;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.jdbi3.CollectionDAO.OntologyEditLockRow;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyEditLockRow;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy.LeaseIdentity;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy.LeaseRequest;
 
