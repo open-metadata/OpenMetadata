@@ -87,17 +87,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     supportsListHistoryByTimestamp = true;
   }
 
-  // Direct user memberships are valid only on the Group children of the shared hierarchy.
-  @Override
-  protected Team testTeam1() {
-    return shared().TEAM11;
-  }
-
-  @Override
-  protected Team testTeam2() {
-    return shared().TEAM21;
-  }
-
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
