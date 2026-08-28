@@ -445,7 +445,7 @@ export default [
 
   // Playwright tests
   {
-    files: ['**/playwright/**/*.{ts,tsx}'],
+    files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     // The local plugin lives under playwright/ but is a linter, not a test:
     // applying rules like no-positional-locator to its own source is
     // meaningless, and its RuleTester fixtures deliberately contain the exact
@@ -549,7 +549,7 @@ export default [
 
   // Custom rules that only make sense on e2e spec files
   {
-    files: ['playwright/e2e/**/*.spec.{ts,tsx}'],
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
     plugins: {
       'om-playwright': omPlaywright,
     },
@@ -593,7 +593,7 @@ export default [
   // one (admin) perspective?" If yes, switch to the fixture. If no (you need
   // a second user), the warning is expected — leave it as-is.
   {
-    files: ['playwright/e2e/**/*.spec.{ts,tsx}'],
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'warn',
@@ -623,7 +623,7 @@ export default [
       'src/setupTests.js',
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
-      'playwright/**/*.spec.{ts,tsx}',
+      'playwright/**/*.spec.{js,jsx,ts,tsx}',
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
