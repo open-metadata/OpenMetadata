@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../../constants/constants';
 import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../constants/Glossary.contant';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -34,6 +34,18 @@ export type GlossaryFunctionRef = {
   refreshGlossaryTerms: () => void;
   loadMoreTerms?: () => void;
 };
+
+// Per-fqn request sequence counters for fetchChildrenCount, mirroring
+// GlossaryTermTab.component.tsx's fetchAllTerms's own fetchRequestSeqRef: a
+// per-fqn (not global) counter so a slower, earlier request for one fqn
+// can't overwrite a newer one's result if the status filter or search term
+// changes and fires requests in quick succession. Kept per-fqn (not a single
+// ref, since fetchAllTerms only ever tracks its own one table's requests)
+// because this store's fetchChildrenCount is shared by every Terms tab badge
+// across the app, each fetching a different fqn concurrently. Reset via
+// resetChildrenCounts alongside the childrenCounts state itself so it stays
+// bounded to the entities visited since the last reset, not the whole session.
+let childrenCountRequestSeqRef: Record<string, number> = {};
 
 export const useGlossaryStore = create<{
   glossaries: Glossary[];
@@ -72,6 +84,10 @@ export const useGlossaryStore = create<{
   // from this same map.
   childrenCounts: Record<string, number>;
   fetchChildrenCount: (fqn: string) => Promise<void>;
+  // Clears childrenCounts and its request-sequence tracker together, so a
+  // previously-viewed entity's cached count can't flash on a page for a
+  // different (or the same, revisited) fqn before its own fresh fetch lands.
+  resetChildrenCounts: () => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
@@ -159,6 +175,15 @@ export const useGlossaryStore = create<{
   fetchChildrenCount: async (fqn: string) => {
     const { termsStatusFilter, termsSearchTerm } = get();
 
+    // Mirrors GlossaryTermTab.component.tsx's fetchAllTerms's own
+    // fetchRequestSeqRef pattern: increment before the request, and only
+    // apply the result if this is still the latest request issued for this
+    // fqn — otherwise a slower, earlier request (e.g. superseded by a
+    // rapid filter/search change) can overwrite a newer one's result.
+    childrenCountRequestSeqRef[fqn] =
+      (childrenCountRequestSeqRef[fqn] ?? 0) + 1;
+    const requestSeq = childrenCountRequestSeqRef[fqn];
+
     try {
       // Mirrors GlossaryTermTab.component.tsx's fetchAllTerms: the table
       // itself switches from the plain listing API to the search API the
@@ -176,12 +201,20 @@ export const useGlossaryStore = create<{
         // which is only accurate when the true total is <= limit + 1. The
         // table itself already works around this the same way — see its own
         // `setTotalTermsCount(data.length)` in fetchAllTerms — so this
-        // mirrors that: request the same PAGE_SIZE_LARGE the table uses and
-        // count the returned rows, not paging.total.
+        // mirrors that: count the returned rows, not paging.total.
+        //
+        // Uses AGGREGATE_PAGE_SIZE_LARGE (1000), not PAGE_SIZE_LARGE (50):
+        // the badge is a one-shot count, unlike the table's own
+        // PAGE_SIZE_LARGE page size, which the table can extend via
+        // "load more". A 50-row cap here would silently show a wrong,
+        // truncated count for any term with more than 50 matching
+        // children — AGGREGATE_PAGE_SIZE_LARGE is this codebase's existing
+        // "fetch effectively everything for one count/list" constant (see
+        // CreateUser.component.tsx, CustomControls.component.tsx).
         const { data } = await searchGlossaryTermsPaginated({
           q: termsSearchTerm,
           glossaryFqn: fqn,
-          limit: PAGE_SIZE_LARGE,
+          limit: AGGREGATE_PAGE_SIZE_LARGE,
           entityStatus: termsStatusFilter,
         });
         count = data.length;
@@ -194,12 +227,25 @@ export const useGlossaryStore = create<{
         );
         count = paging.total ?? 0;
       }
+
+      if (requestSeq !== childrenCountRequestSeqRef[fqn]) {
+        return;
+      }
+
       const { childrenCounts } = get();
       set({ childrenCounts: { ...childrenCounts, [fqn]: count } });
     } catch {
+      if (requestSeq !== childrenCountRequestSeqRef[fqn]) {
+        return;
+      }
+
       const { childrenCounts } = get();
       set({ childrenCounts: { ...childrenCounts, [fqn]: 0 } });
     }
+  },
+  resetChildrenCounts: () => {
+    childrenCountRequestSeqRef = {};
+    set({ childrenCounts: {} });
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({

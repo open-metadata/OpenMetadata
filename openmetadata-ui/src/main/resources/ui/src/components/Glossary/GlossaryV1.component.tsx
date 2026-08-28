@@ -115,6 +115,8 @@ const GlossaryV1 = ({
     termsLoading,
     setTermsLoading,
     setTermsStatusFilter,
+    setTermsSearchTerm,
+    resetChildrenCounts,
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
@@ -402,11 +404,16 @@ const GlossaryV1 = ({
       setGlossaryChildTerms([]);
       setAfterCursor(undefined);
       setHasMore(true);
-      // Reset the live Terms-table status filter back to its default so a
-      // stale filter from a previously-viewed glossary/term can't flash on
-      // the new page's badge before its own GlossaryTermTab mounts and
-      // pushes a fresh value.
+      // Reset the live Terms-table status filter and search term back to
+      // their defaults, and clear cached children counts, so stale values
+      // from a previously-viewed glossary/term can't flash on the new
+      // page's badge before its own GlossaryTermTab mounts and pushes
+      // fresh ones. Without clearing childrenCounts, re-visiting the same
+      // fqn would briefly show its last cached count (from whatever
+      // filter/search was active last time) before the fresh fetch lands.
       setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
+      setTermsSearchTerm(undefined);
+      resetChildrenCounts();
       initializeGlossary();
     }
 
@@ -414,6 +421,8 @@ const GlossaryV1 = ({
     return () => {
       setGlossaryChildTerms([]);
       setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
+      setTermsSearchTerm(undefined);
+      resetChildrenCounts();
     };
   }, [id, isGlossaryActive, isVersionsView, action]);
 

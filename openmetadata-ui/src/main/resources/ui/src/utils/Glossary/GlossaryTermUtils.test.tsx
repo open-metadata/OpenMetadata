@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { useGlossaryStore } from '../../components/Glossary/useGlossary.store';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -335,6 +335,66 @@ describe('getGlossaryTermDetailPageTabs', () => {
       expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
     });
 
+    // Mirrors GlossaryTermTab.component.tsx's fetchAllTerms's own
+    // fetchRequestSeqRef guard: a rapid filter change fires a second, newer
+    // request before the first, slower one resolves. Without a per-fqn
+    // sequence guard in fetchChildrenCount, the first request resolving
+    // *after* the second would overwrite the correct, newer count with a
+    // stale one.
+    it('discards a stale, slower-resolving response when a newer request for the same fqn has since been issued', async () => {
+      useGlossaryStore.setState({
+        termsStatusFilter: 'Approved,Draft,In Review',
+      } as never);
+
+      let resolveFirstRequest: (value: {
+        data: never[];
+        paging: { total: number };
+      }) => void;
+      const firstRequest = new Promise<{
+        data: never[];
+        paging: { total: number };
+      }>((resolve) => {
+        resolveFirstRequest = resolve;
+      });
+      mockGetFirstLevelGlossaryTermsPaginated.mockImplementationOnce(
+        () => firstRequest
+      );
+
+      const { rerender } = renderGlossaryTermsTabLabel();
+
+      await waitFor(() => {
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(
+          1
+        );
+      });
+
+      // A rapid filter change fires a second, newer request for the same
+      // fqn before the first one has resolved. This one resolves quickly.
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 7 },
+      });
+      useGlossaryStore.setState({ termsStatusFilter: 'Approved' } as never);
+      const tabs = getGlossaryTermDetailPageTabs(mockProps);
+      const glossaryTermsTab = tabs.find(
+        (t) => t.key === EntityTabs.GLOSSARY_TERMS
+      );
+      rerender(glossaryTermsTab?.label as React.ReactElement);
+
+      await waitFor(() => {
+        expect(mockGetCountBadge).toHaveBeenLastCalledWith(7, '', false);
+      });
+
+      // The first (older, slower) request finally resolves with a
+      // different count. It must be discarded, not applied.
+      await act(async () => {
+        resolveFirstRequest({ data: [], paging: { total: 4 } });
+        await Promise.resolve();
+      });
+
+      expect(mockGetCountBadge).toHaveBeenLastCalledWith(7, '', false);
+    });
+
     // useGlossary.store seeds termsStatusFilter with the default filter
     // string, so a genuinely undefined termsStatusFilter here only happens
     // once the table has mounted and the user explicitly selected "All"
@@ -365,14 +425,17 @@ describe('getGlossaryTermDetailPageTabs', () => {
     // must switch with it via termsSearchTerm, or it keeps counting the
     // unfiltered listing while the table shows only the search matches.
     //
-    // Uses PAGE_SIZE_LARGE + data.length, not limit: 0 + paging.total:
-    // the search endpoint's `limit` has a server-side @Min(1) constraint
-    // (limit: 0 is rejected outright), and even with a valid limit its
-    // paging.total is a pagination heuristic
+    // Uses AGGREGATE_PAGE_SIZE_LARGE (1000) + data.length, not limit: 0 +
+    // paging.total: the search endpoint's `limit` has a server-side @Min(1)
+    // constraint (limit: 0 is rejected outright), and even with a valid
+    // limit its paging.total is a pagination heuristic
     // (offset + terms.size() + (hasMore ? 1 : 0)), not a real count — the
     // table itself already works around this the same way (its own
-    // fetchAllTerms uses data.length for the search branch).
-    it('uses the search API with PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
+    // fetchAllTerms uses data.length for the search branch). 1000, not the
+    // table's own PAGE_SIZE_LARGE (50): the badge is a one-shot count with
+    // no "load more" to fall back on, so a 50-row cap would silently
+    // undercount any term with more than 50 matching children.
+    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         termsStatusFilter: 'Approved,Draft,In Review',
         termsSearchTerm: 'bridge',
@@ -391,13 +454,31 @@ describe('getGlossaryTermDetailPageTabs', () => {
       expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledWith({
         q: 'bridge',
         glossaryFqn: 'Finance.Revenue',
-        limit: 50,
+        limit: 1000,
         entityStatus: 'Approved,Draft,In Review',
       });
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
       // The badge must show 1 (data.length), not 99 (the misleading
       // paging.total above).
       expect(mockGetCountBadge).toHaveBeenLastCalledWith(1, '', false);
+    });
+
+    // The concrete regression this guards: with the old PAGE_SIZE_LARGE
+    // (50) limit, a term with more than 50 matching children would have
+    // its badge silently capped at 50 while the table (which can "load
+    // more") displays the true, larger count.
+    it('does not cap the count at 50 when more than 50 terms match the search', async () => {
+      useGlossaryStore.setState({ termsSearchTerm: 'bridge' } as never);
+      mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: Array.from({ length: 60 }, (_, i) => ({ id: `term-${i}` })),
+        paging: { total: 60 },
+      });
+
+      renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockGetCountBadge).toHaveBeenLastCalledWith(60, '', false);
     });
 
     it('switches back to the plain listing API once the search term is cleared', async () => {

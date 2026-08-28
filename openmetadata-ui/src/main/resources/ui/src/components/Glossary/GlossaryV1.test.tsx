@@ -114,6 +114,8 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((component) => component),
 }));
 const mockSetTermsStatusFilter = jest.fn();
+const mockSetTermsSearchTerm = jest.fn();
+const mockResetChildrenCounts = jest.fn();
 const mockUseGlossaryStore = jest.fn().mockImplementation(() => ({
   activeGlossary: mockedGlossaryTerms[0],
   updateActiveGlossary: jest.fn(),
@@ -124,6 +126,8 @@ const mockUseGlossaryStore = jest.fn().mockImplementation(() => ({
   setGlossaryChildTerms: jest.fn(),
   insertNewGlossaryTermToChildTerms: jest.fn(),
   setTermsStatusFilter: mockSetTermsStatusFilter,
+  setTermsSearchTerm: mockSetTermsSearchTerm,
+  resetChildrenCounts: mockResetChildrenCounts,
 }));
 
 jest.mock('./useGlossary.store', () => ({
@@ -217,10 +221,14 @@ describe('Test Glossary component', () => {
       setGlossaryChildTerms: jest.fn(),
       insertNewGlossaryTermToChildTerms: jest.fn(),
       setTermsStatusFilter: mockSetTermsStatusFilter,
+      setTermsSearchTerm: mockSetTermsSearchTerm,
+      resetChildrenCounts: mockResetChildrenCounts,
     });
 
     beforeEach(() => {
       mockSetTermsStatusFilter.mockClear();
+      mockSetTermsSearchTerm.mockClear();
+      mockResetChildrenCounts.mockClear();
     });
 
     // GlossaryV1 resets the shared useGlossaryStore termsStatusFilter back to
@@ -250,6 +258,59 @@ describe('Test Glossary component', () => {
         expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
           'Approved,Draft,In Review'
         );
+      });
+    });
+
+    // Same category of bug as the termsStatusFilter staleness above, just not
+    // applied to the newer termsSearchTerm field: without this, an active
+    // search from a previously-viewed entity would still be set the next
+    // time fetchChildrenCount runs for the new entity, silently switching
+    // its badge to the (wrong, leftover) search API.
+    it('resets termsSearchTerm to undefined on mount and again when the active id changes', async () => {
+      mockUseGlossaryStore.mockImplementation(() => storeStateFor('id-1'));
+
+      const { rerender } = render(<GlossaryV1 {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await findByText(document.body, /Glossary-Details component/i);
+
+      expect(mockSetTermsSearchTerm).toHaveBeenCalledWith(undefined);
+
+      mockSetTermsSearchTerm.mockClear();
+      mockUseGlossaryStore.mockImplementation(() => storeStateFor('id-2'));
+
+      rerender(<GlossaryV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockSetTermsSearchTerm).toHaveBeenCalledWith(undefined);
+      });
+    });
+
+    // childrenCounts is keyed by fqn and persists in the store across
+    // navigation. Without clearing it here, re-visiting the same fqn later
+    // would briefly show its last cached count (computed under whatever
+    // filter/search was active last time) before the fresh fetch overwrites
+    // it — a stale-flash bug distinct from, but the same category as, the
+    // termsStatusFilter/termsSearchTerm ones above.
+    it('clears cached childrenCounts on mount and again when the active id changes', async () => {
+      mockUseGlossaryStore.mockImplementation(() => storeStateFor('id-1'));
+
+      const { rerender } = render(<GlossaryV1 {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await findByText(document.body, /Glossary-Details component/i);
+
+      expect(mockResetChildrenCounts).toHaveBeenCalled();
+
+      mockResetChildrenCounts.mockClear();
+      mockUseGlossaryStore.mockImplementation(() => storeStateFor('id-2'));
+
+      rerender(<GlossaryV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockResetChildrenCounts).toHaveBeenCalled();
       });
     });
   });

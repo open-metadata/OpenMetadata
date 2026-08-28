@@ -305,14 +305,17 @@ describe('Test Glossary-details component', () => {
     // keeps counting the unfiltered listing while the table shows only the
     // search matches.
     //
-    // Uses PAGE_SIZE_LARGE + data.length, not limit: 0 + paging.total: the
-    // search endpoint's `limit` has a server-side @Min(1) constraint
-    // (limit: 0 is rejected outright), and even with a valid limit its
-    // paging.total is a pagination heuristic
+    // Uses AGGREGATE_PAGE_SIZE_LARGE (1000) + data.length, not limit: 0 +
+    // paging.total: the search endpoint's `limit` has a server-side @Min(1)
+    // constraint (limit: 0 is rejected outright), and even with a valid
+    // limit its paging.total is a pagination heuristic
     // (offset + terms.size() + (hasMore ? 1 : 0)), not a real count — the
     // table itself already works around this the same way (its own
-    // fetchAllTerms uses data.length for the search branch).
-    it('uses the search API with PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
+    // fetchAllTerms uses data.length for the search branch). 1000, not the
+    // table's own PAGE_SIZE_LARGE (50): the badge is a one-shot count with
+    // no "load more" to fall back on, so a 50-row cap would silently
+    // undercount any term with more than 50 matching children.
+    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
         termsStatusFilter: 'Approved,Draft,In Review',
@@ -334,13 +337,38 @@ describe('Test Glossary-details component', () => {
       expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledWith({
         q: 'bridge',
         glossaryFqn: 'Mock Glossary',
-        limit: 50,
+        limit: 1000,
         entityStatus: 'Approved,Draft,In Review',
       });
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
       expect(
         await within(termsTab).findByTestId('filter-count')
       ).toHaveTextContent('1');
+    });
+
+    // The concrete regression this guards: with the old PAGE_SIZE_LARGE
+    // (50) limit, a glossary with more than 50 matching terms would have
+    // its badge silently capped at 50 while the table (which can "load
+    // more") displays the true, larger count.
+    it('does not cap the count at 50 when more than 50 terms match the search', async () => {
+      useGlossaryStore.setState({
+        activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
+        termsSearchTerm: 'bridge',
+      } as never);
+      mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: Array.from({ length: 60 }, (_, i) => ({ id: `term-${i}` })),
+        paging: { total: 60 },
+      });
+
+      await act(async () => {
+        render(<GlossaryDetails {...mockProps} />);
+      });
+
+      const termsTab = await screen.findByTestId('terms');
+
+      expect(
+        await within(termsTab).findByTestId('filter-count')
+      ).toHaveTextContent('60');
     });
   });
 });
