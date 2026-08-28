@@ -13,7 +13,8 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import List, Type, cast
+
+from typing import List, Type, cast  # noqa: UP035
 
 from sqlalchemy import Column
 from sqlalchemy.sql.compiler import SQLCompiler
@@ -47,20 +48,16 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: Type[System],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
-            logger.debug(
-                f"Skipping {metrics.name()} metric for view {runner.table_name}"
-            )
+            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")
             return []
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(
-            Type[DatabricksSystemMetricsComputer], self.system_metrics_class
-        )
+        self.system_metrics_class = cast(Type[DatabricksSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -68,30 +65,8 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         )
         return instance.get_system_metrics()
 
-    def visit_column(self, *args, **kwargs):
-        result = SQLCompiler.visit_column(
-            self, *args, **kwargs
-        )  # pyright: ignore[reportArgumentType, reportUnknownArgumentType]
-        # the `result` here would be `db.schema.table` or `db.schema.table.column`
-        # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
-        # the logic is to add the backticks to nested children.
-        if "`" not in result:
-            # Databricks only quotes identifiers that need it, so an all-lowercase
-            # schema.table.column arrives unquoted with no struct path to repair.
-            return result
-        dot_count = result.count(".")
-        if dot_count > 1 and "." in result.split("`.`")[-1]:
-            splitted_result = result.split("`.")[-1].split(".")
-            result = "`.".join(result.split("`.")[:-1])
-            if result:
-                result += "`."
-            result += "`.`".join(splitted_result)
-        return result
-
     def visit_table(self, *args, **kwargs):
-        result = SQLCompiler.visit_table(
-            self, *args, **kwargs
-        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportUnknownArgumentType]
+        result = SQLCompiler.visit_table(self, *args, **kwargs)  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportUnknownArgumentType]
         # Handle table references with hyphens in database/schema names
         # Format: `database`.`schema`.`table` for Unity Catalog/Databricks
         if "." in result and not result.startswith("`"):
@@ -112,7 +87,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
 
     @staticmethod
     def _patch_databricks_statement_compiler():
-        """Override visit_column/visit_table on the Databricks statement compiler.
+        """Override visit_table on the Databricks statement compiler.
 
         Resolve the compiler via the public `DatabricksDialect.statement_compiler`
         attribute rather than importing from `databricks.sqlalchemy._ddl`, which is a
@@ -120,27 +95,20 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         are logged and swallowed so a packaging change cannot break profiler startup.
         """
         try:
-            from databricks.sqlalchemy.base import DatabricksDialect  # noqa: PLC0415
+            from databricks.sqlalchemy.base import DatabricksDialect
 
             statement_compiler = getattr(DatabricksDialect, "statement_compiler", None)
             if statement_compiler is None:
-                logger.warning(
-                    "DatabricksDialect.statement_compiler not found; skipping Databricks compiler patches."
-                )
+                logger.warning("DatabricksDialect.statement_compiler not found; skipping Databricks compiler patches.")
                 return
-            statement_compiler.visit_column = (
-                DatabricksProfilerInterface.visit_column
-            )  # pyright: ignore[reportUnknownMemberType]
-            statement_compiler.visit_table = (
-                DatabricksProfilerInterface.visit_table
-            )  # pyright: ignore[reportUnknownMemberType]
+            statement_compiler.visit_table = DatabricksProfilerInterface.visit_table  # pyright: ignore[reportUnknownMemberType]
         except Exception as exc:
             logger.warning(
                 "Failed to patch Databricks statement compiler: %s. Profiling will continue without struct/hyphen quoting overrides.",
                 exc,
             )
 
-    def _get_struct_columns(self, columns: List[OMColumn], parent: str):
+    def _get_struct_columns(self, columns: List[OMColumn], parent: str):  # noqa: UP006
         """Get struct columns"""
 
         columns_list = []
@@ -159,16 +127,12 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 )
                 sqa_col._set_parent(  # pylint: disable=protected-access  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType, reportUnknownVariableType]
                     self.table.__table__,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                    all_names={
-                        c.name: c for c in self.table.__table__.columns
-                    },  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+                    all_names={c.name: c for c in self.table.__table__.columns},  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
                     allow_replacements=True,
                 )
                 columns_list.append(sqa_col)
             else:
-                cols = self._get_struct_columns(
-                    col.children, f"{parent}.{col.name.root}"
-                )
+                cols = self._get_struct_columns(col.children, f"{parent}.{col.name.root}")
                 columns_list.extend(cols)
         return columns_list
 
@@ -177,16 +141,12 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         columns = []
         for idx, column_obj in enumerate(self.table_entity.columns):
             if column_obj.dataType == DataType.STRUCT:
-                columns.extend(
-                    self._get_struct_columns(column_obj.children, column_obj.name.root)
-                )
+                columns.extend(self._get_struct_columns(column_obj.children, column_obj.name.root))
             else:
                 col = build_orm_col(idx, column_obj, DatabaseServiceType.Databricks)
                 col._set_parent(  # pylint: disable=protected-access  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType, reportUnknownVariableType]
                     self.table.__table__,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                    all_names={
-                        c.name: c for c in self.table.__table__.columns
-                    },  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+                    all_names={c.name: c for c in self.table.__table__.columns},  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
                     allow_replacements=True,
                 )
                 columns.append(col)

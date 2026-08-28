@@ -11,8 +11,13 @@
 """
 Helper module to handle data sampling for the profiler
 """
+
+from typing import Any, cast
+
 from sqlalchemy import Column, event, text
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.schema import Table
+from sqlalchemy.sql.selectable import TableSample
 
 from metadata.ingestion.source.database.databricks.connection import (
     get_connection as databricks_get_connection,
@@ -31,9 +36,7 @@ class DatabricksSamplerInterface(SQASampler):
         @event.listens_for(session_maker, "after_begin")
         def set_catalog(session, transaction, connection):
             # Safely quote the catalog name to prevent SQL injection
-            quoted_catalog = connection.dialect.identifier_preparer.quote(
-                self.service_connection_config.catalog
-            )
+            quoted_catalog = connection.dialect.identifier_preparer.quote(self.service_connection_config.catalog)
             connection.execute(text(f"USE CATALOG {quoted_catalog};"))
 
         self.session_factory = scoped_session(session_maker)
@@ -43,6 +46,19 @@ class DatabricksSamplerInterface(SQASampler):
         client = super().get_client()
         self.set_catalog(client)
         return client
+
+    def _base_sample_query(
+        self,
+        selectable: Table | TableSample,
+        column: Column | None,
+        label: Any = None,
+    ):
+        """Keep nested field access valid across sampling CTEs."""
+        if column is not None and "`.`" in str(column.name):
+            parent_name = str(column.name).split("`.`", maxsplit=1)[0].removeprefix("`")
+            column = cast("Column", selectable.c[parent_name])
+
+        return super()._base_sample_query(selectable, column, label=label)
 
     def _handle_array_column(self, column: Column) -> bool:
         """Check if a column is an array type"""
@@ -65,5 +81,5 @@ class DatabricksSamplerInterface(SQASampler):
             WHEN `{column.name}` IS NULL THEN NULL
             ELSE slice(`{column.name}`, 1, {max_elements})
         END AS `{column._label}`
-        """
+        """  # noqa: W291
         )
