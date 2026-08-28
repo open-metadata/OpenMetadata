@@ -18,7 +18,10 @@ import {
   mockedGlossaries,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
+import {
+  getFirstLevelGlossaryTermsPaginated,
+  searchGlossaryTermsPaginated,
+} from '../../../rest/glossaryAPI';
 import { useGlossaryStore } from '../useGlossary.store';
 import GlossaryDetails from './GlossaryDetails.component';
 
@@ -99,10 +102,13 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getFirstLevelGlossaryTermsPaginated: jest.fn(),
+  searchGlossaryTermsPaginated: jest.fn(),
 }));
 
 const mockGetFirstLevelGlossaryTermsPaginated =
   getFirstLevelGlossaryTermsPaginated as jest.Mock;
+const mockSearchGlossaryTermsPaginated =
+  searchGlossaryTermsPaginated as jest.Mock;
 
 describe('Test Glossary-details component', () => {
   it('Should render Glossary-details component', async () => {
@@ -123,6 +129,8 @@ describe('Test Glossary-details component', () => {
       useGlossaryStore.setState({
         activeGlossary: {},
         termsStatusFilter: undefined,
+        termsSearchTerm: undefined,
+        childrenCounts: {},
       } as never);
     });
 
@@ -289,6 +297,50 @@ describe('Test Glossary-details component', () => {
         'Approved'
       );
       expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
+    });
+
+    // Same root cause as the entityStatus mismatch: the table switches from
+    // the plain listing API to the search API the moment a search term is
+    // active, so the badge must switch with it via termsSearchTerm, or it
+    // keeps counting the unfiltered listing while the table shows only the
+    // search matches.
+    //
+    // Uses PAGE_SIZE_LARGE + data.length, not limit: 0 + paging.total: the
+    // search endpoint's `limit` has a server-side @Min(1) constraint
+    // (limit: 0 is rejected outright), and even with a valid limit its
+    // paging.total is a pagination heuristic
+    // (offset + terms.size() + (hasMore ? 1 : 0)), not a real count — the
+    // table itself already works around this the same way (its own
+    // fetchAllTerms uses data.length for the search branch).
+    it('uses the search API with PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
+      useGlossaryStore.setState({
+        activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
+        termsStatusFilter: 'Approved,Draft,In Review',
+        termsSearchTerm: 'bridge',
+      } as never);
+      mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [{ id: 'bridge-term' }],
+        // Deliberately misleading paging.total (the search endpoint's own
+        // pagination heuristic) to prove the count comes from data.length.
+        paging: { total: 99 },
+      });
+
+      await act(async () => {
+        render(<GlossaryDetails {...mockProps} />);
+      });
+
+      const termsTab = await screen.findByTestId('terms');
+
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledWith({
+        q: 'bridge',
+        glossaryFqn: 'Mock Glossary',
+        limit: 50,
+        entityStatus: 'Approved,Draft,In Review',
+      });
+      expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+      expect(
+        await within(termsTab).findByTestId('filter-count')
+      ).toHaveTextContent('1');
     });
   });
 });

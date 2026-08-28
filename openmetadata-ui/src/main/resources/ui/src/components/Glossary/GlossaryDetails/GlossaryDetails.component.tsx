@@ -21,7 +21,6 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useGlossaryTermChildrenCount } from '../../../hooks/useGlossaryTermChildrenCount';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import {
   checkIfExpandViewSupported,
@@ -89,15 +88,37 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeGlossary: glossary } = useGlossaryStore();
+  const {
+    activeGlossary: glossary,
+    childrenCounts,
+    fetchChildrenCount,
+    termsStatusFilter,
+    termsSearchTerm,
+  } = useGlossaryStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const termCount = useGlossaryTermChildrenCount(
+  const termCount = glossary.fullyQualifiedName
+    ? childrenCounts[glossary.fullyQualifiedName] ??
+      glossary.termCount ??
+      glossary.childrenCount ??
+      0
+    : glossary.termCount ?? glossary.childrenCount ?? 0;
+
+  // termsRefreshTrigger is bumped by the parent after a term is added, to
+  // force a re-fetch instead of waiting for a page reload.
+  useEffect(() => {
+    if (!glossary.fullyQualifiedName) {
+      return;
+    }
+    fetchChildrenCount(glossary.fullyQualifiedName);
+  }, [
     glossary.fullyQualifiedName,
     termsRefreshTrigger,
-    glossary.termCount ?? glossary.childrenCount ?? 0
-  );
+    termsStatusFilter,
+    termsSearchTerm,
+    fetchChildrenCount,
+  ]);
   const { onAddGlossaryTerm } = useGlossaryStore();
 
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store

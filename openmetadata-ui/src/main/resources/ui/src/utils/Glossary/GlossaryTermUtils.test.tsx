@@ -11,14 +11,33 @@
  *  limitations under the License.
  */
 
+import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { useGlossaryStore } from '../../components/Glossary/useGlossary.store';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
+import {
+  getFirstLevelGlossaryTermsPaginated,
+  searchGlossaryTermsPaginated,
+} from '../../rest/glossaryAPI';
+import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import glossaryTermClassBase, {
   GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
 import { getGlossaryTermDetailPageTabs } from './GlossaryTermUtils';
+
+const mockGetCountBadge = getCountBadge as jest.Mock;
+
+jest.mock('../../rest/glossaryAPI', () => ({
+  getFirstLevelGlossaryTermsPaginated: jest.fn(),
+  searchGlossaryTermsPaginated: jest.fn(),
+}));
+
+const mockGetFirstLevelGlossaryTermsPaginated =
+  getFirstLevelGlossaryTermsPaginated as jest.Mock;
+const mockSearchGlossaryTermsPaginated =
+  searchGlossaryTermsPaginated as jest.Mock;
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
@@ -102,6 +121,11 @@ const mockProps: GlossaryTermDetailPageTabProps = {
 describe('getGlossaryTermDetailPageTabs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useGlossaryStore.setState({
+      childrenCounts: {},
+      termsStatusFilter: undefined,
+      termsSearchTerm: undefined,
+    } as never);
   });
 
   describe('non-version view', () => {
@@ -216,6 +240,195 @@ describe('getGlossaryTermDetailPageTabs', () => {
         EntityTabs.RELATIONS_GRAPH,
         EntityTabs.CUSTOM_PROPERTIES,
       ]);
+    });
+  });
+
+  describe('GLOSSARY_TERMS tab count badge', () => {
+    const renderGlossaryTermsTabLabel = (
+      props: GlossaryTermDetailPageTabProps = mockProps
+    ) => {
+      const tabs = getGlossaryTermDetailPageTabs(props);
+      const glossaryTermsTab = tabs.find(
+        (t) => t.key === EntityTabs.GLOSSARY_TERMS
+      );
+
+      return render(glossaryTermsTab?.label as React.ReactElement);
+    };
+
+    it('requests a status-filtered, count-only page of direct children for the term', async () => {
+      useGlossaryStore.setState({
+        termsStatusFilter: 'Approved,Draft,In Review',
+      } as never);
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 4 },
+      });
+
+      renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+        'Finance.Revenue',
+        0,
+        undefined,
+        'Approved,Draft,In Review'
+      );
+    });
+
+    it('falls back to 0 when the fetch fails', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockRejectedValueOnce(
+        new Error('network error')
+      );
+
+      renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fetch when the term has no fullyQualifiedName', () => {
+      renderGlossaryTermsTabLabel({
+        ...mockProps,
+        glossaryTerm: { ...mockGlossaryTerm, fullyQualifiedName: undefined },
+      });
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+    });
+
+    it('re-fetches when termsStatusFilter changes, e.g. after the table status filter is saved', async () => {
+      useGlossaryStore.setState({
+        termsStatusFilter: 'Approved,Draft,In Review',
+      } as never);
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 4 },
+      });
+
+      const { rerender } = renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 1 },
+      });
+
+      useGlossaryStore.setState({ termsStatusFilter: 'Approved' } as never);
+      const tabs = getGlossaryTermDetailPageTabs(mockProps);
+      const glossaryTermsTab = tabs.find(
+        (t) => t.key === EntityTabs.GLOSSARY_TERMS
+      );
+      rerender(glossaryTermsTab?.label as React.ReactElement);
+
+      await screen.findAllByTestId('terms');
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenLastCalledWith(
+        'Finance.Revenue',
+        0,
+        undefined,
+        'Approved'
+      );
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
+    });
+
+    // useGlossary.store seeds termsStatusFilter with the default filter
+    // string, so a genuinely undefined termsStatusFilter here only happens
+    // once the table has mounted and the user explicitly selected "All"
+    // statuses and saved — it must NOT be defaulted, since that would
+    // silently re-apply a filter the user just turned off.
+    it('sends no entityStatus filter when termsStatusFilter is undefined (user selected All statuses)', async () => {
+      useGlossaryStore.setState({ termsStatusFilter: undefined } as never);
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 9 },
+      });
+
+      renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+        'Finance.Revenue',
+        0,
+        undefined,
+        undefined
+      );
+    });
+
+    // Same root cause as the entityStatus mismatch: the table switches from
+    // the plain listing API to the search API the moment a search term is
+    // active (GlossaryTermTab.component.tsx's fetchAllTerms), so the badge
+    // must switch with it via termsSearchTerm, or it keeps counting the
+    // unfiltered listing while the table shows only the search matches.
+    //
+    // Uses PAGE_SIZE_LARGE + data.length, not limit: 0 + paging.total:
+    // the search endpoint's `limit` has a server-side @Min(1) constraint
+    // (limit: 0 is rejected outright), and even with a valid limit its
+    // paging.total is a pagination heuristic
+    // (offset + terms.size() + (hasMore ? 1 : 0)), not a real count — the
+    // table itself already works around this the same way (its own
+    // fetchAllTerms uses data.length for the search branch).
+    it('uses the search API with PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
+      useGlossaryStore.setState({
+        termsStatusFilter: 'Approved,Draft,In Review',
+        termsSearchTerm: 'bridge',
+      } as never);
+      mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [{ id: 'bridge-term' }],
+        // Deliberately misleading paging.total (the search endpoint's own
+        // pagination heuristic) to prove the count comes from data.length.
+        paging: { total: 99 },
+      });
+
+      renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledWith({
+        q: 'bridge',
+        glossaryFqn: 'Finance.Revenue',
+        limit: 50,
+        entityStatus: 'Approved,Draft,In Review',
+      });
+      expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+      // The badge must show 1 (data.length), not 99 (the misleading
+      // paging.total above).
+      expect(mockGetCountBadge).toHaveBeenLastCalledWith(1, '', false);
+    });
+
+    it('switches back to the plain listing API once the search term is cleared', async () => {
+      useGlossaryStore.setState({ termsSearchTerm: 'bridge' } as never);
+      mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [{ id: 'bridge-term' }],
+        paging: { total: 1 },
+      });
+
+      const { rerender } = renderGlossaryTermsTabLabel();
+
+      await screen.findByTestId('terms');
+
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 5 },
+      });
+
+      useGlossaryStore.setState({ termsSearchTerm: undefined } as never);
+      const tabs = getGlossaryTermDetailPageTabs(mockProps);
+      const glossaryTermsTab = tabs.find(
+        (t) => t.key === EntityTabs.GLOSSARY_TERMS
+      );
+      rerender(glossaryTermsTab?.label as React.ReactElement);
+
+      await screen.findAllByTestId('terms');
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -33,6 +33,7 @@ const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
 const mockSetGlossaryChildTerms = jest.fn();
 const mockSetTermsStatusFilter = jest.fn();
+const mockSetTermsSearchTerm = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
@@ -203,6 +204,7 @@ const mockUseGlossaryStore = {
   refreshGlossaryTerms: mockRefreshGlossaryTerms,
   setGlossaryChildTerms: mockSetGlossaryChildTerms,
   setTermsStatusFilter: mockSetTermsStatusFilter,
+  setTermsSearchTerm: mockSetTermsSearchTerm,
 };
 
 jest.mock('../useGlossary.store', () => ({
@@ -643,6 +645,47 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(undefined);
+      });
+    });
+
+    it('publishes the search term to the store once the debounced search commits, so the count badge can switch to the search API too', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetTermsSearchTerm).toHaveBeenCalledWith('');
+      });
+      mockSetTermsSearchTerm.mockClear();
+
+      const searchInput = screen.getByPlaceholderText('label.search-entity');
+      fireEvent.change(searchInput, { target: { value: 'bridge' } });
+
+      // Due to the 500ms debounce, this must not fire immediately.
+      expect(mockSetTermsSearchTerm).not.toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(mockSetTermsSearchTerm).toHaveBeenCalledWith('bridge');
+      });
+    });
+
+    it('publishes an empty search term to the store once the search box is cleared', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const searchInput = screen.getByPlaceholderText('label.search-entity');
+      fireEvent.change(searchInput, { target: { value: 'bridge' } });
+
+      await waitFor(() => {
+        expect(mockSetTermsSearchTerm).toHaveBeenCalledWith('bridge');
+      });
+      mockSetTermsSearchTerm.mockClear();
+
+      fireEvent.change(searchInput, { target: { value: '' } });
+
+      await waitFor(() => {
+        expect(mockSetTermsSearchTerm).toHaveBeenCalledWith('');
       });
     });
   });

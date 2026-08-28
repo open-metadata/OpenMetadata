@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { kebabCase } from 'lodash';
-import { lazy } from 'react';
+import { lazy, useEffect } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import type {
@@ -19,6 +19,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { useGlossaryStore } from '../../components/Glossary/useGlossary.store';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
@@ -51,15 +52,6 @@ const AssetsTabs = withSuspenseFallback(
     () =>
       import(
         '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component'
-      )
-  )
-);
-
-const GlossaryTermChildrenCountBadge = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../components/Glossary/GlossaryTermChildrenCountBadge/GlossaryTermChildrenCountBadge.component'
       )
   )
 );
@@ -100,6 +92,44 @@ const EntitySummaryPanel = withSuspenseFallback(
   )
 );
 
+interface GlossaryTermChildrenCountBadgeProps {
+  fqn?: string;
+  initialCount?: number;
+  isActive?: boolean;
+}
+
+// Renders the direct-children count with the same entityStatus filter the Terms
+// table applies, so the tab badge always matches what the table actually lists
+// instead of the unfiltered, all-descendants `childrenCount` field. Kept inline
+// here rather than as its own component file since this tab label is its only
+// usage site; the fetch/filter logic itself lives in useGlossary.store's
+// fetchChildrenCount, shared with GlossaryDetails (Glossary root page).
+const GlossaryTermChildrenCountBadge = ({
+  fqn,
+  initialCount,
+  isActive,
+}: GlossaryTermChildrenCountBadgeProps) => {
+  const {
+    childrenCounts,
+    fetchChildrenCount,
+    termsStatusFilter,
+    termsSearchTerm,
+  } = useGlossaryStore();
+
+  useEffect(() => {
+    if (!fqn) {
+      return;
+    }
+    fetchChildrenCount(fqn);
+  }, [fqn, termsStatusFilter, termsSearchTerm, fetchChildrenCount]);
+
+  const count = fqn
+    ? childrenCounts[fqn] ?? initialCount ?? 0
+    : initialCount ?? 0;
+
+  return <>{getCountBadge(count, '', isActive)}</>;
+};
+
 export const getGlossaryTermDetailPageTabs = (
   props: GlossaryTermDetailPageTabProps
 ): TabProps[] => {
@@ -121,7 +151,6 @@ export const getGlossaryTermDetailPageTabs = (
     refreshActiveGlossaryTerm,
     setAssetModalVisible,
     setPreviewAsset,
-    childrenRefreshTrigger,
   } = props;
 
   // Draft / In Review terms can still reach Approved, so use the actionable
@@ -166,7 +195,6 @@ export const getGlossaryTermDetailPageTabs = (
                     fqn={glossaryTerm.fullyQualifiedName}
                     initialCount={glossaryTerm.childrenCount}
                     isActive={activeTab === EntityTabs.GLOSSARY_TERMS}
-                    refreshTrigger={childrenRefreshTrigger}
                   />
                 </span>
               </div>

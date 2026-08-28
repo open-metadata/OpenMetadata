@@ -163,6 +163,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     onEditGlossaryTerm,
     refreshGlossaryTerms,
     setTermsStatusFilter,
+    setTermsSearchTerm,
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
@@ -1735,6 +1736,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     // then) so the count badge's store value always reflects the current
     // committed filter, including the initial default on mount/remount.
     setTermsStatusFilter(getEntityStatusParamFromSelection(selectedStatus));
+    setTermsSearchTerm(searchTerm);
   }, [searchTerm, selectedStatus]);
 
   // Check if this is due to search or filter returning no results

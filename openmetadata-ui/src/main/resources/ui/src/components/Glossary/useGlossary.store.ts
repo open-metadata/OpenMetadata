@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../constants/Glossary.contant';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
+import {
+  getFirstLevelGlossaryTermsPaginated,
+  GlossaryTermWithChildren,
+  searchGlossaryTermsPaginated,
+} from '../../rest/glossaryAPI';
 import { findAndUpdateNested } from '../../utils/GlossaryPureUtils';
 
 export type ModifiedGlossary = Glossary & {
@@ -54,12 +59,27 @@ export const useGlossaryStore = create<{
   // always pushes at least once on mount.
   termsStatusFilter: string | undefined;
   setTermsStatusFilter: (termsStatusFilter: string | undefined) => void;
+  // The Terms table's live search box query, pushed the same way as
+  // termsStatusFilter above — so the children-count badge can tell when the
+  // table has switched from the plain listing API to the search API and
+  // mirror that, instead of only ever counting the unfiltered listing.
+  termsSearchTerm: string | undefined;
+  setTermsSearchTerm: (termsSearchTerm: string | undefined) => void;
+  // Direct-children counts for a glossary/glossary-term fqn, filtered to the
+  // same entityStatus AND search term the Terms table is currently using
+  // (termsStatusFilter / termsSearchTerm above) — keyed by fqn since both the
+  // Glossary root page and every Glossary Term page's Terms tab badge read
+  // from this same map.
+  childrenCounts: Record<string, number>;
+  fetchChildrenCount: (fqn: string) => Promise<void>;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
   glossaryChildTerms: [],
   termsLoading: false,
   termsStatusFilter: DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','),
+  termsSearchTerm: undefined,
+  childrenCounts: {},
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -132,6 +152,54 @@ export const useGlossaryStore = create<{
   },
   setTermsStatusFilter: (termsStatusFilter: string | undefined) => {
     set({ termsStatusFilter });
+  },
+  setTermsSearchTerm: (termsSearchTerm: string | undefined) => {
+    set({ termsSearchTerm });
+  },
+  fetchChildrenCount: async (fqn: string) => {
+    const { termsStatusFilter, termsSearchTerm } = get();
+
+    try {
+      // Mirrors GlossaryTermTab.component.tsx's fetchAllTerms: the table
+      // itself switches from the plain listing API to the search API the
+      // moment a search term is active, so the count must switch with it —
+      // otherwise it keeps counting the unfiltered listing while the table
+      // shows only the search matches.
+      let count: number;
+      if (termsSearchTerm) {
+        // The search endpoint's `limit` has a server-side @Min(1) constraint
+        // (GlossaryTermResource#searchGlossaryTerms) — limit: 0 is rejected
+        // outright, not "count only". Its `paging.total` also isn't a real
+        // count for search results: GlossaryTermRepository#searchGlossary
+        // TermsInternal deliberately skips the COUNT query and derives
+        // `knownTotal` from `offset + terms.size() + (hasMore ? 1 : 0)`,
+        // which is only accurate when the true total is <= limit + 1. The
+        // table itself already works around this the same way — see its own
+        // `setTotalTermsCount(data.length)` in fetchAllTerms — so this
+        // mirrors that: request the same PAGE_SIZE_LARGE the table uses and
+        // count the returned rows, not paging.total.
+        const { data } = await searchGlossaryTermsPaginated({
+          q: termsSearchTerm,
+          glossaryFqn: fqn,
+          limit: PAGE_SIZE_LARGE,
+          entityStatus: termsStatusFilter,
+        });
+        count = data.length;
+      } else {
+        const { paging } = await getFirstLevelGlossaryTermsPaginated(
+          fqn,
+          0,
+          undefined,
+          termsStatusFilter
+        );
+        count = paging.total ?? 0;
+      }
+      const { childrenCounts } = get();
+      set({ childrenCounts: { ...childrenCounts, [fqn]: count } });
+    } catch {
+      const { childrenCounts } = get();
+      set({ childrenCounts: { ...childrenCounts, [fqn]: 0 } });
+    }
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({

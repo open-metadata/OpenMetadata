@@ -138,7 +138,12 @@ jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
 }));
 
 jest.mock('../useGlossary.store', () => ({
-  useGlossaryStore: jest.fn().mockReturnValue({ onAddGlossaryTerm: jest.fn() }),
+  useGlossaryStore: jest.fn().mockReturnValue({
+    onAddGlossaryTerm: jest.fn(),
+    childrenCounts: {},
+    fetchChildrenCount: jest.fn(),
+    termsStatusFilter: undefined,
+  }),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
