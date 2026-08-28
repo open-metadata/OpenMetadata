@@ -43,47 +43,33 @@ public class SamlIdentityResolver {
 
   public ResolvedSamlIdentity resolve(SamlAssertionAccessor assertionAccessor) {
     if (shouldUseEmailFirstFlow()) {
-      try {
-        String email =
-            extractAttributeFromAssertion(
-                assertionAccessor, authenticationConfiguration.getEmailClaim());
-        if (nullOrEmpty(email)) {
-          throw new AuthenticationException(
-              String.format(
-                  "Authentication failed: email attribute '%s' not found in SAML assertion",
-                  authenticationConfiguration.getEmailClaim()));
-        }
-
-        email = email.toLowerCase();
-        validateConfiguredEmailDomain(
-            email,
-            getAllowedEmailDomains(),
-            authorizerConfiguration.getPrincipalDomain(),
-            authorizerConfiguration.getAllowedDomains(),
-            authorizerConfiguration.getEnforcePrincipalDomain());
-
-        String displayName =
-            extractAttributeFromAssertion(
-                assertionAccessor, authenticationConfiguration.getDisplayNameClaim());
-        if (nullOrEmpty(displayName)) {
-          displayName = email.split("@")[0];
-        }
-
-        LOG.debug("SAML email-first flow: email={}, displayName={}", email, displayName);
-        return new ResolvedSamlIdentity(null, email, displayName, true);
-      } catch (AuthenticationException
-          | org.openmetadata.service.security.AuthenticationException ex) {
-        if (isDomainValidationFailure(ex)) {
-          throw ex;
-        }
-        if (!canFallbackToLegacyFlow()) {
-          throw ex;
-        }
-        LOG.warn(
-            "SAML email-first attribute resolution failed for attribute '{}': {}. Falling back to legacy NameID flow.",
-            authenticationConfiguration.getEmailClaim(),
-            ex.getMessage());
+      // emailClaim is an explicit opt-in; a missing email attribute fails authentication
+      // rather than silently falling back to the NameID flow with a different identity.
+      String email =
+          extractAttributeFromAssertion(
+              assertionAccessor, authenticationConfiguration.getEmailClaim());
+      if (nullOrEmpty(email)) {
+        throw new AuthenticationException(
+            String.format(
+                "Authentication failed: email attribute '%s' not found in SAML assertion",
+                authenticationConfiguration.getEmailClaim()));
       }
+
+      email = email.toLowerCase();
+      validateConfiguredEmailDomain(
+          email,
+          getAllowedEmailDomains(),
+          authorizerConfiguration.getPrincipalDomain(),
+          authorizerConfiguration.getAllowedDomains(),
+          authorizerConfiguration.getEnforcePrincipalDomain());
+
+      String displayNameAttr =
+          extractAttributeFromAssertion(
+              assertionAccessor, authenticationConfiguration.getDisplayNameClaim());
+      String displayName = nullOrEmpty(displayNameAttr) ? null : displayNameAttr;
+
+      LOG.debug("SAML email-first flow: email={}, displayName={}", email, displayName);
+      return new ResolvedSamlIdentity(null, email, displayName, true);
     }
 
     String nameId = assertionAccessor.getNameId();
@@ -109,11 +95,6 @@ public class SamlIdentityResolver {
         false);
   }
 
-  private boolean canFallbackToLegacyFlow() {
-    String nameId = authenticationConfiguration.getEmailClaim();
-    return nameId != null;
-  }
-
   private boolean shouldUseLegacyFlow() {
     List<String> claimsMapping = authenticationConfiguration.getJwtPrincipalClaimsMapping();
     return claimsMapping != null && !claimsMapping.isEmpty();
@@ -121,11 +102,6 @@ public class SamlIdentityResolver {
 
   private boolean shouldUseEmailFirstFlow() {
     return !nullOrEmpty(authenticationConfiguration.getEmailClaim()) && !shouldUseLegacyFlow();
-  }
-
-  private static boolean isDomainValidationFailure(Exception ex) {
-    String msg = ex.getMessage();
-    return msg != null && msg.contains("not in allowed list");
   }
 
   private List<String> getAllowedEmailDomains() {

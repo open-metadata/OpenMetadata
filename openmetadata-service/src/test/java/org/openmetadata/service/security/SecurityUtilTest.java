@@ -2,6 +2,7 @@ package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -232,31 +233,39 @@ class SecurityUtilTest {
     Map<String, Object> claims = new HashMap<>();
     claims.put("name", "John Doe");
 
-    String displayName =
-        SecurityUtil.extractDisplayNameFromClaim(claims, "name", "john.doe@company.com");
+    String displayName = SecurityUtil.extractDisplayNameFromClaim(claims, "name");
 
     assertEquals("John Doe", displayName);
   }
 
   @Test
-  void testExtractDisplayNameFromClaim_fallsBackToEmailPrefix() {
+  void testExtractDisplayNameFromClaim_returnsNullWhenNoClaims() {
     Map<String, Object> claims = new HashMap<>();
 
-    String displayName =
-        SecurityUtil.extractDisplayNameFromClaim(claims, "name", "john.doe@company.com");
+    String displayName = SecurityUtil.extractDisplayNameFromClaim(claims, "name");
 
-    assertEquals("john.doe", displayName);
+    assertNull(displayName);
   }
 
   @Test
-  void testExtractDisplayNameFromClaim_emptyClaim_fallsBack() {
+  void testExtractDisplayNameFromClaim_emptyClaim_returnsNull() {
     Map<String, Object> claims = new HashMap<>();
     claims.put("name", "");
 
-    String displayName =
-        SecurityUtil.extractDisplayNameFromClaim(claims, "name", "john.doe@company.com");
+    String displayName = SecurityUtil.extractDisplayNameFromClaim(claims, "name");
 
-    assertEquals("john.doe", displayName);
+    assertNull(displayName);
+  }
+
+  @Test
+  void testIsEmailRegistrationDomainAllowed() {
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", null));
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of()));
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of("all")));
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of("X.COM")));
+    assertFalse(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of("y.com")));
+    assertFalse(SecurityUtil.isEmailRegistrationDomainAllowed(null, Set.of("y.com")));
+    assertFalse(SecurityUtil.isEmailRegistrationDomainAllowed("no-at-sign", Set.of("y.com")));
   }
 
   @Test

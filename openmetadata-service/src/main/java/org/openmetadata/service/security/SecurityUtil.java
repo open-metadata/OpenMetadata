@@ -102,10 +102,10 @@ public final class SecurityUtil {
       return principalDomain;
     }
     if (allowedEmailDomains != null && !allowedEmailDomains.isEmpty()) {
-      return allowedEmailDomains.iterator().next();
+      return allowedEmailDomains.stream().sorted().findFirst().orElse(null);
     }
     if (allowedDomains != null && !allowedDomains.isEmpty()) {
-      return allowedDomains.iterator().next();
+      return allowedDomains.stream().sorted().findFirst().orElse(null);
     }
     return null;
   }
@@ -206,8 +206,7 @@ public final class SecurityUtil {
     return email;
   }
 
-  public static String extractDisplayNameFromClaim(
-      Map<String, ?> claims, String displayNameClaim, String email) {
+  public static String extractDisplayNameFromClaim(Map<String, ?> claims, String displayNameClaim) {
     if (!nullOrEmpty(displayNameClaim)) {
       Object claimValue = claims.get(displayNameClaim);
       if (claimValue != null) {
@@ -217,13 +216,21 @@ public final class SecurityUtil {
         }
       }
     }
+    return extractDisplayNameFromClaims(claims);
+  }
 
-    String fromStandardClaims = extractDisplayNameFromClaims(claims);
-    if (fromStandardClaims != null) {
-      return fromStandardClaims;
+  public static boolean isEmailRegistrationDomainAllowed(
+      String email, Set<String> allowedRegistrationDomains) {
+    if (allowedRegistrationDomains == null
+        || allowedRegistrationDomains.isEmpty()
+        || allowedRegistrationDomains.contains("all")) {
+      return true;
     }
-
-    return email.split("@")[0];
+    if (email == null || !email.contains("@")) {
+      return false;
+    }
+    String domain = email.substring(email.indexOf('@') + 1);
+    return allowedRegistrationDomains.stream().anyMatch(domain::equalsIgnoreCase);
   }
 
   private static boolean isValidEmail(String email) {

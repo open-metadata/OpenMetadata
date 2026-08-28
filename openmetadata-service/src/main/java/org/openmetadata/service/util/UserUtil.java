@@ -220,7 +220,10 @@ public final class UserUtil {
         }
         processedEmails.add(email);
         try {
-          createOrUpdateAdminByEmail(authProvider, email);
+          // Legacy adminPrincipals match existing users BY NAME. Resolving them by the
+          // synthesized principal@domain email would miss users whose stored email differs
+          // and create a duplicate admin account instead of promoting the real one.
+          createOrUpdateUser(authProvider, principal, getPassword(principal), domain, true);
         } catch (Exception ex) {
           LOG.error(
               "[BootstrapUser] Failed to create/update admin user for principal: {}",

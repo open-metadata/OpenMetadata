@@ -79,3 +79,10 @@ DELETE FROM QRTZ_JOB_DETAILS;
 DELETE FROM QRTZ_FIRED_TRIGGERS;
 DELETE FROM QRTZ_LOCKS;
 DELETE FROM QRTZ_SCHEDULER_STATE;
+
+-- Email-first identity: email/name lookups on the authentication hot path compare LOWER()
+-- values. Postgres columns are case-sensitive, so functional indexes are required to avoid a
+-- full table scan per login. Non-unique on purpose: pre-existing case-variant duplicate emails
+-- must not fail the upgrade; uniqueness is enforced at the application layer.
+CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));

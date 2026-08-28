@@ -36,12 +36,14 @@ public class JwtIdentityResolver {
 
   public ResolvedIdentity resolve(Map<String, Claim> claims, boolean isBotUser) {
     if (shouldUseEmailFirstFlow(isBotUser)) {
+      String email = null;
       try {
-        String email = extractEmailFromClaim(claims, emailClaim);
-        String userName = userNameResolver.apply(email);
-        LOG.debug("Email-first flow: email={}, userName={}", email, userName);
-        return new ResolvedIdentity(userName, email, true);
+        email = extractEmailFromClaim(claims, emailClaim);
       } catch (AuthenticationException ex) {
+        // Only a missing/invalid email CLAIM may fall back to the legacy flow (e.g. OM
+        // impersonation tokens carry no email claim). Failures below, after the email is known,
+        // are user-state failures and must propagate — falling back would let an unknown email
+        // resolve to another account's username.
         if (!canFallbackToLegacyFlow()) {
           throw ex;
         }
@@ -49,6 +51,11 @@ public class JwtIdentityResolver {
             "Email-first claim resolution failed for claim '{}': {}. Falling back to legacy JWT principal claims.",
             emailClaim,
             ex.getMessage());
+      }
+      if (email != null) {
+        String userName = userNameResolver.apply(email);
+        LOG.debug("Email-first flow: email={}, userName={}", email, userName);
+        return new ResolvedIdentity(userName, email, true);
       }
     }
 

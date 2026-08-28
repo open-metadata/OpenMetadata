@@ -133,6 +133,61 @@ class EmailFirstUserProvisionerTest {
   }
 
   @Test
+  void testRejectsSignupWhenRegistrationDomainNotAllowed() {
+    EmailFirstUserProvisioner provisioner =
+        new EmailFirstUserProvisioner(
+            "OIDC",
+            email -> {
+              throw EntityNotFoundException.byName(email);
+            },
+            username -> false,
+            (email, username) -> false,
+            user -> false,
+            user -> {},
+            user -> user,
+            IllegalStateException::new,
+            email -> email.endsWith("@company.com"));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> provisioner.getOrCreate("intruder@other.org", "Intruder", true));
+
+    assertTrue(exception.getMessage().contains("not allowed for self-signup"));
+  }
+
+  @Test
+  void testDoesNotOverwriteDisplayNameWhenIdpProvidesNone() {
+    User existingUser =
+        new User()
+            .withName("john")
+            .withEmail("john@company.com")
+            .withDisplayName("Custom Name")
+            .withIsAdmin(false);
+    AtomicInteger saveCount = new AtomicInteger();
+
+    EmailFirstUserProvisioner provisioner =
+        new EmailFirstUserProvisioner(
+            "SAML",
+            email -> existingUser,
+            username -> false,
+            (email, username) -> false,
+            user -> false,
+            user -> {},
+            user -> {
+              saveCount.incrementAndGet();
+              return user;
+            },
+            IllegalStateException::new);
+
+    User resolvedUser = provisioner.getOrCreate("john@company.com", null, true);
+
+    assertSame(existingUser, resolvedUser);
+    assertEquals("Custom Name", resolvedUser.getDisplayName());
+    assertEquals(0, saveCount.get());
+  }
+
+  @Test
   void testCreatesNewUserWithUniqueUsernameWhenSelfSignupEnabled() {
     EmailFirstUserProvisioner provisioner =
         new EmailFirstUserProvisioner(

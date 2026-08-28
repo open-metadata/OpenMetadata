@@ -13,7 +13,6 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -467,7 +466,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testResolveSamlIdentityFallsBackToLegacyNameIdWhenEmailAttributeMissing() throws Exception {
+  void testResolveSamlIdentityFailsWhenConfiguredEmailAttributeMissing() throws Exception {
     when(authConfig.getEmailClaim()).thenReturn("email");
     when(authConfig.getDisplayNameClaim()).thenReturn("name");
     Auth auth = Mockito.mock(Auth.class);
@@ -475,11 +474,10 @@ class SamlAuthServletHandlerTest {
     when(auth.getAttribute("email")).thenReturn(null);
     when(auth.getNameId()).thenReturn("legacy.user@company.com");
 
-    Object identity = invokePrivate(handler, "resolveSamlIdentity", auth);
-
-    assertFalse((Boolean) invokeAccessor(identity, "emailFirstFlow"));
-    assertEquals("legacy.user", invokeAccessor(identity, "userName"));
-    assertEquals("legacy.user@company.com", invokeAccessor(identity, "email"));
+    Exception exception =
+        assertThrows(Exception.class, () -> invokePrivate(handler, "resolveSamlIdentity", auth));
+    Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
+    assertTrue(cause.getMessage().contains("email attribute 'email' not found"));
   }
 
   @Test
@@ -492,7 +490,8 @@ class SamlAuthServletHandlerTest {
             .withDisplayName("John Y")
             .withIsAdmin(false);
 
-    when(userRepository.getByEmail(any(), eq("john@y.com"), any())).thenReturn(existingUser);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+        .thenReturn(existingUser);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
@@ -503,7 +502,7 @@ class SamlAuthServletHandlerTest {
                   handler, "getOrCreateEmailFirstSamlUser", "john@y.com", "John Y", List.of());
 
       assertSame(existingUser, resolvedUser);
-      verify(userRepository).getByEmail(any(), eq("john@y.com"), any());
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
     }
   }
 
@@ -511,7 +510,7 @@ class SamlAuthServletHandlerTest {
   void testGetOrCreateEmailFirstSamlUserRejectsUnregisteredUserWhenSelfSignupDisabled()
       throws Exception {
     when(authConfig.getEnableSelfSignup()).thenReturn(false);
-    when(userRepository.getByEmail(any(), eq("newuser@company.com"), any()))
+    when(userRepository.getActiveUserByEmailForAuth(eq("newuser@company.com"), any()))
         .thenThrow(EntityNotFoundException.byName("newuser@company.com"));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {

@@ -63,7 +63,8 @@ class LdapAuthenticatorTest {
             .withIsAdmin(false);
 
     setField(authenticator, "userRepository", userRepository);
-    when(userRepository.getByEmail(any(), eq("john@y.com"), any())).thenReturn(existingUser);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+        .thenReturn(existingUser);
 
     try (MockedStatic<SecurityConfigurationManager> securityConfigMock =
         mockStatic(SecurityConfigurationManager.class)) {
@@ -81,7 +82,7 @@ class LdapAuthenticatorTest {
                   "John Y");
 
       assertSame(existingUser, resolvedUser);
-      verify(userRepository).getByEmail(any(), eq("john@y.com"), any());
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
     }
   }
 
@@ -91,7 +92,7 @@ class LdapAuthenticatorTest {
     UserRepository userRepository = mock(UserRepository.class);
 
     setField(authenticator, "userRepository", userRepository);
-    when(userRepository.getByEmail(any(), eq("ldapuser@company.com"), any()))
+    when(userRepository.getActiveUserByEmailForAuth(eq("ldapuser@company.com"), any()))
         .thenThrow(EntityNotFoundException.byName("ldapuser@company.com"));
     when(userRepository.findByNameOrNull(anyString(), eq(Include.NON_DELETED))).thenReturn(null);
     when(userRepository.createOrUpdate(any(), any(User.class), anyString()))
@@ -135,7 +136,7 @@ class LdapAuthenticatorTest {
     UserRepository userRepository = mock(UserRepository.class);
 
     setField(authenticator, "userRepository", userRepository);
-    when(userRepository.getByEmail(any(), eq("ldapuser@company.com"), any()))
+    when(userRepository.getActiveUserByEmailForAuth(eq("ldapuser@company.com"), any()))
         .thenThrow(EntityNotFoundException.byName("ldapuser@company.com"));
 
     try (MockedStatic<SecurityConfigurationManager> securityConfigMock =

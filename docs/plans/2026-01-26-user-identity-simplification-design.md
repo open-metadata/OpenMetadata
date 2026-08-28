@@ -175,10 +175,44 @@ Logged at startup if deprecated configs are present:
 ### Startup/Bootstrap
 - Deprecation warning logging when old configs detected
 
+## Security Model Decisions
+
+- **Fail closed on unknown emails.** When the email-first flow finds no user for a token's email,
+  the request is rejected (401) if any existing account already owns the email's local-part as a
+  username — resolving to that name would let an unregistered email act as another user's
+  identity. Only when the candidate username is entirely unclaimed does the request proceed with
+  it, which is required for first-login bootstrap of public-client (implicit) flows.
+- **Deactivated accounts cannot authenticate.** All email-first lookups go through
+  `UserRepository.getActiveUserByEmailForAuth`, which rejects soft-deleted users with an explicit
+  "account deactivated" error instead of resolving, updating, or resurrecting them.
+- **OM-issued tokens are exempt from `allowedEmailDomains`.** Session tokens and personal access
+  tokens are recognized by issuer + key id and skip the domain allow-list; enforcing it on them
+  would lock out the seeded admin and grandfathered users whose emails predate the config. Domain
+  restrictions apply to IdP-issued tokens.
+- **`allowedEmailRegistrationDomains` applies to email-first self-signup** across OIDC, SAML, and
+  LDAP provisioning, matching the legacy OIDC behavior.
+- **`email_verified` is honored when present.** An OIDC token that explicitly carries
+  `email_verified: false` is rejected in the email-first flow; absent claims are accepted since
+  many IdPs omit it.
+- **Display names sync only when the IdP supplies one.** Resolvers pass null when no display-name
+  claim/attribute exists, so user-customized display names are never reverted to an email-prefix
+  fallback.
+- **Emails are stored and compared lowercased.** A native migration normalizes existing rows and
+  (Postgres) adds functional indexes on `LOWER(email)` / `LOWER(name)` so the auth-path lookups
+  are index-backed. MySQL's case-insensitive collation serves the same purpose with plain
+  equality.
+
 ## Migration Strategy
 
-Phase 1 (this implementation): Backward-compatible changes with deprecation warnings. Old configs continue to work.
+Phase 1 (this implementation): Backward-compatible changes with deprecation warnings. Old configs
+continue to work. Legacy `adminPrincipals` continue to match existing users **by name** (only
+`adminEmails` resolves by email) so no duplicate admin accounts are created on upgrade.
 
-Phase 2 (future): Migration tooling via OpenMetadataOps to help users transition existing users with artificial emails to real emails.
+Phase 2 (future): Migration tooling via OpenMetadataOps to help users transition existing users
+with artificial emails (e.g. `user@principalDomain` synthesized from NameID/UPN configs) to real
+emails — required before such deployments can enable `emailClaim`. Also planned: store the IdP
+`sub` claim on first login and alert/deny when a known email presents a different subject
+(defends against IdP email reuse/recycling), and an admin-only "change user email" operation
+(emails are currently immutable through the API).
 
 Phase 3 (future): Remove deprecated configuration options.

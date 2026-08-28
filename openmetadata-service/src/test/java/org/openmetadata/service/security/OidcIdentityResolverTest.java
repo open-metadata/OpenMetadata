@@ -131,6 +131,44 @@ class OidcIdentityResolverTest {
     assertTrue(exception.getMessage().contains("not in allowed list"));
   }
 
+  @Test
+  void testResolveRejectsExplicitlyUnverifiedEmail() {
+    OidcIdentityResolver resolver =
+        new OidcIdentityResolver(
+            authConfig(true, List.of(), new ArrayList<>(), "email", "name"),
+            authzConfig(Set.of(), Set.of(), false),
+            Map.of(),
+            List.of(),
+            "openmetadata.org");
+
+    org.openmetadata.service.exception.AuthenticationException exception =
+        assertThrows(
+            org.openmetadata.service.exception.AuthenticationException.class,
+            () ->
+                resolver.resolve(
+                    Map.of("email", "john@company.com", "email_verified", Boolean.FALSE)));
+
+    assertTrue(exception.getMessage().contains("not verified"));
+  }
+
+  @Test
+  void testResolveAcceptsEmailWhenVerifiedClaimAbsentOrTrue() {
+    OidcIdentityResolver resolver =
+        new OidcIdentityResolver(
+            authConfig(true, List.of(), new ArrayList<>(), "email", "name"),
+            authzConfig(Set.of(), Set.of(), false),
+            Map.of(),
+            List.of(),
+            "openmetadata.org");
+
+    assertEquals("john@company.com", resolver.resolve(Map.of("email", "john@company.com")).email());
+    assertEquals(
+        "john@company.com",
+        resolver
+            .resolve(Map.of("email", "john@company.com", "email_verified", Boolean.TRUE))
+            .email());
+  }
+
   private static AuthenticationConfiguration authConfig(
       boolean enableSelfSignup,
       List<String> principalClaims,

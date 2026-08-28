@@ -87,8 +87,8 @@ class AuthenticationCodeFlowHandlerTest {
             .withDisplayName("John Y")
             .withIsAdmin(false);
 
-    when(userRepository.getByEmail(any(), eq("john@x.com"), any())).thenReturn(johnAtX);
-    when(userRepository.getByEmail(any(), eq("john@y.com"), any())).thenReturn(johnAtY);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@x.com"), any())).thenReturn(johnAtX);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any())).thenReturn(johnAtY);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
@@ -104,8 +104,8 @@ class AuthenticationCodeFlowHandlerTest {
 
       assertSame(johnAtX, resolvedX);
       assertSame(johnAtY, resolvedY);
-      verify(userRepository).getByEmail(any(), eq("john@x.com"), any());
-      verify(userRepository).getByEmail(any(), eq("john@y.com"), any());
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@x.com"), any());
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
     }
   }
 
@@ -115,7 +115,7 @@ class AuthenticationCodeFlowHandlerTest {
         newHandler(true, List.of("preferred_username"), new ArrayList<>(), "email", "name");
     UserRepository userRepository = mock(UserRepository.class);
 
-    when(userRepository.getByEmail(any(), eq("newuser@company.com"), any()))
+    when(userRepository.getActiveUserByEmailForAuth(eq("newuser@company.com"), any()))
         .thenThrow(EntityNotFoundException.byName("newuser@company.com"));
     when(userRepository.findByNameOrNull(anyString(), eq(Include.NON_DELETED))).thenReturn(null);
     when(userRepository.createOrUpdate(any(), any(User.class), anyString()))
@@ -156,7 +156,7 @@ class AuthenticationCodeFlowHandlerTest {
         newHandler(false, List.of("preferred_username"), new ArrayList<>(), "email", "name");
     UserRepository userRepository = mock(UserRepository.class);
 
-    when(userRepository.getByEmail(any(), eq("newuser@company.com"), any()))
+    when(userRepository.getActiveUserByEmailForAuth(eq("newuser@company.com"), any()))
         .thenThrow(EntityNotFoundException.byName("newuser@company.com"));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {

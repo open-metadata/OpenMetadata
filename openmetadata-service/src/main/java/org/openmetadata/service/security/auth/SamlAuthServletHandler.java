@@ -26,6 +26,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -42,6 +43,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.security.SamlIdentityResolver;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -93,19 +95,25 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private void initializeConfiguration() {
-    this.displayNameAttributes =
-        Arrays.asList(
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
-            "given_name",
-            "family_name",
-            "givenName",
-            "familyName",
-            "firstName",
-            "lastName",
-            "http://schemas.microsoft.com/identity/claims/displayname",
-            "displayName",
-            "name");
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    if (samlConfig != null) {
+      this.displayNameAttributes = samlConfig.getSamlDisplayNameAttributes();
+    }
+    if (nullOrEmpty(this.displayNameAttributes)) {
+      this.displayNameAttributes =
+          Arrays.asList(
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+              "given_name",
+              "family_name",
+              "givenName",
+              "familyName",
+              "firstName",
+              "lastName",
+              "http://schemas.microsoft.com/identity/claims/displayname",
+              "displayName",
+              "name");
+    }
   }
 
   @Override
@@ -409,16 +417,17 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             "SAML",
             emailAddress ->
                 Entity.getUserRepository()
-                    .getByEmail(
-                        null,
-                        emailAddress,
-                        new Fields(Set.of("id", "roles", "teams", "displayName"))),
-            this::usernameExists,
+                    .getActiveUserByEmailForAuth(
+                        emailAddress, new Fields(Set.of("id", "roles", "teams", "displayName"))),
+            Entity.getUserRepository()::checkUserNameExists,
             this::isUserAdmin,
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
             UserUtil::addOrUpdateUser,
-            AuthenticationException::new)
+            AuthenticationException::new,
+            emailAddress ->
+                SecurityUtil.isEmailRegistrationDomainAllowed(
+                    emailAddress, authorizerConfig.getAllowedEmailRegistrationDomains()))
         .getOrCreate(email, displayName, Boolean.TRUE.equals(authConfig.getEnableSelfSignup()));
   }
 
@@ -526,15 +535,6 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       return true;
     }
     return getAdminPrincipals().contains(username);
-  }
-
-  private boolean usernameExists(String username) {
-    try {
-      Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
-      return true;
-    } catch (EntityNotFoundException e) {
-      return false;
-    }
   }
 
   private Set<String> getAdminPrincipals() {

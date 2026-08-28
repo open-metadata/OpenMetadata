@@ -88,6 +88,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -199,6 +201,20 @@ public class UserRepository extends EntityRepository<User> {
     User entityClone = JsonUtils.deepCopy(user, User.class);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
+  }
+
+  /**
+   * Email lookup for authentication flows. Unlike {@link #getByEmail}, a soft-deleted user is not a
+   * valid login identity: deactivated accounts must not resolve, be updated, or be resurrected by
+   * an SSO login.
+   */
+  public User getActiveUserByEmailForAuth(String email, Fields fields) {
+    User user = getByEmail(null, email, fields);
+    if (Boolean.TRUE.equals(user.getDeleted())) {
+      throw new AuthenticationException(
+          "Your account has been deactivated. Contact your administrator.");
+    }
+    return user;
   }
 
   public User getUserByNameAndEmail(UriInfo uriInfo, String name, String email, Fields fields) {
@@ -1233,6 +1249,7 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
+    JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
     // Remove suggestions
     daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
@@ -1392,6 +1409,8 @@ public class UserRepository extends EntityRepository<User> {
             updateAuthenticationMechanism(original, updated);
           });
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+      JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
+      JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
     }
 
     private void updateRoles(User original, User updated) {

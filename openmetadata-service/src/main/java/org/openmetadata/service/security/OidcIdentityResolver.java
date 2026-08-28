@@ -44,26 +44,14 @@ public class OidcIdentityResolver {
 
   public ResolvedOidcIdentity resolve(Map<String, Object> claims) {
     if (shouldUseEmailFirstFlow()) {
+      String email = null;
       try {
-        String email = extractEmailFromClaim(claims, authenticationConfiguration.getEmailClaim());
-        validateConfiguredEmailDomain(
-            email,
-            getAllowedEmailDomains(),
-            principalDomain,
-            authorizerConfiguration.getAllowedDomains(),
-            authorizerConfiguration.getEnforcePrincipalDomain());
-        String displayName =
-            extractDisplayNameFromClaim(
-                claims, authenticationConfiguration.getDisplayNameClaim(), email);
-
-        LOG.debug(
-            "OIDC email-first flow: email={}, userName={}, displayName={}",
-            email,
-            email.split("@")[0],
-            displayName);
-        return new ResolvedOidcIdentity(null, email, displayName, true);
+        email = extractEmailFromClaim(claims, authenticationConfiguration.getEmailClaim());
       } catch (AuthenticationException
           | org.openmetadata.service.security.AuthenticationException ex) {
+        // Only a missing/invalid email CLAIM may fall back to the legacy flow; verification and
+        // domain failures below must propagate — the legacy flow performs no email_verified check
+        // and falling back would bypass it.
         if (!canFallbackToLegacyFlow()) {
           throw ex;
         }
@@ -71,6 +59,19 @@ public class OidcIdentityResolver {
             "OIDC email-first claim resolution failed for claim '{}': {}. Falling back to legacy JWT principal claims.",
             authenticationConfiguration.getEmailClaim(),
             ex.getMessage());
+      }
+      if (email != null) {
+        validateEmailVerifiedClaim(claims, email);
+        validateConfiguredEmailDomain(
+            email,
+            getAllowedEmailDomains(),
+            principalDomain,
+            authorizerConfiguration.getAllowedDomains(),
+            authorizerConfiguration.getEnforcePrincipalDomain());
+        String displayName =
+            extractDisplayNameFromClaim(claims, authenticationConfiguration.getDisplayNameClaim());
+        LOG.debug("OIDC email-first flow: email={}, displayName={}", email, displayName);
+        return new ResolvedOidcIdentity(null, email, displayName, true);
       }
     }
 
@@ -106,5 +107,21 @@ public class OidcIdentityResolver {
     return authorizerConfiguration.getAllowedEmailDomains() != null
         ? new ArrayList<>(authorizerConfiguration.getAllowedEmailDomains())
         : new ArrayList<>();
+  }
+
+  /**
+   * Reject tokens whose IdP explicitly marks the email as unverified. Absent claims are accepted:
+   * many IdPs omit email_verified entirely, and email-first identity must keep working for them.
+   */
+  private void validateEmailVerifiedClaim(Map<String, Object> claims, String email) {
+    Object claimValue = claims.get("email_verified");
+    if (claimValue == null) {
+      return;
+    }
+    if ("false".equalsIgnoreCase(String.valueOf(claimValue))) {
+      throw new AuthenticationException(
+          String.format(
+              "Authentication failed: email '%s' is not verified by the identity provider", email));
+    }
   }
 }

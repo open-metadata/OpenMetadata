@@ -67,6 +67,29 @@ class JwtIdentityResolverTest {
   }
 
   @Test
+  void testResolveDoesNotFallBackWhenUserResolutionFails() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            "email",
+            Map.of(),
+            List.of("preferred_username"),
+            "openmetadata.org",
+            email -> {
+              throw new AuthenticationException("User with email " + email + " is not registered");
+            });
+
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class,
+            () ->
+                resolver.resolve(
+                    claims(Map.of("email", "victim@attacker.org", "preferred_username", "victim")),
+                    false));
+
+    assertTrue(exception.getMessage().contains("not registered"));
+  }
+
+  @Test
   void testResolveUsesLegacyFlowForBotUsers() {
     JwtIdentityResolver resolver =
         new JwtIdentityResolver(

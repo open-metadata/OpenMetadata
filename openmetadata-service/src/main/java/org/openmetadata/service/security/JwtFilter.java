@@ -31,6 +31,7 @@ import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import io.micrometer.core.instrument.Timer;
@@ -52,6 +53,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -68,6 +70,7 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -96,8 +99,19 @@ public class JwtFilter implements ContainerRequestFilter {
   private String displayNameClaim;
   private List<String> allowedEmailDomains;
 
-  private final com.google.common.cache.Cache<String, String> emailToUsernameCache =
-      CacheBuilder.newBuilder().maximumSize(10_000).build();
+  /**
+   * Email-to-username resolution cache for the email-first flow. Static so that repository-level
+   * user mutations can invalidate entries; the TTL bounds staleness for changes that bypass the
+   * invalidation hooks (e.g. direct DB edits or other replicas).
+   */
+  private static final Cache<String, String> EMAIL_TO_USERNAME_CACHE =
+      CacheBuilder.newBuilder().maximumSize(10_000).expireAfterWrite(5, TimeUnit.MINUTES).build();
+
+  public static void invalidateResolvedEmailIdentity(String email) {
+    if (email != null) {
+      EMAIL_TO_USERNAME_CACHE.invalidate(email.toLowerCase());
+    }
+  }
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -308,8 +322,13 @@ public class JwtFilter implements ContainerRequestFilter {
 
     boolean isBotUser = isBot(claims);
     if (usedEmailFirstFlow) {
-      validateConfiguredEmailDomain(
-          email, allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain);
+      // OM-issued tokens (sessions, PATs) carry emails that predate any allowedEmailDomains
+      // config; enforcing the domain list on them would lock out the seeded admin and
+      // grandfathered users. Domain restrictions apply to IdP-issued tokens only.
+      if (!isOmIssuedToken(tokenFromHeader, claims)) {
+        validateConfiguredEmailDomain(
+            email, allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain);
+      }
     } else {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
@@ -343,23 +362,6 @@ public class JwtFilter implements ContainerRequestFilter {
     return userRoles;
   }
 
-  private boolean shouldUseEmailFirstFlow(boolean isBotUser) {
-    if (isBotUser) {
-      return false;
-    }
-    if (emailClaim == null || emailClaim.isEmpty()) {
-      return false;
-    }
-    if (jwtPrincipalClaimsMapping != null && !jwtPrincipalClaimsMapping.isEmpty()) {
-      return false;
-    }
-    return true;
-  }
-
-  private boolean canFallbackToLegacyFlow() {
-    return jwtPrincipalClaims != null && !jwtPrincipalClaims.isEmpty();
-  }
-
   private ResolvedIdentity resolveIdentity(Map<String, Claim> claims, boolean isBotUser) {
     JwtIdentityResolver.ResolvedIdentity resolvedIdentity =
         new JwtIdentityResolver(
@@ -374,20 +376,43 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private String resolveUserNameForEmail(String email) {
-    String cached = emailToUsernameCache.getIfPresent(email);
+    String cached = EMAIL_TO_USERNAME_CACHE.getIfPresent(email);
     if (cached != null) {
       return cached;
     }
+    var userRepository = Entity.getUserRepository();
     try {
       String username =
-          Entity.getUserRepository().getByEmail(null, email, new Fields(Set.of("name"))).getName();
-      emailToUsernameCache.put(email, username);
+          userRepository.getActiveUserByEmailForAuth(email, new Fields(Set.of("name"))).getName();
+      EMAIL_TO_USERNAME_CACHE.put(email, username);
       return username;
     } catch (EntityNotFoundException e) {
-      return email.split("@")[0];
-    } catch (Exception e) {
-      LOG.debug("Failed to resolve existing username for email {}", email, e);
-      return email.split("@")[0];
+      String candidate = email.split("@")[0];
+      // First-login bootstrap is only safe when no account already owns the candidate name;
+      // otherwise an unregistered email would resolve to another user's identity.
+      if (userRepository.checkUserNameExists(candidate)) {
+        throw new AuthenticationException(
+            String.format(
+                "User with email %s is not registered. Contact your administrator.", email));
+      }
+      return candidate;
+    }
+  }
+
+  private boolean isOmIssuedToken(String token, Map<String, Claim> claims) {
+    try {
+      JWTTokenGenerator generator = JWTTokenGenerator.getInstance();
+      String omIssuer = generator.getIssuer();
+      String omKid = generator.getKid();
+      if (nullOrEmpty(omIssuer) || nullOrEmpty(omKid)) {
+        return false;
+      }
+      Claim issuerClaim = claims.get("iss");
+      return issuerClaim != null
+          && omIssuer.equals(issuerClaim.asString())
+          && omKid.equals(JWT.decode(token).getKeyId());
+    } catch (RuntimeException e) {
+      return false;
     }
   }
 
@@ -485,7 +510,7 @@ public class JwtFilter implements ContainerRequestFilter {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     boolean isBotUser = isBot(claims);
     ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
-    if (resolvedIdentity.usedEmailFirstFlow()) {
+    if (resolvedIdentity.usedEmailFirstFlow() && !isOmIssuedToken(token, claims)) {
       validateConfiguredEmailDomain(
           resolvedIdentity.email(),
           allowedEmailDomains,

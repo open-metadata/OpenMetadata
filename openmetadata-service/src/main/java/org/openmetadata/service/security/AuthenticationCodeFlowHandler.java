@@ -795,16 +795,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             "OIDC",
             emailAddress ->
                 Entity.getUserRepository()
-                    .getByEmail(
-                        null,
-                        emailAddress,
-                        new Fields(Set.of("id", "roles", "teams", "displayName"))),
-            this::usernameExists,
+                    .getActiveUserByEmailForAuth(
+                        emailAddress, new Fields(Set.of("id", "roles", "teams", "displayName"))),
+            Entity.getUserRepository()::checkUserNameExists,
             this::isUserAdmin,
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
             UserUtil::addOrUpdateUser,
-            AuthenticationException::new)
+            AuthenticationException::new,
+            emailAddress ->
+                SecurityUtil.isEmailRegistrationDomainAllowed(
+                    emailAddress, authorizerConfiguration.getAllowedEmailRegistrationDomains()))
         .getOrCreate(
             email,
             displayName,
@@ -865,6 +866,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             "User not registered. Contact administrator to create an account.");
       }
 
+      if (!SecurityUtil.isEmailRegistrationDomainAllowed(
+          email, authorizerConfiguration.getAllowedEmailRegistrationDomains())) {
+        LOG.warn("SECURITY: Blocked OIDC signup for disallowed registration domain: {}", email);
+        throw new AuthenticationException(
+            "Email domain not allowed for self-signup: " + email.split("@")[1]);
+      }
+
       boolean isAdmin = isUserAdmin(email, userName);
       User newUser =
           UserUtil.user(userName, email.split("@")[1], userName)
@@ -899,15 +907,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       return true;
     }
     return getAdminPrincipals().contains(username);
-  }
-
-  private boolean usernameExists(String username) {
-    try {
-      Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
-      return true;
-    } catch (EntityNotFoundException e) {
-      return false;
-    }
   }
 
   private Set<String> getAdminPrincipals() {

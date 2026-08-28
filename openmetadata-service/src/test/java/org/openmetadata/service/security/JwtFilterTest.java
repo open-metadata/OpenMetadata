@@ -55,6 +55,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -272,18 +273,20 @@ class JwtFilterTest {
     String jwt =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "john.doe@company.com")
+            .withClaim("email", "john.success@company.com")
             .withClaim("name", "John Doe")
             .sign(algorithm);
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-    emailFirstFilter.filter(context);
+    try (MockedStatic<Entity> entityMock = mockUnknownUserRepository()) {
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      emailFirstFilter.filter(context);
 
-    ArgumentCaptor<SecurityContext> securityContextArgument =
-        ArgumentCaptor.forClass(SecurityContext.class);
-    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+      ArgumentCaptor<SecurityContext> securityContextArgument =
+          ArgumentCaptor.forClass(SecurityContext.class);
+      verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
-    assertEquals("john.doe", securityContextArgument.getValue().getUserPrincipal().getName());
+      assertEquals("john.success", securityContextArgument.getValue().getUserPrincipal().getName());
+    }
   }
 
   @Test
@@ -294,17 +297,19 @@ class JwtFilterTest {
     String jwt =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "john.doe@company.com")
+            .withClaim("email", "john.domain@company.com")
             .sign(algorithm);
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-    emailFirstFilter.filter(context);
+    try (MockedStatic<Entity> entityMock = mockUnknownUserRepository()) {
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      emailFirstFilter.filter(context);
 
-    ArgumentCaptor<SecurityContext> securityContextArgument =
-        ArgumentCaptor.forClass(SecurityContext.class);
-    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+      ArgumentCaptor<SecurityContext> securityContextArgument =
+          ArgumentCaptor.forClass(SecurityContext.class);
+      verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
-    assertEquals("john.doe", securityContextArgument.getValue().getUserPrincipal().getName());
+      assertEquals("john.domain", securityContextArgument.getValue().getUserPrincipal().getName());
+    }
   }
 
   @Test
@@ -315,15 +320,74 @@ class JwtFilterTest {
     String jwt =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "john.doe@gmail.com")
+            .withClaim("email", "john.other@gmail.com")
             .sign(algorithm);
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    try (MockedStatic<Entity> entityMock = mockUnknownUserRepository()) {
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    Exception exception =
-        assertThrows(AuthenticationException.class, () -> emailFirstFilter.filter(context));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("domain"));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("not in allowed list"));
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> emailFirstFilter.filter(context));
+      assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("domain"));
+      assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("not in allowed list"));
+    }
+  }
+
+  @Test
+  void testEmailFirstFlowRejectsUnknownEmailWhenUsernameIsTaken() {
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+        .thenThrow(EntityNotFoundException.byMessage("user not found"));
+    when(userRepository.checkUserNameExists("victim")).thenReturn(true);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "victim@attacker.org")
+            .sign(algorithm);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
+
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> emailFirstFilter.filter(context));
+      assertTrue(exception.getMessage().contains("not registered"));
+    }
+  }
+
+  @Test
+  void testEmailFirstFlowRejectsDeactivatedUser() {
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+        .thenThrow(new AuthenticationException("Your account has been deactivated"));
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "gone@company.com")
+            .sign(algorithm);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
+
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> emailFirstFilter.filter(context));
+      assertTrue(exception.getMessage().contains("deactivated"));
+    }
+  }
+
+  private MockedStatic<Entity> mockUnknownUserRepository() {
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+        .thenThrow(EntityNotFoundException.byMessage("user not found"));
+    when(userRepository.checkUserNameExists(any())).thenReturn(false);
+    MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+    entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
+    return entityMock;
   }
 
   @Test
@@ -378,7 +442,7 @@ class JwtFilterTest {
     UserRepository userRepository = mock(UserRepository.class);
     User existingUser = new User().withName("john.doe_x7k2");
 
-    when(userRepository.getByEmail(any(), eq("john.doe@company.com"), any()))
+    when(userRepository.getActiveUserByEmailForAuth(eq("john.doe@company.com"), any()))
         .thenReturn(existingUser);
 
     String jwt =
@@ -409,8 +473,8 @@ class JwtFilterTest {
     User johnAtX = new User().withName("john");
     User johnAtY = new User().withName("john_a1b2");
 
-    when(userRepository.getByEmail(any(), eq("john@x.com"), any())).thenReturn(johnAtX);
-    when(userRepository.getByEmail(any(), eq("john@y.com"), any())).thenReturn(johnAtY);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@x.com"), any())).thenReturn(johnAtX);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any())).thenReturn(johnAtY);
 
     String xJwt =
         JWT.create()
@@ -455,14 +519,16 @@ class JwtFilterTest {
             .withClaim("displayName", "Jane Smith")
             .sign(algorithm);
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-    emailFirstFilter.filter(context);
+    try (MockedStatic<Entity> entityMock = mockUnknownUserRepository()) {
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      emailFirstFilter.filter(context);
 
-    ArgumentCaptor<SecurityContext> securityContextArgument =
-        ArgumentCaptor.forClass(SecurityContext.class);
-    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+      ArgumentCaptor<SecurityContext> securityContextArgument =
+          ArgumentCaptor.forClass(SecurityContext.class);
+      verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
-    assertEquals("jane", securityContextArgument.getValue().getUserPrincipal().getName());
+      assertEquals("jane", securityContextArgument.getValue().getUserPrincipal().getName());
+    }
   }
 
   /**

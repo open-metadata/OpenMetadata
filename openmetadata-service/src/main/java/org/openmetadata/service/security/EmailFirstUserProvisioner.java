@@ -32,6 +32,7 @@ public class EmailFirstUserProvisioner {
   private final Consumer<User> newUserMutator;
   private final Function<User, User> userSaver;
   private final Function<String, RuntimeException> exceptionFactory;
+  private final Predicate<String> emailRegistrationAllowed;
 
   public EmailFirstUserProvisioner(
       String providerName,
@@ -42,6 +43,28 @@ public class EmailFirstUserProvisioner {
       Consumer<User> newUserMutator,
       Function<User, User> userSaver,
       Function<String, RuntimeException> exceptionFactory) {
+    this(
+        providerName,
+        existingUserLookup,
+        usernameExistsChecker,
+        adminEvaluator,
+        existingUserMutator,
+        newUserMutator,
+        userSaver,
+        exceptionFactory,
+        email -> true);
+  }
+
+  public EmailFirstUserProvisioner(
+      String providerName,
+      ExistingUserLookup existingUserLookup,
+      Predicate<String> usernameExistsChecker,
+      BiPredicate<String, String> adminEvaluator,
+      ExistingUserMutator existingUserMutator,
+      Consumer<User> newUserMutator,
+      Function<User, User> userSaver,
+      Function<String, RuntimeException> exceptionFactory,
+      Predicate<String> emailRegistrationAllowed) {
     this.providerName = providerName;
     this.existingUserLookup = existingUserLookup;
     this.usernameExistsChecker = usernameExistsChecker;
@@ -50,6 +73,7 @@ public class EmailFirstUserProvisioner {
     this.newUserMutator = newUserMutator;
     this.userSaver = userSaver;
     this.exceptionFactory = exceptionFactory;
+    this.emailRegistrationAllowed = emailRegistrationAllowed;
   }
 
   public User getOrCreate(String email, String displayName, boolean selfSignupEnabled) {
@@ -74,7 +98,11 @@ public class EmailFirstUserProvisioner {
           needsUpdate = true;
         }
 
-        if (displayName != null && !displayName.equals(user.getDisplayName())) {
+        // Only sync when the IdP actually supplied a display name; resolvers pass null
+        // otherwise, so a user-customized display name is never reverted to a fallback.
+        if (displayName != null
+            && !displayName.isBlank()
+            && !displayName.equals(user.getDisplayName())) {
           LOG.info(
               "Updating displayName for user {} from '{}' to '{}'",
               user.getName(),
@@ -96,6 +124,15 @@ public class EmailFirstUserProvisioner {
       if (!selfSignupEnabled) {
         throw exceptionFactory.apply(
             "User not registered. Contact administrator to create an account.");
+      }
+
+      if (!emailRegistrationAllowed.test(email)) {
+        LOG.warn(
+            "SECURITY: Blocked {} signup for disallowed registration domain (email: {})",
+            providerName,
+            email);
+        throw exceptionFactory.apply(
+            "Email domain not allowed for self-signup: " + email.split("@")[1]);
       }
 
       String userName = UserUtil.generateUsernameFromEmail(email, usernameExistsChecker);

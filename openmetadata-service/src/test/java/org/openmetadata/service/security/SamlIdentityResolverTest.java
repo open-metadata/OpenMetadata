@@ -2,6 +2,7 @@ package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,12 +53,12 @@ class SamlIdentityResolverTest {
             new TestAssertion(Map.of("email", List.of("john@company.com")), "ignored"));
 
     assertEquals("john@company.com", identity.email());
-    assertEquals("john", identity.displayName());
+    assertNull(identity.displayName());
     assertTrue(identity.emailFirstFlow());
   }
 
   @Test
-  void testResolveFallsBackToLegacyNameIdWhenEmailMissing() {
+  void testResolveFailsWhenEmailAttributeMissingInEmailFirstFlow() {
     SamlIdentityResolver resolver =
         new SamlIdentityResolver(
             authConfig(new java.util.ArrayList<>(), "email", "displayName"),
@@ -65,13 +66,12 @@ class SamlIdentityResolverTest {
             assertion -> "Legacy Display",
             () -> "openmetadata.org");
 
-    SamlIdentityResolver.ResolvedSamlIdentity identity =
-        resolver.resolve(new TestAssertion(Map.of(), "legacy.user@company.com"));
+    org.openmetadata.service.exception.AuthenticationException exception =
+        assertThrows(
+            org.openmetadata.service.exception.AuthenticationException.class,
+            () -> resolver.resolve(new TestAssertion(Map.of(), "legacy.user@company.com")));
 
-    assertEquals("legacy.user", identity.userName());
-    assertEquals("legacy.user@company.com", identity.email());
-    assertEquals("Legacy Display", identity.displayName());
-    assertFalse(identity.emailFirstFlow());
+    assertTrue(exception.getMessage().contains("email attribute 'email' not found"));
   }
 
   @Test
@@ -97,7 +97,7 @@ class SamlIdentityResolverTest {
   void testResolveUsesDefaultDomainForLegacyNameIdWithoutEmail() {
     SamlIdentityResolver resolver =
         new SamlIdentityResolver(
-            authConfig(new java.util.ArrayList<>(), "email", "displayName"),
+            authConfig(new java.util.ArrayList<>(), null, "displayName"),
             authzConfig(Set.of(), Set.of(), false),
             assertion -> null,
             () -> "openmetadata.org");
@@ -114,7 +114,7 @@ class SamlIdentityResolverTest {
   void testResolveThrowsWhenNameIdIsMissingAndEmailFirstCannotResolve() {
     SamlIdentityResolver resolver =
         new SamlIdentityResolver(
-            authConfig(new java.util.ArrayList<>(), "email", "displayName"),
+            authConfig(new java.util.ArrayList<>(), null, "displayName"),
             authzConfig(Set.of(), Set.of(), false),
             assertion -> null,
             () -> "openmetadata.org");

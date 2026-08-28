@@ -63,7 +63,6 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -178,11 +177,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     return new EmailFirstUserProvisioner(
             "LDAP",
             emailAddress ->
-                userRepository.getByEmail(
-                    null,
+                userRepository.getActiveUserByEmailForAuth(
                     emailAddress,
                     new Fields(Set.of("id", "roles", "teams", "displayName", "isAdmin"))),
-            this::usernameExists,
+            userRepository::checkUserNameExists,
             this::isUserAdmin,
             user -> syncLdapRoles(userDn, user),
             user -> {
@@ -196,7 +194,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               }
             },
             UserUtil::addOrUpdateUser,
-            AuthenticationException::new)
+            AuthenticationException::new,
+            emailAddress ->
+                SecurityUtil.isEmailRegistrationDomainAllowed(
+                    emailAddress, authzConfig.getAllowedEmailRegistrationDomains()))
         .getOrCreate(email, displayName, isSelfSignUpEnabled);
   }
 
@@ -386,14 +387,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
 
+        // Keep displayName null when LDAP does not provide one: the provisioner only syncs
+        // IdP-supplied display names and must not revert user-customized ones to a fallback.
         String displayName = null;
         Attribute displayNameAttr = entry.getAttribute(displayNameAttribute);
         if (displayNameAttr != null && !nullOrEmpty(displayNameAttr.getValue())) {
           displayName = displayNameAttr.getValue();
-        }
-
-        if (nullOrEmpty(displayName)) {
-          displayName = ldapEmail.split("@")[0];
         }
 
         LOG.debug(
@@ -540,15 +539,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       return true;
     }
     return getAdminPrincipals().contains(username);
-  }
-
-  private boolean usernameExists(String username) {
-    try {
-      Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
-      return true;
-    } catch (EntityNotFoundException e) {
-      return false;
-    }
   }
 
   private Set<String> getAdminPrincipals() {
