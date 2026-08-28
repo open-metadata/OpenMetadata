@@ -48,7 +48,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
+  # Keyed by event: pull_request and pull_request_target both fire for the same
+  # change, but the authorize gate only picks the right one after the run is
+  # scheduled. A shared group lets the run that is about to skip cancel the run
+  # that performs validation — and a required check then passes having validated
+  # nothing. Separate groups keep each event cancelling only its own reruns.
+  group: ui-checkstyle-${{ github.event_name }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 env:
