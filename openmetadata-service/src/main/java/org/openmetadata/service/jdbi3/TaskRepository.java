@@ -1065,44 +1065,52 @@ public class TaskRepository extends EntityRepository<Task> {
       if (testCase == null) {
         return;
       }
-      ResourceContextInterface testCaseResourceContext =
-          TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-      EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-      ResourceContextInterface entityResourceContext =
-          entityLink != null
-              ? TestCaseResourceContext.builder().entityLink(entityLink).build()
-              : TestCaseResourceContext.builder().build();
-
-      if (entityLink != null) {
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
-                entityResourceContext));
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
-                entityResourceContext));
-      }
-      // EditStatus is the Incident Manager grant: it lets a user drive incident transitions
-      // without holding edit rights on the test case itself.
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
-              testCaseResourceContext));
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
-              testCaseResourceContext));
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
-              testCaseResourceContext));
+      requests.addAll(buildIncidentEditRequests(testCase));
     } catch (Exception e) {
       LOG.warn(
           "[TaskRepository] Failed to build incident permission fallback for task '{}': {}",
           task.getId(),
           e.getMessage());
     }
+  }
+
+  /**
+   * Auth requests accepted for the task-first incident fallback. {@code EditStatus} on the test
+   * case is the Incident Manager grant: it lets a user drive incident transitions (status,
+   * severity, assignment) without holding edit rights on the test case itself. The historical
+   * {@code EditTests}/{@code EditAll} grants — on the test case and on the entity under test —
+   * remain accepted.
+   */
+  static List<AuthRequest> buildIncidentEditRequests(TestCase testCase) {
+    List<AuthRequest> requests = new ArrayList<>();
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    if (entityLink != null) {
+      ResourceContextInterface entityResourceContext =
+          TestCaseResourceContext.builder().entityLink(entityLink).build();
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
+              entityResourceContext));
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+              entityResourceContext));
+    }
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+            testCaseResourceContext));
+    return requests;
   }
 
   private void validateUnderlyingEntityPermission(
