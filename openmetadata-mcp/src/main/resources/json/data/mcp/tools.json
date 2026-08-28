@@ -473,13 +473,13 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Create an entity through the repository registered for its entityType. Fields every type shares are top-level parameters; fields specific to the entity go in 'attributes'. Call describe_entity_type first when the requirements are not known. Reference-valued attributes use EntityReference objects containing the target type and id; find those entities first rather than guessing ids. Unknown entity types and attributes are rejected before anything is written. Entity types whose resource endpoint performs required authentication, scheduling, specialized authorization, or secret-handling work are rejected with the dedicated API to use. Creating with a name that is already taken UPDATES that entity in place and needs edit rights as well as create rights. To create a test case use create_test_case; for lineage use create_lineage. Writes take effect immediately - confirm the target with the user before calling.",
+      "description": "Create an entity through the repository registered for its entityType. Fields every type shares are top-level parameters; fields specific to the entity go in 'attributes'. Call describe_entity_type first when the requirements are not known. Reference-valued attributes take EntityReference objects naming the target, such as {'type': 'glossary', 'fullyQualifiedName': 'Finance'}; an id may be given instead of the name. Unknown entity types and attributes are rejected before anything is written. Entity types whose resource endpoint performs required authentication, scheduling, specialized authorization, or secret-handling work are rejected with the dedicated API to use. Creating with a name that is already taken UPDATES that entity in place and needs edit rights as well as create rights. Use patch_entity for partial updates that retain omitted fields. To create a test case use create_test_case; for lineage use create_lineage. A Knowledge Center article is entityType 'page' with attributes {\"pageType\": \"Article\", \"page\": {}}, its markdown body in 'description', the assets it documents in 'relatedEntities' and an optional 'parent' page to nest it under. Writes take effect immediately - confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team' or 'chart'. Types requiring a dedicated create lifecycle, including users, bots, apps, event subscriptions, ingestion pipelines, test cases, services and automation workflows, are rejected."
+            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team', 'chart' or 'page' for a Knowledge Center article. Types requiring a dedicated create lifecycle, including users, bots, apps, event subscriptions, ingestion pipelines, test cases, services and automation workflows, are rejected."
           },
           "name": {
             "type": "string",
@@ -527,7 +527,7 @@
           },
           "attributes": {
             "type": "object",
-            "description": "Fields specific to this entityType. Values match the entity schema returned by describe_entity_type. EntityReference fields use objects such as {'type': 'glossary', 'id': '<uuid>'}; arrays of references use arrays of those objects."
+            "description": "Fields specific to this entityType. Values match the entity schema returned by describe_entity_type. EntityReference fields use objects such as {'type': 'glossary', 'fullyQualifiedName': 'Finance'} or {'type': 'glossary', 'id': '<uuid>'}; arrays of references use arrays of those objects."
           }
         },
         "required": [

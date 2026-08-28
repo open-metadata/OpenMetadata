@@ -3,11 +3,13 @@ package org.openmetadata.mcp.tools;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -39,13 +41,17 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -75,8 +81,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
     Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
     saved.setFullyQualifiedName("Finance");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "Finance");
     Authorizer authorizer = mock(Authorizer.class);
     Limits limits = mock(Limits.class);
@@ -188,8 +193,7 @@ class CreateEntityToolTest {
             .withFullyQualifiedName("PII");
     Tag saved = new Tag().withId(UUID.randomUUID()).withName("Restricted");
     saved.setFullyQualifiedName("PII.Sensitive.Restricted");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, saved.getFullyQualifiedName());
     Authorizer authorizer = mock(Authorizer.class);
     RuleEngine ruleEngine = mock(RuleEngine.class);
@@ -217,6 +221,12 @@ class CreateEntityToolTest {
                           .withFullyQualifiedName("PII"),
                       Include.NON_DELETED))
           .thenReturn(resolvedClassification);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TAG), eq(saved.getFullyQualifiedName()), any(Include.class)))
+          .thenThrow(new EntityNotFoundException("not found"));
       rules.when(RuleEngine::getInstance).thenReturn(ruleEngine);
 
       new CreateEntityTool().execute(authorizer, mock(Limits.class), securityContext(), input);
@@ -233,7 +243,7 @@ class CreateEntityToolTest {
     verify(authorizer).authorize(any(), any(), contextCaptor.capture());
     Tag authorized = (Tag) contextCaptor.getValue().getEntity();
     assertEquals(resolvedClassification.getId(), authorized.getClassification().getId());
-    InOrder ordered = inOrder(authorizer, ruleEngine, repository);
+    InOrder ordered = inOrder(repository, authorizer, ruleEngine);
     ordered.verify(authorizer).authorize(any(), any(), any());
     ordered.verify(ruleEngine).evaluate(prepared);
     ordered.verify(repository).prepareInternal(prepared, false);
@@ -323,8 +333,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Domain.class);
     Domain saved = new Domain().withId(UUID.randomUUID()).withName("Marketing");
     saved.setFullyQualifiedName("Marketing");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "Marketing");
     Map<String, Object> params = params();
     params.put("entityType", Entity.DOMAIN);
@@ -347,8 +356,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(ContextMemory.class);
     ContextMemory saved = new ContextMemory().withId(UUID.randomUUID()).withName("memory");
     saved.setFullyQualifiedName("memory");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "memory");
     Map<String, Object> params = params();
     params.put("entityType", Entity.CONTEXT_MEMORY);
@@ -400,6 +408,184 @@ class CreateEntityToolTest {
     verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
   }
 
+  @Test
+  void aFreeNameUsesCreate() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
+    saved.setFullyQualifiedName("Finance");
+    stubWrite(repository, saved);
+    setPreparedFqn(repository, "Finance");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
+        MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.GLOSSARY)).thenReturn(repository);
+      entities
+          .when(() -> Entity.getEntityTypeFromClass(Glossary.class))
+          .thenReturn(Entity.GLOSSARY);
+      entities
+          .when(() -> Entity.getEntityReferenceByName(Entity.GLOSSARY, "Finance", Include.ALL))
+          .thenThrow(new EntityNotFoundException("not found"));
+      rules.when(RuleEngine::getInstance).thenReturn(mock(RuleEngine.class));
+
+      new CreateEntityTool()
+          .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), glossary());
+    }
+
+    verify(repository).create(isNull(), any(), anyString(), any());
+    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+  }
+
+  @Test
+  void anArticleUsesTheCreatePageContract() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
+    saved.setFullyQualifiedName("runbook");
+    stubWrite(repository, saved);
+    setPreparedFqn(repository, "runbook");
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put("attributes", Map.of("pageType", PageType.ARTICLE.value(), "page", Map.of()));
+
+    withRepository(
+        Entity.PAGE,
+        repository,
+        () ->
+            new CreateEntityTool()
+                .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
+
+    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    Page created = (Page) captor.getValue();
+    assertEquals(PageType.ARTICLE, created.getPageType());
+    assertNotNull(created.getPage());
+    assertEquals(0, created.getVotes().getUpVotes());
+    assertEquals(
+        Entity.ORGANIZATION_NAME, created.getRelatedEntities().getFirst().getFullyQualifiedName());
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.PAGE,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.PAGE)));
+    assertTrue(described.get("alsoRequired").toString().contains("pageType"));
+    assertTrue(described.get("alsoRequired").toString().contains("page"));
+  }
+
+  @Test
+  void anEmptyQuickLinkIsRejectedBeforePersistence() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put("attributes", Map.of("pageType", PageType.QUICK_LINK.value(), "page", Map.of()));
+
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.PAGE,
+                    repository,
+                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+
+    assertTrue(failure.getMessage().contains("page"));
+    verify(repository, never()).prepareInternal(any(), anyBoolean());
+  }
+
+  @Test
+  void aReferenceAttributeSaysItTakesAFullyQualifiedName() {
+    // The eight tools this one replaced took references as plain FQN strings. The generic path
+    // still resolves a name-only reference, but callers were told to send ids and given the
+    // EntityReference schema blurb, so they spent a lookup they did not need.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.PAGE,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.PAGE)));
+
+    String parent = String.valueOf(attribute(described, "parent").get("description"));
+    assertTrue(parent.contains("fullyQualifiedName"), parent);
+    assertFalse(parent.contains("This schema defines"), parent);
+    assertTrue(
+        String.valueOf(attribute(described, "relatedEntities").get("description"))
+            .contains("fullyQualifiedName"));
+  }
+
+  @Test
+  void anArticleBodySuppliedByTheCallerIsKept() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
+    saved.setFullyQualifiedName("runbook");
+    stubWrite(repository, saved);
+    setPreparedFqn(repository, "runbook");
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put(
+        "attributes",
+        Map.of(
+            "pageType",
+            PageType.ARTICLE.value(),
+            "page",
+            Map.of("publicationDate", "2026-08-28T00:00:00.000Z"),
+            "entityStatus",
+            EntityStatus.DRAFT.value()));
+
+    withRepository(
+        Entity.PAGE,
+        repository,
+        () ->
+            new CreateEntityTool()
+                .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
+
+    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    Page created = (Page) captor.getValue();
+    assertNotNull(
+        JsonUtils.convertValue(created.getPage(), Article.class).getPublicationDate(),
+        "the caller's article body must not be replaced by the default");
+    assertEquals(EntityStatus.DRAFT, created.getEntityStatus());
+  }
+
+  @Test
+  void aPageOffersOnlyTheFieldsItsCreateRequestCarries() {
+    // Binding straight to the entity class exposed fields no caller sets - children and editors are
+    // written from relationships, votes and the extraction fields by background work. Offering
+    // 'children' was the harmful one: storeRelationships reads child.getId() and a caller has no id
+    // to give, so an accepted value would have written a relationship row with a null id.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.PAGE,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.PAGE)));
+
+    assertEquals(
+        Set.of("pageType", "page", "parent", "relatedEntities", "entityStatus"),
+        attributeNames(described));
+
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put(
+        "attributes",
+        Map.of("pageType", PageType.ARTICLE.value(), "children", List.of(Map.of("type", "page"))));
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.PAGE,
+                    repository,
+                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+
+    assertTrue(failure.getMessage().contains("children"), failure.getMessage());
+    verify(repository, never()).prepareInternal(any(), anyBoolean());
+  }
+
   @SuppressWarnings("unchecked")
   private static EntityRepository<EntityInterface> repositoryFor(
       Class<? extends EntityInterface> entityClass) {
@@ -408,6 +594,13 @@ class CreateEntityToolTest {
     when(repository.getParentEntity(any(), anyString()))
         .thenThrow(new EntityNotFoundException("no parent"));
     return repository;
+  }
+
+  private static void stubWrite(
+      EntityRepository<EntityInterface> repository, EntityInterface saved) {
+    when(repository.create(isNull(), any(), anyString(), any())).thenReturn(saved);
+    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
+        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
   }
 
   private static void setPreparedFqn(
@@ -438,6 +631,15 @@ class CreateEntityToolTest {
       entities
           .when(() -> Entity.getEntityTypeFromClass(repository.getEntityClass()))
           .thenReturn(entityType);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      Entity.TEAM, Entity.ORGANIZATION_NAME, Include.ALL))
+          .thenReturn(
+              new EntityReference()
+                  .withType(Entity.TEAM)
+                  .withFullyQualifiedName(Entity.ORGANIZATION_NAME));
       rules.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       return action.get();
     }

@@ -1,7 +1,10 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -17,12 +20,15 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -111,9 +117,16 @@ public class CreateEntityTool implements McpTool {
     String entityType = type.entityType();
     EntityRepository<EntityInterface> repository = type.typedRepository();
     repository.prepareInternal(entity, false);
-    CommonUtils.authorizeOverwrite(authorizer, securityContext, entityType, entity);
+    boolean overwritesExisting =
+        CommonUtils.authorizeOverwrite(authorizer, securityContext, entityType, entity);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     RestUtil.PutResponse<EntityInterface> response =
-        repository.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
+        overwritesExisting
+            ? repository.createOrUpdate(null, entity, userName, impersonatedBy)
+            : new RestUtil.PutResponse<>(
+                Response.Status.CREATED,
+                repository.create(null, entity, userName, impersonatedBy),
+                EventType.ENTITY_CREATED);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
     return response;
   }
@@ -206,6 +219,18 @@ public class CreateEntityTool implements McpTool {
     if (entity instanceof Metric metric) {
       validateMetric(metric);
     }
+    if (entity instanceof Page page) {
+      applyPageDefaults(page);
+    }
+  }
+
+  private static void applyPageDefaults(Page page) {
+    page.setVotes(new Votes().withUpVotes(0).withDownVotes(0));
+    if (nullOrEmpty(page.getRelatedEntities())) {
+      page.setRelatedEntities(
+          List.of(
+              Entity.getEntityReferenceByName(Entity.TEAM, Entity.ORGANIZATION_NAME, Include.ALL)));
+    }
   }
 
   private static void validateMetric(Metric metric) {
@@ -276,7 +301,10 @@ public class CreateEntityTool implements McpTool {
       EntityCreationSpec type, Map<String, Object> params, Map<String, Object> attributes) {
     List<String> missing =
         DescribeEntityTypeTool.requiredFields(type).stream()
-            .filter(field -> isAbsent(valueOf(field, params, attributes)))
+            .filter(
+                field ->
+                    isMissingRequiredValue(
+                        type, field, valueOf(field, params, attributes), attributes))
             .toList();
     if (!missing.isEmpty()) {
       throw new IllegalArgumentException(
@@ -293,6 +321,20 @@ public class CreateEntityTool implements McpTool {
     return SHARED.contains(field) ? params.get(field) : attributes.get(field);
   }
 
+  private static boolean isMissingRequiredValue(
+      EntityCreationSpec type, String field, Object value, Map<String, Object> attributes) {
+    return isAbsent(value) && !isEmptyArticleBody(type, field, value, attributes);
+  }
+
+  private static boolean isEmptyArticleBody(
+      EntityCreationSpec type, String field, Object value, Map<String, Object> attributes) {
+    return value instanceof Map<?, ?> object
+        && object.isEmpty()
+        && Entity.PAGE.equals(type.entityType())
+        && "page".equals(field)
+        && PageType.ARTICLE.value().equals(attributes.get("pageType"));
+  }
+
   private static boolean isAbsent(Object value) {
     boolean absent;
     if (value == null) {
@@ -301,8 +343,8 @@ public class CreateEntityTool implements McpTool {
       absent = text.isBlank();
     } else if (value instanceof Collection<?> items) {
       absent = items.isEmpty();
-    } else if (value instanceof Map<?, ?> entries) {
-      absent = entries.isEmpty();
+    } else if (value instanceof Map<?, ?> object) {
+      absent = object.isEmpty();
     } else {
       absent = false;
     }
