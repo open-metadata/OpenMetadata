@@ -13,7 +13,7 @@ MSSQL SQLAlchemy Helper Methods
 """
 
 import traceback
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
@@ -492,17 +492,26 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
     return  # noqa: RET502
 
 
-def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
-    """Return True if Query Store holds this database's own workload history.
+class QueryStoreStatus(NamedTuple):
+    """Result of probing `sys.database_query_store_options`."""
 
-    Returns False when:
+    enabled: bool
+    is_ag_secondary: bool
+
+
+def get_query_store_status(engine: Optional[Engine]) -> QueryStoreStatus:  # noqa: UP045
+    """Probe Query Store availability and, when unavailable, why.
+
+    `enabled=False` when:
     - Query Store is OFF or in ERROR state.
     - The connected database is a readable AG secondary (readonly_reason has the AG-secondary bit set).
       On SQL Server < 2025 the replica's Query Store contains only the primary's
       captured workload; ingesting it would silently replace the secondary's usage
-      and lineage with the primary's.
+      and lineage with the primary's. This case is reported via `is_ag_secondary=True`
+      so callers (e.g. the test-connection check) can explain the fallback precisely.
     """
     enabled = False
+    is_ag_secondary = False
     if engine is not None:
         try:
             with engine.connect() as conn:
@@ -525,4 +534,12 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                 "Query Store availability probe failed, using plan-cache DMVs: %s",
                 exc,
             )
-    return enabled
+    return QueryStoreStatus(enabled=enabled, is_ag_secondary=is_ag_secondary)
+
+
+def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
+    """Return True if Query Store holds this database's own workload history.
+
+    See `get_query_store_status` for the full decision logic.
+    """
+    return get_query_store_status(engine).enabled

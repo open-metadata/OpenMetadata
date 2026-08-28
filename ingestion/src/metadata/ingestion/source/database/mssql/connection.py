@@ -50,7 +50,7 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_TEST_GET_QUERIES,
     MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE,
 )
-from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
+from metadata.ingestion.source.database.mssql.utils import get_query_store_status
 
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
@@ -181,12 +181,17 @@ class MssqlChecks:
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        if is_query_store_enabled(self._db.client):
+        status = get_query_store_status(self._db.client)
+        if status.enabled:
             query = MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE
             summary = "query history accessible via Query Store"
         else:
             query = MSSQL_TEST_GET_QUERIES
-            summary = "query history accessible via plan-cache DMVs"
+            summary = (
+                "query history accessible via plan-cache DMVs (AG secondary)"
+                if status.is_ag_secondary
+                else "query history accessible via plan-cache DMVs"
+            )
         return run_sql(self._db.client, query, lambda _: summary)
 
 
