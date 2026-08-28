@@ -72,6 +72,13 @@ test('the playwright corpus stays TypeScript-only', () => {
     'test-data',
   ]);
 
+  // An allowlist, not a list of banned extensions: Playwright's default
+  // testMatch collects .js/.jsx/.mjs/.cjs/.mts/.cts as well as .ts/.tsx, and
+  // eslint.config.mjs scopes the guardrails to .ts/.tsx only. Naming what is
+  // permitted keeps any future module extension closed by default.
+  const MODULE_EXTENSION = /\.[cm]?[jt]sx?$/;
+  const ALLOWED_EXTENSION = /\.tsx?$/;
+
   const offenders = [];
   const walk = (dir, relative) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -81,7 +88,10 @@ test('the playwright corpus stays TypeScript-only', () => {
         if (!EXEMPT.has(rel)) {
           walk(path.join(dir, entry.name), rel);
         }
-      } else if (/\.(js|jsx)$/.test(entry.name)) {
+      } else if (
+        MODULE_EXTENSION.test(entry.name) &&
+        !ALLOWED_EXTENSION.test(entry.name)
+      ) {
         offenders.push(rel);
       }
     }
@@ -92,10 +102,10 @@ test('the playwright corpus stays TypeScript-only', () => {
   assert.deepStrictEqual(
     offenders,
     [],
-    `JavaScript files found in the Playwright corpus: ${offenders.join(
+    `Non-TypeScript modules found in the Playwright corpus: ${offenders.join(
       ', '
     )}. ` +
-      'Playwright collects *.spec.js but eslint.config.mjs scopes the guardrail ' +
-      'rules to .ts/.tsx, so these would run unlinted. Convert them to TypeScript.'
+      'Playwright collects these but eslint.config.mjs scopes the guardrail ' +
+      'rules to .ts/.tsx, so they would run unlinted. Convert them to .ts/.tsx.'
   );
 });
