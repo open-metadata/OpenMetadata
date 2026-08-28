@@ -21,13 +21,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - ".github/workflows/ui-checkstyle.yml"
-      - openmetadata-ui/src/main/resources/ui/playwright/**
-      - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
   # Fork PRs stay here: they need the label gate and base-branch context.
   pull_request_target:
     types:
@@ -36,13 +29,6 @@ on:
       - reopened
       - ready_for_review
       - labeled
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - ".github/workflows/ui-checkstyle.yml"
-      - openmetadata-ui/src/main/resources/ui/playwright/**
-      - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
 
 permissions:
   contents: read
@@ -64,14 +50,39 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Job 0: Authorize
   # ──────────────────────────────────────────────────────────────────────────
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui-changed: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/ui-checkstyle.yml'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/**'
+
   authorize:
+    needs: check-changes
     if: |
+      needs.check-changes.outputs.ui-changed == 'true' && (
       github.event_name == 'merge_group' ||
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'pull_request_target' &&
       github.event.pull_request.head.repo.full_name != github.repository &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      (github.event.action != 'labeled' || github.event.label.name == 'safe to test')))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
@@ -873,3 +884,68 @@ jobs:
               repo: context.repo.repo,
               comment_id: process.env.COMMENT_ID
             })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Required status checks.
+  #
+  # 1.13.x-protection requires checks named `checkstyle` and `ui-checkstyle`.
+  # Required checks are matched by NAME, not by workflow, so this branch has to
+  # emit those names itself. These two jobs summarise the jobs above rather than
+  # duplicating their work.
+  #
+  # always() so they still report when the work above is skipped (a non-UI PR):
+  # a skipped required check never reports at all, which leaves PRs waiting on a
+  # status forever.
+  # ──────────────────────────────────────────────────────────────────────────
+  checkstyle:
+    needs:
+      - check-changes
+      - lint-src
+      - license-header
+      - i18n-sync
+      - app-docs
+      - lint-playwright
+      - lint-core-components
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        env:
+          RESULTS: |
+            lint-src=${{ needs.lint-src.result }}
+            license-header=${{ needs.license-header.result }}
+            i18n-sync=${{ needs.i18n-sync.result }}
+            app-docs=${{ needs.app-docs.result }}
+            lint-playwright=${{ needs.lint-playwright.result }}
+            lint-core-components=${{ needs.lint-core-components.result }}
+        run: |
+          echo "$RESULTS"
+          FAILED=$(echo "$RESULTS" | grep -c '=failure' || true)
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED checkstyle job(s) failed — see the list above."
+            exit 1
+          fi
+          echo "All checkstyle jobs passed or were skipped."
+
+  ui-checkstyle:
+    needs:
+      - checkstyle
+      - tsc-src
+      - tsc-playwright
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        env:
+          RESULTS: |
+            checkstyle=${{ needs.checkstyle.result }}
+            tsc-src=${{ needs.tsc-src.result }}
+            tsc-playwright=${{ needs.tsc-playwright.result }}
+        run: |
+          echo "$RESULTS"
+          FAILED=$(echo "$RESULTS" | grep -c '=failure' || true)
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED job(s) failed — see the list above."
+            exit 1
+          fi
+          echo "UI checkstyle passed."
