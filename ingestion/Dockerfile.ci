@@ -132,7 +132,7 @@ WORKDIR /home/airflow/ingestion
 
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
-RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.64.0"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
