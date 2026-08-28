@@ -6,7 +6,7 @@ import type {
   TooltipProps as AriaTooltipProps,
   TooltipTriggerComponentProps as AriaTooltipTriggerComponentProps,
 } from 'react-aria-components';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import {
   Button as AriaButton,
   OverlayArrow as AriaOverlayArrow,
@@ -205,7 +205,7 @@ export const Tooltip = ({
                 isExiting &&
                   'tw:ease-in tw:animate-out tw:fade-out tw:zoom-out-95 tw:in-placement-left:slide-out-to-right-0.5 tw:in-placement-right:slide-out-to-left-0.5 tw:in-placement-top:slide-out-to-bottom-0.5 tw:in-placement-bottom:slide-out-to-top-0.5'
               )}>
-              <span className="tw:text-xs tw:font-semibold tw:text-white">
+              <span className="tw:break-all tw:text-xs tw:font-semibold tw:text-white">
                 {title}
               </span>
 
@@ -229,14 +229,20 @@ type TooltipTriggerProps = AriaButtonProps;
  * `Tooltip` now auto-wraps non-focusable children and accepts
  * `triggerClassName` / `onTriggerPress` for the generated wrapper.
  * `TooltipTrigger` will be removed in a future release.
+ *
+ * AriaTooltipTrigger passes its hover/focus-open handlers down through
+ * FocusableContext, not through cloned props or a plain ref — AriaButton never
+ * reads that context (it only reads ButtonContext), so wrapping it directly
+ * silently drops the tooltip's open/close wiring. forwardRef is required here
+ * so the ref reaches the underlying DOM button.
  */
-export const TooltipTrigger = ({
-  children,
-  className,
-  ...buttonProps
-}: TooltipTriggerProps) => {
+export const TooltipTrigger = forwardRef<
+  HTMLButtonElement,
+  TooltipTriggerProps
+>(function TooltipTrigger({ children, className, ...buttonProps }, ref) {
   return (
     <AriaButton
+      ref={ref}
       {...buttonProps}
       className={(values) =>
         cx(
@@ -247,4 +253,4 @@ export const TooltipTrigger = ({
       {children}
     </AriaButton>
   );
-};
+});

@@ -91,6 +91,9 @@ Thumbs.db
 # ignore antlr generated source
 src/generated/antlr
 
+# ignore generated dereferenced JSON schemas
+src/jsons
+
 # Snapshots
 *.snap
 

@@ -19,6 +19,13 @@
       "default": 60,
       "minimum": 0
     },
+    "activityCommentsRetentionPeriod": {
+      "title": "Activity Comments Retention Period (days)",
+      "description": "Enter the retention period for comments on Activity Events in days. Use 0 to retain activity comments forever.",
+      "type": "integer",
+      "default": 0,
+      "minimum": 0
+    },
     "testCaseResultsRetentionPeriod": {
       "title": "Test Case Results Retention Period (days)",
       "description": "Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for two months).",
@@ -30,13 +37,32 @@
       "description": "Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).",
       "type": "integer",
       "default": 1440
+    },
+    "auditLogRetentionPeriod": {
+      "title": "Audit Log Retention Period (days)",
+      "description": "Enter the retention period for Audit Log entries in days (e.g., 90 for three months).",
+      "type": "integer",
+      "default": 90,
+      "minimum": 1
+    },
+    "extensions": {
+      "title": "Extension Retention Periods (days)",
+      "description": "Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. Leave a key out to use whatever default that extension defines.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "default": {}
     }
   },
   "required": [
     "changeEventRetentionPeriod",
     "activityThreadsRetentionPeriod",
+    "activityCommentsRetentionPeriod",
     "testCaseResultsRetentionPeriod",
-    "profileDataRetentionPeriod"
+    "profileDataRetentionPeriod",
+    "auditLogRetentionPeriod"
   ],
   "additionalProperties": false
 }

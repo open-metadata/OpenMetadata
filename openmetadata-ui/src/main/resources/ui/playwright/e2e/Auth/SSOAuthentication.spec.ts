@@ -578,7 +578,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Force a token renewal in tab 1 by intercepting an API call with 401
       let intercepted = false;
-      await page.route('**/api/v1/feed*', async (route) => {
+      await page.route('**/api/v1/activity*', async (route) => {
         if (!intercepted) {
           intercepted = true;
           await route.fulfill({

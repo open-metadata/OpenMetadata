@@ -148,7 +148,8 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCaseBySearch = async (
-  params?: ListTestCaseParamsBySearch
+  params?: ListTestCaseParamsBySearch,
+  config?: { signal?: AbortSignal }
 ) => {
   // The search endpoint accepts comma-separated statuses, while Axios' default
   // array format uses brackets that the JAX-RS query parameter does not bind.
@@ -164,6 +165,7 @@ export const getListTestCaseBySearch = async (
     `${testCaseUrl}/search/list`,
     {
       params: serializedParams,
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 
@@ -423,7 +425,8 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
 
 export const getTestSuiteByName = async (
   name: string,
-  params?: ListTestCaseParams
+  params?: ListTestCaseParams,
+  config?: { signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
@@ -437,6 +440,7 @@ export const getTestSuiteByName = async (
         includeRelations:
           params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 

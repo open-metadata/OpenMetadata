@@ -128,7 +128,7 @@ jobs:
       # Restore-only: pull_request_target / merge_group writes are scoped to refs no
       # other run can read, so saving would only consume the repo's cache quota.
       - name: Restore Maven dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -163,7 +163,7 @@ jobs:
     steps:
       - name: Restore spaCy model wheel
         id: spacy-model-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/spacy-model
           key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
