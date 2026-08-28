@@ -83,8 +83,10 @@ public final class SharedEntities {
 
   // Teams
   public final Team ORG_TEAM;
+  public final Team DEPARTMENT1;
   public final Team TEAM1;
   public final Team TEAM11;
+  public final Team DEPARTMENT2;
   public final Team TEAM2;
   public final Team TEAM21;
 
@@ -150,9 +152,11 @@ public final class SharedEntities {
     this.USER3_REF = user3.getEntityReference();
 
     this.ORG_TEAM = orgTeam;
-    this.TEAM1 = team1;
+    this.DEPARTMENT1 = team1;
+    this.TEAM1 = team11;
     this.TEAM11 = team11;
-    this.TEAM2 = team2;
+    this.DEPARTMENT2 = team2;
+    this.TEAM2 = team21;
     this.TEAM21 = team21;
 
     this.DATA_STEWARD_ROLE = dataStewardRole;
