@@ -14,7 +14,7 @@ Test databricks using the topology
 """
 # pylint: disable=invalid-name,import-outside-toplevel
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -331,6 +331,15 @@ class DatabricksUnitTest(TestCase):
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.root
 
+    def _no_live_connection(self):
+        """Prevent unit tests from opening a Databricks connection."""
+        return patch.object(
+            type(self.databricks_source),
+            "connection",
+            new_callable=PropertyMock,
+            side_effect=ConnectionError("unit test: no live connection"),
+        )
+
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
             self.databricks_source.get_database_schema_names()
@@ -343,13 +352,14 @@ class DatabricksUnitTest(TestCase):
 
     def test_yield_schema(self):
         schema_list = []
-        yield_schemas = self.databricks_source.yield_database_schema(
-            schema_name=model_str(MOCK_DATABASE_SCHEMA.name)
-        )
+        with self._no_live_connection():
+            yield_schemas = self.databricks_source.yield_database_schema(
+                schema_name=model_str(MOCK_DATABASE_SCHEMA.name)
+            )
 
-        for schema in yield_schemas:
-            if isinstance(schema, CreateDatabaseSchemaRequest):
-                schema_list.append(schema)
+            for schema in yield_schemas:
+                if isinstance(schema, CreateDatabaseSchemaRequest):
+                    schema_list.append(schema)
 
         for _, (exptected, original) in enumerate(
             zip(EXPTECTED_DATABASE_SCHEMA, schema_list)
@@ -358,26 +368,28 @@ class DatabricksUnitTest(TestCase):
 
     def test_yield_table(self):
         table_list = []
-        yield_tables = self.databricks_source.yield_table(
-            ("2d725b6e-1588-4814-9d8b-eff384cd1053", "Regular")
-        )
+        with self._no_live_connection():
+            yield_tables = self.databricks_source.yield_table(
+                ("2d725b6e-1588-4814-9d8b-eff384cd1053", "Regular")
+            )
 
-        for table in yield_tables:
-            if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+            for table in yield_tables:
+                if isinstance(table, CreateTableRequest):
+                    table_list.append(table)
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
             self.assertEqual(expected, original)
 
     def test_yield_table_2(self):
         table_list = []
-        yield_tables = self.databricks_source.yield_table(
-            ("3df43ed7-5f2f-46bb-9793-384c6374a81d", "Regular")
-        )
+        with self._no_live_connection():
+            yield_tables = self.databricks_source.yield_table(
+                ("3df43ed7-5f2f-46bb-9793-384c6374a81d", "Regular")
+            )
 
-        for table in yield_tables:
-            if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+            for table in yield_tables:
+                if isinstance(table, CreateTableRequest):
+                    table_list.append(table)
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
             self.assertEqual(expected, original)
