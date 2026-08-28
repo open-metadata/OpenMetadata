@@ -71,8 +71,8 @@ const PolicyAccordion: React.FC<PolicyAccordionProps> = ({
           <Box
             className="tw:divide-y tw:divide-border-secondary"
             direction="col">
-            {policy.rules.map((rule, index) => (
-              <PermissionRuleRow key={`${rule.name}-${index}`} rule={rule} />
+            {policy.rules.map((rule) => (
+              <PermissionRuleRow key={rule.name} rule={rule} />
             ))}
           </Box>
         </AccordionPanel>

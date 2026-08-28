@@ -42,11 +42,13 @@ const InheritedPermissionsSection: React.FC<
     </Typography>
   ) : (
     <Box direction="col" gap={4}>
-      {items.map((item, index) => (
+      {items.map((item) => (
         <Box
           className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
           gap={3}
-          key={`${item.permissionType}-${index}`}>
+          key={`${item.permissionType}-${
+            item.source?.fullyQualifiedName ?? item.source?.name ?? ''
+          }`}>
           <Box className="tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-600">
             <ShieldTick height={18} width={18} />
           </Box>

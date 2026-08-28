@@ -29,6 +29,7 @@ const InboxTaskListSkeleton: React.FC<InboxTaskListSkeletonProps> = ({
 }) => (
   <div className="tw:divide-y tw:divide-utility-gray-blue-100">
     {Array.from({ length: count }).map((_, index) => (
+      // eslint-disable-next-line react/no-array-index-key -- static fixed-length skeleton, never reordered
       <Box className="tw:px-4 tw:py-4" direction="col" gap={3} key={index}>
         <Box align="center" className="tw:gap-2">
           <Skeleton height={14} variant="text" width={90} />

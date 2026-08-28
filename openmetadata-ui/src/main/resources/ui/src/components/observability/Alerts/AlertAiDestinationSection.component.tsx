@@ -156,7 +156,8 @@ const AlertAiDestinationSection = ({
               destinationsWithStatus={destinationsWithStatus}
               isDestinationStatusLoading={isDestinationStatusLoading}
               isViewOnly={isViewOnly}
-              key={`${destination.destinationType ?? 'destination'}-${index}`}
+              // eslint-disable-next-line react/no-array-index-key -- form array row keyed by position, no stable id
+              key={index}
               name={index}
               remove={(destinationIndex) =>
                 updateAlertAiValue(

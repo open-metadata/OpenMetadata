@@ -97,7 +97,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }: MockTableBodyProps<T>) => (
     <div>
       {items.length
-        ? items.map((item, index) => <div key={index}>{children(item)}</div>)
+        ? items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- test mock over generic items, no stable id
+            <div key={index}>{children(item)}</div>
+          ))
         : renderEmptyState()}
     </div>
   );

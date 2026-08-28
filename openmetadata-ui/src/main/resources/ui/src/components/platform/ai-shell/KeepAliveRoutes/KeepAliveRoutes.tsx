@@ -305,6 +305,7 @@ export const KeepAliveRoutes = ({
                   ? [
                       <Route
                         element={route.element}
+                        // eslint-disable-next-line react/no-array-index-key -- pathless layout route, no path/id
                         key={`layout-route-${index}`}>
                         {route.children}
                       </Route>,

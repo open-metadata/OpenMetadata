@@ -125,6 +125,7 @@ jest.mock(
     __esModule: true,
     default: ({ markdown }: { markdown?: string }) => (
       <div
+        // eslint-disable-next-line react/no-danger -- test fixture markup
         dangerouslySetInnerHTML={{ __html: markdown ?? '' }}
         data-testid="field-doc-preview"
       />

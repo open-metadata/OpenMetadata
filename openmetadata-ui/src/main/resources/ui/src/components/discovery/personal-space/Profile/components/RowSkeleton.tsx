@@ -32,12 +32,14 @@ const RowSkeleton: React.FC<RowSkeletonProps> = ({ blocks = 1, chips = 2 }) => (
     direction="col"
     gap={5}>
     {Array.from({ length: blocks }).map((_, blockIndex) => (
+      // eslint-disable-next-line react/no-array-index-key -- static fixed-length skeleton, never reordered
       <Box direction="col" gap={2} key={blockIndex}>
         <Skeleton height={14} variant="text" width={120} />
         <Box gap={2}>
           {Array.from({ length: chips }).map((__, chipIndex) => (
             <Skeleton
               height={28}
+              // eslint-disable-next-line react/no-array-index-key -- static skeleton, never reordered
               key={chipIndex}
               variant="rounded"
               width={110}

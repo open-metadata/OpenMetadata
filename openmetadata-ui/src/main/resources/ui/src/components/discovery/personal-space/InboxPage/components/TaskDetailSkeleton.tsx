@@ -44,6 +44,7 @@ const TaskDetailSkeleton: React.FC = () => (
       direction="col"
       gap={4}>
       {Array.from({ length: OVERVIEW_ROWS }).map((_, index) => (
+        // eslint-disable-next-line react/no-array-index-key -- static fixed-length skeleton, never reordered
         <Box className="tw:grid tw:grid-cols-[200px_1fr] tw:gap-3" key={index}>
           <Skeleton height={14} variant="text" width={120} />
           <Skeleton height={14} variant="text" width="60%" />

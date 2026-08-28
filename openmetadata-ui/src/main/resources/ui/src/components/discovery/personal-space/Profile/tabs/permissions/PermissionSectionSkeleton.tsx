@@ -32,6 +32,7 @@ const PermissionSectionSkeleton: React.FC<PermissionSectionSkeletonProps> = ({
         className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
         direction="col"
         gap={3}
+        // eslint-disable-next-line react/no-array-index-key -- static skeleton, never reordered
         key={index}>
         <Skeleton height={16} variant="text" width={220} />
         <Skeleton height={64} variant="rounded" width="100%" />

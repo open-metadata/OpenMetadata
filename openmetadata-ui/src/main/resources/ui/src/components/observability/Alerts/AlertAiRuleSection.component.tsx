@@ -551,7 +551,8 @@ const AlertAiRuleSection = ({
                 data-testid={`${field}-${ruleIndex}`}
                 direction="col"
                 gap={4}
-                key={`${selectedRuleName}-${ruleIndex}`}>
+                // eslint-disable-next-line react/no-array-index-key -- form array row keyed by position, no stable id
+                key={ruleIndex}>
                 <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
                   <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
                     <Select
@@ -606,7 +607,8 @@ const AlertAiRuleSection = ({
               data-testid={`${field}-${ruleIndex}`}
               direction="col"
               gap={4}
-              key={`${selectedRuleName}-${ruleIndex}`}>
+              // eslint-disable-next-line react/no-array-index-key -- form array row keyed by position, no stable id
+              key={ruleIndex}>
               <div className={ALERT_AI_FORM_CLASS_NAMES.ruleControlGroup}>
                 <Box
                   className={ALERT_AI_FORM_CLASS_NAMES.ruleControlRow}

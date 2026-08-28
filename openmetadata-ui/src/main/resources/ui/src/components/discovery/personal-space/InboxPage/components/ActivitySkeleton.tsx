@@ -52,6 +52,7 @@ const ActivitySkeleton: React.FC<ActivitySkeletonProps> = ({
   <Box direction="col" gap={6}>
     <Box className="tw:relative" direction="col" gap={2}>
       {Array.from({ length: count }).map((_, index) => (
+        // eslint-disable-next-line react/no-array-index-key -- static fixed-length skeleton, never reordered
         <ActivityCardSkeleton key={index} />
       ))}
     </Box>

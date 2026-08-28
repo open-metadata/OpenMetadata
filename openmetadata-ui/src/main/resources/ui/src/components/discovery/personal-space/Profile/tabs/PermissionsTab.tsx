@@ -231,7 +231,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
         items={debugInfo?.inheritedPermissions ?? []}
       />
     </SectionBlock>,
-  ].filter(Boolean);
+  ].filter((section): section is React.ReactElement => Boolean(section));
 
   return (
     <Box
@@ -240,7 +240,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
       direction="col"
       gap={6}>
       {sections.map((section, index) => (
-        <React.Fragment key={index}>
+        <React.Fragment key={section.key}>
           {index > 2 && <Divider className="tw:border-t tw:border-secondary" />}
           {section}
         </React.Fragment>

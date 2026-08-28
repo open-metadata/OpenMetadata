@@ -73,7 +73,7 @@ const menuItemClass = (isDisabled: boolean) =>
 // ─── MenuRow ──────────────────────────────────────────────────────────────────
 
 interface MenuRowProps {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   isActive?: boolean;
   label: string;
   showChevron?: boolean;
@@ -88,11 +88,13 @@ const MenuRow: React.FC<MenuRowProps> = ({
   supportingText,
 }) => (
   <Box align="start" gap={2}>
-    <Icon
-      className="tw:mt-1 tw:shrink-0 tw:text-gray-400"
-      height={14}
-      width={14}
-    />
+    {Icon && (
+      <Icon
+        className="tw:mt-1 tw:shrink-0 tw:text-gray-400"
+        height={14}
+        width={14}
+      />
+    )}
     <Box align="center" className="tw:flex-1" justify="between">
       <Box direction="col">
         <Typography className="tw:text-secondary" weight="semibold">
@@ -136,7 +138,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
           {item.node ?? (
             <MenuRow
               showChevron
-              icon={item.icon!}
+              icon={item.icon}
               label={item.label ?? ''}
               supportingText={item.supportingText}
             />
@@ -149,7 +151,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
           <Menu
             className={SUBMENU_MENU_CLASS}
             onAction={(key) => item.onAction?.(String(key))}>
-            {item.children!.map((child) => (
+            {(item.children ?? []).map((child) => (
               <MenuItem
                 className={menuItemClass(false)}
                 data-testid={child.dataTestId}
@@ -203,7 +205,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
       id={item.id}
       onAction={item.onAction}>
       <MenuRow
-        icon={item.icon!}
+        icon={item.icon}
         isActive={item.isActive}
         label={item.label ?? ''}
         supportingText={item.supportingText}

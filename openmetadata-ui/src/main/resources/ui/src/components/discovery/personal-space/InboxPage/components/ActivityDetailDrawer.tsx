@@ -74,6 +74,7 @@ export interface ActivityDetailDrawerProps {
 const CommentsSkeleton: React.FC = () => (
   <Box data-testid="comments-skeleton" direction="col" gap={4}>
     {Array.from({ length: 3 }).map((_, index) => (
+      // eslint-disable-next-line react/no-array-index-key -- static fixed-length skeleton, never reordered
       <Box direction="col" gap={2} key={index}>
         <Box align="center" gap={2}>
           <Skeleton height={26} variant="circular" width={26} />
