@@ -12,6 +12,7 @@ import jakarta.json.JsonValue;
 import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -23,6 +24,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -44,6 +46,19 @@ public class PatchEntityTool implements McpTool {
   private static final String VALUE_KEY = "value";
   private static final String FROM_KEY = "from";
 
+  private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
+      Set.of(
+          Entity.APPLICATION,
+          Entity.EVENT_SUBSCRIPTION,
+          Entity.INGESTION_PIPELINE,
+          Entity.INTAKE_FORM,
+          Entity.NOTIFICATION_TEMPLATE,
+          Entity.PERSONA,
+          Entity.TEST_CASE,
+          Entity.TEST_SUITE,
+          Entity.USER,
+          Entity.WORKFLOW);
+
   /** The members RFC 6902 requires for each operation, beyond {@code op} itself. */
   private static final Map<String, List<String>> REQUIRED_MEMBERS =
       Map.of(
@@ -60,6 +75,7 @@ public class PatchEntityTool implements McpTool {
     String entityType = (String) params.get("entityType");
     String fqn = (String) params.get("fqn");
     requireTarget(entityType, fqn);
+    requireGenericPatchLifecycle(entityType);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
 
@@ -68,7 +84,7 @@ public class PatchEntityTool implements McpTool {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, jsonPatch),
-        new ResourceContext<>(entityType, null, fqn));
+        new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     String userName = securityContext.getUserPrincipal().getName();
@@ -92,6 +108,25 @@ public class PatchEntityTool implements McpTool {
   private static void requireTarget(String entityType, String fqn) {
     if (nullOrEmpty(entityType) || nullOrEmpty(fqn)) {
       throw new IllegalArgumentException("Parameters 'entityType' and 'fqn' are required");
+    }
+  }
+
+  private static void requireGenericPatchLifecycle(String entityType) {
+    if (DEDICATED_PATCH_LIFECYCLES.contains(entityType)) {
+      throw new IllegalArgumentException(
+          "entityType '"
+              + entityType
+              + "' cannot be patched through patch_entity because its resource performs"
+              + " additional authorization, scheduling, cleanup, or secret handling. Use its"
+              + " dedicated OpenMetadata REST PATCH API. Nothing was changed.");
+    }
+    if (Entity.isTimeSeriesEntity(entityType)) {
+      throw new IllegalArgumentException(
+          "entityType '"
+              + entityType
+              + "' cannot be patched through patch_entity because time-series entities use"
+              + " dedicated repositories and authorization. Use the entity's dedicated"
+              + " OpenMetadata API. Nothing was changed.");
     }
   }
 
