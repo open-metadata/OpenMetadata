@@ -18,7 +18,13 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { matchPath, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  matchPath,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import {
   createRouteActivationStore,
   RouteActivationProvider,
@@ -92,6 +98,19 @@ const getRoutePaths = (path?: string | string[]): string[] => {
   return Array.isArray(path) ? path : [path];
 };
 
+// A route that only redirects (element is `<Navigate>`) must never be kept
+// alive. react-router's `Navigate` runs its redirect in a `useEffect` with NO
+// dependency array, so it re-fires on EVERY render — and a cached route stays
+// mounted (hidden) forever. A kept-alive module index route (e.g.
+// `/observability` → `/observability/data-quality`) would therefore re-assert
+// its redirect on every render and yank the URL back to the module default the
+// instant the user navigates to a sibling sub-route (alerts, incidents,
+// context-center submenus). Excluding redirect routes here drops them to the
+// fallback <Routes>, which mounts only the currently-matched route, so the
+// redirect fires once at the bare prefix and never again.
+const isRedirectRoute = (route: KeepAliveRoute): boolean =>
+  React.isValidElement(route.element) && route.element.type === Navigate;
+
 export const isCacheableRoutePath = (path: unknown): path is string =>
   typeof path === 'string' &&
   !path.includes('*') &&
@@ -102,12 +121,14 @@ export const getActiveCacheableRoute = (
   pathname: string,
   routes: KeepAliveRoute[]
 ): KeepAliveRoute | undefined =>
-  routes.find((route) =>
-    getRoutePaths(route.path).some(
-      (path) =>
-        isCacheableRoutePath(path) &&
-        Boolean(matchPath({ end: true, path }, pathname))
-    )
+  routes.find(
+    (route) =>
+      !isRedirectRoute(route) &&
+      getRoutePaths(route.path).some(
+        (path) =>
+          isCacheableRoutePath(path) &&
+          Boolean(matchPath({ end: true, path }, pathname))
+      )
   );
 
 const getCacheableRoutePath = (
