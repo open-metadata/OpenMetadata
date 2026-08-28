@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -91,7 +92,7 @@ public class LineageTool implements McpTool {
           String.format(
               "Parameter '%s' must be an object with 'type' and 'fqn' (or 'id')", paramName));
     }
-    return new java.util.HashMap<>((Map<String, Object>) raw);
+    return new HashMap<>((Map<String, Object>) raw);
   }
 
   @Override

@@ -207,11 +207,11 @@ export const VersionHistoryDrawer = ({
               </Box>
 
               <Box className="tw:gap-1.5" direction="col">
-                {entry.changes.map((change, changeIndex) => (
+                {entry.changes.map((change) => (
                   <Box
                     align="start"
                     gap={2}
-                    key={`${change.key}-${changeIndex}`}>
+                    key={`${change.key}:${JSON.stringify(change.values)}`}>
                     <span className="tw:mt-1.5 tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-quaternary" />
                     <Typography
                       className="tw:text-[13px]/[1.45] tw:text-secondary"

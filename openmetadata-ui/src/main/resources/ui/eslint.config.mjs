@@ -44,7 +44,7 @@ export default [
       'mock-api/**',
       'src/antlr/generated/**',
       'src/generated/antlr/**',
-      'src/jsons/connectionSchemas/**',
+      'src/jsons/**',
       'src/generated/**',
       'coverage/**',
       'playwright/doc-generator/**',
@@ -343,19 +343,25 @@ export default [
       'sonarjs/no-nested-conditional': 'warn', // 16
       'sonarjs/no-nested-functions': 'warn', // 18
 
-      // Security. Near-zero today — promote to error once confirmed at zero
-      // across the whole tree, not just a sample.
-      'sonarjs/no-clear-text-protocols': 'warn', // 18
-      'sonarjs/no-hardcoded-passwords': 'warn', // 0 in sample
-      'sonarjs/no-hardcoded-ip': 'warn', // 0 in sample
+      // Security. Enforced in production code. Test fixtures, mock data, and
+      // the sample-entity constants files legitimately embed http:// self-links,
+      // localhost IPs, and dummy credentials — those paths are exempted in a
+      // dedicated override below (matching how SonarQube excludes test sources
+      // from security scanning), so production stays clean at error.
+      'sonarjs/no-clear-text-protocols': 'error',
+      'sonarjs/no-hardcoded-passwords': 'error',
+      'sonarjs/no-hardcoded-ip': 'error',
       'sonarjs/no-invariant-returns': 'warn', // 0 in sample
 
       // React correctness and re-render cost — the enforceable slice of
-      // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 93 across 59 files
-      'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
-      'react/no-unstable-nested-components': 'warn', // 25 across 23 files
-      'react/no-danger': 'warn', // 0 in sample
+      // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
+      // stable keys, hoisted components, memoized context values; documented
+      // disables only where no real fix exists (static never-reordered lists,
+      // dangerouslySetInnerHTML on sanitized content). Promoted to error.
+      'react/no-array-index-key': 'error',
+      'react/jsx-no-constructed-context-values': 'error',
+      'react/no-unstable-nested-components': 'error',
+      'react/no-danger': 'error',
       // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
       // removed / narrowed where safe, documented disables where the value is
       // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
@@ -582,6 +588,29 @@ export default [
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  // Security rules (clear-text protocols, hardcoded IPs/passwords) target
+  // production code paths. Test fixtures and mock data legitimately embed
+  // sample http:// self-links (mirroring backend responses), localhost IPs, and
+  // dummy credentials — exempt them, matching how SonarQube excludes test
+  // sources from security scanning. mockTourData is a 100%-mock guided-tour
+  // fixture whose sample links point at the local dev server (http://localhost),
+  // so it is exempt too; production constants files are NOT — their sample URLs
+  // were fixed to https and the rules stay enforced there.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx}',
+      'src/**/mocks/**/*.{ts,tsx}',
+      'src/**/__mocks__/**/*.{ts,tsx}',
+      'src/constants/mockTourData.constants.ts',
+    ],
+    rules: {
+      'sonarjs/no-clear-text-protocols': 'off',
+      'sonarjs/no-hardcoded-ip': 'off',
+      'sonarjs/no-hardcoded-passwords': 'off',
     },
   },
 ];

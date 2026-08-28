@@ -596,28 +596,6 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
-  @SuppressWarnings("unused")
-  /**
-   * Entity references and tag labels are collapsed to the identifier a caller can act on.
-   *
-   * <p>{@code tier}, {@code service}, {@code database} and {@code databaseSchema} each repeat a full
-   * descriptor on every hit, which on a 10-hit response was most of the payload. Every MCP tool is
-   * addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
-   */
-  /**
-   * Caps a hydrated bulk field on a search hit.
-   *
-   * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
-   * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
-   * the full detail lives.
-   */
-  /** True when hit scores vary, i.e. something actually ranked them. */
-  /**
-   * Wraps a query so excluded entity types never match, letting the engine backfill the page.
-   *
-   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a broad
-   * sweep can return mostly columns inheriting their parent's tags or certification.
-   */
   /**
    * A queryFilter whose only job is to exclude entity types, for the path where the caller supplied
    * no filter of their own. Null when there is nothing to exclude, so the request is unchanged.
@@ -633,6 +611,12 @@ public class SearchMetadataTool implements McpTool {
     return filter;
   }
 
+  /**
+   * Wraps a query so excluded entity types never match, letting the engine backfill the page.
+   *
+   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a broad
+   * sweep can return mostly columns inheriting their parent's tags or certification.
+   */
   private static JsonNode excludeTypesFrom(JsonNode query, Set<String> excluded) {
     JsonNode result = query;
     if (!excluded.isEmpty()) {
@@ -652,6 +636,7 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
+  /** True when hit scores vary, i.e. something actually ranked them. */
   private static boolean scoresDiscriminate(List<?> hits) {
     Object first = null;
     boolean varies = false;
@@ -671,6 +656,13 @@ public class SearchMetadataTool implements McpTool {
     return varies;
   }
 
+  /**
+   * Caps a hydrated bulk field on a search hit.
+   *
+   * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
+   * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
+   * the full detail lives.
+   */
   private static Object capBulkField(String field, Object value, Map<String, Object> result) {
     Object capped = value;
     if (BULK_FIELDS.contains(field)
@@ -683,6 +675,13 @@ public class SearchMetadataTool implements McpTool {
     return capped;
   }
 
+  /**
+   * Entity references and tag labels are collapsed to the identifier a caller can act on.
+   *
+   * <p>{@code tier}, {@code service}, {@code database} and {@code databaseSchema} each repeat a full
+   * descriptor on every hit, which on a 10-hit response was most of the payload. Every MCP tool is
+   * addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
+   */
   private static Object slimField(String field, Object value) {
     Object result = value;
     if (REFERENCE_FIELDS.contains(field)) {
