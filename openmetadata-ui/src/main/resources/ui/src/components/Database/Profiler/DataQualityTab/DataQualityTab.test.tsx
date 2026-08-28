@@ -52,11 +52,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }: React.PropsWithChildren<{
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
-  }>) => (
-    <DropdownContext.Provider value={{ isOpen, onOpenChange }}>
-      {children}
-    </DropdownContext.Provider>
-  );
+  }>) => {
+    const value = React.useMemo(
+      () => ({ isOpen, onOpenChange }),
+      [isOpen, onOpenChange]
+    );
+
+    return (
+      <DropdownContext.Provider value={value}>
+        {children}
+      </DropdownContext.Provider>
+    );
+  };
 
   const DropdownPopover = ({ children }: React.PropsWithChildren) => {
     const { isOpen } = React.useContext(DropdownContext);
@@ -172,11 +179,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => void;
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
-  }>) => (
-    <SortContext.Provider value={{ sortDescriptor, onSortChange }}>
-      <table data-testid={testId}>{children}</table>
-    </SortContext.Provider>
-  );
+  }>) => {
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
+
+    return (
+      <SortContext.Provider value={value}>
+        <table data-testid={testId}>{children}</table>
+      </SortContext.Provider>
+    );
+  };
 
   MockTable.Header = ({
     columns,

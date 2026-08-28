@@ -55,7 +55,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
         feature.featureSources?.map((source, i) => (
           <Row
             className="feature-source-info"
-            key={`${source.fullyQualifiedName}${i}`}
+            key={source.fullyQualifiedName}
             wrap={false}>
             <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>
