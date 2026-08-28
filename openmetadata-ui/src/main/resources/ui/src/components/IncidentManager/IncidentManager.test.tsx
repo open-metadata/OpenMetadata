@@ -244,6 +244,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )
       ),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
@@ -616,12 +626,14 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
+    const selectBox = select.querySelector(
+      '.ant-select-selector'
+    ) as HTMLElement;
 
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');

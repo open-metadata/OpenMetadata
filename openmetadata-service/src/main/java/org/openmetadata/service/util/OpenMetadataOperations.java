@@ -170,6 +170,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
   private static final String UNKNOWN_VERSION = "unknown";
   private static final String DEFAULT_VERSION = "1.8.0-SNAPSHOT";
+  private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
+  private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
+  private static final String STATUS_FAILED = "FAILED";
+  private static final int STATUS_COLUMN_INDEX = 3;
 
   private OpenMetadataApplicationConfig config;
   private Jdbi jdbi;
@@ -2388,40 +2392,70 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
-  public Integer deployPipelines() {
+  public Integer deployPipelines(
+      @Option(
+              names = {"--chunk-size"},
+              defaultValue = "20",
+              description =
+                  "Number of pipelines sent to the bulk deploy endpoint per request. The server "
+                      + "deploys them sequentially, so a larger chunk needs a proportionally "
+                      + "longer deadline.")
+          int chunkSize,
+      @Option(
+              names = {"--seconds-per-pipeline"},
+              defaultValue = "30",
+              description =
+                  "Deploy deadline budgeted for each pipeline in a chunk. The request timeout is "
+                      + "this value multiplied by the chunk size.")
+          int secondsPerPipeline) {
+    int exitCode = 1;
     try {
       LOG.info("Deploying Pipelines via API");
-      parseConfig();
-      IngestionPipelineRepository pipelineRepository =
-          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-      List<IngestionPipeline> pipelines =
-          pipelineRepository.listAll(
-              new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
-              new ListFilter(Include.NON_DELETED));
-      LOG.debug("Pipelines size {}", pipelines.size());
-      List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
-      List<List<String>> pipelineStatuses = new ArrayList<>();
-
-      if (!pipelines.isEmpty()) {
-        deployPipelinesViaAPI(pipelines, pipelineStatuses);
+      if (isValidDeployOptions(chunkSize, secondsPerPipeline)) {
+        parseConfig();
+        exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline);
       }
-
-      printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
-
-      // Check if any pipeline deployments failed by examining the status column
-      boolean hasFailures =
-          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
-
-      if (hasFailures) {
-        LOG.error("Some pipeline deployments failed. Check the table above for details.");
-        return 1;
-      }
-
-      return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
-      return 1;
     }
+    return exitCode;
+  }
+
+  static boolean isValidDeployOptions(final int chunkSize, final int secondsPerPipeline) {
+    boolean valid = true;
+    if (chunkSize < 1) {
+      LOG.error("--chunk-size must be at least 1, got {}", chunkSize);
+      valid = false;
+    }
+    if (secondsPerPipeline < 1) {
+      LOG.error("--seconds-per-pipeline must be at least 1, got {}", secondsPerPipeline);
+      valid = false;
+    }
+    return valid;
+  }
+
+  private int runPipelineDeployment(final int chunkSize, final int secondsPerPipeline) {
+    final IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    final List<IngestionPipeline> pipelines =
+        pipelineRepository.listAll(
+            new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
+            new ListFilter(Include.NON_DELETED));
+    LOG.debug("Pipelines size {}", pipelines.size());
+    final List<List<String>> pipelineStatuses = new ArrayList<>();
+    if (!pipelines.isEmpty()) {
+      deployPipelinesViaAPI(pipelines, pipelineStatuses, chunkSize, secondsPerPipeline);
+    }
+    printToAsciiTable(
+        Arrays.asList("Name", "Type", "Service Name", "Status"),
+        pipelineStatuses,
+        "No Pipelines Found");
+    int exitCode = 0;
+    if (hasDeployFailures(pipelineStatuses)) {
+      LOG.error("Some pipeline deployments failed. Check the table above for details.");
+      exitCode = 1;
+    }
+    return exitCode;
   }
 
   @Command(
@@ -2961,7 +2995,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void deployPipelinesViaAPI(
-      List<IngestionPipeline> pipelines, List<List<String>> pipelineStatuses) {
+      List<IngestionPipeline> pipelines,
+      List<List<String>> pipelineStatuses,
+      int chunkSize,
+      int secondsPerPipeline) {
     try {
       // Get ingestion-bot JWT token
       String jwtToken = getIngestionBotToken();
@@ -2976,14 +3013,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       LOG.info("Deploying pipelines to server URL: {}", serverUrl);
 
-      // Create HTTP client
-      HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+      HttpClient client = HttpClient.newBuilder().connectTimeout(DEPLOY_CONNECT_TIMEOUT).build();
+      Duration chunkTimeout = deployChunkTimeout(chunkSize, secondsPerPipeline);
+      DeployRequest deployRequest = new DeployRequest(client, jwtToken, serverUrl, chunkTimeout);
 
-      // Process pipelines in chunks of 20
-      int chunkSize = 20;
       int totalPipelines = pipelines.size();
       LOG.info(
-          "Deploying {} pipelines via bulk API calls in chunks of {}", totalPipelines, chunkSize);
+          "Deploying {} pipelines via bulk API calls in chunks of {} with a {}s deadline per chunk",
+          totalPipelines,
+          chunkSize,
+          chunkTimeout.toSeconds());
 
       List<List<IngestionPipeline>> pipelineChunks = chunkList(pipelines, chunkSize);
 
@@ -2996,7 +3035,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             chunkIndex * chunkSize + 1,
             Math.min((chunkIndex + 1) * chunkSize, totalPipelines));
 
-        deployPipelineChunk(client, jwtToken, serverUrl, chunk, pipelineStatuses);
+        deployPipelineChunk(deployRequest, chunk, pipelineStatuses);
       }
 
       LOG.info("Completed bulk deployment of {} pipelines", totalPipelines);
@@ -3015,11 +3054,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void deployPipelineChunk(
-      HttpClient client,
-      String jwtToken,
-      String serverUrl,
+      DeployRequest deployRequest,
       List<IngestionPipeline> pipelineChunk,
       List<List<String>> pipelineStatuses) {
+    final String serverUrl = deployRequest.serverUrl();
     try {
       // Collect pipeline IDs for this chunk
       List<UUID> pipelineIds =
@@ -3035,13 +3073,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
       HttpRequest request =
           HttpRequest.newBuilder()
               .uri(URI.create(normalizedServerUrl + COLLECTION_PATH + "bulk/deploy"))
-              .header("Authorization", "Bearer " + jwtToken)
+              .header("Authorization", "Bearer " + deployRequest.jwtToken())
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-              .timeout(Duration.ofMinutes(2))
+              .timeout(deployRequest.chunkTimeout())
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response =
+          deployRequest.client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         LOG.debug("Chunk deployment completed successfully");
@@ -3074,7 +3113,32 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  /**
+   * The bulk deploy endpoint registers each pipeline in a chunk sequentially, so the request
+   * deadline has to grow with the chunk size. A fixed deadline silently becomes too short as a
+   * catalog grows, and reports a timeout on deployments that are still progressing server side.
+   */
+  static Duration deployChunkTimeout(final int chunkSize, final int secondsPerPipeline) {
+    final Duration budgeted = Duration.ofSeconds((long) chunkSize * secondsPerPipeline);
+    Duration timeout = MIN_DEPLOY_CHUNK_TIMEOUT;
+    if (budgeted.compareTo(MIN_DEPLOY_CHUNK_TIMEOUT) > 0) {
+      timeout = budgeted;
+    }
+    return timeout;
+  }
+
+  static boolean hasDeployFailures(final List<List<String>> pipelineStatuses) {
+    return pipelineStatuses.stream()
+        .anyMatch(status -> status.get(STATUS_COLUMN_INDEX).startsWith(STATUS_FAILED));
+  }
+
+  private record DeployRequest(
+      HttpClient client, String jwtToken, String serverUrl, Duration chunkTimeout) {}
+
   private <T> List<List<T>> chunkList(List<T> list, int chunkSize) {
+    if (chunkSize < 1) {
+      throw new IllegalArgumentException("chunkSize must be at least 1, got " + chunkSize);
+    }
     List<List<T>> chunks = new ArrayList<>();
     for (int i = 0; i < list.size(); i += chunkSize) {
       int end = Math.min(list.size(), i + chunkSize);

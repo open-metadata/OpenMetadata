@@ -179,8 +179,9 @@
                    would otherwise re-install and re-build openmetadata-ui-core-components
                    that the reactor already built). It also suppresses postinstall, so
                    the `yarn run build-check` execution below re-runs its work (js-antlr
-                   parser generation + schema parsing) explicitly, since those outputs
-                   are gitignored and required by the vite build. -->
+                   parser generation) explicitly, since that output is gitignored and
+                   required by the vite build. The dereferenced schemas under src/jsons
+                   are committed, so they are no longer regenerated here. -->
               <arguments>install --frozen-lockfile --ignore-scripts</arguments>
               <skip>${skip.ui.build}</skip>
             </configuration>

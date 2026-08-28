@@ -166,6 +166,7 @@ export const getKeyValues = ({
       }
 
       // Handle special service configurations
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with getKeyValues
       const specialConfig = handleSpecialServiceConfig(
         serviceType,
         key,
@@ -183,6 +184,7 @@ export const getKeyValues = ({
         serviceType === EntityType.DATABASE_SERVICE &&
         key === 'configSource'
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with getKeyValues
         const configSource = handleDatabaseConfigSource(
           key,
           value,
