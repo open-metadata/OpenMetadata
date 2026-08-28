@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabricksPipelineConnection",
+  "description": "Databricks Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection",
+  "definitions": {
+    "databricksType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "DatabricksPipeline"
+      ],
+      "default": "DatabricksPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "DatabricksPipeline",
+      "type": "string",
+      "enum": [
+        "DatabricksPipeline"
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Databricks service.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose between different authentication types for Databricks.",
+      "oneOf": [
+        {
+          "title": "Personal Access Token",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Personal Access Token authentication for Databricks.",
+          "javaType": "org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken",
+          "type": "object",
+          "properties": {
+            "token": {
+              "title": "Token",
+              "description": "Generated Personal Access Token for Databricks workspace authentication. This token is created from User Settings -> Developer -> Access Tokens in your Databricks workspace.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "token"
+          ]
+        },
+        {
+          "title": "Databricks OAuth",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
+          "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",
+          "type": "object",
+          "properties": {
+            "clientId": {
+              "title": "Client ID",
+              "description": "Service Principal Application ID created in your Databricks Account Console for OAuth Machine-to-Machine authentication.",
+              "type": "string"
+            },
+            "clientSecret": {
+              "title": "Client Secret",
+              "description": "OAuth Secret generated for the Service Principal in Databricks Account Console. Used for secure OAuth2 authentication.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "clientId",
+            "clientSecret"
+          ]
+        },
+        {
+          "title": "Azure AD Setup",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Azure Active Directory authentication for Azure Databricks workspaces using Service Principal.",
+          "javaType": "org.openmetadata.schema.services.connections.database.databricks.AzureADSetup",
+          "type": "object",
+          "properties": {
+            "azureClientId": {
+              "title": "Azure Client ID",
+              "description": "Azure Service Principal Application (client) ID registered in your Azure Active Directory.",
+              "type": "string"
+            },
+            "azureClientSecret": {
+              "title": "Azure Client Secret",
+              "description": "Azure Service Principal client secret created in Azure AD for authentication.",
+              "type": "string",
+              "format": "password"
+            },
+            "azureTenantId": {
+              "title": "Azure Tenant ID",
+              "description": "Azure Active Directory Tenant ID where your Service Principal is registered.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "azureClientId",
+            "azureClientSecret",
+            "azureTenantId"
+          ]
+        }
+      ]
+    },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "description": "Connection timeout in seconds.",
+      "type": "number",
+      "default": 120
+    },
+    "httpPath": {
+      "title": "Http Path",
+      "description": "Databricks compute resources URL.",
+      "type": "string"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "lineageLookBackDays": {
+      "title": "Lineage Look Back Days",
+      "description": "Number of days to look back when fetching lineage data from Databricks system tables (system.access.table_lineage and system.access.column_lineage). Default is 90 days.",
+      "type": "integer",
+      "default": 90,
+      "minimum": 1,
+      "maximum": 365
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "authType"
+  ]
+}

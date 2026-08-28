@@ -94,8 +94,8 @@ describe('getSidebarActiveKeys', () => {
 
   it('should return a registered deep path as-is', () => {
     expect(
-      getSidebarActiveKeys('/context-center/dashboard', SIDEBAR_NESTED_KEYS)
-    ).toEqual(['/context-center/dashboard']);
+      getSidebarActiveKeys('/context-center/overview', SIDEBAR_NESTED_KEYS)
+    ).toEqual(['/context-center/overview']);
     expect(
       getSidebarActiveKeys('/governance/ontology', SIDEBAR_NESTED_KEYS)
     ).toEqual(['/governance/ontology']);

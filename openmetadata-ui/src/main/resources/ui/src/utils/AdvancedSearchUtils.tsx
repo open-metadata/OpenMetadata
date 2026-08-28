@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 
-import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { CustomIconComponentProps } from '@ant-design/icons/lib/components/Icon';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
   ListValues,
   RenderSettings,
   ValueSource,
-} from '@react-awesome-query-builder/antd';
-import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
+} from '@react-awesome-query-builder/ui';
+import { Plus, Trash01, X } from '@untitledui/icons';
 import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { isArray, isEmpty } from 'lodash';
-import React from 'react';
-import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -41,6 +38,8 @@ import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
+type DropdownItem = { key: string; label: JSX.Element };
+
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
 };
@@ -52,48 +51,47 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
 
   if (type === 'delRule') {
     return (
-      <Icon
-        className="action action--DELETE"
-        component={
-          CloseCircleOutlined as React.ForwardRefExoticComponent<CustomIconComponentProps>
-        }
+      <X
+        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
     );
-  } else if (type === 'addRule') {
+  }
+
+  if (type === 'addRule') {
     return (
       <Button
-        ghost
         className="action action--ADD-RULE"
+        color="secondary"
         data-testid="advanced-search-add-rule"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={props?.onClick}>
+        iconLeading={Plus}
+        size="sm"
+        onPress={() => props?.onClick?.()}>
         {t('label.add')}
       </Button>
     );
-  } else if (type === 'addGroup') {
+  }
+
+  if (type === 'addGroup') {
     return (
       <Button
         className="action action--ADD-GROUP"
+        color="secondary"
         data-testid="advanced-search-add-group"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={props?.onClick}>
+        iconLeading={Plus}
+        size="sm"
+        onPress={() => props?.onClick?.()}>
         {t('label.add')}
       </Button>
     );
-  } else if (type === 'delGroup') {
+  }
+
+  if (type === 'delGroup') {
     return (
-      <Icon
-        alt={t('label.delete-entity', {
-          entity: t('label.group'),
-        })}
-        className="action action--DELETE cursor-pointer align-middle"
-        component={IconDeleteColored}
+      <Trash01
+        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-error-primary"
         data-testid="advanced-search-delete-group"
-        style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
     );
@@ -110,19 +108,19 @@ export const generateSearchDropdownLabel = (
   hideCounts = false,
   singleSelect = false
 ) => {
-  const InputComponent = singleSelect ? Radio : Checkbox;
-
   return (
     <div className="d-flex justify-between">
-      <Space
-        align="center"
-        className="m-x-sm"
+      <div
+        className="d-flex m-x-sm"
         data-testid={option.key}
-        size={8}>
-        <InputComponent
+        style={{ alignItems: 'flex-start', gap: '8px' }}>
+        <input
+          readOnly
+          aria-label={option.label}
           checked={checked}
           data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
           style={option.description ? { marginTop: 4 } : undefined}
+          type={singleSelect ? 'radio' : 'checkbox'}
         />
         {showProfilePicture && (
           <ProfilePicture
@@ -137,26 +135,24 @@ export const generateSearchDropdownLabel = (
           </div>
         )}
         <div>
-          <Typography.Text
-            ellipsis
-            className="dropdown-option-label"
+          <span
+            className="dropdown-option-label tw:truncate tw:block"
             title={option.label}>
             <span>
               {parse(
                 DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
               )}
             </span>
-          </Typography.Text>
+          </span>
           {option.description && (
-            <Typography.Text
-              className="text-xs d-block"
-              data-testid={`${option.key}-description`}
-              type="secondary">
+            <span
+              className="text-xs d-block tw:text-secondary"
+              data-testid={`${option.key}-description`}>
               {option.description}
-            </Typography.Text>
+            </span>
           )}
         </div>
-      </Space>
+      </div>
       {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
     </div>
   );
@@ -169,7 +165,7 @@ export const getSearchDropdownLabels = (
   showProfilePicture = false,
   hideCounts = false,
   singleSelect = false
-): MenuProps['items'] => {
+): DropdownItem[] => {
   if (isArray(optionsArray)) {
     const sortedOptions = optionsArray.sort(
       (a, b) => (b.count ?? 0) - (a.count ?? 0)
