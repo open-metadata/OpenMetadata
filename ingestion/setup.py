@@ -448,6 +448,8 @@ dev = {
     "mypy-boto3-glue",
     "isort",
     "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
     "pandas-stubs~=2.2",
     "scipy-stubs",
     "nox",
