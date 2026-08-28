@@ -26,17 +26,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children,
       tooltip,
       onPress,
-      ...rest
+      iconLeading,
     }: {
       children?: React.ReactNode;
       tooltip?: string;
       onPress?: () => void;
-      [key: string]: unknown;
+      iconLeading?: React.ReactNode;
     }) => (
-      <button
-        aria-label={tooltip}
-        onClick={() => onPress?.()}
-        {...(rest as React.ButtonHTMLAttributes<HTMLButtonElement>)}>
+      <button aria-label={tooltip} onClick={() => onPress?.()}>
+        {iconLeading}
         {children}
       </button>
     )
