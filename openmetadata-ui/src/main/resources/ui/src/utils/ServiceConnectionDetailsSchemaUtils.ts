@@ -164,12 +164,39 @@ const getSchemaDiscriminators = (
 
 const matchesSchemaDiscriminator = (
   schemaObject: SchemaObject,
-  value: SchemaObject
+  value: SchemaObject,
+  discriminatorKeys?: Set<string>
 ): boolean => {
-  return getSchemaDiscriminators(schemaObject).some(
-    ({ key, value: expectedValue }) =>
-      key in value && expectedValue === value[key]
+  const discriminators = getSchemaDiscriminators(schemaObject).filter(
+    ({ key }) => !discriminatorKeys || discriminatorKeys.has(key)
   );
+
+  return (
+    discriminators.length > 0 &&
+    discriminators.every(
+      ({ key, value: expectedValue }) =>
+        key in value && expectedValue === value[key]
+    )
+  );
+};
+
+const getCommonDiscriminatorKeys = (schemas: SchemaObject[]): Set<string> => {
+  const discriminatorKeys = schemas
+    .map(
+      (schemaObject) =>
+        new Set(getSchemaDiscriminators(schemaObject).map(({ key }) => key))
+    )
+    .filter((keys) => keys.size > 0);
+
+  return discriminatorKeys.slice(1).reduce((commonKeys, keys) => {
+    commonKeys.forEach((key) => {
+      if (!keys.has(key)) {
+        commonKeys.delete(key);
+      }
+    });
+
+    return commonKeys;
+  }, discriminatorKeys[0] ?? new Set<string>());
 };
 
 const getStringArray = (value: unknown): string[] =>
@@ -267,19 +294,31 @@ export const getMatchingOneOfSchema = (
       Boolean(schemaObject)
     );
 
-  const hasDiscriminator = resolvedSchemas.some(
+  const discriminatedSchemas = resolvedSchemas.filter(
     (schemaObject) => getSchemaDiscriminators(schemaObject).length > 0
   );
+  const commonDiscriminatorKeys =
+    getCommonDiscriminatorKeys(discriminatedSchemas);
+  const explicitlyMatchingSchemas = discriminatedSchemas.filter(
+    (schemaObject) =>
+      matchesSchemaDiscriminator(
+        schemaObject,
+        valueObject,
+        commonDiscriminatorKeys.size > 0 ? commonDiscriminatorKeys : undefined
+      )
+  );
 
-  if (hasDiscriminator) {
-    return resolvedSchemas.find((schemaObject) =>
-      matchesSchemaDiscriminator(schemaObject, valueObject)
-    );
+  if (explicitlyMatchingSchemas.length > 0) {
+    return explicitlyMatchingSchemas.length === 1
+      ? explicitlyMatchingSchemas[0]
+      : undefined;
   }
 
   return getStructurallyMatchingSchema(
     valueObject,
-    resolvedSchemas,
+    resolvedSchemas.filter(
+      (schemaObject) => getSchemaDiscriminators(schemaObject).length === 0
+    ),
     referenceScopes
   );
 };

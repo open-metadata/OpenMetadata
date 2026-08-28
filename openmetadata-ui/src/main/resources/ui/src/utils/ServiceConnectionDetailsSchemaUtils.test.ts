@@ -53,6 +53,22 @@ const basicAuthSchema = {
   },
 };
 
+const postgresConnectionSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'string', enum: ['Postgres'] },
+    hostPort: { type: 'string' },
+  },
+};
+
+const apiConnectionSchema = {
+  type: 'object',
+  required: ['apiUrl'],
+  properties: {
+    apiUrl: { type: 'string' },
+  },
+};
+
 const schema = {
   definitions: {
     credentialPath: credentialPathSchema,
@@ -148,5 +164,15 @@ describe('ServiceConnectionDetailsSchemaUtils', () => {
         []
       )
     ).toEqual(tokenAuthSchema);
+  });
+
+  it('supports a non-discriminated branch alongside discriminated branches', () => {
+    expect(
+      getMatchingOneOfSchema(
+        { apiUrl: 'https://example.com' },
+        [postgresConnectionSchema, apiConnectionSchema],
+        []
+      )
+    ).toEqual(apiConnectionSchema);
   });
 });
