@@ -47,8 +47,8 @@ def test_nested_field_sampling_keeps_parent_struct_in_cte(
     table = sa.Table(
         "my_table",
         sa.MetaData(),
-        sa.Column(parent_name, sa.JSON),
-        sa.Column(nested_name, sa.String),
+        sa.Column(parent_name, sa.JSON, key=parent_name.lower()),
+        sa.Column(nested_name, sa.String, key=str(nested_name).lower()),
         schema="my_schema",
     )
     sampler = object.__new__(DatabricksSamplerInterface)
@@ -58,7 +58,7 @@ def test_nested_field_sampling_keeps_parent_struct_in_cte(
 
     sampled = sampler._base_sample_query(
         table,
-        table.c[nested_name],
+        table.c[str(nested_name).lower()],
         sa.literal(1).label("random"),
     ).cte("sample_rnd")
     query = sa.select(sa.func.count(sa.literal_column(str(nested_name)))).select_from(sampled)
