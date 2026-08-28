@@ -121,12 +121,11 @@ else
   fail "the jlink runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
 fi
 
-# The reason this image is distroless *cc* and not distroless *base*, and the
-# reason it is not alpine: DJL's libtokenizers.so and onnxruntime are both
-# glibc-linked and both need the GNU C++ runtime.
-# Why the base is java-base and not base or cc. libstdc++/libgcc are what DJL's
-# libtokenizers.so and onnxruntime link; libz is what libtorch's libgfortran
-# links, and cc-debian12 does not ship it.
+# Why the base is cc-debian13 and not base-debian12, cc-debian12 or alpine.
+# libstdc++/libgcc are what DJL's libtokenizers.so and onnxruntime link; libz is
+# what libtorch's libgfortran links, and cc-debian12 ships every one of those
+# except libz. All three have to resolve inside the image or the natives will not
+# load at all.
 docker create --name "$CONTAINER" "$IMAGE" >/dev/null
 for lib in libstdc++.so.6 libgcc_s.so.1 libz.so.1; do
   found=""
