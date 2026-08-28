@@ -103,7 +103,10 @@ describe('Glossary Utils', () => {
     const orphanChild = {
       fullyQualifiedName: 'G.Parent.Child',
       name: 'Child',
-      parent: { fullyQualifiedName: 'G.Parent', type: EntityType.GLOSSARY_TERM },
+      parent: {
+        fullyQualifiedName: 'G.Parent',
+        type: EntityType.GLOSSARY_TERM,
+      },
     } as unknown as GlossaryTerm;
     const topLevel = {
       fullyQualifiedName: 'G.Top',
