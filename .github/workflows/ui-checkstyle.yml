@@ -191,7 +191,11 @@ jobs:
           # isolation — it would run the same command with the same privileges.
           if [ -n "$TS_FILES" ]; then
             yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
-            node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
+            if [ -f scripts/eslint-pr-report.js ]; then
+              node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
+            else
+              echo "has_findings=false" >> "$GITHUB_OUTPUT"
+            fi
             yarn organize-imports:cli $TS_FILES
           else
             echo "has_findings=false" >> "$GITHUB_OUTPUT"
@@ -400,6 +404,10 @@ jobs:
         continue-on-error: true
         working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
         run: |
+          if ! grep -q '"check-i18n-all"' package.json; then
+            echo "check-i18n-all is not defined on this branch — skipping"
+            exit 0
+          fi
           yarn check-i18n-all
           if [ -n "$(git status --porcelain)" ]; then
             FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
@@ -445,7 +453,7 @@ jobs:
 
       - name: Tailwind Audit (no hardcoded values)
         id: tw_audit
-        if: steps.changed-src-files.outputs.any_changed == 'true'
+        if: steps.changed-src-files.outputs.any_changed == 'true' && hashFiles('openmetadata-ui/src/main/resources/ui/scripts/tw-audit.js') != ''
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
@@ -467,7 +475,7 @@ jobs:
 
       - name: Antd + Less Deprecation Guard (no new debt)
         id: tw_guard
-        if: steps.changed-ui-files.outputs.any_changed == 'true'
+        if: steps.changed-ui-files.outputs.any_changed == 'true' && hashFiles('openmetadata-ui/src/main/resources/ui/scripts/tw-deprecation-guard.js') != ''
         continue-on-error: true
         env:
           BASE_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
