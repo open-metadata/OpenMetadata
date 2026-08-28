@@ -314,6 +314,14 @@ export const getMatchingOneOfSchema = (
       : undefined;
   }
 
+  const hasDiscriminatorValue = discriminatedSchemas.some((schemaObject) =>
+    getSchemaDiscriminators(schemaObject).some(({ key }) => key in valueObject)
+  );
+
+  if (hasDiscriminatorValue) {
+    return undefined;
+  }
+
   return getStructurallyMatchingSchema(
     valueObject,
     resolvedSchemas.filter(

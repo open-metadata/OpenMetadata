@@ -36,6 +36,14 @@ const credentialPathSchema = {
   },
 };
 
+const externalAccountSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'string', const: 'external_account' },
+    externalType: { type: 'string', const: 'external_account' },
+  },
+};
+
 const tokenAuthSchema = {
   type: 'object',
   required: ['token'],
@@ -75,7 +83,11 @@ const schema = {
   },
   properties: {
     gcpConfig: {
-      oneOf: [serviceAccountSchema, { $ref: '#/definitions/credentialPath' }],
+      oneOf: [
+        serviceAccountSchema,
+        { $ref: '#/definitions/credentialPath' },
+        externalAccountSchema,
+      ],
     },
   },
 };
@@ -147,6 +159,13 @@ describe('ServiceConnectionDetailsSchemaUtils', () => {
         schemaProperty: propertySchema,
         value: { type: 'unknown', privateKey: 'private-key' },
       })
+    ).toBeUndefined();
+    expect(
+      getMatchingOneOfSchema(
+        { type: 'unknown', externalType: 'external_account' },
+        getSchemaObjects(propertySchema?.oneOf),
+        [schema]
+      )
     ).toBeUndefined();
   });
 
