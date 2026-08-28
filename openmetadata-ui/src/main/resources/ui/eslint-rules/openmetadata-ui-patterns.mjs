@@ -39,18 +39,14 @@ const noRawTitleAttribute = {
 
           // Only flag lowercase (native HTML) elements
           // Skip uppercase (React components) and special cases like <title> HTML head element
-          if (
-            /^[a-z]/.test(elementName) &&
-            elementName !== 'title'
-          ) {
+          if (/^[a-z]/.test(elementName) && elementName !== 'title') {
             // Skip if it's a component class name like ant-select-selection-item
             // (these are legacy Ant Design patterns that will be migrated separately)
-            const isLegacyAntd =
-              parent.attributes?.some(
-                (attr) =>
-                  attr.name?.name === 'className' &&
-                  attr.value?.value?.includes('ant-select-selection-item')
-              );
+            const isLegacyAntd = parent.attributes?.some(
+              (attr) =>
+                attr.name?.name === 'className' &&
+                attr.value?.value?.includes('ant-select-selection-item')
+            );
 
             if (!isLegacyAntd) {
               context.report({ messageId: 'noRawTitle', node });
