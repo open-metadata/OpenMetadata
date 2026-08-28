@@ -1382,6 +1382,16 @@ public class TeamRepository extends EntityRepository<Team> {
     private void updateUsers(Team origTeam, Team updatedTeam) {
       List<EntityReference> origUsers = listOrEmpty(origTeam.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedTeam.getUsers());
+      if (!EntityUtil.entityReferenceListMatch.test(origUsers, updatedUsers)) {
+        updateChangedUsers(origTeam, updatedTeam, origUsers, updatedUsers);
+      }
+    }
+
+    private void updateChangedUsers(
+        Team origTeam,
+        Team updatedTeam,
+        List<EntityReference> origUsers,
+        List<EntityReference> updatedUsers) {
       validateUserUpdate(updatedTeam);
       updateToRelationships(
           "users",
@@ -1392,7 +1402,6 @@ public class TeamRepository extends EntityRepository<Team> {
           origUsers,
           updatedUsers,
           false);
-
       updatedTeam.setUserCount(updatedUsers.size());
     }
 

@@ -293,6 +293,22 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_departmentCanUpdateMetadataWithoutChangingUsers(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentMetadata"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Initial description"));
+    department.setDescription("Updated description");
+
+    Team updated =
+        SdkClients.adminClient().teams().update(department.getId().toString(), department);
+
+    assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
   void test_userCannotBeAssignedToDepartment(TestNamespace ns) {
     Team department =
         createEntity(

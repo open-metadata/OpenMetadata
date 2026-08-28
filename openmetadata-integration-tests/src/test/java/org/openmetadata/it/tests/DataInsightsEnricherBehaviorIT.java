@@ -193,7 +193,6 @@ class DataInsightsEnricherBehaviorIT {
     assertEquals(1, snapshot.get("numberOfColumnsWithDescription"));
     assertEquals(0, snapshot.get("hasColumnDescription"), "not every column has a description → 0");
 
-    // Team step — owner USER1 → team shared_team11
     assertEquals("shared_team11", snapshot.get("team"));
 
     // Tier step — extracted from the Tier.Tier2 tag
