@@ -40,6 +40,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import OntologyExpressionEditor, {
   defaultExpression,
+  getExpressionRenderKey,
 } from './OntologyExpressionEditor';
 import {
   buildOntologyAxiomRequest,
@@ -347,7 +348,7 @@ const OntologyAxiomPanel = ({ glossary }: OntologyAxiomPanelProps) => {
             {values.expressions.map((expression, index) => (
               <OntologyExpressionEditor
                 expression={expression}
-                key={`${expression.kind}-${index}`}
+                key={getExpressionRenderKey(expression)}
                 onChange={(next) =>
                   form.setValue(
                     'expressions',

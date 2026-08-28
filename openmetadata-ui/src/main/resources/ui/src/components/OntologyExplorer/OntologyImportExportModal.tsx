@@ -29,14 +29,7 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  Fragment,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { exportGlossaryInCSVFormat } from '../../rest/glossaryAPI';
@@ -595,9 +588,7 @@ const OntologyImportExportModal = ({
                       {isPreviewLoading
                         ? t('label.loading')
                         : isRdfFormat && preview
-                        ? highlightRdf(preview).map((node, index) => (
-                            <Fragment key={index}>{node}</Fragment>
-                          ))
+                        ? highlightRdf(preview)
                         : '—'}
                     </pre>
                   </div>

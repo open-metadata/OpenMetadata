@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Binding } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { SparqlPlaygroundResult } from '../../rest/rdfAPI';
+import { generateUUID } from '../../utils/StringUtils';
 import { LayoutType } from './OntologyExplorer.constants';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
@@ -59,13 +60,15 @@ const OntologyQueryResults = ({
 }: OntologyQueryResultsProps) => {
   const { t } = useTranslation();
   const [resultView, setResultView] = useState<ResultView>('table');
-  const resultTable = useMemo(
-    () => ({
-      rows: result.parsed?.results?.bindings ?? [],
+  const resultTable = useMemo(() => {
+    const rows = result.parsed?.results?.bindings ?? [];
+
+    return {
+      keyedRows: rows.map((row) => ({ key: generateUUID(), row })),
+      rows,
       variables: result.parsed?.head?.vars ?? [],
-    }),
-    [result.parsed]
-  );
+    };
+  }, [result.parsed]);
   const resultGraph = useMemo(
     () =>
       buildGraphFromSparqlBindings(
@@ -78,10 +81,13 @@ const OntologyQueryResults = ({
   );
   const conceptResults = useMemo(() => {
     const variable = resultTable.variables[0];
-    let values: string[] | null = null;
+    let values: Array<{ key: string; value: string }> | null = null;
 
     if (resultTable.variables.length === 1) {
-      values = resultTable.rows.map((row) => getResultValue(row[variable]));
+      values = resultTable.keyedRows.map(({ key, row }) => ({
+        key,
+        value: getResultValue(row[variable]),
+      }));
     }
 
     return values;
@@ -143,10 +149,10 @@ const OntologyQueryResults = ({
         <div
           className="tw:flex tw:flex-wrap tw:gap-2"
           data-testid="ontology-sparql-chips">
-          {conceptResults.map((value, index) => (
+          {conceptResults.map(({ key, value }) => (
             <span
               className="tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-primary"
-              key={`${value}-${index}`}>
+              key={key}>
               {value}
             </span>
           ))}
@@ -166,8 +172,8 @@ const OntologyQueryResults = ({
               </tr>
             </thead>
             <tbody>
-              {resultTable.rows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
+              {resultTable.keyedRows.map(({ key, row }) => (
+                <tr key={key}>
                   {resultTable.variables.map((variable) => (
                     <td
                       className="tw:border-b tw:border-secondary tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:text-secondary"

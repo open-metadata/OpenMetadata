@@ -25,6 +25,7 @@ import {
   OntologyExpression,
   RestrictionKind,
 } from '../../generated/api/data/createOntologyAxiom';
+import { generateUUID } from '../../utils/StringUtils';
 
 interface OntologyExpressionEditorProps {
   depth?: number;
@@ -34,6 +35,41 @@ interface OntologyExpressionEditorProps {
 }
 
 const MAX_EXPRESSION_DEPTH = 4;
+const EXPRESSION_RENDER_KEY = Symbol('expressionRenderKey');
+
+type RenderableOntologyExpression = OntologyExpression & {
+  [EXPRESSION_RENDER_KEY]?: string;
+};
+
+export const getExpressionRenderKey = (
+  expression: OntologyExpression
+): string => {
+  const renderableExpression = expression as RenderableOntologyExpression;
+  let renderKey = renderableExpression[EXPRESSION_RENDER_KEY];
+
+  if (!renderKey) {
+    renderKey = generateUUID();
+    // Keep editor identity out of callback equality checks and API JSON.
+    Object.defineProperty(renderableExpression, EXPRESSION_RENDER_KEY, {
+      configurable: true,
+      value: renderKey,
+    });
+  }
+
+  return renderKey;
+};
+
+const carryExpressionRenderKey = (
+  current: OntologyExpression,
+  next: OntologyExpression
+): OntologyExpression => {
+  Object.defineProperty(next, EXPRESSION_RENDER_KEY, {
+    configurable: true,
+    value: getExpressionRenderKey(current),
+  });
+
+  return next;
+};
 
 export const defaultExpression = (kind: ExpressionKind): OntologyExpression => {
   let expression: OntologyExpression;
@@ -63,6 +99,8 @@ export const defaultExpression = (kind: ExpressionKind): OntologyExpression => {
       break;
   }
 
+  getExpressionRenderKey(expression);
+
   return expression;
 };
 
@@ -85,7 +123,7 @@ const splitValues = (value: string) =>
 const OntologyExpressionEditor = ({
   depth = 0,
   expression,
-  onChange,
+  onChange: onExpressionChange,
   onRemove,
 }: OntologyExpressionEditorProps) => {
   const { t } = useTranslation();
@@ -112,17 +150,19 @@ const OntologyExpressionEditor = ({
     RestrictionKind.Max,
     RestrictionKind.Min,
   ].includes(restrictionKind);
+  const updateExpression = (next: OntologyExpression) =>
+    onExpressionChange(carryExpressionRenderKey(expression, next));
 
   const changeKind = (key: Key | null) => {
     if (key) {
-      onChange(defaultExpression(String(key) as ExpressionKind));
+      updateExpression(defaultExpression(String(key) as ExpressionKind));
     }
   };
 
   const changeRestriction = (key: Key | null) => {
     if (key) {
       const nextKind = String(key) as RestrictionKind;
-      onChange({
+      updateExpression({
         ...expression,
         cardinality: usesCardinality(nextKind)
           ? expression.cardinality ?? 1
@@ -144,18 +184,18 @@ const OntologyExpressionEditor = ({
     const next = operands.map((operand, position) =>
       position === index ? value : operand
     );
-    onChange({ ...expression, operands: next });
+    updateExpression({ ...expression, operands: next });
   };
 
   const removeOperand = (index: number) => {
-    onChange({
+    updateExpression({
       ...expression,
       operands: operands.filter((_, position) => position !== index),
     });
   };
 
   const addOperand = () => {
-    onChange({
+    updateExpression({
       ...expression,
       operands: [...operands, defaultExpression(ExpressionKind.NamedClass)],
     });
@@ -189,7 +229,7 @@ const OntologyExpressionEditor = ({
           isRequired
           label={t('label.concept-iri')}
           value={expression.classIri ?? ''}
-          onChange={(classIri) => onChange({ ...expression, classIri })}
+          onChange={(classIri) => updateExpression({ ...expression, classIri })}
         />
       ) : null}
 
@@ -199,7 +239,10 @@ const OntologyExpressionEditor = ({
           label={`${t('label.target')} ${t('label.concept-iri')}`}
           value={(expression.individualIris ?? []).join(', ')}
           onChange={(value) =>
-            onChange({ ...expression, individualIris: splitValues(value) })
+            updateExpression({
+              ...expression,
+              individualIris: splitValues(value),
+            })
           }
         />
       ) : null}
@@ -212,7 +255,7 @@ const OntologyExpressionEditor = ({
               label={`${t('label.property')} ${t('label.concept-iri')}`}
               value={expression.propertyIri ?? ''}
               onChange={(propertyIri) =>
-                onChange({ ...expression, propertyIri })
+                updateExpression({ ...expression, propertyIri })
               }
             />
             <Select
@@ -232,7 +275,10 @@ const OntologyExpressionEditor = ({
               type="number"
               value={String(expression.cardinality ?? 1)}
               onChange={(value) =>
-                onChange({ ...expression, cardinality: nonNegative(value) })
+                updateExpression({
+                  ...expression,
+                  cardinality: nonNegative(value),
+                })
               }
             />
           ) : null}
@@ -242,7 +288,7 @@ const OntologyExpressionEditor = ({
                 label={`${t('label.target')} ${t('label.concept-iri')}`}
                 value={expression.individualIri ?? ''}
                 onChange={(individualIri) =>
-                  onChange({
+                  updateExpression({
                     ...expression,
                     individualIri,
                     literal: individualIri ? undefined : expression.literal,
@@ -253,7 +299,7 @@ const OntologyExpressionEditor = ({
                 label={t('label.value')}
                 value={expression.literal?.value ?? ''}
                 onChange={(value) =>
-                  onChange({
+                  updateExpression({
                     ...expression,
                     individualIri: value ? undefined : expression.individualIri,
                     literal: value
@@ -268,7 +314,7 @@ const OntologyExpressionEditor = ({
                   label={`${t('label.data-type')} ${t('label.concept-iri')}`}
                   value={expression.literal.datatypeIri ?? ''}
                   onChange={(datatypeIri) =>
-                    onChange({
+                    updateExpression({
                       ...expression,
                       literal: {
                         datatypeIri,
@@ -284,7 +330,7 @@ const OntologyExpressionEditor = ({
             <OntologyExpressionEditor
               depth={depth + 1}
               expression={expression.filler}
-              onChange={(filler) => onChange({ ...expression, filler })}
+              onChange={(filler) => updateExpression({ ...expression, filler })}
             />
           ) : null}
         </div>
@@ -299,7 +345,7 @@ const OntologyExpressionEditor = ({
             <OntologyExpressionEditor
               depth={depth + 1}
               expression={operand}
-              key={`${operand.kind}-${index}`}
+              key={getExpressionRenderKey(operand)}
               onChange={(value) => changeOperand(index, value)}
               onRemove={() => removeOperand(index)}
             />

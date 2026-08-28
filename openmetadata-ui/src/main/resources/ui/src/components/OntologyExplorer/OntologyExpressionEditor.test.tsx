@@ -13,7 +13,10 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ExpressionKind } from '../../generated/api/data/createOntologyAxiom';
-import OntologyExpressionEditor from './OntologyExpressionEditor';
+import OntologyExpressionEditor, {
+  defaultExpression,
+  getExpressionRenderKey,
+} from './OntologyExpressionEditor';
 
 describe('OntologyExpressionEditor', () => {
   it('normalizes named individuals in an OWL enumeration', () => {
@@ -54,5 +57,27 @@ describe('OntologyExpressionEditor', () => {
       kind: ExpressionKind.Intersection,
       operands: [{ classIri: '', kind: ExpressionKind.NamedClass }],
     });
+  });
+
+  it('keeps render identity across edits without serializing it', () => {
+    const expression = defaultExpression(ExpressionKind.NamedClass);
+    const renderKey = getExpressionRenderKey(expression);
+    const onChange = jest.fn();
+    render(
+      <OntologyExpressionEditor expression={expression} onChange={onChange} />
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'https://example.test/Customer' },
+    });
+
+    const updatedExpression = onChange.mock.calls[0][0];
+
+    expect(updatedExpression).toEqual({
+      classIri: 'https://example.test/Customer',
+      kind: ExpressionKind.NamedClass,
+    });
+    expect(getExpressionRenderKey(updatedExpression)).toBe(renderKey);
+    expect(JSON.stringify(updatedExpression)).not.toContain(renderKey);
   });
 });

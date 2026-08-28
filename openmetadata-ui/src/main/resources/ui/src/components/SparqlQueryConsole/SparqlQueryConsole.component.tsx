@@ -290,7 +290,11 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     const vars = result.parsed.head?.vars ?? [];
     const rows = result.parsed.results?.bindings ?? [];
 
-    return { vars, rows };
+    return {
+      keyedRows: rows.map((row) => ({ key: generateUUID(), row })),
+      rows,
+      vars,
+    };
   }, [result]);
 
   // A single-variable SELECT is a list of concepts — render them as chips
@@ -301,9 +305,10 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     }
     const variable = tabularResult.vars[0];
 
-    return tabularResult.rows.map(
-      (row) => (row[variable] as Binding | undefined)?.value ?? ''
-    );
+    return tabularResult.keyedRows.map(({ key, row }) => ({
+      key,
+      value: (row[variable] as Binding | undefined)?.value ?? '',
+    }));
   }, [tabularResult]);
 
   return (
@@ -450,10 +455,10 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                       {t('message.sparql-no-rows')}
                     </Typography>
                   ) : (
-                    conceptChips.map((value, idx) => (
+                    conceptChips.map(({ key, value }) => (
                       <span
                         className="tw:rounded-full tw:border tw:border-utility-gray-200 tw:bg-primary tw:px-3 tw:py-1 tw:text-xs"
-                        key={`${value}-${idx}`}>
+                        key={key}>
                         {value}
                       </span>
                     ))
@@ -476,8 +481,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {tabularResult.rows.map((row, idx) => (
-                        <tr key={idx}>
+                      {tabularResult.keyedRows.map(({ key, row }) => (
+                        <tr key={key}>
                           {tabularResult.vars.map((v) => {
                             const binding = row[v] as Binding | undefined;
 

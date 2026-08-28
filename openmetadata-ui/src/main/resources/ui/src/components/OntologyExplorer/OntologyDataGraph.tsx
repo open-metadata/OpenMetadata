@@ -75,6 +75,7 @@ interface SemanticEdgeLayout {
   labelLeft: number;
   labelTop: number;
   path: string;
+  renderKey: string;
 }
 
 const CARD_WIDTH = 236;
@@ -210,16 +211,26 @@ function buildSemanticEdgeLayout(
     (edge) => positions.has(edge.from) && positions.has(edge.to)
   );
   const edgeId = (edge: OntologyEdge) =>
-    `${edge.from}-${edge.to}-${edge.relationType}`;
+    edge.id ?? `${edge.from}-${edge.to}-${edge.relationType}`;
+  const edgeOccurrences = new Map<string, number>();
+  const keyedEdges = relevantEdges.map((edge) => {
+    const id = edgeId(edge);
+    const occurrence = edgeOccurrences.get(id) ?? 0;
+    edgeOccurrences.set(id, occurrence + 1);
+
+    return {
+      edge,
+      renderKey: occurrence === 0 ? id : `${id}-${occurrence}`,
+    };
+  });
 
   // Fan the edges touching each card across its height so that parallel or
   // converging relations don't overlap on a single anchor point.
   const cardEdgeIds = new Map<string, string[]>();
-  relevantEdges.forEach((edge) => {
-    const id = edgeId(edge);
+  keyedEdges.forEach(({ edge, renderKey }) => {
     [edge.from, edge.to].forEach((cardId) => {
       const list = cardEdgeIds.get(cardId) ?? [];
-      list.push(id);
+      list.push(renderKey);
       cardEdgeIds.set(cardId, list);
     });
   });
@@ -232,18 +243,18 @@ function buildSemanticEdgeLayout(
     return (list.indexOf(id) - (list.length - 1) / 2) * EDGE_SLOT_SPACING;
   };
 
-  return relevantEdges.flatMap((edge) => {
+  return keyedEdges.flatMap(({ edge, renderKey }) => {
     const from = positions.get(edge.from);
     const to = positions.get(edge.to);
     if (!from || !to) {
       return [];
     }
-    const id = edgeId(edge);
 
     const x1 = from.left + CARD_HEADER_ANCHOR_X;
-    const y1 = from.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.from, id);
+    const y1 =
+      from.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.from, renderKey);
     const x2 = to.left + CARD_HEADER_ANCHOR_X;
-    const y2 = to.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.to, id);
+    const y2 = to.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.to, renderKey);
     const middleX = (x1 + x2) / 2;
     const middleY = (y1 + y2) / 2;
     const deltaX = x2 - x1;
@@ -259,6 +270,7 @@ function buildSemanticEdgeLayout(
         labelLeft: 0.25 * x1 + 0.5 * controlX + 0.25 * x2,
         labelTop: 0.25 * y1 + 0.5 * controlY + 0.25 * y2,
         path: `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`,
+        renderKey,
       },
     ];
   });
@@ -615,12 +627,12 @@ const OntologyDataGraph = ({
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"
           height={canvasHeight}
           width={canvasWidth}>
-          {renderedSemanticEdges.map(({ color, edge, path }, index) => (
+          {renderedSemanticEdges.map(({ color, path, renderKey }) => (
             <path
               d={path}
               data-testid="ontology-data-semantic-edge"
               fill="none"
-              key={`${edge.from}-${edge.to}-${edge.relationType}-${index}`}
+              key={`${renderKey}-path`}
               opacity="0.85"
               stroke={color}
               strokeDasharray="6 5"
@@ -630,7 +642,7 @@ const OntologyDataGraph = ({
         </svg>
 
         {renderedSemanticEdges.map(
-          ({ color, edge, labelLeft, labelTop }, index) => (
+          ({ color, edge, labelLeft, labelTop, renderKey }) => (
             <span
               className={classNames(
                 'tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2',
@@ -638,7 +650,7 @@ const OntologyDataGraph = ({
                 'tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold'
               )}
               data-testid="ontology-data-semantic-edge-label"
-              key={`${edge.from}-${edge.to}-${edge.relationType}-label-${index}`}
+              key={`${renderKey}-label`}
               style={{
                 borderColor: color,
                 color,
