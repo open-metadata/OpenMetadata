@@ -108,6 +108,9 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      eslint_has_findings: ${{ steps.lint_src.outputs.has_findings }}
+      eslint_summary: ${{ steps.lint_src.outputs.summary }}
+      eslint_details: ${{ steps.lint_src.outputs.details }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -153,8 +156,21 @@ jobs:
             exit 0
           fi
           TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
+          # Report findings BEFORE --fix, so the PR comment reflects what the
+          # contributor actually wrote. Reporting only; the gate is the git-diff
+          # check at the end of this step.
+          #
+          # Deliberately part of this step rather than its own: every `run:`
+          # executing PR-authored code in this pull_request_target job is a
+          # CodeQL "poisonable step". Adding a separate step would add another
+          # for no gain in isolation — it would run the same command with the
+          # same privileges.
           if [ -n "$TS_FILES" ]; then
+            yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
+            node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
             yarn organize-imports:cli $TS_FILES
+          else
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
           fi
           yarn lint:base --fix $CHANGED_FILES
           yarn pretty:base --write $CHANGED_FILES
@@ -415,7 +431,13 @@ jobs:
             const failures = checks.filter(c => c.result === 'failure');
             const commentId = '${{ steps.fc.outputs.comment-id }}';
 
-            if (failures.length === 0) {
+            const eslintFindings = '${{ needs.checkstyle.outputs.eslint_has_findings }}' === 'true';
+            const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
+            const eslintDetails  = ${{ toJSON(needs.checkstyle.outputs.eslint_details) }} || '';
+
+            // Warnings do not fail the build, so a comment posted only on
+            // failure would hide them entirely — which defeats the warn tier.
+            if (failures.length === 0 && !eslintFindings) {
               if (commentId) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
@@ -434,11 +456,28 @@ jobs:
               return lines.join('\n');
             });
 
+            const title = failures.length
+              ? '### ❌ UI Checkstyle Failed'
+              : '### ⚠️ UI Checkstyle passed — lint findings in changed files';
+
+            const eslintSection = eslintFindings
+              ? [
+                  `#### 🔍 ESLint findings in this PR's files — ${eslintSummary}`,
+                  '',
+                  'Errors block the build. Warnings do not yet — they are rules whose backlog is still',
+                  'being worked down, listed so this PR does not add to it.',
+                  '',
+                  eslintDetails,
+                  '',
+                ]
+              : [];
+
             const body = [
               '<!-- check:ui-checkstyle-summary -->',
-              '### ❌ UI Checkstyle Failed',
+              title,
               '',
               ...sections.flatMap(s => [s, '']),
+              ...eslintSection,
               '---',
               '**Fix locally (fast - only checks files changed in this branch):**',
               '```bash',
