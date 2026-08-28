@@ -13,7 +13,7 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
-import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
+import { get, isEmpty, isNull, isObject, startCase } from 'lodash';
 import { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
@@ -26,12 +26,177 @@ type KeyValuesProps = {
   schemaPropertyObject: Record<string, unknown>;
   schema: Record<string, unknown>;
   serviceCategory: string;
+  schemaContext?: Record<string, unknown>;
+};
+
+type SchemaObject = Record<string, unknown>;
+type RenderableValue = string | number | boolean | unknown[] | undefined;
+
+const isSchemaObject = (value: unknown): value is SchemaObject =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getSchemaObject = (value: unknown): SchemaObject | undefined =>
+  isSchemaObject(value) ? value : undefined;
+
+const getString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const isRenderableValue = (value: unknown): value is RenderableValue => {
+  if (value === undefined || Array.isArray(value)) {
+    return true;
+  }
+
+  const valueType = typeof value;
+
+  return (
+    valueType === 'string' || valueType === 'number' || valueType === 'boolean'
+  );
+};
+
+const isFilterPatternValue = (
+  value: SchemaObject
+): value is { includes: string[]; excludes: string[] } =>
+  Array.isArray(value.includes) &&
+  value.includes.every((item) => typeof item === 'string') &&
+  Array.isArray(value.excludes) &&
+  value.excludes.every((item) => typeof item === 'string');
+
+const getJsonPointerValue = (
+  schemaObject: SchemaObject,
+  reference: string
+): unknown => {
+  if (reference === '#') {
+    return schemaObject;
+  }
+
+  if (!reference.startsWith('#/')) {
+    return undefined;
+  }
+
+  return reference
+    .slice(2)
+    .split('/')
+    .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'))
+    .reduce<unknown>((current, part) => {
+      if (isSchemaObject(current)) {
+        return current[part];
+      }
+
+      if (Array.isArray(current)) {
+        const index = Number(part);
+
+        return Number.isInteger(index) ? current[index] : undefined;
+      }
+
+      return undefined;
+    }, schemaObject);
+};
+
+const resolveSchemaReference = (
+  schemaObject: unknown,
+  referenceScopes: SchemaObject[]
+): SchemaObject | undefined => {
+  if (!isSchemaObject(schemaObject)) {
+    return undefined;
+  }
+
+  let resolvedSchema = schemaObject;
+  const visitedReferences = new Set<string>();
+
+  while (true) {
+    const reference = getString(resolvedSchema.$ref);
+
+    if (!reference || visitedReferences.has(reference)) {
+      return resolvedSchema;
+    }
+
+    visitedReferences.add(reference);
+
+    const referencedSchema = referenceScopes
+      .map((scope) => getJsonPointerValue(scope, reference))
+      .find(isSchemaObject);
+
+    if (!referencedSchema) {
+      return resolvedSchema;
+    }
+
+    const schemaWithReferenceRemoved = { ...resolvedSchema };
+    delete schemaWithReferenceRemoved.$ref;
+    resolvedSchema = {
+      ...referencedSchema,
+      ...schemaWithReferenceRemoved,
+    };
+  }
+};
+
+const getSchemaObjects = (value: unknown): SchemaObject[] =>
+  Array.isArray(value) ? value.filter(isSchemaObject) : [];
+
+const matchesOneOfSchema = (
+  schemaObject: SchemaObject,
+  value: SchemaObject
+): boolean => {
+  const properties = getSchemaObject(schemaObject.properties);
+
+  if (!properties) {
+    return false;
+  }
+
+  return Object.entries(properties).some(([key, property]) => {
+    if (!(key in value)) {
+      return false;
+    }
+
+    const propertySchema = getSchemaObject(property);
+
+    if (!propertySchema) {
+      return false;
+    }
+
+    if ('const' in propertySchema) {
+      return propertySchema.const === value[key];
+    }
+
+    const enumValues = propertySchema.enum;
+
+    return (
+      Array.isArray(enumValues) &&
+      enumValues.length === 1 &&
+      enumValues[0] === value[key]
+    );
+  });
+};
+
+const getMatchingOneOfSchema = (
+  value: unknown,
+  oneOf: SchemaObject[],
+  referenceScopes: SchemaObject[]
+): SchemaObject | undefined => {
+  const valueObject = getSchemaObject(value);
+
+  if (!valueObject) {
+    return undefined;
+  }
+
+  const resolvedSchemas = oneOf
+    .map((schemaObject) =>
+      resolveSchemaReference(schemaObject, referenceScopes)
+    )
+    .filter((schemaObject): schemaObject is SchemaObject =>
+      Boolean(schemaObject)
+    );
+
+  return (
+    resolvedSchemas.find((schemaObject) =>
+      matchesOneOfSchema(schemaObject, valueObject)
+    ) ?? (resolvedSchemas.length === 1 ? resolvedSchemas[0] : undefined)
+  );
 };
 
 // Renders a basic input field with label and optional tooltip
 const renderInputField = (
   key: string,
-  value: string,
+  value: RenderableValue,
   description?: string,
   format?: string,
   title?: string
@@ -52,7 +217,7 @@ const renderInputField = (
         </Space>
       </Col>
       <Col span={16}>
-        {isArray(value) ? (
+        {Array.isArray(value) ? (
           <Select
             allowClear={false}
             bordered={false}
@@ -70,7 +235,7 @@ const renderInputField = (
             className="w-full border-none"
             data-testid="input-field"
             type={format === 'password' ? 'password' : 'text'}
-            value={value}
+            value={typeof value === 'boolean' ? String(value) : value}
           />
         )}
       </Col>
@@ -131,6 +296,7 @@ export const getKeyValues = ({
   schemaPropertyObject,
   schema,
   serviceCategory,
+  schemaContext = schema,
 }: KeyValuesProps): ReactNode => {
   try {
     return Object.keys(obj).map((key) => {
@@ -142,10 +308,23 @@ export const getKeyValues = ({
       }
 
       // Handle non-object and array values
-      if (!isObject(value) || isArray(value)) {
-        const { description, format, title } = schemaPropertyObject[key] ?? {};
+      if (!isSchemaObject(value)) {
+        const schemaProperty = resolveSchemaReference(
+          schemaPropertyObject[key],
+          [schemaContext, schema]
+        );
 
-        return renderInputField(key, value, description, format, title);
+        if (!isRenderableValue(value)) {
+          return null;
+        }
+
+        return renderInputField(
+          key,
+          value,
+          getString(schemaProperty?.description),
+          getString(schemaProperty?.format),
+          getString(schemaProperty?.title)
+        );
       }
 
       const serviceType = serviceCategory.slice(0, -1);
@@ -158,11 +337,20 @@ export const getKeyValues = ({
       if (
         filterPatternFields.includes(
           key as ServiceConnectionFilterPatternFields
-        )
+        ) &&
+        isFilterPatternValue(value)
       ) {
-        const { description, title } = schemaPropertyObject[key] ?? {};
+        const schemaProperty = resolveSchemaReference(
+          schemaPropertyObject[key],
+          [schemaContext, schema]
+        );
 
-        return renderFilterPattern(key, value, description, title);
+        return renderFilterPattern(
+          key,
+          value,
+          getString(schemaProperty?.description),
+          getString(schemaProperty?.title)
+        );
       }
 
       // Handle special service configurations
@@ -197,31 +385,42 @@ export const getKeyValues = ({
         }
       }
 
-      // Default object handling
-      const childProperties = schemaPropertyObject[key]?.properties;
+      const schemaProperty = resolveSchemaReference(schemaPropertyObject[key], [
+        schemaContext,
+        schema,
+      ]);
+      const childOneOf = getSchemaObjects(schemaProperty?.oneOf);
+
+      if (childOneOf.length > 0) {
+        const selectedOneOfSchema = getMatchingOneOfSchema(value, childOneOf, [
+          schemaContext,
+          schemaProperty ?? {},
+          schema,
+        ]);
+        const selectedProperties = getSchemaObject(
+          selectedOneOfSchema?.properties
+        );
+
+        return selectedProperties
+          ? getKeyValues({
+              obj: value,
+              schemaPropertyObject: selectedProperties,
+              schema,
+              serviceCategory,
+              schemaContext: selectedOneOfSchema,
+            })
+          : null;
+      }
+
+      const childProperties = getSchemaObject(schemaProperty?.properties);
+
       if (childProperties) {
         return getKeyValues({
           obj: value,
           schemaPropertyObject: childProperties,
           schema,
           serviceCategory,
-        });
-      }
-
-      // Handle oneOf schema for nested object fields (e.g. GCP credentials)
-      const childOneOf = schemaPropertyObject[key]?.oneOf;
-      if (childOneOf) {
-        return childOneOf.map((oneOfSchema: Record<string, unknown>) => {
-          if (oneOfSchema.properties) {
-            return getKeyValues({
-              obj: value,
-              schemaPropertyObject: oneOfSchema.properties,
-              schema,
-              serviceCategory,
-            });
-          }
-
-          return null;
+          schemaContext: schemaProperty,
         });
       }
 
@@ -230,6 +429,7 @@ export const getKeyValues = ({
         schemaPropertyObject: {},
         schema,
         serviceCategory,
+        schemaContext,
       });
     });
   } catch {
