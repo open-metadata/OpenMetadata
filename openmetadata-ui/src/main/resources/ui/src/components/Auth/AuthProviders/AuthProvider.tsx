@@ -37,7 +37,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
   REFRESHABLE_AUTH_ERRORS,
   UN_AUTHORIZED_EXCLUDED_PATHS,
@@ -69,7 +68,6 @@ import {
   readAppModeHint,
   readAppModeSession,
   resolveEffectiveAppMode,
-  resolveInitialAppMode,
   setAppDefaultMode,
   translateWireMode,
   writeAppMode,
@@ -367,44 +365,11 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      // Non-default app modes (e.g. AskCollate's 'ai') own their own
-      // shell and land pages — navigating to /my-data would drop the
-      // user on the Classic My Data page even though their tab is in
-      // AI mode. Route to `/` and let the mode-specific route tree
-      // render its own landing page.
-      //
-      // At post-login redirect time `useResolvedAppMode` has not yet
-      // run, so the useAppMode store alone only reflects the
-      // sessionStorage tuple (empty on a fresh login). `resolveInitialAppMode`
-      // consults the same synchronously-available signals as the
-      // resolver — session tuple → fresh cross-tab hint → user's
-      // stored preference — so a user whose "remember" checkbox is on
-      // AI or whose sibling tab is in AI lands on `/` from the start
-      // instead of being bounced through `/my-data` and then flipped
-      // to AI by the resolver a tick later. Persona (async) stays
-      // with the resolver.
-      const userName = useApplicationStore.getState().currentUser?.name;
-      const appMode = resolveInitialAppMode(userName);
-      if (appMode !== DEFAULT_APP_MODE) {
-        navigate(ROUTES.HOME);
-
-        return;
-      }
-
-      // Check if provider uses OidcAuthenticator which has routing logic
-      const usesOidcAuthenticator = [
-        AuthProviderEnum.Google,
-        AuthProviderEnum.CustomOidc,
-        AuthProviderEnum.AwsCognito,
-      ].includes(authConfig?.provider as AuthProviderEnum);
-
-      // For providers using OidcAuthenticator, navigate to HOME for routing
-      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
-      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
-        navigate(ROUTES.HOME);
-      } else {
-        navigate(ROUTES.MY_DATA);
-      }
+      // Route to `/` and let the (mode-specific) route tree render its
+      // own landing page. Rendering in place at `/` is provider-agnostic
+      // and lets non-default app modes (e.g. AskCollate's AI) own their
+      // own landing page without racing an early client-side redirect.
+      navigate(ROUTES.HOME);
     }
   };
 

@@ -40,6 +40,9 @@ interface MenuItem {
   testId: string;
 }
 
+const renderPendingIcon = (isPending: boolean) =>
+  isPending ? <Loader size="x-small" /> : null;
+
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   allowedActions,
   enabled,
@@ -152,9 +155,7 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
           {items.map((item) => (
             <Dropdown.Item
               data-testid={item.testId}
-              icon={() =>
-                pendingAction === item.id ? <Loader size="x-small" /> : null
-              }
+              icon={() => renderPendingIcon(pendingAction === item.id)}
               id={item.id}
               isDisabled={Boolean(pendingAction)}
               key={item.id}
