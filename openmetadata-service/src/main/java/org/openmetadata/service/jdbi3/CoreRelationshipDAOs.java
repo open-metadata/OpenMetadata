@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -53,6 +54,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.ontology.RelationshipTypeIds;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
@@ -964,11 +966,19 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT rt.id AS relationshipTypeId, rt.name AS relationshipTypeName, COUNT(*) AS cnt "
-            + "FROM entity_relationship er JOIN relationship_type_entity rt "
-            + "ON rt.id = er.relationshipTypeId WHERE er.fromEntity = :fromEntity "
+        "SELECT MAX(rt.id) AS relationshipTypeId, "
+            + "COALESCE(rt.name, NULLIF(er.relationType, ''), '"
+            + DEFAULT_RELATION_TYPE
+            + "') AS relationshipTypeName, COUNT(*) AS cnt "
+            + "FROM entity_relationship er LEFT JOIN relationship_type_entity rt "
+            + "ON rt.id = er.relationshipTypeId OR (er.relationshipTypeId IS NULL "
+            + "AND rt.name = COALESCE(NULLIF(er.relationType, ''), '"
+            + DEFAULT_RELATION_TYPE
+            + "')) WHERE er.fromEntity = :fromEntity "
             + "AND er.toEntity = :toEntity AND er.relation = :relation "
-            + "GROUP BY rt.id, rt.name ORDER BY rt.name")
+            + "GROUP BY COALESCE(rt.name, NULLIF(er.relationType, ''), '"
+            + DEFAULT_RELATION_TYPE
+            + "') ORDER BY relationshipTypeName")
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
     List<RelationshipTypeUsage> countByRelationType(
         @Bind("fromEntity") String fromEntity,
@@ -1619,11 +1629,16 @@ public interface CoreRelationshipDAOs {
     class RelationTypeUsageCountMapper implements RowMapper<RelationshipTypeUsage> {
       @Override
       public RelationshipTypeUsage map(ResultSet rs, StatementContext ctx) throws SQLException {
+        String relationshipTypeName = rs.getString("relationshipTypeName");
+        String relationshipTypeId = rs.getString("relationshipTypeId");
         EntityReference relationshipType =
             new EntityReference()
-                .withId(UUID.fromString(rs.getString("relationshipTypeId")))
+                .withId(
+                    relationshipTypeId == null
+                        ? RelationshipTypeIds.stableId(relationshipTypeName)
+                        : UUID.fromString(relationshipTypeId))
                 .withType(Entity.RELATIONSHIP_TYPE)
-                .withName(rs.getString("relationshipTypeName"));
+                .withName(relationshipTypeName);
         return new RelationshipTypeUsage()
             .withRelationshipType(relationshipType)
             .withCount(rs.getInt("cnt"));
