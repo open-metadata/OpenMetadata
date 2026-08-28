@@ -134,7 +134,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     try {
       setIsEntityRestoring(true);
       const isRestoreSuccessful = await onRestoreEntity?.();
-      if (isRestoreSuccessful !== false) {
+      if (isRestoreSuccessful === true) {
         setShowReactiveModal(false);
       }
     } finally {

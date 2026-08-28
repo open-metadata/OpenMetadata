@@ -144,7 +144,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
   const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
-  const [isRestoringTestCase, setIsRestoringTestCase] = useState(false);
+  const [restoringTestCaseAction, setRestoringTestCaseAction] =
+    useState<TestCaseAction>();
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
@@ -284,15 +285,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleRestoreTestCase = async () => {
-    // Snapshot the action so completion clears only its own modal; the user may
-    // dismiss it and select another row while the restore request is pending.
+    // Snapshot the action so selection and loading cleanup apply only to this
+    // request; the user may start another restore while this one is pending.
     const restoreAction = selectedTestCase;
     const testCase = restoreAction?.data;
     if (!testCase?.id) {
       return;
     }
 
-    setIsRestoringTestCase(true);
+    setRestoringTestCaseAction(restoreAction);
     try {
       await restoreTestCase(testCase.id);
       showSuccessToast(
@@ -307,7 +308,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsRestoringTestCase(false);
+      setRestoringTestCaseAction((currentAction) =>
+        currentAction === restoreAction ? undefined : currentAction
+      );
     }
   };
 
@@ -1011,7 +1014,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         cancelText={t('label.cancel')}
         confirmText={t('label.restore')}
         header={t('label.restore-entity', { entity: t('label.test-case') })}
-        isLoading={isRestoringTestCase}
+        isLoading={restoringTestCaseAction === selectedTestCase}
         visible={selectedTestCase?.action === 'RESTORE'}
         onCancel={handleCancel}
         onConfirm={handleRestoreTestCase}

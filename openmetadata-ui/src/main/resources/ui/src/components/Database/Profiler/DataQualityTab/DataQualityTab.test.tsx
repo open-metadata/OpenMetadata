@@ -1492,20 +1492,28 @@ describe('DataQualityTab test', () => {
       expect(afterDeleteAction).toHaveBeenCalled();
     });
 
-    it('should preserve a new selection when an older restore finishes', async () => {
-      let resolveRestore: (() => void) | undefined;
+    it('should preserve the newer restore loading state when an older restore finishes', async () => {
+      let resolveFirstRestore: (() => void) | undefined;
+      let resolveSecondRestore: (() => void) | undefined;
       const afterDeleteAction = jest.fn();
       const secondDeletedTestCase = {
         ...deletedTestCase,
         id: 'second-deleted-test-case-id',
         name: 'second_deleted_test_case',
       };
-      (restoreTestCase as jest.Mock).mockImplementationOnce(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveRestore = () => resolve();
-          })
-      );
+      (restoreTestCase as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveFirstRestore = () => resolve();
+            })
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveSecondRestore = () => resolve();
+            })
+        );
       render(
         <DataQualityTab
           {...mockProps}
@@ -1535,16 +1543,31 @@ describe('DataQualityTab test', () => {
       fireEvent.click(
         await screen.findByTestId(`restore-${secondDeletedTestCase.name}`)
       );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenLastCalledWith(
+          secondDeletedTestCase.id
+        )
+      );
 
       expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+      expect(screen.getByTestId('submit-btn-loading')).toBeInTheDocument();
 
-      await act(async () => resolveRestore?.());
+      await act(async () => resolveFirstRestore?.());
 
-      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalled());
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalledTimes(1));
 
       expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+      expect(screen.getByTestId('submit-btn-loading')).toBeInTheDocument();
       expect(showSuccessToast).toHaveBeenCalled();
       expect(showErrorToast).not.toHaveBeenCalled();
+
+      await act(async () => resolveSecondRestore?.());
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalledTimes(2));
+
+      expect(screen.queryByText('ConfirmationModal')).not.toBeInTheDocument();
     });
 
     it('should keep the restore modal open and report restore failures', async () => {

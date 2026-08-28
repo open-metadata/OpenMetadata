@@ -35,8 +35,8 @@ export interface ManageButtonProps {
   isAsyncDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
-  /** Return false when a handled failure should leave the confirmation open. */
-  onRestoreEntity?: () => Promise<boolean | void>;
+  /** Return true only after the entity has been restored successfully. */
+  onRestoreEntity?: () => Promise<boolean>;
   deleted?: boolean;
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
