@@ -25,6 +25,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
+import { Icon } from '../../common/Icon/Icon';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
@@ -78,6 +79,14 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
               to={redirectLink}>
               <TagChip
                 data-testid="tags"
+                icon={
+                  tag.style?.iconURL ? (
+                    <Icon
+                      iconValue={tag.style.iconURL}
+                      size={14}
+                    />
+                  ) : undefined
+                }
                 label={tagName}
                 labelDataTestId={`tag-${tag.tagFQN}`}
                 size="large"
