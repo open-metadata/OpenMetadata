@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.ingestion.ometa.client import APIError
 from metadata.sampler.models import PartitionProfilerConfig
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow
@@ -211,9 +212,14 @@ def run_ingestion(metadata, ingestion_config, datalake_service_name):
     yield
     db_service = metadata.get_by_name(entity=DatabaseService, fqn=datalake_service_name)
     if db_service:
-        metadata.delete(
-            DatabaseService, db_service.id, recursive=True, hard_delete=True
-        )
+        try:
+            metadata.delete(
+                DatabaseService, db_service.id, recursive=True, hard_delete=True
+            )
+        except APIError:
+            # The recursive delete may commit before pipeline undeployment fails.
+            if metadata.get_by_name(entity=DatabaseService, fqn=datalake_service_name):
+                raise
 
 
 @pytest.fixture(scope="class")
