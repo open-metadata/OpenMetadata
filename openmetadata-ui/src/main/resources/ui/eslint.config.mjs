@@ -27,6 +27,7 @@ import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 
 export default [
   // Base recommended configs
@@ -105,6 +106,7 @@ export default [
       i18next,
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
+      'openmetadata-ui-patterns': openMetadataUiPatterns,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -321,6 +323,7 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
