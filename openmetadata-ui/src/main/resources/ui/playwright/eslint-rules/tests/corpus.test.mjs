@@ -73,9 +73,10 @@ test('the playwright corpus stays TypeScript-only', () => {
   ]);
 
   // An allowlist, not a list of banned extensions: Playwright's default
-  // testMatch collects .js/.jsx/.mjs/.cjs/.mts/.cts as well as .ts/.tsx, and
-  // eslint.config.mjs scopes the guardrails to .ts/.tsx only. Naming what is
-  // permitted keeps any future module extension closed by default.
+  // testMatch collects .js/.jsx/.mjs/.cjs/.mts/.cts as well as .ts/.tsx, while
+  // the guardrail globs cover only .js/.jsx/.ts/.tsx. So .mjs/.cjs/.mts/.cts
+  // would run unlinted, and .js/.jsx are linted but still do not belong here.
+  // Naming what is permitted keeps any future module extension closed too.
   const MODULE_EXTENSION = /\.[cm]?[jt]sx?$/;
   const ALLOWED_EXTENSION = /\.tsx?$/;
 
@@ -102,10 +103,9 @@ test('the playwright corpus stays TypeScript-only', () => {
   assert.deepStrictEqual(
     offenders,
     [],
-    `Non-TypeScript modules found in the Playwright corpus: ${offenders.join(
-      ', '
-    )}. ` +
-      'Playwright collects these but eslint.config.mjs scopes the guardrail ' +
-      'rules to .ts/.tsx, so they would run unlinted. Convert them to .ts/.tsx.'
+    `Specs must be .ts/.tsx; found: ${offenders.join(', ')}. ` +
+      'Playwright collects all of these. .mjs/.cjs/.mts/.cts fall outside the ' +
+      'guardrail globs entirely and would run unlinted; .js/.jsx are linted but ' +
+      'the corpus is TypeScript by convention. Convert them to .ts/.tsx.'
   );
 });
