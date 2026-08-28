@@ -13,15 +13,14 @@ name: UI Checkstyle
 
 on:
   merge_group:
-  # Same-repo PRs run here: pull_request resolves the workflow from the PR
-  # branch itself, so a release branch is checked by its own definition.
+  # Same-repo PRs: uses this branch's own workflow definition.
   pull_request:
     types:
       - opened
       - synchronize
       - reopened
       - ready_for_review
-  # Fork PRs stay here: they need the label gate and base-branch context.
+  # Fork PRs: need secrets and the "safe to test" gate.
   pull_request_target:
     types:
       - opened
@@ -34,11 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Keyed by event: pull_request and pull_request_target both fire for the same
-  # change, but the authorize gate only picks the right one after the run is
-  # scheduled. A shared group lets the run that is about to skip cancel the run
-  # that performs validation — and a required check then passes having validated
-  # nothing. Separate groups keep each event cancelling only its own reruns.
+  # Keyed by event so the two PR events don't cancel each other.
   group: ui-checkstyle-${{ github.event_name }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
@@ -885,18 +880,8 @@ jobs:
               comment_id: process.env.COMMENT_ID
             })
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # Required status checks.
-  #
-  # 1.13.x-protection requires checks named `checkstyle` and `ui-checkstyle`.
-  # Required checks are matched by NAME, not by workflow, so this branch has to
-  # emit those names itself. These two jobs summarise the jobs above rather than
-  # duplicating their work.
-  #
-  # always() so they still report when the work above is skipped (a non-UI PR):
-  # a skipped required check never reports at all, which leaves PRs waiting on a
-  # status forever.
-  # ──────────────────────────────────────────────────────────────────────────
+  # Required status checks. Branch protection matches on job name, so these
+  # summarise the jobs above. always() so they still report when those skip.
   checkstyle:
     needs:
       - check-changes
