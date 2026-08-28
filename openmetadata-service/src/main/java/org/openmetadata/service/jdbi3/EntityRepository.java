@@ -980,13 +980,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Return the parent's EntityReference without loading the parent entity. Subclasses override this
-   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}. A type that can
-   * have several CONTAINS parents at once (e.g. a test case, under both a test suite and a test
-   * definition) must override this (or {@link #setInheritedFields(List, Fields)}) to name the one it
-   * inherits from -- otherwise the ancestor fallback resolves an arbitrary CONTAINS parent.
-   */
-  /**
    * Batch-resolve EntityReferences by id for the bulk field fetchers.
    *
    * <p>Fails fast on an id that cannot be resolved, preserving the contract of the per-record
@@ -1013,6 +1006,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return refsById;
   }
 
+  /**
+   * Return the parent's EntityReference without loading the parent entity. Subclasses override this
+   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}. A type that can
+   * have several CONTAINS parents at once (e.g. a test case, under both a test suite and a test
+   * definition) must override this (or {@link #setInheritedFields(List, Fields)}) to name the one it
+   * inherits from -- otherwise the ancestor fallback resolves an arbitrary CONTAINS parent.
+   */
   protected EntityReference getParentReference(T entity) {
     return null;
   }

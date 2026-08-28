@@ -86,7 +86,6 @@ public class TagUsageCleanup {
 
     try {
       long totalTagUsages = collectionDAO.tagUsageDAO().getTotalTagUsageCount();
-      result.setTotalTagUsagesScanned((int) totalTagUsages);
 
       LOG.info(
           "Found {} total tag usages to scan. Processing in batches of {}",
@@ -136,6 +135,10 @@ public class TagUsageCleanup {
         }
       }
 
+      // The keyset scan deliberately excludes NULL-hash rows and the NULL-hash sweep is capped,
+      // so the row count of the table is not what was actually walked. Report the real figure --
+      // the same one the logs below print.
+      result.setTotalTagUsagesScanned(processedCount);
       result.setOrphanedTagUsagesFound(result.getOrphanedTagUsages().size());
 
       LOG.info(
