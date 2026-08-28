@@ -27,10 +27,19 @@ import './sso-configuration-form-array-field-template.less';
 
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;
+  const labelStr = (label as string) ?? '';
 
-  const tagContent = (
-    <span className="ant-select-selection-item">
+  const labelNode = labelStr ? (
+    <Tooltip title={labelStr}>
       <span className="ant-select-selection-item-content">{label}</span>
+    </Tooltip>
+  ) : (
+    <span className="ant-select-selection-item-content">{label}</span>
+  );
+
+  return (
+    <span className="ant-select-selection-item">
+      {labelNode}
       {closable && (
         <button className="ant-select-selection-item-remove" onClick={onClose}>
           <CloseIcon width={8} />
@@ -38,13 +47,6 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
       )}
     </span>
   );
-
-  const labelStr = (label as string) ?? '';
-  if (labelStr) {
-    return <Tooltip title={labelStr}>{tagContent}</Tooltip>;
-  }
-
-  return tagContent;
 };
 
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {

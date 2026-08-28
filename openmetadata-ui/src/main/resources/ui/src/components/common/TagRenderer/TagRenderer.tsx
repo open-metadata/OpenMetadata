@@ -21,9 +21,18 @@ export const TagRenderer = (props: CustomTagProps) => {
       ? `${label.substring(0, 12)}...`
       : label;
 
-  const tagContent = (
+  const labelNode =
+    typeof label === 'string' && label.length > 12 ? (
+      <Tooltip title={label}>
+        <span>{displayLabel}</span>
+      </Tooltip>
+    ) : (
+      <span>{displayLabel}</span>
+    );
+
+  return (
     <span className="ant-select-selection-item">
-      {displayLabel}
+      {labelNode}
       {closable && (
         <button className="selected-chip-tag-remove" onClick={onClose}>
           <CloseOutlined />
@@ -31,11 +40,4 @@ export const TagRenderer = (props: CustomTagProps) => {
       )}
     </span>
   );
-
-  // Show tooltip only if label is truncated
-  if (typeof label === 'string' && label.length > 12) {
-    return <Tooltip title={label}>{tagContent}</Tooltip>;
-  }
-
-  return tagContent;
 };

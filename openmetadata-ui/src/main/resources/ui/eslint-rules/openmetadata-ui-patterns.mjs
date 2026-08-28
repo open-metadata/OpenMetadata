@@ -62,4 +62,8 @@ const noRawTitleAttribute = {
   },
 };
 
-export default noRawTitleAttribute;
+export default {
+  rules: {
+    'no-raw-title-attribute': noRawTitleAttribute,
+  },
+};
