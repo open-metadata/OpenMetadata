@@ -46,6 +46,26 @@ if ! compgen -G "openmetadata-dist/target/openmetadata-*.tar.gz" >/dev/null; the
   exit 1
 fi
 
+# The two Dockerfile.dockerignore files are allowlists, so a path that gets
+# deleted or renamed leaves behind a `!` line that re-includes nothing. That is
+# harmless to the build and therefore invisible -- which is exactly how the two
+# sibling files drift apart.
+stale_includes=""
+for ignore in docker/docker-compose-quickstart/Dockerfile.dockerignore \
+              docker/development/Dockerfile.dockerignore; do
+  while IFS= read -r entry; do
+    path="${entry#!}"
+    case "$path" in
+      *[*?]*) compgen -G "$path" >/dev/null 2>&1 || stale_includes="$stale_includes $ignore:$path" ;;
+      *)      [ -e "${path%/}" ] || stale_includes="$stale_includes $ignore:$path" ;;
+    esac
+  done < <(grep '^!' "$ignore")
+done
+if [ -n "$stale_includes" ]; then
+  echo "stale .dockerignore re-include(s), the path no longer exists:$stale_includes"
+  exit 1
+fi
+
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "==> Building $IMAGE"
   docker build -f docker/development/Dockerfile -t "$IMAGE" .
