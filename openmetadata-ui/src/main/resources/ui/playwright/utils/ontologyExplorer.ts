@@ -12,9 +12,11 @@
  */
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
+import { sidebarClick } from '../utils/sidebar';
 
 export interface GraphTermRef {
   id: string;
@@ -54,6 +56,7 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
 }
 
 export async function navigateToOntologyExplorer(page: Page) {
+  await redirectToHomePage(page);
   const glossaryResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/glossaries') &&
@@ -61,7 +64,8 @@ export async function navigateToOntologyExplorer(page: Page) {
     { timeout: 30000 }
   );
 
-  await Promise.all([page.goto('/governance/ontology'), glossaryResponse]);
+  await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
+  await glossaryResponse;
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
 }
 

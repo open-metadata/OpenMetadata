@@ -62,7 +62,11 @@ const isAssetCountResponse = (
 const isStudioDataGraph = (
   value: unknown
 ): value is {
-  clusters: Array<{ assetCount: number; term: { id: string } }>;
+  clusters: Array<{
+    assetCount: number;
+    assets: Array<{ entity: { id: string } }>;
+    term: { id: string };
+  }>;
 } =>
   typeof value === 'object' &&
   value !== null &&
@@ -74,6 +78,18 @@ const isStudioDataGraph = (
       cluster !== null &&
       'assetCount' in cluster &&
       typeof cluster.assetCount === 'number' &&
+      'assets' in cluster &&
+      Array.isArray(cluster.assets) &&
+      cluster.assets.every(
+        (asset: unknown) =>
+          typeof asset === 'object' &&
+          asset !== null &&
+          'entity' in asset &&
+          typeof asset.entity === 'object' &&
+          asset.entity !== null &&
+          'id' in asset.entity &&
+          typeof asset.entity.id === 'string'
+      ) &&
       'term' in cluster &&
       typeof cluster.term === 'object' &&
       cluster.term !== null &&
@@ -383,13 +399,35 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
         );
       });
       await page.getByRole('tab', { name: 'Data' }).click();
-      expect((await dataResponse).ok()).toBe(true);
+      const initialDataResponse = await dataResponse;
+      const initialDataBody: unknown = initialDataResponse.ok()
+        ? await initialDataResponse.json()
+        : undefined;
+
+      expect(initialDataResponse.ok(), await initialDataResponse.text()).toBe(
+        true
+      );
+      expect(isStudioDataGraph(initialDataBody)).toBe(true);
+      if (!isStudioDataGraph(initialDataBody)) {
+        throw new Error('Ontology Studio data response is invalid');
+      }
+
+      const primaryCluster = initialDataBody.clusters.find(
+        (cluster) => cluster.term.id === primaryTerm.responseData.id
+      );
+      const previewAssetId = primaryCluster?.assets[0]?.entity.id;
+
+      expect(previewAssetId).toBeTruthy();
+      if (!previewAssetId) {
+        throw new Error('Primary cluster did not return a preview asset');
+      }
+
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-data-edge-legend')).toBeVisible();
       await assertStudioDesignContract(
         page,
         primaryTerm.responseData.id,
-        tableFixture.entityResponseData.id
+        previewAssetId
       );
       const primaryAssetRows = page
         .getByTestId(`ontology-data-cluster-${primaryTerm.responseData.id}`)

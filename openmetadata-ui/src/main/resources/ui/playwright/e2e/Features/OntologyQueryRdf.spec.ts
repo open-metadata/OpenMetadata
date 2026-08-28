@@ -173,7 +173,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
       );
       await page
         .getByTestId(
-          `ontology-query-suggestion-relatedTo-${target.responseData.id}`
+          `ontology-query-suggestion-ontology-relatedTo-${target.responseData.id}`
         )
         .click();
       const queryResponse = await queryResponsePromise;
