@@ -44,15 +44,15 @@ export type GlossaryFunctionRef = {
 // because this store's fetchChildrenCount is shared by every Terms tab badge
 // across the app, each fetching a different fqn concurrently.
 //
-// Deliberately NEVER reset (not even by resetChildrenCounts, which only
-// clears the childrenCounts data map): if this were reset back to {} while a
-// request was still in-flight, a fetch for the same fqn issued right after
-// the reset would restart its own counter at the same number the stale
-// in-flight request captured before the reset — letting that stale response
-// coincidentally pass the "is this still the latest?" check and briefly
-// overwrite the fresh count. Since the counter only ever increases for a
-// given fqn, a pre-reset in-flight request's captured seq can never match
-// again, no matter how many later requests for that fqn have since fired.
+// Deliberately NEVER reset back to {} or to 0 — resetChildrenCounts instead
+// bumps each tracked fqn's counter forward (see its own comment below). A
+// hard reset to {} would let a fetch for the same fqn issued right after the
+// reset restart its own counter at the same number a still-in-flight,
+// pre-reset request for that fqn had already captured — letting that stale
+// response coincidentally pass the "is this still the latest?" check and
+// briefly overwrite the fresh count. Since the counter only ever increases
+// for a given fqn, no later request (from a fresh fetch OR a reset's bump)
+// can ever coincidentally re-match a value already captured by an earlier one.
 const childrenCountRequestSeqRef: Record<string, number> = {};
 
 export const useGlossaryStore = create<{
@@ -94,9 +94,11 @@ export const useGlossaryStore = create<{
   fetchChildrenCount: (fqn: string) => Promise<void>;
   // Clears the childrenCounts data map, so a previously-viewed entity's
   // cached count can't flash on a page for a different (or the same,
-  // revisited) fqn before its own fresh fetch lands. Deliberately leaves
-  // childrenCountRequestSeqRef untouched — see its own comment above for why
-  // resetting it would reopen a stale-response race.
+  // revisited) fqn before its own fresh fetch lands. Also bumps
+  // childrenCountRequestSeqRef forward (never resets it — see its own
+  // comment above) so any request still in-flight at reset time is
+  // discarded on arrival, even if no replacement fetch for that fqn has
+  // fired yet.
   resetChildrenCounts: () => void;
 }>()((set, get) => ({
   glossaries: [],
@@ -273,6 +275,17 @@ export const useGlossaryStore = create<{
     }
   },
   resetChildrenCounts: () => {
+    // Bump (never reset to 0 — see the module-level comment above) every
+    // fqn's counter that's been fetched before, so any request still
+    // in-flight for it at reset time captured a requestSeq strictly less
+    // than the bumped value and is discarded when it resolves — even if no
+    // replacement request for that fqn has fired yet. Without this, a
+    // stale success/error from a previous view could still pass the
+    // staleness check and repopulate the badge with an obsolete count
+    // until the next fetch overwrites it.
+    for (const fqn of Object.keys(childrenCountRequestSeqRef)) {
+      childrenCountRequestSeqRef[fqn] += 1;
+    }
     set({ childrenCounts: {} });
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {

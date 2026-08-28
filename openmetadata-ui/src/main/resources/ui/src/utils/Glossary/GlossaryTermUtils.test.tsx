@@ -454,6 +454,52 @@ describe('getGlossaryTermDetailPageTabs', () => {
       ).toBe(7);
     });
 
+    // Real reviewer feedback: a reset must invalidate an in-flight request
+    // immediately, not only once a replacement request for the same fqn
+    // fires. Without this, a stale success from a previous view can still
+    // repopulate the badge with an obsolete count until the next fetch
+    // happens to overwrite it — which may never come if the user doesn't
+    // revisit that fqn.
+    it('discards a request in-flight at reset time even when no replacement request for that fqn ever fires', async () => {
+      let resolveStaleRequest: (value: {
+        data: never[];
+        paging: { total: number };
+      }) => void;
+      const staleRequest = new Promise<{
+        data: never[];
+        paging: { total: number };
+      }>((resolve) => {
+        resolveStaleRequest = resolve;
+      });
+      mockGetFirstLevelGlossaryTermsPaginated.mockImplementationOnce(
+        () => staleRequest
+      );
+
+      const stalePromise = useGlossaryStore
+        .getState()
+        .fetchChildrenCount('Finance.Revenue');
+
+      await waitFor(() => {
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(
+          1
+        );
+      });
+
+      // The user navigates away while the request above is still in-flight.
+      useGlossaryStore.getState().resetChildrenCounts();
+
+      // The stale, pre-reset request resolves. No new fetch for this fqn
+      // has been issued since the reset.
+      await act(async () => {
+        resolveStaleRequest({ data: [], paging: { total: 4 } });
+        await stalePromise;
+      });
+
+      expect(
+        useGlossaryStore.getState().childrenCounts['Finance.Revenue']
+      ).toBeUndefined();
+    });
+
     // useGlossary.store seeds termsStatusFilter with the default filter
     // string, so a genuinely undefined termsStatusFilter here only happens
     // once the table has mounted and the user explicitly selected "All"
