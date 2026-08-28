@@ -135,7 +135,7 @@ INTERNAL_TOPIC_CONFIG_KEYS = (
 )
 
 
-def internal_topic_names(connector_config: Optional[dict]) -> set[str]:  # noqa: UP045
+def extract_internal_topic_names(connector_config: Optional[dict]) -> set[str]:  # noqa: UP045
     """
     Topic names a connector creates for its own bookkeeping, derived from its config.
 
@@ -492,17 +492,57 @@ class KafkaConnectClient:
             logger.debug(traceback.format_exc())
         return None
 
+    def _list_data_topics_from_api(
+        self,
+        connector: str,
+        connector_config: Optional[dict],  # noqa: UP045
+    ) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+        """
+        The topics the Connect runtime says this connector touched, minus its own
+        bookkeeping topics.
+
+        Returns None when the runtime has nothing to say, which is what makes the caller
+        fall through to the config-declared names.
+        """
+        topics = self._list_topics_from_api(connector)
+        if not topics:
+            return None
+
+        excluded = extract_internal_topic_names(connector_config)
+        data_topics = [topic for topic in topics if topic.name not in excluded]
+        dropped = len(topics) - len(data_topics)
+        if dropped:
+            logger.debug(
+                f"Excluded {dropped} internal topic(s) from connector '{connector}': "
+                f"{sorted(excluded & {topic.name for topic in topics})}"
+            )
+        return data_topics or None
+
+    @staticmethod
+    def _parse_topics_from_config(connector_config: Optional[dict]) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+        """Topic names written explicitly in the connector config, as a sink's `topics` list is."""
+        if not connector_config:
+            return None
+
+        topics = []
+        for key in ConnectorConfigKeys.TOPIC_KEYS:
+            topic_value = connector_config.get(key)
+            # Either a single topic or a comma-separated list.
+            if isinstance(topic_value, str):
+                topics.extend(KafkaConnectTopics(name=name.strip()) for name in topic_value.split(",") if name.strip())
+        return topics or None
+
     def get_connector_topics(
         self,
         connector: str,
         connector_config: Optional[dict] = None,  # noqa: UP045
     ) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
         """
-        Get the list of data topics for a connector.
+        Get the list of data topics for a connector, most authoritative source first.
 
-        Prefers what the Connect runtime reports, falling back to the topic names declared
-        in the connector configuration. The runtime list also carries the connector's own
-        bookkeeping topics, which are removed here so they never reach lineage.
+        The Connect runtime knows what the connector actually produced or consumed,
+        including a routed name that appears nowhere in the config, so it wins. The
+        config-declared names are the fallback for deployments that do not serve it.
 
         Args:
             connector (str): The name of the connector.
@@ -510,43 +550,20 @@ class KafkaConnectClient:
                 holds it. Fetched on demand otherwise.
 
         Returns:
-            Optional[List[KafkaConnectTopics]]: A list of KafkaConnectTopics objects
-                                            representing the connector's topics,
-                                            or None if the connector is not found
-                                            or an error occurs.
+            Optional[List[KafkaConnectTopics]]: The connector's data topics, or None if
+                                            neither source yields any.
         """
         try:
-            config = connector_config
-            topics = self._list_topics_from_api(connector)
+            config = connector_config if connector_config is not None else self.get_connector_config(connector)
+
+            topics = self._list_data_topics_from_api(connector, config)
             if topics:
-                if config is None:
-                    config = self.get_connector_config(connector=connector)
-                excluded = internal_topic_names(config)
-                data_topics = [topic for topic in topics if topic.name not in excluded]
-                dropped = len(topics) - len(data_topics)
-                if dropped:
-                    logger.debug(
-                        f"Excluded {dropped} internal topic(s) from connector '{connector}': "
-                        f"{sorted(excluded & {t.name for t in topics})}"
-                    )
-                return data_topics or None
+                return topics
 
-            if config is None:
-                config = self.get_connector_config(connector=connector)
-            if config:
-                topics = []
-                # Check common topic configuration keys
-                for key in ConnectorConfigKeys.TOPIC_KEYS:
-                    if key in config:
-                        topic_value = config[key]
-                        # Handle single topic or comma-separated list
-                        if isinstance(topic_value, str):
-                            topic_list = [t.strip() for t in topic_value.split(",")]
-                            topics.extend([KafkaConnectTopics(name=topic) for topic in topic_list])
-
-                if topics:
-                    logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")
-                    return topics
+            topics = self._parse_topics_from_config(config)
+            if topics:
+                logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")
+                return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get connector Topics {exc}")
