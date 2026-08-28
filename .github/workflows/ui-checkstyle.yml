@@ -13,6 +13,22 @@ name: UI Checkstyle
 
 on:
   merge_group:
+  # Same-repo PRs run here: pull_request resolves the workflow from the PR
+  # branch itself, so a release branch is checked by its own definition.
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - "openmetadata-ui/src/main/resources/ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - ".github/workflows/ui-checkstyle.yml"
+      - openmetadata-ui/src/main/resources/ui/playwright/**
+      - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
+      - "openmetadata-ui-core-components/src/main/resources/ui/**"
+  # Fork PRs stay here: they need the label gate and base-branch context.
   pull_request_target:
     types:
       - opened
@@ -46,7 +62,10 @@ jobs:
   authorize:
     if: |
       github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name != github.repository &&
       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
