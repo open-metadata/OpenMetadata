@@ -161,8 +161,7 @@ function DestinationFormItem({
               name="timeout"
               render={({ field }) => (
                 <Input
-                  data-testid="connection-timeout-input"
-                  inputDataTestId="connection-timeout-input-field"
+                  inputDataTestId="connection-timeout-input"
                   isDisabled={isViewMode}
                   placeholder={`${t('label.connection-timeout')} (${t(
                     'label.second-plural'
@@ -196,8 +195,7 @@ function DestinationFormItem({
               name="readTimeout"
               render={({ field }) => (
                 <Input
-                  data-testid="read-timeout-input"
-                  inputDataTestId="read-timeout-input-field"
+                  inputDataTestId="read-timeout-input"
                   isDisabled={isViewMode}
                   placeholder={`${t('label.read-type', {
                     type: t('label.timeout'),

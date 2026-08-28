@@ -16,7 +16,9 @@ import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItemFormBridge from '../../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
+import DestinationFormItemFormBridge, {
+  DestinationFormFieldRegistrar,
+} from '../../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -43,6 +45,10 @@ function ObservabilityAlertFormFields({
   templates,
 }: Readonly<ObservabilityAlertFormFieldsProps>) {
   const { t } = useTranslation();
+  const resources = Form.useWatch('resources', form);
+  const destinations = Form.useWatch('destinations', form);
+  const timeout = Form.useWatch('timeout', form);
+  const readTimeout = Form.useWatch('readTimeout', form);
 
   return (
     <>
@@ -101,7 +107,18 @@ function ObservabilityAlertFormFields({
             <Divider dashed type="vertical" />
           </Col>
           <Col span={24}>
-            <DestinationFormItemFormBridge />
+            <DestinationFormItemFormBridge
+              renderValidationField={(validate) => (
+                <Form.Item
+                  hidden
+                  name="destinations"
+                  rules={[{ validator: validate }]}>
+                  <DestinationFormFieldRegistrar />
+                </Form.Item>
+              )}
+              values={{ destinations, readTimeout, resources, timeout }}
+              onChange={(values) => form.setFieldsValue(values)}
+            />
           </Col>
 
           {!isEmpty(extraFormWidgets) && (

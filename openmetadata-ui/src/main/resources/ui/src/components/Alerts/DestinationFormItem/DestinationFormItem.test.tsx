@@ -194,10 +194,8 @@ describe('DestinationFormItem', () => {
   it('initializes connection and read timeout defaults', () => {
     renderWithForm(<DestinationFormItem />, { resources: ['container'] });
 
-    expect(screen.getByTestId('connection-timeout-input-field')).toHaveValue(
-      10
-    );
-    expect(screen.getByTestId('read-timeout-input-field')).toHaveValue(
+    expect(screen.getByTestId('connection-timeout-input')).toHaveValue(10);
+    expect(screen.getByTestId('read-timeout-input')).toHaveValue(
       DEFAULT_READ_TIMEOUT
     );
   });
@@ -428,7 +426,7 @@ describe('DestinationFormItem', () => {
     expect(
       screen.queryByTestId('test-destination-button')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('connection-timeout-input-field')).toBeDisabled();
-    expect(screen.getByTestId('read-timeout-input-field')).toBeDisabled();
+    expect(screen.getByTestId('connection-timeout-input')).toBeDisabled();
+    expect(screen.getByTestId('read-timeout-input')).toBeDisabled();
   });
 });

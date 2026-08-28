@@ -99,41 +99,28 @@ export const addExternalDestination = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  // Select destination category
   await page.click(
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
 
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
+  const categoryOption = page.getByRole('option', {
+    exact: true,
+    name: category,
   });
-  // Select external tab
-  const externalTab = page.locator(
-    `.ant-select-dropdown:visible [data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="tab-label-external"]`
-  );
-  await expect(externalTab).toBeVisible();
-  await externalTab.click();
+  await expect(categoryOption).toBeVisible();
+  await categoryOption.click();
 
-  // Select destination category option
-  await page.click(
-    `[data-testid="destination-category-dropdown-${destinationNumber}"]:visible [data-testid="${category}-external-option"]:visible`
-  );
-
-  // Input the destination receivers value
   if (category === 'Email') {
-    await page.fill(
-      `[data-testid="email-input-${destinationNumber}"] [role="combobox"]`,
-      input
-    );
+    await page
+      .getByTestId(`email-input-field-${destinationNumber}`)
+      .fill(input);
     await page.keyboard.press('Enter');
   } else {
-    await page.fill(
-      `[data-testid="endpoint-input-${destinationNumber}"]`,
-      input
-    );
+    await page
+      .getByTestId(`endpoint-input-field-${destinationNumber}`)
+      .fill(input);
   }
 
-  // Input the secret key value
   if (category === 'Webhook' && secretKey) {
     await page
       .getByTestId(`destination-${destinationNumber}`)
@@ -145,9 +132,9 @@ export const addExternalDestination = async ({
     );
     await expect(authTypeSelect).toBeVisible();
     await authTypeSelect.click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="Bearer (HMAC Signature)"]:visible`
-    );
+    await page
+      .getByRole('option', { exact: true, name: 'Bearer (HMAC Signature)' })
+      .click();
 
     await expect(
       page.getByTestId(`secret-key-input-${destinationNumber}`)
@@ -184,14 +171,17 @@ export const addExternalDestination = async ({
           .getByTestId(`add-header-button-${destinationNumber}`)
           .click();
 
-        await expect(page.getByTestId(`header-key-input-${i}`)).toBeVisible();
-        await expect(page.getByTestId(`header-value-input-${i}`)).toBeVisible();
-
-        await page.fill(`[data-testid="header-key-input-${i}"]`, header.key);
-        await page.fill(
-          `[data-testid="header-value-input-${i}"]`,
-          header.value
+        const headerKey = page.getByTestId(
+          `header-key-input-field-${destinationNumber}-${i}`
         );
+        const headerValue = page.getByTestId(
+          `header-value-input-field-${destinationNumber}-${i}`
+        );
+
+        await expect(headerKey).toBeVisible();
+        await expect(headerValue).toBeVisible();
+        await headerKey.fill(header.key);
+        await headerValue.fill(header.value);
       }
     }
 
@@ -204,20 +194,24 @@ export const addExternalDestination = async ({
           .click();
 
         await expect(
-          page.getByTestId(`query-param-key-input-${i}`)
+          page.getByTestId(
+            `query-param-key-input-field-${destinationNumber}-${i}`
+          )
         ).toBeVisible();
         await expect(
-          page.getByTestId(`query-param-value-input-${i}`)
+          page.getByTestId(
+            `query-param-value-input-field-${destinationNumber}-${i}`
+          )
         ).toBeVisible();
 
-        await page.fill(
-          `[data-testid="query-param-key-input-${i}"]`,
-          queryParam.key
-        );
-        await page.fill(
-          `[data-testid="query-param-value-input-${i}"]`,
-          queryParam.value
-        );
+        await page
+          .getByTestId(`query-param-key-input-field-${destinationNumber}-${i}`)
+          .fill(queryParam.key);
+        await page
+          .getByTestId(
+            `query-param-value-input-field-${destinationNumber}-${i}`
+          )
+          .fill(queryParam.value);
       }
     }
   }

@@ -108,10 +108,11 @@ function EmailTagInput({
 
       return;
     }
-    setValue(`destinations.${fieldName}.config.receivers`, [
-      ...receivers,
-      trimmed,
-    ]);
+    setValue(
+      `destinations.${fieldName}.config.receivers`,
+      [...receivers, trimmed],
+      { shouldValidate: true }
+    );
     setInputValue('');
     setEmailError(undefined);
   }, [inputValue, receivers, fieldName, setValue, t]);
@@ -120,7 +121,8 @@ function EmailTagInput({
     (email: string) => {
       setValue(
         `destinations.${fieldName}.config.receivers`,
-        receivers.filter((r) => r !== email)
+        receivers.filter((r) => r !== email),
+        { shouldValidate: true }
       );
     },
     [receivers, fieldName, setValue]
@@ -228,8 +230,8 @@ function KeyValueList({
               render={({ field: controllerField, fieldState }) => (
                 <div>
                   <Input
-                    data-testid={`${testIdPrefix}-key-input-${index}`}
-                    inputDataTestId={`${testIdPrefix}-key-input-field-${index}`}
+                    data-testid={`${testIdPrefix}-key-input-${fieldName}-${index}`}
+                    inputDataTestId={`${testIdPrefix}-key-input-field-${fieldName}-${index}`}
                     isDisabled={isDisabled}
                     placeholder={t('label.key')}
                     ref={controllerField.ref}
@@ -252,8 +254,8 @@ function KeyValueList({
               render={({ field: controllerField, fieldState }) => (
                 <div>
                   <Input
-                    data-testid={`${testIdPrefix}-value-input-${index}`}
-                    inputDataTestId={`${testIdPrefix}-value-input-field-${index}`}
+                    data-testid={`${testIdPrefix}-value-input-${fieldName}-${index}`}
+                    inputDataTestId={`${testIdPrefix}-value-input-field-${fieldName}-${index}`}
                     isDisabled={isDisabled}
                     placeholder={t('label.value')}
                     ref={controllerField.ref}
@@ -275,7 +277,7 @@ function KeyValueList({
             <Button
               aria-label={t('label.remove')}
               color="secondary"
-              data-testid={`remove-${testIdPrefix}-button-${index}`}
+              data-testid={`remove-${testIdPrefix}-button-${fieldName}-${index}`}
               iconLeading={Trash01}
               size="xs"
               onPress={() => remove(index)}

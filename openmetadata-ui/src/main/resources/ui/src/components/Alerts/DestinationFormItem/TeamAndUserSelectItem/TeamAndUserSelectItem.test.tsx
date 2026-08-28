@@ -19,7 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { Controller, FormProvider, useForm } from 'react-hook-form';
 import TeamAndUserSelectItem from './TeamAndUserSelectItem';
 import { TeamAndUserSelectItemProps } from './TeamAndUserSelectItem.interface';
 
@@ -120,6 +120,39 @@ function renderWithForm(
   }
 
   return render(ui, { wrapper: Wrapper });
+}
+
+function renderValidationHarness() {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: {
+        destinations: [{ config: { receivers: [] } }],
+      },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(jest.fn())}>
+          <Controller
+            control={methods.control}
+            name="destinations.0.config.receivers"
+            render={({ fieldState }) => (
+              <>
+                <TeamAndUserSelectItem {...MOCK_PROPS} />
+                {fieldState.error?.message}
+              </>
+            )}
+            rules={{ validate: (value) => value.length > 0 || 'required' }}
+          />
+          <button data-testid="submit" type="submit">
+            Submit
+          </button>
+        </form>
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
 }
 
 describe('TeamAndUserSelectItem', () => {
@@ -272,6 +305,28 @@ describe('TeamAndUserSelectItem', () => {
       expect(screen.getByTestId('selected-tag-team-alpha')).toBeInTheDocument();
       expect(screen.queryByTestId('placeholder-text')).not.toBeInTheDocument();
     });
+  });
+
+  it('clears receiver validation when an option is selected', async () => {
+    renderValidationHarness();
+
+    fireEvent.click(screen.getByTestId('submit'));
+
+    expect(await screen.findByText('required')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('team-user-select-trigger-0'));
+      jest.advanceTimersByTime(500);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('team-alpha')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('team-alpha'));
+
+    await waitFor(() =>
+      expect(screen.queryByText('required')).not.toBeInTheDocument()
+    );
   });
 
   it('removes badge on X click', async () => {

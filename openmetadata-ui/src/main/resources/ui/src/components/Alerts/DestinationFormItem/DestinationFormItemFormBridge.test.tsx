@@ -18,13 +18,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Form } from 'antd';
+import { useState } from 'react';
 import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import DestinationFormItemFormBridge from './DestinationFormItemFormBridge';
+import DestinationFormItemFormBridge, {
+  DestinationFormFields,
+} from './DestinationFormItemFormBridge';
 
 jest.mock('./DestinationFormItem.component', () => {
   const { useFormContext, useWatch } = jest.requireActual(
@@ -60,26 +61,57 @@ jest.mock('./DestinationFormItem.component', () => {
 });
 
 interface HarnessProps {
-  initialValues?: Partial<ModifiedCreateEventSubscription>;
+  initialValues?: Partial<DestinationFormFields>;
   isRequired?: boolean;
-  onFinish: (values: ModifiedCreateEventSubscription) => void;
+  onFinish: (values: Partial<DestinationFormFields>) => void;
 }
 
 function Harness({ initialValues, isRequired, onFinish }: HarnessProps) {
+  const [values, setValues] = useState(initialValues ?? {});
+  const [validationError, setValidationError] = useState<string>();
+
   return (
-    <Form<ModifiedCreateEventSubscription>
-      initialValues={initialValues}
-      onFinish={onFinish}>
-      <DestinationFormItemFormBridge isRequired={isRequired} />
-      <button data-testid="submit" type="submit">
+    <>
+      <DestinationFormItemFormBridge
+        isRequired={isRequired}
+        renderValidationField={(validate) => (
+          <button
+            data-testid="submit"
+            type="button"
+            onClick={async () => {
+              try {
+                await validate();
+                setValidationError(undefined);
+                onFinish(values);
+              } catch (error) {
+                setValidationError((error as Error).message);
+              }
+            }}>
+            Submit
+          </button>
+        )}
+        values={values}
+        onChange={setValues}
+      />
+      {validationError}
+      <button
+        data-testid="external-update"
+        type="button"
+        onClick={() => setValues(initialValues ?? {})}>
+        Reset
+      </button>
+      <button
+        data-testid="submit-values"
+        type="button"
+        onClick={() => onFinish(values)}>
         Submit
       </button>
-    </Form>
+    </>
   );
 }
 
 describe('DestinationFormItemFormBridge', () => {
-  it('provides Ant Form destination values to the core form', () => {
+  it('provides controlled destination values to the core form', () => {
     render(
       <Harness
         initialValues={{
@@ -98,14 +130,15 @@ describe('DestinationFormItemFormBridge', () => {
     expect(screen.getByTestId('destinations-value')).toHaveTextContent('Slack');
   });
 
-  it('writes core form changes back to Ant Form submission values', async () => {
+  it('writes core form changes back to controlled parent values', async () => {
     const onFinish = jest.fn();
     render(<Harness onFinish={onFinish} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('add-core-destination'));
-      fireEvent.click(screen.getByTestId('submit'));
     });
+
+    fireEvent.click(screen.getByTestId('submit-values'));
 
     await waitFor(() =>
       expect(onFinish).toHaveBeenCalledWith(
@@ -128,5 +161,31 @@ describe('DestinationFormItemFormBridge', () => {
       await screen.findByText('message.minimum-count-error')
     ).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('resets the core form when controlled values change', async () => {
+    render(
+      <Harness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+        }}
+        onFinish={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('add-core-destination'));
+    fireEvent.click(screen.getByTestId('external-update'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('destinations-value')).toHaveTextContent(
+        'Email'
+      )
+    );
   });
 });

@@ -72,7 +72,7 @@ function TeamAndUserSelectItem({
       const updated = isSelected
         ? selectedOptions.filter((o) => o !== value)
         : [...selectedOptions, value];
-      setValue(fieldPath, updated);
+      setValue(fieldPath, updated, { shouldValidate: true });
     },
     [selectedOptions, fieldPath, setValue]
   );
@@ -81,7 +81,8 @@ function TeamAndUserSelectItem({
     (value: string) => {
       setValue(
         fieldPath,
-        selectedOptions.filter((o) => o !== value)
+        selectedOptions.filter((o) => o !== value),
+        { shouldValidate: true }
       );
     },
     [selectedOptions, fieldPath, setValue]

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { forwardRef, ReactNode } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
@@ -210,6 +216,36 @@ function renderWebhookField() {
   return render(<Wrapper />);
 }
 
+function renderMultipleWebhookFields() {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: {
+        destinations: [
+          {
+            config: {
+              headers: [{ key: 'first', value: 'one' }],
+            },
+          },
+          {
+            config: {
+              headers: [{ key: 'second', value: 'two' }],
+            },
+          },
+        ],
+      },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        <DestinationConfigField fieldName={0} type={SubscriptionType.Webhook} />
+        <DestinationConfigField fieldName={1} type={SubscriptionType.Webhook} />
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
 describe('DestinationConfigField', () => {
   it('rejects invalid email receivers and accepts valid ones', () => {
     renderEmailField();
@@ -246,7 +282,9 @@ describe('DestinationConfigField', () => {
       const onSubmit = jest.fn();
       renderValidationField(type, onSubmit);
 
-      fireEvent.click(screen.getByTestId('submit'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit'));
+      });
 
       expect(
         await screen.findByText('message.field-text-is-required')
@@ -255,26 +293,62 @@ describe('DestinationConfigField', () => {
     }
   );
 
+  it('clears receiver validation when a valid email is added', async () => {
+    const onSubmit = jest.fn();
+    renderValidationField(SubscriptionType.Email, onSubmit);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+    });
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    const input = screen.getByTestId('email-input-field-0');
+    fireEvent.change(input, { target: { value: 'alerts@example.com' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('message.field-text-is-required')
+      ).not.toBeInTheDocument()
+    );
+  });
+
   it('supports the complete webhook configuration', () => {
     renderWebhookField();
 
     expect(screen.getByTestId('scope-input-field-0')).toBeInTheDocument();
-    expect(screen.getByTestId('header-key-input-field-0')).toHaveValue(
+    expect(screen.getByTestId('header-key-input-field-0-0')).toHaveValue(
       'Content-Type'
     );
-    expect(screen.getByTestId('header-value-input-field-0')).toHaveValue(
+    expect(screen.getByTestId('header-value-input-field-0-0')).toHaveValue(
       'application/json'
     );
-    expect(screen.getByTestId('query-param-key-input-field-0')).toHaveValue(
+    expect(screen.getByTestId('query-param-key-input-field-0-0')).toHaveValue(
       'channel'
     );
-    expect(screen.getByTestId('query-param-value-input-field-0')).toHaveValue(
+    expect(screen.getByTestId('query-param-value-input-field-0-0')).toHaveValue(
       'alerts'
     );
     expect(screen.getByTestId('http-method-0')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('add-header-button-0'));
 
-    expect(screen.getByTestId('header-key-input-field-1')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('header-key-input-field-0-1')
+    ).toBeInTheDocument();
+  });
+
+  it('namespaces key/value controls by destination', () => {
+    renderMultipleWebhookFields();
+
+    expect(screen.getByTestId('header-key-input-field-0-0')).toHaveValue(
+      'first'
+    );
+    expect(screen.getByTestId('header-key-input-field-1-0')).toHaveValue(
+      'second'
+    );
   });
 });

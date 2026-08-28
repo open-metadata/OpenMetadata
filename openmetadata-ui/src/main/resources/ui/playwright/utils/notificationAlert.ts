@@ -144,34 +144,31 @@ export const addInternalDestination = async ({
   type?: string;
   searchText?: string;
 }) => {
-  // Open destination category dropdown
   const categorySelect = page.getByTestId(
     `destination-category-select-${destinationNumber}`
   );
   await expect(categorySelect).toBeVisible();
   await categorySelect.click();
 
-  // Select category option - chain :visible selector inline
-  const categoryOption = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[data-testid="${category}-internal-option"]`);
+  const categoryOption = page.getByRole('option', {
+    exact: true,
+    name: category,
+  });
   await expect(categoryOption).toBeVisible();
   await categoryOption.click();
 
-  // Verify dropdown closed
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+  await expect(categoryOption).not.toBeVisible();
 
-  // Select the receivers with proper waiting
   if (typeId) {
     if (category === 'Teams' || category === 'Users') {
       const dropdownTrigger = page.locator(
-        `[data-testid="destination-${destinationNumber}"] [data-testid="dropdown-trigger-button"]`
+        `[data-testid="destination-${destinationNumber}"] [data-testid="team-user-select-trigger-${destinationNumber}"]`
       );
       await expect(dropdownTrigger).toBeVisible();
       await dropdownTrigger.click();
 
       const searchInput = page.locator(
-        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input"]`
+        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input-field"]`
       );
       await expect(searchInput).toBeVisible();
 
@@ -179,9 +176,9 @@ export const addInternalDestination = async ({
       await searchInput.fill(searchText);
       await getSearchResult;
 
-      // Wait for search results to render
-      const resultsDropdown = page.locator('.ant-dropdown:visible');
-      await resultsDropdown.waitFor({ state: 'visible' });
+      const resultsDropdown = page.getByTestId(
+        `team-user-select-dropdown-${destinationNumber}`
+      );
 
       const option = resultsDropdown.locator(
         `[data-testid="${searchText}-option-label"]`
@@ -196,46 +193,28 @@ export const addInternalDestination = async ({
       await input.fill(searchText);
       await getSearchResult;
 
-      // Select option from search results - chain :visible selector inline
-      const option = page
-        .locator('.ant-select-dropdown:visible')
-        .locator(`[title="${searchText}"]`);
+      const option = page.getByRole('option', {
+        exact: true,
+        name: searchText,
+      });
       await expect(option).toBeVisible();
       await option.click();
     }
 
-    // Manually close dropdown
     await clickOutside(page);
-
-    // Verify dropdown closed
-    await expect(
-      page.locator('.ant-select-dropdown:visible')
-    ).not.toBeVisible();
   }
 
-  // Select destination type with proper waiting
   const typeSelect = page.getByTestId(
     `destination-type-select-${destinationNumber}`
   );
   await expect(typeSelect).toBeVisible();
   await typeSelect.click();
 
-  // Wait for type dropdown to be visible
-  const typeDropdown = page.locator('.select-options-container:visible');
-  await typeDropdown.waitFor({ state: 'visible' });
-
-  const typeOption = typeDropdown.locator(
-    `[data-testid="${type}-external-option"]`
-  );
+  const typeOption = page.getByRole('option', { exact: true, name: type });
   await expect(typeOption).toBeVisible();
   await typeOption.click();
 
-  // Verify the selection
-  await expect(
-    page
-      .getByTestId(`destination-type-select-${destinationNumber}`)
-      .getByTestId(`${type}-external-option`)
-  ).toBeAttached();
+  await expect(typeSelect).toContainText(type);
 };
 
 export const editSingleFilterAlert = async ({

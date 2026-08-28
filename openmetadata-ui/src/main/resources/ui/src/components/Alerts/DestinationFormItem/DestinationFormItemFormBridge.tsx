@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Form } from 'antd';
 import { isEmpty, isEqual } from 'lodash';
-import { useEffect } from 'react';
+import { ReactNode, useCallback, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -21,17 +20,18 @@ import { ModifiedCreateEventSubscription } from '../../../pages/AddObservability
 import DestinationFormItem from './DestinationFormItem.component';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 
-type DestinationFormFields = Pick<
+export type DestinationFormFields = Pick<
   ModifiedCreateEventSubscription,
   'destinations' | 'readTimeout' | 'resources' | 'timeout'
 >;
 
-const DESTINATION_FIELD_NAMES: (keyof DestinationFormFields)[] = [
-  'resources',
-  'destinations',
-  'timeout',
-  'readTimeout',
-];
+export type DestinationFormValidator = () => Promise<void>;
+
+interface DestinationFormItemFormBridgeProps extends DestinationFormItemProps {
+  onChange: (values: Partial<DestinationFormFields>) => void;
+  renderValidationField?: (validate: DestinationFormValidator) => ReactNode;
+  values: Partial<DestinationFormFields>;
+}
 
 function getDestinationFormFields(
   values: Partial<DestinationFormFields>
@@ -44,81 +44,66 @@ function getDestinationFormFields(
   };
 }
 
-// Ant Form needs a mounted field to run the bridge validator, but the actual
-// control and errors are rendered by the core-UI destination component.
-function FieldRegistrar() {
+// Legacy form adapters need a mounted field to run the shared validator, while
+// the visible control and its field-level errors stay in the core-UI form.
+export function DestinationFormFieldRegistrar() {
   return <input readOnly aria-hidden="true" tabIndex={-1} type="hidden" />;
 }
 
 function DestinationFormItemFormBridge({
   isRequired = true,
   isViewMode = false,
-}: Readonly<DestinationFormItemProps>) {
+  onChange,
+  renderValidationField,
+  values,
+}: Readonly<DestinationFormItemFormBridgeProps>) {
   const { t } = useTranslation();
-  const antForm = Form.useFormInstance<ModifiedCreateEventSubscription>();
-  const resources = Form.useWatch('resources', antForm);
-  const destinations = Form.useWatch('destinations', antForm);
-  const timeout = Form.useWatch('timeout', antForm);
-  const readTimeout = Form.useWatch('readTimeout', antForm);
   const methods = useForm<DestinationFormFields>({
-    defaultValues: getDestinationFormFields(
-      antForm.getFieldsValue(DESTINATION_FIELD_NAMES)
-    ),
+    defaultValues: getDestinationFormFields(values),
   });
   const { getValues, reset, trigger, watch } = methods;
 
   useEffect(() => {
-    const nextValues = getDestinationFormFields({
-      resources,
-      destinations,
-      timeout,
-      readTimeout,
-    });
+    const nextValues = getDestinationFormFields(values);
 
     if (!isEqual(getDestinationFormFields(getValues()), nextValues)) {
       reset(nextValues);
     }
-  }, [destinations, getValues, readTimeout, reset, resources, timeout]);
+  }, [getValues, reset, values]);
 
   useEffect(() => {
     const subscription = watch(() => {
       const nextValues = getDestinationFormFields(getValues());
-      const currentValues = getDestinationFormFields(
-        antForm.getFieldsValue(DESTINATION_FIELD_NAMES)
-      );
+      const currentValues = getDestinationFormFields(values);
 
       if (!isEqual(currentValues, nextValues)) {
-        antForm.setFieldsValue(nextValues);
+        onChange(nextValues);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [antForm, getValues, watch]);
+  }, [getValues, onChange, values, watch]);
+
+  const validate = useCallback(async () => {
+    const coreFormIsValid = await trigger();
+    if (
+      (!isRequired || !isEmpty(getValues('destinations'))) &&
+      coreFormIsValid
+    ) {
+      return;
+    }
+
+    throw new Error(
+      t('message.minimum-count-error', {
+        field: t('label.destination'),
+        count: 1,
+      })
+    );
+  }, [getValues, isRequired, t, trigger]);
 
   return (
     <>
-      <Form.Item
-        hidden
-        name="destinations"
-        rules={[
-          {
-            validator: async (_, value) => {
-              const coreFormIsValid = await trigger();
-              if ((!isRequired || !isEmpty(value)) && coreFormIsValid) {
-                return;
-              }
-
-              throw new Error(
-                t('message.minimum-count-error', {
-                  field: t('label.destination'),
-                  count: 1,
-                })
-              );
-            },
-          },
-        ]}>
-        <FieldRegistrar />
-      </Form.Item>
+      {renderValidationField?.(validate)}
       <FormProvider {...methods}>
         <DestinationFormItem isRequired={isRequired} isViewMode={isViewMode} />
       </FormProvider>
