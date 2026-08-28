@@ -12,6 +12,7 @@
  */
 
 import { Tooltip as MuiTooltip } from '@mui/material';
+import { Tag01 } from '@untitledui/icons';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -82,6 +83,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                 icon={
                   tag.style?.iconURL ? (
                     <Icon
+                      fallback={<Tag01 size={14} />}
                       iconValue={tag.style.iconURL}
                       size={14}
                     />
