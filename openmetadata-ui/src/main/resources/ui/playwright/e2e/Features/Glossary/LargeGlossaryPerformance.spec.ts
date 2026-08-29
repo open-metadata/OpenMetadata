@@ -207,11 +207,13 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should search and filter glossary terms', async ({ page }) => {
     // Type in search box
     const searchInput = page.getByPlaceholder(/search.*term/i);
-    await searchInput.fill('Term_5');
-
-    const searchRes = await page.waitForResponse(
+    const searchResponse = page.waitForResponse(
       'api/v1/glossaryTerms/search?*'
     );
+    await searchInput.fill('Term_5');
+
+    const searchRes = await searchResponse;
+
     expect(searchRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
     // Verify filtered results
@@ -225,8 +227,11 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(page.getByText('Term_5', { exact: true })).toBeVisible();
 
     // Clear search
+    const allTermsResponse = page.waitForResponse('api/v1/glossaryTerms?*');
     await searchInput.clear();
-    const clearRes = await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    const clearRes = await allTermsResponse;
+
     expect(clearRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
