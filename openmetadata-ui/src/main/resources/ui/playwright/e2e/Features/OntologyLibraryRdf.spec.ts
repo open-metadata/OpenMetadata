@@ -16,7 +16,7 @@ import { OntologyPackInstallResult } from '../../../src/generated/api/data/ontol
 import { Glossary } from '../../../src/generated/entity/data/glossary';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
-import { navigateToOntologyExplorer } from '../../utils/ontologyExplorer';
+import { navigateToOntologyStudio } from '../../utils/ontologyStudio';
 
 const TARGET_GLOSSARY = `pw_fibo_${uuid().replaceAll('-', '')}`;
 const FIBO_VERSION = '2025Q1-om1';
@@ -88,7 +88,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
     });
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await page.getByTestId('ontology-library-trigger').click();
 
       await expect(page.getByTestId('ontology-pack-catalogue')).toBeVisible();

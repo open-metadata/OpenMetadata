@@ -25,11 +25,11 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Relation Sync with OntologyExplorer', () => {
+test.describe('Relation Sync with Ontology Studio', () => {
   const syncGlossary = new Glossary();
   const syncTerm1 = new GlossaryTerm(syncGlossary);
   const syncTerm2 = new GlossaryTerm(syncGlossary);
@@ -120,7 +120,7 @@ test.describe('Ontology Studio - Tree View', () => {
   });
 });
 
-test.describe('Ontology Explorer - Cross Glossary Edges', () => {
+test.describe('Ontology Studio - Cross Glossary Edges', () => {
   const crossGlossary1 = new Glossary();
   const crossTerm1 = new GlossaryTerm(crossGlossary1);
   const crossTerm3 = new GlossaryTerm(crossGlossary1);
@@ -193,7 +193,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
   });
 });
 
-test.describe('Ontology Explorer - Data Mode Asset Cards', () => {
+test.describe('Ontology Studio - Data Mode Asset Cards', () => {
   const spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
   const spiralTerm = new GlossaryTerm(spiralGlossary);
   const spiralTable = new TableClass();
@@ -273,7 +273,7 @@ test.describe('Ontology Explorer - Data Mode Asset Cards', () => {
   });
 });
 
-test.describe('Ontology Explorer - Data Mode Stats', () => {
+test.describe('Ontology Studio - Data Mode Stats', () => {
   const dataModeGlossary = new Glossary();
   const dataTerm1 = new GlossaryTerm(dataModeGlossary);
   const dataTerm2 = new GlossaryTerm(dataModeGlossary);

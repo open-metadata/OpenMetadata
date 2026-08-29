@@ -21,9 +21,9 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import {
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readGraphEdges,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 interface SparqlAskResult {
   boolean: boolean;
@@ -156,7 +156,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
     });
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
       await page.getByTestId('mode-tab-query').click();
       await expect(
@@ -212,7 +212,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
     });
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
       await page.getByTestId('mode-tab-query').click();
       await page.getByTestId('submode-tab-builder').click();
@@ -272,7 +272,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
   BIND(<${predicateIri}> AS ?predicate)
 }`;
 
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
       await page.getByTestId('mode-tab-query').click();
       await page.getByTestId('ontology-query-new').click();

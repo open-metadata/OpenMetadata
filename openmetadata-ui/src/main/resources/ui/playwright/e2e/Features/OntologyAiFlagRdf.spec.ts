@@ -18,7 +18,7 @@ import {
 } from '../../../src/generated/api/rdf/rdfStatus';
 import { Glossary } from '../../support/glossary/Glossary';
 import { performAdminLogin } from '../../utils/admin';
-import { navigateToOntologyExplorer } from '../../utils/ontologyExplorer';
+import { navigateToOntologyStudio } from '../../utils/ontologyStudio';
 
 const AI_API_PATH = '/api/v1/ontology/ai/';
 const RDF_SPARQL_PATH = '/api/v1/rdf/sparql';
@@ -90,7 +90,7 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
           response.url().includes('/api/v1/rdf/status') &&
           response.request().method() === 'GET'
       );
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       const statusResponse = await statusResponsePromise;
       const statusBody: unknown = await statusResponse.json();
 
@@ -140,7 +140,7 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
     );
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await expect(page.getByTestId('mode-tab-ai')).toBeVisible();
       expect(aiRequestCount).toBe(0);
 

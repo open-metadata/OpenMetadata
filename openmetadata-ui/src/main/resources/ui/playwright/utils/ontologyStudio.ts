@@ -28,7 +28,9 @@ export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   const studioGlossaryMenu = page.getByTestId('ontology-glossary-menu-trigger');
   if (await studioGlossaryMenu.isVisible()) {
-    await studioGlossaryMenu.click();
+    if ((await studioGlossaryMenu.getAttribute('aria-expanded')) !== 'true') {
+      await studioGlossaryMenu.click();
+    }
     const glossaryOption = page.getByTestId(glossaryId);
     await glossaryOption.scrollIntoViewIfNeeded();
     await glossaryOption.click();
@@ -55,7 +57,7 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await termsResponse;
 }
 
-export async function navigateToOntologyExplorer(page: Page) {
+export async function navigateToOntologyStudio(page: Page) {
   await redirectToHomePage(page);
   const glossaryResponse = page.waitForResponse(
     (response) =>
@@ -327,7 +329,7 @@ export async function navigateAndFilterByGlossary(
   page: Page,
   glossaryId: string
 ) {
-  await navigateToOntologyExplorer(page);
+  await navigateToOntologyStudio(page);
   await waitForGraphLoaded(page);
   await applyGlossaryFilter(page, glossaryId);
   await waitForGraphLoaded(page);

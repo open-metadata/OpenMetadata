@@ -20,11 +20,11 @@ import {
   createApiContext,
   deleteEntities,
   disposeApiContext,
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -57,7 +57,7 @@ test.describe('Cross-glossary term hydration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await navigateToOntologyExplorer(page);
+    await navigateToOntologyStudio(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, salesGlossary.responseData.id);
     await waitForGraphLoaded(page);

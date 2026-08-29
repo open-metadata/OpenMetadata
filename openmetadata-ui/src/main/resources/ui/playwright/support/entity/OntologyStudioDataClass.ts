@@ -15,7 +15,7 @@ import { uuid } from '../../utils/common';
 import {
   addRelationTypesWithCardinality,
   addTermRelation,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 import { Glossary } from '../glossary/Glossary';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 
@@ -29,7 +29,7 @@ const RUN_ID = uuid();
 // E2E spec data — catalog with three terms and four relation types
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerE2EData {
+export class OntologyStudioE2EData {
   static readonly catalog = new Glossary();
   static readonly termProduct = new GlossaryTerm(this.catalog);
   static readonly termCategory = new GlossaryTerm(this.catalog);
@@ -104,7 +104,7 @@ type RelationTypeSpec = {
   targetMax?: number | null;
 };
 
-export class OntologyExplorerCardinalityData {
+export class OntologyStudioCardinalityData {
   static readonly CUSTOM_RELATION_NAMES = {
     ONE_TO_ONE: `pw-c-oto-${RUN_ID}`,
     ONE_TO_MANY: `pw-c-otm-${RUN_ID}`,
@@ -281,10 +281,10 @@ export class GlossaryTermRelationsGraphData {
 }
 
 // ---------------------------------------------------------------------------
-// OntologyExplorer.spec.ts data — 3 glossaries
+// OntologyStudio.spec.ts data — 3 glossaries
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerPageData {
+export class OntologyStudioPageData {
   // glossary: term1 relatedTo term2
   static readonly glossary = new Glossary();
   static readonly term1 = new GlossaryTerm(this.glossary);
@@ -340,10 +340,10 @@ export class OntologyExplorerPageData {
 }
 
 // ---------------------------------------------------------------------------
-// OntologyExplorerInteractions — Isolated nodes + relation filter combo
+// OntologyStudioInteractions — Isolated nodes + relation filter combo
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerComboData {
+export class OntologyStudioComboData {
   static readonly comboGlossary = new Glossary();
   static readonly connectedTermA = new GlossaryTerm(this.comboGlossary);
   static readonly connectedTermB = new GlossaryTerm(this.comboGlossary);
@@ -370,10 +370,10 @@ export class OntologyExplorerComboData {
 }
 
 // ---------------------------------------------------------------------------
-// OntologyExplorerInteractions — Cross-glossary term hydration
+// OntologyStudioInteractions — Cross-glossary term hydration
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerCrossGlossaryData {
+export class OntologyStudioCrossGlossaryData {
   static readonly salesGlossary = new Glossary();
   static readonly financeGlossary = new Glossary();
   static readonly termRevenue = new GlossaryTerm(this.salesGlossary);
@@ -405,10 +405,10 @@ export class OntologyExplorerCrossGlossaryData {
 }
 
 // ---------------------------------------------------------------------------
-// OntologyExplorerInteractions — Embedded scope (Relations Graph tab)
+// OntologyStudioInteractions — Embedded scope (Relations Graph tab)
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerEmbeddedData {
+export class OntologyStudioEmbeddedData {
   static readonly embeddedGlossary = new Glossary();
   static readonly termA = new GlossaryTerm(this.embeddedGlossary);
   static readonly termB = new GlossaryTerm(this.embeddedGlossary);
@@ -430,10 +430,10 @@ export class OntologyExplorerEmbeddedData {
 }
 
 // ---------------------------------------------------------------------------
-// OntologyExplorerIsolatedToggle.spec.ts data
+// OntologyStudioIsolatedToggle.spec.ts data
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerIsolatedToggleData {
+export class OntologyStudioIsolatedToggleData {
   static readonly toggleGlossary = new Glossary();
   static readonly toggleTermA = new GlossaryTerm(this.toggleGlossary);
   static readonly toggleTermB = new GlossaryTerm(this.toggleGlossary);
@@ -460,10 +460,10 @@ export class OntologyExplorerIsolatedToggleData {
 }
 
 // ---------------------------------------------------------------------------
-// OntologyExplorerFilters.spec.ts data — two glossaries, one with a relation
+// OntologyStudio.spec.ts scope data — two glossaries, one with a relation
 // ---------------------------------------------------------------------------
 
-export class OntologyExplorerFiltersData {
+export class OntologyStudioFiltersData {
   // glossary: term1 relatedTo term2 (1 relation for filter stats assertions)
   static readonly glossary = new Glossary();
   static readonly term1 = new GlossaryTerm(this.glossary);

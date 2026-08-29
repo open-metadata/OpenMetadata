@@ -23,7 +23,7 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 const adminUser = new AdminClass();
 const rdfGlossary = new Glossary();
@@ -83,7 +83,7 @@ async function expectFixtureGraph(
   ).toBe(true);
 }
 
-test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML) @ontology-rdf', () => {
+test.describe('Ontology Studio — RDF exports (Turtle and RDF/XML) @ontology-rdf', () => {
   test('SKOS / Turtle option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
@@ -220,7 +220,7 @@ test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML) @ontology-
   });
 });
 
-test.describe('Ontology Explorer — relational graph data loading @ontology-rdf', () => {
+test.describe('Ontology Studio — relational graph data loading @ontology-rdf', () => {
   test('term Relations Graph remains database-authoritative when RDF is enabled', async ({
     browser,
   }) => {

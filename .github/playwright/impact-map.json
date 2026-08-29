@@ -467,7 +467,7 @@
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
       ],
       "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
+      "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"]
     },
     {
       "sources": [

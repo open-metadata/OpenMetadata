@@ -27,10 +27,10 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import {
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   releaseOntologyEditLease,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 const bulkGlossary = new Glossary();
 const suffix = uuid().replaceAll('-', '');
@@ -191,7 +191,7 @@ test.describe(
           `CREATE,${termId},${termName},Bulk Customer,Bulk customer concept,,`;
 
         try {
-          await navigateToOntologyExplorer(page);
+          await navigateToOntologyStudio(page);
           await page.getByTestId('ontology-glossary-menu-trigger').click();
           await page
             .getByRole('menuitemradio')
@@ -331,7 +331,7 @@ test.describe(
         });
 
         try {
-          await navigateToOntologyExplorer(page);
+          await navigateToOntologyStudio(page);
           await governanceFixture.selectInStudio(page);
           await waitForGraphLoaded(page);
           await page.getByTestId('mode-tab-edit').click();

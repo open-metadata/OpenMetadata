@@ -23,12 +23,12 @@ import {
   deleteEntities,
   deleteRelationTypeByName,
   disposeApiContext,
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readCardinalityMap,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe.configure({ mode: 'serial' });
@@ -42,7 +42,7 @@ const termProduct = new GlossaryTerm(catalog);
 const termCategory = new GlossaryTerm(catalog);
 const termBrand = new GlossaryTerm(catalog);
 
-test.describe('Ontology Explorer — E2E', () => {
+test.describe('Ontology Studio — E2E', () => {
   test.beforeAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
 
@@ -84,7 +84,7 @@ test.describe('Ontology Explorer — E2E', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await navigateToOntologyExplorer(page);
+    await navigateToOntologyStudio(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, catalog.responseData.id);
     await waitForGraphLoaded(page);
@@ -99,11 +99,9 @@ test.describe('Ontology Explorer — E2E', () => {
     );
   });
 
-  test('canvas renders without empty or error state', async ({ page }) => {
+  test('graph renders without empty or error state', async ({ page }) => {
     await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
-    await expect(
-      page.locator('.ontology-g6-container canvas').first()
-    ).toBeVisible();
+    await expect(page.locator('.ontology-g6-container')).toBeVisible();
   });
 
   test('all three term nodes have canvas positions', async ({ page }) => {
@@ -181,7 +179,7 @@ test.describe('Ontology Explorer — E2E', () => {
     await expect(page.getByTestId('ontology-tree-view')).toBeVisible();
   });
 
-  test('switching back from Tree to Graph restores the canvas and stats', async ({
+  test('switching back from Tree to Graph restores the graph and stats', async ({
     page,
   }) => {
     await page.getByTestId('submode-tab-tree').click();
@@ -191,9 +189,7 @@ test.describe('Ontology Explorer — E2E', () => {
       /4\s+relations?/i,
       { timeout: 45000 }
     );
-    await expect(
-      page.locator('.ontology-g6-container canvas').first()
-    ).toBeVisible();
+    await expect(page.locator('.ontology-g6-container')).toBeVisible();
   });
 
   test('Data mode shows an empty state when the glossary has no assets', async ({

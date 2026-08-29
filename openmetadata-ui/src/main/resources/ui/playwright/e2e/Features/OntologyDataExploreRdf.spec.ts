@@ -25,10 +25,10 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import {
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readSearchHighlightIds,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_data_${suffix}`);
@@ -386,7 +386,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
     });
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
       const dataResponse = page.waitForResponse((response) => {
         const url = new URL(response.url());

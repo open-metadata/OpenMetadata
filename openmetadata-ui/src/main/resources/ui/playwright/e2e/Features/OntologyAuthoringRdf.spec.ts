@@ -23,13 +23,13 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import {
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readGraphEdges,
   readGraphZoom,
   readNodePositions,
   releaseOntologyEditLease,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_authoring_${suffix}`);
@@ -178,7 +178,7 @@ test.describe(
         );
 
         try {
-          await navigateToOntologyExplorer(page);
+          await navigateToOntologyStudio(page);
           await fixture.selectInStudio(page);
           await page.getByTestId('mode-tab-edit').click();
           await expect(
@@ -246,7 +246,7 @@ test.describe(
       });
 
       try {
-        await navigateToOntologyExplorer(page);
+        await navigateToOntologyStudio(page);
         await fixture.selectInStudio(page);
         await page.getByTestId('mode-tab-edit').click();
         await expect(
@@ -280,7 +280,7 @@ test.describe(
       );
 
       try {
-        await navigateToOntologyExplorer(page);
+        await navigateToOntologyStudio(page);
         await fixture.selectInStudio(page);
         await page.getByTestId('mode-tab-edit').click();
         await expect(

@@ -22,11 +22,11 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import {
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readNodePositions,
   releaseOntologyEditLease,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 import { performUserLogin } from '../../utils/user';
 
 const suffix = uuid().replaceAll('-', '');
@@ -93,7 +93,7 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
     const { page, afterAction } = await performUserLogin(browser, reader);
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
 
       await expect(page.getByTestId('mode-tab-view')).toBeVisible();
@@ -125,7 +125,7 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
     const { page, afterAction } = await performUserLogin(browser, steward);
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
       await page.getByTestId('mode-tab-edit').click();
       await expect(
@@ -156,7 +156,7 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
     const { page, afterAction } = await performUserLogin(browser, steward);
 
     try {
-      await navigateToOntologyExplorer(page);
+      await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
       await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
       await page.getByTestId('mode-tab-edit').click();
@@ -189,7 +189,7 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
       );
       expect(acquireResponse.ok(), await acquireResponse.text()).toBe(true);
 
-      await navigateToOntologyExplorer(stewardSession.page);
+      await navigateToOntologyStudio(stewardSession.page);
       await lockFixture.selectInStudio(stewardSession.page);
       await stewardSession.page.getByTestId('mode-tab-edit').click();
       const leaseStatus = stewardSession.page.getByTestId(

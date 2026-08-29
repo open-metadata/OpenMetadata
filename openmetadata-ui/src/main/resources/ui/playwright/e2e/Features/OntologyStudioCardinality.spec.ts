@@ -22,11 +22,11 @@ import {
   deleteEntities,
   deleteRelationTypeByName,
   disposeApiContext,
-  navigateToOntologyExplorer,
+  navigateToOntologyStudio,
   readCardinalityMap,
   readGraphEdges,
   waitForGraphLoaded,
-} from '../../utils/ontologyExplorer';
+} from '../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe.configure({ mode: 'serial' });
@@ -58,7 +58,7 @@ const cusDst = new GlossaryTerm(glossary);
 const relSrc = new GlossaryTerm(glossary);
 const relDst = new GlossaryTerm(glossary);
 
-test.describe('Ontology Explorer - Cardinality Labels', () => {
+test.describe('Ontology Studio - Cardinality Labels', () => {
   test.beforeAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
 
@@ -177,7 +177,7 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await navigateToOntologyExplorer(page);
+    await navigateToOntologyStudio(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, glossary.responseData.id);
     await waitForGraphLoaded(page);

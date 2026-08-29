@@ -719,7 +719,6 @@ def test_oversized_units_error_names_both_common_fixes():
     # The improved error message must point the reader at BOTH the tag
     # option and the AUDITED_PARALLEL_SUITES escape hatch — the old
     # message just said "refactor or audit" and left developers guessing.
-    planner = load_script("build_playwright_shards")
     src = (SCRIPTS / "build_playwright_shards.py").read_text()
 
     assert "FILE_LANE_HINTS" in src
@@ -2290,10 +2289,10 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
     source_path.write_text("export const view = {};\n")
     spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
     spec_dir.mkdir(parents=True)
-    (spec_dir / "OntologyExplorer.spec.ts").write_text(
+    (spec_dir / "OntologyStudio.spec.ts").write_text(
         "test('ontology', () => undefined);\n"
     )
-    (spec_dir / "OntologyExplorerRdf.spec.ts").write_text(
+    (spec_dir / "OntologyStudioRdf.spec.ts").write_text(
         "test('rdf', () => undefined);\n"
     )
     impact_map = tmp_path / "impact-map.json"
@@ -2303,7 +2302,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
                 "smoke": [],
                 "canary": [],
                 "delegatedSpecs": [
-                    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+                    "playwright/e2e/Features/OntologyStudioRdf.spec.ts"
                 ],
                 "sharedInfrastructure": [],
                 "mappings": [
@@ -2312,7 +2311,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
                             f"{selector.UI_ROOT}src/components/OntologyExplorer/**"
                         ],
                         "projects": ["chromium"],
-                        "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"],
+                        "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"],
                     }
                 ],
             }
@@ -2345,7 +2344,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
     assert selection["selectors"] == [
         {
             "projects": ["chromium"],
-            "spec": "playwright/e2e/Features/OntologyExplorer.spec.ts",
+            "spec": "playwright/e2e/Features/OntologyStudio.spec.ts",
         }
     ]
 
@@ -2790,7 +2789,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     tmp_path, monkeypatch
 ):
     # Editing an OntologyExplorer source file fans out via the source->spec
-    # mapping glob (OntologyExplorer*.spec.ts), which matches both the regular
+    # mapping glob (OntologyStudio*.spec.ts), which matches both the regular
     # postgres specs and the delegated @ontology-rdf spec. The regular ones must
     # be selected; the delegated RDF spec must be dropped so the postgres plan
     # does not get a shard with zero runnable tests.
@@ -2823,7 +2822,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     selection = json.loads(output.read_text())
     selected_specs = {entry["spec"] for entry in selection["selectors"]}
     # The delegated RDF spec is excluded from the postgres selection...
-    assert "playwright/e2e/Features/OntologyExplorerRdf.spec.ts" not in selected_specs
-    # ...while the non-delegated OntologyExplorer specs from the same glob remain,
+    assert "playwright/e2e/Features/OntologyStudioRdf.spec.ts" not in selected_specs
+    # ...while the non-delegated Ontology Studio specs from the same glob remain,
     # proving the mapping fired and only the delegated spec was dropped.
-    assert "playwright/e2e/Features/OntologyExplorer.spec.ts" in selected_specs
+    assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
