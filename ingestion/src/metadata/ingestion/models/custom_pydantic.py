@@ -15,6 +15,7 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
+
 import json
 import logging
 from typing import Any, Callable, Dict, Literal, Optional, Union
@@ -66,21 +67,15 @@ class BaseModel(PydanticBaseModel):
             logger.warning(f"Exception while parsing FilterPattern: {exc}")
 
     @model_validator(mode="after")
-    @classmethod
-    def parse_name(cls, values):  # pylint: disable=inconsistent-return-statements
+    def parse_name(self):
         """
         Transform entity names using hybrid configuration system.
         """
-
-        if not values:
-            return values
-
         try:
-            # Try new hybrid system first
-            return transform_entity_names(entity=values, model=cls)
+            return transform_entity_names(entity=self, model=type(self))
         except Exception as exc:
             logger.warning("Exception while parsing Basemodel: %s", exc)
-            return values
+            return self
 
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
