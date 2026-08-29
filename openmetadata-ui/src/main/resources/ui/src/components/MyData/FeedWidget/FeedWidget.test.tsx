@@ -86,10 +86,12 @@ jest.mock(
     __esModule: true,
     default: ({
       activityList,
+      onActivityClick,
       onAfterClose,
       onUpdateEntityDetails,
     }: {
       activityList: ActivityEvent[];
+      onActivityClick?: (activity: ActivityEvent) => void;
       onAfterClose: () => void;
       onUpdateEntityDetails: () => void;
     }) => (
@@ -103,9 +105,12 @@ jest.mock(
           Update
         </button>
         {activityList.map((item: ActivityEvent, index: number) => (
-          <div data-testid={`activity-item-${index}`} key={index}>
+          <button
+            data-testid={`activity-item-${index}`}
+            key={item.id}
+            onClick={() => onActivityClick?.(item)}>
             {item.summary}
-          </div>
+          </button>
         ))}
       </div>
     ),
@@ -373,15 +378,18 @@ describe('MyFeedWidget', () => {
   });
 
   describe('Activity Click Handler', () => {
-    it('should pass showActivityDrawer to ActivityFeedListV1New', async () => {
+    it('should open the activity drawer when an activity is clicked', async () => {
       renderComponent();
 
       await waitFor(() => {
         expect(screen.getByTestId('activity-feed-list')).toBeInTheDocument();
       });
 
-      // The showActivityDrawer is passed as onActivityClick prop
-      // This is tested by verifying the component renders with the prop
+      fireEvent.click(screen.getByTestId('activity-item-0'));
+
+      expect(mockShowActivityDrawer).toHaveBeenCalledWith(
+        mockActivityEvents[0]
+      );
     });
   });
 });
