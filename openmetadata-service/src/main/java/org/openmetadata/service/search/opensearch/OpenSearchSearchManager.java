@@ -1229,8 +1229,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     if (searchResponse.shards() != null && searchResponse.shards().failed() > 0) {
       int failedShards = searchResponse.shards().failed();
       LOG.error("Search on index '{}' returned {} failed shards", index, failedShards);
-      throw new SearchException(
-          String.format("Search on index '%s' returned %d failed shards", index, failedShards));
+      if (searchResponse.hits() != null && searchResponse.hits().hits().isEmpty()) {
+        throw new SearchException(
+            String.format("Search on index '%s' returned %d failed shards", index, failedShards));
+      }
     }
   }
 

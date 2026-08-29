@@ -10,7 +10,9 @@ class OpenSearchSearchManagerTest {
 
   @Test
   void allowsSearchResponseWithNoFailedShards() {
-    SearchResponse<Object> response = SearchResponse.of(r -> r.took(1).timedOut(false));
+    SearchResponse<Object> response =
+        SearchResponse.of(
+            r -> r.took(1).timedOut(false).shards(s -> s.total(1).successful(1).failed(0)));
 
     assertDoesNotThrow(() -> OpenSearchSearchManager.validateShardFailures(response, "table"));
   }
