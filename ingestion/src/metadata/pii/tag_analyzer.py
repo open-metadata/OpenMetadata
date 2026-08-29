@@ -21,7 +21,9 @@ from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
+    combine_patchers,
     date_time_patcher,
+    named_entity_patcher,
 )
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
@@ -222,7 +224,10 @@ class TagAnalyzer:
                     str_values,
                     content_recognizers,
                     context=context,
-                    result_patcher=date_time_patcher,
+                    # Scoring on the strongest single match means every stray NER hit counts,
+                    # where the old average buried them; the patchers are what keeps identifier
+                    # columns from turning into PII.
+                    result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
