@@ -14,13 +14,13 @@
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { MessageDotsCircle } from '@untitledui/icons';
 import classNames from 'classnames';
-import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
-import { Task } from '../../../../../generated/entity/tasks/task';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTaskTitle } from '../taskTitle.utils';
-import { formatEntityType } from '../taskList.utils';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { Task } from '../../../../../generated/entity/tasks/task';
 import { formatInboxDate } from '../inbox.utils';
+import { formatEntityType } from '../taskList.utils';
+import { getTaskTitle } from '../taskTitle.utils';
 
 export interface InboxTaskListItemProps {
   task: Task;

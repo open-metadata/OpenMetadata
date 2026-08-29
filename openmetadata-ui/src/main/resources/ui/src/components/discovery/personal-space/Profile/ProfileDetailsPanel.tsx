@@ -19,12 +19,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
 import startCase from 'lodash/startCase';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import { User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import DefaultPersonaRow from './components/DefaultPersonaRow';
 import DomainsRow from './components/DomainsRow';

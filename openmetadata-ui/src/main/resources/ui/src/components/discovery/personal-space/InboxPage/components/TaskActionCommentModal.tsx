@@ -20,10 +20,10 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { EntityReference } from '../../../../../generated/entity/type';
-import { TestCaseFailureReasonType } from '../../../../../generated/tests/testCaseResolutionStatus';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityReference } from '../../../../../generated/entity/type';
+import { TestCaseFailureReasonType } from '../../../../../generated/tests/testCaseResolutionStatus';
 import TaskAssigneeSelect from './TaskAssigneeSelect';
 
 export interface TaskActionValues {

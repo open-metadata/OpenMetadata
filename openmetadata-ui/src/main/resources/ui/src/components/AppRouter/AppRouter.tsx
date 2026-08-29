@@ -19,8 +19,8 @@ import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
-import { isAppModeSessionActive } from '../../utils/appModeSession';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import { isAppModeSessionActive } from '../../utils/appModeSession';
 import Loader from '../common/Loader/Loader';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 

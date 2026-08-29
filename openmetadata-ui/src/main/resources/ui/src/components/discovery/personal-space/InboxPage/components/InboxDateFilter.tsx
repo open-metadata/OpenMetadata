@@ -13,11 +13,11 @@
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { DateRangeObject } from 'Models';
-import DatePickerMenu from '../../../../../components/common/DatePickerMenu/DatePickerMenu.component';
-import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { INBOX_DATE_RANGE_OPTIONS, InboxDateRange } from '../inbox.utils';
+import DatePickerMenu from '../../../../../components/common/DatePickerMenu/DatePickerMenu.component';
+import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
+import { InboxDateRange, INBOX_DATE_RANGE_OPTIONS } from '../inbox.utils';
 
 export interface InboxDateFilterProps {
   dateRange?: InboxDateRange;

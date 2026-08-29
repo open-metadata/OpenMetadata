@@ -13,8 +13,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { useInboxActivity } from './useInboxActivity';
 import { InboxDateRange, InboxScope } from './inbox.utils';
+import { useInboxActivity } from './useInboxActivity';
 
 export interface InboxCounts {
   activityCount: number;

@@ -12,6 +12,8 @@
  */
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   EntityReference,
   User,
@@ -19,8 +21,6 @@ import {
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 

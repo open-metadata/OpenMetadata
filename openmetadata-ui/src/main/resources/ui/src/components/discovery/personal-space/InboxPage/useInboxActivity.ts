@@ -12,13 +12,13 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../../../../generated/type/conversationFilterType';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getUserActivity } from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
-import { useMemo } from 'react';
 import {
   ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,

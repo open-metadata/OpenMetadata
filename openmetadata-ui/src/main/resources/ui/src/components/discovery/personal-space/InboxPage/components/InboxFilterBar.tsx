@@ -15,8 +15,8 @@ import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
 import React, { ReactNode } from 'react';
-import InboxDateFilter from './InboxDateFilter';
 import { InboxDateRange } from '../inbox.utils';
+import InboxDateFilter from './InboxDateFilter';
 
 export interface InboxFilterBarProps {
   // Tab-specific control rendered on the left (e.g. the Tasks status segmented

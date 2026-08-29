@@ -12,17 +12,17 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
   EXTENSION_POINTS,
   InboxTaskPanelContribution,
 } from '../../../../../utils/ExtensionPointTypes';
+import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { getTaskResolutionSummary } from '../taskResolution.utils';
 

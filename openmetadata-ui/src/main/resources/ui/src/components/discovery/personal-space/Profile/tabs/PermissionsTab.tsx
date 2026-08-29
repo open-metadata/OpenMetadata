@@ -20,6 +20,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import { UserCheck01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as PoliciesIcon } from '../../../../../assets/svg/policies.svg';
+import { ReactComponent as TeamsIcon } from '../../../../../assets/svg/Teams.svg';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
@@ -28,10 +32,6 @@ import {
   PermissionDebugInfo,
 } from '../../../../../rest/permissionAPI';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as PoliciesIcon } from '../../../../../assets/svg/policies.svg';
-import { ReactComponent as TeamsIcon } from '../../../../../assets/svg/Teams.svg';
 import DirectRolesSection from './permissions/DirectRolesSection';
 import InheritedPermissionsSection from './permissions/InheritedPermissionsSection';
 import MembershipSection from './permissions/MembershipSection';

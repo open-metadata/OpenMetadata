@@ -13,11 +13,11 @@
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@untitledui/icons';
-import { InheritedPermission } from '../../../../../../rest/permissionAPI';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { InheritedPermission } from '../../../../../../rest/permissionAPI';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getPermissionEntityLink } from './permissions.utils';
 import PermissionSectionSkeleton from './PermissionSectionSkeleton';
 import PolicyAccordion from './PolicyAccordion';

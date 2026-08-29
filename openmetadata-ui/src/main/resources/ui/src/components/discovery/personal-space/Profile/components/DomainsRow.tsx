@@ -14,6 +14,8 @@
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -24,8 +26,6 @@ import {
   getEncodedFqn,
 } from '../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';

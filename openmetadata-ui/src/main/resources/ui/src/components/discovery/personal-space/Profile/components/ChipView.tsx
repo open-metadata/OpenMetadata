@@ -17,9 +17,9 @@ import {
   TagList,
   Typography,
 } from '@openmetadata/ui-core-components';
+import React from 'react';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import React from 'react';
 
 interface ChipViewProps {
   values: EntityReference[];

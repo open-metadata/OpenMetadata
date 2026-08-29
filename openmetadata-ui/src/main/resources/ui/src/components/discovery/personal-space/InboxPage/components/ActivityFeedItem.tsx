@@ -21,6 +21,8 @@ import {
 import { MessageDotsCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -32,10 +34,8 @@ import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import searchClassBase from '../../../../../utils/SearchClassBase';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import {
   formatActivityTime,
   getActivityEventLabel,

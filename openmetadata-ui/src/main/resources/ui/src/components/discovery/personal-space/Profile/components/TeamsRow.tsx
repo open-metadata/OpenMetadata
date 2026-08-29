@@ -14,6 +14,8 @@
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { uniqBy } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../../generated/entity/teams/teamHierarchy';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -21,8 +23,6 @@ import { getTeamsHierarchy } from '../../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';

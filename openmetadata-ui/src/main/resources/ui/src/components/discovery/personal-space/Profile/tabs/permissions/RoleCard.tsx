@@ -12,12 +12,12 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { EntityReference } from '../../../../../../generated/entity/type';
-import { PolicyInfo } from '../../../../../../rest/permissionAPI';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { EntityReference } from '../../../../../../generated/entity/type';
+import { PolicyInfo } from '../../../../../../rest/permissionAPI';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getPermissionEntityLink } from './permissions.utils';
 import PolicyAccordion from './PolicyAccordion';
 

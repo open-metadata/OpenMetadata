@@ -14,9 +14,9 @@
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { Edit02, Lock01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import FieldRow from './FieldRow';
 
 export interface InlineEditCardRenderApi {

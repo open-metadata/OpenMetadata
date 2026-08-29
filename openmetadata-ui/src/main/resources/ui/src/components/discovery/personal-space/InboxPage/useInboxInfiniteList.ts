@@ -12,8 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { Paging } from '../../../../generated/type/paging';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   Dispatch,
   RefObject,
@@ -23,6 +21,8 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Paging } from '../../../../generated/type/paging';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 
 export interface InboxListPage<T> {
   data: T[];

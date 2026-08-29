@@ -14,14 +14,6 @@
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { User01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
-import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { SearchIndex } from '../../../../../enums/search.enum';
-import { EntityReference } from '../../../../../generated/entity/type';
-import { searchData } from '../../../../../rest/miscAPI';
-import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { getEntityReferenceListFromEntities } from '../../../../../utils/EntityReferenceUtils';
 import React, {
   useCallback,
   useEffect,
@@ -30,6 +22,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { EntityType } from '../../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../../enums/search.enum';
+import { EntityReference } from '../../../../../generated/entity/type';
+import { searchData } from '../../../../../rest/miscAPI';
+import { formatUsersResponse } from '../../../../../utils/APIUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../../utils/EntityReferenceUtils';
 
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 300;

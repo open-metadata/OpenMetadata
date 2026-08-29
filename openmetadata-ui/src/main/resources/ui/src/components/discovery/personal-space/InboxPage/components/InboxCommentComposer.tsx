@@ -12,11 +12,11 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import './inbox-comment-composer.less';
 
 export interface InboxCommentComposerProps {

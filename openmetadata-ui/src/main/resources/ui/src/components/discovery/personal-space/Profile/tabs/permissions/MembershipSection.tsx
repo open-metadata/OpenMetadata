@@ -12,9 +12,9 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { User } from '../../../../../../generated/entity/teams/user';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { User } from '../../../../../../generated/entity/teams/user';
 import ChipBadgeList from '../../components/ChipBadgeList';
 import FieldRow from '../../components/FieldRow';
 import RolesRow from '../../components/RolesRow';

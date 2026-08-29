@@ -25,6 +25,8 @@ import {
 import { Edit01, Maximize02, Minimize02, Trash01, X } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -43,23 +45,21 @@ import {
   listConversationReplies,
   patchConversationReply,
 } from '../../../../../rest/conversationsAPI';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import InboxCommentComposer from './InboxCommentComposer';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import {
   formatActivityTime,
   getActivityEventLabel,
   getFeedTimestamp,
 } from '../inbox.utils';
+import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
 import './activity-detail-drawer.less';
+import InboxCommentComposer from './InboxCommentComposer';
 
 export interface ActivityDetailDrawerProps {
   // Exactly one of `activity` (2.0 event) or `feed` (conversation fallback).

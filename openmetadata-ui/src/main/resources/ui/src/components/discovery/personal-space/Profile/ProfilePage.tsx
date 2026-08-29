@@ -31,17 +31,17 @@ import {
 } from '../../../../utils/ExtensionPointTypes';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
-  PROFILE_NAV_GROUP_LABEL,
-  PROFILE_NAV_ITEMS,
   ProfileNavGroup,
   ProfileNavId,
   ProfileNavItem,
+  PROFILE_NAV_GROUP_LABEL,
+  PROFILE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import './profile-page.less';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();

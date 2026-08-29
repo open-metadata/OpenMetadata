@@ -12,9 +12,9 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { DirectRolePermission } from '../../../../../../rest/permissionAPI';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { DirectRolePermission } from '../../../../../../rest/permissionAPI';
 import PermissionSectionSkeleton from './PermissionSectionSkeleton';
 import RoleCard from './RoleCard';
 

@@ -30,6 +30,9 @@ import {
   Trash02,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
 import APIClient from '../../../../../rest/index';
@@ -43,9 +46,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Key } from 'react-aria-components';
-import { useTranslation } from 'react-i18next';
 
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 

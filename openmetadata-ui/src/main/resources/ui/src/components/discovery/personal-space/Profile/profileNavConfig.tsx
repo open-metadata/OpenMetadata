@@ -12,10 +12,10 @@
  */
 
 import { Key01, ShieldTick, User01 } from '@untitledui/icons';
-import { User } from '../../../../generated/entity/teams/user';
 import React, { FC } from 'react';
-import ProfileDetailsPanel from './ProfileDetailsPanel';
+import { User } from '../../../../generated/entity/teams/user';
 import AccessTokenPanel from './components/AccessTokenPanel';
+import ProfileDetailsPanel from './ProfileDetailsPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
 export type ProfileNavId =

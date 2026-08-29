@@ -21,6 +21,15 @@ import {
 } from '@openmetadata/ui-core-components';
 import { CheckCircle, Edit01, Trash01, XCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -32,6 +41,12 @@ import {
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
+import {
+  Task,
+  TaskAvailableTransition,
+  TaskCategory,
+  TaskType,
+} from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { TestCasePageTabs } from '../../../../../pages/IncidentManager/IncidentManager.interface';
@@ -55,33 +70,18 @@ import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import { getTaskDetailPathFromTask } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import InboxCommentComposer from './InboxCommentComposer';
-import TaskActionCommentModal from './TaskActionCommentModal';
-import TaskActivityTimeline from './TaskActivityTimeline';
-import TaskDetailSkeleton from './TaskDetailSkeleton';
-import TaskOverview from './TaskOverview';
-import {
-  Task,
-  TaskAvailableTransition,
-  TaskCategory,
-  TaskType,
-} from '../../../../../generated/entity/tasks/task';
 import { getTaskStatusBadge } from '../taskResolution.utils';
-import { getTaskTitle } from '../taskTitle.utils';
 import {
   buildResolveBody,
   getTaskResolveActions,
   TaskResolveAction,
 } from '../taskResolve.utils';
+import { getTaskTitle } from '../taskTitle.utils';
+import InboxCommentComposer from './InboxCommentComposer';
+import TaskActionCommentModal from './TaskActionCommentModal';
+import TaskActivityTimeline from './TaskActivityTimeline';
+import TaskDetailSkeleton from './TaskDetailSkeleton';
+import TaskOverview from './TaskOverview';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';

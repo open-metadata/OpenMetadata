@@ -16,10 +16,10 @@ import classNames from 'classnames';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PROFILE_NAV_GROUP_LABEL,
-  PROFILE_NAV_GROUP_ORDER,
   ProfileNavId,
   ProfileNavItem,
+  PROFILE_NAV_GROUP_LABEL,
+  PROFILE_NAV_GROUP_ORDER,
 } from './profileNavConfig';
 
 interface ProfileSideNavProps {

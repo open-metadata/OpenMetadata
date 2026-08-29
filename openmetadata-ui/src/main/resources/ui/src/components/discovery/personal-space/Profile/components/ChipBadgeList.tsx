@@ -12,9 +12,9 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import React from 'react';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import React from 'react';
 
 type ChipColor = 'blue' | 'purple' | 'gray';
 

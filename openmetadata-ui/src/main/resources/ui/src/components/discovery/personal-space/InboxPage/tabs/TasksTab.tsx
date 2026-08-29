@@ -22,6 +22,8 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
+import React, { ReactNode, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
 import {
   listMyVisibleTasks,
@@ -30,15 +32,13 @@ import {
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
-import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
-import React, { ReactNode, useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import InboxFilterBar from '../components/InboxFilterBar';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskDetailSkeleton from '../components/TaskDetailSkeleton';
 import { InboxDateRange, isTaskOpen } from '../inbox.utils';
+import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 
 const TASK_LIMIT = 25;

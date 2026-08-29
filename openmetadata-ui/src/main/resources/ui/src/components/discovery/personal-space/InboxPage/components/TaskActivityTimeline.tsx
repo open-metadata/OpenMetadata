@@ -12,12 +12,12 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
-import { EntityReference } from '../../../../../generated/entity/type';
-import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../../generated/entity/type';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { formatActivityTime } from '../inbox.utils';
 
 export interface TaskActivityTimelineProps {

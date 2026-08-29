@@ -12,9 +12,9 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { RuleInfo } from '../../../../../../rest/permissionAPI';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { RuleInfo } from '../../../../../../rest/permissionAPI';
 import { getEffectBadgeColor } from './permissions.utils';
 
 export interface PermissionRuleRowProps {

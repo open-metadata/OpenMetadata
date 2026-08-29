@@ -13,16 +13,16 @@
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { FilterFunnel01, Hourglass01 } from '@untitledui/icons';
-import { useInboxActivity } from '../useInboxActivity';
-import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import ActivityDetailDrawer from '../components/ActivityDetailDrawer';
 import ActivityFeedItem, {
   ActivityFeedItemSelection,
 } from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import { InboxDateRange, InboxScope } from '../inbox.utils';
+import { useInboxActivity } from '../useInboxActivity';
 
 export interface ActivityTabProps {
   // Admin ("all") widens the conversation fallback; "me" scopes it to the user.

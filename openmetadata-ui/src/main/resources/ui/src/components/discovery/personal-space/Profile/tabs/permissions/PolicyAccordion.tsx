@@ -20,10 +20,10 @@ import {
   Box,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { PolicyInfo } from '../../../../../../rest/permissionAPI';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { PolicyInfo } from '../../../../../../rest/permissionAPI';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import PermissionRuleRow from './PermissionRuleRow';
 import { getEffectBadgeColor } from './permissions.utils';
 
