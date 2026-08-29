@@ -464,7 +464,8 @@ export const getFirstLevelGlossaryTermsPaginated = async (
   parentFQN: string,
   pageSize = 50,
   after?: string,
-  entityStatus?: string
+  entityStatus?: string,
+  before?: string
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -480,6 +481,7 @@ export const getFirstLevelGlossaryTermsPaginated = async (
       ],
       limit: pageSize,
       after: after,
+      before: before,
       entityStatus,
     },
   });
