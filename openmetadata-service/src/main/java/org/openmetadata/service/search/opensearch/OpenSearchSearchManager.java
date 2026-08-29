@@ -572,44 +572,49 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     LOG.info("Searching with NLQ: {}", request.getQuery());
 
     if (nlqService != null) {
+      String transformedQuery;
       try {
-        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
-        if (transformedQuery == null) {
-          LOG.info("Failed to get Transformed NLQ query");
-          return fallbackToBasicSearch(request, subjectContext);
+        transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
+      } catch (Exception e) {
+        LOG.error("Error transforming NLQ query: {}", e.getMessage(), e);
+        return fallbackToBasicSearch(request, subjectContext);
+      }
+
+      if (transformedQuery == null) {
+        LOG.info("Failed to get Transformed NLQ query");
+        return fallbackToBasicSearch(request, subjectContext);
+      }
+
+      LOG.debug("Transformed NLQ query: {}", transformedQuery);
+
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      try {
+        OpenSearchRequestBuilder requestBuilder =
+            buildNlqRequestBuilder(request, subjectContext, transformedQuery);
+
+        // Add aggregations for NLQ query
+        addAggregationsToNLQQuery(requestBuilder, request.getIndex());
+
+        SearchResponse<JsonData> response =
+            client.search(requestBuilder.build(request.getIndex()), JsonData.class);
+        validateShardFailures(response, request.getIndex());
+
+        // Cache successful queries
+        if (response.hits() != null
+            && response.hits().total() != null
+            && response.hits().total().value() > 0) {
+          nlqService.cacheQuery(request.getQuery(), transformedQuery);
         }
 
-        LOG.debug("Transformed NLQ query: {}", transformedQuery);
-
-        Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-        try {
-          OpenSearchRequestBuilder requestBuilder =
-              buildNlqRequestBuilder(request, subjectContext, transformedQuery);
-
-          // Add aggregations for NLQ query
-          addAggregationsToNLQQuery(requestBuilder, request.getIndex());
-
-          SearchResponse<JsonData> response =
-              client.search(requestBuilder.build(request.getIndex()), JsonData.class);
-          validateShardFailures(response, request.getIndex());
-
-          // Cache successful queries
-          if (response.hits() != null
-              && response.hits().total() != null
-              && response.hits().total().value() > 0) {
-            nlqService.cacheQuery(request.getQuery(), transformedQuery);
-          }
-
-          return Response.status(Response.Status.OK).entity(response.toJsonString()).build();
-        } catch (SearchException e) {
-          throw e;
-        } catch (Exception e) {
-          LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
-          return fallbackToBasicSearch(request, subjectContext);
-        } finally {
-          if (searchTimerSample != null) {
-            RequestLatencyContext.endSearchOperation(searchTimerSample);
-          }
+        return Response.status(Response.Status.OK).entity(response.toJsonString()).build();
+      } catch (SearchException e) {
+        throw e;
+      } catch (Exception e) {
+        LOG.error("Error executing NLQ query: {}", e.getMessage(), e);
+        return fallbackToBasicSearch(request, subjectContext);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
     } else {
