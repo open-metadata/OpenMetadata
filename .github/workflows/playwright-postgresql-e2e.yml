@@ -53,22 +53,34 @@ jobs:
   check-changes:
     runs-on: ubuntu-latest
     outputs:
-      relevant: ${{ steps.filter.outputs.relevant }}
+      relevant: ${{ steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true' }}
     steps:
+      # predicate-quantifier: every — a file must match ALL patterns, which is
+      # what makes the negations exclude. With the default (some) the leading
+      # '**' matches everything and nothing is ever excluded.
       - uses: dorny/paths-filter@v3
-        id: filter
+        id: outside
         with:
+          predicate-quantifier: every
           filters: |
-            relevant:
+            code:
               - '**'
               - '!.github/**'
               - '!openmetadata-dist/**'
               - '!docker/**'
-              - 'docker/development/docker-compose.yml'
-              - 'docker/development/docker-compose-postgres.yml'
               - '!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**'
               - '!openmetadata-ui/src/main/resources/ui/playwright/docs/**'
               - '!openmetadata-ui/src/main/resources/ui/scripts/**'
+
+      # Re-includes, kept separate: under `every` a file cannot match both
+      # filenames at once, so these need the default quantifier.
+      - uses: dorny/paths-filter@v3
+        id: compose
+        with:
+          filters: |
+            compose:
+              - 'docker/development/docker-compose.yml'
+              - 'docker/development/docker-compose-postgres.yml'
 
   build:
     needs: check-changes
