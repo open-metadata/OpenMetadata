@@ -58,6 +58,18 @@ import {
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
+/**
+ * Ant Design treats `children` on a row record as nested rows and reads the row
+ * key off a record field, so raw column names cannot be used as record keys: a
+ * column named `children` crashes the table, and a repeated cell value collides
+ * as a row key. Addressing every cell by column index keeps record keys unique
+ * and clear of both reserved names.
+ */
+const ROW_KEY = '__rowKey';
+
+const getSampleDataColumnKey = (index: number, column: string) =>
+  `${index}-${column}`;
+
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
@@ -101,9 +113,8 @@ const SampleDataTable: FC<SampleDataProps> = ({
     if (!sampleData?.rows || !sampleData?.columns) {
       return;
     }
-    const columnNames = sampleData.columns.map((col) => String(col.key ?? ''));
     const csvContent = buildSampleDataCSVContent(
-      columnNames,
+      sampleData.columns,
       sampleData.rows,
       rowLimit
     );
@@ -120,12 +131,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
     const columns =
       'columns' in entity ? entity.columns : entity.dataModel?.columns ?? [];
 
-    const updatedColumns = sampleData?.columns?.map((column) => {
+    const updatedColumns = sampleData?.columns?.map((column, index) => {
       const matchedColumn = columns.find((col) => col.name === column);
+      const columnKey = getSampleDataColumnKey(index, column);
 
       return {
         name: column,
-        dataType: matchedColumn?.dataType ?? '',
         title: (
           <div className="d-flex flex-column">
             <Typography.Text> {column}</Typography.Text>
@@ -136,17 +147,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
             )}
           </div>
         ),
-        dataIndex: column,
-        key: column,
+        dataIndex: columnKey,
+        key: columnKey,
         width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
 
-    const data = (sampleData?.rows ?? []).map((item) => {
-      const dataObject: Record<string, SampleDataType> = {};
+    const data = (sampleData?.rows ?? []).map((item, rowIndex) => {
+      const dataObject: Record<string, SampleDataType> = {
+        [ROW_KEY]: rowIndex,
+      };
       (sampleData?.columns ?? []).forEach((col, index) => {
-        dataObject[col] = item[index];
+        dataObject[getSampleDataColumnKey(index, col)] = item[index];
       });
 
       return dataObject;
@@ -346,7 +359,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         data-testid="sample-data-table"
         dataSource={slicedRows}
         pagination={false}
-        rowKey="name"
+        rowKey={ROW_KEY}
         scroll={{ y: 'calc(100vh - 160px)' }}
         size="small"
       />

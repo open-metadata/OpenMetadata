@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { okJson } from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 
@@ -120,9 +121,9 @@ export class TagClass {
       data: this.data,
     });
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'TagClass.create');
 
-    return await response.json();
+    return await okJson(response, 'TagClass.create');
   }
 
   get() {

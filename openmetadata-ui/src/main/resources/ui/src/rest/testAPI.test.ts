@@ -91,6 +91,33 @@ describe('testAPI tests', () => {
         expect(result).toEqual(mockPagingResponse);
       });
 
+      it('should serialize multiple test case statuses as a comma-separated parameter', async () => {
+        const mockGet = jest
+          .fn()
+          .mockResolvedValue({ data: mockPagingResponse });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getListTestCaseBySearch } = require('./testAPI');
+
+        await getListTestCaseBySearch({
+          testCaseStatus: [TestCaseStatus.Success, TestCaseStatus.Queued],
+        });
+
+        expect(mockGet).toHaveBeenCalledWith(
+          '/dataQuality/testCases/search/list',
+          {
+            params: {
+              testCaseStatus: `${TestCaseStatus.Success},${TestCaseStatus.Queued}`,
+            },
+          }
+        );
+      });
+
       it('should handle empty search parameters', async () => {
         const mockGet = jest
           .fn()
@@ -110,6 +137,34 @@ describe('testAPI tests', () => {
           '/dataQuality/testCases/search/list',
           {
             params: undefined,
+          }
+        );
+      });
+
+      it('should forward request cancellation to the search request', async () => {
+        const mockGet = jest
+          .fn()
+          .mockResolvedValue({ data: mockPagingResponse });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getListTestCaseBySearch } = require('./testAPI');
+        const controller = new AbortController();
+
+        await getListTestCaseBySearch(
+          { testSuiteId: 'suite-id' },
+          { signal: controller.signal }
+        );
+
+        expect(mockGet).toHaveBeenCalledWith(
+          '/dataQuality/testCases/search/list',
+          {
+            params: { testSuiteId: 'suite-id' },
+            signal: controller.signal,
           }
         );
       });
@@ -928,6 +983,36 @@ describe('testAPI tests', () => {
         expect(mockGet).toHaveBeenCalledWith(expect.any(String), {
           params: { includeRelations: 'owners:all' },
         });
+      });
+
+      it('should forward request cancellation to the suite request', async () => {
+        const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getTestSuiteByName } = require('./testAPI');
+        const controller = new AbortController();
+
+        await getTestSuiteByName(
+          'test.suite.name',
+          { fields: ['owners'] },
+          { signal: controller.signal }
+        );
+
+        expect(mockGet).toHaveBeenCalledWith(
+          expect.stringContaining('/dataQuality/testSuites/name/'),
+          {
+            params: {
+              fields: ['owners'],
+              includeRelations: 'owners:non-deleted,experts:non-deleted',
+            },
+            signal: controller.signal,
+          }
+        );
       });
 
       it('should encode FQN with special characters', async () => {

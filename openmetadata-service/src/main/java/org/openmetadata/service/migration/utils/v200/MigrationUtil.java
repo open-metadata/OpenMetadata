@@ -364,7 +364,7 @@ public class MigrationUtil {
    * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
    * policies are create-if-not-exists, so without this migration upgraded deployments would lose
    * the ability for non-admin users to file or patch task threads (the new authorization wired into
-   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   * legacy task endpoints would reject them with 403).
    */
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
@@ -2150,11 +2150,12 @@ public class MigrationUtil {
             if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
               addEntityStatusToTriggerExclude(workflowDefinition);
             }
-            workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+            WorkflowDefinition patched = backfillUserApprovalTransitionMetadata(workflowDefinition);
+            workflowDefinitionRepository.createOrUpdate(null, patched, ADMIN_USER_NAME);
             redeployed++;
             LOG.info(
                 "Redeployed workflow '{}' to activate Task V2 approval listeners",
-                workflowDefinition.getName());
+                patched.getName());
           } catch (Exception e) {
             LOG.warn(
                 "Failed to redeploy workflow '{}': {}",
@@ -2167,6 +2168,93 @@ public class MigrationUtil {
       }
       return redeployed;
     }
+
+    /**
+     * Populate a default {@code transitionMetadata} of {@code [approve, reject]} on every
+     * {@code userApprovalTask} node whose config is missing the field or carries an empty array.
+     *
+     * <p>Round-trips the whole definition through JSON instead of calling
+     * {@link WorkflowNodeDefinitionInterface#setConfig(Map)}: that interface method is a default
+     * no-op (only the generated typed subclasses expose a real setter), so mutating through the
+     * interface reference silently drops the change and {@code createOrUpdate} then sees no diff
+     * and skips the persist.
+     */
+    private WorkflowDefinition backfillUserApprovalTransitionMetadata(
+        WorkflowDefinition workflowDefinition) {
+      List<WorkflowNodeDefinitionInterface> nodes = workflowDefinition.getNodes();
+      if (nullOrEmpty(nodes)) {
+        return workflowDefinition;
+      }
+      WorkflowDefinition result = workflowDefinition;
+      try {
+        Map<String, Object> workflowJson =
+            JsonUtils.convertValue(workflowDefinition, LinkedHashMap.class);
+        Object rawNodes = workflowJson == null ? null : workflowJson.get("nodes");
+        if (rawNodes instanceof List<?> nodeList
+            && applyBackfillToNodes(nodeList, workflowDefinition)) {
+          result = JsonUtils.convertValue(workflowJson, WorkflowDefinition.class);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to backfill transitionMetadata on workflow '{}'; leaving definition as-is: {}",
+            workflowDefinition.getName(),
+            e.getMessage());
+      }
+      return result;
+    }
+
+    private boolean applyBackfillToNodes(List<?> nodeList, WorkflowDefinition workflowDefinition) {
+      boolean modified = false;
+      for (Object rawNode : nodeList) {
+        if (!(rawNode instanceof Map<?, ?> nodeMapUntyped)) {
+          continue;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> nodeMap = (Map<String, Object>) nodeMapUntyped;
+        if (!USER_APPROVAL_TASK_SUBTYPE.equals(nodeMap.get("subType"))) {
+          continue;
+        }
+        Object rawConfig = nodeMap.get("config");
+        if (!(rawConfig instanceof Map<?, ?> configMapUntyped)) {
+          continue;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> configMap = (Map<String, Object>) configMapUntyped;
+        Object existing = configMap.get(TRANSITION_METADATA_FIELD);
+        if (existing instanceof List<?> list && !list.isEmpty()) {
+          continue;
+        }
+        configMap.put(TRANSITION_METADATA_FIELD, defaultUserApprovalTransitionMetadata());
+        modified = true;
+        LOG.info(
+            "Backfilled default transitionMetadata on userApprovalTask '{}' in workflow '{}'",
+            nodeMap.get("name"),
+            workflowDefinition.getName());
+      }
+      return modified;
+    }
+
+    private List<Map<String, Object>> defaultUserApprovalTransitionMetadata() {
+      Map<String, Object> approve = new LinkedHashMap<>();
+      approve.put("id", "approve");
+      approve.put("label", "Approve");
+      approve.put("targetStageId", "approved");
+      approve.put("targetTaskStatus", TaskEntityStatus.Approved.value());
+      approve.put("resolutionType", TaskResolutionType.Approved.value());
+      approve.put("requiresComment", false);
+
+      Map<String, Object> reject = new LinkedHashMap<>();
+      reject.put("id", "reject");
+      reject.put("label", "Reject");
+      reject.put("targetStageId", "rejected");
+      reject.put("targetTaskStatus", TaskEntityStatus.Rejected.value());
+      reject.put("resolutionType", TaskResolutionType.Rejected.value());
+      reject.put("requiresComment", false);
+
+      return List.of(approve, reject);
+    }
+
+    private static final String TRANSITION_METADATA_FIELD = "transitionMetadata";
 
     private void addEntityStatusToTriggerExclude(WorkflowDefinition workflowDefinition) {
       if (workflowDefinition.getTrigger()

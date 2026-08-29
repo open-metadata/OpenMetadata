@@ -21,6 +21,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
@@ -81,6 +82,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<ContextFile>();
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -201,6 +203,15 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders]
   );
 
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedSearchQuery(documentSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [documentSearchQuery]);
+
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (!after) {
@@ -216,12 +227,21 @@ const ContextCenterDocumentsPage: FC = () => {
         setIsDocumentsLoading(true);
       }
       try {
-        if (documentSearchQuery) {
+        if (debouncedSearchQuery) {
           const results = await fetchSearchResults({
-            query: documentSearchQuery,
+            query: debouncedSearchQuery,
             searchIndex: SearchIndex.DRIVE_FILE,
             sortField: 'updatedAt',
             sortOrder: 'desc',
+            ...(selectedFolderId && {
+              queryFilter: {
+                query: {
+                  bool: {
+                    filter: { term: { 'folder.id': selectedFolderId } },
+                  },
+                },
+              },
+            }),
           });
           if (generation !== fetchGenerationRef.current) {
             return;
@@ -264,7 +284,7 @@ const ContextCenterDocumentsPage: FC = () => {
         }
       }
     },
-    [documentSearchQuery, pageSize, handlePagingChange, selectedFolderId]
+    [debouncedSearchQuery, pageSize, handlePagingChange, selectedFolderId]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -272,12 +292,12 @@ const ContextCenterDocumentsPage: FC = () => {
       paging.after &&
       !isDocumentsLoading &&
       !isLoadingMoreRef.current &&
-      !documentSearchQuery
+      !debouncedSearchQuery
     ) {
       isLoadingMoreRef.current = true;
       fetchDocuments(paging.after);
     }
-  }, [paging.after, isDocumentsLoading, documentSearchQuery, fetchDocuments]);
+  }, [paging.after, isDocumentsLoading, debouncedSearchQuery, fetchDocuments]);
 
   useEffect(() => {
     fetchDocuments();
@@ -336,14 +356,8 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [
-    allDocuments,
-    isDocumentsLoading,
-    previewFile,
-    searchParams,
-    t,
-    setSearchParams,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');
@@ -654,6 +668,7 @@ const ContextCenterDocumentsPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
+      <DocumentTitle title={t('label.document-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           breadcrumbs={[

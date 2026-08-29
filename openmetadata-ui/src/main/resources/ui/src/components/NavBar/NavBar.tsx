@@ -76,7 +76,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -84,6 +84,7 @@ import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvide
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { NotificationBoxProp } from '../NotificationBox/NotificationBox.interface';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
@@ -95,6 +96,10 @@ const DomainSelectableList = withSuspenseFallback(
 );
 
 const cookieStorage = new CookieStorage();
+
+const renderNotificationBox = (props: NotificationBoxProp) => (
+  <NotificationBox {...props} />
+);
 
 const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
@@ -134,12 +139,11 @@ const NavBar = () => {
     setPreference,
   } = useCurrentUserPreferences();
 
-  // Check if current route is home page
-  const isHomePage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname === ROUTES.MY_DATA;
-  }, [location.pathname]);
+  // Check if current route is the landing page (either `/` or `/my-data`)
+  const isHomePage = useMemo(
+    () => isLandingPagePath(location.pathname),
+    [location.pathname]
+  );
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -607,18 +611,17 @@ const NavBar = () => {
             <Dropdown
               destroyPopupOnHide
               className="cursor-pointer"
-              dropdownRender={() => (
-                <NotificationBox
-                  activeTab={activeTab}
-                  hasMentionNotification={hasMentionNotification}
-                  hasTaskNotification={hasTaskNotification}
-                  onMarkMentionsNotificationRead={
-                    handleMentionsNotificationRead
-                  }
-                  onMarkTaskNotificationRead={handleTaskNotificationRead}
-                  onTabChange={handleActiveTab}
-                />
-              )}
+              dropdownRender={() =>
+                renderNotificationBox({
+                  activeTab,
+                  hasMentionNotification,
+                  hasTaskNotification,
+                  onMarkMentionsNotificationRead:
+                    handleMentionsNotificationRead,
+                  onMarkTaskNotificationRead: handleTaskNotificationRead,
+                  onTabChange: handleActiveTab,
+                })
+              }
               overlayStyle={{
                 width: '425px',
                 minHeight: '375px',

@@ -31,18 +31,59 @@ interface MockStep {
   warnings?: number;
 }
 
-interface MockPipeline {
-  name: string;
-  pipelineType?: 'metadata' | 'profiler';
-  pipelineState?: 'success' | 'queued' | 'running';
+type MockPipelineState =
+  | 'success'
+  | 'partialSuccess'
+  | 'failed'
+  | 'stopped'
+  | 'queued'
+  | 'running';
+
+interface MockRun {
+  pipelineState: MockPipelineState;
   /** Epoch ms of the run — this is what "latest run" is decided on. */
-  timestamp?: number;
+  timestamp: number;
+  runId?: string;
   steps?: MockStep[];
 }
 
+interface MockPipeline {
+  name: string;
+  pipelineType?: 'metadata' | 'profiler';
+  pipelineState?: MockPipelineState;
+  /** Epoch ms of the run — this is what "latest run" is decided on. */
+  timestamp?: number;
+  steps?: MockStep[];
+  /**
+   * A full run history, newest run first — the order the real endpoints return. Overrides the
+   * single-run fields above.
+   */
+  runs?: MockRun[];
+}
+
+const buildStatus = (pipelineName: string, run: MockRun, index: number) => ({
+  endDate: run.timestamp,
+  pipelineState: run.pipelineState,
+  runId: run.runId ?? `${pipelineName}-run-${index}`,
+  startDate: run.timestamp - 60_000,
+  status: run.steps ?? [],
+  timestamp: run.timestamp,
+});
+
 const buildPipeline = (serviceFqn: string, pipeline: MockPipeline) => {
   const fullyQualifiedName = `${serviceFqn}.${pipeline.name}`;
-  const hasRun = Boolean(pipeline.pipelineState);
+  const runs: MockRun[] =
+    pipeline.runs ??
+    (pipeline.pipelineState
+      ? [
+          {
+            pipelineState: pipeline.pipelineState,
+            runId: `${pipeline.name}-run`,
+            steps: pipeline.steps,
+            timestamp: pipeline.timestamp ?? 0,
+          },
+        ]
+      : []);
 
   return {
     airflowConfig: { scheduleInterval: '0 0 * * *' },
@@ -51,18 +92,9 @@ const buildPipeline = (serviceFqn: string, pipeline: MockPipeline) => {
     fullyQualifiedName,
     id: `00000000-0000-0000-0000-${pipeline.name.slice(-12).padStart(12, '0')}`,
     name: pipeline.name,
-    pipelineStatuses: hasRun
-      ? [
-          {
-            endDate: pipeline.timestamp,
-            pipelineState: pipeline.pipelineState,
-            runId: `${pipeline.name}-run`,
-            startDate: (pipeline.timestamp ?? 0) - 60_000,
-            status: pipeline.steps ?? [],
-            timestamp: pipeline.timestamp,
-          },
-        ]
-      : [],
+    pipelineStatuses: runs.map((run, index) =>
+      buildStatus(pipeline.name, run, index)
+    ),
     pipelineType: pipeline.pipelineType ?? 'metadata',
     service: { name: serviceFqn, type: 'databaseService' },
     sourceConfig: { config: { type: 'DatabaseMetadata' } },
@@ -83,6 +115,24 @@ const mockAgentsTab = async (
 
   await page.route('**/api/v1/services/ingestionPipelines?*', (route) =>
     route.fulfill({ json: { data, paging: { total: data.length } } })
+  );
+
+  // The run-history drawer reads its runs from this endpoint rather than the embedded statuses.
+  await page.route(
+    '**/api/v1/services/ingestionPipelines/*/pipelineStatus?*',
+    (route) => {
+      const requested = decodeURIComponent(
+        route.request().url().split('/ingestionPipelines/')[1].split('/')[0]
+      );
+      const match = data.find(
+        (pipeline) => pipeline.fullyQualifiedName === requested
+      );
+      const statuses = match?.pipelineStatuses ?? [];
+
+      return route.fulfill({
+        json: { data: statuses, paging: { total: statuses.length } },
+      });
+    }
   );
 
   // Single-agent refetch after a terminal progress event; left live it would return the real pipeline
@@ -206,5 +256,92 @@ test.describe('Service Agents deployment summary', () => {
     await expect(page.getByTestId('summary-assets-ingested')).toContainText(
       '50'
     );
+  });
+});
+
+/**
+ * Both the card dots and the drawer's rail render whatever order they are handed, and the endpoints
+ * return runs newest-first — so a fabricated multi-run history is the only way to catch the row
+ * silently reading right-to-left.
+ */
+test.describe('Service Agents recent run ordering', () => {
+  const service = EntityDataClass.databaseService;
+  const AGENT_NAME = 'pw-run-order-metadata';
+  // Newest first, as the API returns them. The three states are distinct so position is unambiguous.
+  const RUNS: MockRun[] = [
+    {
+      pipelineState: 'failed',
+      runId: 'run-newest',
+      timestamp: 1_700_007_200_000,
+    },
+    {
+      pipelineState: 'success',
+      runId: 'run-middle',
+      timestamp: 1_700_003_600_000,
+    },
+    {
+      pipelineState: 'partialSuccess',
+      runId: 'run-oldest',
+      timestamp: 1_700_000_000_000,
+    },
+  ];
+
+  let serviceFqn = '';
+
+  test.beforeAll(() => {
+    serviceFqn = service.entityResponseData.fullyQualifiedName;
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await mockAgentsTab(page, serviceFqn, [
+      {
+        name: AGENT_NAME,
+        runs: RUNS,
+        steps: [{ name: 'Source', records: 10 }],
+      },
+    ]);
+    await visitAgentsTab(page, serviceFqn);
+  });
+
+  test('should render the card run dots oldest-first with the latest one highlighted', async ({
+    page,
+  }) => {
+    const card = page.getByTestId(`agent-card-${serviceFqn}.${AGENT_NAME}`);
+    const dots = card.getByTestId('agent-run-dot');
+
+    await expect(dots).toHaveCount(3);
+
+    const statuses = await dots.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-run-status'))
+    );
+
+    expect(statuses).toEqual(['partial', 'success', 'failed']);
+
+    // Only the latest run is drawn at full opacity, and it is now the rightmost dot.
+    await expect(dots.nth(2)).not.toHaveClass(/opacity-\[0\.55\]/);
+    await expect(dots.nth(0)).toHaveClass(/opacity-\[0\.55\]/);
+  });
+
+  test('should open the run history drawer oldest-first with the newest run selected', async ({
+    page,
+  }) => {
+    const card = page.getByTestId(`agent-card-${serviceFqn}.${AGENT_NAME}`);
+
+    await card.getByTestId('view-run-history-button').click();
+
+    const drawer = page.getByTestId('run-history-drawer');
+
+    await expect(drawer).toBeVisible();
+
+    const items = drawer.getByTestId('run-history-item');
+
+    await expect(items).toHaveCount(3);
+    await expect(items.nth(0)).toContainText('Partial Success');
+    await expect(items.nth(1)).toContainText('Success');
+    await expect(items.nth(2)).toContainText('Failed');
+
+    // The rightmost card is the newest run, and it is what the drawer opens on.
+    await expect(items.nth(2)).toHaveClass(/border-utility-brand-600/);
+    await expect(items.nth(0)).not.toHaveClass(/border-utility-brand-600/);
   });
 });

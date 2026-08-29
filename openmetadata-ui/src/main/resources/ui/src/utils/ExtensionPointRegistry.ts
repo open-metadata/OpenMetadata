@@ -21,7 +21,7 @@
 /**
  * A contribution from a plugin to an extension point
  */
-export interface ExtensionContribution<T = any> {
+export interface ExtensionContribution<T = unknown> {
   /** The extension point this contribution is for */
   extensionPointId: string;
   /** The actual contribution data */
@@ -60,7 +60,19 @@ export class ExtensionPointRegistry {
   public contribute<T>(contribution: ExtensionContribution<T>): void {
     const { extensionPointId } = contribution;
     const existing = this.contributions.get(extensionPointId) ?? [];
-    this.contributions.set(extensionPointId, [...existing, contribution]);
+    // Idempotent for keyed contributions: a plugin's `contributeExtensions`
+    // can run more than once in a session (the ApplicationsProvider effect
+    // re-runs when the installed-apps list changes), so replace any prior
+    // contribution carrying the same `key` instead of appending a duplicate —
+    // otherwise the slot renders twice and React warns on the non-unique key.
+    // Keyless contributions (e.g. the routes fallback, "last wins") keep
+    // appending unchanged.
+    const key = (contribution.data as { key?: string })?.key;
+    const deduped =
+      key === undefined
+        ? existing
+        : existing.filter((c) => (c.data as { key?: string })?.key !== key);
+    this.contributions.set(extensionPointId, [...deduped, contribution]);
   }
 
   /**
@@ -74,6 +86,6 @@ export class ExtensionPointRegistry {
   public getContributions<T>(extensionPointId: string): T[] {
     const contributions = this.contributions.get(extensionPointId) ?? [];
 
-    return contributions.map((contribution) => contribution.data);
+    return contributions.map((contribution) => contribution.data) as T[];
   }
 }

@@ -30,6 +30,7 @@ FULL_PROJECTS = {
     "GlobalSettings",
     "SystemCertificationTags",
     "IntakeForm",
+    "AdvancedSearch",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -46,6 +47,7 @@ PROJECT_LANES = {
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
+    "AdvancedSearch": "advanced-search",
 }
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
@@ -60,15 +62,29 @@ LANE_WORKERS = {
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
-# The chromium lane has outgrown a 19-minute shard: at the COMMON_MAX_SHARDS
-# ceiling the heaviest shard is predicted at 19.2m, so full-mode planning aborts
-# and every merge-queue run fails before a single test runs. The binding limit
-# is the 25m `timeout` wrapper around `npx playwright test`, against which 21m
-# leaves ~4m; the 35m playwright-ci-postgresql job clock is looser still, since
-# it also has to cover ~5-8m of setup and teardown around that wrapper.
-COMMON_SHARD_BUDGET_MS = 21 * 60 * 1000
+# Chromium shard budget, derived from the predicted→actual execution tail
+# rather than from the average. Measured on merge_group run 32219260486
+# (23 chromium shards, fresh auto-refreshed baseline): actual/predicted
+# execution ratio has median 0.96 — predictions are well calibrated — but
+# the tail reaches 1.08 on a healthy run and 1.23 on a noisy one
+# (chromium-01 in run 32209040146 was SIGTERM'd by the 25-minute wrapper
+# with 162/164 tests already passed). The binding constraint is that
+# budget × worst-tail-ratio must stay under the 1500-second wrapper:
+#   21 min × 1.23 = 1550 s  → dead shard, all tests green (the outage)
+#   19 min × 1.23 = 1402 s  → 98 s of margin
+#   19 min × 1.32 = 1500 s  → break-even; tolerated tail is 1.32
+# 21 min was a stop-gap (#30784) to fit the lane under the old 24-shard
+# ceiling; the ceiling is now 28 (below), which is what actually makes a
+# 19-minute budget feasible again.
+COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
-COMMON_MAX_SHARDS = 24
+# Raised 24 → 28 together with the budget revert above. Current chromium
+# content (~71,700 predicted worker-seconds) needs 25 shards at a
+# 19-minute budget — over the old cap, which is exactly why #30784 had to
+# raise the budget instead. 28 leaves ~12% content-growth headroom before
+# planning aborts; if the lane grows past that, split heavy suites (see
+# AUDITED_PARALLEL_SUITES) before considering another cap raise.
+COMMON_MAX_SHARDS = 28
 # Weight assigned to a test that has no timing evidence in `timing-baseline.json`
 # (or in any additional history payloads). Bumped from 20 s → 30 s alongside the
 # all-zero-history fix in `load_history`: a suite re-enabled after being
@@ -534,6 +550,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
+        "advanced-search",
         "domain-isolation",
         "global-state",
         "import-export",
@@ -646,11 +663,46 @@ def write_plan(
     }
 
 
+# The workflow passes one `--history` per downloaded full-run artifact and only
+# falls back to the checked-in baseline when *no* artifact could be downloaded
+# (see the `history_args` block in playwright-e2e-reusable.yml). A newly added
+# spec file exists in the baseline -- its author seeds the durations there, as
+# the stale-baseline gate below instructs -- but in no artifact yet, so a single
+# successful download silently dropped those seeded timings and the gate fired
+# on a file that *does* have history. Fold the baseline in at the lowest
+# precedence instead: an artifact weight always wins where one exists, and the
+# baseline only backfills tests no artifact has ever observed.
+CHECKED_IN_BASELINE = Path(".github/playwright/timing-baseline.json")
+
+
+def backfill_from_checked_in_baseline(
+    paths: list[Path],
+    weights: dict[str, int],
+    identity_weights: dict[tuple[str, str], int],
+) -> None:
+    baseline = next(
+        (
+            candidate
+            for candidate in (root / CHECKED_IN_BASELINE for root in SPEC_ROOT_CANDIDATES)
+            if candidate.is_file()
+        ),
+        None,
+    )
+    if baseline is None or any(path.resolve() == baseline.resolve() for path in paths):
+        return
+    fallback_weights, fallback_identity = load_history([baseline])
+    for test_id, weight in fallback_weights.items():
+        weights.setdefault(test_id, weight)
+    for identity, weight in fallback_identity.items():
+        identity_weights.setdefault(identity, weight)
+
+
 def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
     test_weights, identity_weights = load_history(args.history)
+    backfill_from_checked_in_baseline(args.history, test_weights, identity_weights)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

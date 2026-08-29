@@ -180,6 +180,17 @@ def get_formatted_entity_name(name: str) -> Optional[str]:  # noqa: UP045
     return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
 
 
+def has_table_name(name: Optional[str]) -> bool:  # noqa: UP045
+    """
+    Check that a table reference coming from a query parser actually holds a table name.
+
+    Query parsers can return references whose table part is empty, e.g. `db.schema.` when
+    the query contains an empty identifier (`db.schema.""`). There is nothing to look up in
+    those, so they are dropped instead of failing later on while building the FQN.
+    """
+    return bool(name and name.rsplit(".", maxsplit=1)[-1].strip())
+
+
 def replace_special_with(raw: str, replacement: str) -> str:
     """
     Replace special characters in a string by a hyphen
@@ -632,13 +643,17 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):  # noqa: UP
                     else:
                         raise error  # noqa: TRY201
 
-                host_port_str = str(getattr(config.serviceConnection.root.config, "hostPort", None) or "")
-                if "localhost" not in host_port_str:
+                service_connection = getattr(config, "serviceConnection", None)
+                connection_config = getattr(getattr(service_connection, "root", None), "config", None)
+                host_port = getattr(connection_config, "hostPort", None)
+                host_port_str = str(host_port or "")
+                if connection_config is None or host_port is None or "localhost" not in host_port_str:
                     raise error  # noqa: TRY201
 
-                host_port_type = type(config.serviceConnection.root.config.hostPort)
                 docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
-                config.serviceConnection.root.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
+                setattr(  # noqa: B010
+                    connection_config, "hostPort", type(host_port)(docker_host_port_str)
+                )
                 func(*args, **kwargs)
 
         return wrapper

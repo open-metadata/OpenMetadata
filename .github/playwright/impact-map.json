@@ -146,7 +146,8 @@
         "playwright/e2e/Search/**/*.spec.ts",
         "playwright/e2e/Features/SearchSeparation/**/*.spec.ts",
         "playwright/e2e/**/*AfterReindex.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -186,6 +187,7 @@
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
@@ -215,6 +217,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/TestSuite*.spec.ts",
@@ -249,6 +252,21 @@
       ]
     },
     {
+      "_comment": "The agents tab has to keep listing agents, and keep its run history readable, while the pipeline-service status call is slow or failing — only the controls that reach that service may go down with it. These are the files that decide it. The spec stubs the status endpoint and carries no ingestion tag, so chromium alone is enough; it needs no Airflow fixture.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ServiceAgents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Ingestion/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AirflowMessageBanner/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/AirflowStatusProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/ingestionPipelineAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
@@ -263,8 +281,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/GlossaryTermRelation/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Settings/GlossaryTermRelation/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/**",
+        "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DomainListing/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataProduct/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
@@ -273,6 +305,18 @@
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
         "playwright/e2e/Features/DomainIsolation/**/*.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DomainsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/useAssetSelectionState.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/domainAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/domainQuery.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts"
       ]
     },
     {
@@ -300,7 +344,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
+      "projects": ["chromium", "Basic", "Ingestion", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",
@@ -533,6 +577,38 @@
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The customize-landing-page and widget-filter playwright helpers are shared by every landing-page/customization spec. Without this entry a helper-only change (e.g. a wait fix in customizeLandingPage.ts or widgetFilters.ts) counted as an unmapped file, so CustomizeWidgets/CustomizeLandingPage and the other specs that execute the changed helpers never ran on the PR. Specs listed are the exact importers of these modules; DataInsight.spec.ts runs in the Data Insight project.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/widgetFilters.ts"
+      ],
+      "projects": ["chromium", "Data Insight"],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
+        "playwright/e2e/Features/NavigationBlocker.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "PersonaAIContextRules.spec.ts covers the AI Context rule builder on the Persona settings page. Without this entry, changes to the PersonaAIContext component tree or PersonaAPI are not caught before merge.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts"
       ]
     }
   ]

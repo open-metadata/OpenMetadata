@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.awaitility.pollinterval.IterativePollInterval;
+import org.awaitility.pollinterval.PollInterval;
 import org.openmetadata.it.util.TestNamespace.EntityRoot;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
@@ -31,16 +33,23 @@ public final class NamespaceCleanup {
   private static final Logger LOG = LoggerFactory.getLogger(NamespaceCleanup.class);
 
   // How long to wait for a recursive hard delete to finish cascading. Sized for the scale suite's
-  // 100k-table service, whose cascade ran ~6 minutes on an unloaded cluster. Override with
+  // 100k-table service, whose cascade ran ~6 minutes on an unloaded cluster; small tests fall
+  // through on the first poll, so a generous cap costs them nothing. Override with
   // -Djpw.cleanup.cascadeTimeoutMin.
   private static final Duration CASCADE_TIMEOUT =
       Duration.ofMinutes(Integer.getInteger("jpw.cleanup.cascadeTimeoutMin", 15));
-  // Awaitility defaults its poll delay to the poll interval, so a 5s interval meant every root -
-  // including the overwhelming majority whose cascade is already finished - blocked 5s before its
-  // first check. Across a lane's namespaces that dominated the integration budget. The delay is
-  // pinned to zero below; this interval only paces genuinely in-flight cascades, and each poll is
-  // a single cheap 404 probe.
-  private static final Duration CASCADE_POLL = Duration.ofMillis(500);
+
+  // A normal test's cascade completes in tens of milliseconds, so poll fast at first and back off.
+  // The interval must not be fixed: Awaitility derives the poll *delay* — the wait before the very
+  // first check — from a FixedPollInterval unless one is set explicitly, so a flat 5s interval
+  // billed every cleanup 5 idle seconds. That is 5265 cleanups x ~5s of pure sleep in one parallel
+  // lane, which is what pushed the lane past its 65m budget. Backing off to MAX_CASCADE_POLL keeps
+  // a 100k-table cascade from polling the cluster hundreds of times a minute for 15 minutes.
+  private static final Duration INITIAL_CASCADE_POLL = Duration.ofMillis(100);
+  // Package-private so NamespaceCleanupTest can pin the "not a fixed interval" invariant.
+  static final Duration MAX_CASCADE_POLL = Duration.ofSeconds(5);
+  static final PollInterval CASCADE_POLL =
+      IterativePollInterval.iterative(NamespaceCleanup::nextCascadePoll, INITIAL_CASCADE_POLL);
 
   // OM entity type -> REST collection path. Only top-level (root) types need entries.
   private static final Map<String, String> COLLECTION_PATHS =
@@ -121,6 +130,12 @@ public final class NamespaceCleanup {
       gone = false;
     }
     return gone;
+  }
+
+  /** Doubles the poll interval up to {@link #MAX_CASCADE_POLL} so a long cascade is not hammered. */
+  private static Duration nextCascadePoll(final Duration previous) {
+    final Duration doubled = previous.multipliedBy(2);
+    return doubled.compareTo(MAX_CASCADE_POLL) > 0 ? MAX_CASCADE_POLL : doubled;
   }
 
   /**

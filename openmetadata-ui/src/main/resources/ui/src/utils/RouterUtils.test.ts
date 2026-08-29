@@ -17,7 +17,13 @@ import {
   PLACEHOLDER_SETTING_CATEGORY,
   ROUTES,
 } from '../constants/constants';
-import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
+import {
+  getExplorePath,
+  getExploreTabPath,
+  getSettingPath,
+  getSettingsPathWithFqn,
+  isLandingPagePath,
+} from './RouterUtils';
 
 describe('Global Setting routes', () => {
   describe('getSettingPath', () => {
@@ -119,5 +125,62 @@ describe('Global Setting routes', () => {
 
       expect(path).toEqual(expectedPath);
     });
+  });
+});
+
+describe('getExploreTabPath', () => {
+  it('should build the Explore path for the given tab', () => {
+    const path = getExploreTabPath('tables');
+
+    expect(path).toEqual(
+      ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, 'tables')
+    );
+  });
+
+  it('should fall back to an empty tab segment when tab is undefined', () => {
+    const path = getExploreTabPath();
+
+    expect(path).toEqual(
+      ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, '')
+    );
+  });
+
+  it('should not depend on the current window location', () => {
+    // Regression guard: this pathname must be derivable purely from the
+    // `tab` argument, independent of `window.location`, so callers merging
+    // it into a `navigate({ pathname, search })` call can't be affected by
+    // stale router location state. Changing the current URL between the two
+    // calls must not change the result.
+    const before = getExploreTabPath('dashboards');
+
+    const originalPath = window.location.pathname;
+    window.history.pushState({}, '', '/some/unrelated/page');
+
+    const after = getExploreTabPath('dashboards');
+
+    window.history.pushState({}, '', originalPath);
+
+    expect(after).toEqual(before);
+  });
+});
+
+describe('getExplorePath', () => {
+  it('should build the pathname from getExploreTabPath', () => {
+    const path = getExplorePath({ tab: 'topics' });
+
+    expect(path.startsWith(getExploreTabPath('topics'))).toBe(true);
+  });
+});
+
+describe('isLandingPagePath', () => {
+  it('should treat both landing page paths as the landing page', () => {
+    expect(isLandingPagePath(ROUTES.HOME)).toBe(true);
+    expect(isLandingPagePath(ROUTES.MY_DATA)).toBe(true);
+  });
+
+  it('should not match any other route', () => {
+    expect(isLandingPagePath(ROUTES.EXPLORE)).toBe(false);
+    expect(isLandingPagePath('/my-data-quality')).toBe(false);
+    expect(isLandingPagePath('/table/sample_data.ecommerce_db')).toBe(false);
   });
 });

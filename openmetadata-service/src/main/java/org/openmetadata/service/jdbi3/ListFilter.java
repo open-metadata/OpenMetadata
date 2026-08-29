@@ -26,6 +26,11 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
 
+  // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
+  // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
+  private String sortField;
+  private String sortOrder;
+
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
@@ -36,6 +41,20 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getSortField() {
+    return sortField;
+  }
+
+  public String getSortOrder() {
+    return sortOrder;
+  }
+
+  public ListFilter withSort(String sortField, String sortOrder) {
+    this.sortField = sortField;
+    this.sortOrder = sortOrder;
+    return this;
   }
 
   public String getCondition(String tableName) {
@@ -264,13 +283,19 @@ public class ListFilter extends Filter<ListFilter> {
     if (mentionedUser == null) {
       return "";
     }
-    queryParams.put("mentionedUserParam", mentionedUser);
+    // TaskRepository.storeMentions writes the task id into toFQN and the mentioned
+    // user into fromFQNHash (via @BindFQN). field_relationship has no toId column, so
+    // selecting one made every mentionedUser query fail with an SQLSyntaxErrorException.
+    // hashUserName quotes first, so a dotted name matches whether the caller sends the
+    // quoted FQN ("john.doe") or the bare name (john.doe) — bare would otherwise hash
+    // as three FQN segments and match nothing.
+    queryParams.put("mentionedUserHash", hashUserName(mentionedUser));
     return String.format(
-        "(id IN (SELECT fr.toId FROM field_relationship fr "
-            + "WHERE fr.fromFQN = :mentionedUserParam "
-            + "AND fr.toType = 'task' "
+        "(id IN (SELECT fr.toFQN FROM field_relationship fr "
+            + "WHERE fr.fromFQNHash = :mentionedUserHash "
+            + "AND fr.toType = '%s' "
             + "AND fr.relation = %d))",
-        Relationship.MENTIONED_IN.ordinal());
+        Entity.TASK, Relationship.MENTIONED_IN.ordinal());
   }
 
   /**

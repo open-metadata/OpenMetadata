@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -7,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.RESERVED_CHARACTER_QUERIES;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -18,6 +22,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +57,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -60,6 +66,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -82,9 +89,6 @@ import org.slf4j.LoggerFactory;
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  // Search converges synchronously post-commit, but a transient ES write failure falls back to the
-  // async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
-  private static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -2411,6 +2415,285 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertNotNull(results);
               assertTrue(results.getData().size() >= 5, "Should have at least 5 test cases");
             });
+  }
+
+  /**
+   * Regression: Lucene reserved characters in {@code q} produced a query_shard_exception. The
+   * display name deliberately carries reserved characters so the test proves the term still
+   * <em>matches</em>, not merely that the request stopped throwing.
+   */
+  @Test
+  void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    // A single lowercase alphanumeric token plus reserved characters. Because the reserved
+    // characters are the only thing separating the token from "v2", a parser that dropped them
+    // instead of matching them literally would search for `<token>v2` and stop matching this
+    // entity — so this asserts the term still resolves, not merely that it avoids a 500.
+    String reservedDisplayName = "dq" + ns.uniqueShortId() + "(v2)";
+    String reservedTestCase = ns.prefix("reserved_hit");
+
+    createTestCaseWithDisplayName(client, table, reservedTestCase, reservedDisplayName);
+
+    Awaitility.await("search matches a display name containing reserved characters")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestCaseNames(reservedDisplayName).contains(reservedTestCase),
+                    "A reserved-character term must still match, not just avoid a 500"));
+
+    for (String reservedQuery : RESERVED_CHARACTER_QUERIES) {
+      assertDoesNotThrow(
+          () -> searchTestCaseNames(reservedQuery),
+          "search/list must not fail for the query " + reservedQuery);
+    }
+  }
+
+  /**
+   * Substring matching used to come from the UI wrapping the term in {@code *…*}. Now that {@code q}
+   * is literal text there is no wildcard, and the {@code *.ngram} fields are edge_ngram, which only
+   * matches token prefixes. Only {@code name.substring} / {@code displayName.substring} can match
+   * from the middle of a token, so this fails if those fields leave the mapping or the field list.
+   */
+  @Test
+  void test_searchListMatchesMidTokenSubstringWithoutAWildcard(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String token = "zq" + ns.uniqueShortId();
+    String displayName = "column" + token + "between";
+    String testCaseName = ns.prefix("substring_hit");
+
+    createTestCaseWithDisplayName(client, table, testCaseName, displayName);
+
+    Awaitility.await("search matches a substring starting mid-token")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestCaseNames(token).contains(testCaseName),
+                    "A mid-token substring must match without the caller supplying a wildcard"));
+  }
+
+  private void createTestCaseWithDisplayName(
+      OpenMetadataClient client, Table table, String name, String displayName) {
+    TestCaseBuilder.create(client)
+        .name(name)
+        .displayName(displayName)
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  /**
+   * Pins the {@code /v1/search/query} contract on a data quality index: its {@code q} is documented
+   * Lucene syntax (see SearchResource), so it must keep the query_string parser. Treating it as
+   * free text would silently turn field queries into literal text and return 0 hits with HTTP 200.
+   */
+  @Test
+  void test_searchQueryEndpointHonoursLuceneSyntaxOnDataQualityIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String testCaseName = ns.prefix("lucene_syntax_pin");
+
+    TestCaseBuilder.create(client)
+        .name(testCaseName)
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    String fieldQuery = "name.keyword:" + testCaseName;
+    Awaitility.await("/v1/search/query honours a field-scoped Lucene query")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchQueryNames(fieldQuery).contains(testCaseName),
+                    "`field:value` must stay a field query on /v1/search/query"));
+
+    assertTrue(
+        searchQueryNames(fieldQuery + " AND NOT " + fieldQuery).isEmpty(),
+        "AND/NOT must be honoured as Lucene operators, not matched as literal text");
+  }
+
+  /**
+   * The "Add test cases" picker scopes its list to one test suite while the user types free text.
+   * Because {@code q} is a literal term on this endpoint, that scoping must travel in a
+   * first-class filter param; expressing it as a Lucene fragment inside {@code q} silently returns
+   * nothing. Asserts both halves of the picker's real request shape.
+   */
+  @Test
+  void test_suiteScopedPickerQueryReturnsTheSuiteTestCases(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String tableTest = ns.prefix("picker_table_test");
+    String columnTest = ns.prefix("picker_column_test");
+
+    TestCase createdTableTest =
+        TestCaseBuilder.create(client)
+            .name(tableTest)
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    TestCaseBuilder.create(client)
+        .name(columnTest)
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeNotNull")
+        .create();
+
+    // A second table's test case must never appear: without it the scoping assertions would still
+    // be satisfiable if the server ignored `entityLink` altogether.
+    Table otherTable = createTable(ns);
+    String otherTableTest = ns.prefix("picker_other_table_test");
+    TestCaseBuilder.create(client)
+        .name(otherTableTest)
+        .forTable(otherTable)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    TestCase fetched =
+        client.testCases().getByName(createdTableTest.getFullyQualifiedName(), "testSuite");
+    String suiteFqn = fetched.getTestSuite().getFullyQualifiedName();
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    Awaitility.await("the picker's suite-scoped query lists the suite's test cases")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              List<String> scoped = searchTestCasesForSuite(null, entityLink);
+              assertTrue(
+                  scoped.contains(tableTest), "table-level test must be listed, got: " + scoped);
+              assertTrue(
+                  scoped.contains(columnTest), "column-level test must be listed, got: " + scoped);
+              assertFalse(
+                  scoped.contains(otherTableTest),
+                  "another table's test must be scoped out, got: " + scoped);
+            });
+
+    // Free text still narrows within the suite scope.
+    List<String> narrowed = searchTestCasesForSuite(columnTest, entityLink);
+    assertTrue(narrowed.contains(columnTest), "free text must still match inside the suite scope");
+    assertFalse(narrowed.contains(tableTest), "free text must still exclude non-matching tests");
+
+    // The counterpart of the /v1/search/query pin: on this endpoint `q` is a literal term, so a
+    // Lucene fragment in it matches nothing rather than acting as a filter. This is why the picker
+    // must not compose its suite scope into `q`.
+    assertTrue(
+        searchTestCaseNames("testSuite.fullyQualifiedName:\"" + suiteFqn + "\"").isEmpty(),
+        "a Lucene expression in `q` must not silently behave like a filter on this endpoint");
+  }
+
+  /**
+   * {@code TestCaseResultResource} documents its two {@code q} params identically to the test case
+   * endpoints ("search query term to use in list") and reached {@code query_string} too.
+   * Smoke-covers both so the free-text treatment is not silently applied unevenly.
+   */
+  @Test
+  void test_testCaseResultSearchWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_reserved_search"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(System.currentTimeMillis());
+    result.setTestCaseStatus(TestCaseStatus.Success);
+    result.setResult("passed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    for (String reservedQuery : RESERVED_CHARACTER_QUERIES) {
+      assertDoesNotThrow(
+          () -> searchTestCaseResults("/search/list", reservedQuery),
+          "testCaseResults/search/list must not fail for the query " + reservedQuery);
+      assertDoesNotThrow(
+          () -> searchTestCaseResults("/search/latest", reservedQuery),
+          "testCaseResults/search/latest must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private String searchTestCaseResults(String path, String query) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/dataQuality/testCases/testCaseResults" + path,
+            null,
+            RequestOptions.builder().queryParam("q", query).queryParam("limit", "10").build());
+  }
+
+  /**
+   * The picker's request shape. A null {@code query} omits {@code q} entirely rather than sending
+   * {@code *}: with {@code q} parsed as literal text a lone asterisk matches nothing, so passing it
+   * as a stand-in for "no search term" would silently assert against an empty list.
+   */
+  private List<String> searchTestCasesForSuite(String query, String entityLink) {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("entityLink", entityLink)
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "50");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options.build());
+    return namesUnder(JsonUtils.readTree(response).path("data"));
+  }
+
+  private List<String> searchTestCaseNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/search/list",
+                null,
+                RequestOptions.builder().queryParam("q", query).queryParam("limit", "50").build());
+    return namesUnder(JsonUtils.readTree(response).path("data"));
+  }
+
+  private List<String> searchQueryNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/search/query",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("index", "testCase")
+                    .queryParam("size", "50")
+                    .build());
+    List<String> names = new ArrayList<>();
+    for (JsonNode hit : JsonUtils.readTree(response).path("hits").path("hits")) {
+      names.add(hit.path("_source").path("name").asText());
+    }
+    return names;
+  }
+
+  private static List<String> namesUnder(JsonNode container) {
+    List<String> names = new ArrayList<>();
+    for (JsonNode element : container) {
+      names.add(element.path("name").asText());
+    }
+    return names;
   }
 
   @Test
@@ -5186,6 +5469,138 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     "Table-level test should not appear when filtering by columnName");
               }
             });
+  }
+
+  // ===================================================================
+  // TEST CASE STATUS FILTER TESTS (search/list endpoint)
+  // ===================================================================
+
+  @Test
+  void test_searchListByMultipleTestCaseStatuses_matchesAnyOfThem(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase failedTestCase =
+        createTestCaseWithStatus(client, ns, table, "status_failed", TestCaseStatus.Failed);
+    TestCase abortedTestCase =
+        createTestCaseWithStatus(client, ns, table, "status_aborted", TestCaseStatus.Aborted);
+    TestCase successTestCase =
+        createTestCaseWithStatus(client, ns, table, "status_success", TestCaseStatus.Success);
+
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    Awaitility.await("search/list returns test cases matching any of the requested statuses")
+        .atMost(120, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              List<String> names =
+                  searchListTestCaseNames(
+                      client, entityLink, "testCaseStatus=Failed&testCaseStatus=Aborted");
+              assertTrue(
+                  names.contains(failedTestCase.getName()),
+                  "Failed test case must match testCaseStatus=Failed&testCaseStatus=Aborted");
+              assertTrue(
+                  names.contains(abortedTestCase.getName()),
+                  "Aborted test case must match testCaseStatus=Failed&testCaseStatus=Aborted");
+              assertFalse(
+                  names.contains(successTestCase.getName()),
+                  "Success test case must not match testCaseStatus=Failed&testCaseStatus=Aborted");
+            });
+
+    List<String> commaSeparated =
+        searchListTestCaseNames(client, entityLink, "testCaseStatus=Failed,Aborted");
+    assertTrue(
+        commaSeparated.contains(failedTestCase.getName()),
+        "Failed test case must match the comma separated form of the filter");
+    assertTrue(
+        commaSeparated.contains(abortedTestCase.getName()),
+        "Aborted test case must match the comma separated form of the filter");
+    assertFalse(
+        commaSeparated.contains(successTestCase.getName()),
+        "Success test case must not match the comma separated form of the filter");
+
+    List<String> lowerCase =
+        searchListTestCaseNames(client, entityLink, "testCaseStatus=failed&testCaseStatus=aborted");
+    assertTrue(
+        lowerCase.contains(failedTestCase.getName()),
+        "Statuses must be matched case insensitively");
+    assertTrue(
+        lowerCase.contains(abortedTestCase.getName()),
+        "Statuses must be matched case insensitively");
+    assertFalse(
+        lowerCase.contains(successTestCase.getName()),
+        "Case insensitive matching must not widen the filter");
+
+    List<String> singleStatus =
+        searchListTestCaseNames(client, entityLink, "testCaseStatus=Success");
+    assertTrue(
+        singleStatus.contains(successTestCase.getName()),
+        "A single status must keep filtering on that status only");
+    assertFalse(
+        singleStatus.contains(failedTestCase.getName()),
+        "A single status must keep filtering on that status only");
+  }
+
+  @Test
+  void test_searchListByUnknownTestCaseStatus_returnsBadRequest(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                searchListTestCaseNames(
+                    client, entityLink, "testCaseStatus=Failed&testCaseStatus=NotAStatus"));
+    assertTrue(
+        exception.getMessage().contains("NotAStatus"),
+        "The error must name the invalid status but was: " + exception.getMessage());
+  }
+
+  private TestCase createTestCaseWithStatus(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      Table table,
+      String name,
+      TestCaseStatus status) {
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix(name))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(status)
+                .withResult("Result for " + status.value()));
+    return testCase;
+  }
+
+  private List<String> searchListTestCaseNames(
+      OpenMetadataClient client, String entityLink, String statusQuery) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/search/list?" + statusQuery,
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityLink", entityLink)
+                    .queryParam("includeAllTests", "true")
+                    .queryParam("limit", "100")
+                    .build());
+    ResultList<TestCase> results =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCase>>() {});
+    return results.getData().stream().map(TestCase::getName).toList();
   }
 
   /**

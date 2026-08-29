@@ -76,7 +76,12 @@ const CreatePlaceholder = ({
                 <Transi18next
                   i18nKey="message.refer-to-our-doc"
                   renderElement={
-                    <a href={doc} rel="noopener noreferrer" target="_blank" />
+                    <a
+                      aria-label={t('label.documentation')}
+                      href={doc}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    />
                   }
                   values={{ doc: t('label.doc-plural-lowercase') }}
                 />

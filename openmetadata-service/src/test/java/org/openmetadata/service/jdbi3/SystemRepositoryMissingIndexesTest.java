@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.search.SearchRepository;
 

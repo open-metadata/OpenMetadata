@@ -46,10 +46,15 @@ import { useAgentPermissions } from '../hooks/useAgentPermissions';
 import AgentGroup from './AgentGroup.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
+const AGENTS_EMPTY_CARD_CLASS =
+  'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl';
+
 interface MetadataAgentsViewProps {
   addAgentSlot?: ReactNode;
   agents: Agent[];
   ingestionPipelineList: IngestionPipeline[];
+  /** First load of the pipeline fetch — before it lands, an empty list means "not known yet". */
+  isLoading?: boolean;
   serviceCategory: ServiceCategory;
   serviceDetails: ServicesType;
   serviceName: string;
@@ -63,6 +68,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   addAgentSlot: addAgentSlotProp,
   agents,
   ingestionPipelineList,
+  isLoading,
   isRefreshing,
   serviceCategory,
   serviceDetails,
@@ -200,6 +206,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
   }, [logsFor, rawText]);
 
+  // The pipeline fetch now runs regardless of the airflow status, so an empty list here really
+  // does mean "none exist". The unreachable case is carried by `AirflowMessageBanner` instead.
   const emptyPlaceholder = useMemo(
     () =>
       getErrorPlaceHolder(
@@ -207,7 +215,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         platform === DISABLED,
         theme,
         undefined,
-        'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl'
+        AGENTS_EMPTY_CARD_CLASS
       ),
     [agents.length, platform, theme]
   );
@@ -258,6 +266,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
         icon={<Code01 size={18} />}
+        isLoading={isLoading}
         isRefreshing={isRefreshing}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}

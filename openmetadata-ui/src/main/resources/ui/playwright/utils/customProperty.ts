@@ -912,16 +912,21 @@ export const deleteCreatedProperty = async (
   const patchResponse = page.waitForResponse(
     (res) =>
       res.url().includes('/api/v1/metadata/types/') &&
-      res.request().method() === 'PATCH' &&
-      res.status() === 200
+      res.request().method() === 'PATCH',
+    { timeout: 30_000 }
   );
 
   await page.locator('[data-testid="save-button"]').click();
-  await patchResponse;
+  const response = await patchResponse;
+
+  expect(response.status()).toBe(200);
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.
   await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
+  await expect(
+    page.locator(`[data-row-key="${propertyName}"]`)
+  ).not.toBeVisible();
 };
 
 export const verifyCustomPropertyInAdvancedSearch = async (
@@ -944,7 +949,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   // Select "Custom Properties" from the field dropdown
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     'Custom Properties',
     true
   );
@@ -952,7 +957,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   if (entityType !== 'TableColumn') {
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field .ant-select'),
+      ruleLocator.locator('.rule--field'),
       entityType,
       true
     );
@@ -960,26 +965,26 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     if (propertyType === 'Time Interval') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} (Start)`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} (End)`,
         true
       );
     } else if (propertyType === 'Hyperlink') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} URL`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} Display Text`,
         true
       );
@@ -987,7 +992,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
       for (const column of propertyConfig ?? []) {
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field .ant-select'),
+          ruleLocator.locator('.rule--field'),
           `${propertyName} - ${column}`,
           true
         );
@@ -995,7 +1000,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     } else {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         propertyName,
         true
       );
@@ -1063,12 +1068,13 @@ export const editColumnCustomProperty = async (
     const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
-    await input.fill(value);
-    await page.waitForResponse(
+    const assetSearchResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
+    await input.fill(value);
+    await assetSearchResponse;
     await page.getByTestId(value).click();
 
     // Verify selection is applied before saving

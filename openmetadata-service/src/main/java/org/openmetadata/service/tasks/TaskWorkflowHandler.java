@@ -67,7 +67,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 /**
  * Handles workflow integration for Task entities.
  *
- * <p>This is a clean replacement for FeedRepository.TaskWorkflow that works directly with the new
+ * <p>This handler works directly with Task V2 entities and their workflow lifecycle.
  * Task entity. It integrates with the Flowable-based Governance Workflow system while keeping all
  * task logic in the new system.
  *
@@ -209,10 +209,13 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    // Resolve in Flowable workflow
+    // Resolve in Flowable workflow. A null namespace map means the runtime user task never
+    // materialised (async advance timed out) — completing with no variables would drop the
+    // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
-    boolean workflowSuccess = workflowHandler.resolveTask(taskId, namespacedVariables);
+    boolean workflowSuccess =
+        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {

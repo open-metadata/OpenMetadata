@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Card,
+  Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
@@ -24,7 +25,11 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
 import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import AgentCard from './AgentCard.component';
+import AgentCardSkeleton from './AgentCardSkeleton.component';
+
+const DEFAULT_SKELETON_COUNT = 3;
 
 interface AgentGroupProps {
   addAgentSlot?: ReactNode;
@@ -36,8 +41,15 @@ interface AgentGroupProps {
   descKey: string;
   emptyPlaceholder?: ReactNode;
   icon: ReactNode;
+  /**
+   * First load only. The list is empty until the caller knows whether there are
+   * any agents, and rendering `emptyPlaceholder` in that window claims "none
+   * exist" before that is known — show placeholder cards instead.
+   */
+  isLoading?: boolean;
   /** Disables the refresh button and swaps its icon for a spinner while a refetch is in flight. */
   isRefreshing?: boolean;
+  skeletonCount?: number;
   titleKey: string;
   onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
@@ -57,7 +69,9 @@ const AgentGroup: FC<AgentGroupProps> = ({
   descKey,
   emptyPlaceholder,
   icon,
+  isLoading = false,
   isRefreshing,
+  skeletonCount = DEFAULT_SKELETON_COUNT,
   onAction,
   onLogs,
   onRefresh,
@@ -66,7 +80,53 @@ const AgentGroup: FC<AgentGroupProps> = ({
   titleKey,
 }) => {
   const { t } = useTranslation();
+  const { isPending: isActionPending } = useAgentActionAvailability();
   const runningCount = agents.filter((a) => a.status === 'running').length;
+
+  const renderAgents = () => {
+    if (isLoading) {
+      return (
+        <div
+          aria-busy
+          aria-label={t('label.loading')}
+          aria-live="polite"
+          className="tw:grid tw:gap-2.5"
+          data-testid="agent-group-skeleton"
+          role="status">
+          {Array.from({ length: skeletonCount }, (_, index) => (
+            <AgentCardSkeleton key={`agent-card-skeleton-${index}`} />
+          ))}
+        </div>
+      );
+    }
+
+    if (agents.length === 0 && emptyPlaceholder) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-80 tw:w-full"
+          data-testid="agent-group-empty-placeholder">
+          {emptyPlaceholder}
+        </Box>
+      );
+    }
+
+    return (
+      <div className="tw:grid tw:gap-2.5">
+        {agents.map((agent) => (
+          <AgentCard
+            agent={agent}
+            allowedActions={allowedActions}
+            key={agent.id}
+            permissions={agentPermissions?.[agent.fqn]}
+            onAction={onAction}
+            onLogs={onLogs}
+            onRun={onRun}
+            onRunDetails={onRunDetails}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card
@@ -120,7 +180,20 @@ const AgentGroup: FC<AgentGroupProps> = ({
             />
           </Tooltip>
         )}
-        {addAgentSlot ??
+        {/* Creating an agent deploys it, so the control waits on the pipeline service status the
+            same way the per-card actions do — a placeholder while it is in flight, and the slot's
+            own disabled state once it answers. */}
+        {isActionPending ? (
+          <span
+            aria-busy
+            aria-label={t('label.loading')}
+            aria-live="polite"
+            data-testid="add-agent-skeleton"
+            role="status">
+            <Skeleton height={36} variant="rounded" width={120} />
+          </span>
+        ) : (
+          addAgentSlot ??
           (canCreateAgent && (
             <Button
               color="secondary"
@@ -129,30 +202,10 @@ const AgentGroup: FC<AgentGroupProps> = ({
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>
-          ))}
+          ))
+        )}
       </Box>
-      {agents.length === 0 && emptyPlaceholder ? (
-        <Box
-          className="tw:relative tw:min-h-80 tw:w-full"
-          data-testid="agent-group-empty-placeholder">
-          {emptyPlaceholder}
-        </Box>
-      ) : (
-        <div className="tw:grid tw:gap-2.5">
-          {agents.map((agent) => (
-            <AgentCard
-              agent={agent}
-              allowedActions={allowedActions}
-              key={agent.id}
-              permissions={agentPermissions?.[agent.fqn]}
-              onAction={onAction}
-              onLogs={onLogs}
-              onRun={onRun}
-              onRunDetails={onRunDetails}
-            />
-          ))}
-        </div>
-      )}
+      {renderAgents()}
     </Card>
   );
 };

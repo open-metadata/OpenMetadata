@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -33,6 +32,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';

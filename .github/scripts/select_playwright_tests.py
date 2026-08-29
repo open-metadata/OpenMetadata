@@ -59,6 +59,14 @@ def is_mapped_file(path: str, impact_map: dict[str, Any]) -> bool:
     )
 
 
+def remove_delegated_specs(
+    selected: dict[str, set[str]], delegated_patterns: list[str]
+) -> None:
+    for spec in list(selected):
+        if matches(spec, delegated_patterns):
+            del selected[spec]
+
+
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
     direct_changed_specs = plan.get("directChangedSpecs", [])
     lineage_representative_only = (
@@ -143,6 +151,8 @@ def main() -> None:
         if unmapped_change:
             for entry in impact_map["canary"]:
                 add_selection(selected, entry, repo_root)
+
+        remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
 
         plan = {
             "version": 1,
