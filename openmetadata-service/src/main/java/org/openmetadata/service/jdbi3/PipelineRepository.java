@@ -1663,7 +1663,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     // Call database-level filtered query
-    List<CollectionDAO.PipelineSummaryRow> rows =
+    List<SharedRowMappers.PipelineSummaryRow> rows =
         daoCollection
             .entityExtensionTimeSeriesDao()
             .listPipelineSummariesFiltered(
@@ -1694,7 +1694,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Convert rows to Pipeline objects and build summaries
     List<PipelineSummary> summaries = new ArrayList<>();
-    for (CollectionDAO.PipelineSummaryRow row : rows) {
+    for (SharedRowMappers.PipelineSummaryRow row : rows) {
       try {
         // Parse pipeline JSON
         Pipeline pipeline = JsonUtils.readValue(row.getJson(), Pipeline.class);
@@ -1908,7 +1908,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String startTsFilter = buildStartTsFilter(startTs);
       String endTsFilter = buildEndTsFilter(endTs);
 
-      CollectionDAO.PipelineMetricsRow metricsRow =
+      SharedRowMappers.PipelineMetricsRow metricsRow =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getPipelineMetricsData(
@@ -1921,7 +1921,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   tierFilter,
                   startTsFilter,
                   endTsFilter);
-      List<CollectionDAO.ServiceBreakdownRow> serviceRows =
+      List<SharedRowMappers.ServiceBreakdownRow> serviceRows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getServiceBreakdown(
@@ -1948,7 +1948,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       List<ServiceBreakdown> breakdowns = new ArrayList<>();
       metrics.setServiceCount(serviceRows.size());
-      for (CollectionDAO.ServiceBreakdownRow row : serviceRows) {
+      for (SharedRowMappers.ServiceBreakdownRow row : serviceRows) {
         ServiceBreakdown breakdown = new ServiceBreakdown();
         breakdown.setServiceType(row.getServiceType());
         breakdown.setCount(row.getPipelineCount());
@@ -2040,7 +2040,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
 
-      List<CollectionDAO.ExecutionTrendRow> rows =
+      List<SharedRowMappers.ExecutionTrendRow> rows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getExecutionTrendData(
@@ -2058,7 +2058,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Map<String, PipelineExecutionTrend> trendMap = new HashMap<>();
       int totalSuccess = 0, totalFailed = 0, totalExecutions = 0;
 
-      for (CollectionDAO.ExecutionTrendRow row : rows) {
+      for (SharedRowMappers.ExecutionTrendRow row : rows) {
         PipelineExecutionTrend trend =
             trendMap.computeIfAbsent(
                 row.getDateKey(),
@@ -2208,7 +2208,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
 
-      List<CollectionDAO.RuntimeTrendRow> rows =
+      List<SharedRowMappers.RuntimeTrendRow> rows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getRuntimeTrendData(
@@ -2224,7 +2224,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   tierFilter);
 
       List<PipelineRuntimeTrend> trends = new ArrayList<>();
-      for (CollectionDAO.RuntimeTrendRow row : rows) {
+      for (SharedRowMappers.RuntimeTrendRow row : rows) {
         PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
         trend.setDate(row.getDateKey());
         trend.setTimestamp(row.getFirstTimestamp());
