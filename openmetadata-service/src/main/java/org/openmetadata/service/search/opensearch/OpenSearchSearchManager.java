@@ -1206,6 +1206,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     try {
       SearchResponse<JsonData> searchResponse =
           executeRankedSearch(request, subjectContext, searchSettings, clusterAlias);
+      validateShardFailures(searchResponse, request.getIndex());
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toJsonString()).build();
@@ -1221,6 +1222,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  static void validateShardFailures(SearchResponse<?> searchResponse, String index) {
+    if (searchResponse.shards() != null && searchResponse.shards().failed() > 0) {
+      int failedShards = searchResponse.shards().failed();
+      LOG.error("Search on index '{}' returned {} failed shards", index, failedShards);
+      throw new SearchException(
+          String.format("Search on index '%s' returned %d failed shards", index, failedShards));
     }
   }
 
