@@ -33,18 +33,16 @@ USER_REF_NAME = "john.doe"
 
 
 def _make_query_mixin() -> OMetaQueryMixin:
+    # Caches are created lazily per-instance on first use, so a fresh
+    # __new__ instance naturally starts with no cache.
     mixin = OMetaQueryMixin.__new__(OMetaQueryMixin)
     mixin.client = MagicMock()
-    mixin._query_cache = OMetaQueryMixin._query_cache.__class__(mixin._query_cache.capacity)
     return mixin
 
 
 def _make_user_mixin() -> OMetaUserMixin:
     mixin = OMetaUserMixin.__new__(OMetaUserMixin)
     mixin.client = MagicMock()
-    mixin._user_reference_cache = OMetaUserMixin._user_reference_cache.__class__(
-        OMetaUserMixin._user_reference_cache.capacity
-    )
     return mixin
 
 

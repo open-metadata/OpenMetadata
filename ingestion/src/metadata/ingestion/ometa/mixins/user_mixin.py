@@ -31,7 +31,7 @@ from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.lru_cache import LRUCache
 from metadata.utils.logger import ometa_logger
 
-USER_REFERENCE_CACHE_SIZE = 4096
+USER_REFERENCE_CACHE_SIZE = 1000
 
 logger = ometa_logger()
 
@@ -75,7 +75,17 @@ class OMetaUserMixin:
             f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
 
-    _user_reference_cache = LRUCache(USER_REFERENCE_CACHE_SIZE)
+    def _get_user_reference_cache(self) -> LRUCache:
+        """
+        Lazily create a User-reference cache scoped to this specific
+        OpenMetadata client instance, so caches from different clients or
+        catalogs never mix.
+        """
+        cache = getattr(self, "_user_reference_cache_instance", None)
+        if cache is None:
+            cache = LRUCache(USER_REFERENCE_CACHE_SIZE)
+            self._user_reference_cache_instance = cache
+        return cache
 
     def get_cached_user_reference(self, name: str) -> Optional[EntityReference]:
         """
@@ -85,10 +95,11 @@ class OMetaUserMixin:
         Misses are cached too: a user absent from OpenMetadata at the start
         of a run will not appear mid-run.
         """
-        if name in self._user_reference_cache:
-            return self._user_reference_cache.get(name)
+        cache = self._get_user_reference_cache()
+        if name in cache:
+            return cache.get(name)
         reference = self.get_entity_reference(entity=User, fqn=name)
-        self._user_reference_cache.put(name, reference)
+        cache.put(name, reference)
         return reference
 
     def _search_by_email(
