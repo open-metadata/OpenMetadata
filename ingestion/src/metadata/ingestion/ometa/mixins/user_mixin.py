@@ -28,7 +28,10 @@ from metadata.ingestion.api.common import T
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.logger import ometa_logger
+
+USER_REFERENCE_CACHE_SIZE = 4096
 
 logger = ometa_logger()
 
@@ -71,6 +74,22 @@ class OMetaUserMixin:
             f"""/search/query?query_filter={quote(json.dumps(query_filter), safe="")}"""
             f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
+
+    _user_reference_cache = LRUCache(USER_REFERENCE_CACHE_SIZE)
+
+    def get_cached_user_reference(self, name: str) -> Optional[EntityReference]:
+        """
+        Cached lookup for a User EntityReference by name/FQN.
+        Used during usage ingestion, where the same username is looked up
+        repeatedly across staging and lifecycle processing.
+        Misses are cached too: a user absent from OpenMetadata at the start
+        of a run will not appear mid-run.
+        """
+        if name in self._user_reference_cache:
+            return self._user_reference_cache.get(name)
+        reference = self.get_entity_reference(entity=User, fqn=name)
+        self._user_reference_cache.put(name, reference)
+        return reference
 
     def _search_by_email(
         self,

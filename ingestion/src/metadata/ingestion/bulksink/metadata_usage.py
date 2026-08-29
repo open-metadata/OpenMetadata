@@ -355,7 +355,7 @@ class MetadataUsageBulkSink(BulkSink):
                 user = None
                 process_user = None
                 if create_query.users:
-                    user = self.metadata.get_entity_reference(entity=User, fqn=create_query.users[0])
+                    user = self.metadata.get_cached_user_reference(name=create_query.users[0])
                 elif create_query.usedBy:
                     process_user = create_query.usedBy[0]
                 query_type = get_query_type(create_query=create_query)

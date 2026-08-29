@@ -33,6 +33,9 @@ from metadata.generated.schema.type.tableUsageCount import QueryCostWrapper
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.lru_cache import SkipNoneLRUCache
+
+QUERY_CACHE_SIZE = 4096
 
 
 class OMetaQueryMixin:
@@ -48,6 +51,9 @@ class OMetaQueryMixin:
         result = hashlib.md5(query.encode())
         return str(result.hexdigest())
 
+    _query_cache = SkipNoneLRUCache(QUERY_CACHE_SIZE)
+
+    @_query_cache.wrap(lambda self, query: self._get_query_hash(query=query.query.root) if query.query.root else "")
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
         if query.query.root is None:
             return None

@@ -99,9 +99,9 @@ class TableUsageStage(Stage):
         return if we find any users in OM that match, plus the user that we found in the db record.
         """
         if username:
-            user = self.metadata.get_by_name(entity=User, fqn=username)
-            if user:
-                return [user.fullyQualifiedName.root], [username]
+            user_reference = self.metadata.get_cached_user_reference(name=username)
+            if user_reference:
+                return [user_reference.fullyQualifiedName], [username]
             return None, [username]
         return None, None
 
