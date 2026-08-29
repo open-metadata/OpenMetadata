@@ -31,7 +31,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexFailureDAO.SearchIndexFailureRecord;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 
