@@ -154,7 +154,10 @@ describe('Glossary Utils', () => {
       fullyQualifiedName: 'G.Term1.Term2',
       name: 'Term2',
       children: [],
-      parent: { fullyQualifiedName: rootTermFqn, type: EntityType.GLOSSARY_TERM },
+      parent: {
+        fullyQualifiedName: rootTermFqn,
+        type: EntityType.GLOSSARY_TERM,
+      },
     } as unknown as GlossaryTerm;
     const grandChild = {
       fullyQualifiedName: 'G.Term1.Term2.Term3',
