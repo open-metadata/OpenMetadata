@@ -891,12 +891,21 @@ jobs:
       - app-docs
       - lint-playwright
       - lint-core-components
-    if: always()
+    # Only the event that actually ran the jobs reports. The other event's run
+    # skips authorize, so every job below it is skipped too — without this it
+    # would report success having validated nothing.
+    if: |
+      always() &&
+      !(github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) &&
+      !(github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Report
         env:
           RESULTS: |
+            check-changes=${{ needs.check-changes.result }}
             lint-src=${{ needs.lint-src.result }}
             license-header=${{ needs.license-header.result }}
             i18n-sync=${{ needs.i18n-sync.result }}
@@ -917,7 +926,15 @@ jobs:
       - checkstyle
       - tsc-src
       - tsc-playwright
-    if: always()
+    # Only the event that actually ran the jobs reports. The other event's run
+    # skips authorize, so every job below it is skipped too — without this it
+    # would report success having validated nothing.
+    if: |
+      always() &&
+      !(github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) &&
+      !(github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Report
