@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.sdk.exception.SearchException;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 class OpenSearchSearchManagerTest {
+
+  private static final String INDEX = "table";
 
   @Test
   void allowsSearchResponseWithNoFailedShards() {
@@ -14,7 +17,7 @@ class OpenSearchSearchManagerTest {
         SearchResponse.of(
             r -> r.took(1).timedOut(false).shards(s -> s.total(1).successful(1).failed(0)));
 
-    assertDoesNotThrow(() -> OpenSearchSearchManager.validateShardFailures(response, "table"));
+    assertDoesNotThrow(() -> OpenSearchSearchManager.validateShardFailures(response, INDEX));
   }
 
   @Test
@@ -27,7 +30,7 @@ class OpenSearchSearchManagerTest {
                     .shards(s -> s.total(3).successful(2).skipped(0).failed(1)));
 
     assertThrows(
-        org.openmetadata.sdk.exception.SearchException.class,
-        () -> OpenSearchSearchManager.validateShardFailures(response, "table"));
+        SearchException.class,
+        () -> OpenSearchSearchManager.validateShardFailures(response, INDEX));
   }
 }
