@@ -109,6 +109,7 @@ const MODULES_WITHOUT_OWN_TITLE = new Set([
   'components/AppRouter/AuthenticatedApp.tsx',
   'components/AppRouter/ContextCenterRouter/ContextCenterRouter.tsx',
   'components/Auth/AppCallbacks/Auth0Callback/Auth0Callback.tsx',
+  'components/platform/ai-shell/AppModeRoutes/AppModeRoutes.tsx',
 ]);
 
 const collectRouterFiles = (directory: string): string[] =>

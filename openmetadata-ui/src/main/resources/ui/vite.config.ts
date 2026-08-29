@@ -145,7 +145,7 @@ export default defineConfig(async ({ mode }) => {
                   const [orig] = spec.split(/\s+as\s+/);
                   return `import { ${spec} } from '@untitledui/icons/${orig.trim()}';`;
                 })
-                .join('\n'),
+                .join('\n')
           );
           return out === code ? null : { code: out, map: null };
         },
@@ -237,6 +237,15 @@ export default defineConfig(async ({ mode }) => {
         ),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
+      // Resolve dependencies through their node_modules-relative path rather
+      // than following symlinks out of the project root. Two setups need this:
+      // (1) `@openmetadata/ui-core-components` is a yarn `link:` — preserving
+      // symlinks makes it resolve React (and other peers) from THIS app's
+      // node_modules, not a second copy under the linked source; (2) worktree
+      // dev setups where `node_modules` itself is symlinked (e.g. Conductor)
+      // otherwise serve deps like `react-hook-form` raw via `@fs` outside root,
+      // giving them a second React instance → "Invalid hook call" on mount.
+      preserveSymlinks: true,
       dedupe: [
         'react',
         'react-dom',
@@ -465,6 +474,12 @@ export default defineConfig(async ({ mode }) => {
         '@azure/msal-react',
         'codemirror',
         '@deuex-solutions/react-tour',
+        // Force-prebundle react-hook-form so it shares the single optimized
+        // React instance. Through a symlinked node_modules (worktree/linked
+        // dev setups) Vite otherwise serves it raw via `@fs`, pulling a second
+        // React copy — an "Invalid hook call" (`useRef` of null) in every RHF
+        // form. `dedupe` alone does not cover the dev pre-bundle path.
+        'react-hook-form',
       ],
       esbuildOptions: {
         target: 'esnext',
