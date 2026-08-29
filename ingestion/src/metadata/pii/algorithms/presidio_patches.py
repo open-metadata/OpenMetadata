@@ -26,6 +26,11 @@ logger = pii_logger()
 # spell out from its default, so a component that changes between the two parses was never in
 # the text to begin with.
 _DATE_PROBE_DEFAULTS = (datetime(1900, 1, 1), datetime(2222, 7, 23))
+_DATE_PARTS = ("year", "month", "day")
+
+# Two of the three parts is what separates a date from a number that merely parses as one:
+# `2018-03` and `March 14` are dates, `1999` and `29.99` are a year code and a price.
+_MIN_SPELLED_OUT_DATE_PARTS = 2
 
 # The spaCy-backed entities that name a person, a place or a nationality.
 _NAMED_ENTITIES = frozenset({"PERSON", "LOCATION", "NRP"})
@@ -89,21 +94,24 @@ def named_entity_patcher(recognizer_results: Sequence[RecognizerResult], text: s
 
 def spells_out_a_date(text: str) -> bool:
     """
-    Whether the text names a year, a month and a day rather than merely being parseable.
+    Whether the text names a date rather than merely being parseable as one.
 
     spaCy labels bare numbers as DATE -- an order id `1001`, a year code `1999`, a price
     `29.99` -- and `parse` accepts every one of them by silently taking the missing
-    components from its default. Parsing twice with different defaults exposes that: only a
-    text that actually spells out the whole date lands on the same day both times.
+    components from its default. Parsing twice with different defaults exposes which
+    components the text actually named: the rest move with the default.
     """
     default_a, default_b = _DATE_PROBE_DEFAULTS
     try:
-        return parse(text, default=default_a).date() == parse(text, default=default_b).date()
+        parsed_a, parsed_b = parse(text, default=default_a), parse(text, default=default_b)
     except (ValueError, OverflowError):
         return False
     except Exception as e:
         logger.info("Unexpected error while parsing date time: %s", e)
         return False
+
+    spelled_out = sum(getattr(parsed_a, part) == getattr(parsed_b, part) for part in _DATE_PARTS)
+    return spelled_out >= _MIN_SPELLED_OUT_DATE_PARTS
 
 
 def date_time_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:

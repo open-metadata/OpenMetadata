@@ -10,8 +10,11 @@
 #  limitations under the License.
 import pytest
 from presidio_analyzer import RecognizerResult
+from presidio_analyzer.nlp_engine.ner_model_configuration import LABELS_TO_IGNORE
+from presidio_analyzer.predefined_recognizers import SpacyRecognizer
 
 from metadata.pii.algorithms.presidio_patches import (
+    _NAMED_ENTITIES,
     date_time_patcher,
     named_entity_patcher,
     spells_out_a_date,
@@ -39,6 +42,15 @@ def result_for(entity_type: str, text: str, span: str) -> RecognizerResult:
 )
 def test_spells_out_a_date_accepts_real_dates(text: str):
     assert spells_out_a_date(text) is True
+
+
+@pytest.mark.parametrize(("text", "named"), [("2018-03", "year and month"), ("March 14", "month and day")])
+def test_spells_out_a_date_accepts_partial_dates(text: str, named: str):
+    """Naming two of the three parts is a date; naming one is a number that parses as one.
+
+    `2018-03` and `March 14` stay, `1999` and `29.99` go -- see the rejection cases below.
+    """
+    assert spells_out_a_date(text) is True, named
 
 
 @pytest.mark.parametrize(
@@ -111,3 +123,16 @@ def test_named_entity_patcher_leaves_dates_untouched():
     result = result_for("DATE_TIME", "2018-01-05", "2018-01-05")
 
     assert named_entity_patcher([result], "2018-01-05") == [result]
+
+
+def test_every_ner_entity_is_vetted_by_a_patcher():
+    """A new spaCy entity type has to be routed to a patcher, not left to score unchecked.
+
+    Content is scored on the strongest single match, so one stray NER hit of an unvetted
+    entity type is enough to tag a whole column. Presidio drops the labels in
+    LABELS_TO_IGNORE before they ever reach a recognizer; everything else has to be vetted
+    here. This fails when Presidio widens SpacyRecognizer.ENTITIES.
+    """
+    vetted = _NAMED_ENTITIES | {"DATE_TIME"}
+
+    assert set(SpacyRecognizer.ENTITIES) - vetted - set(LABELS_TO_IGNORE) == set()
