@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.0-python3.12
+FROM apache/airflow:3.3.1-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -126,7 +126,7 @@ ARG RI_VERSION="1.13.5.0"
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.0/constraints-3.12.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
@@ -142,8 +142,10 @@ RUN pip install "py-spy>=0.3.14"
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
-# remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# Keep providers required by Airflow core and OpenMetadata's supported runtime.
+# The removed Elasticsearch provider's canonical client is unused; ingestion uses elasticsearch8.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|smtp|standard" | xargs pip uninstall -y \
+  && pip uninstall elasticsearch -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error

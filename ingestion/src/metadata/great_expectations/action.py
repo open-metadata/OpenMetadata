@@ -116,7 +116,8 @@ class OpenMetadataValidationAction(ValidationAction):
         table_name: Optional[str] = None,
         expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,
     ):
-        super().__init__(data_context, name=name)  # type: ignore
+        super().__init__(data_context)  # type: ignore
+        self.name = name
         self.database_service_name = database_service_name
         self.database_name = database_name
         self.table_name = table_name

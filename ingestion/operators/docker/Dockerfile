@@ -197,35 +197,42 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # apt-mark manual pins them before autoremove runs so the cleanup doesn't take
 # them out too -- verified end-to-end by the `import MySQLdb` gate check.
 #
-# The util-linux upgrade rides along in the same root layer. trixie's base ships
-# 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and CVE-2026-27456;
-# trixie-security has 2.41.5-0+deb13u1.
+# The OS security upgrades ride along in the same root layer. trixie's base ships
+# util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
+# CVE-2026-27456; trixie-security has 2.41.5-0+deb13u1.
+# expat is the same story one release later. It is not in the trixie base at all
+# -- it arrives transitively from the top-of-file apt layer -- and that layer's
+# frozen index is exactly why the image keeps shipping 2.8.2 and being reported
+# for CVE-2026-72522 while trixie-security has 2.8.3-1~deb13u1.
 # openssl follows the same cache boundary. The early apt layer can retain
 # 3.5.6-1~deb13u2, while trixie-security carries the CVE-2026-14457 fix in
 # 3.5.7-1~deb13u2. Querying the source package upgrades openssl, libssl3t64,
 # and libssl-dev together so no scanner-visible binary is left behind.
-# The package set is computed from dpkg rather than hand-listed. One source
+# The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
 # report each separately, so a hand-written list silently leaves behind whichever
 # binary it forgot, and liblastlog2-2 is exactly the one that is easy to forget.
-# Asking dpkg which installed packages came from the util-linux source cannot
-# miss one, and stays correct if Debian splits the source differently later.
-# The empty check is not defensive noise: `apt-get install --only-upgrade` with
-# no package arguments exits 0, so a query that silently returned nothing would
-# give a green build that shipped the vulnerable packages anyway. Fail closed.
+# Asking dpkg which installed packages came from the source cannot miss one, and
+# stays correct if Debian splits the source differently later.
+# util-linux and openssl are asserted non-empty; expat deliberately is not.
+# expat is transitive, so an empty query is a legitimate image with nothing to
+# patch. The required-package checks matter because `apt-get install
+# --only-upgrade` with no package arguments exits 0 and would otherwise allow a
+# green build that skipped the security upgrades. Fail closed.
 # This deliberately does NOT go in the top-of-file apt RUN: that layer's cache
 # key never changes, so an upgrade placed there freezes its Debian index with it
 # and the image keeps shipping whatever was current when the layer was first
 # built. Below the COPY and pip layers, the index is re-read on every build.
 USER root
 RUN set -eu; \
-    pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
-    [ -n "$pkgs" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
+    ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
+    [ -n "$ul" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
+    ex="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="expat"{print $2}')"; \
     ossl="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="openssl"{print $2}')"; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $pkgs $ossl; \
+    apt-get -qq install -y --only-upgrade $ul $ex $ossl; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \
