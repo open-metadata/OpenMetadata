@@ -15,19 +15,34 @@ import React, { PropsWithChildren, useCallback, useState } from 'react';
 import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import BundleSuiteFormDrawer from '../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import { Intent } from '../../platform/ai-shell/AppModule.types';
+import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import { useIntent } from '../../platform/ai-shell/useIntent';
 
 const ObservabilityLayout: React.FC<PropsWithChildren> = ({ children }) => {
   const [isAddBundleSuiteOpen, setIsAddBundleSuiteOpen] = useState(false);
   const [isAddTestCaseOpen, setIsAddTestCaseOpen] = useState(false);
 
+  // Every observability route mounts its own ObservabilityLayout, and the
+  // intent bus keeps a single listener per name. Navigating to a non-cacheable
+  // sub-route (e.g. a `/observability/data-quality/:tab` tab) mounts a second
+  // layout that clobbers this one's listener and, on its unmount, deletes the
+  // shared slot — leaving this kept-alive layout silently unsubscribed. Bump a
+  // token whenever this route becomes visible again so the intent listeners are
+  // re-claimed on reactivation.
+  const [activationEpoch, setActivationEpoch] = useState(0);
+  useRouteActivation(
+    useCallback(() => setActivationEpoch((epoch) => epoch + 1), [])
+  );
+
   useIntent(
     Intent.AddTestCase,
-    useCallback(() => setIsAddTestCaseOpen(true), [])
+    useCallback(() => setIsAddTestCaseOpen(true), []),
+    activationEpoch
   );
   useIntent(
     Intent.AddBundleSuite,
-    useCallback(() => setIsAddBundleSuiteOpen(true), [])
+    useCallback(() => setIsAddBundleSuiteOpen(true), []),
+    activationEpoch
   );
 
   const handleCloseBundleSuite = useCallback(

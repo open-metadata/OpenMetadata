@@ -35,7 +35,18 @@ export function emitIntent(name: string): void {
   listeners.get(name)?.();
 }
 
-export function useIntent(name: string, handler: () => void): void {
+export function useIntent(
+  name: string,
+  handler: () => void,
+  // Optional re-register signal. Because only one listener exists per name,
+  // a host that is kept mounted-but-hidden (app-mode keep-alive) can have its
+  // listener clobbered by another instance that mounts on top, and then
+  // orphaned entirely when that instance unmounts and deletes the shared slot.
+  // A kept-alive host passes a value that changes each time it becomes the
+  // active route (e.g. a `useRouteActivation` epoch) so it re-claims the slot
+  // on reactivation instead of staying silently unsubscribed.
+  reregisterKey?: unknown
+): void {
   // Ref keeps the listener stable across renders while still calling the
   // freshest handler closure — avoids resubscribing on every render.
   const handlerRef = useRef(handler);
@@ -52,5 +63,5 @@ export function useIntent(name: string, handler: () => void): void {
         listeners.delete(name);
       }
     };
-  }, [name]);
+  }, [name, reregisterKey]);
 }
