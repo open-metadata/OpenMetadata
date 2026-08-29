@@ -22,6 +22,7 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -47,15 +48,17 @@ public class DefaultAuthorizer implements Authorizer {
     logDeprecationWarnings(config.getAuthorizerConfiguration());
   }
 
-  private void logDeprecationWarnings(
-      org.openmetadata.schema.api.security.AuthorizerConfiguration config) {
-    if (config.getAdminPrincipals() != null && !config.getAdminPrincipals().isEmpty()) {
+  private void logDeprecationWarnings(AuthorizerConfiguration config) {
+    if (config == null) {
+      return;
+    }
+    if (!nullOrEmpty(config.getAdminPrincipals())) {
       LOG.warn(
           "DEPRECATED: 'adminPrincipals' configuration is deprecated. "
               + "Use 'adminEmails' instead. This will be removed in a future version.");
     }
 
-    if (config.getPrincipalDomain() != null && !config.getPrincipalDomain().isEmpty()) {
+    if (!nullOrEmpty(config.getPrincipalDomain())) {
       LOG.warn(
           "DEPRECATED: 'principalDomain' configuration is deprecated. "
               + "Use 'botDomain' for bots and 'allowedEmailDomains' for domain restrictions. "
