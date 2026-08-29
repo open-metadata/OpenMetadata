@@ -14,10 +14,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { useInboxActivity } from './useInboxActivity';
-import {
-  InboxDateRange,
-  InboxScope,
-} from './inbox.utils';
+import { InboxDateRange, InboxScope } from './inbox.utils';
 
 export interface InboxCounts {
   activityCount: number;

@@ -22,10 +22,7 @@ import {
   KNOWLEDGE_CENTER_CLASSIFICATION,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import {
-  EntityType,
-  TabSpecificField,
-} from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
