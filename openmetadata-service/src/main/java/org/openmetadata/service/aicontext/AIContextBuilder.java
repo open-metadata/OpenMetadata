@@ -249,18 +249,20 @@ public class AIContextBuilder {
     String content = item.getContent();
     int budget = remaining;
     if (!nullOrEmpty(content)) {
-      // Stale items render a trust cue next to their excerpt in Compact Markdown; charge the cue's
-      // exact rendered length so it never pushes the bundle past the caller's budget.
+      // Stale items render a trust cue next to their excerpt in Compact Markdown; the cue's exact
+      // rendered length is charged to the shared budget so later items can never overrun it.
       int cueChars =
           Boolean.TRUE.equals(item.getStale()) ? AIContextMarkdown.staleCue(item).length() : 0;
       int effective = remaining - cueChars;
       if (content.length() <= MAX_ITEM_CHARS && content.length() <= effective) {
-        budget = remaining - content.length();
+        budget = remaining - content.length() - cueChars;
       } else if (effective >= MIN_EXCERPT_CHARS) {
         String lead = buildExcerpt(item, content, Math.min(EXCERPT_CHARS, effective));
         item.withContent(lead).withContentTruncated(true);
-        budget = remaining - lead.length();
+        budget = remaining - lead.length() - cueChars;
       } else {
+        // Budget exhausted: content is omitted, and with it the cue (the cue renders only
+        // alongside visible content, see AIContextMarkdown) — so nothing is charged.
         item.withContent(null).withContentTruncated(true);
       }
     }
@@ -370,12 +372,16 @@ public class AIContextBuilder {
     return result;
   }
 
-  /** A lead excerpt bounded to {@code limit} characters, cut on a word boundary. */
+  /**
+   * A lead excerpt bounded to {@code limit} characters, cut on a word boundary. The ellipsis is
+   * counted inside the limit so budget accounting that charges {@code excerpt.length()} can never
+   * overrun the share it was sized against.
+   */
   static String excerpt(String content, int limit) {
     String result = content;
     if (content != null && content.length() > limit) {
-      int boundary = content.lastIndexOf(' ', limit);
-      int cut = boundary < limit / 2 ? limit : boundary;
+      int boundary = content.lastIndexOf(' ', limit - 1);
+      int cut = boundary < limit / 2 ? limit - 1 : boundary;
       result = content.substring(0, cut).stripTrailing() + "…";
     }
     return result;

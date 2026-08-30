@@ -275,6 +275,43 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void applyKnowledgeBudget_chargesStaleCueAgainstTheSharedPool() {
+    // Two stale items share a small budget: the cue of item 1 must be charged to the pool, or the
+    // bundle's rendered total (content + cues) exceeds the configured budget.
+    KnowledgeItem first =
+        knowledgeItem("first", "z".repeat(4000))
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    KnowledgeItem second =
+        knowledgeItem("second", "z".repeat(4000))
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    AIContext context = new AIContext().withArticles(List.of(first, second));
+
+    new AIContextBuilder("table", "svc.db.sch.orders")
+        .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS)
+        .applyKnowledgeBudget(context);
+
+    String renderedFirst = AIContextMarkdown.staleCue(first);
+    assertTrue(Boolean.TRUE.equals(first.getContentTruncated()));
+    assertTrue(
+        first.getContent().length() + renderedFirst.length() <= AIContextBuilder.EXCERPT_CHARS,
+        "first stale item's excerpt + cue fits the budget");
+    assertTrue(Boolean.TRUE.equals(second.getContentTruncated()));
+    assertTrue(
+        second.getContent() == null,
+        "second item omitted once the first item's excerpt + cue consumed the pool");
+    // The omitted item renders no cue (it is only charged/rendered alongside visible content).
+    StringBuilder markdown = new StringBuilder();
+    AIContextMarkdown.appendKnowledgeSection(
+        markdown, "Knowledge", List.of(first, second), "#", true);
+    assertEquals(
+        1,
+        markdown.toString().split("⚠ Stale", -1).length - 1,
+        "exactly one cue renders — the omitted item carries no unbudgeted cue");
+  }
+
+  @Test
   void appendKnowledgeSection_rendersTrustCueOnlyForStaleItems() {
     KnowledgeItem stale =
         knowledgeItem("NPI", "definition")
