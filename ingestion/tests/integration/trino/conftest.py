@@ -2,7 +2,6 @@ import os.path
 import random
 import uuid
 from pathlib import Path
-from time import sleep
 
 import docker
 import pandas as pd
@@ -10,7 +9,8 @@ import pytest
 import testcontainers.core.network
 from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import Engine, make_url
-from tenacity import retry, stop_after_delay, wait_fixed
+from sqlalchemy.exc import OperationalError
+from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
 from testcontainers.minio import MinioContainer
@@ -30,6 +30,15 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 from ..conftest import ingestion_config as base_ingestion_config
+
+HIVE_METASTORE_IMAGE = (
+    "bitsondatadev/hive-metastore@sha256:"
+    "b44a186b6dcffafc6a72327aaa5912a5824feecb50718aaf661727ff6aef011b"
+)
+
+
+class TrinoTableNotReadyError(RuntimeError):
+    pass
 
 
 class TrinoContainer(DbContainer):
@@ -59,8 +68,13 @@ class TrinoContainer(DbContainer):
                 with engine.connect() as conn:
                     return conn.execute(text(sql))
 
+            # Scan a real catalog, not system.runtime.nodes: for the first seconds after
+            # startup trino accepts queries but cannot yet schedule one against a catalog
+            # (NO_NODES_AVAILABLE), while the system connector, registered on every active
+            # node, already answers. Any catalog proves the rest -- one announcement lists
+            # them all.
             retry(wait=wait_fixed(1), stop=stop_after_delay(120))(_exec)(
-                "select system.runtime.nodes.node_id from system.runtime.nodes"
+                "SELECT count(*) FROM tpch.tiny.nation"
             ).fetchall()
         finally:
             engine.dispose()
@@ -162,7 +176,7 @@ def mysql_container(docker_network):
 
 @pytest.fixture(scope="package")
 def hive_metastore_container(mysql_container, minio_container, docker_network):
-    with HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest").with_network(
+    with HiveMetaStoreContainer(HIVE_METASTORE_IMAGE).with_network(
         docker_network
     ).with_network_aliases("metastore").with_env(
         "METASTORE_DB_HOSTNAME", "mariadb"
@@ -213,19 +227,20 @@ def create_test_data(trino_container):
         file_path = Path(os.path.join(data_dir, file))
 
         if file_path.suffix == ".sql":
-            create_test_data_from_sql(engine, file_path)
+            expected_rows = create_test_data_from_sql(engine, file_path)
         else:
-            create_test_data_from_parquet(engine, file_path)
+            expected_rows = create_test_data_from_parquet(engine, file_path)
 
-        sleep(1)
+        wait_for_table_data(engine, file_path.stem, expected_rows)
         _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
     _execute_with_connect(
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
+    engine.dispose()
     return
 
 
-def create_test_data_from_parquet(engine: Engine, file_path: Path):
+def create_test_data_from_parquet(engine: Engine, file_path: Path) -> int:
     df = pd.read_parquet(file_path)
 
     # Convert data types
@@ -241,9 +256,10 @@ def create_test_data_from_parquet(engine: Engine, file_path: Path):
         index=False,
         method=custom_insert,
     )
+    return len(df.index)
 
 
-def create_test_data_from_sql(engine: Engine, file_path: Path):
+def create_test_data_from_sql(engine: Engine, file_path: Path) -> None:
     with open(file_path, "r") as f:
         sql = f.read()
 
@@ -254,6 +270,43 @@ def create_test_data_from_sql(engine: Engine, file_path: Path):
                 continue
             conn.execute(text(statement))
         conn.commit()
+
+
+@retry(
+    retry=retry_if_exception_type(TrinoTableNotReadyError),
+    wait=wait_fixed(1),
+    stop=stop_after_delay(30),
+    reraise=True,
+)
+def wait_for_table_data(
+    engine: Engine, table_name: str, expected_rows: int | None
+) -> None:
+    """Block until trino can read back what we just wrote.
+
+    Replaces a flat sleep: the hive split can lag the write, and ANALYZE on a
+    table trino cannot yet open fails the whole package fixture.
+    """
+    try:
+        with engine.connect() as conn:
+            row_count = conn.execute(
+                text(f'SELECT COUNT(*) FROM "my_schema"."{table_name}"')
+            ).scalar_one()
+    except OperationalError as exc:
+        error_message = str(exc)
+        if (
+            "HIVE_CANNOT_OPEN_SPLIT" not in error_message
+            or "File does not exist" not in error_message
+        ):
+            raise
+        raise TrinoTableNotReadyError(
+            f"Trino data files for [{table_name}] are not readable yet"
+        ) from exc
+
+    if expected_rows is not None and row_count != expected_rows:
+        raise TrinoTableNotReadyError(
+            f"Trino table [{table_name}] contains [{row_count}] rows; "
+            f"expected [{expected_rows}]"
+        )
 
 
 def custom_insert(self, conn, keys: list[str], data_iter):

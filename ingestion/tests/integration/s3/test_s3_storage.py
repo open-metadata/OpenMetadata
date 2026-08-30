@@ -26,8 +26,8 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
     bucket: Container = metadata.get_by_name(
         entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"]
     )
-    # The bucket has children and no dataModel
-    assert 7 == len(bucket.children.root)
+    # The bucket has children (via the dedicated paginated endpoint, not inlined
+    # into the parent payload) and no dataModel
     assert not bucket.dataModel
     children = metadata.list_container_children(f"{service_name}.test-bucket")
     assert 7 == len(children.entities)  # noqa: SIM300
