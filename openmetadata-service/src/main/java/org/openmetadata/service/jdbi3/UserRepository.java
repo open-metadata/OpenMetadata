@@ -219,11 +219,21 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
-    String userString = daoCollection.userDAO().findUserByEmail(email);
-    if (userString == null) {
+    List<String> userStrings = daoCollection.userDAO().findUsersByEmail(email);
+    if (nullOrEmpty(userStrings)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
-    User user = JsonUtils.readValue(userString, User.class);
+    if (userStrings.size() > 1) {
+      // Only reachable on Postgres, whose unique constraint on email is case-sensitive. Picking
+      // one of the accounts would hand the caller a non-deterministic identity, so refuse until an
+      // administrator merges them.
+      throw new AuthenticationException(
+          String.format(
+              "Email '%s' matches %d user accounts differing only by case. "
+                  + "Ask an administrator to merge or rename the duplicates.",
+              email, userStrings.size()));
+    }
+    User user = JsonUtils.readValue(userStrings.get(0), User.class);
     setFieldsInternal(user, fields);
     setInheritedFields(user, fields);
     // Clone the entity

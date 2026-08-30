@@ -15,7 +15,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPL
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
 import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
-import static org.openmetadata.service.util.UserUtil.isAdminEmail;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -38,7 +37,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -543,21 +541,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private boolean isUserAdmin(String email, String username) {
-    AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-    List<String> adminEmails =
-        authzConfig.getAdminEmails() != null
-            ? new ArrayList<>(authzConfig.getAdminEmails())
-            : new ArrayList<>();
-    if (isAdminEmail(email, adminEmails)) {
-      return true;
-    }
-    return getAdminPrincipals().contains(username);
-  }
-
-  private Set<String> getAdminPrincipals() {
-    AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-    Set<String> principals = authzConfig.getAdminPrincipals();
-    return principals != null ? new HashSet<>(principals) : new HashSet<>();
+    return UserUtil.isConfiguredAdmin(
+        SecurityConfigurationManager.getCurrentAuthzConfig(), email, username);
   }
 
   private List<EntityReference> getReassignRoles(

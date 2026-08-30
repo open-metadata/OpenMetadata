@@ -6,7 +6,6 @@ import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
-import static org.openmetadata.service.util.UserUtil.isAdminEmail;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 
@@ -59,14 +58,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -956,14 +953,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private boolean isUserAdmin(String email, String username) {
-    List<String> adminEmails =
-        authorizerConfiguration.getAdminEmails() != null
-            ? new ArrayList<>(authorizerConfiguration.getAdminEmails())
-            : new ArrayList<>();
-    if (isAdminEmail(email, adminEmails)) {
-      return true;
-    }
-    return getAdminPrincipals().contains(username);
+    return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
 
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
@@ -1048,11 +1038,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       return UserUtil.addOrUpdateUser(newUser);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
-  }
-
-  private Set<String> getAdminPrincipals() {
-    Set<String> principals = authorizerConfiguration.getAdminPrincipals();
-    return principals != null ? new HashSet<>(principals) : new HashSet<>();
   }
 
   @SneakyThrows

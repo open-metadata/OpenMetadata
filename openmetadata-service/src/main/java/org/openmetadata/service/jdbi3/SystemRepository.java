@@ -2274,14 +2274,9 @@ public class SystemRepository {
             "Either 'adminEmails' or 'adminPrincipals' must be configured");
       }
 
-      boolean hasAllowedEmailDomains =
-          authzConfig.getAllowedEmailDomains() != null
-              && !authzConfig.getAllowedEmailDomains().isEmpty();
-      if (!hasAllowedEmailDomains && nullOrEmpty(authzConfig.getPrincipalDomain())) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTHZ_ALLOWED_EMAIL_DOMAINS,
-            "Either 'allowedEmailDomains' or 'principalDomain' must be configured for domain resolution");
-      }
+      // Neither domain field is required: an empty allowedEmailDomains means "allow every
+      // domain", and principalDomain falls back to SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN, so
+      // requiring one of them here would reject configurations that rely on those defaults.
 
       // Try to instantiate the authorizer class
       try {

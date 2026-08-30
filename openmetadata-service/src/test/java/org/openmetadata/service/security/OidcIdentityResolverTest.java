@@ -141,9 +141,10 @@ class OidcIdentityResolverTest {
             List.of(),
             "openmetadata.org");
 
-    org.openmetadata.service.exception.AuthenticationException exception =
+    // The shared SecurityUtil guard reports auth failures with the security AuthenticationException
+    org.openmetadata.service.security.AuthenticationException exception =
         assertThrows(
-            org.openmetadata.service.exception.AuthenticationException.class,
+            org.openmetadata.service.security.AuthenticationException.class,
             () ->
                 resolver.resolve(
                     Map.of("email", "john@company.com", "email_verified", Boolean.FALSE)));

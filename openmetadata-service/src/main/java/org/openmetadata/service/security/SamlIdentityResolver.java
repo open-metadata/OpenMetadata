@@ -1,6 +1,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.requireEmailWithDomain;
 import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
 
 import java.util.ArrayList;
@@ -55,7 +56,9 @@ public class SamlIdentityResolver {
                 authenticationConfiguration.getEmailClaim()));
       }
 
-      email = email.toLowerCase();
+      // A misconfigured attribute can yield a non-email value; reject it here so downstream
+      // provisioning never splits on a missing '@'.
+      email = requireEmailWithDomain(email);
       validateConfiguredEmailDomain(
           email,
           getAllowedEmailDomains(),
@@ -79,9 +82,10 @@ public class SamlIdentityResolver {
     }
 
     String email =
-        nameId.contains("@")
-            ? nameId.toLowerCase()
-            : String.format("%s@%s", nameId, defaultDomainSupplier.get()).toLowerCase();
+        requireEmailWithDomain(
+            nameId.contains("@")
+                ? nameId
+                : String.format("%s@%s", nameId, defaultDomainSupplier.get()));
     validateConfiguredEmailDomain(
         email,
         getAllowedEmailDomains(),

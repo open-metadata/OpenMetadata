@@ -1006,27 +1006,28 @@ class SecurityUtilTest {
   }
 
   @Test
-  void testValidateEmailDomain_nullEmail_throwsException() {
+  void testValidateEmailDomain_nullEmail_throwsAuthenticationException() {
     List<String> allowedDomains = List.of("company.com");
 
-    IllegalArgumentException ex =
+    // An unusable email on the auth path is an authentication failure (401), not a server fault.
+    AuthenticationException ex =
         assertThrows(
-            IllegalArgumentException.class,
+            AuthenticationException.class,
             () -> SecurityUtil.validateEmailDomain(null, allowedDomains));
 
-    assertEquals("Invalid email: email must be non-null and contain '@' symbol", ex.getMessage());
+    assertTrue(ex.getMessage().contains("not a valid email address"));
   }
 
   @Test
-  void testValidateEmailDomain_emailWithoutAtSymbol_throwsException() {
+  void testValidateEmailDomain_emailWithoutAtSymbol_throwsAuthenticationException() {
     List<String> allowedDomains = List.of("company.com");
 
-    IllegalArgumentException ex =
+    AuthenticationException ex =
         assertThrows(
-            IllegalArgumentException.class,
+            AuthenticationException.class,
             () -> SecurityUtil.validateEmailDomain("invalid-email", allowedDomains));
 
-    assertEquals("Invalid email: email must be non-null and contain '@' symbol", ex.getMessage());
+    assertTrue(ex.getMessage().contains("not a valid email address"));
   }
 
   @Test

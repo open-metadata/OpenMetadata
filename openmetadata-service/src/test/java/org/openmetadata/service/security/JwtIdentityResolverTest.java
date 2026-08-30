@@ -123,6 +123,36 @@ class JwtIdentityResolverTest {
     assertFalse(identity.emailFirstFlow());
   }
 
+  @Test
+  void testResolveRejectsExplicitlyUnverifiedEmailOnRequestPath() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            "email", Map.of(), List.of(), "openmetadata.org", email -> "victim");
+
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class,
+            () ->
+                resolver.resolve(
+                    claims(Map.of("email", "victim@company.com", "email_verified", false)), false));
+
+    assertTrue(exception.getMessage().contains("not verified"));
+  }
+
+  @Test
+  void testResolveAcceptsEmailWhenVerifiedClaimAbsentOrTrue() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver("email", Map.of(), List.of(), "openmetadata.org", email -> "john");
+
+    assertEquals(
+        "john", resolver.resolve(claims(Map.of("email", "john@company.com")), false).userName());
+    assertEquals(
+        "john",
+        resolver
+            .resolve(claims(Map.of("email", "john@company.com", "email_verified", true)), false)
+            .userName());
+  }
+
   private static Map<String, Claim> claims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();

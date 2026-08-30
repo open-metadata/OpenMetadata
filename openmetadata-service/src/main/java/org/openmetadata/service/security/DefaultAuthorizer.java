@@ -64,6 +64,26 @@ public class DefaultAuthorizer implements Authorizer {
               + "Use 'botDomain' for bots and 'allowedEmailDomains' for domain restrictions. "
               + "This will be removed in a future version.");
     }
+
+    if (!nullOrEmpty(config.getAllowedDomains())) {
+      LOG.warn(
+          "DEPRECATED: 'allowedDomains' configuration is deprecated. "
+              + "Use 'allowedEmailDomains' instead. This will be removed in a future version.");
+    }
+
+    if (Boolean.TRUE.equals(config.getEnforcePrincipalDomain())) {
+      LOG.warn(
+          "DEPRECATED: 'enforcePrincipalDomain' configuration is deprecated. "
+              + "Restrict logins with 'allowedEmailDomains' instead. "
+              + "This will be removed in a future version.");
+    }
+
+    if (!nullOrEmpty(config.getBotPrincipals())) {
+      LOG.warn(
+          "DEPRECATED: 'botPrincipals' configuration is deprecated and no longer used. "
+              + "Bots are identified by their user entity; use 'botDomain' for bot email "
+              + "construction. This will be removed in a future version.");
+    }
   }
 
   @Override

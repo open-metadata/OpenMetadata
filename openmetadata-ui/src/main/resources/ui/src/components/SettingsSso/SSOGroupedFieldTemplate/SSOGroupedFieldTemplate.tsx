@@ -204,14 +204,12 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         });
       });
 
-      const isLdapOrSamlProvider =
-        formContext?.currentProvider === 'ldap' ||
-        formContext?.currentProvider === 'saml';
-
       const identityFieldNames = [
-        // emailClaim and displayNameClaim are only relevant for OIDC/public SSO providers.
-        // LDAP uses mailAttributeName, SAML uses NameID — both have their own mechanisms.
-        ...(isLdapOrSamlProvider ? [] : ['emailClaim', 'displayNameClaim']),
+        // Every provider honours these: LDAP maps them onto directory attributes (falling back to
+        // mailAttributeName/displayName) and SAML reads them as assertion attribute names, so the
+        // fields stay configurable for all of them.
+        'emailClaim',
+        'displayNameClaim',
         'jwtPrincipalClaims',
         'jwtPrincipalClaimsMapping',
         'jwtTeamClaimMapping',
@@ -228,11 +226,6 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         });
       }
 
-      // Fields hidden for LDAP/SAML should never appear in any group
-      const hiddenFieldNames = isLdapOrSamlProvider
-        ? ['emailClaim', 'displayNameClaim']
-        : [];
-
       // Remaining fields
       const groupedFieldNames = [
         ...basicConfigFields,
@@ -244,9 +237,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         ...identityFields,
       ].map((p) => p.name);
       const remainingFields = visibleProperties.filter(
-        (prop) =>
-          !groupedFieldNames.includes(prop.name) &&
-          !hiddenFieldNames.includes(prop.name)
+        (prop) => !groupedFieldNames.includes(prop.name)
       );
       if (remainingFields.length > 0) {
         groups.push({

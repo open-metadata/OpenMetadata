@@ -7,7 +7,6 @@ import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
-import static org.openmetadata.service.util.UserUtil.isAdminEmail;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.exception.SAMLException;
@@ -21,7 +20,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -645,14 +643,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private boolean isUserAdmin(String email, String username) {
-    List<String> adminEmails =
-        authorizerConfig.getAdminEmails() != null
-            ? new ArrayList<>(authorizerConfig.getAdminEmails())
-            : new ArrayList<>();
-    if (isAdminEmail(email, adminEmails)) {
-      return true;
-    }
-    return getAdminPrincipals().contains(username);
+    return UserUtil.isConfiguredAdmin(authorizerConfig, email, username);
   }
 
   private User getOrCreateUser(
@@ -724,12 +715,6 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
       throw new AuthenticationException("User not found and self-signup is disabled");
     }
-  }
-
-  private Set<String> getAdminPrincipals() {
-    AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-    Set<String> principals = authorizerConfig.getAdminPrincipals();
-    return principals != null ? new HashSet<>(principals) : new HashSet<>();
   }
 
   private Set<String> trustedSamlRedirects() {

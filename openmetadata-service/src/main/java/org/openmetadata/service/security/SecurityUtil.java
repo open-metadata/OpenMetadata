@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -58,6 +59,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
+  public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
 
   private SecurityUtil() {}
 
@@ -243,6 +245,41 @@ public final class SecurityUtil {
     }
     String domain = email.substring(email.indexOf('@') + 1);
     return allowedRegistrationDomains.stream().anyMatch(domain::equalsIgnoreCase);
+  }
+
+  /**
+   * Boundary guard for the email-first flows. Every downstream consumer splits on '@' (username
+   * generation, bot/user domains, domain enforcement), so a value that is not an email must be
+   * rejected here as an authentication failure rather than surfacing later as a 500.
+   */
+  public static String requireEmailWithDomain(String email) {
+    if (nullOrEmpty(email) || !isValidEmail(email.toLowerCase(Locale.ROOT))) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: '%s' is not a valid email address", email));
+    }
+    return email.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Rejects a token whose identity provider explicitly marked the email unverified. Absent claims
+   * are accepted: many providers omit email_verified entirely, and email-first identity must keep
+   * working for them. Shared by the request path and the OIDC login callback so an unverified
+   * address cannot be mapped onto an existing account through either route.
+   */
+  public static void validateEmailVerifiedClaim(Map<String, ?> claims, String email) {
+    Object claimValue = claims == null ? null : claims.get(EMAIL_VERIFIED_CLAIM);
+    if (claimValue == null) {
+      return;
+    }
+    String value =
+        claimValue instanceof Claim claim
+            ? String.valueOf(claim.as(Object.class))
+            : String.valueOf(claimValue);
+    if ("false".equalsIgnoreCase(value)) {
+      throw new AuthenticationException(
+          String.format(
+              "Authentication failed: email '%s' is not verified by the identity provider", email));
+    }
   }
 
   private static boolean isValidEmail(String email) {
@@ -717,10 +754,7 @@ public final class SecurityUtil {
       return;
     }
 
-    if (email == null || !email.contains("@")) {
-      throw new IllegalArgumentException(
-          "Invalid email: email must be non-null and contain '@' symbol");
-    }
+    requireEmailWithDomain(email);
 
     String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
 

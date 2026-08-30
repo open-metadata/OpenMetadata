@@ -3,6 +3,7 @@ package org.openmetadata.service.security;
 import static org.openmetadata.service.security.SecurityUtil.extractEmailFromClaim;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.validateEmailVerifiedClaim;
 
 import com.auth0.jwt.interfaces.Claim;
 import java.util.List;
@@ -53,6 +54,9 @@ public class JwtIdentityResolver {
             ex.getMessage());
       }
       if (email != null) {
+        // An IdP that explicitly marks the address unverified must not be able to map it onto an
+        // existing account: without this, a public-client token could inherit that user's access.
+        validateEmailVerifiedClaim(claims, email);
         String userName = userNameResolver.apply(email);
         LOG.debug("Email-first flow: email={}, userName={}", email, userName);
         return new ResolvedIdentity(userName, email, true);

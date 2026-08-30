@@ -943,13 +943,17 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
+    // Returns every row matching the address. Postgres compares case-insensitively via LOWER()
+    // while its unique constraint is case-sensitive, so an installation can legitimately hold two
+    // rows differing only by case; a single-value return would surface that as an opaque JDBI
+    // TooManyResultsException on the login path instead of an actionable error.
     @ConnectionAwareSqlQuery(
         value = "SELECT json FROM user_entity WHERE email = :email",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value = "SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)",
         connectionType = POSTGRES)
-    String findUserByEmail(@Bind("email") String email);
+    List<String> findUsersByEmail(@Bind("email") String email);
 
     @Override
     default User findEntityByName(String fqn, Include include) {

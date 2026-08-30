@@ -8,6 +8,7 @@ import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
+import static org.openmetadata.service.security.SecurityUtil.validateEmailVerifiedClaim;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -107,21 +108,5 @@ public class OidcIdentityResolver {
     return authorizerConfiguration.getAllowedEmailDomains() != null
         ? new ArrayList<>(authorizerConfiguration.getAllowedEmailDomains())
         : new ArrayList<>();
-  }
-
-  /**
-   * Reject tokens whose IdP explicitly marks the email as unverified. Absent claims are accepted:
-   * many IdPs omit email_verified entirely, and email-first identity must keep working for them.
-   */
-  private void validateEmailVerifiedClaim(Map<String, Object> claims, String email) {
-    Object claimValue = claims.get("email_verified");
-    if (claimValue == null) {
-      return;
-    }
-    if ("false".equalsIgnoreCase(String.valueOf(claimValue))) {
-      throw new AuthenticationException(
-          String.format(
-              "Authentication failed: email '%s' is not verified by the identity provider", email));
-    }
   }
 }

@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -877,5 +878,26 @@ class UserUtilTest {
   @Test
   void testCreateBotEmail_emptyDomain() {
     assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("bot", ""));
+  }
+
+  @Test
+  void testIsConfiguredAdmin_matchesAdminEmailsAndAdminPrincipals() {
+    AuthorizerConfiguration config =
+        new AuthorizerConfiguration()
+            .withAdminEmails(Set.of("boss@company.com"))
+            .withAdminPrincipals(Set.of("legacy-admin"));
+
+    // preferred: adminEmails, case-insensitive
+    assertTrue(UserUtil.isConfiguredAdmin(config, "BOSS@company.com", "someone"));
+    // deprecated fallback: adminPrincipals matches the username
+    assertTrue(UserUtil.isConfiguredAdmin(config, "other@company.com", "legacy-admin"));
+    // neither
+    assertFalse(UserUtil.isConfiguredAdmin(config, "other@company.com", "someone"));
+  }
+
+  @Test
+  void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
+    assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
+    assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
   }
 }

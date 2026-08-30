@@ -776,6 +776,29 @@ public final class UserUtil {
   }
 
   /**
+   * Decide whether a login should be an admin, from configuration alone. Checks the preferred
+   * 'adminEmails' first and falls back to the deprecated 'adminPrincipals' username list, so the
+   * OIDC, SAML and LDAP handlers all resolve admin status identically.
+   *
+   * @param authConfig authorizer configuration (may be null)
+   * @param email the authenticated user's email
+   * @param username the resolved OpenMetadata username
+   * @return true when either configuration marks this login as an admin
+   */
+  public static boolean isConfiguredAdmin(
+      AuthorizerConfiguration authConfig, String email, String username) {
+    if (authConfig == null) {
+      return false;
+    }
+    Set<String> adminEmails = authConfig.getAdminEmails();
+    if (adminEmails != null && isAdminEmail(email, new ArrayList<>(adminEmails))) {
+      return true;
+    }
+    Set<String> adminPrincipals = authConfig.getAdminPrincipals();
+    return adminPrincipals != null && adminPrincipals.contains(username);
+  }
+
+  /**
    * Create email address for a system bot.
    *
    * @param botName name of the bot

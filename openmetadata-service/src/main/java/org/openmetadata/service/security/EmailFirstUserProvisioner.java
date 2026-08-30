@@ -132,10 +132,13 @@ public class EmailFirstUserProvisioner {
             providerName,
             email);
         throw exceptionFactory.apply(
-            "Email domain not allowed for self-signup: " + email.split("@")[1]);
+            "Email domain not allowed for self-signup: " + email.substring(email.indexOf('@') + 1));
       }
 
-      String userName = UserUtil.generateUsernameFromEmail(email, usernameExistsChecker);
+      // Guard once at the boundary: everything below derives the username and domain from '@'.
+      String validatedEmail = SecurityUtil.requireEmailWithDomain(email);
+      String emailDomain = validatedEmail.substring(validatedEmail.indexOf('@') + 1);
+      String userName = UserUtil.generateUsernameFromEmail(validatedEmail, usernameExistsChecker);
       boolean isAdmin = adminEvaluator.test(email, userName);
       LOG.info(
           "Creating new {} user - Email: {}, Generated username: {}, Is admin: {}",
@@ -145,8 +148,8 @@ public class EmailFirstUserProvisioner {
           isAdmin);
 
       User newUser =
-          UserUtil.user(userName, email.split("@")[1], userName)
-              .withEmail(email)
+          UserUtil.user(userName, emailDomain, userName)
+              .withEmail(validatedEmail)
               .withDisplayName(displayName != null ? displayName : userName)
               .withIsAdmin(isAdmin)
               .withIsEmailVerified(true);
