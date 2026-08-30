@@ -48,7 +48,9 @@ export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
   return (
     <div className={classNames('form-group', fieldClassNames)}>
       {displayLabel && label ? (
-        // eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor targets the rjsf-rendered control; the deprecated rule also demands DOM nesting
+        // The rjsf-rendered control carries this id, so htmlFor is the association;
+        // the deprecated rule additionally demands DOM nesting of the control.
+        // eslint-disable-next-line jsx-a11y/label-has-for -- associated via htmlFor
         <label
           className={classNames('control-label', {
             'sso-deprecated-field-label': isDeprecated,
