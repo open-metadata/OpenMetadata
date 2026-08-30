@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologySourceProvenance.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologySourceProvenance",
+  "description": "Pinned source identity and versions for a concept materialized into an application ontology subset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologySourceProvenance",
+  "properties": {
+    "sourceGlossary": {
+      "$ref": "entityReference.json"
+    },
+    "sourceGlossaryVersion": {
+      "$ref": "entityHistory.json#/definitions/entityVersion"
+    },
+    "sourceTerm": {
+      "$ref": "entityReference.json"
+    },
+    "sourceTermVersion": {
+      "$ref": "entityHistory.json#/definitions/entityVersion"
+    },
+    "sourceIri": {
+      "description": "Canonical source concept IRI used for exact-match traceability.",
+      "type": "string",
+      "format": "uri"
+    },
+    "sourceSnapshot": {
+      "description": "Structural merge base captured at sourceTermVersion.",
+      "$ref": "ontologyTermStructure.json"
+    },
+    "selectedDirectly": {
+      "description": "Whether the modeler selected this term or it was included as a descendant.",
+      "type": "boolean"
+    },
+    "capturedAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "capturedBy": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sourceGlossary",
+    "sourceGlossaryVersion",
+    "sourceTerm",
+    "sourceTermVersion",
+    "sourceSnapshot",
+    "selectedDirectly",
+    "capturedAt",
+    "capturedBy"
+  ],
+  "additionalProperties": false
+}

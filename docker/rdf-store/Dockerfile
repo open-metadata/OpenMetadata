@@ -56,4 +56,10 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Run Fuseki via the entrypoint (which renders shiro.ini then execs fuseki-server)
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["./fuseki-server", "--loc=/fuseki-data", "--update", "/openmetadata"]
+# Boot from config.ttl, not --loc. With --loc Fuseki builds an ad-hoc dataset and never reads
+# /fuseki/config.ttl, so `tdb2:unionDefaultGraph true` and the Lucene text index silently do not
+# apply. OpenMetadata writes every entity into named graphs, so without the union default graph a
+# plain `?s ?p ?o` query against the dataset returns zero rows while the data sits in
+# <https://open-metadata.org/graph/knowledge> - a silent wrong answer rather than an error, and
+# exactly the shape of query the MCP knowledge-graph tools generate.
+CMD ["./fuseki-server", "--config=/fuseki/config.ttl"]
