@@ -159,6 +159,29 @@ let viewOnlyOwnMemoryId = '';
 let viewOnlyOwnMemoryTitle = '';
 let earlyAlphabetMemoryId = '';
 
+const openPermissionArticle = async (page: Page) => {
+  const articleNode = await scrollHierarchyToNode(
+    page,
+    articleEntity.responseData.displayName
+  );
+  const articleResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/contextCenter/pages/') &&
+      response.request().method() === 'GET'
+  );
+
+  await articleNode.click();
+
+  const response = await articleResponse;
+  expect(response.ok(), await response.text()).toBe(true);
+  await waitForAllLoadersToDisappear(page);
+
+  const titleInput = page.getByTestId('entity-header-display-name');
+  await expect(titleInput).toHaveValue(articleEntity.responseData.displayName);
+
+  return titleInput;
+};
+
 test.describe('Context Center Permissions', () => {
   test.slow(true);
 
@@ -2093,24 +2116,9 @@ test.describe('Context Center Permissions', () => {
         viewOnlyPage.getByTestId('create-knowledge-page-btn')
       ).not.toBeVisible();
 
-      const articleResponse = viewOnlyPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/contextCenter/pages/') &&
-          response.request().method() === 'GET'
-      );
+      const titleInput = await openPermissionArticle(viewOnlyPage);
 
-      await viewOnlyPage
-        .getByTestId('knowledge-pages-hierarchy')
-        .getByRole('link')
-        .first()
-        .click();
-
-      await articleResponse;
-      await waitForAllLoadersToDisappear(viewOnlyPage);
-
-      await expect(
-        viewOnlyPage.getByTestId('entity-header-display-name')
-      ).toHaveAttribute('readOnly', '');
+      await expect(titleInput).toHaveAttribute('readOnly', '');
       await expect(viewOnlyPage.getByTestId('add-domain')).not.toBeVisible();
       await expect(
         viewOnlyPage
@@ -2148,24 +2156,7 @@ test.describe('Context Center Permissions', () => {
           dataConsumerPage.getByTestId('create-knowledge-page-btn')
         ).not.toBeVisible();
 
-        const articleResponse = dataConsumerPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/contextCenter/pages/') &&
-            response.request().method() === 'GET'
-        );
-
-        await dataConsumerPage
-          .getByTestId('knowledge-pages-hierarchy')
-          .getByRole('link')
-          .first()
-          .click();
-
-        await articleResponse;
-        await waitForAllLoadersToDisappear(dataConsumerPage);
-
-        await expect(
-          dataConsumerPage.getByTestId('entity-header-display-name')
-        ).toBeVisible();
+        await openPermissionArticle(dataConsumerPage);
 
         const editor = dataConsumerPage
           .locator('[contenteditable="true"]')
@@ -2203,24 +2194,7 @@ test.describe('Context Center Permissions', () => {
           dataStewardPage.getByTestId('create-knowledge-page-btn')
         ).not.toBeVisible();
 
-        const articleResponse = dataStewardPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/contextCenter/pages/') &&
-            response.request().method() === 'GET'
-        );
-
-        await dataStewardPage
-          .getByTestId('knowledge-pages-hierarchy')
-          .getByRole('link')
-          .first()
-          .click();
-
-        await articleResponse;
-        await waitForAllLoadersToDisappear(dataStewardPage);
-
-        const titleInput = dataStewardPage.getByTestId(
-          'entity-header-display-name'
-        );
+        const titleInput = await openPermissionArticle(dataStewardPage);
 
         await expect(titleInput).not.toHaveAttribute('readOnly', '');
 

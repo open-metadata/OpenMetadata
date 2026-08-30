@@ -24,6 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.query.Query;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.DisplayName;
@@ -91,6 +92,35 @@ class JenaFusekiStorageTest {
       assertEquals(4, JenaFusekiStorage.resolveWriteMaxRetries(config));
       assertEquals(55, JenaFusekiStorage.resolveWriteRetryInitialBackoffMs(config));
       assertEquals(777, JenaFusekiStorage.resolveWriteRetryMaxBackoffMs(config));
+    }
+  }
+
+  @Nested
+  @DisplayName("graph triple-count query")
+  class GraphTripleCountQueryTests {
+
+    @Test
+    @DisplayName("valid absolute graph IRIs are bound into the query")
+    void validAbsoluteGraphIriIsBound() {
+      String graphIri = "https://open-metadata.org/graph/inferred/product-adoption";
+
+      Query query = JenaFusekiStorage.graphTripleCountQuery(graphIri);
+
+      assertTrue(query.toString().contains('<' + graphIri + '>'));
+      assertFalse(query.toString().contains("?graph"));
+    }
+
+    @Test
+    @DisplayName("relative and injectable graph IRIs are rejected")
+    void unsafeGraphIrisAreRejected() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> JenaFusekiStorage.graphTripleCountQuery("graph/inferred/product-adoption"));
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              JenaFusekiStorage.graphTripleCountQuery(
+                  "https://open-metadata.org/graph/> } UNION { ?s ?p ?o } #"));
     }
   }
 
