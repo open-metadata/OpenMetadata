@@ -147,7 +147,7 @@ test.describe(
 
           return (
             response.request().method() === 'POST' &&
-            url.pathname === '/api/v1/feed'
+            url.pathname === '/api/v1/conversations'
           );
         });
         await activityTab
@@ -334,7 +334,7 @@ test.describe(
           });
         }
         if (threadId) {
-          await apiContext.delete(`/api/v1/feed/${threadId}`);
+          await apiContext.delete(`/api/v1/conversations/${threadId}`);
         }
         if (metric.entityResponseData.id) {
           await metric.delete(apiContext);

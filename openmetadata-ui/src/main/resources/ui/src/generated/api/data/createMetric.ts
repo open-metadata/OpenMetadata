@@ -39,7 +39,7 @@ export interface CreateMetric {
      */
     domains?: string[];
     /**
-     * List of user names for users who are experts in this metric.
+     * List of fully qualified user names for users who are experts in this metric.
      */
     experts?: string[];
     /**

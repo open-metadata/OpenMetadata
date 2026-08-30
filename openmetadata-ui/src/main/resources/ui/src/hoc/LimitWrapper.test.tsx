@@ -24,6 +24,20 @@ const mockUseLimitStore = useLimitStore as jest.MockedFunction<
 const mockGetResourceLimit = jest.fn();
 const mockSetBannerDetails = jest.fn();
 
+const UntitledButton = ({
+  children,
+  isDisabled,
+  onPress,
+}: {
+  children: string;
+  isDisabled?: boolean;
+  onPress?: () => void;
+}) => (
+  <button disabled={isDisabled} type="button" onClick={onPress}>
+    {children}
+  </button>
+);
+
 const metricLimit = {
   name: 'metric',
   limitReached: false,
@@ -135,6 +149,33 @@ describe('LimitWrapper', () => {
         name: 'server.entity-limit-reached (3/3)',
       })
     ).toBeEnabled();
+  });
+
+  it('blocks Untitled button press handlers when the limit is reached', async () => {
+    const onPress = jest.fn();
+    const reachedLimit = {
+      ...metricLimit,
+      currentCount: 3,
+      limitReached: true,
+    };
+    setLimitStore({ resourceLimit: { metric: reachedLimit } });
+    mockGetResourceLimit.mockResolvedValue(reachedLimit);
+
+    render(
+      <LimitWrapper resource="metric">
+        <UntitledButton onPress={onPress}>Create metric</UntitledButton>
+      </LimitWrapper>
+    );
+
+    const button = await screen.findByRole('button', {
+      name: 'Create metric',
+    });
+
+    expect(button).toBeDisabled();
+
+    fireEvent.click(button);
+
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   it('keeps the child enabled below the limit', async () => {

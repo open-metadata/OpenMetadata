@@ -549,8 +549,6 @@ class SearchUtilsTest {
         Entity.CONTAINER,
         "metric_search_index",
         Entity.METRIC,
-        "metric_group_search_index",
-        Entity.METRIC_GROUP,
         "directory_search_index",
         Entity.DIRECTORY,
         "file_search_index",
@@ -573,6 +571,8 @@ class SearchUtilsTest {
         // user/team/dataAsset alias are NOT data assets in this classifier's sense
         "user_search_index",
         "team_search_index",
+        "metric_group_search_index",
+        Entity.METRIC_GROUP,
         "dataAsset",
         "all",
         "garbage"

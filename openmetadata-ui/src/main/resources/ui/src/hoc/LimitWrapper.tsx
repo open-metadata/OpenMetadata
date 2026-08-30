@@ -85,12 +85,20 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
   })} (${currentLimits?.currentCount}/${
     currentLimits?.configuredLimit.limits.hardLimit
   })`;
+  const disabledActionProps =
+    typeof children.type === 'string'
+      ? { disabled: true, onClick: noop }
+      : {
+          disabled: true,
+          isDisabled: true,
+          onClick: noop,
+          onPress: noop,
+        };
 
   return limitReached ? (
     <span className="tw:relative tw:inline-flex">
       {cloneElement(children, {
-        disabled: true,
-        onClick: noop,
+        ...disabledActionProps,
         className: classNames(children.props.className, 'disabled'),
       })}
       <Tooltip title={limitMessage}>

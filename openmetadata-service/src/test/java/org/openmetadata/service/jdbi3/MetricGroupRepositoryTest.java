@@ -27,11 +27,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,16 +52,20 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RequestEntityCache;
 
 class MetricGroupRepositoryTest {
+  private CollectionDAO collectionDAO;
   private CollectionDAO.MetricGroupDAO groupDAO;
+  private CollectionDAO.MetricDAO metricDAO;
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
   private MetricGroupRepository repository;
 
   @BeforeEach
   void setUp() {
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    collectionDAO = mock(CollectionDAO.class);
     groupDAO = mock(CollectionDAO.MetricGroupDAO.class);
+    metricDAO = mock(CollectionDAO.MetricDAO.class);
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(collectionDAO.metricGroupDAO()).thenReturn(groupDAO);
+    when(collectionDAO.metricDAO()).thenReturn(metricDAO);
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     Entity.setCollectionDAO(collectionDAO);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
@@ -289,6 +295,45 @@ class MetricGroupRepositoryTest {
             Relationship.HAS.ordinal());
     assertEquals(List.of(root, child), change.metrics());
     assertEquals(Set.of(targetGroup), change.groups());
+  }
+
+  @Test
+  void currentTransactionAssignmentReadsTheSubtreeThroughTheTransactionDao() {
+    UUID rootId = UUID.randomUUID();
+    UUID childId = UUID.randomUUID();
+    Metric root = metric("root").withId(rootId);
+    Metric child = metric("child").withId(childId);
+    EntityReference targetGroup = group("target").getEntityReference();
+    CollectionDAO transactionDAO = mock(CollectionDAO.class);
+    CollectionDAO.MetricDAO transactionMetricDAO = mock(CollectionDAO.MetricDAO.class);
+    CollectionDAO.EntityRelationshipDAO transactionRelationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(transactionDAO.metricDAO()).thenReturn(transactionMetricDAO);
+    when(transactionDAO.relationshipDAO()).thenReturn(transactionRelationshipDAO);
+    when(transactionMetricDAO.listDescendantSeedIds(rootId, Relationship.CONTAINS.ordinal()))
+        .thenReturn(List.of(childId.toString()));
+    when(transactionMetricDAO.listDescendantSeedIds(childId, Relationship.CONTAINS.ordinal()))
+        .thenReturn(List.of());
+    when(transactionMetricDAO.findEntitiesByIds(List.of(rootId, childId), NON_DELETED))
+        .thenReturn(List.of(root, child));
+    when(transactionRelationshipDAO.findFrom(
+            rootId, Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of());
+    when(transactionRelationshipDAO.findFrom(
+            childId, Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of());
+    AtomicReference<MetricGroupRepository.MembershipChange> change = new AtomicReference<>();
+
+    RepositoryTransactionContext.runWith(
+        transactionDAO,
+        () -> change.set(repository.assignHierarchyGroupInCurrentTransaction(rootId, targetGroup)));
+
+    assertEquals(
+        List.of(root.getEntityReference(), child.getEntityReference()), change.get().metrics());
+    verify(transactionMetricDAO)
+        .lockForGroupAssignment(
+            List.of(rootId.toString(), childId.toString()).stream().sorted().toList());
+    verify(metricDAO, never()).listDescendantSeedIds(rootId, Relationship.CONTAINS.ordinal());
   }
 
   @Test

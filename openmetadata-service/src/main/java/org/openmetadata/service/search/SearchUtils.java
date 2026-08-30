@@ -688,9 +688,7 @@ public final class SearchUtils {
           "context_file_search_index",
           Entity.CONTEXT_FILE,
           "metric_search_index",
-          Entity.METRIC,
-          "metric_group_search_index",
-          Entity.METRIC_GROUP -> true;
+          Entity.METRIC -> true;
       default -> false;
     };
   }

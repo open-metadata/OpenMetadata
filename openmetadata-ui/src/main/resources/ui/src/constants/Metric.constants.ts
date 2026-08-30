@@ -149,14 +149,6 @@ export const METRIC_DUMMY_DATA: Metric = {
 export const METRIC_APPROVAL_WORKFLOW_DEFINITION_NAME =
   'MetricApprovalWorkflow';
 
-/**
- * Ceiling on how many groups and root metrics the tree loads.
- *
- * The list composes groups and their members client-side so a group banner's count always matches
- * the rows beneath it; that requires holding the top level in memory. Well past this many metrics
- * the tree stops being a useful way to browse anyway, and search (flat mode) is the better tool.
- */
-
 /** How many children are fetched per expand before a load-more row appears. */
 export const METRIC_CHILDREN_PAGE_SIZE = 50;
 

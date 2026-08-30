@@ -47,13 +47,14 @@ export function resolveSelectedRows<T>({
 
   const selectedKeys =
     selection === 'all' ? selectableKeys : [...selection].map(String);
+  const selectedKeySet = new Set(selectedKeys);
 
   const selectedRows = isTree
     ? flatRows
-        .filter((row) => selectedKeys.includes(row.rowKey))
+        .filter((row) => selectedKeySet.has(row.rowKey))
         .map((row) => row.record)
     : dataSource.filter((record, index) =>
-        selectedKeys.includes(getRowKey(record, index))
+        selectedKeySet.has(getRowKey(record, index))
       );
 
   return { selectedKeys, selectedRows };

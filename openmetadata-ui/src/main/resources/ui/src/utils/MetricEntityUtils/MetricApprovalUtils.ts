@@ -73,8 +73,8 @@ export const isMetricAwaitingApproval = (status?: EntityStatus): boolean =>
   status === EntityStatus.InReview;
 
 /**
- * A metric with no reviewers never enters the approval workflow, so an approval tab would only ever
- * show an empty timeline. This is what gates the tab.
+ * Metrics with reviewers expose the approval tab. A workflow status also keeps the tab available
+ * after reviewers change so an existing decision or rollback timeline remains accessible.
  */
 export const metricHasApprovalWorkflow = (
   metric: Pick<Metric, 'reviewers' | 'entityStatus'>

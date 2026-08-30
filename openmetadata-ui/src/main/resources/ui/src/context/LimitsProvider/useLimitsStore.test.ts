@@ -84,7 +84,7 @@ describe('useLimitStore', () => {
 
     expect(useLimitStore.getState().bannerDetails).toEqual({
       header: 'server.entity-limit-reached',
-      subheader: '2/3 (FREE, 75%)',
+      subheader: '2/3 (FREE, 67%)',
       type: 'warning',
       hardLimitExceed: false,
       softLimitExceed: true,

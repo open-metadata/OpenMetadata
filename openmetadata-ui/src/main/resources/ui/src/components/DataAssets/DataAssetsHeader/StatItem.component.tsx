@@ -29,7 +29,7 @@ export const StatItem = ({
   isActive,
   srLabel,
 }: StatItemProps) => {
-  const isDisabled = disabled || loading;
+  const isDisabled = disabled || loading || !onClick;
   const labelClassName = classNames(
     'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
     isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',

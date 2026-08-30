@@ -67,6 +67,18 @@ export type BannerDetails = {
   hardLimitExceed?: boolean;
 };
 
+const getLimitThresholdPercentage = (
+  limits: { softLimit: number; hardLimit: number },
+  hardLimitExceed: boolean
+) => {
+  if (limits.hardLimit <= 0) {
+    return 100;
+  }
+  const threshold = hardLimitExceed ? limits.hardLimit : limits.softLimit;
+
+  return Math.round((threshold / limits.hardLimit) * 100);
+};
+
 /**
  * Store to manage the limits and resource limits
  */
@@ -159,9 +171,12 @@ export const useLimitStore = create<{
             entity: resourceLabel,
           }),
           type: hardLimitExceed ? 'danger' : 'warning',
-          subheader: `${currentCount}/${limits.hardLimit} (${plan}, ${
-            hardLimitExceed ? '100%' : '75%'
-          })`,
+          subheader: `${currentCount}/${
+            limits.hardLimit
+          } (${plan}, ${getLimitThresholdPercentage(
+            limits,
+            hardLimitExceed
+          )}%)`,
           softLimitExceed,
           hardLimitExceed,
         });

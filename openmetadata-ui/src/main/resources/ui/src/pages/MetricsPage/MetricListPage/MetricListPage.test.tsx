@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -668,6 +674,30 @@ describe('MetricListPage', () => {
     renderPage();
 
     expect(await screen.findByTestId('metric-card-view')).toBeInTheDocument();
+  });
+
+  it('preserves hierarchy indentation in card view', async () => {
+    const child = {
+      id: 'child-1',
+      name: 'net_sales_emea',
+      fullyQualifiedName: 'net_sales.net_sales_emea',
+    };
+    const parent = { ...rootMetric, children: [child] };
+    setHierarchy({
+      rows: [parent],
+      topLevelNodes: [{ row: parent }],
+    });
+    renderPage();
+
+    await screen.findByRole('table');
+    fireEvent.click(screen.getByTestId('metric-card-view-button'));
+
+    const childCard = await screen.findByTestId('metric-card-child-1');
+    const childLink = within(childCard).getByRole('link', {
+      name: 'net_sales_emea',
+    });
+
+    expect(childLink.closest('[data-metric-fqn]')).toHaveClass('tw:pl-4');
   });
 
   it('keeps group context when hierarchy search matches a group or descendant', async () => {

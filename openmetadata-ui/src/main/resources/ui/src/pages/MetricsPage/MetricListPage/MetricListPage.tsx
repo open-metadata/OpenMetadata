@@ -983,7 +983,7 @@ const MetricListPage = () => {
                         )
                       }
                     />
-                    {renderMetricName(row, 0)}
+                    {renderMetricName(row, depth)}
                   </Box>
                 </Box>
                 {visibleColumns.includes('description') && (

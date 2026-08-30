@@ -84,7 +84,7 @@
       "default": null
     },
     "experts": {
-      "description": "List of user names for users who are experts in this metric.",
+      "description": "List of fully qualified user names for users who are experts in this metric.",
       "type": "array",
       "items": {
         "type": "string"

@@ -399,6 +399,34 @@ class MetricObservabilityBuilderTest {
     assertFalse(sourceRollup.getRedacted());
   }
 
+  @Test
+  void summarize_treatsAResultWithoutStatusAsMissing() {
+    EntityReference source = table("source");
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("missing_status")
+            .withFullyQualifiedName("source.missing_status");
+    ResultSummary resultWithoutStatus = new ResultSummary().withTimestamp(100L);
+
+    MetricObservability result =
+        MetricObservabilityBuilder.summarize(
+            metric(),
+            linked(source),
+            List.of(source),
+            List.of(
+                new MetricObservabilityBuilder.Observation(
+                    source, testCase, "Accuracy", resultWithoutStatus)),
+            List.of(),
+            Set.of(source.getId()));
+
+    assertEquals(1, result.getStatusCounts().getMissing());
+    assertEquals(0, result.getStatusCounts().getTerminal());
+    assertNull(result.getTests().getFirst().getStatus());
+    assertEquals(100L, result.getTests().getFirst().getTimestamp());
+    assertEquals(MetricObservabilityReasonCode.NO_TERMINAL_RESULTS, result.getReasonCode());
+  }
+
   private EntityReference metric() {
     return new EntityReference()
         .withId(UUID.randomUUID())

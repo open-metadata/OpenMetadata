@@ -559,7 +559,10 @@ public class MetricObservabilityBuilder {
                 .withTestCase(observation.testCase().getEntityReference())
                 .withAsset(observation.asset())
                 .withDimension(observation.dimension())
-                .withStatus(result == null ? null : result.getStatus().value())
+                .withStatus(
+                    result == null || result.getStatus() == null
+                        ? null
+                        : result.getStatus().value())
                 .withTimestamp(result == null ? null : result.getTimestamp()));
       }
     }

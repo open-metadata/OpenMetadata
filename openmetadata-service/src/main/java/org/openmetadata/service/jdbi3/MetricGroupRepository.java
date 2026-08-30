@@ -669,7 +669,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   MembershipChange assignHierarchyGroupInCurrentTransaction(
       UUID rootMetricId, EntityReference group) {
     CollectionDAO transactionDAO = RepositoryTransactionContext.requireCurrentDAO();
-    List<EntityReference> metrics = expandSubtree(rootMetricId);
+    List<EntityReference> metrics = expandSubtree(rootMetricId, transactionDAO.metricDAO());
     return assignHierarchyGroupWithLock(
         transactionDAO.metricDAO(), transactionDAO.relationshipDAO(), metrics, group);
   }
@@ -753,15 +753,28 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   }
 
   private List<EntityReference> expandSubtree(UUID rootMetricId) {
+    return expandSubtree(rootMetricId, daoCollection.metricDAO());
+  }
+
+  static List<EntityReference> expandSubtree(UUID rootMetricId, CollectionDAO.MetricDAO metricDAO) {
     Set<UUID> metricIds = new LinkedHashSet<>();
     ArrayDeque<UUID> pending = new ArrayDeque<>(List.of(rootMetricId));
     while (!pending.isEmpty()) {
       UUID current = pending.removeFirst();
       if (metricIds.add(current)) {
-        childIds(current).forEach(pending::addLast);
+        metricDAO.listDescendantSeedIds(current, Relationship.CONTAINS.ordinal()).stream()
+            .map(UUID::fromString)
+            .forEach(pending::addLast);
       }
     }
-    return Entity.getEntityReferencesByIds(METRIC, new ArrayList<>(metricIds), NON_DELETED);
+    Map<UUID, EntityReference> referencesById =
+        metricDAO.findEntitiesByIds(new ArrayList<>(metricIds), NON_DELETED).stream()
+            .map(Metric::getEntityReference)
+            .collect(Collectors.toMap(EntityReference::getId, reference -> reference));
+    return metricIds.stream()
+        .map(referencesById::get)
+        .filter(reference -> reference != null)
+        .toList();
   }
 
   private List<EntityReference> removeGroupMemberships(
@@ -812,15 +825,6 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
             String.format("Metric '%s' is not a hierarchy root", metric.getFullyQualifiedName()));
       }
     }
-  }
-
-  private List<UUID> childIds(UUID metricId) {
-    return daoCollection
-        .metricDAO()
-        .listDescendantSeedIds(metricId, Relationship.CONTAINS.ordinal())
-        .stream()
-        .map(UUID::fromString)
-        .toList();
   }
 
   private void removeOtherGroupMemberships(UUID metricId, UUID targetGroupId) {
