@@ -83,6 +83,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.DuplicateEmailException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
@@ -226,12 +227,9 @@ public class UserRepository extends EntityRepository<User> {
     if (userStrings.size() > 1) {
       // Only reachable on Postgres, whose unique constraint on email is case-sensitive. Picking
       // one of the accounts would hand the caller a non-deterministic identity, so refuse until an
-      // administrator merges them.
-      throw new AuthenticationException(
-          String.format(
-              "Email '%s' matches %d user accounts differing only by case. "
-                  + "Ask an administrator to merge or rename the duplicates.",
-              email, userStrings.size()));
+      // administrator merges them. This is a data-integrity conflict rather than an authentication
+      // failure; the auth path translates it below.
+      throw DuplicateEmailException.byEmail(email, userStrings.size());
     }
     User user = JsonUtils.readValue(userStrings.get(0), User.class);
     setFieldsInternal(user, fields);
@@ -245,10 +243,16 @@ public class UserRepository extends EntityRepository<User> {
   /**
    * Email lookup for authentication flows. Unlike {@link #getByEmail}, a soft-deleted user is not a
    * valid login identity: deactivated accounts must not resolve, be updated, or be resurrected by
-   * an SSO login.
+   * an SSO login. Duplicate-email conflicts are reported as authentication failures here so a
+   * login returns 401 rather than the 409 that non-auth callers should see.
    */
   public User getActiveUserByEmailForAuth(String email, Fields fields) {
-    User user = getByEmail(null, email, fields);
+    User user;
+    try {
+      user = getByEmail(null, email, fields);
+    } catch (DuplicateEmailException e) {
+      throw new AuthenticationException(e.getMessage());
+    }
     if (Boolean.TRUE.equals(user.getDeleted())) {
       throw new AuthenticationException(
           "Your account has been deactivated. Contact your administrator.");
