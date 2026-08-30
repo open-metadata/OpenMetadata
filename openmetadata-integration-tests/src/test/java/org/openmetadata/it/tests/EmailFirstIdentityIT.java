@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.UserUtil;
 
 /**
@@ -138,6 +140,27 @@ class EmailFirstIdentityIT {
         () -> Entity.getUserRepository().changeEmail(firstEmail, secondEmail, false));
     assertEquals(
         firstEmail, provision(firstEmail, "First").getEmail(), "Failed change must not mutate");
+  }
+
+  @Test
+  void testChangeEmailPreservesStoredFieldsTheReadDidNotRequest(TestNamespace ns) {
+    String localPart = ("keepfields" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    String oldEmail = localPart + "@old.test.om.org";
+    String newEmail = localPart + "@new.test.om.org";
+
+    User user = provision(oldEmail, "Fields User");
+    long activityTime = 1735689600000L;
+    Entity.getUserRepository().updateUserLastActivityTime(user.getName(), activityTime);
+
+    Entity.getUserRepository().changeEmail(oldEmail, newEmail, false);
+
+    User after =
+        Entity.getUserRepository()
+            .getByEmail(null, newEmail, new EntityUtil.Fields(Set.of("lastActivityTime")));
+    assertEquals(
+        activityTime,
+        after.getLastActivityTime(),
+        "Changing the email must not drop stored JSON fields that the lookup did not request");
   }
 
   @Test

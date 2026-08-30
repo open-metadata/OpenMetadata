@@ -775,12 +775,18 @@ public class UserRepository extends EntityRepository<User> {
     if (!SecurityUtil.isValidEmail(normalizedNewEmail)) {
       throw new IllegalArgumentException(String.format("'%s' is not a valid email", newEmail));
     }
-    User user = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS);
-    if (!user.getEmail().equalsIgnoreCase(normalizedNewEmail)
-        && checkEmailAlreadyExists(normalizedNewEmail)) {
+    // getByEmail resolves the account and rejects the ambiguous duplicate-email case, but it
+    // returns a field-cleared copy. Re-read through find() to get the stored entity intact:
+    // clearFields() nulls authenticationMechanism, profile and the login timestamps, which are
+    // persisted in the JSON rather than derived from relationships, so writing the cleared copy
+    // back would erase them -- for a bot, that means its token.
+    UUID userId = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS).getId();
+    if (checkEmailAlreadyExists(normalizedNewEmail)
+        && !normalizedNewEmail.equalsIgnoreCase(currentEmail)) {
       throw new IllegalArgumentException(
           String.format("Email %s is already used by another account", normalizedNewEmail));
     }
+    User user = find(userId, Include.NON_DELETED, false);
 
     String previousEmail = user.getEmail();
     user.setEmail(normalizedNewEmail);
