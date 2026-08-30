@@ -3829,7 +3829,7 @@ public class SearchRepository {
             JsonUtils.convertValue(
                 fieldChange.getNewValue(),
                 new TypeReference<List<LinkedHashMap<String, String>>>() {}));
-        fieldAddParams.put(FIELD_DOMAINS, entity.getDomains());
+        fieldAddParams.put(FIELD_DOMAINS, buildEntityRefListWithDisplayName(entity.getDomains()));
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
         scriptTxt.append("ctx._source.domains = params.domains;");
       }

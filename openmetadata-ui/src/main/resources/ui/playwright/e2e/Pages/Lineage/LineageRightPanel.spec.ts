@@ -52,6 +52,7 @@ test.describe(
       page,
     }) => {
       const tableFqn = table.entityResponseData.fullyQualifiedName;
+      const serviceFqn = table.serviceResponseData.fullyQualifiedName;
 
       await table.visitEntityPage(page);
       await visitLineageTab(page);
@@ -77,7 +78,9 @@ test.describe(
           .locator('.lineage-map-rail-dot.active')
       ).toBeVisible();
 
-      await tableNode.getByRole('button', { name: 'Zoom In' }).click();
+      const serviceNode = page.getByTestId(`lineage-node-${serviceFqn}`);
+      await expect(serviceNode).toBeVisible();
+      await serviceNode.getByRole('button', { name: 'Zoom In' }).click();
 
       await expect
         .poll(() => new URL(page.url()).searchParams.get('lineageBand'))

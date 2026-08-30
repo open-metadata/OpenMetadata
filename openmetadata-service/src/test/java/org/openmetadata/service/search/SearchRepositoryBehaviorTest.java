@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -2018,13 +2019,19 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
+  void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
     EntityReference queryDomain =
         new EntityReference()
             .withId(UUID.randomUUID())
             .withType(Entity.DOMAIN)
-            .withName("analytics");
+            .withName("analytics")
+            .withDisplayName("Analytics")
+            .withFullyQualifiedName("analytics")
+            .withDescription("Analytics domain")
+            .withDeleted(false)
+            .withInherited(true)
+            .withHref(URI.create("http://localhost/api/v1/domains/analytics"));
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
     when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
@@ -2062,7 +2069,17 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
-    assertEquals(List.of(queryDomain), params.get(Entity.FIELD_DOMAINS));
+    assertEquals(
+        List.of(
+            Map.of(
+                "id", queryDomain.getId().toString(),
+                "type", Entity.DOMAIN,
+                "name", "analytics",
+                "displayName", "Analytics",
+                "fullyQualifiedName", "analytics",
+                "description", "Analytics domain",
+                "deleted", false)),
+        params.get(Entity.FIELD_DOMAINS));
   }
 
   @Test
