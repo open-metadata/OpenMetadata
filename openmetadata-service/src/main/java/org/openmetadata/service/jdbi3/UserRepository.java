@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -116,6 +117,7 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+  private static final int PAGE_SIZE = 500;
   private static final int MAX_TASK_CLEANUP_RETRIES = 3;
   private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
   private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
@@ -757,6 +759,27 @@ public class UserRepository extends EntityRepository<User> {
     invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     updateImpersonationRole(user, allowImpersonation, impersonationRole);
     SubjectCache.invalidateUser(user.getName());
+  }
+
+  /**
+   * Streams the accounts whose email sits in {@code domain}, ordered by name, in pages. The
+   * {@code change-email} ops flow uses this to find accounts still holding a
+   * {@code user@principalDomain} address that the legacy identity flow synthesized rather than the
+   * identity provider supplying -- those are the accounts that will not match a real address once
+   * email-first login is enabled. Paged rather than listed in one shot so a large catalog does not
+   * have to fit in the operator's heap.
+   */
+  public void forEachUserInEmailDomain(String domain, Consumer<UserDAO.NameEmail> consumer) {
+    String domainSuffix = "%@" + domain.toLowerCase(Locale.ROOT);
+    String afterName = "";
+    List<UserDAO.NameEmail> page;
+    do {
+      page = daoCollection.userDAO().listUsersWithEmailDomain(domainSuffix, afterName, PAGE_SIZE);
+      page.forEach(consumer);
+      if (!page.isEmpty()) {
+        afterName = page.getLast().name();
+      }
+    } while (page.size() == PAGE_SIZE);
   }
 
   /**

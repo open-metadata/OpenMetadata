@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -190,6 +192,27 @@ class EmailFirstIdentityIT {
             .getByEmail(null, parkedEmail, EMPTY_FIELDS)
             .getIdentityProviderSubject(),
         "Parked account's binding must have been cleared");
+  }
+
+  @Test
+  void testSynthesizedEmailDomainListingFindsAccountsToRepair(TestNamespace ns) {
+    String suffix = ns.uniqueShortId().toLowerCase(Locale.ROOT);
+    String syntheticDomain = "synth" + suffix + ".test.om.org";
+    String firstEmail = "alpha" + suffix + "@" + syntheticDomain;
+    String secondEmail = "beta" + suffix + "@" + syntheticDomain;
+    String realEmail = "gamma" + suffix + "@real.test.om.org";
+
+    provision(firstEmail, "Alpha");
+    provision(secondEmail, "Beta");
+    provision(realEmail, "Gamma");
+
+    List<String> found = new ArrayList<>();
+    Entity.getUserRepository()
+        .forEachUserInEmailDomain(syntheticDomain, row -> found.add(row.email()));
+
+    assertTrue(found.contains(firstEmail), "Expected " + firstEmail + " in " + found);
+    assertTrue(found.contains(secondEmail), "Expected " + secondEmail + " in " + found);
+    assertFalse(found.contains(realEmail), "A real-domain address must not be reported for repair");
   }
 
   /**

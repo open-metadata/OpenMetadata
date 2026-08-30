@@ -955,6 +955,33 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     List<String> findUsersByEmail(@Bind("email") String email);
 
+    record NameEmail(String name, String email) {}
+
+    class NameEmailMapper implements RowMapper<NameEmail> {
+      @Override
+      public NameEmail map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new NameEmail(rs.getString("name"), rs.getString("email"));
+      }
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE email LIKE :domainSuffix AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE LOWER(email) LIKE LOWER(:domainSuffix) AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(NameEmailMapper.class)
+    List<NameEmail> listUsersWithEmailDomain(
+        @Bind("domainSuffix") String domainSuffix,
+        @Bind("afterName") String afterName,
+        @Bind("limit") int limit);
+
     @Override
     default User findEntityByName(String fqn, Include include) {
       return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);

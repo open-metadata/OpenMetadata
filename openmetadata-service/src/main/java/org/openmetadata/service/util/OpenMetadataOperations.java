@@ -40,13 +40,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -1259,22 +1259,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      List<String> rows = new ArrayList<>();
-      ListFilter filter = new ListFilter(Include.NON_DELETED);
-      String suffix = "@" + syntheticDomain.toLowerCase(Locale.ROOT);
-      for (User user : userRepository.listAll(new EntityUtil.Fields(Set.of()), filter)) {
-        String email = user.getEmail();
-        if (email != null
-            && email.toLowerCase(Locale.ROOT).endsWith(suffix)
-            && !Boolean.TRUE.equals(user.getIsBot())) {
-          rows.add(user.getName() + "\t" + email);
-        }
-      }
+      AtomicInteger count = new AtomicInteger();
+      userRepository.forEachUserInEmailDomain(
+          syntheticDomain,
+          user -> {
+            LOG.info("  {}\t{}", user.name(), user.email());
+            count.incrementAndGet();
+          });
 
       LOG.info(
-          "{} user(s) hold an email in the synthesized domain {}", rows.size(), syntheticDomain);
-      rows.forEach(row -> LOG.info("  {}", row));
-      if (!rows.isEmpty()) {
+          "{} user(s) hold an email in the synthesized domain {}", count.get(), syntheticDomain);
+      if (count.get() > 0) {
         LOG.info("Repair each with: change-email -e <current> -n <real address>");
       }
       return 0;
