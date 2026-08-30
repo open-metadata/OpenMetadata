@@ -46,12 +46,20 @@ RUN dpkg --configure -a \
   # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
+  # linux-libc-dev (source pkg "linux") -> kernel headers that libc6-dev pulls in for
+  # build-essential. A container runs the host kernel, so the headers are a build
+  # artifact and the kernel CVEs scanners report against them are not reachable at
+  # runtime. Tracked here so the image takes bookworm-security's kernel headers
+  # rather than whatever the base image froze. This does NOT clear CVE-2026-68082:
+  # that fix exists only in trixie-security (6.12.105-1, DSA-6466-1), and bookworm
+  # and bookworm-security are both still "vulnerable" on the 6.1 line. The image
+  # that reports it is trixie-based -- see ingestion/operators/docker/Dockerfile.
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \
@@ -132,7 +140,7 @@ WORKDIR /home/airflow/ingestion
 
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
-RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.64.0"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py

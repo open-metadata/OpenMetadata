@@ -71,10 +71,11 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
+    "pydoris": "pydoris==1.2.0",
     "starrocks": "pymysql~=1.0",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
-    "pyathena": "pyathena~=3.25.0",
+    "pyathena": "pyathena~=3.35.4",  # <3.35.4 routes DELETE/CTAS to the Hive escaper -> SQL injection (CVE-2026-65321)
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
@@ -300,9 +301,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
-    # pydoris-custom declares sqlalchemy<2 but works at runtime with SA 2.0.
-    # Pre-installed with --no-deps in Dockerfiles.
-    "doris": set(),
+    "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
@@ -520,7 +519,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
-    # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
+    VERSIONS["pydoris"],
     VERSIONS["starrocks"],
     *plugins["vertica"],
     "testcontainers~=4.8.0",
