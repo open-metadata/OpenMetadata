@@ -6,6 +6,9 @@
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix tdb2:  <http://jena.apache.org/2016/tdb#> .
 @prefix ja:    <http://jena.hpl.hp.com/2005/11/Assembler#> .
+# jena-text prefix: without this the file fails to parse at the first text: term below
+# ("Undefined prefix: text"), which made Fuseki refuse to boot with --config.
+@prefix text:  <http://jena.apache.org/text#> .
 
 [] rdf:type fuseki:Server ;
    fuseki:services (

@@ -33,14 +33,17 @@ export interface ListStoredProcedureParams {
   limit?: number;
 }
 
-const URL = '/storedProcedures';
+const STORED_PROCEDURES_PATH = '/storedProcedures';
 
 export const getStoredProceduresList = async (
   params?: ListStoredProcedureParams
 ) => {
-  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(URL, {
-    params,
-  });
+  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
+    STORED_PROCEDURES_PATH,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -50,7 +53,7 @@ export const getStoredProceduresByFqn = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<StoredProcedure>(
-    `${URL}/name/${getEncodedFqn(fqn)}`,
+    `${STORED_PROCEDURES_PATH}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
         ...params,
@@ -71,7 +74,7 @@ export const patchStoredProceduresDetails = async (
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<StoredProcedure>
-  >(`${URL}/${id}`, data);
+  >(`${STORED_PROCEDURES_PATH}/${id}`, data);
 
   return response.data;
 };
@@ -85,7 +88,11 @@ export const addStoredProceduresFollower = async (
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+  >(
+    `${STORED_PROCEDURES_PATH}/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -99,13 +106,16 @@ export const removeStoredProceduresFollower = async (
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+  >(
+    `${STORED_PROCEDURES_PATH}/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const getStoredProceduresVersionsList = async (id: string) => {
-  const url = `${URL}/${id}/versions`;
+  const url = `${STORED_PROCEDURES_PATH}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -116,7 +126,7 @@ export const getStoredProceduresVersion = async (
   id: string,
   version?: string
 ) => {
-  const url = `${URL}/${id}/versions/${version}`;
+  const url = `${STORED_PROCEDURES_PATH}/${id}/versions/${version}`;
 
   const response = await APIClient.get<StoredProcedure>(url);
 
@@ -127,7 +137,7 @@ export const restoreStoredProcedures = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<StoredProcedure>
-  >(`${URL}/restore`, { id });
+  >(`${STORED_PROCEDURES_PATH}/restore`, { id });
 
   return response.data;
 };
@@ -139,7 +149,7 @@ export const updateStoredProcedureVotes = async (
   const response = await APIClient.put<
     QueryVote,
     AxiosResponse<StoredProcedure>
-  >(`${URL}/${id}/vote`, data);
+  >(`${STORED_PROCEDURES_PATH}/${id}/vote`, data);
 
   return response.data;
 };

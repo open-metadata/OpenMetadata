@@ -1,6 +1,7 @@
 package org.openmetadata.service.jobs;
 
 import io.dropwizard.lifecycle.Managed;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,9 +31,10 @@ public class GenericBackgroundWorker implements Managed {
   // prevents double execution across pool threads and across servers.
   public static final int WORKER_POOL_SIZE = 3;
 
-  // How often this server stamps updatedAt on the jobs it is running. The cleanup
-  // sweeper treats a job with no recent heartbeat as orphaned, so this must stay
-  // comfortably below CsvAsyncJobManager.RUNNING_JOB_STALE_AFTER.
+  static final Duration RUNNING_JOB_STALE_AFTER = Duration.ofMinutes(5);
+
+  // Keep this comfortably below RUNNING_JOB_STALE_AFTER so cleanup cannot claim work owned by a
+  // live server.
   private static final long HEARTBEAT_SECONDS = 60L;
 
   private final JobDAO jobDao;
