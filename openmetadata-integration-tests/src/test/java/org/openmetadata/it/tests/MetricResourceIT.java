@@ -2143,6 +2143,21 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // ===================================================================
 
   @Test
+  void post_createMetricPreservesDeprecatedAssets(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = ShortStackFactory.table(ns);
+    Metric metric =
+        createEntity(
+            createRequest(ns.prefix("create_assets_metric"), ns)
+                .withAssets(List.of(table.getEntityReference().withType(Entity.TABLE))));
+
+    JsonNode assets = getMetricAssets(client, metric);
+    assertEquals(1, assets.get("paging").get("total").asInt());
+    assertEquals(
+        table.getId().toString(), assets.get("data").get(0).get("asset").get("id").asText());
+  }
+
+  @Test
   void put_bulkAddAndRemoveAssets(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Metric metric = createEntity(createRequest(ns.prefix("assets_metric"), ns));

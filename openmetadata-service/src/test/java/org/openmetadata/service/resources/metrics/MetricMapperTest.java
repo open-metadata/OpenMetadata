@@ -52,6 +52,22 @@ class MetricMapperTest {
   }
 
   @Test
+  void metricMapperPreservesDeprecatedCreateAssets() {
+    EntityReference table =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TABLE)
+            .withFullyQualifiedName("service.database.schema.orders");
+
+    Metric metric =
+        new MetricMapper()
+            .createToEntity(
+                new CreateMetric().withName("orderCount").withAssets(List.of(table)), "admin");
+
+    assertEquals(List.of(table), metric.getAssets());
+  }
+
+  @Test
   void metricMapperResolvesExpertsAsUserReferences() {
     UUID expertId = UUID.randomUUID();
     EntityReference resolved =
