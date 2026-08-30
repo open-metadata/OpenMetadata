@@ -452,12 +452,12 @@ const ContextCenterDashboardPage: FC = () => {
           }
           breadcrumbs={[
             {
-              label: t('label.dashboard'),
+              label: t('label.overview'),
             },
           ]}
           hasPermission={hasCreatePermission}
           subtitle={t('message.context-center-dashboard-subtitle')}
-          title={t('label.dashboard')}
+          title={t('label.overview')}
         />
       </div>
       <Box

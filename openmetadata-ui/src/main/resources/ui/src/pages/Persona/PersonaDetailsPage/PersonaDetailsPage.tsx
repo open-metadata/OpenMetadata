@@ -42,7 +42,6 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useAppRoutesRegistry } from '../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
@@ -86,9 +85,9 @@ export const PersonaDetailsPage = () => {
   }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const hasNonDefaultMode = useAppRoutesRegistry(
-    (state) => Object.keys(state.routes).length > 0
-  );
+  // AI is always available in OSS — the shell ships in-tree, no
+  // install-gate.
+  const hasNonDefaultMode = true;
 
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
@@ -104,7 +103,11 @@ export const PersonaDetailsPage = () => {
 
     if (activeCategory) {
       const category = getCustomizePageCategories()
-        .filter((item) => item.key !== 'app-mode' || hasNonDefaultMode)
+        .filter(
+          (item) =>
+            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
+            hasNonDefaultMode
+        )
         .find((category) => category.key === activeCategory);
 
       if (category) {

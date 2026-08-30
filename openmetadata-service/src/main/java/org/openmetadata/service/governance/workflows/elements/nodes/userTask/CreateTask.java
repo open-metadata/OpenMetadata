@@ -49,6 +49,7 @@ import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -74,6 +75,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.userTask.hel
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
@@ -88,7 +90,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
  *
  * <p>Key differences from the legacy CreateApprovalTaskImpl:
  * - Creates Task entity instead of Thread entity
- * - Persists through TaskRepository
+ * - Uses TaskRepository instead of FeedRepository
  * - Links task to WorkflowInstance via workflowInstanceId
  * - Cleaner separation from Feed/Thread complexity
  */
@@ -781,7 +783,29 @@ public class CreateTask implements TaskListener {
         && !isTerminalTaskStatus(prior.getStatus())
         && prior.getResolution() == null
         && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
-        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+        && currentWorkflowDefinitionId.equals(resolvePriorWorkflowDefinitionId(prior));
+  }
+
+  /**
+   * Resolve the prior task's workflow definition id, falling back to its workflow instance when the
+   * task itself carries none. Tasks migrated from the pre-2.0 thread model were wired to a workflow
+   * instance but never stamped with a workflowDefinitionId, which would otherwise make the supersede
+   * comparison above fail against a null and leave duplicate approval tasks on re-edit. The lookup is
+   * a single indexed read of the instance record and only runs on the null-definition fallback path.
+   */
+  private static UUID resolvePriorWorkflowDefinitionId(Task prior) {
+    UUID definitionId = prior.getWorkflowDefinitionId();
+    if (definitionId == null && prior.getWorkflowInstanceId() != null) {
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      WorkflowInstance priorInstance =
+          workflowInstanceRepository.getById(prior.getWorkflowInstanceId());
+      if (priorInstance != null) {
+        definitionId = priorInstance.getWorkflowDefinitionId();
+      }
+    }
+    return definitionId;
   }
 
   private void cancelAndTerminatePriorApproval(

@@ -30,6 +30,7 @@ FULL_PROJECTS = {
     "GlobalSettings",
     "SystemCertificationTags",
     "IntakeForm",
+    "AdvancedSearch",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -46,6 +47,7 @@ PROJECT_LANES = {
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
+    "AdvancedSearch": "advanced-search",
 }
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
@@ -567,6 +569,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
+        "advanced-search",
         "domain-isolation",
         "global-state",
         "import-export",

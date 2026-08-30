@@ -1587,6 +1587,22 @@ export async function openColumnDropdown(page: Page): Promise<void> {
   });
 }
 
+export async function closeColumnDropdown(page: Page): Promise<void> {
+  const dropdownTitle = page.getByTestId('column-dropdown-title');
+
+  if (!(await dropdownTitle.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await page.keyboard.press('Escape');
+  await dropdownTitle
+    .waitFor({ state: 'hidden', timeout: 5000 })
+    .catch(async () => {
+      await page.getByTestId('column-dropdown').click();
+      await dropdownTitle.waitFor({ state: 'hidden' });
+    });
+}
+
 export async function selectColumns(
   page: Page,
   columnKeys: string[]
@@ -1594,7 +1610,7 @@ export async function selectColumns(
   for (const key of columnKeys) {
     await page.getByTestId(`column-menu-item-${key}`).click();
   }
-  await clickOutside(page);
+  await closeColumnDropdown(page);
 }
 
 export async function deselectColumns(
@@ -1604,7 +1620,7 @@ export async function deselectColumns(
   for (const key of columnKeys) {
     await page.getByTestId(`column-menu-item-${key}`).click();
   }
-  await clickOutside(page);
+  await closeColumnDropdown(page);
 }
 
 export async function ensureColumnsVisible(
@@ -2081,8 +2097,9 @@ export const navigateAndSelectGlossaryTermInTree = async (
 ) => {
   // Expand glossary
   const glossaryNode = page.locator(`[data-nodeid="${glossaryName}"]`);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
   await glossaryNode.click();
-  await page.waitForResponse('/api/v1/glossaryTerms?*');
+  await glossaryTermsResponse;
 
   // Expand parent if provided
   if (parentTermFqn) {

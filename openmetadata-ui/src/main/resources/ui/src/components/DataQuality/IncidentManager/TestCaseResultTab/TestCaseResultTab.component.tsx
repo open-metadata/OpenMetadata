@@ -24,6 +24,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
@@ -94,6 +95,7 @@ const TestCaseResultTab = ({
     AlertComponent,
     additionalComponents,
   } = useTestCaseResultTab();
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const isSidePanelVisible = showSidePanel ?? isTabExpanded;
 
   const renderParameterRows = useCallback(
@@ -369,6 +371,9 @@ const TestCaseResultTab = ({
                 activeDomains={testCaseData?.domains ?? []}
                 dataProducts={testCaseData?.dataProducts ?? []}
                 hasPermission={!isVersionPage && (hasEditPermission ?? false)}
+                requireDomainForDataProduct={
+                  !isRulesLoaded || entityRules.requireDomainForDataProduct
+                }
                 onSave={handleDataProductsSave}
               />
             </div>

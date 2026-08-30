@@ -1,0 +1,282 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlationSinkConnection",
+  "description": "Alation Sink Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.AlationSinkConnection",
+  "definitions": {
+    "alationSinkType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "AlationSink"
+      ],
+      "default": "AlationSink"
+    },
+    "datasourceLinks": {
+      "title": "Datasource Links",
+      "description": "Add the links between alation datasources and OpenMetadata Database services",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "default": "AlationSink",
+      "type": "string",
+      "enum": [
+        "AlationSink"
+      ]
+    },
+    "hostPort": {
+      "description": "Host and port of the Alation service.",
+      "title": "Host and Port",
+      "type": "string",
+      "format": "uri",
+      "expose": true
+    },
+    "authType": {
+      "mask": true,
+      "title": "Authentication type for Alation",
+      "description": "Types of methods used to authenticate to the alation instance",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "BasicAuth",
+          "description": "Basic Auth Credentials",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.BasicAuth",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Username to access the service.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password to access the service.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "ApiAccessTokenAuth",
+          "description": "API Access Token Auth Credentials",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.ApiAccessTokenAuth",
+          "properties": {
+            "accessToken": {
+              "title": "Access Token",
+              "description": "Access Token for the API",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "accessToken"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "projectName": {
+      "title": "Project Name",
+      "description": "Project name to create the refreshToken. Can be anything",
+      "type": "string",
+      "default": "AlationAPI"
+    },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Pagination limit used for Alation APIs pagination",
+      "type": "integer",
+      "default": 10
+    },
+    "datasourceLinks": {
+      "title": "Datasource Links",
+      "description": "Add the links between alation datasources and OpenMetadata Database services",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "verifySSL": {
+      "default": "no-ssl",
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "Client SSL configuration",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "hostPort",
+    "authType"
+  ],
+  "additionalProperties": false
+}

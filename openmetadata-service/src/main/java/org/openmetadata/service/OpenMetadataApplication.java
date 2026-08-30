@@ -139,6 +139,8 @@ import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
+import org.openmetadata.service.ontology.OntologyBulkJobHandler;
+import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -503,10 +505,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
     JobHandlerRegistry registry = new JobHandlerRegistry();
+    OntologyBulkJobHandler ontologyBulkJobHandler = OntologyBulkJobHandler.createDefault();
     registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
     registry.register(
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
+    registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
     return registry;
   }
 
