@@ -5,6 +5,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
@@ -21,6 +22,7 @@ import org.openmetadata.service.util.UserUtil;
  * that factory rather than the raw constructor.
  */
 @Slf4j
+@Builder
 public class EmailFirstUserProvisioner {
 
   private static final int MAX_CREATE_RETRIES = 3;
@@ -46,7 +48,7 @@ public class EmailFirstUserProvisioner {
   private final Consumer<User> newUserMutator;
   private final Function<User, User> userSaver;
   private final Function<String, RuntimeException> exceptionFactory;
-  private final Predicate<String> emailRegistrationAllowed;
+  @Builder.Default private final Predicate<String> emailRegistrationAllowed = email -> true;
 
   /**
    * Wire a provisioner for one SSO provider. Lookup, username collision checking, admin
@@ -66,60 +68,22 @@ public class EmailFirstUserProvisioner {
       UserRepository userRepository,
       ExistingUserMutator existingUserMutator,
       Consumer<User> newUserMutator) {
-    return new EmailFirstUserProvisioner(
-        providerName,
-        email -> userRepository.getActiveUserByEmailForAuth(email, new Fields(LOOKUP_FIELDS)),
-        userRepository::checkUserNameExists,
-        (email, username) -> UserUtil.isConfiguredAdmin(authorizerConfig, email, username),
-        existingUserMutator,
-        newUserMutator,
-        UserUtil::addOrUpdateUser,
-        AuthenticationException::new,
-        email ->
-            SecurityUtil.isEmailRegistrationDomainAllowed(
-                email, authorizerConfig.getAllowedEmailRegistrationDomains()));
-  }
-
-  public EmailFirstUserProvisioner(
-      String providerName,
-      ExistingUserLookup existingUserLookup,
-      Predicate<String> usernameExistsChecker,
-      BiPredicate<String, String> adminEvaluator,
-      ExistingUserMutator existingUserMutator,
-      Consumer<User> newUserMutator,
-      Function<User, User> userSaver,
-      Function<String, RuntimeException> exceptionFactory) {
-    this(
-        providerName,
-        existingUserLookup,
-        usernameExistsChecker,
-        adminEvaluator,
-        existingUserMutator,
-        newUserMutator,
-        userSaver,
-        exceptionFactory,
-        email -> true);
-  }
-
-  public EmailFirstUserProvisioner(
-      String providerName,
-      ExistingUserLookup existingUserLookup,
-      Predicate<String> usernameExistsChecker,
-      BiPredicate<String, String> adminEvaluator,
-      ExistingUserMutator existingUserMutator,
-      Consumer<User> newUserMutator,
-      Function<User, User> userSaver,
-      Function<String, RuntimeException> exceptionFactory,
-      Predicate<String> emailRegistrationAllowed) {
-    this.providerName = providerName;
-    this.existingUserLookup = existingUserLookup;
-    this.usernameExistsChecker = usernameExistsChecker;
-    this.adminEvaluator = adminEvaluator;
-    this.existingUserMutator = existingUserMutator;
-    this.newUserMutator = newUserMutator;
-    this.userSaver = userSaver;
-    this.exceptionFactory = exceptionFactory;
-    this.emailRegistrationAllowed = emailRegistrationAllowed;
+    return EmailFirstUserProvisioner.builder()
+        .providerName(providerName)
+        .existingUserLookup(
+            email -> userRepository.getActiveUserByEmailForAuth(email, new Fields(LOOKUP_FIELDS)))
+        .usernameExistsChecker(userRepository::checkUserNameExists)
+        .adminEvaluator(
+            (email, username) -> UserUtil.isConfiguredAdmin(authorizerConfig, email, username))
+        .existingUserMutator(existingUserMutator)
+        .newUserMutator(newUserMutator)
+        .userSaver(UserUtil::addOrUpdateUser)
+        .exceptionFactory(AuthenticationException::new)
+        .emailRegistrationAllowed(
+            email ->
+                SecurityUtil.isEmailRegistrationDomainAllowed(
+                    email, authorizerConfig.getAllowedEmailRegistrationDomains()))
+        .build();
   }
 
   /**

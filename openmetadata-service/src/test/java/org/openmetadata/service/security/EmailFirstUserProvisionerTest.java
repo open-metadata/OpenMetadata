@@ -29,18 +29,20 @@ class EmailFirstUserProvisionerTest {
     AtomicInteger saveCount = new AtomicInteger();
 
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> existingUser,
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> {
-              saveCount.incrementAndGet();
-              return user;
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     User resolvedUser = provisioner.getOrCreate("john@company.com", "John", true);
 
@@ -59,18 +61,20 @@ class EmailFirstUserProvisionerTest {
     AtomicInteger saveCount = new AtomicInteger();
 
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> existingUser,
-            username -> false,
-            (email, username) -> true,
-            user -> false,
-            user -> {},
-            user -> {
-              saveCount.incrementAndGet();
-              return user;
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> true)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     User resolvedUser = provisioner.getOrCreate("john@company.com", "John Updated", true);
 
@@ -91,18 +95,20 @@ class EmailFirstUserProvisionerTest {
     AtomicInteger saveCount = new AtomicInteger();
 
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "SAML",
-            email -> existingUser,
-            username -> false,
-            (email, username) -> false,
-            user -> true,
-            user -> {},
-            user -> {
-              saveCount.incrementAndGet();
-              return user;
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("SAML")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> true)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     provisioner.getOrCreate("john@company.com", "John", true);
 
@@ -112,17 +118,19 @@ class EmailFirstUserProvisionerTest {
   @Test
   void testRejectsUnregisteredUserWhenSelfSignupDisabled() {
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "LDAP",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> user,
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("LDAP")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(user -> user)
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     IllegalStateException exception =
         assertThrows(
@@ -135,18 +143,20 @@ class EmailFirstUserProvisionerTest {
   @Test
   void testRejectsSignupWhenRegistrationDomainNotAllowed() {
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> user,
-            IllegalStateException::new,
-            email -> email.endsWith("@company.com"));
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(user -> user)
+            .exceptionFactory(IllegalStateException::new)
+            .emailRegistrationAllowed(email -> email.endsWith("@company.com"))
+            .build();
 
     IllegalStateException exception =
         assertThrows(
@@ -167,18 +177,20 @@ class EmailFirstUserProvisionerTest {
     AtomicInteger saveCount = new AtomicInteger();
 
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "SAML",
-            email -> existingUser,
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> {
-              saveCount.incrementAndGet();
-              return user;
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("SAML")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     User resolvedUser = provisioner.getOrCreate("john@company.com", null, true);
 
@@ -190,17 +202,19 @@ class EmailFirstUserProvisionerTest {
   @Test
   void testCreatesNewUserWithUniqueUsernameWhenSelfSignupEnabled() {
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> "john".equals(username),
-            (email, username) -> false,
-            user -> false,
-            user -> user.setDisplayName(user.getDisplayName() + " via team sync"),
-            user -> user,
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> "john".equals(username))
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> user.setDisplayName(user.getDisplayName() + " via team sync"))
+            .userSaver(user -> user)
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     User createdUser = provisioner.getOrCreate("john@company.com", "John", true);
 
@@ -214,17 +228,19 @@ class EmailFirstUserProvisionerTest {
   @Test
   void testCreatesNewAdminUserWithGeneratedDisplayNameWhenMissing() {
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> false,
-            (email, username) -> "admin@company.com".equals(email),
-            user -> false,
-            user -> {},
-            user -> user,
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> "admin@company.com".equals(email))
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(user -> user)
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     User createdUser = provisioner.getOrCreate("admin@company.com", null, true);
 
@@ -237,23 +253,26 @@ class EmailFirstUserProvisionerTest {
   void testRetriesOnRetryableCreateConflict() {
     AtomicInteger saveAttempts = new AtomicInteger();
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> {
-              if (saveAttempts.getAndIncrement() == 0) {
-                throw UserCreationException.byMessage(
-                    user.getName(), "entity already exists", Response.Status.CONFLICT);
-              }
-              return user;
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  if (saveAttempts.getAndIncrement() == 0) {
+                    throw UserCreationException.byMessage(
+                        user.getName(), "entity already exists", Response.Status.CONFLICT);
+                  }
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     User createdUser = provisioner.getOrCreate("retry@company.com", "Retry User", true);
 
@@ -265,21 +284,24 @@ class EmailFirstUserProvisionerTest {
   void testThrowsImmediatelyOnNonRetryableCreateConflict() {
     AtomicInteger saveAttempts = new AtomicInteger();
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> {
-              saveAttempts.incrementAndGet();
-              throw UserCreationException.byMessage(
-                  user.getName(), "validation failed", Response.Status.BAD_REQUEST);
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveAttempts.incrementAndGet();
+                  throw UserCreationException.byMessage(
+                      user.getName(), "validation failed", Response.Status.BAD_REQUEST);
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     UserCreationException exception =
         assertThrows(
@@ -294,21 +316,24 @@ class EmailFirstUserProvisionerTest {
   void testThrowsAfterExhaustingRetryableCreateConflicts() {
     AtomicInteger saveAttempts = new AtomicInteger();
     EmailFirstUserProvisioner provisioner =
-        new EmailFirstUserProvisioner(
-            "OIDC",
-            email -> {
-              throw EntityNotFoundException.byName(email);
-            },
-            username -> false,
-            (email, username) -> false,
-            user -> false,
-            user -> {},
-            user -> {
-              saveAttempts.incrementAndGet();
-              throw UserCreationException.byMessage(
-                  user.getName(), "duplicate username", Response.Status.CONFLICT);
-            },
-            IllegalStateException::new);
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveAttempts.incrementAndGet();
+                  throw UserCreationException.byMessage(
+                      user.getName(), "duplicate username", Response.Status.CONFLICT);
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
 
     UserCreationException exception =
         assertThrows(

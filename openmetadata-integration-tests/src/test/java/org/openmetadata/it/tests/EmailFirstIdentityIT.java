@@ -8,18 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.UserUtil;
 
 /**
@@ -103,22 +101,19 @@ class EmailFirstIdentityIT {
             + secondUser.getName());
   }
 
-  /** Mirrors the provisioner wiring used by the OIDC/SAML/LDAP email-first login paths. */
+  /**
+   * Provisions through the same factory the OIDC, SAML and LDAP login paths use, so this exercises
+   * the production wiring rather than a copy of it. An empty authorizer configuration means no
+   * configured admins and no self-signup domain restriction.
+   */
   private User provision(String email, String displayName) {
     List<String> noTeams = List.of();
-    return new EmailFirstUserProvisioner(
+    return EmailFirstUserProvisioner.forProvider(
             "TEST",
-            emailAddress ->
-                Entity.getUserRepository()
-                    .getActiveUserByEmailForAuth(
-                        emailAddress, new Fields(Set.of("id", "roles", "teams", "displayName"))),
-            Entity.getUserRepository()::checkUserNameExists,
-            (emailAddress, username) -> false,
+            new AuthorizerConfiguration(),
+            Entity.getUserRepository(),
             user -> UserUtil.assignTeamsFromClaim(user, noTeams),
-            user -> UserUtil.assignTeamsFromClaim(user, noTeams),
-            UserUtil::addOrUpdateUser,
-            AuthenticationException::new,
-            emailAddress -> true)
+            user -> UserUtil.assignTeamsFromClaim(user, noTeams))
         .getOrCreate(email, displayName, true);
   }
 }
