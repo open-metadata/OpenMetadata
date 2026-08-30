@@ -67,8 +67,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -78,7 +76,7 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
-import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Provider
@@ -184,18 +182,28 @@ public class JwtFilter implements ContainerRequestFilter {
     logDeprecationWarnings(authenticationConfiguration);
   }
 
+  /**
+   * Warns only about deprecated settings that are now redundant, i.e. once the replacement is
+   * configured. 'jwtPrincipalClaims' ships with a non-empty default and still drives the legacy
+   * flow when 'emailClaim' is unset, so warning about it unconditionally would tell every
+   * untouched deployment to remove configuration it still depends on.
+   */
   private void logDeprecationWarnings(AuthenticationConfiguration config) {
-    if (config.getJwtPrincipalClaims() != null && !config.getJwtPrincipalClaims().isEmpty()) {
+    boolean emailFirstConfigured = !nullOrEmpty(config.getEmailClaim());
+    if (emailFirstConfigured && !nullOrEmpty(config.getJwtPrincipalClaims())) {
       LOG.warn(
-          "DEPRECATED: 'jwtPrincipalClaims' configuration is deprecated. "
-              + "Use 'emailClaim' instead. This will be removed in a future version.");
+          "DEPRECATED: 'jwtPrincipalClaims' is deprecated and no longer used now that "
+              + "'emailClaim' is configured. It can be removed; this will be removed in a "
+              + "future version.");
     }
 
-    if (config.getJwtPrincipalClaimsMapping() != null
-        && !config.getJwtPrincipalClaimsMapping().isEmpty()) {
+    // Empty by default, so this only fires for a deployment that explicitly set it. Note it also
+    // suppresses the email-first flow, which is worth saying out loud.
+    if (!nullOrEmpty(config.getJwtPrincipalClaimsMapping())) {
       LOG.warn(
-          "DEPRECATED: 'jwtPrincipalClaimsMapping' configuration is deprecated. "
-              + "Use 'emailClaim' and 'displayNameClaim' instead. This will be removed in a future version.");
+          "DEPRECATED: 'jwtPrincipalClaimsMapping' configuration is deprecated and keeps "
+              + "identity resolution on the legacy flow. Use 'emailClaim' and "
+              + "'displayNameClaim' instead. This will be removed in a future version.");
     }
   }
 
@@ -417,28 +425,15 @@ public class JwtFilter implements ContainerRequestFilter {
         resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
   }
 
+  /** Caching wrapper around {@link UserUtil#resolveUserNameForEmail}; this runs on every request. */
   private String resolveUserNameForEmail(String email) {
     String cached = EMAIL_TO_USERNAME_CACHE.getIfPresent(email);
     if (cached != null) {
       return cached;
     }
-    UserRepository userRepository = Entity.getUserRepository();
-    try {
-      String username =
-          userRepository.getActiveUserByEmailForAuth(email, new Fields(Set.of("name"))).getName();
-      EMAIL_TO_USERNAME_CACHE.put(email, username);
-      return username;
-    } catch (EntityNotFoundException e) {
-      String candidate = email.split("@")[0];
-      // First-login bootstrap is only safe when no account already owns the candidate name;
-      // otherwise an unregistered email would resolve to another user's identity.
-      if (userRepository.checkUserNameExists(candidate)) {
-        throw new AuthenticationException(
-            String.format(
-                "User with email %s is not registered. Contact your administrator.", email));
-      }
-      return candidate;
-    }
+    String username = UserUtil.resolveUserNameForEmail(email);
+    EMAIL_TO_USERNAME_CACHE.put(email, username);
+    return username;
   }
 
   private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {

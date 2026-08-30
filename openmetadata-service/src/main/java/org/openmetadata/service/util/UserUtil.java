@@ -61,6 +61,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -119,6 +120,35 @@ public final class UserUtil {
     } while (existsChecker.test(username));
 
     return username;
+  }
+
+  /**
+   * Resolve the OpenMetadata username for an already-authenticated email address.
+   *
+   * <p>Fails closed rather than guessing. When no account holds the email, the email's local part
+   * is only usable as a first-login username if no other account already owns that name —
+   * otherwise an unregistered address would resolve onto someone else's identity. Callers that
+   * need caching should wrap this; the resolution itself is deliberately side-effect free.
+   *
+   * @param email authenticated email address
+   * @return the stored username, or the local part when it is unclaimed
+   * @throws AuthenticationException when the email is unknown and its local part is taken
+   */
+  public static String resolveUserNameForEmail(String email) {
+    UserRepository userRepository = Entity.getUserRepository();
+    try {
+      return userRepository
+          .getActiveUserByEmailForAuth(email, new Fields(Set.of("name")))
+          .getName();
+    } catch (EntityNotFoundException e) {
+      String candidate = email.split("@")[0];
+      if (userRepository.checkUserNameExists(candidate)) {
+        throw new AuthenticationException(
+            String.format(
+                "User with email %s is not registered. Contact your administrator.", email));
+      }
+      return candidate;
+    }
   }
 
   private static String generateRandomSuffix() {

@@ -74,7 +74,6 @@ import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -173,31 +172,25 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         authzConfig.getAllowedDomains(),
         authzConfig.getEnforcePrincipalDomain());
 
-    return new EmailFirstUserProvisioner(
+    return EmailFirstUserProvisioner.forProvider(
             "LDAP",
-            emailAddress ->
-                userRepository.getActiveUserByEmailForAuth(
-                    emailAddress,
-                    new Fields(Set.of("id", "roles", "teams", "displayName", "isAdmin"))),
-            userRepository::checkUserNameExists,
-            this::isUserAdmin,
+            authzConfig,
+            userRepository,
             user -> syncLdapRoles(userDn, user),
-            user -> {
-              try {
-                getRoleForLdap(userDn, user, false);
-              } catch (JsonProcessingException ex) {
-                LOG.error(
-                    "Failed to assign roles from LDAP for user {} due to {}",
-                    user.getName(),
-                    ex.getMessage());
-              }
-            },
-            UserUtil::addOrUpdateUser,
-            AuthenticationException::new,
-            emailAddress ->
-                SecurityUtil.isEmailRegistrationDomainAllowed(
-                    emailAddress, authzConfig.getAllowedEmailRegistrationDomains()))
+            user -> assignLdapRoles(userDn, user))
         .getOrCreate(email, displayName, isSelfSignUpEnabled);
+  }
+
+  /** Assign directory roles to a user that is about to be created. */
+  private void assignLdapRoles(String userDn, User user) {
+    try {
+      getRoleForLdap(userDn, user, false);
+    } catch (JsonProcessingException ex) {
+      LOG.error(
+          "Failed to assign roles from LDAP for user {} due to {}",
+          user.getName(),
+          ex.getMessage());
+    }
   }
 
   private boolean syncLdapRoles(String userDn, User user) {

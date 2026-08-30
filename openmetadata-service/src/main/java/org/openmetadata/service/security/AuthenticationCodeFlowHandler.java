@@ -97,7 +97,6 @@ import org.openmetadata.service.security.session.SessionRefreshInProgressExcepti
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 import org.pac4j.core.exception.TechnicalException;
@@ -931,21 +930,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private User getOrCreateEmailFirstOidcUser(
       String email, String displayName, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
-    return new EmailFirstUserProvisioner(
+    return EmailFirstUserProvisioner.forProvider(
             "OIDC",
-            emailAddress ->
-                Entity.getUserRepository()
-                    .getActiveUserByEmailForAuth(
-                        emailAddress, new Fields(Set.of("id", "roles", "teams", "displayName"))),
-            Entity.getUserRepository()::checkUserNameExists,
-            this::isUserAdmin,
+            authorizerConfiguration,
+            Entity.getUserRepository(),
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            UserUtil::addOrUpdateUser,
-            AuthenticationException::new,
-            emailAddress ->
-                SecurityUtil.isEmailRegistrationDomainAllowed(
-                    emailAddress, authorizerConfiguration.getAllowedEmailRegistrationDomains()))
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
         .getOrCreate(
             email,
             displayName,

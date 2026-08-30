@@ -282,8 +282,15 @@ public final class SecurityUtil {
     }
   }
 
+  /**
+   * Mirrors the {@code email} definition in {@code openmetadata-spec .../type/basic.json}, whose
+   * pattern reduces to this: its character class lists punctuation that {@code \S} already covers.
+   * The two must agree — a stricter check here would let an account be created through the API and
+   * then refuse to authenticate it, which is what a locale-specific address (apostrophes, accented
+   * characters) would have hit.
+   */
   private static boolean isValidEmail(String email) {
-    return email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    return email.matches("^\\S+@\\S+\\.\\S+$");
   }
 
   public static String getClaimOrObject(Object obj) {

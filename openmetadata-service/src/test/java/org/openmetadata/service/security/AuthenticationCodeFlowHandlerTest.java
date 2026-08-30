@@ -825,9 +825,9 @@ class AuthenticationCodeFlowHandlerTest {
       when(userRepository.getActiveUserByEmailForAuth(any(), any()))
           .thenThrow(new EntityNotFoundException("user not found"));
 
-      org.openmetadata.service.exception.AuthenticationException exception =
+      org.openmetadata.service.security.AuthenticationException exception =
           assertThrows(
-              org.openmetadata.service.exception.AuthenticationException.class,
+              org.openmetadata.service.security.AuthenticationException.class,
               () ->
                   invokeGetOrCreateEmailFirstOidcUser(handler, "newuser@company.com", "New User"));
 
@@ -845,9 +845,9 @@ class AuthenticationCodeFlowHandlerTest {
       when(userRepository.getActiveUserByEmailForAuth(any(), any()))
           .thenThrow(new EntityNotFoundException("user not found"));
 
-      org.openmetadata.service.exception.AuthenticationException exception =
+      org.openmetadata.service.security.AuthenticationException exception =
           assertThrows(
-              org.openmetadata.service.exception.AuthenticationException.class,
+              org.openmetadata.service.security.AuthenticationException.class,
               () -> invokeGetOrCreateEmailFirstOidcUser(handler, "intruder@other.org", "Intruder"));
 
       assertTrue(exception.getMessage().contains("not allowed for self-signup"));

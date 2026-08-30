@@ -540,9 +540,9 @@ class SamlAuthServletHandlerTest {
       when(userRepository.getActiveUserByEmailForAuth(any(), any()))
           .thenThrow(new EntityNotFoundException("user not found"));
 
-      org.openmetadata.service.exception.AuthenticationException exception =
+      org.openmetadata.service.security.AuthenticationException exception =
           assertThrows(
-              org.openmetadata.service.exception.AuthenticationException.class,
+              org.openmetadata.service.security.AuthenticationException.class,
               () -> invokeGetOrCreateEmailFirstSamlUser("newuser@company.com", "New User"));
 
       assertTrue(exception.getMessage().contains("User not registered"));

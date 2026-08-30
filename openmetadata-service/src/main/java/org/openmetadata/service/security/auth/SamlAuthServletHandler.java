@@ -44,13 +44,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.security.SamlIdentityResolver;
-import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -58,7 +55,6 @@ import org.openmetadata.service.security.session.SessionRefreshInProgressExcepti
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
@@ -289,7 +285,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // username is authoritative, so resolve it by email and fail closed when the email-derived
       // candidate is already owned by a different account.
       String username =
-          identity.emailFirstFlow() ? resolveExistingUserNameForEmail(email) : identity.userName();
+          identity.emailFirstFlow() ? UserUtil.resolveUserNameForEmail(email) : identity.userName();
 
       // If this login was initiated by an MCP OAuth client (RelayState = "mcp:{authRequestId}"),
       // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
@@ -605,40 +601,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             });
   }
 
-  private String resolveExistingUserNameForEmail(String email) {
-    UserRepository userRepository = Entity.getUserRepository();
-    try {
-      return userRepository
-          .getActiveUserByEmailForAuth(email, new Fields(Set.of("name")))
-          .getName();
-    } catch (EntityNotFoundException e) {
-      String candidate = email.split("@")[0];
-      if (userRepository.checkUserNameExists(candidate)) {
-        throw new AuthenticationException(
-            String.format(
-                "User with email %s is not registered. Contact your administrator.", email));
-      }
-      return candidate;
-    }
-  }
-
   private User getOrCreateEmailFirstSamlUser(
       String email, String displayName, List<String> teamsFromClaim) {
-    return new EmailFirstUserProvisioner(
+    return EmailFirstUserProvisioner.forProvider(
             "SAML",
-            emailAddress ->
-                Entity.getUserRepository()
-                    .getActiveUserByEmailForAuth(
-                        emailAddress, new Fields(Set.of("id", "roles", "teams", "displayName"))),
-            Entity.getUserRepository()::checkUserNameExists,
-            this::isUserAdmin,
+            authorizerConfig,
+            Entity.getUserRepository(),
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            UserUtil::addOrUpdateUser,
-            AuthenticationException::new,
-            emailAddress ->
-                SecurityUtil.isEmailRegistrationDomainAllowed(
-                    emailAddress, authorizerConfig.getAllowedEmailRegistrationDomains()))
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
         .getOrCreate(email, displayName, Boolean.TRUE.equals(authConfig.getEnableSelfSignup()));
   }
 

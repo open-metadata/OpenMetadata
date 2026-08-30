@@ -202,6 +202,34 @@ Logged at startup if deprecated configs are present:
   are index-backed. MySQL's case-insensitive collation serves the same purpose with plain
   equality.
 
+## Upgrade Impact
+
+Email-first identity is opt-in: `emailClaim` defaults to empty, and every resolver requires it to
+be set (and no `jwtPrincipalClaimsMapping` configured) before the new flow runs. A deployment that
+upgrades without changing configuration keeps the existing claim-resolution behaviour for JWT,
+OIDC, SAML, Basic, bots, personal access tokens and sessions.
+
+Changes that apply regardless of opt-in:
+
+- **LDAP provisioning** was already email-keyed and therefore changes for every LDAP deployment:
+  soft-deleted accounts can no longer authenticate; `allowedEmailRegistrationDomains` is now
+  enforced on LDAP self-signup, where it previously was not; a username collision on the email's
+  local part gets a generated suffix instead of failing; and `displayName` is synced from the
+  directory attribute, which overwrites a display name the user had customised in OpenMetadata.
+- **Stored emails are lowercased** by the 2.1.0 migration. Clients comparing emails
+  case-sensitively will see the change. Rows whose lowercased form would collide with another
+  account are skipped so the migration cannot fail; those accounts surface a
+  `DUPLICATE_EMAIL` conflict on lookup until an administrator merges them.
+- **MySQL email lookups** now use the table collation rather than `LOWER()`. That collation is
+  accent-insensitive, so `jose@x.com` and `josé@x.com` match where previously they did not.
+- **`POST /v1/users`** (non-basic providers) renames on a username collision instead of returning
+  a conflict.
+- **Duplicate case-variant emails** return `409 DUPLICATE_EMAIL` from `getByEmail`, and a `401`
+  from the authentication paths, instead of the previous unhandled database error.
+
+Deprecation warnings are logged only once the replacement setting is configured, so an untouched
+deployment is not told to remove configuration it still depends on.
+
 ## Migration Strategy
 
 Phase 1 (this implementation): Backward-compatible changes with deprecation warnings. Old configs

@@ -7,6 +7,7 @@ import static org.openmetadata.service.security.SecurityUtil.validateConfiguredE
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -81,11 +82,15 @@ public class SamlIdentityResolver {
           "SAML authentication failed: NameID not found in assertion");
     }
 
+    // Deliberately permissive: this path runs without any opt-in, and SAML NameIDs are not
+    // required to be email addresses. Transient, persistent and DN-style identifiers are all
+    // legitimate here and were accepted before email-first existed, so applying the strict
+    // email format check would break those deployments on upgrade. Strict validation belongs to
+    // the email-first branch above, which a deployment opts into via emailClaim.
     String email =
-        requireEmailWithDomain(
-            nameId.contains("@")
-                ? nameId
-                : String.format("%s@%s", nameId, defaultDomainSupplier.get()));
+        nameId.contains("@")
+            ? nameId.toLowerCase(Locale.ROOT)
+            : String.format("%s@%s", nameId, defaultDomainSupplier.get()).toLowerCase(Locale.ROOT);
     validateConfiguredEmailDomain(
         email,
         getAllowedEmailDomains(),

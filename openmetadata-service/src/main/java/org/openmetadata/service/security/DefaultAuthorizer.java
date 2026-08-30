@@ -52,17 +52,23 @@ public class DefaultAuthorizer implements Authorizer {
     if (config == null) {
       return;
     }
-    if (!nullOrEmpty(config.getAdminPrincipals())) {
+    // adminPrincipals and principalDomain both ship with non-empty defaults and still drive
+    // behaviour until their replacements are set, so warn only once the replacement exists and
+    // the deprecated setting has become redundant. Otherwise every untouched deployment is told
+    // to remove configuration it still relies on.
+    if (!nullOrEmpty(config.getAdminEmails()) && !nullOrEmpty(config.getAdminPrincipals())) {
       LOG.warn(
-          "DEPRECATED: 'adminPrincipals' configuration is deprecated. "
-              + "Use 'adminEmails' instead. This will be removed in a future version.");
+          "DEPRECATED: 'adminPrincipals' is deprecated and 'adminEmails' is already configured. "
+              + "Move any remaining principals to 'adminEmails'; this will be removed in a "
+              + "future version.");
     }
 
-    if (!nullOrEmpty(config.getPrincipalDomain())) {
+    if ((!nullOrEmpty(config.getAllowedEmailDomains()) || !nullOrEmpty(config.getBotDomain()))
+        && !nullOrEmpty(config.getPrincipalDomain())) {
       LOG.warn(
-          "DEPRECATED: 'principalDomain' configuration is deprecated. "
-              + "Use 'botDomain' for bots and 'allowedEmailDomains' for domain restrictions. "
-              + "This will be removed in a future version.");
+          "DEPRECATED: 'principalDomain' is deprecated. Use 'botDomain' for bots and "
+              + "'allowedEmailDomains' for domain restrictions; this will be removed in a "
+              + "future version.");
     }
 
     if (!nullOrEmpty(config.getAllowedDomains())) {
