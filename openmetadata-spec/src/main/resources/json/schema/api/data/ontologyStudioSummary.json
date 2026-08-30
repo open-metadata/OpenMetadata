@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyStudioSummary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyStudioSummary",
+  "description": "Bounded health and scale summary for Ontology Studio.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyStudioSummary",
+  "properties": {
+    "totalTerms": {
+      "description": "Number of active glossary terms in scope.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalRelations": {
+      "description": "Number of active term-to-term relations in scope.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "isolatedTerms": {
+      "description": "Number of scoped terms without a term-to-term relation.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "connectedPercentage": {
+      "description": "Percentage of scoped terms with at least one term-to-term relation.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "isolatedPreview": {
+      "description": "Bounded preview of isolated terms.",
+      "type": "array",
+      "items": {
+        "$ref": "glossaryTermRelationGraphNode.json"
+      },
+      "default": []
+    },
+    "paging": {
+      "description": "Offset pagination for the isolated-term preview.",
+      "$ref": "../../type/paging.json"
+    }
+  },
+  "required": [
+    "totalTerms",
+    "totalRelations",
+    "isolatedTerms",
+    "connectedPercentage",
+    "isolatedPreview",
+    "paging"
+  ],
+  "additionalProperties": false
+}

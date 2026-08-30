@@ -1026,7 +1026,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Test
-  void test_importClassificationCsv_emptyMutuallyExclusivePreservesExisting(TestNamespace ns)
+  void test_importClassificationCsv_emptyOptionalFieldsPreserveExisting(TestNamespace ns)
       throws Exception {
     Classification classification = createEntity(createMinimalRequest(ns));
     String header =
@@ -1037,18 +1037,19 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
             + "/import?dryRun=false";
     String tagName = ns.prefix("mutexTag");
 
-    // Create the tag as mutuallyExclusive = true.
     SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
-            HttpMethod.PUT, importPath, header + ",%s,Mutex,desc,,,,,,,true\n".formatted(tagName));
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Mutex,desc,,,APPROVED,#123456,,,true\n".formatted(tagName));
 
     String tagFqn = classification.getFullyQualifiedName() + "." + tagName;
     Tag created = SdkClients.adminClient().tags().getByName(tagFqn);
     assertTrue(created.getMutuallyExclusive(), "Tag should be created as mutuallyExclusive");
+    assertEquals(EntityStatus.APPROVED, created.getEntityStatus());
+    assertEquals("#123456", created.getStyle().getColor());
 
-    // Re-import with an empty mutuallyExclusive cell: the flag must be preserved,
-    // not silently reset to false.
     SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
@@ -1060,6 +1061,12 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertTrue(
         updated.getMutuallyExclusive(),
         "Empty mutuallyExclusive cell must not flip an existing true value to false");
+    assertEquals(
+        EntityStatus.APPROVED,
+        updated.getEntityStatus(),
+        "Empty status must preserve the existing value");
+    assertEquals(
+        "#123456", updated.getStyle().getColor(), "Empty style must preserve the existing value");
     assertEquals("updated desc", updated.getDescription());
   }
 

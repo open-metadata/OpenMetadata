@@ -197,7 +197,7 @@ jobs:
           ls -lh /tmp/jpw-server-image.tar
 
       - name: Upload server image artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: jpw-server-image-${{ github.run_id }}
           path: /tmp/jpw-server-image.tar
@@ -325,7 +325,7 @@ jobs:
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-traces
@@ -334,7 +334,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-videos-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-videos
@@ -343,7 +343,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -364,7 +364,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v3.0.5
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
@@ -433,7 +433,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-search-it-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -450,7 +450,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v3.0.5
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook

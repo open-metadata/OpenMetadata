@@ -1,0 +1,354 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LookerConnection",
+  "description": "Looker Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.LookerConnection",
+  "definitions": {
+    "lookerType": {
+      "description": "Looker service type",
+      "type": "string",
+      "enum": [
+        "Looker"
+      ],
+      "default": "Looker"
+    },
+    "noGitCredentials": {
+      "title": "No Git Credentials",
+      "description": "Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage.",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "localRepositoryPath": {
+      "title": "Local Path",
+      "type": "string",
+      "description": "Local path to get the repository from the file system.",
+      "default": null
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Looker",
+      "type": "string",
+      "enum": [
+        "Looker"
+      ]
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "User's Client ID. This user should have privileges to read all the metadata in Looker.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "User's Client Secret.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL to the Looker instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "gitCredentials": {
+      "title": "GitHub Credentials",
+      "description": "Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.",
+      "oneOf": [
+        {
+          "title": "No Git Credentials",
+          "description": "Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage.",
+          "type": "object",
+          "additionalProperties": false
+        },
+        {
+          "title": "Local Path",
+          "type": "string",
+          "description": "Local path to get the repository from the file system.",
+          "default": null
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "GitHubCredentials",
+          "description": "Credentials for a GitHub repository",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.GitHubCredentials",
+          "definitions": {
+            "githubType": {
+              "description": "GitHub Credentials type",
+              "type": "string",
+              "enum": [
+                "GitHub"
+              ],
+              "default": "GitHub"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Credentials Type",
+              "description": "Credentials Type",
+              "default": "GitHub",
+              "type": "string",
+              "enum": [
+                "GitHub"
+              ]
+            },
+            "gitHostURL": {
+              "title": "Git Host URL",
+              "description": "GitHub instance URL. For GitHub.com, use https://github.com",
+              "type": "string",
+              "format": "uri",
+              "default": "https://github.com"
+            },
+            "repositoryOwner": {
+              "title": "Repository Owner",
+              "description": "The owner (user or organization) of a Git repository. For example, in https://github.com/open-metadata/OpenMetadata, the owner is `open-metadata`.",
+              "type": "string"
+            },
+            "repositoryName": {
+              "title": "Repository Name",
+              "description": "The name of a Git repository. For example, in https://github.com/open-metadata/OpenMetadata, the name is `OpenMetadata`.",
+              "type": "string"
+            },
+            "token": {
+              "title": "API Token",
+              "description": "Token to use the API. This is required for private repositories and to ensure we don't hit API limits.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "repositoryOwner",
+            "repositoryName"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "BitBucketCredentials",
+          "description": "Credentials for a BitBucket repository",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.BitBucketCredentials",
+          "definitions": {
+            "bitbucketType": {
+              "description": "BitBucket Credentials type",
+              "type": "string",
+              "enum": [
+                "BitBucket"
+              ],
+              "default": "BitBucket"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Credentials Type",
+              "description": "Credentials Type",
+              "default": "BitBucket",
+              "type": "string",
+              "enum": [
+                "BitBucket"
+              ]
+            },
+            "gitHostURL": {
+              "title": "Git Host URL",
+              "description": "BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org",
+              "type": "string",
+              "format": "uri",
+              "default": "https://bitbucket.org"
+            },
+            "repositoryOwner": {
+              "title": "Repository Owner",
+              "description": "The owner (user or organization) of a Git repository. For example, in https://github.com/open-metadata/OpenMetadata, the owner is `open-metadata`.",
+              "type": "string"
+            },
+            "repositoryName": {
+              "title": "Repository Name",
+              "description": "The name of a Git repository. For example, in https://github.com/open-metadata/OpenMetadata, the name is `OpenMetadata`.",
+              "type": "string"
+            },
+            "token": {
+              "title": "API Token",
+              "description": "Token to use the API. This is required for private repositories and to ensure we don't hit API limits.",
+              "type": "string",
+              "format": "password"
+            },
+            "branch": {
+              "title": "Main Branch",
+              "description": "Main production branch of the repository. E.g., `main`",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "repositoryOwner",
+            "repositoryName",
+            "branch"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "GitlabCredentials",
+          "description": "Credentials for a Gitlab repository",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.GitlabCredentials",
+          "definitions": {
+            "gitlabType": {
+              "description": "Gitlab Credentials type",
+              "type": "string",
+              "enum": [
+                "Gitlab"
+              ],
+              "default": "Gitlab"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Credentials Type",
+              "description": "Credentials Type",
+              "default": "Gitlab",
+              "type": "string",
+              "enum": [
+                "Gitlab"
+              ]
+            },
+            "gitHostURL": {
+              "title": "Git Host URL",
+              "description": "Gitlab instance URL. For Gitlab.com, use https://gitlab.com",
+              "type": "string",
+              "format": "uri",
+              "default": "https://gitlab.com"
+            },
+            "repositoryOwner": {
+              "title": "Repository Owner",
+              "description": "The owner (user or organization) of a Git repository. For example, in https://github.com/open-metadata/OpenMetadata, the owner is `open-metadata`.",
+              "type": "string"
+            },
+            "repositoryName": {
+              "title": "Repository Name",
+              "description": "The name of a Git repository. For example, in https://github.com/open-metadata/OpenMetadata, the name is `OpenMetadata`.",
+              "type": "string"
+            },
+            "token": {
+              "title": "API Token",
+              "description": "Token to use the API. This is required for private repositories and to ensure we don't hit API limits.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "repositoryOwner",
+            "repositoryName"
+          ]
+        }
+      ]
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "title": "Default Dashboard Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "title": "Default Chart Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "title": "Default Data Model Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "title": "Default Project Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "clientId",
+    "clientSecret"
+  ]
+}
