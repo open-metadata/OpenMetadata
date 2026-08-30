@@ -83,8 +83,7 @@ const CustomBarChart = ({
       className="custom-legend"
       debounce={200}
       id={`${name}_graph`}
-      minHeight={300}
-    >
+      minHeight={300}>
       <BarChart className="w-full" data={data} margin={{ left: 16 }}>
         <CartesianGrid
           horizontal={renderHorizontalGridLine}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
 import { FieldTemplateProps } from '@rjsf/utils';
-import { Tag } from 'antd';
 import classNames from 'classnames';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,9 +59,9 @@ export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
           {label}
           {required && <span className="required">*</span>}
           {isDeprecated && (
-            <Tag className="sso-deprecated-tag" color="orange">
+            <Badge className="sso-deprecated-tag" color="warning" size="sm">
               {t('label.deprecated')}
-            </Tag>
+            </Badge>
           )}
         </label>
       ) : null}
@@ -69,9 +69,9 @@ export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
       {isBooleanField && isDeprecated ? (
         <div className="sso-deprecated-boolean-wrapper">
           {children}
-          <Tag className="sso-deprecated-tag" color="orange">
+          <Badge className="sso-deprecated-tag" color="warning" size="sm">
             {t('label.deprecated')}
-          </Tag>
+          </Badge>
         </div>
       ) : (
         children

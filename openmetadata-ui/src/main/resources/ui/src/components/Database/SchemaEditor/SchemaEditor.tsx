@@ -225,15 +225,13 @@ const SchemaEditor = ({
     <div
       className={classNames('schema-editor-container relative', className)}
       data-testid="code-mirror-container"
-      ref={containerRef}
-    >
+      ref={containerRef}>
       {showCopyButton && (
         <div className={classNames('query-editor-button', copyButtonClassName)}>
           <Tooltip
             title={
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-            }
-          >
+            }>
             <Button
               className="query-editor-copy-button"
               data-testid="query-copy-button"

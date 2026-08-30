@@ -205,8 +205,7 @@ function VersionTable<T extends Column | SearchIndexField>({
       return (
         <div
           className="d-inline-flex flex-column hover-icon-group vertical-align-inherit"
-          style={{ maxWidth: '80%' }}
-        >
+          style={{ maxWidth: '80%' }}>
           <div className="d-inline-flex items-start gap-1 flex-column">
             <div className="d-inline-flex items-baseline">
               {deletedConstraintIcon}
@@ -258,8 +257,7 @@ function VersionTable<T extends Column | SearchIndexField>({
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
-              }
-            >
+              }>
               <div className="cursor-pointer">
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}

@@ -196,8 +196,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         render: (_, record: Column) => (
           <div
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
-            style={{ maxWidth: '80%' }}
-          >
+            style={{ maxWidth: '80%' }}>
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text className="text-link-color">
                 {getEntityName(record)}
@@ -231,8 +230,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
                 overflowWrap: 'break-word',
                 textAlign: 'center',
               }}
-              title={toLower(dataTypeDisplay)}
-            >
+              title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay ?? record.dataType}
               </Typography.Text>
@@ -350,8 +348,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       {editContainerColumnDescription && (
         <EntityAttachmentProvider
           entityFqn={editContainerColumnDescription.fullyQualifiedName}
-          entityType={EntityType.CONTAINER}
-        >
+          entityType={EntityType.CONTAINER}>
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.column'),

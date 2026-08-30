@@ -55,8 +55,7 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () =>
                   key: 'yesterday',
                   title: 'Yesterday',
                 })
-              }
-            >
+              }>
               Yesterday
             </button>
           </div>
@@ -101,8 +100,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
               data-testid={`${searchKey}-open`}
               onClick={() =>
                 onGetInitialOptions && onGetInitialOptions(searchKey)
-              }
-            >
+              }>
               Open
             </button>
           </div>

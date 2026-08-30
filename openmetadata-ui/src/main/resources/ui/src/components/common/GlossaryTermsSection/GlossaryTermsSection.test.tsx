@@ -130,8 +130,7 @@ jest.mock(
                       state: State.Confirmed,
                     },
                   ])
-                }
-              >
+                }>
                 SubmitStrings
               </button>
               <button
@@ -149,8 +148,7 @@ jest.mock(
                       state: State.Confirmed,
                     },
                   ])
-                }
-              >
+                }>
                 SubmitObjects
               </button>
               {children}
@@ -185,8 +183,7 @@ jest.mock('../IconButtons/EditIconButton', () => ({
       className="edit-icon"
       data-testid="edit-icon-button"
       onClick={onClick}
-      {...props}
-    >
+      {...props}>
       Edit
     </button>
   )),

@@ -163,15 +163,13 @@ const TableDetailsPageV1: React.FC = () => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
       <Tooltip
         placement="right"
-        title={t('label.check-active-data-quality-incident-plural')}
-      >
+        title={t('label.check-active-data-quality-incident-plural')}>
         <Link
           to={getEntityDetailsPath(
             EntityType.TABLE,
             tableFqn,
             EntityTabs.PROFILER
-          )}
-        >
+          )}>
           <RedAlertIcon className="text-red-3" height={24} width={24} />
         </Link>
       </Tooltip>
@@ -1023,8 +1021,7 @@ const TableDetailsPageV1: React.FC = () => {
         permissions={tablePermissions}
         type={EntityType.TABLE}
         onEntitySync={handleTableSync}
-        onUpdate={onTableUpdate}
-      >
+        onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
           <Col data-testid="entity-page-header" span={24}>

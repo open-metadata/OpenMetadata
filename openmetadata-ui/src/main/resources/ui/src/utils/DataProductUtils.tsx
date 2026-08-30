@@ -420,8 +420,7 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
           ellipsis={{
             tooltip: props.description,
             rows: 2,
-          }}
-        >
+          }}>
           <RichTextEditorPreviewerV1 markdown={props.description} />
         </Typography.Paragraph>
       )}

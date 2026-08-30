@@ -191,8 +191,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
           setPopoverOpen(false);
           cancelEditing();
         }}
-        onUpdate={handleSaveWithDataProducts}
-      >
+        onUpdate={handleSaveWithDataProducts}>
         <div className="data-product-selector-trigger" />
       </DataProductsSelectListV1>
     ),
@@ -253,8 +252,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             <div
               className="data-product-item"
               data-testid="data-product-item"
-              key={dataProduct.id || dataProduct.fullyQualifiedName}
-            >
+              key={dataProduct.id || dataProduct.fullyQualifiedName}>
               <div className="data-product-card-bar">
                 <div className="data-product-card-content">
                   <DataProductIcon className="data-product-icon" />
@@ -269,8 +267,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             <button
               className="show-more-data-products-button"
               type="button"
-              onClick={() => setShowAllDataProducts(!showAllDataProducts)}
-            >
+              onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
               {showAllDataProducts
                 ? t('label.less')
                 : `+${displayDataProducts.length - maxVisibleDataProducts} ${t(

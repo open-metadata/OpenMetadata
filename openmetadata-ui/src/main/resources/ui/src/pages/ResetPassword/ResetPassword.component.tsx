@@ -73,8 +73,7 @@ const ResetPassword = () => {
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto p-x-lg"
-        style={{ maxWidth: '450px' }}
-      >
+        style={{ maxWidth: '450px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" data-testid="brand-image" span={24}>
             <BrandImage className="m-auto" height="auto" width={200} />
@@ -92,8 +91,7 @@ const ResetPassword = () => {
               form={form}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
-              onFinish={handleSubmit}
-            >
+              onFinish={handleSubmit}>
               <Form.Item
                 label={t('label.new-password')}
                 name="password"
@@ -108,8 +106,7 @@ const ResetPassword = () => {
                     pattern: passwordRegex,
                     message: t('message.password-pattern-error'),
                   },
-                ]}
-              >
+                ]}>
                 <Input.Password
                   autoComplete="off"
                   className="w-full"
@@ -138,8 +135,7 @@ const ResetPassword = () => {
                       return Promise.reject(t('label.password-not-match'));
                     },
                   },
-                ]}
-              >
+                ]}>
                 <Input.Password
                   autoComplete="off"
                   className="w-full"
@@ -152,8 +148,7 @@ const ResetPassword = () => {
                 className="w-full m-t-lg"
                 data-testid="submit-button"
                 htmlType="submit"
-                type="primary"
-              >
+                type="primary">
                 {t('label.save')}
               </Button>
             </Form>

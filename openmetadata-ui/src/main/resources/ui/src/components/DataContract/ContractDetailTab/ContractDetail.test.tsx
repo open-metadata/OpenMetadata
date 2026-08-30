@@ -327,8 +327,7 @@ jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
           data-testid="switch-to-yaml"
           onClick={() =>
             handleModeChange({ target: { value: DataContractMode.YAML } })
-          }
-        >
+          }>
           YAML
         </button>
       </div>
@@ -356,14 +355,12 @@ jest.mock('../ODCSImportModal', () => {
         </span>
         <button
           data-testid="mock-import-success"
-          onClick={() => onSuccess && onSuccess()}
-        >
+          onClick={() => onSuccess && onSuccess()}>
           Import Success
         </button>
         <button
           data-testid="mock-import-close"
-          onClick={() => onClose && onClose()}
-        >
+          onClick={() => onClose && onClose()}>
           Close
         </button>
       </div>

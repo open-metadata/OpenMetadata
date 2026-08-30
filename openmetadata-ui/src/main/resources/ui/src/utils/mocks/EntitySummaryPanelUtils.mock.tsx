@@ -37,8 +37,7 @@ export const mockTextBasedSummaryTitleResponse = (
   <Text
     className="entity-title"
     data-testid="entity-title"
-    ellipsis={{ tooltip: true }}
-  >
+    ellipsis={{ tooltip: true }}>
     <span className="text-highlighter">title2</span>
   </Text>
 );
@@ -46,14 +45,12 @@ export const mockTextBasedSummaryTitleResponse = (
 export const mockLinkBasedSummaryTitleResponse = (
   <Link
     target="_blank"
-    to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=dim_address_task"
-  >
+    to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=dim_address_task">
     <div className="d-flex items-center">
       <Text
         className="entity-title text-link-color font-medium m-r-xss"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-      >
+        ellipsis={{ tooltip: true }}>
         dim_address Task
       </Text>
       <Icon component={IconExternalLink} style={ICON_DIMENSION} />
@@ -66,8 +63,7 @@ export const mockLinkBasedSummaryTitleDashboardResponse = (
     <Text
       className="entity-title text-link-color font-medium m-r-xss"
       data-testid="entity-title"
-      ellipsis={{ tooltip: true }}
-    >
+      ellipsis={{ tooltip: true }}>
       deck.gl Demo
     </Text>
   </Link>
@@ -173,14 +169,12 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
     title: (
       <Link
         target="_blank"
-        to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists"
-      >
+        to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists">
         <div className="d-flex items-center">
           <Text
             className="entity-title text-link-color font-medium m-r-xss"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-          >
+            ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Text>
           <Icon component={IconExternalLink} style={ICON_DIMENSION} />
@@ -286,8 +280,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       <Text
         className="entity-title"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-      >
+        ellipsis={{ tooltip: true }}>
         api_client_id
       </Text>
     ),
@@ -305,8 +298,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       <Text
         className="entity-title"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-      >
+        ellipsis={{ tooltip: true }}>
         Customer
       </Text>
     ),
@@ -323,8 +315,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Text
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-          >
+            ellipsis={{ tooltip: true }}>
             id
           </Text>
         ),
@@ -341,8 +332,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Text
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-          >
+            ellipsis={{ tooltip: true }}>
             first_name
           </Text>
         ),
@@ -359,8 +349,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Text
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-          >
+            ellipsis={{ tooltip: true }}>
             last_name
           </Text>
         ),
@@ -377,8 +366,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Text
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-          >
+            ellipsis={{ tooltip: true }}>
             email
           </Text>
         ),
@@ -405,8 +393,7 @@ export const mockInvalidDataResponse = [
       <Text
         className="entity-title"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-      >
+        ellipsis={{ tooltip: true }}>
         --
       </Text>
     ),

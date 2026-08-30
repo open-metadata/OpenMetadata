@@ -306,8 +306,7 @@ const AddNotificationPage = () => {
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph
           className="tw-max-w-md"
-          style={{ marginBottom: '0' }}
-        >
+          style={{ marginBottom: '0' }}>
           {t('message.system-alert-edit-message')}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
@@ -348,8 +347,7 @@ const AddNotificationPage = () => {
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSave}
-                >
+                  onFinish={handleSave}>
                   {isLoading ? (
                     <Skeleton title paragraph={{ rows: 8 }} />
                   ) : (
@@ -359,8 +357,7 @@ const AddNotificationPage = () => {
                           label={t('label.name')}
                           labelCol={{ span: 24 }}
                           name="displayName"
-                          rules={NAME_FIELD_RULES}
-                        >
+                          rules={NAME_FIELD_RULES}>
                           <Input placeholder={t('label.name')} />
                         </Form.Item>
                       </Col>
@@ -369,8 +366,7 @@ const AddNotificationPage = () => {
                           label={t('label.description')}
                           labelCol={{ span: 24 }}
                           name="description"
-                          trigger="onTextChange"
-                        >
+                          trigger="onTextChange">
                           <RichTextEditor
                             data-testid="description"
                             initialValue={alert?.description}
@@ -454,8 +450,7 @@ const AddNotificationPage = () => {
                           <Button
                             data-testid="cancel-button"
                             type="text"
-                            onClick={() => navigate(-1)}
-                          >
+                            onClick={() => navigate(-1)}>
                             {t('label.cancel')}
                           </Button>
 
@@ -476,8 +471,7 @@ const AddNotificationPage = () => {
                             data-testid="save-button"
                             htmlType="submit"
                             loading={isButtonLoading}
-                            type="primary"
-                          >
+                            type="primary">
                             {t('label.save')}
                           </Button>
                         </div>

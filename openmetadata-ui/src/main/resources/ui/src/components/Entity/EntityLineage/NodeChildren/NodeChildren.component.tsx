@@ -191,8 +191,7 @@ const NodeChildren = ({
           selectedColumn && 'any-column-selected',
           isCreatingEdge && 'creating-edge'
         )}
-        data-testid="column-container"
-      >
+        data-testid="column-container">
         <div className="search-box">
           <Input
             data-testid="search-column-input"

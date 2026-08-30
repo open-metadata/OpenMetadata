@@ -161,8 +161,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         data-testid="save-resource"
         loading={isSubmitting}
         type="primary"
-        onClick={handleSubmit}
-      >
+        onClick={handleSubmit}>
         {t('label.save')}
       </Button>
     </div>
@@ -179,8 +178,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       placement="right"
       title={drawerTitle}
       width={600}
-      onClose={onClose}
-    >
+      onClose={onClose}>
       <Form
         className="learning-resource-form"
         form={form}
@@ -189,8 +187,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           contexts: [],
           status: LearningResourceStatus.Active,
         }}
-        layout="vertical"
-      >
+        layout="vertical">
         <Form.Item
           className="form-item-required"
           label={t('label.name')}
@@ -202,8 +199,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               }),
               required: true,
             },
-          ]}
-        >
+          ]}>
           <Input
             data-testid="name-input"
             disabled={Boolean(resource)}
@@ -222,8 +218,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               }),
               required: true,
             },
-          ]}
-        >
+          ]}>
           <TextArea
             data-testid="description-input"
             placeholder={t('message.enter-description')}
@@ -243,12 +238,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               }),
               required: true,
             },
-          ]}
-        >
+          ]}>
           <Select
             data-testid="resource-type-select"
-            placeholder={t('label.select-field', { field: t('label.type') })}
-          >
+            placeholder={t('label.select-field', { field: t('label.type') })}>
             {RESOURCE_TYPES.map((type) => (
               <Select.Option key={type.value} value={type.value}>
                 <Space align="center">
@@ -275,8 +268,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               }),
               required: true,
             },
-          ]}
-        >
+          ]}>
           <Select
             data-testid="categories-select"
             mode="multiple"
@@ -300,8 +292,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               }),
               required: true,
             },
-          ]}
-        >
+          ]}>
           <Select
             data-testid="contexts-select"
             mode="multiple"
@@ -322,8 +313,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               required: true,
             },
             { message: t('label.invalid-url'), type: 'url' },
-          ]}
-        >
+          ]}>
           <Input
             data-testid="source-url-input"
             placeholder="https://www.youtube.com/watch?v=..."
@@ -348,8 +338,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         <Form.Item
           data-testid="status-form-item"
           label={t('label.status')}
-          name="status"
-        >
+          name="status">
           <Select
             data-testid="status-select"
             options={LEARNING_RESOURCE_STATUSES.map((status) => ({

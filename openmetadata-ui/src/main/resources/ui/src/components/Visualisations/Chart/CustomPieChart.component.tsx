@@ -52,8 +52,7 @@ const CustomPieChart = ({
       <PieChart
         height={CHART_SMALL_SIZE}
         id={`${name}-pie-chart`}
-        width={CHART_SMALL_SIZE}
-      >
+        width={CHART_SMALL_SIZE}>
         <Pie
           cx="50%"
           cy="50%"
@@ -66,8 +65,7 @@ const CustomPieChart = ({
           outerRadius={80}
           // to hide tooltip when there is no data
           pointerEvents="none"
-          startAngle={90}
-        >
+          startAngle={90}>
           <Cell fill={GREY_200} />
         </Pie>
         <Pie
@@ -90,8 +88,7 @@ const CustomPieChart = ({
                   }
                 }
               : undefined
-          }
-        >
+          }>
           {data.map((entry) => (
             <Cell fill={entry.color} key={`cell-${entry.name}`} />
           ))}

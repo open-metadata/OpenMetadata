@@ -47,8 +47,7 @@ export const UserImportResult = ({
               align="start"
               data-testid="status-container"
               // Added max width because in case of full success we don't want to occupied full width
-              style={{ maxWidth: 200 }}
-            >
+              style={{ maxWidth: 200 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
                   className="m-t-xss"

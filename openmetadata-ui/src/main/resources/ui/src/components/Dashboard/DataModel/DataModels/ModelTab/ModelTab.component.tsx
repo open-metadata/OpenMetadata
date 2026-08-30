@@ -486,8 +486,7 @@ const ModelTab = () => {
       {editColumnDescription && (
         <EntityAttachmentProvider
           entityFqn={editColumnDescription.fullyQualifiedName}
-          entityType={EntityType.DASHBOARD_DATA_MODEL}
-        >
+          entityType={EntityType.DASHBOARD_DATA_MODEL}>
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.column'),

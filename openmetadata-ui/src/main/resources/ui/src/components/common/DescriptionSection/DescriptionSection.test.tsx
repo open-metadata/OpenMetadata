@@ -59,8 +59,7 @@ jest.mock(
             </button>
             <button
               data-testid="save"
-              onClick={() => onSave?.('New description')}
-            >
+              onClick={() => onSave?.('New description')}>
               Save
             </button>
           </div>

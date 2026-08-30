@@ -66,8 +66,7 @@ const QueryViewer = ({
             </Tag>
             <Tooltip
               placement="topRight"
-              title={t('message.copy-to-clipboard')}
-            >
+              title={t('message.copy-to-clipboard')}>
               <Button
                 className="flex-center button-size bg-white"
                 data-testid="query-entity-copy-button"
@@ -78,8 +77,7 @@ const QueryViewer = ({
           </Space>
         ) : null
       }
-      title={title}
-    >
+      title={title}>
       {hasQuery && (
         <SchemaEditor
           className="custom-code-mirror-theme"

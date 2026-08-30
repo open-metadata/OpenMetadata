@@ -1746,15 +1746,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
                       entity: t('label.connection'),
                     })
                   : t('message.no-permission-for-action')
-              }
-            >
+              }>
               <Button
                 ghost
                 data-testid="edit-connection-button"
                 disabled={!servicePermission.EditAll}
                 type="primary"
-                onClick={goToEditConnection}
-              >
+                onClick={goToEditConnection}>
                 {t('label.edit-entity', {
                   entity: t('label.connection'),
                 })}
@@ -2051,8 +2049,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   return (
     <PageLayoutV1
       className="service-details-page"
-      pageTitle={getEntityName(serviceDetails)}
-    >
+      pageTitle={getEntityName(serviceDetails)}>
       {isEmpty(serviceDetails) ? (
         <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}

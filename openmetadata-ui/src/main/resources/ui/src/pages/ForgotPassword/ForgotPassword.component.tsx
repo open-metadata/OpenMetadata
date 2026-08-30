@@ -58,8 +58,7 @@ const ForgotPassword = () => {
   return (
     <div
       className="h-full py-24 forgot-password-container "
-      data-testid="forgot-password-container"
-    >
+      data-testid="forgot-password-container">
       <div className="absolute inset-0">
         <img
           alt="bg-image"
@@ -72,8 +71,7 @@ const ForgotPassword = () => {
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
-        style={{ maxWidth: '512px' }}
-      >
+        style={{ maxWidth: '512px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
             <BrandImage
@@ -95,8 +93,7 @@ const ForgotPassword = () => {
           <Form
             className="w-full"
             labelCol={{ span: 24 }}
-            onFinish={handleSubmit}
-          >
+            onFinish={handleSubmit}>
             <Col span={24}>
               <Form.Item
                 label={t('label.email')}
@@ -109,8 +106,7 @@ const ForgotPassword = () => {
                       field: t('label.email'),
                     }),
                   },
-                ]}
-              >
+                ]}>
                 <Input
                   className="input-field"
                   placeholder={t('label.email')}
@@ -124,8 +120,7 @@ const ForgotPassword = () => {
                 htmlType="submit"
                 loading={loading}
                 size="large"
-                type="primary"
-              >
+                type="primary">
                 {t('label.send-login-link')}
               </Button>
             </Col>
@@ -135,8 +130,7 @@ const ForgotPassword = () => {
               className="p-0"
               data-testid="go-back-button"
               type="link"
-              onClick={handleLogin}
-            >
+              onClick={handleLogin}>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

@@ -161,8 +161,7 @@ function FileColumnsTable() {
           return (
             <div
               className="d-inline-flex flex-column hover-icon-group"
-              style={{ maxWidth: '80%' }}
-            >
+              style={{ maxWidth: '80%' }}>
               <div className="d-inline-flex items-baseline">
                 {prepareConstraintIcon({
                   columnName: name,
@@ -170,16 +169,14 @@ function FileColumnsTable() {
                 })}
                 <Typography.Text
                   className={classNames('m-b-0 d-block break-word')}
-                  data-testid="column-name"
-                >
+                  data-testid="column-name">
                   {name}
                 </Typography.Text>
               </div>
               {isEmpty(displayName) ? null : (
                 <Typography.Text
                   className="m-b-0 d-block break-word"
-                  data-testid="column-display-name"
-                >
+                  data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography.Text>
               )}
@@ -205,8 +202,7 @@ function FileColumnsTable() {
                 overflowWrap: 'break-word',
                 textAlign: 'center',
               }}
-              title={toLower(dataTypeDisplay)}
-            >
+              title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay ?? record.dataType}
               </Typography.Text>
@@ -320,8 +316,7 @@ function FileColumnsTable() {
       {editFileColumnDescription && (
         <EntityAttachmentProvider
           entityFqn={editFileColumnDescription.fullyQualifiedName}
-          entityType={EntityType.FILE}
-        >
+          entityType={EntityType.FILE}>
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.column'),

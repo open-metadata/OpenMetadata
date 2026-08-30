@@ -73,15 +73,13 @@ const GlossaryTermReferencesModal = ({
           key="save-btn"
           loading={saving}
           type="primary"
-          onClick={form.submit}
-        >
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}
       open={isVisible}
       title={t('label.reference-plural')}
-      onCancel={onClose}
-    >
+      onCancel={onClose}>
       <Form className="reference-edit-form" form={form} onFinish={handleSubmit}>
         <Form.List name="references">
           {(fields, { add, remove }) => (
@@ -100,8 +98,7 @@ const GlossaryTermReferencesModal = ({
                             field: t('label.name'),
                           }),
                         },
-                      ]}
-                    >
+                      ]}>
                       <Input placeholder={t('label.name')} />
                     </Form.Item>
                   </Col>
@@ -124,8 +121,7 @@ const GlossaryTermReferencesModal = ({
                         {
                           validator: referenceURLValidator,
                         },
-                      ]}
-                    >
+                      ]}>
                       <Input placeholder={t('label.endpoint')} />
                     </Form.Item>
                   </Col>
@@ -153,8 +149,7 @@ const GlossaryTermReferencesModal = ({
                   data-testid="add-references-button"
                   icon={<PlusIcon className="anticon" />}
                   size="small"
-                  onClick={() => add()}
-                >
+                  onClick={() => add()}>
                   {t('label.add')}
                 </Button>
               </Form.Item>

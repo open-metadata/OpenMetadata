@@ -229,8 +229,7 @@ const NotificationBox = ({
             ? hasTaskNotification
             : hasMentionNotification
         }
-        offset={[5, 0]}
-      >
+        offset={[5, 0]}>
         <Icon
           alt="notification-icon"
           className="align-middle m-r-xs"
@@ -278,8 +277,7 @@ const NotificationBox = ({
       <Typography.Title
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        level={5}
-      >
+        level={5}>
         {t('label.notification-plural')}
       </Typography.Title>
       <Tabs
@@ -293,8 +291,7 @@ const NotificationBox = ({
           paddingLeft: '16px',
           color: 'inherit',
         }}
-        onTabClick={updateActiveTab}
-      >
+        onTabClick={updateActiveTab}>
         {tabsInfo.map(({ name, key }) => (
           <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (

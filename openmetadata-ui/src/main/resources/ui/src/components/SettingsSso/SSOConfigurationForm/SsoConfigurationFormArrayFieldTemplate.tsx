@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Tag, Typography } from 'antd';
+import { Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -212,9 +213,9 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           })}>
           {startCase(props.name)}
           {isDeprecated && (
-            <Tag className="sso-deprecated-tag" color="orange">
+            <Badge className="sso-deprecated-tag" color="warning" size="sm">
               {t('label.deprecated')}
-            </Tag>
+            </Badge>
           )}
         </Typography>
       </Col>

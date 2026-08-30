@@ -53,8 +53,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
       value={rest.value}
       onBlur={() => onBlur(rest.id, rest.value)}
       onChange={(value) => onChange(value)}
-      onFocus={() => onFocus(rest.id, rest.value)}
-    >
+      onFocus={() => onFocus(rest.id, rest.value)}>
       {(rest.options.enumOptions ?? []).map((option) => {
         const displayLabel = getDisplayLabel(
           option.label,
@@ -67,8 +66,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
             data-testid={`select-option-${option.label}`}
             key={option.value}
             labelValue={String(displayLabel)}
-            value={option.value}
-          >
+            value={option.value}>
             {displayLabel}
           </Select.Option>
         );

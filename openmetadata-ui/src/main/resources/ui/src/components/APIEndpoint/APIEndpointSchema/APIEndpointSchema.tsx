@@ -285,8 +285,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     (_: string, record: Field) => (
       <div
         className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
-        style={{ maxWidth: '80%' }}
-      >
+        style={{ maxWidth: '80%' }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -528,8 +527,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}
-          entityType={EntityType.API_ENDPOINT}
-        >
+          entityType={EntityType.API_ENDPOINT}>
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.schema-field'),

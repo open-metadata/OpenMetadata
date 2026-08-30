@@ -344,8 +344,7 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
       wrap
       className="explore-quick-filters-container"
       data-testid="audit-log-filters"
-      size={[8, 0]}
-    >
+      size={[8, 0]}>
       <DatePickerMenu
         showSelectedCustomRange
         defaultDateRange={timeDefaultDateRange}

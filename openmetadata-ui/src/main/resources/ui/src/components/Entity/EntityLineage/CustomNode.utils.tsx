@@ -113,8 +113,7 @@ const ExpandHandle = ({
       onClick={handleLineageNodeHandleClick}
       onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
-      onMouseOver={handleLineageNodeHandleMouseOver}
-    >
+      onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
         aria-hidden="false"
         aria-label="expand"
@@ -195,8 +194,7 @@ const getColumnNameContent = (
         className="custom-node-column-label"
         ellipsis={{
           tooltip: true,
-        }}
-      >
+        }}>
         {getEntityName(column)}
       </Typography.Text>
     </>
@@ -288,8 +286,7 @@ const ColumnContentInner = ({
       onClick={handleClick}
       onMouseDown={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+      onMouseLeave={handleMouseLeave}>
       {handles}
       <div className="custom-node-column-row">
         <div className="custom-node-name-container">
@@ -302,8 +299,7 @@ const ColumnContentInner = ({
               showDataObservabilitySummary
                 ? 'custom-node-constraint text-left'
                 : 'custom-node-constraint text-right'
-            }
-          >
+            }>
             {column.constraint}
           </div>
         )}

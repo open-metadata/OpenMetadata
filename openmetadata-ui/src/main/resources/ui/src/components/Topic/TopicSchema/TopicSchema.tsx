@@ -279,8 +279,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     (_: unknown, record: Field) => (
       <div
         className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
-        style={{ maxWidth: '80%' }}
-      >
+        style={{ maxWidth: '80%' }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -537,8 +536,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}
-          entityType={EntityType.TOPIC}
-        >
+          entityType={EntityType.TOPIC}>
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.schema-field'),

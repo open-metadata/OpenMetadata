@@ -56,8 +56,7 @@ jest.mock('../../Bot/BotDetails/AuthMechanismForm', () => {
               authType: 'JWT',
               config: { JWTTokenExpiry: 'Seven' },
             })
-          }
-        >
+          }>
           Save JWT
         </button>
         <button
@@ -70,8 +69,7 @@ jest.mock('../../Bot/BotDetails/AuthMechanismForm', () => {
                 authConfig: { secretKey: 'test' },
               },
             })
-          }
-        >
+          }>
           Save SSO
         </button>
       </p>

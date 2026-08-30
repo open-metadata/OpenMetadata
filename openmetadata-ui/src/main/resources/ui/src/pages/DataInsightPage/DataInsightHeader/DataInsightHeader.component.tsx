@@ -89,8 +89,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
               <Button
                 data-testid="add-kpi-btn"
                 type="primary"
-                onClick={handleAddKPI}
-              >
+                onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}

@@ -77,8 +77,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
         {renderNameWithOptionalLink(name)}
         <Typography.Text
           className="d-block break-word"
-          data-testid="column-display-name"
-        >
+          data-testid="column-display-name">
           {renderNameWithOptionalLink(displayName)}
         </Typography.Text>
       </>
@@ -88,13 +87,11 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   return (
     <div
       className="d-inline-flex flex-column hover-icon-group vertical-align-inherit"
-      style={{ maxWidth: '80%' }}
-    >
+      style={{ maxWidth: '80%' }}>
       <div className="d-inline-flex items-start gap-1 flex-column">
         <Typography.Text
           className="m-b-0 d-block text-link-color"
-          data-testid="column-name"
-        >
+          data-testid="column-name">
           {renderMainContent}
         </Typography.Text>
 

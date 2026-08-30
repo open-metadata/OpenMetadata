@@ -319,8 +319,7 @@ export const IngestionPipelineList = ({
           }
           loading={deploying}
           type="primary"
-          onClick={handleBulkRedeploy}
-        >
+          onClick={handleBulkRedeploy}>
           {t('label.re-deploy')}
         </Button>
       </Col>

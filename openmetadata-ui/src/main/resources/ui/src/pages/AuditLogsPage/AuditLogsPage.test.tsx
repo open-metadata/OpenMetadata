@@ -182,16 +182,14 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
             data-testid="next-page"
             onClick={() =>
               pagingHandler({ cursorType: 'after', currentPage: 2 })
-            }
-          >
+            }>
             Next
           </button>
           <button
             data-testid="prev-page"
             onClick={() =>
               pagingHandler({ cursorType: 'before', currentPage: 1 })
-            }
-          >
+            }>
             Previous
           </button>
           {onShowSizeChange && (
@@ -203,8 +201,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
                 // In a real Antd dropdown, this would be a separate click
                 // Here we just render the options if needed, but for simplicity
                 // we can just have buttons for each option to click directly in test
-              }}
-            >
+              }}>
               {pageSize} / label.page
               {pageSizeOptions?.map((size: number) => (
                 <button key={size} onClick={() => onShowSizeChange(size)}>
@@ -241,8 +238,7 @@ jest.mock('../../components/AuditLog', () => ({
             ],
             { entityType: 'table' }
           )
-        }
-      >
+        }>
         Apply Filter
       </button>
     </div>

@@ -119,8 +119,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
           </div>
         }
         width={576}
-        onClose={onClose}
-      >
+        onClose={onClose}>
         <div className="learning-drawer-content">
           {isLoading ? (
             <div className="learning-drawer-loading">

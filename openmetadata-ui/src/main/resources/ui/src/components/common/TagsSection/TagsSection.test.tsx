@@ -82,8 +82,7 @@ jest.mock('antd', () => ({
           data-testid="button"
           data-type={type}
           onClick={onClick}
-          {...props}
-        >
+          {...props}>
           {children}
         </button>
       )
@@ -179,8 +178,7 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
                     state: 'Confirmed' as State,
                   },
                 ])
-              }
-            >
+              }>
               Update
             </button>
             {children}
@@ -211,8 +209,7 @@ jest.mock('../IconButtons/EditIconButton', () => ({
       className="edit-icon"
       data-testid="edit-icon-button"
       onClick={onClick}
-      {...props}
-    >
+      {...props}>
       Edit
     </button>
   )),

@@ -710,8 +710,7 @@ const AssetsTabs = forwardRef(
                 height={140}
                 width={140}
               />
-            }
-          >
+            }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -810,19 +809,16 @@ const AssetsTabs = forwardRef(
                       overlayClassName="manage-dropdown-list-container"
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
-                      trigger={['click']}
-                    >
+                      trigger={['click']}>
                       <Tooltip
                         placement="topRight"
                         title={t('label.manage-entity', {
                           entity: t('label.asset'),
-                        })}
-                      >
+                        })}>
                         <Button
                           className={classNames('flex-center px-1.5')}
                           data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          type="text"
-                        >
+                          type="text">
                           <IconDropdown className="anticon self-center manage-dropdown-icon" />
                         </Button>
                       </Tooltip>
@@ -908,8 +904,7 @@ const AssetsTabs = forwardRef(
           <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}
-            >
+              onChange={(e) => onSelectAll(e.target.checked)}>
               {t('label.select-field', {
                 field: t('label.all'),
               })}
@@ -1044,14 +1039,12 @@ const AssetsTabs = forwardRef(
             'assets-tab-container relative bg-white border-radius-card h-full'
           )}
           data-testid="table-container"
-          id="asset-tab"
-        >
+          id="asset-tab">
           <Row
             className={classNames('filters-row gap-2 p-md', {
               'h-full': totalAssetCount === 0,
             })}
-            gutter={[0, 20]}
-          >
+            gutter={[0, 20]}>
             {(type === AssetsOfEntity.MY_DATA || totalAssetCount > 0) && (
               <>
                 <Col className="d-flex gap-3" span={24}>
@@ -1060,8 +1053,7 @@ const AssetsTabs = forwardRef(
                       items: filterMenu,
                       selectedKeys: selectedFilter,
                     }}
-                    trigger={['click']}
-                  >
+                    trigger={['click']}>
                     <Button
                       className={classNames('feed-filter-icon')}
                       data-testid="asset-filter-button"
@@ -1093,8 +1085,7 @@ const AssetsTabs = forwardRef(
                       {quickFilterQuery && (
                         <Typography.Text
                           className="text-primary self-center cursor-pointer"
-                          onClick={clearFilters}
-                        >
+                          onClick={clearFilters}>
                           {t('label.clear-entity', {
                             entity: '',
                           })}
@@ -1111,8 +1102,7 @@ const AssetsTabs = forwardRef(
                   className="w-full"
                   data-testid="loader"
                   direction="vertical"
-                  size={16}
-                >
+                  size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -1168,8 +1158,7 @@ const AssetsTabs = forwardRef(
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,
-            })}
-          >
+            })}>
             <div className="d-flex items-center justify-between">
               <Typography.Text className="text-white">
                 {selectedItems.size} {t('label.items-selected-lowercase')}
@@ -1179,8 +1168,7 @@ const AssetsTabs = forwardRef(
                 data-testid="delete-all-button"
                 loading={assetRemoving}
                 type="primary"
-                onClick={handleBulkDeleteClick}
-              >
+                onClick={handleBulkDeleteClick}>
                 {t('label.delete')}
               </Button>
             </div>

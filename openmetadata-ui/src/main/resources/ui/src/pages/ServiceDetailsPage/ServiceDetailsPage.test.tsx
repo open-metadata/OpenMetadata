@@ -371,8 +371,7 @@ jest.mock(
           data-testid="update-name-button"
           onClick={() =>
             onDisplayNameUpdate({ name: 'name', displayName: 'Updated Name' })
-          }
-        >
+          }>
           Update Name
         </button>
         <button data-testid="restore-button" onClick={onRestoreDataAsset}>
@@ -388,8 +387,7 @@ jest.mock(
         <button
           data-testid="run-agents"
           disabled={disableRunAgentsButton}
-          title={disableRunAgentsButtonMessage}
-        >
+          title={disableRunAgentsButtonMessage}>
           Run Agents
         </button>
       </div>
@@ -532,15 +530,13 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
       <button
         onClick={() =>
           pagingHandler({ cursorType: CursorType.BEFORE, currentPage: 1 })
-        }
-      >
+        }>
         Previous
       </button>
       <button
         onClick={() =>
           pagingHandler({ cursorType: CursorType.AFTER, currentPage: 2 })
-        }
-      >
+        }>
         Next
       </button>
     </div>

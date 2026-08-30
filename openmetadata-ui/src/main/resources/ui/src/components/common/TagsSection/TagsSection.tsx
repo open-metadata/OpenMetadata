@@ -164,8 +164,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           setPopoverOpen(false);
           cancelEditing();
         }}
-        onUpdate={handleTagSelection}
-      >
+        onUpdate={handleTagSelection}>
         <div className="d-none tag-selector-display">
           {editingTags.length > 0 ? (
             <div className="selected-tags-list">
@@ -173,8 +172,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                 <div
                   className="selected-tag-chip"
                   data-testid={`tag-${tag.tagFQN}`}
-                  key={tag.tagFQN}
-                >
+                  key={tag.tagFQN}>
                   <ClassificationIcon className="tag-icon" />
                   <span className="tag-name">{getEntityName(tag)}</span>
                 </div>
@@ -227,8 +225,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
             <div
               className="tag-item"
               data-testid={`tag-${tag.tagFQN}`}
-              key={tag.tagFQN}
-            >
+              key={tag.tagFQN}>
               <ClassificationIcon className="tag-icon" />
               <span className="tag-name">{getEntityName(tag)}</span>
             </div>
@@ -237,8 +234,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
             <button
               className="show-more-tags-button"
               type="button"
-              onClick={() => setShowAllTags(!showAllTags)}
-            >
+              onClick={() => setShowAllTags(!showAllTags)}>
               {showAllTags
                 ? t('label.less')
                 : `+${nonTierTags.length - maxVisibleTags} ${t(

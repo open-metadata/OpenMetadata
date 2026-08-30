@@ -847,8 +847,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             isTabExpanded={isTabExpanded}
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
-            onUpdate={handleUpdateDatabaseSchema}
-          >
+            onUpdate={handleUpdateDatabaseSchema}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
