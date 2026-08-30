@@ -557,6 +557,14 @@ public final class AIContextMarkdown {
       String content = promptContent.strip();
       markdown.append('\n').append(truncateContent ? truncate(content) : content).append('\n');
     }
+    if (Boolean.TRUE.equals(item.getStale())) {
+      List<String> reasons = listOrEmpty(item.getStaleReasons());
+      markdown
+          .append("\n_⚠ Stale")
+          .append(reasons.isEmpty() ? "" : " — " + String.join(", ", reasons))
+          .append(
+              ". Weigh this against the asset's current state before relying on it for decisions._\n");
+    }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
           .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")

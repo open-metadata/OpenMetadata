@@ -13,6 +13,7 @@
 package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,6 +26,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -194,6 +197,96 @@ class AIContextBuilderTest {
     assertTrue(
         Boolean.TRUE.equals(second.getContentTruncated()), "second article marked truncated");
     assertTrue(second.getContent() == null, "second article content omitted (reference-only)");
+  }
+
+  @Test
+  void isActivePill_gatesNonActiveStatusesButTreatsMissingStatusAsActive() {
+    assertTrue(
+        AIContextBuilder.isActivePill(new ContextMemory()),
+        "pre-lifecycle memories (no status) stay visible");
+    assertTrue(
+        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE)));
+    assertFalse(
+        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.DRAFT)),
+        "Draft memories are not settled knowledge");
+    assertFalse(
+        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ARCHIVED)),
+        "Archived memories must not reach agents as current context");
+  }
+
+  @Test
+  void stampStaleness_flagsNothingWhenSignalsHealthy() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(item, 1000L, 900L, null, null);
+    assertFalse(Boolean.TRUE.equals(item.getStale()), "fresh knowledge on a healthy asset");
+    assertTrue(item.getStaleReasons().isEmpty(), "no reasons when nothing is flagged");
+  }
+
+  @Test
+  void stampStaleness_flagsAssetUpdatedAfterKnowledge() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(item, 1000L, 2000L, null, null);
+    assertTrue(Boolean.TRUE.equals(item.getStale()));
+    assertEquals(List.of("assetUpdatedAfterKnowledge"), item.getStaleReasons());
+  }
+
+  @Test
+  void stampStaleness_flagsFailingAssetAndUpstreamDataQuality() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(
+        item, null, null, new DataQuality().withFailed(3), new DataQuality().withFailed(1));
+    assertTrue(Boolean.TRUE.equals(item.getStale()));
+    assertEquals(
+        List.of("dataQualityFailing", "upstreamDataQualityFailing"), item.getStaleReasons());
+  }
+
+  @Test
+  void stampStaleness_zeroFailuresAndMissingTimestampsAreNotStale() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(
+        item, null, null, new DataQuality().withFailed(0), new DataQuality().withFailed(0));
+    assertFalse(Boolean.TRUE.equals(item.getStale()));
+  }
+
+  @Test
+  void applyKnowledgeBudget_reservesCueRoomForStaleItems() {
+    KnowledgeItem fresh = knowledgeItem("fresh", "z".repeat(4000));
+    KnowledgeItem stale = knowledgeItem("stale", "z".repeat(4000)).withStale(true);
+    AIContextBuilder builder =
+        new AIContextBuilder("table", "svc.db.sch.orders")
+            .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS);
+
+    AIContext freshContext = new AIContext().withArticles(List.of(fresh));
+    AIContext staleContext = new AIContext().withArticles(List.of(stale));
+    builder.applyKnowledgeBudget(freshContext);
+    builder.applyKnowledgeBudget(staleContext);
+
+    assertTrue(Boolean.TRUE.equals(fresh.getContentTruncated()));
+    assertTrue(Boolean.TRUE.equals(stale.getContentTruncated()));
+    assertTrue(
+        stale.getContent().length()
+            <= AIContextBuilder.EXCERPT_CHARS + 1 - AIContextBuilder.STALE_CUE_RESERVE,
+        "stale excerpt plus its rendered cue stays within the fresh item's budget share");
+  }
+
+  @Test
+  void appendKnowledgeSection_rendersTrustCueOnlyForStaleItems() {
+    KnowledgeItem stale =
+        knowledgeItem("NPI", "definition")
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    KnowledgeItem fresh = knowledgeItem("MRR", "metric definition");
+    StringBuilder markdown = new StringBuilder();
+
+    AIContextMarkdown.appendKnowledgeSection(
+        markdown, "Knowledge", List.of(stale, fresh), "#", true);
+
+    String rendered = markdown.toString();
+    assertTrue(
+        rendered.contains("⚠ Stale — assetUpdatedAfterKnowledge"),
+        "stale item carries a trust cue naming the reasons");
+    assertEquals(
+        1, rendered.split("⚠ Stale", -1).length - 1, "cue is rendered for stale items only");
   }
 
   @Test

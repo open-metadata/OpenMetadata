@@ -31,6 +31,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -126,6 +127,15 @@ public class AIContextBuilder {
   /** Max query-relevant vector lookups per bundle; items beyond it use the structural preview. */
   private static final int MAX_QUERY_EXCERPTS = 5;
 
+  /** Max upstream edges whose data-quality standing is checked for staleness stamping. */
+  static final int MAX_UPSTREAM_DQ_CHECKS = 3;
+
+  /**
+   * Characters reserved in a stale item's budget share for the trust cue rendered alongside its
+   * excerpt in Compact Markdown, so the cue never pushes a bundle past the caller's budget.
+   */
+  static final int STALE_CUE_RESERVE = 80;
+
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
@@ -133,6 +143,12 @@ public class AIContextBuilder {
   private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
   private String query;
   private int queryExcerptsRemaining = MAX_QUERY_EXCERPTS;
+  private Long assetUpdatedAt;
+  private DataQuality assetDataQuality;
+  private EntityLineage lineage;
+  private List<Edge> upstreamEdgeList;
+  private DataQuality upstreamDataQuality;
+  private boolean upstreamDataQualityResolved;
 
   public AIContextBuilder(String entityType, String fqn) {
     this.entityType = entityType;
@@ -180,6 +196,11 @@ public class AIContextBuilder {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
     List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
+    DataQuality dataQuality = resolveDataQuality(entity);
+    this.assetUpdatedAt = entity.getUpdatedAt();
+    this.assetDataQuality = dataQuality;
+    this.lineage = lineage;
+    this.upstreamEdgeList = lineage == null ? null : lineage.getUpstreamEdges();
     AIContext context =
         new AIContext()
             .withId(entity.getId())
@@ -200,7 +221,7 @@ public class AIContextBuilder {
             .withDownstream(edgeFqns(downstreamEdges))
             .withDownstreamEdges(downstreamEdges)
             .withAssetContext(buildAssetContext(entity))
-            .withObservability(resolveObservability(entity))
+            .withObservability(resolveObservability(entity, dataQuality))
             .withGeneratedAt(System.currentTimeMillis());
     applyKnowledgeBudget(context);
     return context;
@@ -234,10 +255,13 @@ public class AIContextBuilder {
     String content = item.getContent();
     int budget = remaining;
     if (!nullOrEmpty(content)) {
-      if (content.length() <= MAX_ITEM_CHARS && content.length() <= remaining) {
+      // Stale items render a trust cue next to their excerpt in Compact Markdown; reserve its
+      // length so the cue never pushes the bundle past the caller's budget.
+      int effective = remaining - (Boolean.TRUE.equals(item.getStale()) ? STALE_CUE_RESERVE : 0);
+      if (content.length() <= MAX_ITEM_CHARS && content.length() <= effective) {
         budget = remaining - content.length();
-      } else if (remaining >= MIN_EXCERPT_CHARS) {
-        String lead = buildExcerpt(item, content, Math.min(EXCERPT_CHARS, remaining));
+      } else if (effective >= MIN_EXCERPT_CHARS) {
+        String lead = buildExcerpt(item, content, Math.min(EXCERPT_CHARS, effective));
         item.withContent(lead).withContentTruncated(true);
         budget = remaining - lead.length();
       } else {
@@ -393,10 +417,10 @@ public class AIContextBuilder {
     return serviceType;
   }
 
-  private Observability resolveObservability(EntityInterface entity) {
+  private Observability resolveObservability(EntityInterface entity, DataQuality dataQuality) {
     Observability observability = null;
     if (entity instanceof Table) {
-      observability = new Observability().withDataQuality(resolveDataQuality((Table) entity));
+      observability = new Observability().withDataQuality(dataQuality);
       applyProfile(observability, entity);
       if (isEmpty(observability)) {
         observability = null;
@@ -459,18 +483,99 @@ public class AIContextBuilder {
         .withCardinalityDistribution(columnProfile.getCardinalityDistribution());
   }
 
-  private DataQuality resolveDataQuality(Table table) {
+  private DataQuality resolveDataQuality(EntityInterface entity) {
     DataQuality dataQuality = null;
-    EntityReference testSuiteRef = table.getTestSuite();
-    if (testSuiteRef != null) {
-      try {
-        TestSuite testSuite = Entity.getEntity(testSuiteRef, "summary", Include.NON_DELETED);
-        dataQuality = toDataQuality(testSuite.getSummary());
-      } catch (Exception e) {
-        LOG.warn("AIContext: failed to load data quality for {}: {}", fqn, e.getMessage());
+    if (entity instanceof Table table) {
+      EntityReference testSuiteRef = table.getTestSuite();
+      if (testSuiteRef != null) {
+        try {
+          TestSuite testSuite = Entity.getEntity(testSuiteRef, "summary", Include.NON_DELETED);
+          dataQuality = toDataQuality(testSuite.getSummary());
+        } catch (Exception e) {
+          LOG.warn("AIContext: failed to load data quality for {}: {}", fqn, e.getMessage());
+        }
       }
     }
     return dataQuality;
+  }
+
+  /**
+   * Data-quality standing of the asset's direct upstream, lazily computed once per bundle and
+   * capped at {@link #MAX_UPSTREAM_DQ_CHECKS} edges. Returns a minimal {@link DataQuality} carrying
+   * the first upstream's failed-test count, or null when no checked upstream is failing. A pill
+   * describing data that is currently failing its tests is a trust signal, not a content change.
+   */
+  private DataQuality upstreamDataQuality() {
+    if (upstreamDataQualityResolved) {
+      return upstreamDataQuality;
+    }
+    upstreamDataQualityResolved = true;
+    Map<UUID, EntityReference> nodeRefs = new HashMap<>();
+    for (EntityReference node : listOrEmpty(lineage == null ? null : lineage.getNodes())) {
+      nodeRefs.put(node.getId(), node);
+    }
+    int checked = 0;
+    for (Edge edge : listOrEmpty(upstreamEdgeList)) {
+      if (checked >= MAX_UPSTREAM_DQ_CHECKS) {
+        break;
+      }
+      EntityReference ref = nodeRefs.get(edge.getFromEntity());
+      if (ref == null || !Entity.TABLE.equals(ref.getType())) {
+        continue;
+      }
+      checked++;
+      try {
+        Table upstream = (Table) Entity.getEntity(ref, "testSuite", Include.NON_DELETED);
+        if (upstream.getTestSuite() != null) {
+          TestSuite suite =
+              Entity.getEntity(upstream.getTestSuite(), "summary", Include.NON_DELETED);
+          TestSummary summary = suite.getSummary();
+          if (summary != null && summary.getFailed() != null && summary.getFailed() > 0) {
+            upstreamDataQuality = new DataQuality().withFailed(summary.getFailed());
+            break;
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "AIContext: failed to load upstream data quality for {}",
+            ref.getName(),
+            e.getMessage());
+      }
+    }
+    return upstreamDataQuality;
+  }
+
+  /**
+   * Read-time trust stamping (issue #32260): a knowledge item is marked stale when the asset it is
+   * attached to was updated after the knowledge was last touched, or when the asset's (or a direct
+   * upstream's) data-quality tests are failing. Purely informational — never removes the item —
+   * so agents can weigh the signal instead of silently losing context.
+   */
+  static void stampStaleness(
+      KnowledgeItem item,
+      Long knowledgeUpdatedAt,
+      Long assetUpdatedAt,
+      DataQuality assetDataQuality,
+      DataQuality upstreamDataQuality) {
+    List<String> reasons = new ArrayList<>();
+    if (knowledgeUpdatedAt != null
+        && assetUpdatedAt != null
+        && assetUpdatedAt > knowledgeUpdatedAt) {
+      reasons.add("assetUpdatedAfterKnowledge");
+    }
+    if (isFailing(assetDataQuality)) {
+      reasons.add("dataQualityFailing");
+    }
+    if (isFailing(upstreamDataQuality)) {
+      reasons.add("upstreamDataQualityFailing");
+    }
+    if (!reasons.isEmpty()) {
+      item.withStale(true).withStaleReasons(reasons);
+    }
+  }
+
+  private static boolean isFailing(DataQuality dataQuality) {
+    return dataQuality != null && dataQuality.getFailed() != null && dataQuality.getFailed() > 0;
   }
 
   static DataQuality toDataQuality(TestSummary summary) {
@@ -725,7 +830,9 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       ContextMemory pill = Entity.getEntity(ref, "", Include.NON_DELETED);
-      if (canViewPill(pill)) {
+      // Mirror the glossary path's approval gating: Draft/Archived memories are not settled
+      // knowledge and must not reach agents as current context (issue #32260).
+      if (isActivePill(pill) && canViewPill(pill)) {
         item =
             new KnowledgeItem()
                 .withId(pill.getId())
@@ -734,11 +841,22 @@ public class AIContextBuilder {
                 .withDisplayName(pill.getDisplayName())
                 .withFullyQualifiedName(pill.getFullyQualifiedName())
                 .withContent(pillContent(pill));
+        stampStaleness(
+            item, pill.getUpdatedAt(), assetUpdatedAt, assetDataQuality, upstreamDataQuality());
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch knowledge pill {}: {}", ref.getName(), e.getMessage());
     }
     return item;
+  }
+
+  /**
+   * Pills with no lifecycle status (pre-lifecycle memories) are treated as active, matching how
+   * {@link #isApproved(GlossaryTerm)} treats a missing glossary review status.
+   */
+  static boolean isActivePill(ContextMemory pill) {
+    ContextMemoryStatus status = pill.getStatus();
+    return status == null || status == ContextMemoryStatus.ACTIVE;
   }
 
   private static String pillContent(ContextMemory pill) {
