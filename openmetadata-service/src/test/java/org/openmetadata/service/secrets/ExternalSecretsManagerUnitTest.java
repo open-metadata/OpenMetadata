@@ -194,6 +194,22 @@ class ExternalSecretsManagerUnitTest {
   }
 
   @Test
+  void resolvingThePlaceholderAndSavingItBackRemovesTheSecret() {
+    RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
+    manager.store.put(SECRET_NAME, ExternalSecretsManager.NULL_SECRET_STRING);
+
+    String resolved = manager.getSecretValue(SecretsManager.SECRET_FIELD_PREFIX + SECRET_NAME);
+    String reference = manager.storeValue("Password", resolved, "/prefix/database/myservice", true);
+
+    assertNull(reference, "the entity must not keep a reference to a secret we no longer store");
+    assertEquals(
+        List.of(SECRET_NAME),
+        manager.deleted,
+        "a placeholder read as null and saved back is deleted: the cleanup for a legacy secret, "
+            + "and the reason a credential that really was \"null\" does not survive the next save");
+  }
+
+  @Test
   void storeValueRefusesACredentialEqualToTheReservedNullSentinel() {
     RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
 

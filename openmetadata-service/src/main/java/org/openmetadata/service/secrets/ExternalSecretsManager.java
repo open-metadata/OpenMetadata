@@ -112,7 +112,8 @@ public abstract class ExternalSecretsManager extends SecretsManager {
         deleteSecret(fieldSecretId);
       }
       result = null;
-      // check if value does not start with 'config:' only String can have password annotation
+      // A plain value: store it and hand back a reference. Anything already prefixed with
+      // SECRET_FIELD_PREFIX is a reference to an existing secret and falls through untouched.
     } else if (Boolean.FALSE.equals(isSecret(value))) {
       rejectReservedPlaceholder(fieldName, value);
       if (store) {
@@ -152,11 +153,13 @@ public abstract class ExternalSecretsManager extends SecretsManager {
    * Reading it as absent is what cleans those services up: the connection carries null, and the
    * next save drops the stale secret through {@link #storeValue}.
    *
-   * <p>Nothing recorded alongside a secret distinguishes the placeholder from a credential whose
-   * real value is the four characters "null", so this mapping cannot tell them apart — nor could a
-   * one-time migration over the vault, which would delete such a credential outright where this
-   * only hides it. {@link #rejectReservedPlaceholder} closes the gap from the other side by
-   * refusing to store that value, so a payload of "null" only ever means the legacy placeholder.
+   * <p>Nothing recorded alongside a secret distinguishes that placeholder from a credential whose
+   * real value is the four characters "null", and this mapping resolves the ambiguity in favour of
+   * the placeholder. Where that guess is wrong the credential is not merely hidden: the masker
+   * skips a null field, so the next save of the entity sends no value and the clear path above
+   * deletes the backing secret. {@link #rejectReservedPlaceholder} keeps new credentials out of
+   * that state, but a value already in the vault cannot be told apart, so this logs a warning
+   * naming the secret while there is still a save's worth of time to act on it.
    */
   @Override
   public String getSecretValue(String secretWithPrefix) {
@@ -165,8 +168,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     if (isPlaceholder) {
       LOG.warn(
           "Secret [{}] holds the reserved placeholder \"{}\" that older versions wrote for a "
-              + "cleared credential; reading it as absent. Re-save the field to remove the stale "
-              + "secret, or set a different value if \"{}\" was the intended credential.",
+              + "cleared credential, so it is being read as no credential at all. If this field "
+              + "really was configured with \"{}\", set a different value now: the next save of "
+              + "the entity will delete the stored secret.",
           secretWithPrefix,
           NULL_SECRET_STRING,
           NULL_SECRET_STRING);
