@@ -10,14 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ConversationSource } from '../../../generated/entity/feed/conversation';
 import type { Task } from '../../../generated/entity/tasks/task';
 import { TaskStatus, TaskType } from '../../../generated/entity/tasks/task';
 import type { MetricActivityListItem } from './MetricActivity.types';
@@ -32,10 +26,16 @@ describe('Metric activity list items', () => {
       kind: 'thread',
       timestamp: 10,
       value: {
-        createdBy: 'alice',
+        about: '<#E::metric::revenue>',
+        createdAt: 10,
+        createdBy: { id: 'alice-id', name: 'alice', type: 'user' },
+        entityRef: { id: 'metric-1', type: 'metric' },
         id: 'thread-1',
         message: 'Please clarify the definition',
-        postsCount: 2,
+        replyCount: 2,
+        resolved: false,
+        source: ConversationSource.User,
+        updatedAt: 10,
       },
     } as MetricActivityListItem;
     render(

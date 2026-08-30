@@ -10,37 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { FeedFilter } from '../../../enums/mydata.enum';
 import type { CreateTask } from '../../../generated/api/tasks/createTask';
 import {
   TaskCategory,
   TaskPriority,
   TaskType,
 } from '../../../generated/api/tasks/createTask';
+import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
 import {
-  getAllFeeds,
-  getEntityActivityByFqn,
-  getFeedCount,
-} from '../../../rest/feedsAPI';
+  createConversation,
+  createConversationReply,
+  listConversations,
+} from '../../../rest/conversationsAPI';
 import { createTask, getTaskCounts, listTasks } from '../../../rest/tasksAPI';
 import { useMetricActivity } from './useMetricActivity';
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  getAllFeeds: jest.fn(),
+jest.mock('../../../rest/activityAPI', () => ({
   getEntityActivityByFqn: jest.fn(),
-  getFeedCount: jest.fn(),
-  postFeedById: jest.fn(),
-  postThread: jest.fn(),
+}));
+jest.mock('../../../rest/conversationsAPI', () => ({
+  createConversation: jest.fn(),
+  createConversationReply: jest.fn(),
+  listConversations: jest.fn(),
 }));
 jest.mock('../../../rest/tasksAPI', () => ({
   TaskStatusGroup: { Closed: 'closed', Open: 'open' },
@@ -69,11 +64,14 @@ describe('useMetricActivity', () => {
       data: [{ id: 'event-1', timestamp: 10 }],
       paging: { total: 75 },
     });
-    (getAllFeeds as jest.Mock).mockResolvedValue({
+    (listConversations as jest.Mock).mockResolvedValue({
       data: [],
       paging: { total: 0 },
     });
-    (getFeedCount as jest.Mock).mockResolvedValue([]);
+    (createConversation as jest.Mock).mockResolvedValue({
+      id: 'conversation-1',
+    });
+    (createConversationReply as jest.Mock).mockResolvedValue({ id: 'reply-1' });
     (getTaskCounts as jest.Mock).mockResolvedValue({
       completed: 2,
       open: 3,
@@ -131,17 +129,41 @@ describe('useMetricActivity', () => {
       { wrapper: createWrapper() }
     );
 
-    await waitFor(() => expect(getAllFeeds).toHaveBeenCalled());
+    await waitFor(() => expect(listConversations).toHaveBeenCalled());
 
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      '<#E::metric::revenue>',
-      undefined,
-      'Conversation',
-      FeedFilter.MENTIONS,
-      undefined,
-      'user-1',
-      50
+    expect(listConversations).toHaveBeenCalledWith({
+      entityLink: '<#E::metric::revenue>',
+      filterType: ConversationFilterType.Mentions,
+      limit: 50,
+      userId: 'user-1',
+    });
+  });
+
+  it('creates conversations and replies through the current APIs', async () => {
+    const { result } = renderHook(
+      () =>
+        useMetricActivity({
+          metricFqn: 'revenue',
+          status: 'open',
+          tab: 'all',
+        }),
+      { wrapper: createWrapper() }
     );
+
+    await act(async () =>
+      result.current.createComment(undefined, 'Discuss revenue')
+    );
+    await act(async () =>
+      result.current.replyToThread('conversation-1', 'Agreed')
+    );
+
+    expect(createConversation).toHaveBeenCalledWith({
+      about: '<#E::metric::revenue>',
+      message: 'Discuss revenue',
+    });
+    expect(createConversationReply).toHaveBeenCalledWith('conversation-1', {
+      message: 'Agreed',
+    });
   });
 
   it('creates metric metadata tasks and refreshes task state', async () => {

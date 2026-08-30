@@ -11,35 +11,42 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
 import type { FeedCounts } from '../../../interface/feed.interface';
-import { getEntityActivityByFqn, getFeedCount } from '../../../rest/feedsAPI';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
+import { listConversations } from '../../../rest/conversationsAPI';
 import { getTaskCounts } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { createMetricFeedCounts } from './MetricActivity.utils';
 
 export const getMetricFeedCounts = async (
-  metricFqn: string
+  metricFqn: string,
+  currentUserId?: string
 ): Promise<FeedCounts> => {
-  const [activityResponse, threadCounts, taskCounts] = await Promise.all([
-    getEntityActivityByFqn(EntityType.METRIC, metricFqn, {
-      days: 30,
-      limit: 0,
-    }),
-    getFeedCount(getEntityFeedLink(EntityType.METRIC, metricFqn)),
-    getTaskCounts({ aboutEntity: metricFqn }),
-  ]);
+  const entityLink = getEntityFeedLink(EntityType.METRIC, metricFqn);
+  const [activityResponse, conversations, mentions, taskCounts] =
+    await Promise.all([
+      getEntityActivityByFqn(EntityType.METRIC, metricFqn, {
+        days: 30,
+        limit: 0,
+      }),
+      listConversations({ entityLink, limit: 1 }),
+      currentUserId
+        ? listConversations({
+            entityLink,
+            filterType: ConversationFilterType.Mentions,
+            limit: 1,
+            userId: currentUserId,
+          })
+        : Promise.resolve({ data: [], paging: { total: 0 } }),
+      getTaskCounts({ aboutEntity: metricFqn }),
+    ]);
 
   return createMetricFeedCounts({
     activityEventCount: activityResponse.paging?.total ?? 0,
     closedTaskCount: taskCounts.completed ?? 0,
-    conversationThreadCount: threadCounts.reduce(
-      (total, count) => total + (count.conversationCount ?? 0),
-      0
-    ),
-    mentionCount: threadCounts.reduce(
-      (total, count) => total + count.mentionCount,
-      0
-    ),
+    conversationThreadCount: conversations.paging.total,
+    mentionCount: mentions.paging.total,
     openTaskCount: taskCounts.open ?? 0,
     totalTaskCount: taskCounts.total ?? 0,
   });

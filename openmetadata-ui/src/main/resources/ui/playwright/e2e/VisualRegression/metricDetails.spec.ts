@@ -683,9 +683,8 @@ const captureMetricScreens = async (
   await expectMetricScreenshot(page, 'assets', viewport);
   if (viewport === 'narrow') {
     await page
-      .getByRole('dialog')
+      .getByTestId('metric-asset-summary-drawer-header')
       .getByRole('button', { name: 'Close' })
-      .first()
       .click();
     await expect(page.getByRole('dialog')).toBeHidden();
   }

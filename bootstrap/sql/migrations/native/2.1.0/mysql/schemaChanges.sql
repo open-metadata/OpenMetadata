@@ -3,7 +3,20 @@
 -- UNIQUE (id, usageDate), which is unusable for that predicate, so every run full-scans
 -- the table once per subquery. A composite (entityType, usageDate) index turns the
 -- percentile subqueries into range scans.
-CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate);
+SET @entity_usage_percentile_index_ddl = (
+  SELECT IF(
+    COUNT(*) = 0,
+    'CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate)',
+    'SELECT 1'
+  )
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'entity_usage'
+    AND index_name = 'idx_entity_usage_entitytype_usagedate'
+);
+PREPARE entity_usage_percentile_index_stmt FROM @entity_usage_percentile_index_ddl;
+EXECUTE entity_usage_percentile_index_stmt;
+DEALLOCATE PREPARE entity_usage_percentile_index_stmt;
 -- Incident Manager grouped incidents - OpenMetadata 2.1.0
 
 -- Index the stateId partition used by the incident grouping endpoint (/testCaseIncidentStatus/incidentGroups)

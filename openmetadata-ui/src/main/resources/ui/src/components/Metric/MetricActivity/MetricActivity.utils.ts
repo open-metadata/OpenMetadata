@@ -15,7 +15,7 @@ import {
   ActivityEvent,
   ActivityEventType,
 } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import {
   ResolutionType,
   TaskAvailableTransition,
@@ -31,7 +31,7 @@ import {
 
 export const mergeMetricActivity = (
   events: ActivityEvent[],
-  threads: Thread[]
+  conversations: Conversation[]
 ): MetricActivityListItem[] =>
   [
     ...events.map((event) => ({
@@ -40,11 +40,11 @@ export const mergeMetricActivity = (
       timestamp: event.timestamp,
       value: event,
     })),
-    ...threads.map((thread) => ({
-      id: thread.id,
+    ...conversations.map((conversation) => ({
+      id: conversation.id,
       kind: 'thread' as const,
-      timestamp: thread.updatedAt ?? thread.threadTs ?? 0,
-      value: thread,
+      timestamp: conversation.updatedAt,
+      value: conversation,
     })),
   ].sort((left, right) => right.timestamp - left.timestamp);
 

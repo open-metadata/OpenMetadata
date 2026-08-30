@@ -29,16 +29,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }: {
     children: ReactNode;
     onSelectionChange: (selection: 'all' | Set<string>) => void;
-  }) => (
-    <TableContext.Provider value={{ onSelectionChange }}>
-      <button
-        data-testid="select-all-visible-rows"
-        onClick={() => onSelectionChange('all')}>
-        select all
-      </button>
-      <table>{children}</table>
-    </TableContext.Provider>
-  );
+  }) => {
+    const tableContextValue = React.useMemo(
+      () => ({ onSelectionChange }),
+      [onSelectionChange]
+    );
+
+    return (
+      <TableContext.Provider value={tableContextValue}>
+        <button
+          data-testid="select-all-visible-rows"
+          onClick={() => onSelectionChange('all')}>
+          select all
+        </button>
+        <table>{children}</table>
+      </TableContext.Provider>
+    );
+  };
   Table.Header = ({ children }: { children: ReactNode }) => (
     <thead>
       <tr>{children}</tr>

@@ -13,16 +13,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { FeedFilter } from '../../../enums/mydata.enum';
-import { ThreadType } from '../../../generated/entity/feed/thread';
+import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
 import {
-  getAllFeeds,
-  getEntityActivityByFqn,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from '../../../rest/feedsAPI';
+  createConversation,
+  createConversationReply,
+  listConversations,
+} from '../../../rest/conversationsAPI';
 import {
   addTaskComment,
   closeTask,
@@ -53,14 +51,13 @@ export const metricTasksQueryKey = (
   status: MetricTaskStatusFilter
 ) => ['metric-activity-tasks', metricFqn, status];
 
-export const metricActivityCountsQueryKey = (metricFqn: string) => [
-  'metric-activity-counts',
-  metricFqn,
-];
+export const metricActivityCountsQueryKey = (
+  metricFqn: string,
+  currentUserId?: string
+) => ['metric-activity-counts', metricFqn, currentUserId];
 
 export interface UseMetricActivityParams {
   currentUserId?: string;
-  currentUserName?: string;
   metricFqn: string;
   status: MetricTaskStatusFilter;
   tab: MetricActivityTabKey;
@@ -69,7 +66,6 @@ export interface UseMetricActivityParams {
 
 export const useMetricActivity = ({
   currentUserId,
-  currentUserName,
   metricFqn,
   status,
   tab,
@@ -80,32 +76,37 @@ export const useMetricActivity = ({
   const [taskLimit, setTaskLimit] = useState(50);
   const entityLink = getEntityFeedLink(EntityType.METRIC, metricFqn);
   const activityQuery = useQuery({
-    queryKey: [...metricActivityQueryKey(metricFqn, tab), activityLimit],
+    queryKey: [
+      ...metricActivityQueryKey(metricFqn, tab),
+      currentUserId,
+      activityLimit,
+    ],
     queryFn: async () => {
       const isMentions = tab === 'mentions';
-      const [events, threads] = await Promise.all([
+      if (isMentions && !currentUserId) {
+        return { data: [], hasMore: false };
+      }
+
+      const [events, conversations] = await Promise.all([
         isMentions
           ? Promise.resolve({ data: [], paging: { total: 0 } })
           : getEntityActivityByFqn(EntityType.METRIC, metricFqn, {
               days: 30,
               limit: activityLimit,
             }),
-        getAllFeeds(
+        listConversations({
           entityLink,
-          undefined,
-          ThreadType.Conversation,
-          isMentions ? FeedFilter.MENTIONS : FeedFilter.ALL,
-          undefined,
-          isMentions ? currentUserId : undefined,
-          activityLimit
-        ),
+          filterType: isMentions ? ConversationFilterType.Mentions : undefined,
+          limit: activityLimit,
+          userId: isMentions ? currentUserId : undefined,
+        }),
       ]);
 
       return {
-        data: mergeMetricActivity(events.data, threads.data),
+        data: mergeMetricActivity(events.data, conversations.data),
         hasMore:
           events.paging.total > events.data.length ||
-          threads.paging.total > threads.data.length,
+          conversations.paging.total > conversations.data.length,
       };
     },
     enabled: Boolean(metricFqn) && tab !== 'tasks',
@@ -126,30 +127,32 @@ export const useMetricActivity = ({
   });
 
   const countsQuery = useQuery({
-    queryKey: metricActivityCountsQueryKey(metricFqn),
+    queryKey: metricActivityCountsQueryKey(metricFqn, currentUserId),
     queryFn: async () => {
-      const [feedCounts, taskCounts, activity] = await Promise.all([
-        getFeedCount(entityLink),
-        getTaskCounts({ aboutEntity: metricFqn }),
-        getEntityActivityByFqn(EntityType.METRIC, metricFqn, {
-          days: 30,
-          limit: 100,
-        }),
-      ]);
-      const mentionCount = feedCounts.reduce(
-        (total, count) => total + count.mentionCount,
-        0
-      );
-      const conversationThreadCount = feedCounts.reduce(
-        (total, count) => total + (count.conversationCount ?? 0),
-        0
+      const [conversations, mentions, taskCounts, activity] = await Promise.all(
+        [
+          listConversations({ entityLink, limit: 1 }),
+          currentUserId
+            ? listConversations({
+                entityLink,
+                filterType: ConversationFilterType.Mentions,
+                limit: 1,
+                userId: currentUserId,
+              })
+            : Promise.resolve({ data: [], paging: { total: 0 } }),
+          getTaskCounts({ aboutEntity: metricFqn }),
+          getEntityActivityByFqn(EntityType.METRIC, metricFqn, {
+            days: 30,
+            limit: 100,
+          }),
+        ]
       );
 
       return createMetricFeedCounts({
         activityEventCount: activity.paging.total,
         closedTaskCount: taskCounts.completed ?? 0,
-        conversationThreadCount,
-        mentionCount,
+        conversationThreadCount: conversations.paging.total,
+        mentionCount: mentions.paging.total,
         openTaskCount: taskCounts.open ?? 0,
         totalTaskCount: taskCounts.total ?? 0,
       });
@@ -179,16 +182,15 @@ export const useMetricActivity = ({
       queryKey: ['metric-activity-tasks', metricFqn],
     });
     queryClient.invalidateQueries({
-      queryKey: metricActivityCountsQueryKey(metricFqn),
+      queryKey: metricActivityCountsQueryKey(metricFqn, currentUserId),
     });
   };
 
   const createThreadMutation = useMutation({
     mutationFn: ({ about, message }: { about?: string; message: string }) =>
-      postThread({
+      createConversation({
         about: about || entityLink,
         message,
-        type: ThreadType.Conversation,
       }),
     onSuccess: invalidate,
   });
@@ -199,12 +201,7 @@ export const useMetricActivity = ({
     }: {
       message: string;
       threadId: string;
-    }) =>
-      postFeedById(threadId, {
-        from: currentUserName ?? '',
-        id: '',
-        message,
-      } satisfies Parameters<typeof postFeedById>[1]),
+    }) => createConversationReply(threadId, { message }),
     onSuccess: invalidate,
   });
   const taskCommentMutation = useMutation({

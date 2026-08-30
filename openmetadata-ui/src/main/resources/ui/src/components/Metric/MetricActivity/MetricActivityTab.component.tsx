@@ -81,7 +81,6 @@ const MetricActivityTab = ({
   );
   const state = useMetricActivity({
     currentUserId: currentUser?.id,
-    currentUserName: currentUser?.name,
     metricFqn: metric.fullyQualifiedName ?? '',
     onUpdateFeedCount,
     status: taskStatus,

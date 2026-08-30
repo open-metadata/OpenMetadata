@@ -144,16 +144,18 @@ const MetricActivityDetail = ({
           extra={
             <CloseButton label={t('label.close')} size="sm" onPress={onClose} />
           }
-          subtitle={formatDateTime(thread.updatedAt ?? thread.threadTs)}
+          subtitle={formatDateTime(thread.updatedAt)}
           title={t('label.conversation')}
         />
         <Card.Content className="tw:flex tw:flex-col tw:gap-4">
           <Box direction="col" gap={1}>
             <Typography size="text-sm" weight="semibold">
-              {thread.createdBy ?? t('label.unknown')}
+              {thread.createdBy
+                ? getEntityName(thread.createdBy)
+                : t('label.unknown')}
             </Typography>
             <Typography className="tw:whitespace-pre-wrap" size="text-sm">
-              {thread.message}
+              {thread.message ?? t('label.no-description')}
             </Typography>
           </Box>
           <Divider />
@@ -161,7 +163,7 @@ const MetricActivityDetail = ({
             <Typography size="text-sm" weight="semibold">
               {t('label.reply-lowercase-plural')}
             </Typography>
-            {(thread.posts ?? []).length === 0 ? (
+            {(thread.replies ?? []).length === 0 ? (
               <Typography className="tw:text-tertiary" size="text-sm">
                 {t('label.no-entity-available', {
                   entity: t('label.reply-lowercase-plural'),
@@ -169,20 +171,20 @@ const MetricActivityDetail = ({
               </Typography>
             ) : (
               <ul className="tw:flex tw:flex-col tw:gap-3">
-                {thread.posts?.map((post) => (
+                {thread.replies?.map((reply) => (
                   <li
                     className="tw:rounded-lg tw:bg-secondary tw:p-3"
-                    key={post.id}>
+                    key={reply.id}>
                     <Typography size="text-xs" weight="semibold">
-                      {post.from}
+                      {getEntityName(reply.author)}
                     </Typography>
                     <Typography
                       className="tw:whitespace-pre-wrap"
                       size="text-sm">
-                      {post.message}
+                      {reply.message}
                     </Typography>
                     <Typography className="tw:text-tertiary" size="text-xs">
-                      {formatDateTime(post.postTs)}
+                      {formatDateTime(reply.createdAt)}
                     </Typography>
                   </li>
                 ))}

@@ -115,21 +115,27 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onRowAction,
     onSelectionChange,
     'aria-label': ariaLabel,
-  }: Record<string, unknown>) => (
-    <SelectionContext.Provider
-      value={{
+  }: Record<string, unknown>) => {
+    const selectionContextValue = React.useMemo(
+      () => ({
         disabledKeys: new Set(disabledKeys as string[]),
         selectedKeys: selectedKeys as Set<string>,
         onRowAction: onRowAction as ((id: string) => void) | undefined,
         onSelectionChange: onSelectionChange as (
           selection: Set<string>
         ) => void,
-      }}>
-      <table aria-label={ariaLabel as string} data-testid="core-metric-table">
-        {children as React.ReactNode}
-      </table>
-    </SelectionContext.Provider>
-  );
+      }),
+      [disabledKeys, onRowAction, onSelectionChange, selectedKeys]
+    );
+
+    return (
+      <SelectionContext.Provider value={selectionContextValue}>
+        <table aria-label={ariaLabel as string} data-testid="core-metric-table">
+          {children as React.ReactNode}
+        </table>
+      </SelectionContext.Provider>
+    );
+  };
   Table.Header = ({ children }: { children: React.ReactNode }) => (
     <thead>
       <tr>

@@ -92,8 +92,6 @@ test.describe(
   'Metric Activity and Tasks',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test('creates a mentioned conversation and completes a description task', async ({
       browser,
     }) => {

@@ -596,11 +596,13 @@ const MetricDetails: FC<MetricDetailsProps> = ({
     }
 
     try {
-      setFeedCount(await getMetricFeedCounts(decodedMetricFqn));
+      setFeedCount(
+        await getMetricFeedCounts(decodedMetricFqn, currentUser?.id)
+      );
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.entity-feed-fetch-error'));
     }
-  }, [decodedMetricFqn, t]);
+  }, [currentUser?.id, decodedMetricFqn, t]);
 
   useEffect(() => {
     if (!decodedMetricFqn) {

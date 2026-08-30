@@ -38,12 +38,14 @@ const MetricActivityItem = ({
   const isEvent = item.kind === 'activity';
   const title = isEvent
     ? item.value.summary ?? getMetricActivityEventLabel(t, item.value.eventType)
-    : item.value.message;
+    : item.value.message ?? t('label.conversation');
   const actor = isEvent
     ? item.value.actor
       ? getEntityName(item.value.actor)
       : t('label.system')
-    : item.value.createdBy ?? t('label.unknown');
+    : item.value.createdBy
+    ? getEntityName(item.value.createdBy)
+    : t('label.unknown');
 
   return (
     <Card isSelected={isActive}>
@@ -76,7 +78,7 @@ const MetricActivityItem = ({
           </Typography>
           {!isEvent && (
             <Typography className="tw:text-tertiary" size="text-xs">
-              {t('label.reply-lowercase-plural')}: {item.value.postsCount ?? 0}
+              {t('label.reply-lowercase-plural')}: {item.value.replyCount}
             </Typography>
           )}
         </Box>

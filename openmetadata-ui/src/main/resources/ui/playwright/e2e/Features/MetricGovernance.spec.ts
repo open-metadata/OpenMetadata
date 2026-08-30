@@ -426,8 +426,6 @@ const attachScreenshot = async (page: Page, testId: string, name: string) => {
 };
 
 test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
-
   test('a metric with no reviewers is approved on creation', async ({
     browser,
   }) => {
@@ -585,7 +583,9 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
       await reviewerPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
-        reviewerPage.getByTestId('metric-status-pill').first()
+        reviewerPage
+          .getByTestId('metric-detail-header')
+          .getByTestId('metric-status-pill')
       ).toContainText('Approved');
       await reviewerPage.getByTestId('approval').click();
       await expect(

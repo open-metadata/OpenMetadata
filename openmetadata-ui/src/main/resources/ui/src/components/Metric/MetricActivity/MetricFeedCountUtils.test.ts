@@ -11,17 +11,23 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
-import { getEntityActivityByFqn, getFeedCount } from '../../../rest/feedsAPI';
+import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
+import { listConversations } from '../../../rest/conversationsAPI';
 import { getTaskCounts } from '../../../rest/tasksAPI';
 import { getMetricFeedCounts } from './MetricFeedCountUtils';
 
-jest.mock('../../../rest/feedsAPI');
+jest.mock('../../../rest/activityAPI');
+jest.mock('../../../rest/conversationsAPI');
 jest.mock('../../../rest/tasksAPI');
 
 describe('getMetricFeedCounts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getFeedCount as jest.Mock).mockResolvedValue([]);
+    (listConversations as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
     (getTaskCounts as jest.Mock).mockResolvedValue({});
   });
 
@@ -54,17 +60,16 @@ describe('getMetricFeedCounts', () => {
     });
   });
 
-  it('adds conversation threads without treating mentions as extra activity', async () => {
+  it('counts conversations and current-user mentions independently', async () => {
     (getEntityActivityByFqn as jest.Mock).mockResolvedValue({
       data: [],
       paging: { total: 0 },
     });
-    (getFeedCount as jest.Mock).mockResolvedValue([
-      { conversationCount: 4, mentionCount: 2 },
-      { conversationCount: 3, mentionCount: 1 },
-    ]);
+    (listConversations as jest.Mock)
+      .mockResolvedValueOnce({ data: [], paging: { total: 7 } })
+      .mockResolvedValueOnce({ data: [], paging: { total: 3 } });
 
-    await expect(getMetricFeedCounts('metric')).resolves.toEqual({
+    await expect(getMetricFeedCounts('metric', 'user-1')).resolves.toEqual({
       conversationCount: 7,
       openTaskCount: 0,
       closedTaskCount: 0,
@@ -72,7 +77,16 @@ describe('getMetricFeedCounts', () => {
       totalCount: 7,
       mentionCount: 3,
     });
-    expect(getFeedCount).toHaveBeenCalledWith('<#E::metric::metric>');
+    expect(listConversations).toHaveBeenNthCalledWith(1, {
+      entityLink: '<#E::metric::metric>',
+      limit: 1,
+    });
+    expect(listConversations).toHaveBeenNthCalledWith(2, {
+      entityLink: '<#E::metric::metric>',
+      filterType: ConversationFilterType.Mentions,
+      limit: 1,
+      userId: 'user-1',
+    });
   });
 
   it('combines activity events, threads, mentions, and tasks exactly once', async () => {
@@ -80,16 +94,16 @@ describe('getMetricFeedCounts', () => {
       data: [],
       paging: { total: 8 },
     });
-    (getFeedCount as jest.Mock).mockResolvedValue([
-      { conversationCount: 5, mentionCount: 3 },
-    ]);
+    (listConversations as jest.Mock)
+      .mockResolvedValueOnce({ data: [], paging: { total: 5 } })
+      .mockResolvedValueOnce({ data: [], paging: { total: 3 } });
     (getTaskCounts as jest.Mock).mockResolvedValue({
       completed: 2,
       open: 4,
       total: 6,
     });
 
-    await expect(getMetricFeedCounts('metric')).resolves.toEqual({
+    await expect(getMetricFeedCounts('metric', 'user-1')).resolves.toEqual({
       closedTaskCount: 2,
       conversationCount: 13,
       mentionCount: 3,

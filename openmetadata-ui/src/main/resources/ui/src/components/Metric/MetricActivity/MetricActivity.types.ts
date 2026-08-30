@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import { Task } from '../../../generated/entity/tasks/task';
 
 export interface MetricMentionOption {
@@ -33,8 +33,8 @@ export type MetricTaskStatusFilter = 'closed' | 'open';
 export type MetricActivitySelection =
   | { kind: 'activity'; value: ActivityEvent }
   | { kind: 'task'; value: Task }
-  | { kind: 'thread'; value: Thread };
+  | { kind: 'thread'; value: Conversation };
 
 export type MetricActivityListItem =
   | { id: string; kind: 'activity'; timestamp: number; value: ActivityEvent }
-  | { id: string; kind: 'thread'; timestamp: number; value: Thread };
+  | { id: string; kind: 'thread'; timestamp: number; value: Conversation };

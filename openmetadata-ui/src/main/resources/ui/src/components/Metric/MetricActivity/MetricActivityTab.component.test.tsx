@@ -10,13 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
@@ -174,9 +167,16 @@ describe('MetricActivityTab', () => {
       kind: 'thread',
       timestamp: 10,
       value: {
-        createdBy: 'alice',
+        about: '<#E::metric::revenue>',
+        createdAt: 10,
+        createdBy: { id: 'alice-id', name: 'alice', type: 'user' },
+        entityRef: { id: 'metric-1', type: 'metric' },
         id: 'thread-1',
         message: 'Clarify the metric',
+        replyCount: 0,
+        resolved: false,
+        source: 'User',
+        updatedAt: 10,
       },
     };
     (useMetricActivity as jest.Mock).mockReturnValue({

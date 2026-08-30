@@ -235,21 +235,22 @@ const waitForMetricBulkEditGrid = async (page: Page, metricName: string) => {
     timeout: 90_000,
   });
   await expect(
-    page
-      .locator('.bulk-edit-name-value')
-      .filter({ hasText: metricName })
-      .first()
+    page.locator('.bulk-edit-name-value').filter({ hasText: metricName })
   ).toBeVisible();
 };
 
-const editFirstMetricDisplayName = async (page: Page, displayName: string) => {
+const editMetricDisplayName = async (
+  page: Page,
+  metricName: string,
+  displayName: string
+) => {
   const displayNameCell = page
     .locator('.rdg-row')
-    .first()
+    .filter({ hasText: metricName })
     .locator('[aria-colindex="3"]');
 
   await displayNameCell.dblclick();
-  const editor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`).first();
+  const editor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`);
   await expect(editor).toBeVisible();
   await editor.fill(displayName);
   await editor.press('Enter');
@@ -273,8 +274,6 @@ const expectMetricImportStatus = async (page: Page) => {
 };
 
 test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
-
   test('establishes a parent-child relationship without changing names', async ({
     browser,
   }) => {
@@ -553,9 +552,9 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByRole('button', { name: 'Status', exact: true }).click();
       await page.getByRole('menuitemradio', { name: 'Approved' }).click();
       await statusResponse;
-      await expect(
-        page.getByTestId('metric-status-pill').first()
-      ).toContainText('Approved');
+      await expect(rootRow.getByTestId('metric-status-pill')).toContainText(
+        'Approved'
+      );
 
       await page.getByRole('button', { name: 'Customize' }).click();
       await page
@@ -623,7 +622,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await editableRow.locator('label[slot="selection"]').click();
       await page.getByTestId('bulk-edit-metric').click();
       await waitForMetricBulkEditGrid(page, editableMetricName);
-      await editFirstMetricDisplayName(page, updatedDisplayName);
+      await editMetricDisplayName(page, editableMetricName, updatedDisplayName);
 
       const validateResponse = waitForMetricImportResponse(page, true);
       await page

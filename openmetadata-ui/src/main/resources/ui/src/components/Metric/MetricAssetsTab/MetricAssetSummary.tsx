@@ -41,6 +41,14 @@ interface SummaryListProps {
   values: string[];
 }
 
+const SUMMARY_LOADING_PLACEHOLDERS = [
+  'description',
+  'containment',
+  'ownership',
+  'classification',
+  'lineage',
+];
+
 const SummaryList = ({ emptyText, label, values }: SummaryListProps) => (
   <Box direction="col" gap={2}>
     <Typography className="tw:text-tertiary" size="text-xs" weight="semibold">
@@ -104,8 +112,8 @@ const MetricAssetSummary = ({
       <Card.Content className="tw:flex tw:flex-col tw:gap-4">
         {isLoading ? (
           <Box direction="col" gap={3}>
-            {Array.from({ length: 5 }, (_, index) => (
-              <Skeleton height={38} key={index} variant="rounded" />
+            {SUMMARY_LOADING_PLACEHOLDERS.map((placeholder) => (
+              <Skeleton height={38} key={placeholder} variant="rounded" />
             ))}
           </Box>
         ) : (
@@ -224,8 +232,12 @@ const MetricAssetSummary = ({
                 </Typography>
               ) : (
                 <ul className="tw:flex tw:flex-col tw:gap-2">
-                  {lineage.columns.map((column, index) => (
-                    <li className="tw:text-sm tw:text-secondary" key={index}>
+                  {lineage.columns.map((column) => (
+                    <li
+                      className="tw:text-sm tw:text-secondary"
+                      key={`${column.fromColumns.join('|')}::${
+                        column.toColumn ?? 'unmapped'
+                      }`}>
                       {column.fromColumns.join(', ')} →{' '}
                       {column.toColumn ?? t('label.empty-dash')}
                     </li>
