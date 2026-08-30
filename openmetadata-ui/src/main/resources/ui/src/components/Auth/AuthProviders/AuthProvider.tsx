@@ -68,7 +68,9 @@ import {
   readAppModeHint,
   readAppModeSession,
   resolveEffectiveAppMode,
+  resolvePersonaAppMode,
   setAppDefaultMode,
+  translatePreferenceMode,
   translateWireMode,
   writeAppMode,
 } from '../../../hooks/useAppMode';
@@ -76,11 +78,13 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
+import { personaDocFqn } from '../../../rest/queries/docStoreQuery';
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
@@ -149,9 +153,15 @@ const isEmailVerifyField = 'isEmailVerified';
  * Hydrates the local preferences store from the server (or migrates a
  * local-only value up, on first boot after this feature ships), then
  * resolves and writes the effective app mode via the fallback chain:
- * user preference -> persona (unknown synchronously here; refined shortly
- * after by `useResolvedAppMode` once the persona doc loads) -> tenant
- * default -> `DEFAULT_APP_MODE`.
+ * user preference -> persona -> tenant default -> `DEFAULT_APP_MODE`.
+ *
+ * Persona resolution is authoritative at boot: when the chain actually
+ * needs to run (no sticky session tuple, no fresh cross-tab hint) we
+ * fetch the persona's UICustomization doc and translate its forced
+ * `appMode` via {@link resolvePersonaAppMode}. This replaces the
+ * now-deleted `useResolvedAppMode` hook, which used to refine the mode
+ * asynchronously after boot — there is no post-boot resolver anymore, so
+ * the write below is final rather than provisional.
  */
 const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const [prefsRes, appConfig] = await Promise.all([
@@ -163,49 +173,69 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
 
-  // Skip the boot-time write when this tab already has a signal that
-  // `useResolvedAppMode` will resolve authoritatively — the resolver is
-  // the single source of truth once it has persona + registry
-  // information, and writing to the session tuple here poisons the
-  // subsequent resolve. Two signals count:
+  // Skip the boot-time write when this tab already has a stickier
+  // signal:
   //
-  //   1. A session tuple this tab already owns (returning tab, or a
-  //      manual toggle earlier in this tab).
+  //   1. A session tuple this tab already owns from a manual toggle or a
+  //      prior resolve (`source !== 'boot'`) — the user's active in-tab
+  //      choice wins over persona / preference. A `'boot'` tuple from an
+  //      earlier auth cycle is NOT sticky and should be re-resolved, so
+  //      don't skip on that.
   //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
-  //      sibling tab's active mode carries into a newly-opened tab.
-  //      Once we write `DEFAULT_APP_MODE` here, the resolver's session-
-  //      tuple check is satisfied by our write and it never consults
-  //      the hint, so a cmd+click from an AI tab silently boots the new
-  //      tab into Classic.
-  // A returning tab (a `'manual'` or `'resolver'` tuple from a prior
-  // resolve) or a fresh tab that inherits an active hint from a
-  // sibling — leave both alone. `useResolvedAppMode` treats these as
-  // sticky and returns without rewriting. A `'boot'` tuple from an
-  // earlier auth cycle is NOT sticky and should be re-resolved, so
-  // don't skip on that.
+  //      sibling tab's active mode carries into a newly-opened tab
+  //      (cmd+click). We still need to seed THIS tab's store from that
+  //      hint (module init deliberately never reads the hint, so the
+  //      store is at `DEFAULT_APP_MODE` here), but we must not run the
+  //      persona/preference chain — the sibling's active choice wins.
   const existingSession = readAppModeSession();
   if (existingSession?.mode && existingSession.source !== 'boot') {
     return;
   }
   const hint = readAppModeHint();
   if (isAppModeHintFresh(hint) && hint?.mode) {
+    // Adopt the sibling tab's mode so this new tab renders the right
+    // shell. `source: 'boot'` keeps the tuple re-resolvable on the next
+    // reload and skips re-writing the hint (no self-leak).
+    writeAppMode(hint.mode, null, { source: 'boot' });
+
     return;
   }
 
-  const userPref =
-    derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+  // `appMode` off the wire is the preference's WIRE token ("classic" /
+  // "ai" / legacy "ai"), not the runtime mode string — translate
+  // before feeding it into the resolver. See `translatePreferenceMode` in
+  // `useAppMode.ts` (#31906 follow-up: the switcher's remember checkbox
+  // writes the wire token, so the boot read must undo that translation).
+  const userPref = translatePreferenceMode(
+    derivePreferencesFromList(prefsRes.preferences).appMode ?? null
+  );
 
-  // Provisional boot write — persona isn't known synchronously (its
-  // docStore doc is fetched by `useResolvedAppMode`), so we compute
-  // the best guess from what IS available (userPref, appDefault) and
-  // mark it `source: 'boot'`. The async resolver is allowed to
-  // override this tuple once it has the persona-doc result and the
-  // route registry has settled. The `writeHint` call inside
-  // `writeAppMode` is skipped for `'boot'` writes so a provisional
-  // guess doesn't leak to sibling tabs as an authoritative hint.
-  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault), null, {
-    source: 'boot',
-  });
+  // Persona precedence: only fetched here (not in the Promise.all above)
+  // so a returning tab that short-circuits on its session tuple / hint
+  // pays no persona-doc round-trip. Best-effort — a failed fetch or a
+  // persona with no forced `appMode` yields `null` and the chain falls
+  // through to userPref / tenant default.
+  const personaFqn = personaDocFqn(user.defaultPersona ?? null);
+  const personaDoc = personaFqn
+    ? await getDocumentByFQN(personaFqn).catch(() => undefined)
+    : undefined;
+  const personaMode = resolvePersonaAppMode(
+    personaDoc,
+    user.defaultPersona?.id
+  );
+
+  // Final boot write — persona is now known, so this is the authoritative
+  // mode (the old async `useResolvedAppMode` refinement is gone). Marked
+  // `source: 'boot'` so it stays re-resolvable on the next reload (a later
+  // persona-doc edit takes effect) while a manual toggle's `'manual'`
+  // tuple remains sticky. The `writeHint` inside `writeAppMode` is skipped
+  // for `'boot'` writes so this doesn't leak to sibling tabs as an
+  // authoritative hint.
+  writeAppMode(
+    resolveEffectiveAppMode(userPref, personaMode, appDefault),
+    personaMode,
+    { source: 'boot' }
+  );
 };
 
 let requestInterceptor: number | null = null;
