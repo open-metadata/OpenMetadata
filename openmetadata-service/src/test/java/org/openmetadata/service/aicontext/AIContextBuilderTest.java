@@ -251,7 +251,10 @@ class AIContextBuilderTest {
   @Test
   void applyKnowledgeBudget_reservesCueRoomForStaleItems() {
     KnowledgeItem fresh = knowledgeItem("fresh", "z".repeat(4000));
-    KnowledgeItem stale = knowledgeItem("stale", "z".repeat(4000)).withStale(true);
+    KnowledgeItem stale =
+        knowledgeItem("stale", "z".repeat(4000))
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
     AIContextBuilder builder =
         new AIContextBuilder("table", "svc.db.sch.orders")
             .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS);
@@ -263,10 +266,12 @@ class AIContextBuilderTest {
 
     assertTrue(Boolean.TRUE.equals(fresh.getContentTruncated()));
     assertTrue(Boolean.TRUE.equals(stale.getContentTruncated()));
+    // Invariant: rendered cue + excerpt stays within the fresh item's budget share (exact sizing,
+    // not an estimate).
     assertTrue(
-        stale.getContent().length()
-            <= AIContextBuilder.EXCERPT_CHARS + 1 - AIContextBuilder.STALE_CUE_RESERVE,
-        "stale excerpt plus its rendered cue stays within the fresh item's budget share");
+        stale.getContent().length() + AIContextMarkdown.staleCue(stale).length()
+            <= fresh.getContent().length() + 1,
+        "stale excerpt plus its rendered cue stays within the budget share");
   }
 
   @Test

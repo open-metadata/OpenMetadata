@@ -130,12 +130,6 @@ public class AIContextBuilder {
   /** Max upstream edges whose data-quality standing is checked for staleness stamping. */
   static final int MAX_UPSTREAM_DQ_CHECKS = 3;
 
-  /**
-   * Characters reserved in a stale item's budget share for the trust cue rendered alongside its
-   * excerpt in Compact Markdown, so the cue never pushes a bundle past the caller's budget.
-   */
-  static final int STALE_CUE_RESERVE = 80;
-
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
@@ -255,9 +249,11 @@ public class AIContextBuilder {
     String content = item.getContent();
     int budget = remaining;
     if (!nullOrEmpty(content)) {
-      // Stale items render a trust cue next to their excerpt in Compact Markdown; reserve its
-      // length so the cue never pushes the bundle past the caller's budget.
-      int effective = remaining - (Boolean.TRUE.equals(item.getStale()) ? STALE_CUE_RESERVE : 0);
+      // Stale items render a trust cue next to their excerpt in Compact Markdown; charge the cue's
+      // exact rendered length so it never pushes the bundle past the caller's budget.
+      int cueChars =
+          Boolean.TRUE.equals(item.getStale()) ? AIContextMarkdown.staleCue(item).length() : 0;
+      int effective = remaining - cueChars;
       if (content.length() <= MAX_ITEM_CHARS && content.length() <= effective) {
         budget = remaining - content.length();
       } else if (effective >= MIN_EXCERPT_CHARS) {
@@ -523,6 +519,11 @@ public class AIContextBuilder {
       if (ref == null || !Entity.TABLE.equals(ref.getType())) {
         continue;
       }
+      // Being allowed to view this asset does not imply access to its upstreams: skip any upstream
+      // the caller cannot view, so its DQ standing is never leaked through the stale flag.
+      if (!canViewKnowledge(Entity.TABLE, ref.getFullyQualifiedName())) {
+        continue;
+      }
       checked++;
       try {
         Table upstream = (Table) Entity.getEntity(ref, "testSuite", Include.NON_DELETED);
@@ -537,7 +538,7 @@ public class AIContextBuilder {
         }
       } catch (Exception e) {
         LOG.warn(
-            "AIContext: failed to load upstream data quality for {}",
+            "AIContext: failed to load upstream data quality for {}: {}",
             ref.getName(),
             e.getMessage());
       }
