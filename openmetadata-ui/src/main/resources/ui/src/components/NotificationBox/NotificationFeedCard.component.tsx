@@ -30,11 +30,6 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
-// Deep link carried by the notification written when a user is added as a
-// collaborator on an AI chat conversation. Such a thread's `about` points at the
-// invitee's own user record, so the generic "mentioned you on the <entity>"
-// wording would send the reader to their own profile instead of the chat.
-const CONVERSATION_PATH_PREFIX = '/conversations/';
 
 const NotificationFeedCard: FC<NotificationFeedProp> = ({
   createdBy,
@@ -47,11 +42,6 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const isMentionNotification = Boolean(mentionNotification && !taskEntity);
-  const conversationLink = mentionNotification?.entityUrlLink;
-  const isChatCollaboratorNotification = Boolean(
-    isMentionNotification &&
-      conversationLink?.startsWith(CONVERSATION_PATH_PREFIX)
-  );
   const taskLink = useMemo(() => {
     return taskEntity ? getTaskDetailPathFromTask(taskEntity) : '';
   }, [taskEntity]);
@@ -85,14 +75,6 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   }, [taskEntity, taskLink, handleTaskLinkClick, t]);
 
   const entityName = useMemo(() => {
-    if (isChatCollaboratorNotification) {
-      // Falsy rather than nullish: an empty headerMessage would otherwise render
-      // an empty link label.
-      return (
-        mentionNotification?.feedInfo?.headerMessage || t('label.conversation')
-      );
-    }
-
     const entityRef = (taskEntity?.about ?? mentionNotification?.entityRef) as
       | SourceType
       | undefined;
@@ -100,29 +82,19 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
     return entityRef
       ? getEntityName(entityRef as SourceType)
       : entityDisplayName(entityType, entityFQN);
-  }, [
-    entityFQN,
-    entityType,
-    isChatCollaboratorNotification,
-    mentionNotification,
-    taskEntity,
-    t,
-  ]);
+  }, [entityFQN, entityType, mentionNotification, taskEntity]);
 
-  const mentionLink = isChatCollaboratorNotification
-    ? (conversationLink as string)
-    : prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL);
+  const mentionLink = prepareFeedLink(
+    entityType,
+    entityFQN,
+    ActivityFeedTabs.ALL
+  );
 
   const mentionContent = useMemo(
     () => (
       <>
-        <span>
-          {' '}
-          {isChatCollaboratorNotification
-            ? t('message.added-you-as-a-collaborator-on-lowercase')
-            : t('message.mentioned-you-on-the-lowercase')}{' '}
-        </span>{' '}
-        {!isChatCollaboratorNotification && <span>{entityType} </span>}
+        <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
+        <span>{entityType} </span>
         <Link
           className="truncate"
           data-testid={`notification-link-${entityName}`}
@@ -131,7 +103,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         </Link>
       </>
     ),
-    [isChatCollaboratorNotification, entityType, entityName, mentionLink, t]
+    [entityType, entityName, mentionLink, t]
   );
 
   return (

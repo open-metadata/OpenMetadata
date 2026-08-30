@@ -1,0 +1,17 @@
+@prefix fhir: <https://open-metadata.org/library/fhir/workflow/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+fhir:ClinicalWorkflow a skos:Concept ;
+  skos:prefLabel "Clinical Workflow" .
+
+fhir:RequestWorkflow a skos:Concept ;
+  skos:prefLabel "Request Workflow" ;
+  skos:broader fhir:ClinicalWorkflow .
+
+fhir:EventWorkflow a skos:Concept ;
+  skos:prefLabel "Event Workflow" ;
+  skos:broader fhir:ClinicalWorkflow .
+
+fhir:DefinitionWorkflow a skos:Concept ;
+  skos:prefLabel "Definition Workflow" ;
+  skos:broader fhir:ClinicalWorkflow .

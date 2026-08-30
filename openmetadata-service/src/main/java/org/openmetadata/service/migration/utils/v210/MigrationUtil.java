@@ -14,19 +14,89 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-/** Migration utility for 2.1.0 archival of legacy thread storage after task cutover. */
+/** Migration utilities for the 2.1.0 Conversation V2 cutover and legacy thread archival. */
 @Slf4j
 public class MigrationUtil {
+  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+  private static final String CREATE_CONVERSATION_RULE_NAME =
+      "DataConsumerPolicy-CreateConversation-Rule";
+
   private final Handle handle;
   private final ConnectionType connectionType;
 
   public MigrationUtil(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
     this.connectionType = connectionType;
+  }
+
+  /** Add the Conversation V2 create grant to existing DataConsumer policies. */
+  public static void addCreateConversationRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists =
+          policy.getRules().stream()
+              .anyMatch(rule -> CREATE_CONVERSATION_RULE_NAME.equals(rule.getName()));
+      if (!ruleExists) {
+        Rule rule =
+            new Rule()
+                .withName(CREATE_CONVERSATION_RULE_NAME)
+                .withDescription("Allow authenticated users to create conversations and replies.")
+                .withResources(List.of(Entity.CONVERSATION))
+                .withOperations(List.of(MetadataOperation.CREATE))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(rule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", CREATE_CONVERSATION_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException exception) {
+      LOG.warn("{} not found, skipping Conversation rule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception exception) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          CREATE_CONVERSATION_RULE_NAME,
+          DATA_CONSUMER_POLICY,
+          exception.getMessage(),
+          exception);
+    }
+  }
+
+  public static void refreshConversationNotificationTemplates() {
+    try {
+      NotificationTemplateRepository repository =
+          (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
+      repository.initOrUpdateSeedDataFromResources();
+    } catch (Exception exception) {
+      LOG.warn(
+          "Could not refresh Conversation V2 system notification templates: {}",
+          exception.getMessage());
+    }
   }
 
   public void archiveLegacyThreadStorage() {
@@ -47,6 +117,68 @@ public class MigrationUtil {
     }
 
     LOG.info("Archived legacy thread storage from thread_entity_legacy to thread_entity_archived");
+  }
+
+  /**
+   * Queries can legitimately belong to multiple domains: a query inherits the domain of every table
+   * it is used in (see QueryRepository), so a query joining tables from different domains carries
+   * more than one. The default "Multiple Domains are not allowed" / "Data Product Domain Validation"
+   * rules only exempt user/team/persona/bot, so a multi-domain query round-tripped through a
+   * full-body update was rejected. Fresh installs pick up the exemption from entityRulesSettings.json;
+   * existing instances already have the setting persisted (SettingsCache seeds only when absent), so
+   * they need this migration to reconcile the stored value. Idempotent and scoped to the two system
+   * domain rules; user customizations to other rules are preserved.
+   */
+  public static void exemptQueryFromMultiDomainRules() {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    if (systemRepository == null) {
+      LOG.warn("SystemRepository unavailable, skipping query multi-domain rule exemption");
+      return;
+    }
+    Settings settings =
+        systemRepository.getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    if (settings == null || settings.getConfigValue() == null) {
+      LOG.info("entityRulesSettings not present, skipping query multi-domain rule exemption");
+      return;
+    }
+    EntityRulesSettings rules =
+        JsonUtils.readValue(
+            JsonUtils.pojoToJson(settings.getConfigValue()), EntityRulesSettings.class);
+    if (addQueryDomainRuleExemption(rules)) {
+      settings.setConfigValue(rules);
+      systemRepository.updateSetting(settings);
+      LOG.info("Exempted 'query' from single-domain rules for multi-domain query inheritance");
+    }
+  }
+
+  private static final List<String> QUERY_EXEMPT_DOMAIN_RULES =
+      List.of("Multiple Domains are not allowed", "Data Product Domain Validation");
+  private static final String QUERY_ENTITY = "query";
+
+  /**
+   * Adds {@code query} to the {@code ignoredEntities} of the single-domain rules if missing. Returns
+   * true when a change was made. Pure (no I/O) so it is unit-testable.
+   */
+  static boolean addQueryDomainRuleExemption(EntityRulesSettings rules) {
+    if (rules == null || rules.getEntitySemantics() == null) {
+      return false;
+    }
+    boolean changed = false;
+    for (SemanticsRule rule : rules.getEntitySemantics()) {
+      if (!QUERY_EXEMPT_DOMAIN_RULES.contains(rule.getName())) {
+        continue;
+      }
+      // A customized/older persisted rule may carry a null list; initialize it so the exemption is
+      // never silently skipped.
+      if (rule.getIgnoredEntities() == null) {
+        rule.setIgnoredEntities(new ArrayList<>());
+      }
+      if (!rule.getIgnoredEntities().contains(QUERY_ENTITY)) {
+        rule.getIgnoredEntities().add(QUERY_ENTITY);
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   private boolean tableExists(String tableName) {

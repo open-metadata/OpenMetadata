@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Dispatcher for entity lifecycle events.
@@ -175,7 +176,8 @@ public class EntityLifecycleEventDispatcher {
             handler);
       }
     } else if (shouldProcess(handler, EventType.ENTITY_CREATED, null)) {
-      runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
+      PostCommitActionQueue.runOrDefer(
+          () -> runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler));
     }
   }
 
@@ -270,10 +272,13 @@ public class EntityLifecycleEventDispatcher {
             handler);
       }
     } else if (shouldProcess(handler, EventType.ENTITY_UPDATED, changeDescription)) {
-      runInline(
+      PostCommitActionQueue.runOrDefer(
           () ->
-              handler.onEntitiesUpdated(entities, changeDescription, subjectContext, updateContext),
-          handler);
+              runInline(
+                  () ->
+                      handler.onEntitiesUpdated(
+                          entities, changeDescription, subjectContext, updateContext),
+                  handler));
     }
   }
 
@@ -366,6 +371,16 @@ public class EntityLifecycleEventDispatcher {
     if (!shouldProcess(handler, eventType, changeDescription)) {
       return;
     }
+    PostCommitActionQueue.runOrDefer(
+        () -> executeHandlerAfterCommit(entity, snapshotSupplier, eventType, handlerCall, handler));
+  }
+
+  private void executeHandlerAfterCommit(
+      EntityInterface entity,
+      Supplier<EntityInterface> snapshotSupplier,
+      EventType eventType,
+      Consumer<EntityInterface> handlerCall,
+      EntityLifecycleEventHandler handler) {
     if (handler.isAsync()) {
       EntityInterface snapshot = snapshotSupplier.get();
       if (snapshot != null) {
@@ -456,6 +471,15 @@ public class EntityLifecycleEventDispatcher {
   }
 
   private void executeHandler(
+      EntityReference reference,
+      EventType eventType,
+      Runnable handlerExecution,
+      EntityLifecycleEventHandler handler) {
+    PostCommitActionQueue.runOrDefer(
+        () -> executeHandlerAfterCommit(reference, eventType, handlerExecution, handler));
+  }
+
+  private void executeHandlerAfterCommit(
       EntityReference reference,
       EventType eventType,
       Runnable handlerExecution,

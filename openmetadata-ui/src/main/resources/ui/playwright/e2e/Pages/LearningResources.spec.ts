@@ -37,7 +37,9 @@ async function goToLearningResourcesAdmin(page: Page) {
     await admin.login(page);
   }
 
-  await page.waitForURL('**/my-data');
+  await page.waitForURL(
+    (url) => url.pathname === '/' || url.pathname === '/my-data'
+  );
   await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('learning-resources-page')).toBeVisible();

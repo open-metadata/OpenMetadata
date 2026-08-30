@@ -25,12 +25,15 @@ import {
   NOTIFICATION_READ_TIMER,
 } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
-import { Post, Thread } from '../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../generated/entity/feed/conversation';
+import { ConversationFilterType } from '../../generated/type/conversationFilterType';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
-import { getFeedsWithFilter } from '../../rest/feedsAPI';
+import { listConversations } from '../../rest/conversationsAPI';
 import {
   listMyAssignedTasks,
   Task as TaskEntity,
@@ -44,25 +47,11 @@ import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
-import { MentionNotification } from './NotificationFeedCard.interface';
-type NotificationItem = MentionNotification | TaskEntity;
+type NotificationItem = Conversation | TaskEntity;
 
 const isTaskNotification = (
   notification: NotificationItem
 ): notification is TaskEntity => 'taskId' in notification;
-
-const toMentionNotification = (thread: Thread): MentionNotification => ({
-  id: thread.id,
-  about: thread.about,
-  createdBy: thread.createdBy,
-  entityRef: thread.entityRef,
-  entityUrlLink: thread.entityUrlLink,
-  feedInfo: thread.feedInfo,
-  message: thread.message,
-  posts: thread.posts,
-  reactions: thread.reactions,
-  threadTs: thread.threadTs,
-});
 
 const NotificationBox = ({
   activeTab,
@@ -100,35 +89,31 @@ const NotificationBox = ({
         );
       }
 
-      const mainFeed = {
-        message: feed.message,
-        postTs: feed.threadTs,
-        from: feed.createdBy,
-        id: feed.id,
-        reactions: feed.reactions,
-      } as Post;
       const entityType = feed.entityRef?.type ?? getEntityType(feed.about);
       const entityFQN =
         feed.entityRef?.fullyQualifiedName ?? getEntityFQN(feed.about);
 
-      let actualUser = mainFeed.from;
-      let actualTimestamp = mainFeed.postTs;
+      let actualUser =
+        feed.createdBy?.name ?? feed.createdBy?.fullyQualifiedName ?? '';
+      let actualTimestamp = feed.createdAt;
 
       if (
         activeTab === NotificationTabsKey.CONVERSATION &&
-        feed.posts &&
-        feed.posts.length > 0
+        feed.replies &&
+        feed.replies.length > 0
       ) {
-        const mentionPost = feed.posts
-          .filter(
-            (post) =>
-              post.message.includes('<#E::user::') && post.postTs !== undefined
-          )
-          .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
+        const mentionReply = [...feed.replies]
+          .filter((reply) => reply.message.includes('<#E::user::'))
+          .sort((left, right) => right.createdAt - left.createdAt)[0] as
+          | ConversationReply
+          | undefined;
 
-        if (mentionPost?.postTs !== undefined) {
-          actualUser = mentionPost.from;
-          actualTimestamp = mentionPost.postTs;
+        if (mentionReply) {
+          actualUser =
+            mentionReply.author.name ??
+            mentionReply.author.fullyQualifiedName ??
+            '';
+          actualTimestamp = mentionReply.createdAt;
         }
       }
 
@@ -137,13 +122,13 @@ const NotificationBox = ({
           createdBy={actualUser}
           entityFQN={entityFQN as string}
           entityType={entityType as string}
-          key={`${actualUser} ${mainFeed.id}`}
-          mentionNotification={toMentionNotification(feed)}
+          key={`${actualUser} ${feed.id}`}
+          mentionNotification={feed}
           timestamp={actualTimestamp}
         />
       );
     });
-  }, [notifications]);
+  }, [activeTab, notifications]);
 
   const getTaskNotificationData = useCallback(() => {
     setIsLoading(true);
@@ -173,12 +158,11 @@ const NotificationBox = ({
 
   const getMentionNotificationData = useCallback(() => {
     setIsLoading(true);
-    getFeedsWithFilter(
-      currentUser?.id,
-      FeedFilter.MENTIONS,
-      undefined,
-      undefined
-    )
+    listConversations({
+      filterType: ConversationFilterType.Mentions,
+      limit: 10,
+      userId: currentUser?.id,
+    })
       .then((res) => {
         setNotifications(res.data);
       })

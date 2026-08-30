@@ -13,21 +13,20 @@
 
 package org.openmetadata.service.resources.activity;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -35,22 +34,21 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.entity.feed.ConversationReply;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ActivityStreamRepository;
+import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.RestUtil;
 
 /**
  * Resource for the lightweight activity stream API.
@@ -65,7 +63,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  *
  * <p>Domain-based filtering is automatically applied for users with domain-only access.
  */
-@Slf4j
 @Path("/v1/activity")
 @Tag(
     name = "Activity Stream",
@@ -75,11 +72,42 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ActivityResource {
 
   private final ActivityStreamRepository activityStreamRepository;
+  private final ConversationRepository conversationRepository;
   private final Authorizer authorizer;
 
   public ActivityResource(Authorizer authorizer) {
     this.authorizer = authorizer;
     this.activityStreamRepository = new ActivityStreamRepository();
+    this.conversationRepository = Entity.getConversationRepository();
+  }
+
+  @GET
+  @Path("/{id}/replies")
+  @Operation(operationId = "listActivityReplies", summary = "List replies to an activity")
+  public ResultList<ConversationReply> listReplies(
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @QueryParam("before") String before,
+      @QueryParam("after") String after,
+      @DefaultValue("20") @Min(1) @Max(100) @QueryParam("limit") int limit) {
+    return conversationRepository.listActivityReplies(
+        securityContext, authorizer, id, before, after, limit);
+  }
+
+  @POST
+  @Path("/{id}/replies")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(operationId = "createActivityReply", summary = "Reply to an activity")
+  public Response addReply(
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @Valid CreatePost request) {
+    ConversationReply reply =
+        conversationRepository.addActivityReply(securityContext, authorizer, id, request);
+    return Response.status(Response.Status.CREATED)
+        .entity(reply)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.POST_CREATED.value())
+        .build();
   }
 
   @GET
@@ -118,38 +146,8 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    // Calculate timestamp for filtering
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-
-    // Get user's domain context for filtering. The domain FQN form matches the other activity
-    // endpoints; the comma-separated id form is kept for existing callers.
-    List<UUID> domainIds =
-        nullOrEmpty(domain)
-            ? getEffectiveDomains(securityContext, domainsParam)
-            : getEffectiveDomainsByFqn(securityContext, domain);
-
-    List<ActivityEvent> events;
-
-    if (entityType != null) {
-      events =
-          entityId != null
-              ? activityStreamRepository.listByEntity(
-                  entityType, entityId, domainIds, afterTimestamp, limit)
-              : activityStreamRepository.listByEntityType(
-                  entityType, domainIds, afterTimestamp, limit);
-    } else if (actorId != null) {
-      // Filter by actor
-      events = activityStreamRepository.listByActor(actorId, domainIds, afterTimestamp, limit);
-    } else if (!nullOrEmpty(domainIds)) {
-      // Filter by domains
-      events = activityStreamRepository.listByDomains(domainIds, afterTimestamp, limit);
-    } else {
-      // Return all recent activity
-      events = activityStreamRepository.list(afterTimestamp, limit);
-    }
-
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.listActivityEvents(
+        securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
   }
 
   @GET
@@ -189,18 +187,8 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-    if (limit == 0) {
-      int total =
-          activityStreamRepository.countByEntity(entityType, entityId, domainIds, afterTimestamp);
-      return new ResultList<>(List.of(), null, null, total);
-    }
-    List<ActivityEvent> events =
-        activityStreamRepository.listByEntity(
-            entityType, entityId, domainIds, afterTimestamp, limit);
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getEntityActivityById(
+        securityContext, entityType, entityId, domain, days, limit);
   }
 
   @GET
@@ -241,24 +229,8 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-
-    // Resolve FQN to entity ID
-    org.openmetadata.schema.EntityInterface entity =
-        Entity.getEntityByName(entityType, fqn, "", null);
-    UUID entityId = entity.getId();
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-
-    if (limit == 0) {
-      int total =
-          activityStreamRepository.countByEntity(entityType, entityId, domainIds, afterTimestamp);
-      return new ResultList<>(List.of(), null, null, total);
-    }
-    List<ActivityEvent> events =
-        activityStreamRepository.listByEntity(
-            entityType, entityId, domainIds, afterTimestamp, limit);
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getEntityActivityByFqn(
+        securityContext, entityType, fqn, domain, days, limit);
   }
 
   @GET
@@ -291,19 +263,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference userRef = Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    List<String> teamIds = getTeamIds(userName);
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-
-    List<ActivityEvent> events =
-        activityStreamRepository.listByOwners(
-            userRef.getId().toString(), teamIds, domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getMyFeed(securityContext, domain, days, limit);
   }
 
   @GET
@@ -336,18 +296,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference userRef = Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-
-    List<ActivityEvent> events =
-        activityStreamRepository.listByFollowers(
-            userRef.getId().toString(), domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit);
   }
 
   @GET
@@ -384,13 +333,8 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-    List<ActivityEvent> events =
-        activityStreamRepository.listByAbout(entityLink, domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getActivityByEntityLink(
+        securityContext, entityLink, domain, days, limit);
   }
 
   @GET
@@ -424,13 +368,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-    List<ActivityEvent> events =
-        activityStreamRepository.listByActor(userId, domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getUserActivity(securityContext, userId, domain, days, limit);
   }
 
   @GET
@@ -457,10 +395,7 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-    return activityStreamRepository.count(domainIds, afterTimestamp);
+    return activityStreamRepository.getActivityCount(securityContext, domain, days);
   }
 
   @PUT
@@ -484,9 +419,7 @@ public class ActivityResource {
       @Parameter(description = "Activity event ID", required = true) @PathParam("id") UUID id,
       @Parameter(description = "Reaction type to add", required = true) @PathParam("reactionType")
           ReactionType reactionType) {
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference userRef = Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    return activityStreamRepository.addReaction(id, userRef, reactionType);
+    return activityStreamRepository.addReaction(securityContext, authorizer, id, reactionType);
   }
 
   @DELETE
@@ -511,9 +444,7 @@ public class ActivityResource {
       @Parameter(description = "Reaction type to remove", required = true)
           @PathParam("reactionType")
           ReactionType reactionType) {
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference userRef = Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    return activityStreamRepository.removeReaction(id, userRef, reactionType);
+    return activityStreamRepository.removeReaction(securityContext, authorizer, id, reactionType);
   }
 
   @jakarta.ws.rs.POST
@@ -534,77 +465,7 @@ public class ActivityResource {
       })
   public ActivityEvent insertForTesting(
       @Context SecurityContext securityContext, ActivityEvent event) {
-    authorizer.authorizeAdmin(securityContext);
-    activityStreamRepository.insert(event);
-    return event;
-  }
-
-  /** Get team IDs for a user. */
-  private List<String> getTeamIds(String userName) {
-    List<String> teamIds = new java.util.ArrayList<>();
-    try {
-      org.openmetadata.schema.entity.teams.User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams", null);
-      if (user.getTeams() != null) {
-        for (EntityReference team : user.getTeams()) {
-          teamIds.add(team.getId().toString());
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Could not get team IDs for user {}: {}", userName, e.getMessage());
-    }
-    return teamIds;
-  }
-
-  /**
-   * Get effective domain IDs for filtering based on user's access and query parameters.
-   */
-  private List<UUID> getEffectiveDomains(SecurityContext securityContext, String domainsParam) {
-    // Parse domain IDs from query parameter
-    List<UUID> requestedDomains = null;
-    if (!nullOrEmpty(domainsParam)) {
-      requestedDomains =
-          java.util.Arrays.stream(domainsParam.split(","))
-              .map(String::trim)
-              .filter(s -> !s.isEmpty())
-              .map(UUID::fromString)
-              .toList();
-    }
-
-    // Check if user has domain-only access policy
-    try {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (subjectContext != null
-          && !subjectContext.isAdmin()
-          && subjectContext.hasDomainOnlyAccessRole()) {
-        // User can only see activity in their domains
-        List<EntityReference> userDomains = subjectContext.getUserDomains();
-        if (!nullOrEmpty(userDomains)) {
-          List<UUID> userDomainIds = userDomains.stream().map(EntityReference::getId).toList();
-
-          // If user requested specific domains, intersect with their allowed domains
-          if (!nullOrEmpty(requestedDomains)) {
-            return requestedDomains.stream().filter(userDomainIds::contains).toList();
-          }
-          return userDomainIds;
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Could not get subject context for domain filtering: {}", e.getMessage());
-    }
-
-    return requestedDomains;
-  }
-
-  private List<UUID> getEffectiveDomainsByFqn(SecurityContext securityContext, String domainFqn) {
-    if (nullOrEmpty(domainFqn)) {
-      return getEffectiveDomains(securityContext, null);
-    }
-
-    EntityReference domainRef =
-        Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, Include.NON_DELETED);
-
-    return getEffectiveDomains(securityContext, domainRef.getId().toString());
+    return activityStreamRepository.insertForTesting(securityContext, authorizer, event);
   }
 
   /** Schema class for OpenAPI documentation. */

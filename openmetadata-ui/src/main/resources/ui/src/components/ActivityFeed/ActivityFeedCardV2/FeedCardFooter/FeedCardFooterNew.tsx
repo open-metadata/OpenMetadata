@@ -13,7 +13,7 @@
 
 import { Avatar, Button, Col, Row } from 'antd';
 import classNames from 'classnames';
-import { min, noop, sortBy } from 'lodash';
+import { min, noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
@@ -25,52 +25,64 @@ import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 function FeedCardFooterNew({
-  feed,
-  post,
-  isPost = false,
+  conversation,
+  conversationId,
+  reply,
+  isReply = false,
   isForFeedTab = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { showDrawer, updateReactions, fetchUpdatedThread } =
-    useActivityFeedProvider();
+  const { showDrawer, updateReactions } = useActivityFeedProvider();
 
-  // The number of posts in the thread
-  const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
+  const postLength = useMemo(
+    () => conversation?.replyCount ?? 0,
+    [conversation?.replyCount]
+  );
 
-  // The latest reply timestamp and the list of unique users who replied
   const { repliedUniqueUsersList } = useMemo(() => {
-    const posts = sortBy(feed?.posts, 'postTs').reverse();
-    const latestReplyTimeStamp = posts[0]?.postTs;
-
-    const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
+    const repliedUsers = [
+      ...new Set(
+        (conversation?.replies ?? [])
+          .map((item) => item.author.name ?? item.author.fullyQualifiedName)
+          .filter((name): name is string => Boolean(name))
+      ),
+    ];
 
     const repliedUniqueUsersList = repliedUsers.slice(
       0,
       min([3, repliedUsers.length])
     );
 
-    return { latestReplyTimeStamp, repliedUniqueUsersList };
-  }, [feed?.posts]);
+    return { repliedUniqueUsersList };
+  }, [conversation?.replies]);
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
-      if (!post) {
+      const target = reply ?? conversation;
+      if (!target) {
         return;
       }
-      await updateReactions(post, feed.id, !isPost, reaction, operation);
-      await fetchUpdatedThread(feed.id);
+      await updateReactions(
+        target,
+        conversationId,
+        !isReply,
+        reaction,
+        operation
+      );
     },
-    [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
+    [updateReactions, reply, conversation, conversationId, isReply]
   );
   const showReplies = useCallback(() => {
-    showDrawer?.(feed);
-  }, [showDrawer, feed]);
+    if (conversation) {
+      showDrawer(conversation);
+    }
+  }, [showDrawer, conversation]);
 
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isPost })}>
+    <Row align="top" className={classNames({ 'm-y-md': isReply })}>
       <Col className="footer-container" span={24}>
         <div>
           <div className="flex items-center gap-2 w-full rounded-8">
-            {postLength > 0 && !isPost && (
+            {postLength > 0 && !isReply && (
               <Avatar.Group
                 className="feed-avatar-group"
                 maxCount={3}
@@ -99,7 +111,7 @@ function FeedCardFooterNew({
               </Avatar.Group>
             )}
 
-            {!isPost && (
+            {!isReply && (
               <Button
                 className="p-0 flex-center"
                 data-testid="reply-button"
@@ -109,7 +121,7 @@ function FeedCardFooterNew({
               </Button>
             )}
             <Reactions
-              reactions={post?.reactions ?? []}
+              reactions={(reply ?? conversation)?.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </div>

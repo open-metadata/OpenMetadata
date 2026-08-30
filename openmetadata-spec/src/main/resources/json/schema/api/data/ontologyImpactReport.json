@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyImpactReport.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyImpactReport",
+  "description": "A version-bound impact preview for a governed ontology operation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyImpactReport",
+  "properties": {
+    "resource": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "operation": {
+      "description": "Governed operation evaluated by this report.",
+      "javaType": "org.openmetadata.schema.api.data.OntologyImpactOperation",
+      "type": "string",
+      "enum": ["CHANGE", "DELETE"]
+    },
+    "baseVersion": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "generatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "expiresAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "impactToken": {
+      "description": "Short-lived signed token bound to the principal and exact impact snapshot.",
+      "type": "string",
+      "minLength": 1
+    },
+    "children": {
+      "description": "Immediate child concepts that must be reassigned or explicitly cascaded.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "relationships": {
+      "description": "Typed semantic relationships removed with the resource.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/termRelation.json"
+      }
+    },
+    "boundAssets": {
+      "description": "Bound assets included in the preview, capped by the service preview limit.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "boundAssetCount": {
+      "description": "Total number of assets bound to the concept.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "boundAssetsTruncated": {
+      "description": "Whether the bound-assets sample omits additional assets.",
+      "type": "boolean"
+    },
+    "conceptMappings": {
+      "description": "External crosswalks removed with the concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/conceptMapping.json"
+      }
+    },
+    "shaclRecheckRequired": {
+      "description": "Whether the resulting ontology projection must be revalidated after application.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "resource",
+    "operation",
+    "baseVersion",
+    "generatedAt",
+    "expiresAt",
+    "impactToken",
+    "children",
+    "relationships",
+    "boundAssets",
+    "boundAssetCount",
+    "boundAssetsTruncated",
+    "conceptMappings",
+    "shaclRecheckRequired"
+  ],
+  "additionalProperties": false
+}

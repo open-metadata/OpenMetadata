@@ -332,18 +332,17 @@ public abstract class EntityServiceBase<T> {
       return false;
     }
 
-    // Check if it's an object with id/type (entity reference)
-    if (fieldValue.isObject()) {
-      return fieldValue.has("id") || fieldValue.has("type");
+    boolean containsReference =
+        fieldValue.isObject() && (fieldValue.has("id") || fieldValue.has("type"));
+    if (!containsReference && fieldValue.isContainerNode()) {
+      for (JsonNode child : fieldValue) {
+        if (isReferenceField(child)) {
+          containsReference = true;
+          break;
+        }
+      }
     }
-
-    // Check if it's an array of references
-    if (fieldValue.isArray() && fieldValue.size() > 0) {
-      JsonNode firstElement = fieldValue.get(0);
-      return firstElement.isObject() && (firstElement.has("id") || firstElement.has("type"));
-    }
-
-    return false;
+    return containsReference;
   }
 
   private static final Set<String> COMPUTED_FIELDS =

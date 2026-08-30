@@ -48,6 +48,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
 }) => {
   const {
     entityRules,
+    isRulesLoaded,
     data,
     onUpdate,
     permissions: genericPermissions,
@@ -89,6 +90,9 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
             dataProducts={data?.dataProducts ?? []}
             hasPermission={hasDataProductsPermission}
             multiple={entityRules?.canAddMultipleDataProducts}
+            requireDomainForDataProduct={
+              !isRulesLoaded || entityRules?.requireDomainForDataProduct
+            }
             onSave={handleDataProductsSave}
           />
         </div>

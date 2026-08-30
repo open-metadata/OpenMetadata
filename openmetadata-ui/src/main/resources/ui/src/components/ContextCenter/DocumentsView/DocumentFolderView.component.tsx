@@ -355,15 +355,16 @@ const DocumentFolderView = (
           {isLoading ? (
             <div className="tw:flex tw:flex-col tw:gap-2">
               {/* Static-length skeleton placeholder, never reordered */}
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton
-                  height="32px"
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={i}
-                  variant="rounded"
-                  width="100%"
-                />
-              ))}
+              {Array.from({ length: 4 }, (_, i) => `folder-skeleton-${i}`).map(
+                (skeletonKey) => (
+                  <Skeleton
+                    height="32px"
+                    key={skeletonKey}
+                    variant="rounded"
+                    width="100%"
+                  />
+                )
+              )}
             </div>
           ) : (
             <Tree
@@ -468,11 +469,13 @@ const DocumentFolderView = (
                           showExpandIcon={false}>
                           <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
                             {/* Static-length skeleton placeholder, never reordered */}
-                            {Array.from({ length: 2 }).map((_, i) => (
+                            {Array.from(
+                              { length: 2 },
+                              (_, i) => `folder-item-skeleton-${i}`
+                            ).map((skeletonKey) => (
                               <Skeleton
                                 height="20px"
-                                // eslint-disable-next-line react/no-array-index-key
-                                key={i}
+                                key={skeletonKey}
                                 variant="rounded"
                                 width="100%"
                               />

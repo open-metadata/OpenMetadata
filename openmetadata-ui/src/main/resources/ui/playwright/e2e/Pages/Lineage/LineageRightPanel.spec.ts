@@ -77,11 +77,7 @@ test.describe(
           .locator('.lineage-map-rail-dot.active')
       ).toBeVisible();
 
-      await page
-        .locator('[data-testid^="lineage-node-"]')
-        .getByRole('button', { name: 'Zoom In' })
-        .first()
-        .click();
+      await tableNode.getByRole('button', { name: 'Zoom In' }).click();
 
       await expect
         .poll(() => new URL(page.url()).searchParams.get('lineageBand'))

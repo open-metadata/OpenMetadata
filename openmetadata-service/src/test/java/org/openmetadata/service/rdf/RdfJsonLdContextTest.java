@@ -19,6 +19,9 @@ class RdfJsonLdContextTest {
   private static ObjectMapper objectMapper;
   private static JsonNode baseContext;
   private static JsonNode lineageContext;
+  private static JsonNode governanceContext;
+  private static JsonNode aiContext;
+  private static JsonNode automationContext;
 
   @BeforeAll
   static void loadContexts() throws Exception {
@@ -41,6 +44,42 @@ class RdfJsonLdContextTest {
           lineageContext = contextDoc.get("@context").get(1);
         } else {
           lineageContext = contextDoc.get("@context");
+        }
+      }
+    }
+
+    try (InputStream is =
+        RdfJsonLdContextTest.class.getResourceAsStream("/rdf/contexts/governance.jsonld")) {
+      if (is != null) {
+        JsonNode contextDoc = objectMapper.readTree(is);
+        if (contextDoc.get("@context").isArray()) {
+          governanceContext = contextDoc.get("@context").get(1);
+        } else {
+          governanceContext = contextDoc.get("@context");
+        }
+      }
+    }
+
+    try (InputStream is =
+        RdfJsonLdContextTest.class.getResourceAsStream("/rdf/contexts/ai.jsonld")) {
+      if (is != null) {
+        JsonNode contextDoc = objectMapper.readTree(is);
+        if (contextDoc.get("@context").isArray()) {
+          aiContext = contextDoc.get("@context").get(1);
+        } else {
+          aiContext = contextDoc.get("@context");
+        }
+      }
+    }
+
+    try (InputStream is =
+        RdfJsonLdContextTest.class.getResourceAsStream("/rdf/contexts/automation.jsonld")) {
+      if (is != null) {
+        JsonNode contextDoc = objectMapper.readTree(is);
+        if (contextDoc.get("@context").isArray()) {
+          automationContext = contextDoc.get("@context").get(1);
+        } else {
+          automationContext = contextDoc.get("@context");
         }
       }
     }
@@ -384,6 +423,145 @@ class RdfJsonLdContextTest {
             columnsLineage.get("@container").asText(),
             "columnsLineage should use @set container");
       }
+    }
+  }
+
+  @Nested
+  @DisplayName("P1.8: Governance Context SKOS Hierarchy")
+  class GovernanceContextSkosTests {
+
+    @Test
+    @DisplayName("glossary field should map to skos:inScheme on a glossary term")
+    void testGlossaryMapsToInScheme() {
+      assertNotNull(governanceContext, "governance.jsonld should be loaded");
+      JsonNode glossary = governanceContext.get("glossary");
+      assertNotNull(glossary, "'glossary' field mapping must be defined");
+      assertEquals(
+          "skos:inScheme",
+          glossary.get("@id").asText(),
+          "GlossaryTerm.glossary should use SKOS inScheme, not the legacy om:belongsToGlossary");
+      assertEquals("@id", glossary.get("@type").asText());
+    }
+
+    @Test
+    @DisplayName("classification field should map to skos:inScheme on a tag")
+    void testClassificationMapsToInScheme() {
+      assertNotNull(governanceContext);
+      JsonNode classification = governanceContext.get("classification");
+      assertNotNull(classification, "'classification' field mapping must be defined");
+      assertEquals(
+          "skos:inScheme",
+          classification.get("@id").asText(),
+          "Tag.classification should use SKOS inScheme to align with skos:ConceptScheme membership");
+    }
+
+    @Test
+    @DisplayName("parent field should map to skos:broader")
+    void testParentMapsToSkosBroader() {
+      assertNotNull(governanceContext);
+      JsonNode parent = governanceContext.get("parent");
+      assertNotNull(parent, "'parent' field mapping must be defined");
+      assertEquals("skos:broader", parent.get("@id").asText());
+      assertEquals("@id", parent.get("@type").asText());
+    }
+
+    @Test
+    @DisplayName("children field should map to skos:narrower with @set container")
+    void testChildrenMapsToSkosNarrower() {
+      assertNotNull(governanceContext);
+      JsonNode children = governanceContext.get("children");
+      assertNotNull(
+          children,
+          "'children' field mapping must be defined (it replaces the prior 'childTerms' alias which referenced a non-existent field)");
+      assertEquals("skos:narrower", children.get("@id").asText());
+      assertEquals("@id", children.get("@type").asText());
+      assertEquals("@set", children.get("@container").asText());
+    }
+
+    @Test
+    @DisplayName("Stale childTerms alias should no longer be present")
+    void testNoLegacyChildTermsAlias() {
+      assertNotNull(governanceContext);
+      assertNull(
+          governanceContext.get("childTerms"),
+          "Legacy 'childTerms' alias must not coexist with 'children' — GlossaryTerm has no 'childTerms' field, so the alias would never fire");
+    }
+
+    @Test
+    @DisplayName("DataContract and Persona fields should be wired to ontology predicates")
+    void testDataContractAndPersonaFieldsWired() {
+      assertNotNull(governanceContext);
+      assertNotNull(governanceContext.get("contractStatus"));
+      assertEquals(
+          "om:contractStatus", governanceContext.get("contractStatus").get("@id").asText());
+      assertNotNull(governanceContext.get("appliesTo"));
+      assertEquals("om:appliesToEntity", governanceContext.get("appliesTo").get("@id").asText());
+      assertEquals("@id", governanceContext.get("appliesTo").get("@type").asText());
+      assertNotNull(governanceContext.get("users"));
+      assertEquals("om:appliesToUser", governanceContext.get("users").get("@id").asText());
+    }
+  }
+
+  @Nested
+  @DisplayName("P1.5: AI / Automation Contexts")
+  class AiAutomationContextTests {
+
+    @Test
+    @DisplayName("ai.jsonld should be loadable and define LLMModel + AIApplication types")
+    void testAiContextLoaded() {
+      assertNotNull(aiContext, "ai.jsonld should be on the classpath");
+      assertEquals("om:LLMModel", aiContext.get("LLMModel").get("@id").asText());
+      assertEquals("om:AIApplication", aiContext.get("AIApplication").get("@id").asText());
+      assertEquals("om:McpServer", aiContext.get("McpServer").get("@id").asText());
+      assertEquals("om:PromptTemplate", aiContext.get("PromptTemplate").get("@id").asText());
+    }
+
+    @Test
+    @DisplayName("AgentExecution and McpExecution should be PROV activities")
+    void testExecutionsAreProvActivities() {
+      assertNotNull(aiContext);
+      JsonNode agentExec = aiContext.get("AgentExecution");
+      assertNotNull(agentExec);
+      assertTrue(
+          agentExec.get("@type").toString().contains("prov:Activity"),
+          "AgentExecution must be typed as prov:Activity for cross-system PROV traversal");
+      JsonNode mcpExec = aiContext.get("McpExecution");
+      assertTrue(mcpExec.get("@type").toString().contains("prov:Activity"));
+    }
+
+    @Test
+    @DisplayName("LLMModel.trainingDatasets should map to om:hasTrainingDataset for AI lineage")
+    void testTrainingDatasetsMapping() {
+      assertNotNull(aiContext);
+      JsonNode trainingDatasets = aiContext.get("trainingDatasets");
+      assertNotNull(
+          trainingDatasets,
+          "trainingDatasets must be wired so AI lineage queries can traverse model -> dataset");
+      assertEquals("om:hasTrainingDataset", trainingDatasets.get("@id").asText());
+      assertEquals("@id", trainingDatasets.get("@type").asText());
+      assertEquals("@set", trainingDatasets.get("@container").asText());
+    }
+
+    @Test
+    @DisplayName("AIApplication.models should map to om:usesModel object property")
+    void testAiAppUsesModelMapping() {
+      assertNotNull(aiContext);
+      JsonNode models = aiContext.get("models");
+      assertNotNull(models);
+      assertEquals("om:usesModel", models.get("@id").asText());
+      assertEquals("@id", models.get("@type").asText());
+    }
+
+    @Test
+    @DisplayName("automation.jsonld should define Workflow + WorkflowInstance types")
+    void testAutomationContextLoaded() {
+      assertNotNull(automationContext, "automation.jsonld should be on the classpath");
+      assertEquals("om:Workflow", automationContext.get("Workflow").get("@id").asText());
+      JsonNode wfInstance = automationContext.get("WorkflowInstance");
+      assertNotNull(wfInstance);
+      assertTrue(
+          wfInstance.get("@type").toString().contains("prov:Activity"),
+          "WorkflowInstance is a single run and must be typed as prov:Activity");
     }
   }
 }
