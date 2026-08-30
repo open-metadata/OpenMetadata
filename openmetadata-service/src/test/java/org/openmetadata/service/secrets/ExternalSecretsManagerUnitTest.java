@@ -194,6 +194,27 @@ class ExternalSecretsManagerUnitTest {
   }
 
   @Test
+  void storeValueRefusesACredentialEqualToTheReservedNullSentinel() {
+    RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
+
+    SecretsManagerException thrown =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                manager.storeValue(
+                    "Password",
+                    ExternalSecretsManager.NULL_SECRET_STRING,
+                    "/prefix/database/myservice",
+                    true));
+
+    assertTrue(thrown.getMessage().contains("Password"), "must name the offending field");
+    assertTrue(thrown.getMessage().contains("reserved"), "must explain why the value is refused");
+    assertTrue(
+        manager.store.isEmpty(),
+        "the one payload getSecretValue cannot return must never reach the backend");
+  }
+
+  @Test
   void cleanNullOrEmptyMapsNullAndEmptyToTheNullSentinel() {
     RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
 

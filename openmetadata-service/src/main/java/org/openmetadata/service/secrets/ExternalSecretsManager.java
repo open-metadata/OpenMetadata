@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -113,6 +114,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       result = null;
       // check if value does not start with 'config:' only String can have password annotation
     } else if (Boolean.FALSE.equals(isSecret(value))) {
+      rejectReservedPlaceholder(fieldName, value);
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
@@ -124,17 +126,37 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   /**
+   * Refuses a credential whose value is the {@link #NULL_SECRET_STRING} placeholder. {@link
+   * #getSecretValue} reads that payload back as absent so services saved before this was fixed heal
+   * themselves, which means we cannot also return it as a credential. Rejecting the save keeps the
+   * only ambiguous payload out of the vault — every "null" still stored is then unambiguously
+   * legacy — and tells the user at the point they can act, rather than accepting a value that would
+   * disappear on the next read.
+   */
+  private void rejectReservedPlaceholder(String fieldName, String value) {
+    if (NULL_SECRET_STRING.equals(value)) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format(
+              "Field [%s] cannot be set to \"%s\": that value is reserved as the placeholder older "
+                  + "versions wrote for a cleared credential, so it would be read back as no "
+                  + "credential at all. Clear the field to remove it, or use a different value.",
+              fieldName, NULL_SECRET_STRING));
+    }
+  }
+
+  /**
    * Resolves a {@code secret:/...} reference, mapping the {@link #NULL_SECRET_STRING} placeholder
    * written by older versions back to an absent value. Services saved before this was fixed still
    * hold a secret whose payload is the literal "null", which must never be used as a credential.
    * Reading it as absent is what cleans those services up: the connection carries null, and the
    * next save drops the stale secret through {@link #storeValue}.
    *
-   * <p>This makes {@link #NULL_SECRET_STRING} a reserved payload — a credential whose real value is
-   * the four characters "null" stores fine but reads back as absent. Nothing recorded alongside the
-   * secret distinguishes the placeholder from that value, so a one-time migration over the vault
-   * could not tell them apart either; it would delete the credential outright where this only hides
-   * it, leaving the warning below and a re-save as the way back.
+   * <p>Nothing recorded alongside a secret distinguishes the placeholder from a credential whose
+   * real value is the four characters "null", so this mapping cannot tell them apart — nor could a
+   * one-time migration over the vault, which would delete such a credential outright where this
+   * only hides it. {@link #rejectReservedPlaceholder} closes the gap from the other side by
+   * refusing to store that value, so a payload of "null" only ever means the legacy placeholder.
    */
   @Override
   public String getSecretValue(String secretWithPrefix) {
