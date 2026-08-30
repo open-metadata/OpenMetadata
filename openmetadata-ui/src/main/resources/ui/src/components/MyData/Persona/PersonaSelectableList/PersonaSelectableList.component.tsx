@@ -54,6 +54,13 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   );
 };
 
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">{t('label.plus-count-more', { count })}</span>
+);
+
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
@@ -267,11 +274,9 @@ export const PersonaSelectableList = ({
               }}
               filterOption={false}
               maxTagCount={3}
-              maxTagPlaceholder={(omittedValues) => (
-                <span className="max-tag-text">
-                  {t('label.plus-count-more', { count: omittedValues.length })}
-                </span>
-              )}
+              maxTagPlaceholder={(omittedValues) =>
+                renderMaxTagPlaceholder(omittedValues.length, t)
+              }
               mode={isDefaultPersona ? undefined : 'multiple'}
               open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({

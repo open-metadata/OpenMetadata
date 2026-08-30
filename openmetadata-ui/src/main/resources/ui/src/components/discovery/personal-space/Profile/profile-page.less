@@ -1,0 +1,188 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// Fixed width for the left settings rail so the content column takes the rest.
+.ai-profile-page__sidenav {
+  width: 264px;
+}
+
+// OSS Chip renders `<a class="chip-tag-link"><span class="chip-tag-link chip-name">`.
+// The shared `chip-tag-link` class lands on both nodes; scope the pill style
+// to the anchor only and reset the inner span. These are 3rd-party class
+// names so tw cannot replace them.
+.ai-profile-page__edit-card {
+  .chip-container {
+    margin-top: 0 !important;
+    gap: 8px;
+    row-gap: 8px !important;
+  }
+
+  .chip-container a.chip-tag-link {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid #e9eaeb;
+    border-radius: 6px;
+    background: #fff;
+    color: #344054 !important;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  span.chip-name {
+    border: none;
+    padding: 0;
+    color: #344054 !important;
+    font-weight: 500;
+  }
+
+  .no-data-chip-placeholder {
+    color: #667085;
+    margin: 0;
+  }
+}
+
+// Scope OSS UserPermissions container padding override to ProfilePage only.
+.ai-profile-page__user-permissions .user-permissions-container {
+  padding: 0;
+  max-width: 100%;
+}
+
+/* The OSS Explore asset list (FollowingTab + MyDataPage's MyDataAssetsList)
+   hard-codes a light theme (legacy `bg-white`, `.black` text, `text-black`
+   icons) and doesn't react to the tailwind `.dark-mode` toggle. Scope the
+   overrides to the Explore container `.assets-tab-container` itself so they
+   apply wherever the list renders (parent-agnostic) and nowhere else — ONLY
+   under `.dark-mode`, leaving light mode 100% on the original Explore styling.
+   `!important` is required to beat the legacy classes and antd's own styles. */
+.dark-mode .assets-tab-container {
+  // Container + asset card surfaces (legacy `bg-white`).
+  &,
+  .explore-search-card {
+    background-color: var(--color-bg-primary) !important;
+    border-color: var(--color-border-secondary) !important;
+  }
+
+  // Selected/highlighted asset card sits on a subtly raised surface.
+  .explore-search-card.highlight-card {
+    background-color: var(--color-bg-secondary) !important;
+  }
+
+  // Search bar + filter button.
+  .ant-input-affix-wrapper,
+  .ant-input {
+    background-color: var(--color-bg-primary) !important;
+    color: var(--color-text-primary) !important;
+    border-color: var(--color-border-secondary) !important;
+  }
+
+  .ant-input-prefix,
+  .ant-input-prefix .anticon {
+    color: var(--color-text-tertiary) !important;
+  }
+
+  .feed-filter-icon {
+    background-color: var(--color-bg-primary) !important;
+    border-color: var(--color-border-secondary) !important;
+    color: var(--color-text-secondary) !important;
+
+    svg path {
+      fill: var(--color-fg-secondary) !important;
+    }
+  }
+
+  // OSS text helpers that hard-code dark/black colors.
+  .markdown-parser.black,
+  .tiptap.om-block-editor {
+    color: var(--color-text-secondary) !important;
+  }
+
+  .text-grey-muted {
+    color: var(--color-text-tertiary) !important;
+  }
+
+  .pagination-button,
+  .pagination-indicator {
+    color: var(--color-text-secondary) !important;
+  }
+}
+
+/* The Persona edit card uses antd Select (multiple) chips + OSS view-mode chips
+   that hard-code antd's light theme / `#fff`. Re-point them at semantic vars
+   ONLY under `.dark-mode`, leaving light mode on the original styling. */
+.dark-mode .ai-profile-page__edit-card {
+  // Read-only view-mode chips (override the hardcoded light values above).
+  .chip-container a.chip-tag-link {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary) !important;
+    border-color: var(--color-border-secondary);
+  }
+
+  span.chip-name {
+    color: var(--color-text-secondary) !important;
+  }
+
+  .no-data-chip-placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  // Edit-mode antd multiple-select chips (white by default in antd). Scope to
+  // `.ant-select-multiple` so single selects (Token Expiration, Default Persona)
+  // — whose selection-item is plain value text — are untouched.
+  .ant-select-multiple .ant-select-selection-item {
+    background: var(--color-bg-secondary) !important;
+    color: var(--color-text-primary) !important;
+    border-color: var(--color-border-secondary) !important;
+  }
+
+  .ant-select-multiple .ant-select-selection-item-remove {
+    color: var(--color-text-tertiary) !important;
+  }
+}
+
+/* The OSS global antd-select dark theme (openmetadata-ui styles/components/
+   select.less) darkens the dropdown menu surface + text but leaves antd's
+   light hover (`-option-active`) and selected (`-option-selected`) option
+   backgrounds — they stay light in dark mode across every Select (persona,
+   domains, teams, …). Dropdowns render in a body-level portal, so they can't be
+   scoped by an ancestor; `.dark-mode` on <html> covers the portal. Remap the
+   two light states (text is already handled by the OSS theme). */
+.dark-mode {
+  .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background-color: var(--color-bg-secondary_hover) !important;
+  }
+
+  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background-color: var(--color-bg-active) !important;
+  }
+}
+
+// The owned-assets card already provides its border; drop the nested
+// EntitySummaryPanel card borders so the right column isn't double-bordered.
+// The panel nests two antd cards: the outer `.summary-panel-container` and an
+// inner `.content-area.ant-card-bordered` — strip both.
+.ai-mydata-assets {
+  .summary-panel-container,
+  .summary-panel-container .content-area {
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  .entity-summary-panel-container {
+    padding-right: 2px;
+  }
+  .entity-right-panel-vertical-nav {
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+}

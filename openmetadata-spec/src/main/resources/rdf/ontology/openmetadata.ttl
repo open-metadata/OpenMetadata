@@ -24,7 +24,7 @@
 
 # OpenMetadata Complete Ontology
 om: a owl:Ontology ;
-    owl:versionInfo "1.0.0" ;
+    owl:versionInfo "1.1.0" ;
     dct:title "OpenMetadata Ontology" ;
     dct:description "Complete ontology for OpenMetadata covering all entities and relationships" ;
     dct:creator "OpenMetadata Team" ;
@@ -213,6 +213,35 @@ om:Worksheet a owl:Class ;
     rdfs:label "Worksheet" ;
     rdfs:comment "Worksheet within a spreadsheet" ;
     rdfs:subClassOf om:DataAsset .
+
+#################################################################
+# AI Classes
+#################################################################
+
+om:LLMModel a owl:Class ;
+    rdfs:label "LLM Model" ;
+    rdfs:comment "Registered large language model deployment, fine-tune, or base model" ;
+    rdfs:subClassOf om:Entity .
+
+om:AIApplication a owl:Class ;
+    rdfs:label "AI Application" ;
+    rdfs:subClassOf om:Entity .
+
+om:McpServer a owl:Class ;
+    rdfs:label "MCP Server" ;
+    rdfs:subClassOf om:Entity .
+
+om:AgentExecution a owl:Class ;
+    rdfs:label "Agent Execution" ;
+    rdfs:subClassOf om:Entity, prov:Activity .
+
+om:McpExecution a owl:Class ;
+    rdfs:label "MCP Execution" ;
+    rdfs:subClassOf om:Entity, prov:Activity .
+
+om:PromptTemplate a owl:Class ;
+    rdfs:label "Prompt Template" ;
+    rdfs:subClassOf om:Entity .
 
 #################################################################
 # Metadata & Governance Classes
@@ -604,6 +633,16 @@ om:Column a owl:Class ;
     rdfs:comment "Column in a table" ;
     rdfs:subClassOf om:Entity .
 
+om:TableConstraint a owl:Class ;
+    rdfs:label "Table Constraint" ;
+    rdfs:comment "A constraint (primary key, foreign key, unique, etc.) declared on a table." ;
+    rdfs:subClassOf om:Entity .
+
+om:LineageDetails a owl:Class ;
+    rdfs:label "Lineage Details" ;
+    rdfs:comment "Reified details of a lineage edge, including column-level mappings and the pipeline that produced it." ;
+    rdfs:subClassOf om:Entity .
+
 om:hasColumn a owl:ObjectProperty ;
     rdfs:label "has column" ;
     rdfs:domain om:Table ;
@@ -619,6 +658,33 @@ om:hasGlossaryTerm a owl:ObjectProperty ;
     rdfs:subPropertyOf dct:subject ;
     rdfs:domain om:Entity ;
     rdfs:range om:GlossaryTerm .
+
+om:mappedTo a owl:ObjectProperty ;
+    rdfs:label "mapped to" ;
+    rdfs:comment "Data asset that stores the instances of this concept. Stronger than om:hasGlossaryTerm, which only records that an asset references the concept." ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasPrimaryStore a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "has primary store" ;
+    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasDerivedAsset a owl:ObjectProperty ;
+    rdfs:label "has derived asset" ;
+    rdfs:comment "Data asset deriving this concept's instances from another asset." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasReplica a owl:ObjectProperty ;
+    rdfs:label "has replica" ;
+    rdfs:comment "Data asset replicating this concept's instances from another asset." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
 
 om:hasOwner a owl:ObjectProperty ;
     rdfs:label "has owner" ;

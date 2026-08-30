@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AnthropicConnection",
+  "description": "Anthropic (Claude) LLM Service Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.llm.AnthropicConnection",
+  "definitions": {
+    "anthropicType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": [
+        "Anthropic"
+      ],
+      "default": "Anthropic"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Anthropic",
+      "type": "string",
+      "enum": [
+        "Anthropic"
+      ]
+    },
+    "apiKey": {
+      "title": "API Key",
+      "description": "Anthropic API Key",
+      "type": "string",
+      "format": "password"
+    },
+    "baseURL": {
+      "title": "Base URL",
+      "description": "Optional custom base URL for Anthropic API",
+      "type": "string",
+      "default": "https://api.anthropic.com"
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Request timeout in seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for failed requests",
+      "type": "integer",
+      "default": 3
+    },
+    "modelFilterPattern": {
+      "description": "Regex to only fetch models with names matching the pattern",
+      "title": "Model Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "apiKey"
+  ]
+}

@@ -183,6 +183,11 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      name: 'ontology-rdf-setup',
+      testMatch: '**/ontology-rdf.setup.ts',
+      dependencies: ['entity-data-setup'],
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -208,6 +213,7 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
         '**/VisualRegression/**',
@@ -285,9 +291,11 @@ export default defineConfig({
     {
       name: 'Ontology RDF',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
+      fullyParallel: false,
+      workers: 1,
     },
     {
       name: 'DataAssetRulesEnabled',
@@ -415,6 +423,17 @@ export default defineConfig({
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+    },
+    // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
+    // waitForResponse/debounce flow is not interleaved with other chromium shards.
+    {
+      name: 'AdvancedSearch',
+      testMatch: '**/AdvancedSearch.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: entityDependencies,
+      grep: shardGrep,
+      fullyParallel: true,
+      teardown: entityTeardown,
     },
   ],
 

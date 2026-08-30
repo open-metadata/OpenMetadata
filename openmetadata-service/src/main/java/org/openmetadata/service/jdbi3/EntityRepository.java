@@ -235,9 +235,9 @@ import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -267,6 +267,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -950,12 +951,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    if (requiresParentForInheritance(entity, fields)) {
-      EntityInterface parent = resolveInheritanceParentLeniently(entity, getInheritableFields());
-      if (parent != null) {
-        // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
-        applyInheritance(entity, fields, parent);
-      }
+    if (!requiresParentForInheritance(entity, fields)) {
+      return;
+    }
+    EntityReference parentRef = getParentReference(entity);
+    String inheritableFields =
+        parentRef == null ? getInheritableFields() : getInheritableFields(parentRef.getType());
+    EntityInterface parent = resolveInheritanceParentLeniently(entity, inheritableFields);
+    if (parent != null) {
+      // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
+      applyInheritance(entity, fields, parent);
     }
   }
 
@@ -980,6 +985,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Batch-resolve EntityReferences by id for the bulk field fetchers.
+   *
+   * <p>Fails fast on an id that cannot be resolved, preserving the contract of the per-record
+   * {@link Entity#getEntityReferenceById} calls this replaced. The batch query underneath
+   * ({@code findReferencesByIds}) is a plain {@code WHERE id IN (...)}, so it silently omits ids it
+   * cannot find; without this check an orphaned relationship row would change from failing the
+   * request to silently dropping the reference.
+   */
+  protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
+    List<UUID> distinctIds = ids.stream().distinct().toList();
+    Map<UUID, EntityReference> refsById = new HashMap<>();
+    if (!distinctIds.isEmpty()) {
+      for (EntityReference ref :
+          Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
+        refsById.put(ref.getId(), ref);
+      }
+      for (UUID id : distinctIds) {
+        if (!refsById.containsKey(id)) {
+          throw EntityNotFoundException.byMessage(
+              CatalogExceptionMessage.entityNotFound(entityType, id));
+        }
+      }
+    }
+    return refsById;
+  }
+
+  /**
    * Return the parent's EntityReference without loading the parent entity. Subclasses override this
    * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}. A type that can
    * have several CONTAINS parents at once (e.g. a test case, under both a test suite and a test
@@ -993,6 +1025,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
   protected String getInheritableFields() {
     return "domains";
+  }
+
+  /**
+   * Fields to load on a parent of the given type. Entities whose parent may be one of several types
+   * override this when a field is only valid on some of them; requesting a field a parent type does
+   * not declare is rejected as an unknown field.
+   */
+  protected String getInheritableFields(String parentEntityType) {
+    return getInheritableFields();
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1211,7 +1252,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void setInheritedFields(
       List<T> entities, Fields fields, Map<UUID, EntityReference> unhydratedParentRefs) {
     if (entities.isEmpty()) return;
-    String inheritableFields = getInheritableFields();
 
     var parentRefsById = new HashMap<UUID, EntityReference>();
     for (var entity : entities) {
@@ -1241,8 +1281,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // thread-local parent cache was really buying on this path.
     var parentsById = new HashMap<UUID, EntityInterface>();
     for (var entry : parentRefsByType.entrySet()) {
+      String parentFields = getInheritableFields(entry.getKey());
       List<? extends EntityInterface> parents =
-          Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
+          Entity.getEntitiesForInheritance(entry.getValue(), parentFields, ALL);
       for (var parent : parents) {
         parentsById.put(parent.getId(), parent);
       }
@@ -3453,13 +3494,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Invalidate cache entries for an entity identified by an {@link
-   * CollectionDAO.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
+   * CoreRelationshipDAOs.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
    * JSON payload (when present) so the by-name cache variant is evicted alongside the by-id one.
    * Callers that only have {@code (type, id)} and pass {@code fqn=null} leave GET-by-name entries
    * stale until TTL expiry — use this when the referenced entity's FQN needs to be invalidated too.
    */
   public static void invalidateCacheForReferencedEntity(
-      CollectionDAO.EntityRelationshipRecord record) {
+      CoreRelationshipDAOs.EntityRelationshipRecord record) {
     if (record == null) {
       return;
     }
@@ -3909,7 +3950,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     RdfUpdater.updateEntity(entity);
     ListCountCache.invalidate(entityType);
-    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
+    // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
+    // prior failed lookup poisoned the negative cache. Iterates the Invalidatable registry
+    // so future cache layers also get the create signal automatically.
+    deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -4064,6 +4109,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void writeJsonToRedis(
       CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
+    PostCommitActionQueue.runOrDefer(
+        () -> writeJsonToRedisAfterCommit(cachedEntityDao, entityId, fqn, entityJson));
+  }
+
+  private void writeJsonToRedisAfterCommit(
+      CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
     if (entityJson == null || entityJson.isEmpty()) return;
     try {
       cachedEntityDao.putBase(entityType, entityId, entityJson);
@@ -4073,6 +4124,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } catch (Exception e) {
       LOG.debug("Failed to write to Redis cache: {} {}", entityType, entityId, e);
     }
+  }
+
+  private static void deferCacheBundleInvalidation(
+      final String entityType, final UUID id, final String fqn) {
+    PostCommitActionQueue.runOrDefer(() -> CacheBundle.invalidateEntity(entityType, id, fqn));
   }
 
   protected void postCreate(List<T> entities) {
@@ -4980,7 +5036,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityCacheRepair.scheduleRepair(
         entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
-    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -5123,6 +5179,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Runs multi-repository work through the retained SQL-object root so every child DAO joins the
+   * callback handle. Opening this boundary directly on {@link Entity#getJdbi()} does not bind the
+   * on-demand DAO graph, allowing nested repository writes to commit independently of the outer
+   * unit of work.
+   */
+  public final <R> R executeInTransaction(final Supplier<R> work) {
+    final DeferralScope scope = new DeferralScope();
+    boolean committed = false;
+    try {
+      final R result =
+          DeadlockRetry.execute(
+              () ->
+                  daoCollection.inTransaction(
+                      ignored -> {
+                        scope.reopenForAttempt();
+                        return work.get();
+                      }));
+      committed = true;
+      return result;
+    } finally {
+      scope.finish(committed);
+      if (!committed) {
+        storedEntityJson.remove();
+      }
+    }
+  }
+
+  /**
    * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
    * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
    * a replayed body never inherits closures/keys captured by a rolled-back attempt. {@link
@@ -5137,9 +5221,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean ownsLineageEs;
     private boolean ownsSearchWrite;
     private boolean ownsCache;
+    private boolean ownsPostCommitActions;
     private int rdfCheckpoint;
     private int lineageEsCheckpoint;
     private int searchWriteCheckpoint;
+    private int postCommitActionCheckpoint;
 
     private void reopenForAttempt() {
       if (opened) {
@@ -5155,10 +5241,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       rdfCheckpoint = RdfTagUpdater.checkpoint();
       lineageEsCheckpoint = LineageUtil.checkpoint();
       searchWriteCheckpoint = SearchRepository.searchWriteCheckpoint();
+      postCommitActionCheckpoint = PostCommitActionQueue.checkpoint();
       ownsRdf = RdfTagUpdater.beginDeferral();
       ownsLineageEs = LineageUtil.beginLineageDeferral();
       ownsSearchWrite = SearchRepository.beginSearchWriteDeferral();
       ownsCache = beginCacheInvalidationDeferral();
+      ownsPostCommitActions = PostCommitActionQueue.begin();
     }
 
     /**
@@ -5191,6 +5279,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         clearCacheInvalidations();
         beginCacheInvalidationDeferral();
       }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
+        PostCommitActionQueue.begin();
+      } else {
+        PostCommitActionQueue.rollbackToCheckpoint(postCommitActionCheckpoint);
+      }
     }
 
     private void finish(boolean committed) {
@@ -5216,12 +5310,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
       List<SearchRepository.DeferredSearchWrite> searchClosures =
           ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
+      List<Runnable> postCommitActions =
+          ownsPostCommitActions ? PostCommitActionQueue.drain() : List.of();
       if (ownsCache) {
         runGuarded(EntityRepository::drainCacheInvalidations);
       }
       runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
       runGuarded(() -> runLineageEsClosures(lineageClosures));
       runGuarded(() -> runSearchWriteClosures(searchClosures));
+      runGuarded(() -> PostCommitActionQueue.run(postCommitActions));
     }
 
     private void clear() {
@@ -5236,6 +5333,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (ownsCache) {
         clearCacheInvalidations();
+      }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
       }
     }
   }
@@ -6466,7 +6566,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // and the bulk subtree walkers — Team → Team, KnowledgePage → KnowledgePage,
     // Classification → Tag etc. express their hierarchy via PARENT_OF, and a CONTAINS-only
     // probe would skip them on restore even though delete already cascades through them.
-    List<CollectionDAO.EntityRelationshipRecord> records =
+    List<CoreRelationshipDAOs.EntityRelationshipRecord> records =
         daoCollection
             .relationshipDAO()
             .findTo(
@@ -6477,7 +6577,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     Map<String, List<UUID>> idsByType = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
+    for (CoreRelationshipDAOs.EntityRelationshipRecord record : records) {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
@@ -10519,7 +10619,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
-      CacheBundle.invalidateEntity(entityType, id, fqn);
+      deferCacheBundleInvalidation(entityType, id, fqn);
 
       EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 
@@ -11974,22 +12074,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
 
-    List<CollectionDAO.ExtensionRecordWithId> records =
+    List<CoreRelationshipDAOs.ExtensionRecordWithId> records =
         daoCollection
             .entityExtensionDAO()
             .getExtensionsBatch(entityListToStrings(entities), fieldFQNPrefix);
 
-    Map<UUID, List<CollectionDAO.ExtensionRecordWithId>> extensionsMap =
-        records.stream().collect(Collectors.groupingBy(CollectionDAO.ExtensionRecordWithId::id));
+    Map<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> extensionsMap =
+        records.stream()
+            .collect(Collectors.groupingBy(CoreRelationshipDAOs.ExtensionRecordWithId::id));
 
     Map<UUID, Object> result = new HashMap<>();
 
-    for (Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry : extensionsMap.entrySet()) {
+    for (Entry<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> entry :
+        extensionsMap.entrySet()) {
       UUID entityId = entry.getKey();
-      List<CollectionDAO.ExtensionRecordWithId> extensionRecords = entry.getValue();
+      List<CoreRelationshipDAOs.ExtensionRecordWithId> extensionRecords = entry.getValue();
 
       ObjectNode objectNode = JsonUtils.getObjectNode();
-      for (CollectionDAO.ExtensionRecordWithId record : extensionRecords) {
+      for (CoreRelationshipDAOs.ExtensionRecordWithId record : extensionRecords) {
         String fieldName = TypeRegistry.getPropertyName(record.extensionName());
         JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());
         objectNode.set(fieldName, extensionJsonNode);
