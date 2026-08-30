@@ -160,19 +160,20 @@ LEFT JOIN sys.extended_properties ep
 
 MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
     """
-SELECT 
+SELECT
     DB_NAME() AS DATABASE_NAME,
     s.name AS SCHEMA_NAME,
-    p.name AS STORED_PROCEDURE,
+    o.name AS STORED_PROCEDURE,
     CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
-FROM sys.procedures p
-JOIN sys.schemas s ON p.schema_id = s.schema_id
-LEFT JOIN sys.extended_properties ep 
-    ON ep.major_id = p.object_id 
-    AND ep.minor_id = 0 
+FROM sys.objects o
+JOIN sys.schemas s ON o.schema_id = s.schema_id
+LEFT JOIN sys.extended_properties ep
+    ON ep.major_id = o.object_id
+    AND ep.minor_id = 0
     AND ep.class = 1
-    AND ep.name = 'MS_Description';
-"""  # noqa: W291
+    AND ep.name = 'MS_Description'
+WHERE o.type IN ('P', 'FN', 'TF', 'IF');
+"""
 )
 
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
@@ -333,25 +334,28 @@ MSSQL_GET_STORED_PROCEDURES = textwrap.dedent(
     """
 SELECT
   ROUTINE_NAME AS name,
-  NULL AS owner,            
+  NULL AS owner,
   ROUTINE_BODY AS language,
+  ROUTINE_TYPE AS routine_type,
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
-JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
-JOIN sys.sql_modules l on l.object_id = p.object_id
- WHERE ROUTINE_TYPE = 'PROCEDURE'
+JOIN sys.objects o ON o.name = r.ROUTINE_NAME
+                   AND SCHEMA_NAME(o.schema_id) = r.ROUTINE_SCHEMA
+JOIN sys.sql_modules l on l.object_id = o.object_id
+ WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
    AND ROUTINE_CATALOG = '{database_name}'
    AND ROUTINE_SCHEMA = '{schema_name}'
-    """  # noqa: W291
+    """
 )
 
 MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(
     """
-SELECT p.name AS procedure_name
-FROM sys.procedures p
-JOIN sys.schemas s ON s.schema_id = p.schema_id
+SELECT o.name AS procedure_name
+FROM sys.objects o
+JOIN sys.schemas s ON s.schema_id = o.schema_id
 WHERE s.name = :schema_name
-  AND OBJECTPROPERTY(p.object_id, 'IsEncrypted') = 1
+  AND o.type IN ('P', 'FN', 'TF', 'IF')
+  AND OBJECTPROPERTY(o.object_id, 'IsEncrypted') = 1
     """
 )
 
@@ -466,3 +470,28 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")
+
+# Returns one row per partitioned table in the database, with its partitioning
+# column and that column's type. A table's heap/clustered index only resolves
+# to a partition_scheme when it's actually partitioned, so unpartitioned
+# tables produce no row. MSSQL allows exactly one partitioning column per
+# table (partition_ordinal never > 1). One query for the whole database, not
+# one per table.
+MSSQL_GET_TABLE_PARTITION_DETAILS = textwrap.dedent(
+    """
+SELECT
+    s.name  AS schema_name,
+    t.name  AS table_name,
+    c.name  AS partition_column_name,
+    ty.name AS partition_column_type
+FROM sys.tables t
+JOIN sys.schemas s            ON t.schema_id = s.schema_id
+JOIN sys.indexes i            ON i.object_id = t.object_id AND i.index_id IN (0, 1)
+JOIN sys.partition_schemes ps ON ps.data_space_id = i.data_space_id
+JOIN sys.index_columns ic     ON ic.object_id = i.object_id
+                              AND ic.index_id  = i.index_id
+                              AND ic.partition_ordinal = 1
+JOIN sys.columns c            ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+JOIN sys.types ty             ON ty.user_type_id = c.user_type_id
+"""
+)

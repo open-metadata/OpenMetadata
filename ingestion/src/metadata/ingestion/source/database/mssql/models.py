@@ -15,11 +15,19 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from metadata.generated.schema.entity.data.storedProcedure import Language
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedureType,
+)
 
 STORED_PROC_LANGUAGE_MAP = {
     "SQL": Language.SQL,
     "EXTERNAL": Language.External,
+}
+
+STORED_PROC_TYPE_MAP = {
+    "PROCEDURE": StoredProcedureType.StoredProcedure,
+    "FUNCTION": StoredProcedureType.Function,
 }
 
 
@@ -39,3 +47,4 @@ class MssqlStoredProcedure(BaseModel):
     owner: Optional[str] = Field(None)  # noqa: UP045
     language: str = Field(Language.SQL)
     definition: Optional[str] = Field(None)  # noqa: UP045
+    routine_type: str = Field("PROCEDURE")

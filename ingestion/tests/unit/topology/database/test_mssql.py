@@ -27,10 +27,14 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
     DataType,
+    PartitionIntervalTypes,
     TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -53,7 +57,10 @@ from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_STORED_PROCEDURE_COMMENTS,
+    MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -292,6 +299,7 @@ class MssqlUnitTest(TestCase):
             "definition": "def1",
             "language": "SQL",
             "owner": "owner",
+            "routine_type": "PROCEDURE",
         }
         row2 = MagicMock()
         row2._asdict.return_value = {
@@ -299,17 +307,32 @@ class MssqlUnitTest(TestCase):
             "definition": "def2",
             "language": "SQL",
             "owner": "owner",
+            "routine_type": "PROCEDURE",
+        }
+        row3 = MagicMock()
+        row3._asdict.return_value = {
+            "name": "ufn_include",
+            "definition": "def3",
+            "language": "SQL",
+            "owner": "owner",
+            "routine_type": "FUNCTION",
         }
 
         mock_conn = MagicMock()
-        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_conn.execute.return_value.all.return_value = [row1, row2, row3]
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.mssql.get_stored_procedures())
 
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].name, "sp_include")
+        # sp_exclude is filtered out by storedProcedureFilterPattern; the function is not
+        # filtered just for being a function -- both a procedure and a function survive.
+        self.assertEqual(len(results), 2)
+        self.assertEqual({r.name for r in results}, {"sp_include", "ufn_include"})
+        self.assertEqual(
+            {r.name: r.routine_type for r in results},
+            {"sp_include": "PROCEDURE", "ufn_include": "FUNCTION"},
+        )
 
 
 class TestUpdateMssqlIschemaNames:
@@ -428,6 +451,52 @@ class TestUpdateMssqlIschemaNames:
         assert results[0].description is None
         assert results[0].storedProcedureCode.code == "CREATE PROC sp_normal AS SELECT 1"
 
+    def test_yield_stored_procedure_sets_type_for_procedure(self):
+        """A PROCEDURE routine yields storedProcedureType=StoredProcedure."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(
+            name="usp_normal",
+            language="SQL",
+            definition="CREATE PROC usp_normal AS SELECT 1",
+            routine_type="PROCEDURE",
+        )
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureType == StoredProcedureType.StoredProcedure
+
+    def test_yield_stored_procedure_sets_type_for_function(self):
+        """A FUNCTION routine yields storedProcedureType=Function, not the StoredProcedure default."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(
+            name="ufn_calc",
+            language="SQL",
+            definition="CREATE FUNCTION ufn_calc() RETURNS INT AS BEGIN RETURN 1; END",
+            routine_type="FUNCTION",
+        )
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureType == StoredProcedureType.Function
+
+    def test_yield_encrypted_function_message_says_function_not_procedure(self):
+        """An encrypted FUNCTION gets a message calling it a function, not a stored procedure."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = {"fn_encrypted"}
+
+        sp = MssqlStoredProcedure(name="fn_encrypted", language="SQL", definition=None, routine_type="FUNCTION")
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.code == "-- Unable to fetch code as this is an encrypted function"
+
     def test_get_encrypted_procedures_caches_per_schema(self):
         """_get_encrypted_procedures queries once per schema and caches"""
         self._setup_stored_procedure_context()
@@ -516,6 +585,54 @@ class TestUpdateMssqlIschemaNames:
         self.mssql.status.failed.assert_called_once()
 
 
+class TestMssqlGetStoredProceduresQuery:
+    """MSSQL_GET_STORED_PROCEDURES must include functions, not just procedures, and must
+    not regress the object types sys.procedures used to cover (regular, extended, CLR).
+    """
+
+    def test_selects_both_procedures_and_functions(self):
+        assert "ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')" in MSSQL_GET_STORED_PROCEDURES
+
+    def test_no_longer_restricted_to_sys_procedures(self):
+        # sys.procedures only contains procedure-like objects (P/X/RF/PC) and would silently
+        # drop every function row even with the WHERE clause widened above.
+        assert "sys.procedures" not in MSSQL_GET_STORED_PROCEDURES
+
+    def test_join_does_not_filter_by_object_type(self):
+        # A type allowlist here (e.g. o.type IN ('P','FN','TF','IF')) would silently drop CLR
+        # stored procedures (type 'PC'), which this connector already supports via
+        # Language.External -- name+schema alone is unambiguous, no type filter is needed.
+        assert "o.type" not in MSSQL_GET_STORED_PROCEDURES
+
+    def test_selects_routine_type_for_downstream_classification(self):
+        assert "ROUTINE_TYPE AS routine_type" in MSSQL_GET_STORED_PROCEDURES
+
+
+class TestMssqlGetEncryptedStoredProceduresQuery:
+    """MSSQL_GET_ENCRYPTED_STORED_PROCEDURES must cover the same object types
+    MSSQL_GET_STORED_PROCEDURES can yield (procedures and functions), or an
+    encrypted function silently gets treated as non-encrypted.
+    """
+
+    def test_covers_functions_not_just_procedures(self):
+        assert "sys.procedures" not in MSSQL_GET_ENCRYPTED_STORED_PROCEDURES
+        assert "sys.objects" in MSSQL_GET_ENCRYPTED_STORED_PROCEDURES
+        for object_type in ("'P'", "'FN'", "'TF'", "'IF'"):
+            assert object_type in MSSQL_GET_ENCRYPTED_STORED_PROCEDURES
+
+
+class TestMssqlGetStoredProcedureCommentsQuery:
+    """MSSQL_GET_STORED_PROCEDURE_COMMENTS must cover functions too, or a function's
+    MS_Description extended property is silently never looked up.
+    """
+
+    def test_covers_functions_not_just_procedures(self):
+        assert "sys.procedures" not in MSSQL_GET_STORED_PROCEDURE_COMMENTS
+        assert "sys.objects" in MSSQL_GET_STORED_PROCEDURE_COMMENTS
+        for object_type in ("'P'", "'FN'", "'TF'", "'IF'"):
+            assert object_type in MSSQL_GET_STORED_PROCEDURE_COMMENTS
+
+
 class MssqlIdentityColumnTest(TestCase):
     """Regression tests for identity column reflection.
 
@@ -600,6 +717,48 @@ class TestMssqlForeignKeyReferredDatabase:
         assert key["referred_table"] == "customers"
         assert key["constrained_columns"] == ["customer_id", "customer_region"]
         assert key["referred_columns"] == ["id", "region"]
+
+
+class TestMssqlUniqueConstraints:
+    """``get_unique_constraints`` used to be a NotImplementedError stub, so every
+    named UNIQUE constraint was silently dropped instead of reflected.
+    """
+
+    @staticmethod
+    def _row(constraint_name, column_name):
+        values = {"CONSTRAINT_NAME": constraint_name, "COLUMN_NAME": column_name}
+
+        class _Mapping:
+            def __getitem__(self, key):
+                return values.get(getattr(key, "key", key))
+
+        return _Mapping()
+
+    def _unique_constraints(self, rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_unique_constraints(MSDialect(), connection, "Products", schema="dbo")
+
+    def test_single_column_constraint_is_reflected(self):
+        constraints = self._unique_constraints([self._row("UQ_Products_SKU", "SKU")])
+
+        assert constraints == [{"name": "UQ_Products_SKU", "column_names": ["SKU"]}]
+
+    def test_multi_column_constraint_is_grouped(self):
+        constraints = self._unique_constraints(
+            [
+                self._row("UQ_OrderLines_OrderProduct", "OrderID"),
+                self._row("UQ_OrderLines_OrderProduct", "ProductID"),
+            ]
+        )
+
+        assert constraints == [{"name": "UQ_OrderLines_OrderProduct", "column_names": ["OrderID", "ProductID"]}]
+
+    def test_no_constraints_returns_empty_list(self):
+        assert self._unique_constraints([]) == []
 
 
 class TestMssqlTemporalPeriodColumns:
@@ -864,3 +1023,86 @@ class TestMssqlPerDatabaseQueryStore:
         engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
 
         assert engines == [fake_source.engine]
+
+
+class TestMssqlPartitionDetails:
+    """Bulk partition-detail fetch (one query per database, not per table)."""
+
+    @staticmethod
+    def _source(rows):
+        source = MssqlSource.__new__(MssqlSource)
+        source.partition_details_map = {}
+        source.engine = MagicMock()
+        conn = source.engine.connect.return_value.__enter__.return_value
+        conn.execute.return_value.all.return_value = rows
+        return source
+
+    @staticmethod
+    def _row(
+        schema_name="dbo",
+        table_name="SalesPartitioned",
+        partition_column_name="SaleDate",
+        partition_column_type="datetime",
+    ):
+        return types.SimpleNamespace(
+            schema_name=schema_name,
+            table_name=table_name,
+            partition_column_name=partition_column_name,
+            partition_column_type=partition_column_type,
+        )
+
+    def test_partitioned_table_is_found_after_one_bulk_query(self):
+        source = self._source([self._row()])
+
+        source.set_partition_details_map()
+        is_partitioned, partition_details = source.get_table_partition_details(
+            table_name="SalesPartitioned", schema_name="dbo", inspector=None
+        )
+
+        source.engine.connect.assert_called_once()
+        assert is_partitioned is True
+        assert partition_details.columns[0].columnName == "SaleDate"
+        assert partition_details.columns[0].intervalType == PartitionIntervalTypes.TIME_UNIT
+        # No field on TablePartition/PartitionColumnDetails can hold boundary
+        # values or RANGE direction, and the UI's PartitionedKeys widget doesn't
+        # render `interval` at all -- matches postgres/cockroach leaving it None.
+        assert partition_details.columns[0].interval is None
+
+    def test_table_absent_from_bulk_result_is_not_partitioned(self):
+        source = self._source([self._row()])
+
+        source.set_partition_details_map()
+        is_partitioned, partition_details = source.get_table_partition_details(
+            table_name="Sales-2024", schema_name="dbo", inspector=None
+        )
+
+        assert (is_partitioned, partition_details) == (False, None)
+
+    def test_numeric_column_maps_to_integer_range(self):
+        source = self._source([self._row(partition_column_name="RegionId", partition_column_type="int")])
+
+        source.set_partition_details_map()
+        _, partition_details = source.get_table_partition_details(
+            table_name="SalesPartitioned", schema_name="dbo", inspector=None
+        )
+
+        assert partition_details.columns[0].intervalType == PartitionIntervalTypes.INTEGER_RANGE
+
+    def test_other_typed_column_maps_to_other(self):
+        source = self._source([self._row(partition_column_name="Region", partition_column_type="varchar")])
+
+        source.set_partition_details_map()
+        _, partition_details = source.get_table_partition_details(
+            table_name="SalesPartitioned", schema_name="dbo", inspector=None
+        )
+
+        assert partition_details.columns[0].intervalType == PartitionIntervalTypes.OTHER
+
+    def test_lookup_before_any_bulk_load_finds_nothing(self):
+        source = MssqlSource.__new__(MssqlSource)
+        source.partition_details_map = {}
+
+        assert source.get_table_partition_details(table_name="SalesPartitioned", schema_name="dbo", inspector=None) == (
+            False,
+            None,
+        )

@@ -13,6 +13,29 @@ MSSQL constants
 """
 
 DEFAULT_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# sys.types names used to classify a partitioned column into a PartitionIntervalTypes value.
+MSSQL_PARTITION_TIME_TYPES = {
+    "date",
+    "datetime",
+    "datetime2",
+    "smalldatetime",
+    "datetimeoffset",
+    "time",
+}
+MSSQL_PARTITION_NUMERIC_TYPES = {
+    "tinyint",
+    "smallint",
+    "int",
+    "bigint",
+    "decimal",
+    "numeric",
+    "float",
+    "real",
+    "money",
+    "smallmoney",
+}
+
 MSSQL_DATEFORMAT_DATETIME_MAP = {
     "dmy": "%d-%m-%Y %H:%M:%S",
     "dym": "%d-%Y-%m %H:%M:%S",
