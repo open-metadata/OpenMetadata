@@ -609,7 +609,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             Entity.getUserRepository(),
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
             user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
-        .getOrCreate(email, displayName, Boolean.TRUE.equals(authConfig.getEnableSelfSignup()));
+        // No subject binding: a SAML NameID is only stable for persistent formats, and a
+        // transient NameID rotates on every login, which would lock users out.
+        .getOrCreate(
+            email, displayName, null, Boolean.TRUE.equals(authConfig.getEnableSelfSignup()));
   }
 
   private boolean isUserAdmin(String email, String username) {

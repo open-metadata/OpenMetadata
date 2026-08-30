@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -756,6 +757,47 @@ public class UserRepository extends EntityRepository<User> {
     invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     updateImpersonationRole(user, allowImpersonation, impersonationRole);
     SubjectCache.invalidateUser(user.getName());
+  }
+
+  /**
+   * Internal-only mutation of a user's email. Email is deliberately immutable on the user APIs (see
+   * {@link UserUpdater}, which pins it to the stored value) because it is the identity key for
+   * email-first SSO. Administrators reach this through the {@code change-email} ops command to
+   * repair a synthesized address, follow a real-world address change, or release an address that
+   * the identity provider reassigned.
+   *
+   * @param clearIdentityProviderSubject also drop the recorded IdP subject so the next login
+   *     re-binds; required when the address was reassigned to a different person.
+   */
+  public User changeEmail(
+      String currentEmail, String newEmail, boolean clearIdentityProviderSubject) {
+    String normalizedNewEmail = newEmail.trim().toLowerCase(Locale.ROOT);
+    if (!SecurityUtil.isValidEmail(normalizedNewEmail)) {
+      throw new IllegalArgumentException(String.format("'%s' is not a valid email", newEmail));
+    }
+    User user = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS);
+    if (!user.getEmail().equalsIgnoreCase(normalizedNewEmail)
+        && checkEmailAlreadyExists(normalizedNewEmail)) {
+      throw new IllegalArgumentException(
+          String.format("Email %s is already used by another account", normalizedNewEmail));
+    }
+
+    String previousEmail = user.getEmail();
+    user.setEmail(normalizedNewEmail);
+    if (clearIdentityProviderSubject) {
+      user.setIdentityProviderSubject(null);
+    }
+    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    JwtFilter.invalidateResolvedEmailIdentity(previousEmail);
+    JwtFilter.invalidateResolvedEmailIdentity(normalizedNewEmail);
+    SubjectCache.invalidateUser(user.getName());
+    LOG.info(
+        "Changed email for user {} from {} to {}",
+        user.getName(),
+        previousEmail,
+        normalizedNewEmail);
+    return user;
   }
 
   private void updateImpersonationRole(

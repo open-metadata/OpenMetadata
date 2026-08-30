@@ -44,7 +44,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    User resolvedUser = provisioner.getOrCreate("john@company.com", "John", true);
+    User resolvedUser = provisioner.getOrCreate("john@company.com", "John", null, true);
 
     assertSame(existingUser, resolvedUser);
     assertEquals(0, saveCount.get());
@@ -76,7 +76,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    User resolvedUser = provisioner.getOrCreate("john@company.com", "John Updated", true);
+    User resolvedUser = provisioner.getOrCreate("john@company.com", "John Updated", null, true);
 
     assertSame(existingUser, resolvedUser);
     assertEquals("John Updated", resolvedUser.getDisplayName());
@@ -110,7 +110,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    provisioner.getOrCreate("john@company.com", "John", true);
+    provisioner.getOrCreate("john@company.com", "John", null, true);
 
     assertEquals(1, saveCount.get());
   }
@@ -135,7 +135,7 @@ class EmailFirstUserProvisionerTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> provisioner.getOrCreate("newuser@company.com", "New User", false));
+            () -> provisioner.getOrCreate("newuser@company.com", "New User", null, false));
 
     assertTrue(exception.getMessage().contains("User not registered"));
   }
@@ -161,7 +161,7 @@ class EmailFirstUserProvisionerTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> provisioner.getOrCreate("intruder@other.org", "Intruder", true));
+            () -> provisioner.getOrCreate("intruder@other.org", "Intruder", null, true));
 
     assertTrue(exception.getMessage().contains("not allowed for self-signup"));
   }
@@ -192,7 +192,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    User resolvedUser = provisioner.getOrCreate("john@company.com", null, true);
+    User resolvedUser = provisioner.getOrCreate("john@company.com", null, null, true);
 
     assertSame(existingUser, resolvedUser);
     assertEquals("Custom Name", resolvedUser.getDisplayName());
@@ -216,7 +216,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    User createdUser = provisioner.getOrCreate("john@company.com", "John", true);
+    User createdUser = provisioner.getOrCreate("john@company.com", "John", null, true);
 
     assertTrue(createdUser.getName().startsWith("john_"));
     assertEquals("john@company.com", createdUser.getEmail());
@@ -242,7 +242,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    User createdUser = provisioner.getOrCreate("admin@company.com", null, true);
+    User createdUser = provisioner.getOrCreate("admin@company.com", null, null, true);
 
     assertEquals("admin", createdUser.getName());
     assertEquals("admin", createdUser.getDisplayName());
@@ -274,7 +274,7 @@ class EmailFirstUserProvisionerTest {
             .exceptionFactory(IllegalStateException::new)
             .build();
 
-    User createdUser = provisioner.getOrCreate("retry@company.com", "Retry User", true);
+    User createdUser = provisioner.getOrCreate("retry@company.com", "Retry User", null, true);
 
     assertEquals("retry", createdUser.getName());
     assertEquals(2, saveAttempts.get());
@@ -306,7 +306,7 @@ class EmailFirstUserProvisionerTest {
     UserCreationException exception =
         assertThrows(
             UserCreationException.class,
-            () -> provisioner.getOrCreate("retry@company.com", "Retry User", true));
+            () -> provisioner.getOrCreate("retry@company.com", "Retry User", null, true));
 
     assertTrue(exception.getMessage().toLowerCase().contains("validation"));
     assertEquals(1, saveAttempts.get());
@@ -338,9 +338,151 @@ class EmailFirstUserProvisionerTest {
     UserCreationException exception =
         assertThrows(
             UserCreationException.class,
-            () -> provisioner.getOrCreate("retry@company.com", "Retry User", true));
+            () -> provisioner.getOrCreate("retry@company.com", "Retry User", null, true));
 
     assertTrue(exception.getMessage().toLowerCase().contains("duplicate"));
     assertEquals(3, saveAttempts.get());
+  }
+
+  @Test
+  void testBindsIdentityProviderSubjectOnFirstLogin() {
+    User existingUser =
+        new User().withName("john").withEmail("john@company.com").withDisplayName("John");
+    AtomicInteger saveCount = new AtomicInteger();
+
+    EmailFirstUserProvisioner provisioner =
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
+
+    User resolved = provisioner.getOrCreate("john@company.com", "John", "idp-subject-1", true);
+
+    assertEquals("idp-subject-1", resolved.getIdentityProviderSubject());
+    assertEquals(1, saveCount.get(), "binding the subject should persist the user");
+  }
+
+  @Test
+  void testRejectsLoginWhenSubjectDiffersFromBoundSubject() {
+    // The email was reassigned to a different person at the identity provider; without this the
+    // new holder would inherit the previous owner's account.
+    User existingUser =
+        new User()
+            .withName("john")
+            .withEmail("john@company.com")
+            .withIdentityProviderSubject("original-subject");
+
+    EmailFirstUserProvisioner provisioner =
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(user -> user)
+            .exceptionFactory(IllegalStateException::new)
+            .build();
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                provisioner.getOrCreate("john@company.com", "New Hire", "different-subject", true));
+
+    assertTrue(exception.getMessage().contains("bound to a different identity-provider subject"));
+  }
+
+  @Test
+  void testAcceptsLoginWhenSubjectMatchesAndDoesNotRewriteIt() {
+    User existingUser =
+        new User()
+            .withName("john")
+            .withEmail("john@company.com")
+            .withDisplayName("John")
+            .withIdentityProviderSubject("stable-subject");
+    AtomicInteger saveCount = new AtomicInteger();
+
+    EmailFirstUserProvisioner provisioner =
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
+
+    User resolved = provisioner.getOrCreate("john@company.com", "John", "stable-subject", true);
+
+    assertEquals("stable-subject", resolved.getIdentityProviderSubject());
+    assertEquals(0, saveCount.get(), "a matching subject is not a change and must not write");
+  }
+
+  @Test
+  void testStoresSubjectOnNewlyCreatedUser() {
+    EmailFirstUserProvisioner provisioner =
+        EmailFirstUserProvisioner.builder()
+            .providerName("OIDC")
+            .existingUserLookup(
+                email -> {
+                  throw EntityNotFoundException.byName(email);
+                })
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(user -> user)
+            .exceptionFactory(IllegalStateException::new)
+            .build();
+
+    User created = provisioner.getOrCreate("new@company.com", "New", "fresh-subject", true);
+
+    assertEquals("fresh-subject", created.getIdentityProviderSubject());
+  }
+
+  @Test
+  void testProvidersWithoutASubjectAreUnaffected() {
+    // SAML and LDAP pass null; binding must stay inert rather than blocking those logins.
+    User existingUser =
+        new User().withName("john").withEmail("john@company.com").withDisplayName("John");
+    AtomicInteger saveCount = new AtomicInteger();
+
+    EmailFirstUserProvisioner provisioner =
+        EmailFirstUserProvisioner.builder()
+            .providerName("LDAP")
+            .existingUserLookup(email -> existingUser)
+            .usernameExistsChecker(username -> false)
+            .adminEvaluator((email, username) -> false)
+            .existingUserMutator(user -> false)
+            .newUserMutator(user -> {})
+            .userSaver(
+                user -> {
+                  saveCount.incrementAndGet();
+                  return user;
+                })
+            .exceptionFactory(IllegalStateException::new)
+            .build();
+
+    User resolved = provisioner.getOrCreate("john@company.com", "John", null, true);
+
+    assertSame(existingUser, resolved);
+    assertEquals(0, saveCount.get());
   }
 }

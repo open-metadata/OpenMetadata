@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
@@ -1178,6 +1179,107 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reset user password.", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "change-email",
+      description =
+          "Change a user's email address. Email is the identity key for email-first SSO, so this "
+              + "is how an administrator repairs a synthesized address, follows a real-world "
+              + "address change, or releases an address that was reassigned to someone else.")
+  public Integer changeUserEmail(
+      @Option(
+              names = {"-e", "--email"},
+              description = "Current email address of the user.",
+              required = true)
+          String currentEmail,
+      @Option(
+              names = {"-n", "--new-email"},
+              description = "New email address to set.",
+              required = true)
+          String newEmail,
+      @Option(
+              names = {"--clear-identity-binding"},
+              description =
+                  "Also clear the recorded identity-provider subject, so the next login re-binds. "
+                      + "Needed when the address was reassigned or the provider reissued subjects.",
+              defaultValue = "false")
+          boolean clearIdentityBinding) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      initOrganization();
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      User updated = userRepository.changeEmail(currentEmail, newEmail, clearIdentityBinding);
+
+      LOG.info(
+          "Changed email for user {} from {} to {}{}",
+          updated.getName(),
+          currentEmail,
+          updated.getEmail(),
+          clearIdentityBinding ? " and cleared the identity-provider binding" : "");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to change the user email.", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "list-synthesized-emails",
+      description =
+          "List users whose email was synthesized as username@principalDomain by the legacy "
+              + "identity flow rather than supplied by the identity provider. These are the "
+              + "accounts that will not match a real address once email-first login is enabled.")
+  public Integer listSynthesizedEmails(
+      @Option(
+              names = {"-d", "--domain"},
+              description =
+                  "Domain to treat as synthesized. Defaults to the configured principalDomain.")
+          String domain) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      initOrganization();
+
+      String syntheticDomain =
+          nullOrEmpty(domain)
+              ? SecurityConfigurationManager.getCurrentAuthzConfig().getPrincipalDomain()
+              : domain;
+      if (nullOrEmpty(syntheticDomain)) {
+        LOG.error("No domain supplied and no principalDomain is configured.");
+        return 1;
+      }
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      List<String> rows = new ArrayList<>();
+      ListFilter filter = new ListFilter(Include.NON_DELETED);
+      String suffix = "@" + syntheticDomain.toLowerCase(Locale.ROOT);
+      for (User user : userRepository.listAll(new EntityUtil.Fields(Set.of()), filter)) {
+        String email = user.getEmail();
+        if (email != null
+            && email.toLowerCase(Locale.ROOT).endsWith(suffix)
+            && !Boolean.TRUE.equals(user.getIsBot())) {
+          rows.add(user.getName() + "\t" + email);
+        }
+      }
+
+      LOG.info(
+          "{} user(s) hold an email in the synthesized domain {}", rows.size(), syntheticDomain);
+      rows.forEach(row -> LOG.info("  {}", row));
+      if (!rows.isEmpty()) {
+        LOG.info("Repair each with: change-email -e <current> -n <real address>");
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to list synthesized emails.", e);
       return 1;
     }
   }

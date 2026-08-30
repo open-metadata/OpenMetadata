@@ -289,7 +289,7 @@ public final class SecurityUtil {
    * then refuse to authenticate it, which is what a locale-specific address (apostrophes, accented
    * characters) would have hit.
    */
-  private static boolean isValidEmail(String email) {
+  public static boolean isValidEmail(String email) {
     return email.matches("^\\S+@\\S+\\.\\S+$");
   }
 

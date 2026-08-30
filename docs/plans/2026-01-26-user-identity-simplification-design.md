@@ -236,11 +236,23 @@ Phase 1 (this implementation): Backward-compatible changes with deprecation warn
 continue to work. Legacy `adminPrincipals` continue to match existing users **by name** (only
 `adminEmails` resolves by email) so no duplicate admin accounts are created on upgrade.
 
-Phase 2 (future): Migration tooling via OpenMetadataOps to help users transition existing users
-with artificial emails (e.g. `user@principalDomain` synthesized from NameID/UPN configs) to real
-emails — required before such deployments can enable `emailClaim`. Also planned: store the IdP
-`sub` claim on first login and alert/deny when a known email presents a different subject
-(defends against IdP email reuse/recycling), and an admin-only "change user email" operation
-(emails are currently immutable through the API).
+Phase 2 (this implementation): identity-provider subject binding and the ops tooling that a
+deployment with synthesized emails needs before it can turn `emailClaim` on.
+
+- **Subject binding.** `User.identityProviderSubject` records the IdP `sub` on first email-first
+  login. A later login presenting the same email with a *different* subject is refused rather than
+  handed the existing account, which is the defense against an IdP recycling an address to a new
+  person. Binding is set only where the provider issues a stable subject: OIDC binds; SAML does not
+  (NameIDs are commonly transient and rotate per login, so binding them would lock users out on
+  their second login), and LDAP has no subject concept. An unbound account binds on its next OIDC
+  login, so existing users adopt the protection without a migration.
+- **`change-email`** (OpenMetadataOperations) sets a user's email, since email is otherwise
+  immutable through the API — `UserUpdater` pins it to the stored value. This is how an
+  administrator repairs a synthesized address, follows a real-world address change, or parks an
+  account whose address was reassigned. `--clear-identity-binding` additionally drops the recorded
+  subject so the next login re-binds; it is required when the address went to a different person.
+- **`list-synthesized-emails`** reports the accounts holding a `user@principalDomain` address that
+  the legacy flow synthesized rather than the IdP supplying, so an administrator can find the
+  accounts that will not match a real address before enabling `emailClaim`.
 
 Phase 3 (future): Remove deprecated configuration options.

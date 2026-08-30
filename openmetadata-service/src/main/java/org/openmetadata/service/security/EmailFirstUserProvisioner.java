@@ -90,10 +90,12 @@ public class EmailFirstUserProvisioner {
    * Return the account for this email, creating it when self-signup allows. Retries a losing race
    * with a concurrent create rather than failing the login.
    */
-  public User getOrCreate(String email, String displayName, boolean selfSignupEnabled) {
+  public User getOrCreate(
+      String email, String displayName, String identityProviderSubject, boolean selfSignupEnabled) {
     for (int attempt = 1; attempt <= MAX_CREATE_RETRIES; attempt++) {
       try {
-        return syncExistingUser(existingUserLookup.getByEmail(email), email, displayName);
+        return syncExistingUser(
+            existingUserLookup.getByEmail(email), email, displayName, identityProviderSubject);
       } catch (EntityNotFoundException e) {
         LOG.debug("User not found by email {}, will create new user", email);
       }
@@ -101,7 +103,7 @@ public class EmailFirstUserProvisioner {
       requireSignupAllowed(email, selfSignupEnabled);
 
       try {
-        return userSaver.apply(buildNewUser(email, displayName));
+        return userSaver.apply(buildNewUser(email, displayName, identityProviderSubject));
       } catch (org.openmetadata.sdk.exception.UserCreationException ex) {
         rethrowUnlessRetryable(ex, attempt, email);
       }
@@ -112,11 +114,49 @@ public class EmailFirstUserProvisioner {
   }
 
   /** Bring an existing account in line with what the identity provider now asserts. */
-  private User syncExistingUser(User user, String email, String displayName) {
-    boolean needsUpdate = promoteToAdminIfConfigured(user, email);
+  private User syncExistingUser(
+      User user, String email, String displayName, String identityProviderSubject) {
+    boolean needsUpdate = bindIdentityProviderSubject(user, email, identityProviderSubject);
+    needsUpdate = promoteToAdminIfConfigured(user, email) || needsUpdate;
     needsUpdate = syncDisplayName(user, displayName) || needsUpdate;
     needsUpdate = existingUserMutator.apply(user) || needsUpdate;
     return needsUpdate ? userSaver.apply(user) : user;
+  }
+
+  /**
+   * Tie the account to the provider's immutable subject the first time we see one, and refuse a
+   * later login that presents the same address under a different subject.
+   *
+   * <p>Email addresses get reassigned — a departing employee's address handed to a new hire would
+   * otherwise silently inherit their account, tokens and history. Accounts that predate this field
+   * bind on their next login. A genuine provider migration that reissues subjects needs an
+   * administrator to clear the stored value; the error says so.
+   */
+  private boolean bindIdentityProviderSubject(User user, String email, String subject) {
+    if (subject == null || subject.isBlank()) {
+      return false;
+    }
+    String bound = user.getIdentityProviderSubject();
+    if (bound == null || bound.isBlank()) {
+      LOG.debug("Binding identity provider subject to user {}", user.getName());
+      user.setIdentityProviderSubject(subject);
+      return true;
+    }
+    if (!bound.equals(subject)) {
+      LOG.warn(
+          "SECURITY: {} login for {} presented subject '{}' but the account is bound to a "
+              + "different subject; refusing to reuse the existing account",
+          providerName,
+          email,
+          subject);
+      throw exceptionFactory.apply(
+          String.format(
+              "Email %s is already bound to a different identity-provider subject. If this "
+                  + "address was reassigned, an administrator must transfer or clear the account "
+                  + "binding before this user can sign in.",
+              email));
+    }
+    return false;
   }
 
   private boolean promoteToAdminIfConfigured(User user, String email) {
@@ -160,7 +200,7 @@ public class EmailFirstUserProvisioner {
     }
   }
 
-  private User buildNewUser(String email, String displayName) {
+  private User buildNewUser(String email, String displayName, String identityProviderSubject) {
     // Guard once at the boundary: everything below derives the username and domain from '@'.
     String validatedEmail = SecurityUtil.requireEmailWithDomain(email);
     String emailDomain = validatedEmail.substring(validatedEmail.indexOf('@') + 1);
@@ -177,7 +217,8 @@ public class EmailFirstUserProvisioner {
             .withEmail(validatedEmail)
             .withDisplayName(displayName != null ? displayName : userName)
             .withIsAdmin(isAdmin)
-            .withIsEmailVerified(true);
+            .withIsEmailVerified(true)
+            .withIdentityProviderSubject(identityProviderSubject);
     newUserMutator.accept(newUser);
     return newUser;
   }

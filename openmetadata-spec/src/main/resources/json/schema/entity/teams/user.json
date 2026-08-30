@@ -53,6 +53,10 @@
       "description": "External identifier from identity provider (used for SCIM).",
       "type": "string"
     },
+    "identityProviderSubject": {
+      "description": "Subject ('sub') claim recorded from the identity provider on first email-first login. Email addresses can be reassigned to a new person; binding the immutable subject lets a later login with the same address but a different subject be rejected instead of inheriting the previous owner's account. Distinct from externalId, which SCIM owns.",
+      "type": "string"
+    },
     "scimUserName": {
       "description": "Raw user name from SCIM.",
       "type": "string"

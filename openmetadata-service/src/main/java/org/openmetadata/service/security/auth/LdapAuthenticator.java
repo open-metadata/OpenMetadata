@@ -178,7 +178,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             userRepository,
             user -> syncLdapRoles(userDn, user),
             user -> assignLdapRoles(userDn, user))
-        .getOrCreate(email, displayName, isSelfSignUpEnabled);
+        // LDAP has no subject claim to bind; the directory entry is located by email already.
+        .getOrCreate(email, displayName, null, isSelfSignUpEnabled);
   }
 
   /** Assign directory roles to a user that is about to be created. */

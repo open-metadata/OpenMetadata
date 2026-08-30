@@ -939,6 +939,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         .getOrCreate(
             email,
             displayName,
+            SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
             Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
   }
 
