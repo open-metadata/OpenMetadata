@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyIriPreview.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyIriPreview",
+  "description": "Expanded IRI and the exact policy inputs used to mint it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyIriPreview",
+  "properties": {
+    "glossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "candidateId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "baseIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "pattern": {
+      "type": "string"
+    },
+    "termSegment": {
+      "description": "IRI-safe expansion of the requested term name.",
+      "type": "string"
+    },
+    "iri": {
+      "description": "Absolute governed IRI to persist on the new concept.",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "glossaryId",
+    "candidateId",
+    "baseIri",
+    "pattern",
+    "termSegment",
+    "iri"
+  ],
+  "additionalProperties": false
+}

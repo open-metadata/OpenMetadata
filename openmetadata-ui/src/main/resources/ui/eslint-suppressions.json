@@ -161,7 +161,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 3
     }
   },
   "playwright/e2e/Features/CuratedAssets.spec.ts": {
@@ -450,16 +450,6 @@
   "playwright/e2e/Features/OnlineUsers.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
-    }
-  },
-  "playwright/e2e/Features/OntologyExplorer.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Features/OntologyExplorerE2E.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/e2e/Features/OntologyImportRdf.spec.ts": {
