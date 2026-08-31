@@ -374,6 +374,11 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
         apiContext,
         `ForeignCluster${suffix}`
       );
+      await fixture.addRelation(apiContext, {
+        relationType: 'relatedTo',
+        source: primaryTerm,
+        target: foreignTerm,
+      });
 
       const tableResources = await tableFixture.create(apiContext);
       tables = [

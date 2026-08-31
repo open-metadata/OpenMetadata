@@ -485,7 +485,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                     schema = @Schema(implementation = OntologyDataGraph.class)))
       })
   public OntologyDataGraph getOntologyDataGraph(
-      @Context SecurityContext securityContext, @BeanParam OntologyDataQuery query) {
+      @Context SecurityContext securityContext, @Valid @BeanParam OntologyDataQuery query) {
     authorizeOntologyView(securityContext);
     GlossaryTermRepository.OntologyDataGraphRequest request = query.toRequest();
     return repository.getOntologyDataGraph(
