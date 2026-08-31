@@ -76,6 +76,7 @@ class OpensearchHC5ReactorReproIT {
           .withEnv("discovery.type", "single-node")
           .withEnv("DISABLE_SECURITY_PLUGIN", "true")
           .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+          .withEnv("DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI", "true")
           .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
           .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
 

@@ -279,6 +279,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withCommand(
           "mysqld",
           "--max_allowed_packet=" + mysqlMaxAllowedPacket,
+          // Rollback tests install short-lived triggers using the non-root test account.
+          "--log_bin_trust_function_creators=1",
           // The tag list query (TagDAO.listAfter) joins three tables and sorts by tag.name,
           // tag.id; under the parallel-tests fork the tag table grows large and the default
           // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty

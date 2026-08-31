@@ -87,7 +87,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * a HAS relationship rather than CONTAINS, and it is the thing most likely to regress.
  */
 @Execution(ExecutionMode.SAME_THREAD)
-@Isolated("Rollback coverage temporarily installs entity_relationship CHECK constraints")
+@Isolated("Rollback coverage temporarily installs entity_relationship failure injectors")
 @ExtendWith(TestNamespaceExtension.class)
 public class MetricGroupResourceIT {
   private static final String ALL_RESOURCES = "All";
@@ -783,7 +783,7 @@ public class MetricGroupResourceIT {
     String constraint = "metric_membership_fail_" + suffix;
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
 
-    createMembershipFailureConstraint(jdbi, constraint, group.getId(), child.getId());
+    createMembershipFailureInjector(jdbi, connectionType, constraint, group.getId(), child.getId());
     try {
       assertThrows(
           RuntimeException.class,
@@ -796,7 +796,7 @@ public class MetricGroupResourceIT {
                       request,
                       Object.class));
     } finally {
-      dropMembershipFailureConstraint(jdbi, connectionType, constraint);
+      dropMembershipFailureInjector(jdbi, connectionType, constraint);
     }
 
     assertEquals(0, membershipCount(jdbi, group.getId(), root.getId()));
@@ -817,13 +817,13 @@ public class MetricGroupResourceIT {
     Metric update = SdkClients.adminClient().metrics().get(root.getId().toString(), "metricGroup");
     update.setMetricGroup(group.getEntityReference());
 
-    createMembershipFailureConstraint(jdbi, constraint, group.getId(), child.getId());
+    createMembershipFailureInjector(jdbi, connectionType, constraint, group.getId(), child.getId());
     try {
       assertThrows(
           RuntimeException.class,
           () -> SdkClients.adminClient().metrics().update(root.getId().toString(), update));
     } finally {
-      dropMembershipFailureConstraint(jdbi, connectionType, constraint);
+      dropMembershipFailureInjector(jdbi, connectionType, constraint);
     }
 
     assertEquals(0, membershipCount(jdbi, group.getId(), root.getId()));
@@ -1304,36 +1304,46 @@ public class MetricGroupResourceIT {
         : ConnectionType.POSTGRES;
   }
 
-  private static void createMembershipFailureConstraint(
-      Jdbi jdbi, String constraint, UUID groupId, UUID metricId) {
-    jdbi.useHandle(
-        handle ->
-            handle.execute(
-                "ALTER TABLE entity_relationship ADD CONSTRAINT "
-                    + constraint
-                    + " CHECK (NOT (fromId = '"
-                    + groupId
-                    + "' AND toId = '"
-                    + metricId
-                    + "' AND fromEntity = '"
-                    + METRIC_GROUP
-                    + "' AND toEntity = '"
-                    + METRIC
-                    + "' AND relation = "
-                    + Relationship.HAS.ordinal()
-                    + "))"));
+  private static void createMembershipFailureInjector(
+      Jdbi jdbi, ConnectionType connectionType, String name, UUID groupId, UUID metricId) {
+    String statement =
+        connectionType == ConnectionType.MYSQL
+            ? mysqlMembershipFailureTrigger(name, groupId, metricId)
+            : postgresMembershipFailureConstraint(name, groupId, metricId);
+    jdbi.useHandle(handle -> handle.execute(statement));
   }
 
-  private static void dropMembershipFailureConstraint(
-      Jdbi jdbi, ConnectionType connectionType, String constraint) {
-    jdbi.useHandle(
-        handle -> {
-          if (connectionType == ConnectionType.MYSQL) {
-            handle.execute("ALTER TABLE entity_relationship DROP CHECK " + constraint);
-          } else {
-            handle.execute("ALTER TABLE entity_relationship DROP CONSTRAINT " + constraint);
-          }
-        });
+  private static String mysqlMembershipFailureTrigger(String name, UUID groupId, UUID metricId) {
+    return """
+        CREATE TRIGGER %s BEFORE INSERT ON entity_relationship
+        FOR EACH ROW
+        BEGIN
+          IF NEW.fromId = '%s' AND NEW.toId = '%s' AND NEW.fromEntity = '%s'
+            AND NEW.toEntity = '%s' AND NEW.relation = %d THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected metric membership failure';
+          END IF;
+        END
+        """
+        .formatted(name, groupId, metricId, METRIC_GROUP, METRIC, Relationship.HAS.ordinal());
+  }
+
+  private static String postgresMembershipFailureConstraint(
+      String name, UUID groupId, UUID metricId) {
+    return """
+        ALTER TABLE entity_relationship ADD CONSTRAINT %s
+        CHECK (NOT (fromId = '%s' AND toId = '%s' AND fromEntity = '%s'
+          AND toEntity = '%s' AND relation = %d)) NOT VALID
+        """
+        .formatted(name, groupId, metricId, METRIC_GROUP, METRIC, Relationship.HAS.ordinal());
+  }
+
+  private static void dropMembershipFailureInjector(
+      Jdbi jdbi, ConnectionType connectionType, String name) {
+    String statement =
+        connectionType == ConnectionType.MYSQL
+            ? "DROP TRIGGER " + name
+            : "ALTER TABLE entity_relationship DROP CONSTRAINT " + name;
+    jdbi.useHandle(handle -> handle.execute(statement));
   }
 
   private static int membershipCount(Jdbi jdbi, UUID groupId, UUID metricId) {
