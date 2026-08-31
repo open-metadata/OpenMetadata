@@ -37,6 +37,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -94,6 +95,16 @@ export const InputOutputPortsTab = forwardRef<
     const portQueryFilter = useMemo(() => {
       return getQueryFilterForDataProductPorts(dataProductFqn);
     }, [dataProductFqn]);
+
+    // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
+    // fed straight through from DataProductUtils.tsx's `dataProductPermission`
+    // (DataProductsDetailsPage's useEntityPermissions owner, Batch 1) — contract kept
+    // raw. No `deleted` argument: old code's 4 `permissions.EditAll` reads were never
+    // gated on `deleted` (DataProduct has no `deleted` field to gate on anyway).
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
     const fetchLineageData = useCallback(async () => {
@@ -309,7 +320,7 @@ export const InputOutputPortsTab = forwardRef<
                         ({inputPortsCount})
                       </Typography>
                     </div>
-                    {permissions.EditAll &&
+                    {canEditAll &&
                       isInputPortsExpanded &&
                       inputPortsCount > 0 && (
                         <Button
@@ -344,7 +355,7 @@ export const InputOutputPortsTab = forwardRef<
                         <Typography as="p" className="tw:text-center">
                           {t('message.no-input-ports-added')}
                         </Typography>
-                        {permissions.EditAll && (
+                        {canEditAll && (
                           <Button
                             className="tw:mt-2"
                             color="primary"
@@ -399,7 +410,7 @@ export const InputOutputPortsTab = forwardRef<
                         ({outputPortsCount})
                       </Typography>
                     </div>
-                    {permissions.EditAll &&
+                    {canEditAll &&
                       isOutputPortsExpanded &&
                       outputPortsCount > 0 && (
                         <Button
@@ -436,7 +447,7 @@ export const InputOutputPortsTab = forwardRef<
                             ? t('message.no-assets-for-output-ports')
                             : t('message.no-output-ports-added')}
                         </Typography>
-                        {permissions.EditAll && assetCount > 0 && (
+                        {canEditAll && assetCount > 0 && (
                           <Button
                             className="tw:mt-2"
                             color="primary"
