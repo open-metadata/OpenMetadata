@@ -25,6 +25,58 @@ import { Graph3DData, GraphLink3D, GraphNode3D, Lens, Level } from './types';
 export const idOf = (endpoint: string | GraphNode3D): string =>
   typeof endpoint === 'object' ? endpoint.id : endpoint;
 
+export interface GraphPosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+const isFiniteCoordinate = (value: number | undefined): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+export const canFitGraph = (
+  nodes: GraphNode3D[],
+  viewportWidth: number,
+  viewportHeight: number,
+  padding: number
+): boolean =>
+  viewportWidth > padding * 2 &&
+  viewportHeight > padding * 2 &&
+  nodes.length > 0 &&
+  nodes.every(
+    (node) =>
+      isFiniteCoordinate(node.x) &&
+      isFiniteCoordinate(node.y) &&
+      isFiniteCoordinate(node.z)
+  );
+
+export const getCameraRecoveryPosition = (
+  position: GraphPosition,
+  minimumDistance: number
+): GraphPosition | null => {
+  const distance = Math.hypot(position.x, position.y, position.z);
+  let recovery: GraphPosition | null = null;
+  if (!Number.isFinite(distance) || distance === 0) {
+    recovery = { x: 0, y: 0, z: minimumDistance };
+  } else if (distance < minimumDistance) {
+    const scale = minimumDistance / distance;
+    recovery = {
+      x: position.x * scale,
+      y: position.y * scale,
+      z: position.z * scale,
+    };
+  }
+
+  return recovery;
+};
+
+export const resolveGraphNodeId = (
+  nodes: GraphNode3D[],
+  entityId: string
+): string | undefined =>
+  nodes.find((node) => node.id === entityId || node.id.endsWith(`/${entityId}`))
+    ?.id;
+
 const linkMatchesLens = (link: GraphLink3D, lens: Lens): boolean =>
   lens === 'all' || link.kind === lens;
 
@@ -189,9 +241,6 @@ export const getVisibleLabelIds = (
 
   return visible;
 };
-
-const isFiniteCoordinate = (value: number | undefined): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
 
 /**
  * Force layouts naturally settle into a roughly spherical footprint. Stretch

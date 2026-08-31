@@ -18,10 +18,12 @@ import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../generated/entity/feed/conversation';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
@@ -30,10 +32,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getActivityEventHeaderText,
-  getFeedHeaderTextFromCardStyle,
-} from '../../../utils/FeedUtils';
+import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
 import {
   entityDisplayName,
   getEntityFQN,
@@ -49,17 +48,18 @@ import ActivityEventFooter from '../ActivityFeedCardV2/FeedCardFooter/ActivityEv
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
+import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
 
 interface ActivityFeedCardNewProps {
-  feed?: Thread;
+  feed?: Conversation;
   activity?: ActivityEvent;
   isPost?: boolean;
   isActive?: boolean;
-  post?: Post;
+  post?: ConversationReply;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
   isForFeedTab?: boolean;
@@ -96,17 +96,31 @@ const ActivityFeedCardNew = ({
   }, [feed?.about, activity?.about, activity?.entity]);
 
   const createdBy = useMemo(() => {
-    return feed?.createdBy ?? activity?.actor?.name ?? '';
-  }, [feed?.createdBy, activity?.actor?.name]);
+    return (
+      post?.author.name ??
+      post?.author.fullyQualifiedName ??
+      feed?.createdBy?.name ??
+      feed?.createdBy?.fullyQualifiedName ??
+      activity?.actor?.name ??
+      ''
+    );
+  }, [feed?.createdBy, post?.author, activity?.actor?.name]);
 
   const feedId = feed?.id ?? activity?.id ?? '';
 
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { selectedThread, postFeed, updateFeed, isPostsLoading } =
-    useActivityFeedProvider();
+  const {
+    selectedThread,
+    postFeed,
+    updateFeed,
+    isPostsLoading,
+    postActivityComment,
+    activityReplies,
+  } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [, , user] = useUserProfile({
     permission: true,
     name: createdBy,
@@ -117,12 +131,16 @@ const ActivityFeedCardNew = ({
   }, [feedId]);
 
   const onSave = (message: string) => {
-    // Change-event activities are read-only (no discussion thread); only
-    // conversation threads accept replies.
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
+    if (isActivityEvent && activity) {
+      postActivityComment(message, activity).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+      });
+    } else {
+      postFeed(message, selectedThread?.id ?? '').catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      });
+    }
     setShowFeedEditor(false);
   };
 
@@ -130,8 +148,8 @@ const ActivityFeedCardNew = ({
     if (!feed) {
       return;
     }
-    const updatedPost = { ...feed, message };
-    const patch = compare(feed, updatedPost);
+    const target = isPost && post ? post : feed;
+    const patch = compare(target, { ...target, message });
     updateFeed(feed.id, post?.id ?? '', !isPost, patch);
     setIsEditPost(!isEditPost);
   };
@@ -141,14 +159,11 @@ const ActivityFeedCardNew = ({
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
     };
-  }, [entityFQN, entityType, feed?.cardStyle]);
+  }, [entityFQN, entityType]);
   const entityRef = feed?.entityRef ?? activity?.entity;
 
   const renderEntityLink = useMemo(() => {
-    if (
-      isUserOrTeam &&
-      !ASSET_CARD_STYLES.includes(feed?.cardStyle as CardStyle)
-    ) {
+    if (isUserOrTeam) {
       return (
         <UserPopOverCard
           showUserName
@@ -198,14 +213,7 @@ const ActivityFeedCardNew = ({
         </EntityPopOverCard>
       );
     }
-  }, [
-    feed?.cardStyle,
-    entityType,
-    entityFQN,
-    isUserOrTeam,
-    entityRef,
-    createdBy,
-  ]);
+  }, [entityType, entityFQN, isUserOrTeam, entityRef, createdBy]);
 
   const feedHeaderText = useMemo(() => {
     if (isActivityEvent && activity) {
@@ -216,15 +224,11 @@ const ActivityFeedCardNew = ({
       );
     }
 
-    return getFeedHeaderTextFromCardStyle(
-      feed?.fieldOperation,
-      feed?.cardStyle,
-      feed?.feedInfo?.fieldName,
-      entityType
-    );
-  }, [isActivityEvent, activity, feed, entityType]);
+    return t('label.conversation-lowercase');
+  }, [isActivityEvent, activity, entityType, t]);
 
-  const timestampValue = post?.postTs ?? activity?.timestamp;
+  const timestampValue =
+    post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
   const timestamp = timestampValue ? (
     <Tooltip
       color="white"
@@ -242,18 +246,20 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   };
 
+  const feedActions =
+    isHovered && !isActivityEvent && !isPost && feed ? (
+      <ActivityFeedActions
+        conversation={feed}
+        conversationId={feed.id}
+        isReply={false}
+        onEditPost={() => setIsEditPost((current) => !current)}
+      />
+    ) : null;
+
   const posts = useMemo(() => {
-    // Activities are read-only change events — never render replies for them.
-    if (!showThread || isActivityEvent) {
+    if (!showThread && !isOpenInDrawer) {
       return null;
     }
-
-    const threadToDisplay = feed;
-
-    if (!threadToDisplay) {
-      return null;
-    }
-
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>
@@ -264,7 +270,8 @@ const ActivityFeedCardNew = ({
       );
     }
 
-    const orderedPosts = orderBy(threadToDisplay.posts, ['postTs'], ['desc']);
+    const replies = isActivityEvent ? activityReplies : feed?.replies ?? [];
+    const orderedPosts = orderBy(replies, ['createdAt'], ['desc']);
 
     if (orderedPosts.length === 0) {
       return null;
@@ -275,25 +282,32 @@ const ActivityFeedCardNew = ({
         {orderedPosts.map((reply, index, arr) => (
           <CommentCard
             closeFeedEditor={closeFeedEditor}
-            feed={threadToDisplay}
+            conversation={feed}
+            conversationId={activity?.id ?? feed?.id ?? ''}
             isLastReply={index === arr.length - 1}
             key={reply.id}
-            post={reply}
+            reply={reply}
           />
         ))}
       </Col>
     );
-  }, [feed, showThread, closeFeedEditor, isPostsLoading, isActivityEvent]);
+  }, [
+    feed,
+    showThread,
+    isOpenInDrawer,
+    closeFeedEditor,
+    isPostsLoading,
+    isActivityEvent,
+    activityReplies,
+    activity?.id,
+  ]);
 
   const feedMessage = useMemo(() => {
     if (isActivityEvent) {
       return activity?.summary ?? '';
     }
-    if (!isPost) {
-      return feed?.feedInfo?.entitySpecificInfo?.entity?.description ?? '';
-    }
 
-    return post?.message ?? '';
+    return isPost ? post?.message ?? '' : feed?.message ?? '';
   }, [isActivityEvent, activity, isPost, feed, post]);
 
   if (isFeedWidget) {
@@ -308,7 +322,10 @@ const ActivityFeedCardNew = ({
           { 'activity-feed-reply-card': isPost },
           { 'active-card is-active': isActive }
         )}
-        data-testid="feed-card-v2-sidebar">
+        data-conversation-id={feed?.id}
+        data-testid="feed-card-v2-sidebar"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}>
         <Space align="start" className="w-full">
           <div className="flex gap-2 w-full">
             <div className="flex-center flex-col">
@@ -386,9 +403,10 @@ const ActivityFeedCardNew = ({
                 <div className="m-b-md">
                   <FeedCardFooterNew
                     isForFeedTab
-                    feed={feed}
-                    isPost={isPost}
-                    post={post}
+                    conversation={feed}
+                    conversationId={feed.id}
+                    isReply={isPost}
+                    reply={post}
                   />
                 </div>
               )}
@@ -404,6 +422,7 @@ const ActivityFeedCardNew = ({
             </div>
           </div>
         </Space>
+        {feedActions}
       </Card>
     );
   }
@@ -419,7 +438,10 @@ const ActivityFeedCardNew = ({
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
       )}
-      data-testid="feed-card-v2-sidebar">
+      data-conversation-id={feed?.id}
+      data-testid="feed-card-v2-sidebar"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
@@ -497,12 +519,13 @@ const ActivityFeedCardNew = ({
             onUpdate={onUpdate}
           />
 
-          {(isPost || (!showThread && !isPost)) && !isActivityEvent && feed && (
+          {!isActivityEvent && feed && (
             <FeedCardFooterNew
-              feed={feed}
+              conversation={feed}
+              conversationId={feed.id}
               isForFeedTab={isForFeedTab}
-              isPost={isPost}
-              post={post}
+              isReply={isPost}
+              reply={post}
             />
           )}
 
@@ -515,7 +538,7 @@ const ActivityFeedCardNew = ({
           )}
         </Space>
       </Space>
-      {!isActivityEvent && (showThread || isOpenInDrawer) && (
+      {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
           {(showActivityFeedEditor || isOpenInDrawer) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">
@@ -528,7 +551,10 @@ const ActivityFeedCardNew = ({
                 'm-t-md feed-editor activity-feed-editor-container-new',
                 {
                   'm-b-md':
-                    (showActivityFeedEditor && feed?.posts?.length === 0) ||
+                    (showActivityFeedEditor &&
+                      (isActivityEvent
+                        ? activityReplies.length === 0
+                        : (feed?.replies?.length ?? 0) === 0)) ||
                     isOpenInDrawer,
                 }
               )}
@@ -560,6 +586,7 @@ const ActivityFeedCardNew = ({
           {posts}
         </div>
       )}
+      {feedActions}
     </Card>
   );
 };
