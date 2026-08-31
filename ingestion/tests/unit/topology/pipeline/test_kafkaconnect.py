@@ -1467,6 +1467,32 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
             assert edge.edge.fromEntity.id.root == table_entity.id
             assert edge.edge.toEntity.type == "topic"
 
+    def test_prefix_scan_matches_one_topic_per_dataset(self):
+        """
+        The topic.prefix scan returns every topic under the namespace, so what keeps it
+        from becoming namespace-membership lineage is the 1:1 match that follows: each
+        dataset takes the single topic whose name resolves to it, and the rest are
+        dropped. Only an outbox EventRouter fans one table out to many topics, and such
+        a connector never reaches the scan.
+        """
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            # `tables` yields a dataset but is not read by _parse_cdc_topics_from_config,
+            # so resolution falls through to the namespace scan with a dataset in hand.
+            "tables": "prod.sales.orders",
+        }
+        under_prefix = [
+            "ecommerce.sales.prod.sales.orders",
+            "ecommerce.sales.prod.sales.customers",
+            "ecommerce.sales.prod.sales.payments",
+            "ecommerce.sales.transaction",
+        ]
+
+        _table_entity, edges = self._run_lineage(config, under_prefix)
+
+        assert len(edges) == 1, "the scan must not fan a dataset out across the namespace"
+
     def test_multi_table_outbox_connector_does_not_fan_out(self):
         """
         A connector capturing several tables cannot attribute routed topics to a
