@@ -19,6 +19,12 @@ export interface RDFIndexingAppConfig {
      */
     batchSize?: number;
     /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
      * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
@@ -26,6 +32,17 @@ export interface RDFIndexingAppConfig {
      * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: Entity[];
+    /**
+     * Maximum number of failed write attempts tolerated per relationship source before that
+     * source is abandoned for the run.
+     */
+    maxRetries?: number;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
     /**
      * Number of entities per partition for distributed RDF indexing. Smaller values create more
      * partitions for better distribution across servers.

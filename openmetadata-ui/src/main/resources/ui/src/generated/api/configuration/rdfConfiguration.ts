@@ -13,7 +13,7 @@
 /**
  * Configuration for RDF/Knowledge Graph support in OpenMetadata
  */
-export interface Out20493 {
+export interface RDFConfiguration {
     /**
      * Expose optional AI-assisted Ontology Studio flows. Manual authoring remains available
      * when disabled.
