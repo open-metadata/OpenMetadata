@@ -615,9 +615,10 @@ class TestLibraryListIsHomogeneous:
         seen = []
         original = DatabrickspipelineSource._expand_workspace_directory
 
-        def record(self, library, path=None, max_depth=5):
+        def record(self, library, *args, **kwargs):
+            """Spy on the libraries, forwarding whatever depth the caller uses."""
             seen.append(library)
-            return original(self, library, path, max_depth)
+            return original(self, library, *args, **kwargs)
 
         with patch.object(DatabrickspipelineSource, "_expand_workspace_directory", record):
             pipeline_entity = MagicMock()

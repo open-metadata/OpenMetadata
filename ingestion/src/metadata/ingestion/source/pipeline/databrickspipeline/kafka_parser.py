@@ -219,8 +219,9 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
     A library entry is one of three shapes, and a pipeline may mix them:
       - `{"notebook": {"path": ...}}`  a workspace notebook
       - `{"file": {"path": ...}}`      a file, used by Git folders and Asset Bundles
-      - `{"glob": {"include": ...}}`   the directory to expand, plus the pattern
-        its contents must match
+      - `{"glob": {"include": ...}}`   an exact file, or a directory to expand in
+        full. The pipelines API accepts nothing narrower, so there is no pattern
+        to filter the directory's contents against.
 
     Malformed entries are skipped rather than failing the whole pipeline.
     """

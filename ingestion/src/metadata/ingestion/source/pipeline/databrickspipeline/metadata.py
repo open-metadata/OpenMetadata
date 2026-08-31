@@ -419,7 +419,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self,
         library: DLTLibrarySource,
         path: Optional[str] = None,  # noqa: UP045
-        max_depth: int = 5,
+        # Deep enough that a real repository layout is never truncated, while still
+        # bounding the recursion. A directory that is not there costs nothing, but a
+        # transformation missed below the cap costs the lineage that depends on it.
+        max_depth: int = 20,
     ) -> List[str]:  # noqa: UP006
         """
         List every notebook and file under a library directory.
