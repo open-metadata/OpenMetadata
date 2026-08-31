@@ -838,12 +838,14 @@
         Keep this in step with the httpcore5 pin above - Apache releases the two together
         and mixing lines breaks search. httpclient5 5.5/5.5.2 are built against httpcore5
         5.3.x; on 5.4.x their I/O reactor dispatchers die silently, leaking connection-pool
-        leases until every request fails with DeadlineTimeoutException. 5.6.3 declares
-        httpcore5 5.4.3, so client and core match.
+        leases until every request fails with DeadlineTimeoutException. 5.6.4 declares
+        httpcore5 5.4.3 (identical to 5.6.3), so client and core match.
 
-        5.6.3 is also the first release outside the CVE-2026-64607 range (affects
+        5.6.3 was the first release outside the CVE-2026-64607 range (affects
         5.0-alpha1 through 5.6.2: the classic i/o client leaks a connection when a response
-        carries an invalid Content-Encoding).
+        carries an invalid Content-Encoding). 5.6.4 additionally closes CVE-2026-71290
+        (improper certificate validation: HostnameVerificationPolicy#BUILTIN had no effect on
+        the async TLS upgrade path, so SSL parameters were not applied).
 
         The 5.6 line enables automatic content decompression in the async client, which the
         search transports also do - see disableContentCompression() in OpenSearchClient and
@@ -852,12 +854,23 @@
       <dependency>
         <groupId>org.apache.httpcomponents.client5</groupId>
         <artifactId>httpclient5</artifactId>
-        <version>5.6.3</version>
+        <version>5.6.4</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
         <version>1.26.0</version>
+      </dependency>
+      <!-- CVE-2026-75140: quadratic memory in XmlTreeBuilder namespace-map copying lets a
+           deeply nested, uniquely-namespaced XML document exhaust the heap. Vulnerable through
+           1.23.1; the fix (jsoup PR #2556) ships in 1.23.2. jsoup is not declared by any module -
+           it arrives only as a transitive of flexmark-html2md-converter, which declares 1.15.4.
+           That is a soft requirement, so managing it here overrides it. Remove this pin only if
+           flexmark ever ships a release declaring 1.23.2 or newer itself (0.64.8 is its latest). -->
+      <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>1.23.2</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>

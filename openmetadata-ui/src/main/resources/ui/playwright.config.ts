@@ -132,8 +132,10 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry on CI only; PLAYWRIGHT_RETRIES (set per workflow via the reusable's
+   * `retries` input) overrides the CI default of 1. The parens are semantic:
+   * without them `?? CI ? 1 : 0` collapses every override to 1. */
+  retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
