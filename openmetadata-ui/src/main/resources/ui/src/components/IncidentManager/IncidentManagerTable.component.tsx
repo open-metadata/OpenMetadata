@@ -37,6 +37,8 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
@@ -87,6 +89,22 @@ const IncidentManagerTable = ({
 }: IncidentManagerTableProps) => {
   const { t } = useTranslation();
 
+  // Per-row bulk permission lookup (DashboardChartTable.tsx precedent, Task 8 Batch 5): the
+  // bulk fetch itself (testCasePermissions, populated by the caller) is untouched — only the
+  // 3 flagged raw `.EditAll` reads convert, via one shared lookup+derivation helper. A test
+  // case with no permissions entry (fetch pending/not found) falls back to
+  // DEFAULT_ENTITY_PERMISSION, reproducing the old optional-chaining-is-falsy behavior.
+  const getRowEditPermission = (fqn?: string) => {
+    const hasPermission = testCasePermissions.find(
+      (item) => item.fullyQualifiedName === fqn
+    );
+
+    return getDerivedPermissionFlags(
+      hasPermission ?? DEFAULT_ENTITY_PERMISSION,
+      Boolean(tableDetails?.deleted)
+    ).canEditAll;
+  };
+
   const testCaseResolutionStatusDetailsRender = (
     value?: Assigned,
     record?: TestCaseResolutionStatus
@@ -95,18 +113,14 @@ const IncidentManagerTable = ({
       return <Skeleton height={24} variant="rectangular" width={100} />;
     }
 
-    const hasPermission = testCasePermissions.find(
-      (item) =>
-        item.fullyQualifiedName ===
-        record?.testCaseReference?.fullyQualifiedName
-    );
-
     return (
       <div data-testid="assignee">
         <OwnerLabel
           isCompactView
           className="m-0"
-          hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+          hasPermission={getRowEditPermission(
+            record?.testCaseReference?.fullyQualifiedName
+          )}
           multiple={{
             user: false,
             team: false,
@@ -158,9 +172,7 @@ const IncidentManagerTable = ({
       [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
       '.'
     );
-    const hasPermission = testCasePermissions.find(
-      (item) => item.fullyQualifiedName === ref?.fullyQualifiedName
-    );
+    const canEditRow = getRowEditPermission(ref?.fullyQualifiedName);
 
     return (
       <Table.Row id={record.id ?? ''} key={record.id}>
@@ -210,7 +222,7 @@ const IncidentManagerTable = ({
             <TestCaseIncidentManagerStatus
               isInline
               data={record}
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              hasPermission={canEditRow}
               onSubmit={handleStatusSubmit}
             />
           )}
@@ -221,7 +233,7 @@ const IncidentManagerTable = ({
           ) : (
             <Severity
               isInline
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              hasPermission={canEditRow}
               severity={record.severity}
               onSubmit={(severity) => handleSeveritySubmit(record, severity)}
             />
