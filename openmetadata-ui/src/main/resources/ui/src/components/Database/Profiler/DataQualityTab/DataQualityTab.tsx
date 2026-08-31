@@ -52,6 +52,8 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -498,7 +500,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       (permission) =>
         permission.fullyQualifiedName === record.fullyQualifiedName
     );
-    const hasEditPermission = isEditAllowed || testCasePermission?.EditAll;
+    // Bare EditAll-only read (identical mapping, no OR with another field) - per-row bulk
+    // permission, not a single entity's useEntityPermissions fetch, so derive inline rather
+    // than converting the fetch pattern (out of scope for this batch, see PR notes).
+    const hasEditPermission =
+      isEditAllowed ||
+      getDerivedPermissionFlags(testCasePermission ?? DEFAULT_ENTITY_PERMISSION)
+        .canEditAll;
 
     return (
       <TestCaseIncidentManagerStatus
@@ -522,7 +530,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         permission.fullyQualifiedName === record.fullyQualifiedName
     );
 
-    const testCaseEditPermission = isEditAllowed || testCasePermission?.EditAll;
+    const testCaseEditPermission =
+      isEditAllowed ||
+      getDerivedPermissionFlags(testCasePermission ?? DEFAULT_ENTITY_PERMISSION)
+        .canEditAll;
     const testCaseDeletePermission =
       removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
 
