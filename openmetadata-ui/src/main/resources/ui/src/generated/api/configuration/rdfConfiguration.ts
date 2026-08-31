@@ -24,6 +24,19 @@ export interface RDFConfiguration {
      */
     baseUri?: string;
     /**
+     * Build full RDF rebuilds into an idle dataset and switch to it on success, instead of
+     * clearing the served dataset first. When disabled (the default), a rebuild clears the live
+     * graph up front and queries return partial results for the duration of the run. Requires
+     * the storage backend to support creating and deleting datasets.
+     */
+    blueGreenRebuildEnabled?: boolean;
+    /**
+     * Maximum number of entity models written in a single insert-only (append) bulk request.
+     * Acts as a guard alongside maxAppendPayloadBytes so a chunk of very small entities cannot
+     * grow without bound.
+     */
+    bulkAppendEntityBatchSize?: number;
+    /**
      * Maximum number of entity models written to RDF storage in a single bulk request.
      */
     bulkEntityBatchSize?: number;
@@ -69,6 +82,14 @@ export interface RDFConfiguration {
      */
     federation?: Federation;
     /**
+     * Compress streamed insert-only request bodies with gzip. The backend reads the request
+     * body inside its single-writer transaction, so on network-constrained links compression
+     * directly shortens writer-lock hold time. Off by default; enable after verifying
+     * throughput on your deployment. Only gzip is ever used - deflate is intentionally
+     * unsupported.
+     */
+    gzipRequests?: boolean;
+    /**
      * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
      * inference engine to derive additional triples based on the reasoning level.
      */
@@ -79,10 +100,26 @@ export interface RDFConfiguration {
      */
     materializedInferenceEnabled?: boolean;
     /**
+     * Approximate maximum serialized payload size in bytes for an insert-only (append) bulk RDF
+     * write. Append writes carry no DELETE statements and are parsed by the streaming RDF
+     * parser rather than the SPARQL grammar, so they tolerate much larger bodies than
+     * reconciling updates; larger bodies mean fewer storage transactions, which is the main
+     * throughput lever on a single-writer store. Raising this also raises peak heap in the
+     * indexer, since a whole chunk is materialized as an in-memory model before it is sent.
+     */
+    maxAppendPayloadBytes?: number;
+    /**
      * Maximum RDF store size for in-process inference. Queries requesting inference fall back
      * to direct SPARQL execution when the store exceeds this limit.
      */
     maxInMemoryInferenceTriples?: number;
+    /**
+     * Approximate maximum serialized payload size in bytes for a single bulk RDF write request.
+     * Chunks are budgeted by estimated triple size and split when the serialized body exceeds
+     * this cap, so wide entities cannot produce requests that overwhelm the storage backend. A
+     * single entity larger than the cap is still sent alone.
+     */
+    maxUpdatePayloadBytes?: number;
     /**
      * Password for RDF storage authentication
      */
@@ -100,6 +137,13 @@ export interface RDFConfiguration {
      * Type of RDF storage backend
      */
     storageType: StorageType;
+    /**
+     * Stream insert-only bulk appends to the storage backend (per-entity models written
+     * incrementally into the request body) instead of materializing a combined in-memory model
+     * first. Streaming keeps indexer memory constant regardless of chunk size; disable only to
+     * fall back to the library upload path when diagnosing transport issues.
+     */
+    streamingAppendEnabled?: boolean;
     /**
      * Reject authored axioms that violate the supported OWL 2 DL profile guardrails.
      */
