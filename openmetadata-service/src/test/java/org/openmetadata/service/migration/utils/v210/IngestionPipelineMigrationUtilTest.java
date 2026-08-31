@@ -15,10 +15,13 @@ package org.openmetadata.service.migration.utils.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.RepairOutcome.NOT_NEEDED;
@@ -121,31 +124,46 @@ class IngestionPipelineMigrationUtilTest {
 
     assertEquals(UNRESOLVED, result.outcome());
     assertFalse(config(pipeline).has("type"));
+    assertEquals(
+        "unsupported pipelineType 'usage' for service type 'dashboardService'", result.reason());
   }
 
-  @Test
-  void repairSourceConfigTypeLeavesMalformedConfigUnresolved() {
-    ObjectNode pipeline = JsonUtils.getObjectNode();
-    pipeline.put("pipelineType", PipelineType.METADATA.value());
-    pipeline.put("sourceConfig", "not-an-object");
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("malformedSourceConfigPipelines")
+  void repairSourceConfigTypeLeavesEveryMalformedSourceConfigShapeUnresolved(
+      String testCase, ObjectNode pipeline) {
 
     IngestionPipelineMigrationUtil.RepairResult result =
         IngestionPipelineMigrationUtil.repairSourceConfigType(pipeline, Entity.DATABASE_SERVICE);
 
     assertEquals(UNRESOLVED, result.outcome());
+    assertEquals("sourceConfig.config is not an object", result.reason());
   }
 
-  @Test
-  void repairSourceConfigTypeLeavesNonStringExplicitTypeUnresolved() {
-    ObjectNode sourceConfig = JsonUtils.getObjectNode();
-    sourceConfig.put("type", 42);
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("nonStringSourceConfigTypes")
+  void repairSourceConfigTypeLeavesNonStringExplicitTypesUnresolved(
+      String testCase, ObjectNode sourceConfig) {
     ObjectNode pipeline = pipeline(PipelineType.METADATA, sourceConfig);
 
     IngestionPipelineMigrationUtil.RepairResult result =
         IngestionPipelineMigrationUtil.repairSourceConfigType(pipeline, Entity.DATABASE_SERVICE);
 
     assertEquals(UNRESOLVED, result.outcome());
-    assertEquals(42, config(pipeline).path("type").asInt());
+    assertEquals("sourceConfig.config.type must be a non-blank string", result.reason());
+    assertFalse(config(pipeline).path("type").isTextual());
+  }
+
+  @Test
+  void repairSourceConfigTypeReportsInvalidPipelineType() {
+    ObjectNode pipeline = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    pipeline.put("pipelineType", "invalid-pipeline-type");
+
+    IngestionPipelineMigrationUtil.RepairResult result =
+        IngestionPipelineMigrationUtil.repairSourceConfigType(pipeline, Entity.DATABASE_SERVICE);
+
+    assertEquals(UNRESOLVED, result.outcome());
+    assertEquals("invalid pipelineType 'invalid-pipeline-type'", result.reason());
   }
 
   @Test
@@ -203,6 +221,34 @@ class IngestionPipelineMigrationUtilTest {
     assertEquals(
         "multiple active supported service relationships: databaseService, databaseService",
         resolution.reason());
+  }
+
+  @Test
+  void resolveServiceTypeResolutionsDeduplicatesTheSameRelationship() {
+    String pipelineId = UUID.randomUUID().toString();
+    String serviceId = UUID.randomUUID().toString();
+    CollectionDAO.EntityRelationshipObject relationship =
+        relationship(pipelineId, Entity.DATABASE_SERVICE, serviceId);
+
+    var resolutions =
+        IngestionPipelineMigrationUtil.resolveServiceTypeResolutions(
+            List.of(relationship, relationship));
+
+    assertEquals(Entity.DATABASE_SERVICE, resolutions.get(pipelineId).serviceType());
+    assertTrue(resolutions.get(pipelineId).isResolved());
+  }
+
+  @Test
+  void resolveServiceTypeResolutionsIgnoresRelationshipsToOtherEntities() {
+    String pipelineId = UUID.randomUUID().toString();
+    CollectionDAO.EntityRelationshipObject relationship =
+        relationship(
+            pipelineId, Entity.DATABASE_SERVICE, UUID.randomUUID().toString(), Entity.USER);
+
+    var resolutions =
+        IngestionPipelineMigrationUtil.resolveServiceTypeResolutions(List.of(relationship));
+
+    assertTrue(resolutions.isEmpty());
   }
 
   @Test
@@ -326,6 +372,78 @@ class IngestionPipelineMigrationUtilTest {
     assertEquals("DBT", config(updatedPipeline).path("type").asText());
   }
 
+  @Test
+  void backfillPaginatesAndWritesOnlyPipelinesThatNeedRepair() {
+    ObjectNode repairedPipeline = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    ObjectNode alreadyTypedPipeline = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    config(alreadyTypedPipeline).put("type", "DatabaseMetadata");
+    ObjectNode invalidPipelineType = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    invalidPipelineType.put("pipelineType", "not-a-pipeline-type");
+
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.IngestionPipelineDAO pipelineDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.ingestionPipelineDAO()).thenReturn(pipelineDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1_000), anyString(), anyString()))
+        .thenReturn(
+            List.of(repairedPipeline.toString(), alreadyTypedPipeline.toString()),
+            List.of(invalidPipelineType.toString()),
+            List.of());
+    when(relationshipDAO.findFromBatch(
+            List.of(repairedPipeline.path("id").asText(), alreadyTypedPipeline.path("id").asText()),
+            Relationship.CONTAINS.ordinal(),
+            Include.NON_DELETED))
+        .thenReturn(
+            List.of(
+                relationship(repairedPipeline.path("id").asText(), Entity.DATABASE_SERVICE),
+                relationship(alreadyTypedPipeline.path("id").asText(), Entity.DATABASE_SERVICE)));
+    when(relationshipDAO.findFromBatch(
+            List.of(invalidPipelineType.path("id").asText()),
+            Relationship.CONTAINS.ordinal(),
+            Include.NON_DELETED))
+        .thenReturn(
+            List.of(
+                relationship(invalidPipelineType.path("id").asText(), Entity.DATABASE_SERVICE)));
+
+    IngestionPipelineMigrationUtil.MigrationResult result =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO);
+
+    assertEquals(3, result.scanned());
+    assertEquals(1, result.repaired());
+    assertEquals(1, result.unresolved());
+    assertEquals(
+        "invalid pipelineType 'not-a-pipeline-type'",
+        result.unresolvedPipelineSamples().getFirst().reason());
+    verify(pipelineDAO).listAfter(any(ListFilter.class), eq(1_000), eq(""), eq(""));
+    verify(pipelineDAO)
+        .listAfter(
+            any(ListFilter.class),
+            eq(1_000),
+            eq(alreadyTypedPipeline.path("name").asText()),
+            eq(alreadyTypedPipeline.path("id").asText()));
+    verify(pipelineDAO)
+        .listAfter(
+            any(ListFilter.class),
+            eq(1_000),
+            eq(invalidPipelineType.path("name").asText()),
+            eq(invalidPipelineType.path("id").asText()));
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(pipelineDAO, times(1))
+        .update(
+            eq(UUID.fromString(repairedPipeline.path("id").asText())),
+            eq(repairedPipeline.path("fullyQualifiedName").asText()),
+            updatedJson.capture());
+    verify(pipelineDAO, never())
+        .update(
+            eq(UUID.fromString(alreadyTypedPipeline.path("id").asText())),
+            anyString(),
+            anyString());
+    ObjectNode updatedPipeline = (ObjectNode) JsonUtils.readTree(updatedJson.getValue());
+    assertEquals("DatabaseMetadata", config(updatedPipeline).path("type").asText());
+  }
+
   private static Stream<Arguments> sourceConfigTypes() {
     return Stream.of(
         Arguments.of(
@@ -420,6 +538,41 @@ class IngestionPipelineMigrationUtilTest {
     return Stream.of(nullType, blankType);
   }
 
+  private static Stream<Arguments> malformedSourceConfigPipelines() {
+    ObjectNode missingSourceConfig = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    missingSourceConfig.remove("sourceConfig");
+    ObjectNode nullSourceConfig = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    nullSourceConfig.putNull("sourceConfig");
+    ObjectNode missingConfig = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    ((ObjectNode) missingConfig.get("sourceConfig")).remove("config");
+    ObjectNode scalarConfig = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    ((ObjectNode) scalarConfig.get("sourceConfig")).put("config", "not-an-object");
+    ObjectNode arrayConfig = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
+    ((ObjectNode) arrayConfig.get("sourceConfig")).putArray("config");
+    return Stream.of(
+        Arguments.of("missing sourceConfig", missingSourceConfig),
+        Arguments.of("null sourceConfig", nullSourceConfig),
+        Arguments.of("missing sourceConfig.config", missingConfig),
+        Arguments.of("scalar sourceConfig.config", scalarConfig),
+        Arguments.of("array sourceConfig.config", arrayConfig));
+  }
+
+  private static Stream<Arguments> nonStringSourceConfigTypes() {
+    ObjectNode numericType = JsonUtils.getObjectNode();
+    numericType.put("type", 42);
+    ObjectNode booleanType = JsonUtils.getObjectNode();
+    booleanType.put("type", true);
+    ObjectNode arrayType = JsonUtils.getObjectNode();
+    arrayType.putArray("type");
+    ObjectNode objectType = JsonUtils.getObjectNode();
+    objectType.putObject("type");
+    return Stream.of(
+        Arguments.of("number type", numericType),
+        Arguments.of("boolean type", booleanType),
+        Arguments.of("array type", arrayType),
+        Arguments.of("object type", objectType));
+  }
+
   private static ObjectNode pipeline(PipelineType pipelineType, ObjectNode config) {
     ObjectNode pipeline = JsonUtils.getObjectNode();
     pipeline.put("id", UUID.randomUUID().toString());
@@ -432,11 +585,21 @@ class IngestionPipelineMigrationUtilTest {
 
   private static CollectionDAO.EntityRelationshipObject relationship(
       String pipelineId, String serviceType) {
+    return relationship(pipelineId, serviceType, UUID.randomUUID().toString());
+  }
+
+  private static CollectionDAO.EntityRelationshipObject relationship(
+      String pipelineId, String serviceType, String serviceId) {
+    return relationship(pipelineId, serviceType, serviceId, Entity.INGESTION_PIPELINE);
+  }
+
+  private static CollectionDAO.EntityRelationshipObject relationship(
+      String pipelineId, String serviceType, String serviceId, String toEntity) {
     return CollectionDAO.EntityRelationshipObject.builder()
-        .fromId(UUID.randomUUID().toString())
+        .fromId(serviceId)
         .toId(pipelineId)
         .fromEntity(serviceType)
-        .toEntity(Entity.INGESTION_PIPELINE)
+        .toEntity(toEntity)
         .relation(Relationship.CONTAINS.ordinal())
         .build();
   }

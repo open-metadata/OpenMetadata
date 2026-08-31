@@ -251,6 +251,29 @@ class IngestionPipelineRepositoryTest {
     verify(pipelineServiceClient).deployPipeline(pipeline, service);
   }
 
+  @Test
+  void deployPipelineAcceptsTypedConfigWithDefaultEnumType() {
+    DatabaseServiceMetadataPipeline sourceConfig = new DatabaseServiceMetadataPipeline();
+    IngestionPipeline pipeline = pipelineWithConfig(sourceConfig);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals(
+        DatabaseServiceMetadataPipeline.DatabaseMetadataConfigType.DATABASE_METADATA,
+        sourceConfig.getType());
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
   private static Stream<Arguments> invalidExplicitSourceConfigs() {
     return Stream.of(
         Arguments.of("non-string type", Map.of("type", 42)),
