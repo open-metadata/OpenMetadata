@@ -766,6 +766,7 @@ public final class SearchUtils {
       case "api_endpoint_search_index", Entity.API_ENDPOINT -> Entity.API_ENDPOINT;
       case "api_collection_search_index", Entity.API_COLLECTION -> Entity.API_COLLECTION;
       case "metric_search_index", Entity.METRIC -> Entity.METRIC;
+      case "metric_group_search_index", Entity.METRIC_GROUP -> Entity.METRIC_GROUP;
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;

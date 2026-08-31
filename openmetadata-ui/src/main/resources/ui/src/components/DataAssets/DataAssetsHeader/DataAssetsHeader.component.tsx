@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Owner,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   Copy01,
   File02,
@@ -37,9 +31,8 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
-import UserTeamSelectableList from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
@@ -290,25 +283,23 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger>
-          <Link
-            to={{
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            }}>
-            <RedAlertIcon
-              className="tw:text-fg-error-primary"
-              height={24}
-              width={24}
-            />
-          </Link>
-        </TooltipTrigger>
+        <Link
+          to={{
+            pathname: getEntityDetailsPath(
+              entityType,
+              dataAsset?.fullyQualifiedName ?? '',
+              EntityTabs.LINEAGE
+            ),
+            search: QueryString.stringify({
+              layers: [LineageLayer.DataObservability],
+            }),
+          }}>
+          <RedAlertIcon
+            className="tw:text-fg-error-primary"
+            height={24}
+            width={24}
+          />
+        </Link>
       </Tooltip>
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, t]);
@@ -639,18 +630,16 @@ export const DataAssetsHeader = ({
           disableRunAgentsButtonMessage ??
           t('message.trigger-auto-pilot-application')
         }>
-        <TooltipTrigger>
-          <Button
-            color="primary"
-            data-testid="trigger-auto-pilot-application-button"
-            iconLeading={TriggerIcon}
-            isDisabled={disableRunAgentsButton}
-            isLoading={isLoading}
-            size="sm"
-            onPress={triggerTheAutoPilotApplication}>
-            {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
-          </Button>
-        </TooltipTrigger>
+        <Button
+          color="primary"
+          data-testid="trigger-auto-pilot-application-button"
+          iconLeading={TriggerIcon}
+          isDisabled={disableRunAgentsButton}
+          isLoading={isLoading}
+          size="sm"
+          onPress={triggerTheAutoPilotApplication}>
+          {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
+        </Button>
       </Tooltip>
     );
   }, [
@@ -673,20 +662,18 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="bottom" title={t('label.source-url')}>
-        <TooltipTrigger>
-          <Button
-            color="secondary"
-            data-testid="source-url-button"
-            href={sourceUrl}
-            iconLeading={IconExternalLink}
-            rel="noopener noreferrer"
-            size="sm"
-            target="_blank">
-            {t('label.view-in-service-type', {
-              serviceType: get(dataAsset, 'serviceType', ''),
-            })}
-          </Button>
-        </TooltipTrigger>
+        <Button
+          color="secondary"
+          data-testid="source-url-button"
+          href={sourceUrl}
+          iconLeading={IconExternalLink}
+          rel="noopener noreferrer"
+          size="sm"
+          target="_blank">
+          {t('label.view-in-service-type', {
+            serviceType: get(dataAsset, 'serviceType', ''),
+          })}
+        </Button>
       </Tooltip>
     );
   }, [dataAsset, t]);
@@ -867,19 +854,18 @@ export const DataAssetsHeader = ({
                     ? t('message.link-copy-to-clipboard')
                     : t('label.copy-item', { item: t('label.url-uppercase') })
                 }>
-                <TooltipTrigger className="tw:flex tw:items-center">
-                  <Button
-                    aria-label={t('label.copy-item', {
-                      item: t('label.url-uppercase'),
-                    })}
-                    color="tertiary"
-                    data-testid="entity-header-copy-button"
-                    iconLeading={Copy01}
-                    size="xs"
-                    type="button"
-                    onClick={handleCopyEntityUrl}
-                  />
-                </TooltipTrigger>
+                <Button
+                  aria-label={t('label.copy-item', {
+                    item: t('label.url-uppercase'),
+                  })}
+                  className="tw:flex tw:items-center"
+                  color="tertiary"
+                  data-testid="entity-header-copy-button"
+                  iconLeading={Copy01}
+                  size="xs"
+                  type="button"
+                  onClick={handleCopyEntityUrl}
+                />
               </Tooltip>
               <LearningIcon pageId={entityType} />
             </div>
@@ -941,25 +927,19 @@ export const DataAssetsHeader = ({
 
           {showDomain && <HeaderDotSeparator />}
 
-          <Owner
+          <OwnerLabel
+            showDashPlaceholder
             avatarSize={24}
             className="header-owner-heading"
             hasPermission={editOwnerPermission}
             isCompactView={false}
             maxVisibleOwners={3}
-            owners={toOwnerRefs(dataAsset?.owners)}
-            showDashPlaceholder
-            selectorContent={
-              <UserTeamSelectableList
-                hasPermission={Boolean(editOwnerPermission)}
-                multiple={{
-                  user: entityRules.canAddMultipleUserOwners,
-                  team: entityRules.canAddMultipleTeamOwner,
-                }}
-                owner={dataAsset?.owners}
-                onUpdate={onOwnerUpdate}
-              />
-            }
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owners={dataAsset?.owners}
+            onUpdate={onOwnerUpdate}
           />
 
           <HeaderDotSeparator />
@@ -1113,11 +1093,7 @@ export const DataAssetsHeader = ({
           )}
 
           {entityType === EntityType.METRIC && onMetricUpdate && (
-            <MetricHeaderInfo
-              metricDetails={dataAsset}
-              metricPermissions={permissions}
-              onUpdateMetricDetails={onMetricUpdate}
-            />
+            <MetricHeaderInfo metricDetails={dataAsset} />
           )}
 
           {extraInfo}
