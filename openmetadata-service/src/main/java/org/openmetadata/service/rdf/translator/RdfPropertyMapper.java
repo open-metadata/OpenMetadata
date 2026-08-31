@@ -22,6 +22,7 @@ import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
@@ -82,6 +83,22 @@ public class RdfPropertyMapper {
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
       Set.of("upstreamEdges", "downstreamEdges", "lineage");
+
+  static {
+    // Jena 6.2.0 cannot bootstrap itself from a vocabulary constant. Dereferencing RDF.type
+    // below reaches NodeFactory.<clinit>, which calls JenaSystem.init() from inside that
+    // nested initializer; InitJenaCore then runs TypeMapper.reset() against datatype
+    // constants that are still null and dies with an NPE. NodeFactory stays permanently
+    // unusable for the life of the JVM ("Could not initialize class
+    // org.apache.jena.graph.NodeFactory"), which takes every later Jena call - glossary RDF
+    // import, ontology export, the translator - down with it. Reproduced on jena-core +
+    // jena-arq 6.2.0 alone; Jena 5.6.0 bootstraps from the same first touch without error.
+    // Entering through JenaSystem.init() instead completes subsystem init while nothing is
+    // half-built. This class is the server's first Jena touch (RdfResource.initialize builds
+    // a JsonLdTranslator at startup even when RDF is disabled), so the guard belongs here.
+    // Remove it when Jena fixes the initialization order upstream.
+    JenaSystem.init();
+  }
 
   // Direct URI-valued predicates the translator emits from an entity. These
   // are the predicates whose VALUE can change (or shrink to empty) between
