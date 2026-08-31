@@ -23,8 +23,8 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import {
-    INITIAL_PAGING_VALUE,
-    INITIAL_TABLE_FILTERS
+  INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';

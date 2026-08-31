@@ -21,7 +21,7 @@ import {
   Modal,
   ModalOverlay,
   Tree,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Articles } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -920,7 +920,9 @@ const KnowledgePagesHierarchy = forwardRef<
                 <EmptyPlaceholder
                   description={t('message.no-articles-listed')}
                   icon={<Articles className="tw:text-secondary" />}
-                  title={t('label.no-entity', { entity: t('label.article-plural') })}
+                  title={t('label.no-entity', {
+                    entity: t('label.article-plural'),
+                  })}
                   width={200}
                 />
               </div>

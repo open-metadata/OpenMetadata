@@ -21,15 +21,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE,
-    pagingObject
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  pagingObject,
 } from '../../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
-    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-    DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -50,11 +50,11 @@ import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringUtils';
 import {
-    dataProductTableObject,
-    descriptionTableObject,
-    domainTableObject,
-    ownerTableObject,
-    tagTableObject
+  dataProductTableObject,
+  descriptionTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';

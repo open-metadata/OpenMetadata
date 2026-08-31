@@ -27,9 +27,9 @@ import { useGenericContext } from '../../components/Customization/GenericProvide
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
 import {
-    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-    DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../constants/TableKeys.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -41,8 +41,8 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import {
-    getApiEndPoints,
-    GetApiEndPointsType
+  getApiEndPoints,
+  GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';

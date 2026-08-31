@@ -22,9 +22,9 @@ import { Link } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
-    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-    DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -39,8 +39,8 @@ import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringUtils';
 import {
-    descriptionTableObject,
-    tagTableObject
+  descriptionTableObject,
+  tagTableObject,
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Table from '../../../common/Table/Table';

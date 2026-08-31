@@ -20,5 +20,22 @@ export const NoSearch: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg aria-hidden="true" fill="none" height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 20 20" width={size} {...props}><path d="m14.445 14.445 3.556 3.556M10 2.051a7.112 7.112 0 1 0 6.168 6.168m.054-6.223L12.81 5.41m3.413 0L12.81 1.996" stroke="currentColor" strokeWidth={1.3} /></svg>;
-NoSearch.displayName = "NoSearch";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="m14.445 14.445 3.556 3.556M10 2.051a7.112 7.112 0 1 0 6.168 6.168m.054-6.223L12.81 5.41m3.413 0L12.81 1.996"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+NoSearch.displayName = 'NoSearch';

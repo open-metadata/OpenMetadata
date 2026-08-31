@@ -519,7 +519,9 @@ function ServiceVersionPage() {
                 renderElement={<b />}
                 values={{
                   entity: t('label.view-entity', {
-                    entity: `${getEntityName(currentVersionData)} ${t('label.service')}`,
+                    entity: `${getEntityName(currentVersionData)} ${t(
+                      'label.service'
+                    )}`,
                   }),
                 }}
               />

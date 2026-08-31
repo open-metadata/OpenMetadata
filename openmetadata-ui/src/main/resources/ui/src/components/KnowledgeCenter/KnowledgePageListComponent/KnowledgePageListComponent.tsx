@@ -13,15 +13,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
-import {
-  Button,
-  Col,
-  Dropdown,
-  MenuProps,
-  Row,
-  Skeleton,
-  Space
-} from 'antd';
+import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -506,7 +498,11 @@ const KnowledgePageListComponent = forwardRef<
               <Transi18next
                 i18nKey="message.no-access-placeholder"
                 renderElement={<b />}
-                values={{ entity: t('label.view-entity', { entity: t('label.article-plural') }) }}
+                values={{
+                  entity: t('label.view-entity', {
+                    entity: t('label.article-plural'),
+                  }),
+                }}
               />
             }
             icon={<Lock className="tw:text-secondary" />}

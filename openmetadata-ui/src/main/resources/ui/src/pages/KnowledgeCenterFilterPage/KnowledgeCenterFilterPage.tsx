@@ -216,7 +216,11 @@ const KnowledgeCenterFilterPage = () => {
             <Transi18next
               i18nKey="message.no-access-placeholder"
               renderElement={<b />}
-              values={{ entity: t('label.view-entity', { entity: t('label.context-center') }) }}
+              values={{
+                entity: t('label.view-entity', {
+                  entity: t('label.context-center'),
+                }),
+              }}
             />
           }
           icon={<Lock className="tw:text-secondary" />}

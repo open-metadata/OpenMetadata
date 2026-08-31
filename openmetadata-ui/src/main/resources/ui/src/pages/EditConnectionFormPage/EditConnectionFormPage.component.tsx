@@ -15,7 +15,7 @@ import {
   Breadcrumbs,
   Button,
   EmptyPlaceholder,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';

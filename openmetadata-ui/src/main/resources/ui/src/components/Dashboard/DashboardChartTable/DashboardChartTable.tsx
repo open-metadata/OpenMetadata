@@ -23,8 +23,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { INITIAL_CHART_FILTERS } from '../../../constants/constants';
 import {
-    DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -53,8 +53,8 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import {
-    ChartsPermissions,
-    ChartType
+  ChartsPermissions,
+  ChartType,
 } from '../DashboardDetails/DashboardDetails.interface';
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>

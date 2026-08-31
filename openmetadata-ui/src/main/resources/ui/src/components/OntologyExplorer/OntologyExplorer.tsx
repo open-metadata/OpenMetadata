@@ -19,13 +19,11 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { NoFilterFunnel, NoSearch } from '@openmetadata/ui-core-components/icons';
 import {
-  Cube02,
-  CubeOutline,
-  LayoutGrid01,
-  SearchMd
-} from '@untitledui/icons';
+  NoFilterFunnel,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
+import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import React, {
   Key,

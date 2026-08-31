@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { QuickLink } from '@openmetadata/ui-core-components/icons';
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
@@ -173,12 +178,16 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
         <EmptyPlaceholder
           actions={
             permissions.Create
-              ? [{
-                  color: 'primary',
-                  key: 'add-quick-link',
-                  label: t('label.create-entity', { entity: t('label.quick-link') }),
-                  onPress: onAdd,
-                }]
+              ? [
+                  {
+                    color: 'primary',
+                    key: 'add-quick-link',
+                    label: t('label.create-entity', {
+                      entity: t('label.quick-link'),
+                    }),
+                    onPress: onAdd,
+                  },
+                ]
               : []
           }
           icon={<QuickLink className="tw:text-secondary" />}

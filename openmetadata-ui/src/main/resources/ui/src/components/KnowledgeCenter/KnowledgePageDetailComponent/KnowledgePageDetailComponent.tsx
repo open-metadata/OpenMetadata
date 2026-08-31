@@ -976,7 +976,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             <Transi18next
               i18nKey="message.no-access-placeholder"
               renderElement={<b />}
-              values={{ entity: t('label.view-entity', { entity: t('label.article') }) }}
+              values={{
+                entity: t('label.view-entity', { entity: t('label.article') }),
+              }}
             />
           }
           icon={<Lock className="tw:text-secondary" />}

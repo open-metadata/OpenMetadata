@@ -77,10 +77,7 @@ function ServiceVersionMainTabContent({
           </Col>
 
           <Col data-testid="table-container" span={24}>
-            <Space
-              className="w-full m-b-md"
-              direction="vertical"
-              size="middle">
+            <Space className="w-full m-b-md" direction="vertical" size="middle">
               <Table
                 columns={tableColumn}
                 customPaginationProps={{
@@ -99,14 +96,14 @@ function ServiceVersionMainTabContent({
                 loading={isServiceLoading}
                 locale={{
                   emptyText: (
-                    <div className='tw:relative tw:min-h-42'>
-                    <EmptyPlaceholder
-                      icon={<Assets className="tw:text-utility-gray-600" />}
-                      title={t('message.no-entity-data-available', {
-                        entity: getCountLabel(serviceCategory),
-                      })}
-                      variant="blank"
-                    />
+                    <div className="tw:relative tw:min-h-42">
+                      <EmptyPlaceholder
+                        icon={<Assets className="tw:text-utility-gray-600" />}
+                        title={t('message.no-entity-data-available', {
+                          entity: getCountLabel(serviceCategory),
+                        })}
+                        variant="blank"
+                      />
                     </div>
                   ),
                 }}

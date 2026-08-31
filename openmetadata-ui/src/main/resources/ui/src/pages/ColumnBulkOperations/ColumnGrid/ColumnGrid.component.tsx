@@ -22,7 +22,10 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { NoFilterFunnel, NoSearch } from '@openmetadata/ui-core-components/icons';
+import {
+  NoFilterFunnel,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import {
   ArrowRight,
   ChevronRight,

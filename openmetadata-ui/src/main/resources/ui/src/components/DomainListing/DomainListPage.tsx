@@ -16,7 +16,7 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
-  PaginationCardDefault
+  PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Plus } from '@untitledui/icons';
@@ -179,12 +179,14 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         return (
           <div className="tw:relative tw:min-h-70 tw:h-full">
             <EmptyPlaceholder
-              actions={[{
-                color: 'primary',
-                key: 'clear-filters',
-                label: t('label.clear-entity', { entity: t('label.all') }),
-                onPress: domainListing.handleClearAll,
-              }]}
+              actions={[
+                {
+                  color: 'primary',
+                  key: 'clear-filters',
+                  label: t('label.clear-entity', { entity: t('label.all') }),
+                  onPress: domainListing.handleClearAll,
+                },
+              ]}
               description={t('message.check-spelling-or-try-different-term')}
               icon={<NoSearch className="tw:text-quaternary" />}
               title={t('label.no-matching-results')}

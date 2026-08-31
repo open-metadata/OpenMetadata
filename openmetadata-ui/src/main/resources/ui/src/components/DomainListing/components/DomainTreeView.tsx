@@ -18,9 +18,13 @@ import {
   Box,
   EmptyPlaceholder,
   Tree,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Domain as DomainIcon, Expand, NoSearch } from '@openmetadata/ui-core-components/icons';
+import {
+  Domain as DomainIcon,
+  Expand,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -40,7 +44,7 @@ import {
   getDomainChildrenPaginated,
   patchDomains,
   removeFollower,
-  searchDomains
+  searchDomains,
 } from '../../../rest/domainAPI';
 import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
@@ -50,7 +54,7 @@ import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
-  getEncodedFqn
+  getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -962,12 +966,14 @@ const DomainTreeView = ({
       return (
         <div className="tw:relative tw:flex-1 tw:h-full">
           <EmptyPlaceholder
-            actions={[{
-              color: 'primary',
-              key: 'clear-filters',
-              label: t('label.clear-entity', { entity: t('label.all') }),
-              onPress: () => onClearSearch?.(),
-            }]}
+            actions={[
+              {
+                color: 'primary',
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => onClearSearch?.(),
+              },
+            ]}
             description={t('message.check-spelling-or-try-different-term')}
             icon={<NoSearch className="tw:text-quaternary" />}
             title={t('label.no-matching-results')}
@@ -981,16 +987,20 @@ const DomainTreeView = ({
         <EmptyPlaceholder
           actions={
             permissions.domain?.Create
-              ? [{
-                  color: 'primary',
-                  iconLeading: <Expand size={14}/>,
-                  key: 'add-domain',
-                  label: t('label.add-entity', { entity: t('label.domain') }),
-                  onPress: openAddDomainDrawer,
-                }]
+              ? [
+                  {
+                    color: 'primary',
+                    iconLeading: <Expand size={14} />,
+                    key: 'add-domain',
+                    label: t('label.add-entity', { entity: t('label.domain') }),
+                    onPress: openAddDomainDrawer,
+                  },
+                ]
               : []
           }
-          description={t('message.no-data-message', { entity: t('label.domain-lowercase-plural') })}
+          description={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
           icon={<DomainIcon className="tw:text-fg-brand-primary" />}
           title={t('label.no-entity', { entity: t('label.domain-plural') })}
         />
