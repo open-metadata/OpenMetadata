@@ -172,7 +172,7 @@ export default [
           withinDescribe: 'it',
         },
       ],
-      'jest/no-disabled-tests': 'warn',
+      'jest/no-disabled-tests': 'error',
       'jest-formatting/padding-around-all': 'error',
 
       // TypeScript rules
