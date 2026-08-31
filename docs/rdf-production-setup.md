@@ -308,6 +308,38 @@ lineage graph operators can request. Semantic search is not an exhaustive traver
 expands at most 100 related graph candidates before reranking to the caller's requested result
 limit. Use the complete-lineage endpoint or direct SPARQL for exhaustive graph traversal.
 
+## Measured write throughput
+
+Numbers from `scripts/rdf-reindex-benchmark.sh`'s write-path harness against Fuseki 6.2.0 in
+Docker (2 CPUs, `-Xms4g -Xmx4g`, persistent volume) co-located with the client. Synthetic catalog:
+every 100th table 500 columns, the rest 7, so wide tables are represented.
+
+| Scale | Transport | Wall clock | Entities/s | Triples/s |
+| ---: | --- | ---: | ---: | ---: |
+| 20k entities (1.79M triples) | streaming (default) | 21.8 s | 918 | 82,000 |
+| 20k entities | `connection.load` fallback | 25.6 s | 782 | 70,000 |
+| 20k entities | streaming + gzip | 20.8 s | 963 | 86,000 |
+| 100k entities (8.96M triples) | streaming (default) | 158 s | 632 | 57,000 |
+
+Three things this measures that matter for planning:
+
+- **Streaming is ~17% faster than the fallback** and holds indexer memory flat, which is why it is
+  the default. Gzip measured ~5% on loopback — inside noise there, and expected to matter only when
+  the network, not the writer lock, is the constraint.
+- **Throughput decays as the store grows.** Instantaneous rate fell from ~1,050 entities/s at 20k to
+  ~400/s by 90k as TDB2's indexes deepen. Size a rebuild against the *end* of that curve, not the
+  start; the 100k average above already includes the decay.
+- **The client is not the bottleneck.** Translation was 5–16% of wall clock and Fuseki writes
+  84–95%, and Fuseki showed no heap pressure (Old Gen 150 MB of a 4 GB heap, 1.9 s of GC across the
+  100k run). That is the single-writer store being the limit, exactly as the pipeline assumes — so
+  spend on Fuseki CPU and disk before touching client-side knobs.
+
+Note on disk: TDB2 stores named-graph data as **quads across six indexes** plus a node table, and
+`CLEAR ALL` does not reclaim anything until a compaction runs. An uncompacted store carrying the
+churn of several rebuilds was an order of magnitude larger than its live triple count suggests.
+Treat the bytes-per-triple figure in the capacity table as a rough starting point and measure your
+own catalog before sizing a volume.
+
 ## Verifying and benchmarking a deployment
 
 Two scripts turn the guidance above into checks against a real stack:
