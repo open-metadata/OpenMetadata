@@ -81,7 +81,9 @@ public interface OntologyDAO {
           + "(SELECT candidate.fromId, candidate.toId, candidate.relation, candidate.json "
           + "FROM entity_relationship candidate WHERE "
           + ACTIVE_CANDIDATE_TERM_RELATION
-          + " AND candidate.fromId IN (<termIds>) LIMIT :candidateLimit) relation"
+          + " AND candidate.fromId IN (<termIds>) "
+          + "ORDER BY candidate.fromId ASC, candidate.toId ASC, candidate.relation ASC, "
+          + "candidate.relationType ASC LIMIT :candidateLimit) relation"
           + ONTOLOGY_RELATION_CONTEXT)
   @RegisterRowMapper(OntologyRelationRowMapper.class)
   List<OntologyRelationRow> listOntologyRelationsFrom(
@@ -95,7 +97,9 @@ public interface OntologyDAO {
           + "(SELECT candidate.fromId, candidate.toId, candidate.relation, candidate.json "
           + "FROM entity_relationship candidate WHERE "
           + ACTIVE_CANDIDATE_TERM_RELATION
-          + " AND candidate.toId IN (<termIds>) LIMIT :candidateLimit) relation"
+          + " AND candidate.toId IN (<termIds>) "
+          + "ORDER BY candidate.toId ASC, candidate.fromId ASC, candidate.relation ASC, "
+          + "candidate.relationType ASC LIMIT :candidateLimit) relation"
           + ONTOLOGY_RELATION_CONTEXT)
   @RegisterRowMapper(OntologyRelationRowMapper.class)
   List<OntologyRelationRow> listOntologyRelationsTo(
@@ -109,6 +113,7 @@ public interface OntologyDAO {
           + "(SELECT candidate.fromId, candidate.toId FROM entity_relationship candidate "
           + "WHERE candidate.fromId IN (<assetIds>) "
           + "AND candidate.relation = :lineageRelation AND candidate.deleted = FALSE "
+          + "ORDER BY candidate.fromId ASC, candidate.toId ASC, candidate.relationType ASC "
           + "LIMIT :candidateLimit) relation WHERE relation.toId IN (<assetIds>) "
           + "ORDER BY relation.fromId ASC, relation.toId ASC LIMIT :lineageEdgeLimit")
   @RegisterRowMapper(OntologyLineageRowMapper.class)
