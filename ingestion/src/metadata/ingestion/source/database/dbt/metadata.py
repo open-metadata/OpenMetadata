@@ -63,6 +63,7 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
+    Markdown,
     SqlQuery,
     Timestamp,
     Uuid,
@@ -127,6 +128,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     get_source_physical_name,
+    is_compiled_only_result,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -631,12 +633,18 @@ class DbtSource(DbtServiceSource):
         the same unique_id may appear in more than one file.  Return the
         result with the most recent ``execute`` completed_at timestamp so
         that OpenMetadata always reflects the latest test state.
+
+        Compile-only entries are only considered when nothing else matched: a
+        ``dbt docs generate`` artifact produced after a ``dbt test`` one carries
+        the newer timestamp, and preferring it would discard the real result
+        before add_dbt_test_result() could ingest it (issue #29824).
         """
         matches = [
             item for run_result in dbt_objects.dbt_run_results for item in run_result.results if item.unique_id == key
         ]
         if not matches:
             return None
+        matches = [item for item in matches if not is_compiled_only_result(item)] or matches
         if len(matches) == 1:
             return matches[0]
 
@@ -1895,10 +1903,11 @@ class DbtSource(DbtServiceSource):
                 # entityLink shapes), so its description is only set on creation and
                 # never patched from an individual node.
                 if not check_test_definition_exists:
+                    test_description = get_dbt_test_description(manifest_node)
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=get_dbt_test_description(manifest_node),
+                            description=Markdown(test_description) if test_description else None,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -1948,7 +1957,7 @@ class DbtSource(DbtServiceSource):
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=description,
+                                description=Markdown(description) if description else None,
                                 testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
@@ -2100,10 +2109,12 @@ class DbtSource(DbtServiceSource):
         # Skip compiled-only entries: `dbt run` includes test nodes in
         # run_results.json with status="success" but message=null since
         # no test SQL was executed. Executed dbt tests can also have
-        # message=null, e.g. passing tests with status="pass".
-        if not dbt_test_result.message and dbt_test_result.status.value == DbtTestSuccessEnum.SUCCESS.value:
+        # message=null, e.g. passing tests with status="pass". The predicate is
+        # shared with _get_latest_result so the selector can never hand over a
+        # result this builder then drops (issue #29824).
+        if is_compiled_only_result(dbt_test_result):
             logger.debug(
-                "Skipping compiled-only test result for '%s' (message is null).",
+                "Skipping compiled-only test result for '%s' (status is success and message is null).",
                 manifest_node.name,
             )
             return None

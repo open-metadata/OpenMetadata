@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.0-python3.12
+FROM apache/airflow:3.3.1-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -46,12 +46,20 @@ RUN dpkg --configure -a \
   # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
+  # linux-libc-dev (source pkg "linux") -> kernel headers that libc6-dev pulls in for
+  # build-essential. A container runs the host kernel, so the headers are a build
+  # artifact and the kernel CVEs scanners report against them are not reachable at
+  # runtime. Tracked here so the image takes bookworm-security's kernel headers
+  # rather than whatever the base image froze. This does NOT clear CVE-2026-68082:
+  # that fix exists only in trixie-security (6.12.105-1, DSA-6466-1), and bookworm
+  # and bookworm-security are both still "vulnerable" on the 6.1 line. The image
+  # that reports it is trixie-based -- see ingestion/operators/docker/Dockerfile.
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \
@@ -94,7 +102,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
-COPY --chown=airflow:0 ingestion/airflow-constraints-3.3.0.txt /home/airflow/airflow-constraints-3.3.0.txt
+COPY --chown=airflow:0 ingestion/airflow-constraints-3.3.1.txt /home/airflow/airflow-constraints-3.3.1.txt
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
 # pip upgrade below only reaches ~/.local, leaving the base image's
@@ -122,17 +130,17 @@ RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 # Install FAB provider for Airflow 3.x Flask Blueprint compatibility
-RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.3.0.txt" || true
+RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.3.1.txt" || true
 
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.3.0.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.3.1.txt"
 
 WORKDIR /home/airflow/ingestion
 
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
-RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.64.0"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
@@ -158,7 +166,9 @@ RUN [ $(uname -m) = "x86_64" ] \
 RUN pip install "python-daemon>=3.0.0"
 
 # remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# The removed Elasticsearch provider's canonical client is unused; ingestion uses elasticsearch8.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y \
+  && pip uninstall elasticsearch -y
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
@@ -169,7 +179,7 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 RUN mkdir -p /opt/airflow/dag_generated_configs
 
 EXPOSE 8080
-# Airflow 3.3.0 requires universal-pathlib>=0.3.8, but prior installs in this image
+# Airflow 3.3.1 requires universal-pathlib>=0.3.8, but prior installs in this image
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"

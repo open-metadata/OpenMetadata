@@ -50,7 +50,13 @@
     "ui-checkstyle": "yarn organize-imports && yarn lint:fix && yarn pretty && yarn license-header-fix && yarn i18n && yarn generate:app-docs",
     "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh",
     "ui-checkstyle:playwright": "yarn organize-imports:playwright && yarn lint:playwright --fix && yarn pretty:playwright",
-    "ui-checkstyle:playwright:changed": "bash scripts/ui-checkstyle-playwright-changed.sh"
+    "ui-checkstyle:playwright:changed": "bash scripts/ui-checkstyle-playwright-changed.sh",
+    "tw-audit": "node scripts/tw-audit.js",
+    "tw-audit:report": "node scripts/tw-audit.js --report",
+    "tw-guard": "node scripts/tw-deprecation-guard.js",
+    "test:eslint-rules": "node --test eslint-rules/*.test.mjs 'playwright/eslint-rules/tests/**/*.test.mjs'",
+    "lint:playwright:suppressions": "yarn lint:playwright --prune-suppressions",
+    "generate:playwright-rules": "node scripts/generate-playwright-rule-table.mjs"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
@@ -294,7 +300,7 @@
     "form-data": "4.0.6",
     "tar-fs": "2.1.4",
     "brace-expansion": "1.1.18",
-    "fast-uri": "3.1.5",
+    "fast-uri": "3.1.6",
     "linkify-it": "5.0.2",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
