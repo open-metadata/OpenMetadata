@@ -151,12 +151,12 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
     const menuEntry = page.getByTestId(APP_MODE_MENU_TESTID);
 
     await expect(menuEntry).toBeVisible();
-    // Match the entry's label only, not the description below it — a
-    // permissive /app mode/i regex resolves to both the "App Mode" label
-    // and the description string, tripping Playwright's strict-mode
+    // Match the entry's label only, not the description below it — an exact
+    // match on the OSS label ("Default App Mode") resolves to the single label
+    // node, never the description string, keeping Playwright's strict-mode
     // single-match invariant.
     await expect(
-      menuEntry.getByText('App Mode', { exact: true })
+      menuEntry.getByText('Default App Mode', { exact: true })
     ).toBeVisible();
   });
 
