@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -24,15 +24,14 @@ import DashboardDetails from '../../components/Dashboard/DashboardDetails/Dashbo
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -47,10 +46,6 @@ import {
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -64,32 +59,32 @@ const DashboardDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
   const queryClient = useQueryClient();
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [dashboardPermissions, setDashboardPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Fetch-owner, by fqn. Deliberately kept even though DashboardDetails (child) also calls
+  // useEntityPermissions itself (by id, for its own edit-tier flags) — this page's view-tier
+  // flags gate the dashboard entity query below (canViewUsage decides whether USAGE_SUMMARY
+  // is requested; hasViewAccess decides whether the query fires and drives the
+  // permission-denied placeholder), and the child only exists once dashboardId is known — a
+  // real ordering cycle, same shape as TableDetailsPageV1's documented two-call split. Noted
+  // as a double-fetch for a later consolidation pass (Task 8 Batch 10).
+  const {
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    canViewUsage: viewUsagePermission,
+    hasViewAccess: canViewDashboard,
+  } = useEntityPermissions(ResourceEntity.DASHBOARD, dashboardFQN, {
+    enabled: Boolean(dashboardFQN),
+  });
 
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        dashboardPermissions,
-        PermissionOperation.ViewUsage
-      ),
-    [dashboardPermissions]
-  );
-
-  const canViewDashboard = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        dashboardPermissions,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [dashboardPermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: dashboardFQN })
+      );
+    }
+  }, [permissionsError]);
 
   const dashboardFields = useMemo(() => {
     let fields = defaultFields;
@@ -178,27 +173,6 @@ const DashboardDetailsPage = () => {
     () => getEntityName(dashboardDetails),
     [dashboardDetails]
   );
-
-  // Intentionally NOT a useCallback. The {@code t} from {@link useTranslation} is a fresh
-  // reference per render in the testing-library mocked env (and in some non-test paths too),
-  // which would make this callback unstable and create an infinite re-render via the useEffect
-  // below. Keep it as a plain function — the useEffect depends only on {@code dashboardFQN}.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.DASHBOARD,
-        entityFqn
-      );
-      setDashboardPermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', { entity: entityFqn })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const saveUpdatedDashboardData = useCallback(
     (updatedData: Dashboard) => {
@@ -364,10 +338,6 @@ const DashboardDetailsPage = () => {
     [setDashboardDetails]
   );
 
-  useEffect(() => {
-    fetchResourcePermission(dashboardFQN);
-  }, [dashboardFQN]);
-
   if (permissionsLoading || dashboardLoading) {
     return <PageLoader />;
   }
@@ -378,7 +348,7 @@ const DashboardDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
+  if (!canViewDashboard) {
     return (
       <ErrorPlaceHolder
         className="border-none"
