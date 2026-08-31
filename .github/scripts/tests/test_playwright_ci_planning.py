@@ -193,6 +193,63 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
+    tmp_path, monkeypatch
+):
+    planner = load_script("build_playwright_shards")
+    history = tmp_path / "history.json"
+    baseline = tmp_path / planner.CHECKED_IN_BASELINE
+    baseline.parent.mkdir(parents=True)
+    monkeypatch.setattr(planner, "SPEC_ROOT_CANDIDATES", (tmp_path,))
+    history.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "leafTitle": "uses current history",
+                        "durationMs": 200,
+                    }
+                ],
+            }
+        )
+    )
+    baseline.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "leafTitle": "uses current history",
+                        "durationMs": 900,
+                    },
+                    {
+                        "id": "new-test",
+                        "file": "Features/New.spec.ts",
+                        "leafTitle": "uses baseline fallback",
+                        "durationMs": 700,
+                    },
+                ],
+            }
+        )
+    )
+
+    weights, identity_weights = planner.load_history([history])
+    planner.backfill_from_checked_in_baseline(
+        [history], weights, identity_weights
+    )
+
+    assert weights == {"existing-test": 200, "new-test": 700}
+    assert identity_weights == {
+        ("Features/Existing.spec.ts", "uses current history"): 200,
+        ("Features/New.spec.ts", "uses baseline fallback"): 700,
+    }
+
+
 def test_emit_unweighted_warnings_annotates_files_over_threshold(capsys):
     planner = load_script("build_playwright_shards")
     # A file with more tests than UNWEIGHTED_WARN_MIN_TESTS should be annotated.
@@ -662,7 +719,6 @@ def test_oversized_units_error_names_both_common_fixes():
     # The improved error message must point the reader at BOTH the tag
     # option and the AUDITED_PARALLEL_SUITES escape hatch — the old
     # message just said "refactor or audit" and left developers guessing.
-    planner = load_script("build_playwright_shards")
     src = (SCRIPTS / "build_playwright_shards.py").read_text()
 
     assert "FILE_LANE_HINTS" in src
@@ -1778,9 +1834,12 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
     assert performance["targets"]["atMostOneAppBootPerUIScenario"] is True
     assert performance["targets"]["appBootMeasurementIntegrity"] is True
     assert "atMostOneAppBootPerAttempt" not in performance["targets"]
-    assert performance["blockingTargetsMet"] is False
+    # Flaky-rate/retry-share breaches are budget signals, not blockers — a
+    # green run stays green (run 32500973433).
+    assert performance["blockingTargetsMet"] is True
+    assert performance["budgetTargetsMet"] is False
     assert performance["convergenceTargetsMet"] is True
-    assert "appBootMeasurementIntegrity" in performance["blockingTargets"]
+    assert "appBootMeasurementIntegrity" in performance["budgetTargets"]
     assert "atMostOneAppBootPerUIScenario" in performance["convergenceTargets"]
     assert metrics["lifecycleFlakyTests"] == 1
     assert metrics["productFlakyRatePercent"] == 0
@@ -1876,7 +1935,13 @@ def test_performance_enforcement_reports_convergence_without_failing(
     }
 
 
-def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypatch):
+def test_environment_overrun_is_budget_breach_not_enforcement_failure(
+    tmp_path, monkeypatch, capsys
+):
+    # Formerly this fixture (481 s > the 480 s env ceiling) raised SystemExit
+    # under --enforce and failed the merge-group check. Environment time is a
+    # BUDGET target now: main() completes, the breach lands in the payload
+    # and stdout for the workflow's budget-signal step.
     evaluator = load_script("evaluate_playwright_performance")
     timing_file = tmp_path / "timing.json"
     request_file = tmp_path / "requests.json"
@@ -1937,12 +2002,18 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
         ],
     )
 
-    with pytest.raises(
-        SystemExit,
-        match="Blocking Playwright performance targets not met: "
-        "environmentAtMostFiveMinutes",
-    ):
-        evaluator.main()
+    evaluator.main()
+
+    captured = capsys.readouterr()
+    assert "BUDGET BREACH" in captured.out
+    assert "environmentAtMostFiveMinutes" in captured.out
+    performance = json.loads(output.read_text())
+    assert performance["blockingTargetsMet"] is True
+    assert performance["budgetTargets"]["environmentAtMostFiveMinutes"] is False
+    assert (
+        "environmentAtMostFiveMinutes"
+        in performance["failedBudgetTargetDetails"]
+    )
 
 
 def test_outcome_classifier_reads_include_matrix():
@@ -2121,6 +2192,26 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "tag: '@ingestion'" in schema_search
 
 
+def test_permission_impact_mapping_includes_ingestion_project():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
+        in entry["sources"]
+    )
+    service_creation_permissions = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ServiceCreationPermissions.spec.ts"
+    ).read_text()
+
+    assert "playwright/e2e/**/*Permission*.spec.ts" in mapping["specs"]
+    assert "Ingestion" in mapping["projects"]
+    assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in service_creation_permissions
+
+
 @pytest.mark.parametrize(
     ("source_pattern", "spec_path"),
     [
@@ -2184,11 +2275,7 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
         "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
     )
     assert (
-        "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
-        in impact_map["delegatedSpecs"]
-    )
-    assert (
-        "playwright/e2e/Features/OntologyImportRdf.spec.ts"
+        "playwright/e2e/Features/Ontology*Rdf.spec.ts"
         in impact_map["delegatedSpecs"]
     )
 
@@ -2202,10 +2289,10 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
     source_path.write_text("export const view = {};\n")
     spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
     spec_dir.mkdir(parents=True)
-    (spec_dir / "OntologyExplorer.spec.ts").write_text(
+    (spec_dir / "OntologyStudio.spec.ts").write_text(
         "test('ontology', () => undefined);\n"
     )
-    (spec_dir / "OntologyExplorerRdf.spec.ts").write_text(
+    (spec_dir / "OntologyStudioRdf.spec.ts").write_text(
         "test('rdf', () => undefined);\n"
     )
     impact_map = tmp_path / "impact-map.json"
@@ -2215,7 +2302,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
                 "smoke": [],
                 "canary": [],
                 "delegatedSpecs": [
-                    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+                    "playwright/e2e/Features/OntologyStudioRdf.spec.ts"
                 ],
                 "sharedInfrastructure": [],
                 "mappings": [
@@ -2224,7 +2311,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
                             f"{selector.UI_ROOT}src/components/OntologyExplorer/**"
                         ],
                         "projects": ["chromium"],
-                        "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"],
+                        "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"],
                     }
                 ],
             }
@@ -2257,7 +2344,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
     assert selection["selectors"] == [
         {
             "projects": ["chromium"],
-            "spec": "playwright/e2e/Features/OntologyExplorer.spec.ts",
+            "spec": "playwright/e2e/Features/OntologyStudio.spec.ts",
         }
     ]
 
@@ -2321,13 +2408,22 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
                 "canary": [],
                 "delegatedSpecs": ["playwright/e2e/VisualRegression/**"],
                 "sharedInfrastructure": [],
-                "mappings": [],
+                "mappings": [
+                    {
+                        "sources": ["src/**"],
+                        "projects": ["chromium"],
+                        "specs": [
+                            "playwright/e2e/VisualRegression/entityDetails.spec.ts"
+                        ],
+                    }
+                ],
             }
         )
     )
     changed = tmp_path / "changed.txt"
     changed.write_text(
         f"{selector.UI_ROOT}playwright/e2e/VisualRegression/entityDetails.spec.ts\n"
+        "src/VisualRegressionPage.tsx\n"
     )
     output = tmp_path / "selection.json"
     monkeypatch.chdir(tmp_path)
@@ -2358,6 +2454,75 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
         in selection["delegatedChangedSpecs"]
     )
     assert selection["unmappedFiles"] == []
+
+
+def test_impact_mapping_cannot_reselect_a_delegated_spec(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    spec_path = spec_dir / "Delegated.spec.ts"
+    spec_path.write_text("test('delegated', () => undefined);\n")
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": ["playwright/e2e/Features/Delegated.spec.ts"],
+                "sharedInfrastructure": [],
+                "mappings": [
+                    {
+                        "sources": ["src/rdf/**"],
+                        "projects": ["chromium"],
+                        "specs": ["playwright/e2e/Features/Delegated.spec.ts"],
+                    }
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text("src/rdf/Processor.java\n")
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == []
+
+
+def test_security_impact_mapping_includes_ingestion_permission_specs():
+    selector = load_script("select_playwright_tests")
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
+        in entry["sources"]
+    )
+
+    assert "Ingestion" in mapping["projects"]
+    assert selector.matches(
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts", mapping["specs"]
+    )
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():
@@ -2400,11 +2565,12 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "specFile.endsWith('.setup.ts')" in summary_helper
     assert "lifecycleFailures" in summary_helper
     assert "lifecycleFlaky" in summary_helper
-    assert ".blockingTargets.reportingAtMostTwoMinutes" in workflow
-    assert ".blockingTargetsMet = ([.blockingTargets[]] | all)" in workflow
+    assert ".budgetTargets.reportingAtMostTwoMinutes" in workflow
+    assert ".budgetTargetsMet = ([.budgetTargets[]] | all)" in workflow
+    assert "Signal Playwright budget breaches" in workflow
     assert "### Performance targets" in summary_helper
-    assert "### Performance convergence warnings" in summary_helper
-    assert "Blocking targets enforce CI" in summary_helper
+    assert "### Performance budget and convergence warnings" in summary_helper
+    assert "Budget targets signal capacity problems" in summary_helper
     assert "convergenceWarnings" in summary_helper
     assert "workflowWallSeconds" in summary_helper
     assert "Full workflow signal wall (to summary)" in summary_helper
@@ -2623,7 +2789,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     tmp_path, monkeypatch
 ):
     # Editing an OntologyExplorer source file fans out via the source->spec
-    # mapping glob (OntologyExplorer*.spec.ts), which matches both the regular
+    # mapping glob (OntologyStudio*.spec.ts), which matches both the regular
     # postgres specs and the delegated @ontology-rdf spec. The regular ones must
     # be selected; the delegated RDF spec must be dropped so the postgres plan
     # does not get a shard with zero runnable tests.
@@ -2656,7 +2822,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     selection = json.loads(output.read_text())
     selected_specs = {entry["spec"] for entry in selection["selectors"]}
     # The delegated RDF spec is excluded from the postgres selection...
-    assert "playwright/e2e/Features/OntologyExplorerRdf.spec.ts" not in selected_specs
-    # ...while the non-delegated OntologyExplorer specs from the same glob remain,
+    assert "playwright/e2e/Features/OntologyStudioRdf.spec.ts" not in selected_specs
+    # ...while the non-delegated Ontology Studio specs from the same glob remain,
     # proving the mapping fired and only the delegated spec was dropped.
-    assert "playwright/e2e/Features/OntologyExplorer.spec.ts" in selected_specs
+    assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs

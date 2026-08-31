@@ -22,6 +22,7 @@ import {
 } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -257,13 +258,11 @@ test.describe('Explore Assets Discovery', () => {
 
     // The user should not be visible in the owners filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Owners"]');
-    // Match on the typed value: opening the dropdown fires its own aggregation
-    // for the same field, and a glob matching both races ahead of the search.
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName&value=*${encodeURIComponent(
-        user.responseData.displayName
-      )}*deleted=false*`
-    );
+    const searchResOwner = waitForAggregation(page, {
+      deleted: false,
+      field: 'ownerDisplayName',
+      value: user.responseData.displayName,
+    });
 
     await page.fill(
       '[data-testid="search-input"]',
@@ -284,11 +283,11 @@ test.describe('Explore Assets Discovery', () => {
     // The domain should not be visible in the domains filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword&value=*${encodeURIComponent(
-        domain.responseData.displayName
-      )}*deleted=false*`
-    );
+    const searchResDomain = waitForAggregation(page, {
+      deleted: false,
+      field: 'domains.displayName.keyword',
+      value: domain.responseData.displayName,
+    });
 
     await page.fill(
       '[data-testid="search-input"]',
@@ -323,12 +322,11 @@ test.describe('Explore Assets Discovery', () => {
     const ownerSearchText = user.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Owners"]');
 
-    // Match on the typed value, not the dropdown's own initial aggregation.
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName&value=*${encodeURIComponent(
-        ownerSearchText
-      )}*deleted=true*`
-    );
+    const searchResOwner = waitForAggregation(page, {
+      deleted: true,
+      field: 'ownerDisplayName',
+      value: ownerSearchText,
+    });
 
     await page.fill('[data-testid="search-input"]', ownerSearchText);
     await searchResOwner;
@@ -364,11 +362,11 @@ test.describe('Explore Assets Discovery', () => {
     const domainSearchText = domain.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword&value=*${encodeURIComponent(
-        domainSearchText
-      )}*deleted=true*`
-    );
+    const searchResDomain = waitForAggregation(page, {
+      deleted: true,
+      field: 'domains.displayName.keyword',
+      value: domainSearchText,
+    });
 
     await page.fill('[data-testid="search-input"]', domainSearchText);
     await searchResDomain;

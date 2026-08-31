@@ -26,7 +26,6 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
-  getFeedPanelHeaderText,
 } from '../../../utils/FeedUtilsPure';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
@@ -35,7 +34,6 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   noun,
   feed,
   onShowNewConversation,
-  threadType,
   onCancel,
   hideCloseIcon = false,
 }) => {
@@ -52,8 +50,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       )}>
       <p data-testid="header-title">
         <span data-testid="header-noun">
-          {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
-          {t('label.on-lowercase')}{' '}
+          {noun ?? t('label.conversation')} {t('label.on-lowercase')}{' '}
         </span>
         <span className="font-medium" data-testid="entity-attribute">
           {entityField ? (

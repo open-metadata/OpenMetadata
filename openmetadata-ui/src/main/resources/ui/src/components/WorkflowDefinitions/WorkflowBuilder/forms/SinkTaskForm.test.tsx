@@ -47,13 +47,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div data-testid={dataTestId}>
         {label && (
           <>
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock; input below is named via aria-label */}
             <label>{label}</label>
             {isRequired && <span> *</span>}
           </>
         )}
         <input
+          aria-label={label}
           disabled={isDisabled}
-          role="textbox"
           type={type}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
@@ -84,8 +85,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div>
+        {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock; select below is named via aria-label */}
         {label != null && <label>{label}</label>}
         <select
+          aria-label={label}
           data-testid={dataTestId}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}>
@@ -125,11 +128,13 @@ jest.mock('./MetadataFormSection', () => ({
   MetadataFormSection: jest.fn().mockImplementation(({ name, description }) => (
     <div data-testid="metadata-form-section">
       <input
+        aria-label="Display Name"
         data-testid="display-name-input"
         defaultValue={name}
         placeholder="Display Name"
       />
       <input
+        aria-label="Description"
         data-testid="description-input"
         defaultValue={description}
         placeholder="Description"
@@ -340,8 +345,10 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, { target: { value: 'ghp_test' } });
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(tokenInput, { target: { value: 'ghp_test' } });
 
       const saveButton = screen.getByTestId('save-button');
 
@@ -409,8 +416,10 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, {
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(tokenInput, {
         target: { value: 'ghp_secrettoken123' },
       });
 
@@ -534,7 +543,9 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
 
       expect(tokenInput).toHaveAttribute('type', 'password');
     });
@@ -581,7 +592,9 @@ describe('SinkTaskForm', () => {
       expect(getInputByTestId('branch-input')).toHaveValue('main');
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
 
       expect(tokenInput).toHaveValue('');
     });

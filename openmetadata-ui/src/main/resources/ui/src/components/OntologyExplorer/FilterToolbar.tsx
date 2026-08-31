@@ -199,7 +199,11 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         data-testid="glossary-filter-section">
         <SearchDropdown
           hideCounts
-          label={t('label.glossary')}
+          label={
+            filters.glossaryIds.length === 0
+              ? t('label.all-glossaries')
+              : t('label.glossary')
+          }
           options={glossaryOptions}
           searchKey="glossaryIds"
           selectedKeys={selectedGlossaryKeys}
@@ -258,7 +262,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           )}
         {onLoadMore !== undefined && (
           <Button
-            className="tw:text-brand-600"
+            className="tw:text-brand-secondary"
             color="tertiary"
             data-testid="ontology-load-more-btn"
             isDisabled={!hasMoreTerms || isLoading || isLoadingMore}

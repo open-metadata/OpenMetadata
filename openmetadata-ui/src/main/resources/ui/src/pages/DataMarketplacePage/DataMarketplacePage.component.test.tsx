@@ -157,6 +157,26 @@ describe('DataMarketplacePage component', () => {
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 
+  it('renders the default layout when a legacy persona document contains a null page', async () => {
+    (getDocumentByFQN as jest.Mock).mockResolvedValue({
+      data: {
+        pages: [
+          {
+            pageType: PageType.LandingPage,
+          },
+          null,
+        ],
+      },
+    });
+
+    renderDataMarketplacePage();
+
+    expect(
+      await screen.findByTestId(defaultLayoutWidgetId)
+    ).toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
   it('renders the default layout when no persona is selected', async () => {
     mockSelectedPersona = null;
 

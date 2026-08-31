@@ -192,7 +192,7 @@ describe('TableVersion tests', () => {
       },
     };
 
-    let rerender: ReturnType<typeof render>['rerender'] = () => {
+    let rerender: ReturnType<typeof render>['rerender'] = (_ui) => {
       throw new Error('rerender not initialized');
     };
 

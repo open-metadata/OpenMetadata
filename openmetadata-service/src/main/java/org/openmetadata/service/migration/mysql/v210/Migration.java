@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.deployMissingGovernanceWorkflows;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.widenFlowableActivityId;
+import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.ConversationMigration;
+import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
-
-  public Migration(MigrationFile migrationFile) {
+  public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
   }
 
   @Override
-  @SneakyThrows
   public void runDataMigration() {
     // Flowable owns its own schema, so make sure it has been created before touching it. The
     // handler is allowed to fail here (v200 tolerates the same call), in which case the widening
@@ -41,5 +46,15 @@ public class Migration extends MigrationProcessImpl {
     }
     widenFlowableActivityId(handle, MYSQL);
     deployMissingGovernanceWorkflows();
+    ConversationMigration.migrate(handle, MYSQL);
+    ConversationReferenceMigration.migrate(handle, MYSQL);
+    refreshConversationNotificationTemplates();
+    addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
+    migrateRelationshipTypes(handle, MYSQL);
+    // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
+    // multiple domains they inherit from their associated tables. Fresh installs get this from the
+    // packaged JSON default; existing installs only through this migration.
+    exemptQueryFromMultiDomainRules();
   }
 }

@@ -35,6 +35,13 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
         <version>${awssdk.version}</version>
@@ -1037,7 +1044,14 @@
       <artifactId>jena-rdfconnection</artifactId>
       <version>${jena.version}</version>
     </dependency>
-    
+    <!-- SHACL was bundled inside jena-arq in Jena 4.x; in Jena 5.x it lives in its own
+         artifact (org.apache.jena.shacl.*). Required by RdfShaclValidator + ShaclValidateTool. -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-shacl</artifactId>
+      <version>${jena.version}</version>
+    </dependency>
+
     <!-- Apache Calcite for SQL parsing -->
     <dependency>
       <groupId>org.apache.calcite</groupId>

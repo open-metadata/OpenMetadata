@@ -729,10 +729,13 @@ export const assignDataProduct = async (
     );
 
     await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
+      // Match any Data Product search response. The dropdown filters by the
+      // asset's domain only when the "Data Product Domain Validation" rule is
+      // enabled; when it is disabled the query carries no domain, so we cannot
+      // key the wait on the domain name. The tag visibility check below is the
+      // real synchronization guard.
+      const searchDataProduct = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
       await page.locator('[data-testid="data-product-selector"] input').clear();
       await page
@@ -1034,6 +1037,63 @@ export const verifyDomainPropagation = async (
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   await expect(entityCard).toBeVisible({ timeout: 30_000 });
   await expect(entityCard).toContainText(domain.displayName);
+};
+
+/**
+ * Wait for a hard-deleted entity to disappear from the search index.
+ *
+ * Search-index deletion is eventually consistent: a selection dropdown
+ * queried immediately after `DELETE /api/v1/...?hardDelete=true` can still
+ * return the deleted entity and fail a `not.toBeVisible()` assertion (the
+ * ExplorePageRightPanel deleted-entity flake family — run 32500973433).
+ * Gate on the search API no longer returning the entity before asserting
+ * its absence in the UI, mirroring how verifyDomainPropagation gates on
+ * presence.
+ */
+export const waitForDeletionFromSearchIndex = async (
+  apiContext: APIRequestContext,
+  searchTerm: string,
+  searchIndex: string,
+  matchNames: string[]
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            searchTerm
+          )}&index=${searchIndex}&from=0&size=10`
+        );
+
+        // This poll resolves on `false` ("entity gone"), the OPPOSITE
+        // polarity of verifyDomainPropagation — so a transient search error
+        // must read as "still present" (keep polling), never as an empty
+        // result set, or a single flaky 5xx would pass the gate against a
+        // stale index.
+        if (!response.ok()) {
+          return true;
+        }
+
+        const hits: {
+          _source?: {
+            name?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+          };
+        }[] = (await response.json())?.hits?.hits ?? [];
+
+        return hits.some((hit) =>
+          matchNames.some(
+            (name) =>
+              hit._source?.name === name ||
+              hit._source?.displayName === name ||
+              hit._source?.fullyQualifiedName === name
+          )
+        );
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000, 5_000] }
+    )
+    .toBe(false);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {

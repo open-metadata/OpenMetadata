@@ -56,9 +56,6 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -178,11 +175,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
@@ -209,8 +204,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
-import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
@@ -242,11 +235,9 @@ import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -268,7 +259,6 @@ import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -277,6 +267,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -960,12 +951,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    if (requiresParentForInheritance(entity, fields)) {
-      EntityInterface parent = resolveInheritanceParentLeniently(entity, getInheritableFields());
-      if (parent != null) {
-        // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
-        applyInheritance(entity, fields, parent);
-      }
+    if (!requiresParentForInheritance(entity, fields)) {
+      return;
+    }
+    EntityReference parentRef = getParentReference(entity);
+    String inheritableFields =
+        parentRef == null ? getInheritableFields() : getInheritableFields(parentRef.getType());
+    EntityInterface parent = resolveInheritanceParentLeniently(entity, inheritableFields);
+    if (parent != null) {
+      // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
+      applyInheritance(entity, fields, parent);
     }
   }
 
@@ -990,6 +985,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Batch-resolve EntityReferences by id for the bulk field fetchers.
+   *
+   * <p>Fails fast on an id that cannot be resolved, preserving the contract of the per-record
+   * {@link Entity#getEntityReferenceById} calls this replaced. The batch query underneath
+   * ({@code findReferencesByIds}) is a plain {@code WHERE id IN (...)}, so it silently omits ids it
+   * cannot find; without this check an orphaned relationship row would change from failing the
+   * request to silently dropping the reference.
+   */
+  protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
+    List<UUID> distinctIds = ids.stream().distinct().toList();
+    Map<UUID, EntityReference> refsById = new HashMap<>();
+    if (!distinctIds.isEmpty()) {
+      for (EntityReference ref :
+          Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
+        refsById.put(ref.getId(), ref);
+      }
+      for (UUID id : distinctIds) {
+        if (!refsById.containsKey(id)) {
+          throw EntityNotFoundException.byMessage(
+              CatalogExceptionMessage.entityNotFound(entityType, id));
+        }
+      }
+    }
+    return refsById;
+  }
+
+  /**
    * Return the parent's EntityReference without loading the parent entity. Subclasses override this
    * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}. A type that can
    * have several CONTAINS parents at once (e.g. a test case, under both a test suite and a test
@@ -1003,6 +1025,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
   protected String getInheritableFields() {
     return "domains";
+  }
+
+  /**
+   * Fields to load on a parent of the given type. Entities whose parent may be one of several types
+   * override this when a field is only valid on some of them; requesting a field a parent type does
+   * not declare is rejected as an unknown field.
+   */
+  protected String getInheritableFields(String parentEntityType) {
+    return getInheritableFields();
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1221,7 +1252,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void setInheritedFields(
       List<T> entities, Fields fields, Map<UUID, EntityReference> unhydratedParentRefs) {
     if (entities.isEmpty()) return;
-    String inheritableFields = getInheritableFields();
 
     var parentRefsById = new HashMap<UUID, EntityReference>();
     for (var entity : entities) {
@@ -1251,8 +1281,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // thread-local parent cache was really buying on this path.
     var parentsById = new HashMap<UUID, EntityInterface>();
     for (var entry : parentRefsByType.entrySet()) {
+      String parentFields = getInheritableFields(entry.getKey());
       List<? extends EntityInterface> parents =
-          Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
+          Entity.getEntitiesForInheritance(entry.getValue(), parentFields, ALL);
       for (var parent : parents) {
         parentsById.put(parent.getId(), parent);
       }
@@ -1294,6 +1325,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setName(renameAllowed ? updated.getName() : original.getName());
     updated.setFullyQualifiedName(original.getFullyQualifiedName());
     updated.setChangeDescription(original.getChangeDescription());
+  }
+
+  protected T restorePatchSecrets(T original, T updated) {
+    return updated;
   }
 
   /**
@@ -3459,13 +3494,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Invalidate cache entries for an entity identified by an {@link
-   * CollectionDAO.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
+   * CoreRelationshipDAOs.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
    * JSON payload (when present) so the by-name cache variant is evicted alongside the by-id one.
    * Callers that only have {@code (type, id)} and pass {@code fqn=null} leave GET-by-name entries
    * stale until TTL expiry — use this when the referenced entity's FQN needs to be invalidated too.
    */
   public static void invalidateCacheForReferencedEntity(
-      CollectionDAO.EntityRelationshipRecord record) {
+      CoreRelationshipDAOs.EntityRelationshipRecord record) {
     if (record == null) {
       return;
     }
@@ -3915,7 +3950,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     RdfUpdater.updateEntity(entity);
     ListCountCache.invalidate(entityType);
-    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
+    // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
+    // prior failed lookup poisoned the negative cache. Iterates the Invalidatable registry
+    // so future cache layers also get the create signal automatically.
+    deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -3940,8 +3979,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <ul>
    *   <li><b>user</b> — already excluded historically; user lookups are dominated by auth-time
    *       reads that talk to a different code path.
-   *   <li><b>THREAD / task</b> — feeds and tasks are write-heavy (every mutation creates a
-   *       thread), the JSON is small, and the workflow engine ({@link
+   *   <li><b>task</b> — tasks are write-heavy, the JSON is small, and the workflow engine ({@link
    *       org.openmetadata.service.governance.workflows.WorkflowHandler Flowable}) polls
    *       these tables on a tight loop. Stale-by-cache-window data here breaks workflow
    *       transitions and the IT suite (TaskResourceIT / IncidentTaskIntegrationIT /
@@ -3960,7 +3998,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final Set<String> UNCACHED_ENTITY_TYPES =
       Set.of(
           Entity.USER,
-          Entity.THREAD,
           Entity.TASK,
           Entity.WORKFLOW,
           Entity.WORKFLOW_DEFINITION,
@@ -4072,6 +4109,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void writeJsonToRedis(
       CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
+    PostCommitActionQueue.runOrDefer(
+        () -> writeJsonToRedisAfterCommit(cachedEntityDao, entityId, fqn, entityJson));
+  }
+
+  private void writeJsonToRedisAfterCommit(
+      CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
     if (entityJson == null || entityJson.isEmpty()) return;
     try {
       cachedEntityDao.putBase(entityType, entityId, entityJson);
@@ -4081,6 +4124,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } catch (Exception e) {
       LOG.debug("Failed to write to Redis cache: {} {}", entityType, entityId, e);
     }
+  }
+
+  private static void deferCacheBundleInvalidation(
+      final String entityType, final UUID id, final String fqn) {
+    PostCommitActionQueue.runOrDefer(() -> CacheBundle.invalidateEntity(entityType, id, fqn));
   }
 
   protected void postCreate(List<T> entities) {
@@ -4376,6 +4424,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
+    }
+    try (var ignored = phase("patchRestoreSecrets")) {
+      updated = restorePatchSecrets(original, updated);
     }
 
     updated.setUpdatedBy(user);
@@ -4922,8 +4973,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
-              // Delete all the threads that are about this entity
-              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+              Entity.getConversationRepository()
+                  .deleteByEntity(entityType, List.of(entityInterface.getId()));
 
               // Drop cached state before the DB row goes away. A concurrent read arriving
               // between this invalidate and the dao.delete below would still observe the
@@ -4985,7 +5036,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityCacheRepair.scheduleRepair(
         entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
-    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -5128,6 +5179,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Runs multi-repository work through the retained SQL-object root so every child DAO joins the
+   * callback handle. Opening this boundary directly on {@link Entity#getJdbi()} does not bind the
+   * on-demand DAO graph, allowing nested repository writes to commit independently of the outer
+   * unit of work.
+   */
+  public final <R> R executeInTransaction(final Supplier<R> work) {
+    final DeferralScope scope = new DeferralScope();
+    boolean committed = false;
+    try {
+      final R result =
+          DeadlockRetry.execute(
+              () ->
+                  daoCollection.inTransaction(
+                      ignored -> {
+                        scope.reopenForAttempt();
+                        return work.get();
+                      }));
+      committed = true;
+      return result;
+    } finally {
+      scope.finish(committed);
+      if (!committed) {
+        storedEntityJson.remove();
+      }
+    }
+  }
+
+  /**
    * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
    * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
    * a replayed body never inherits closures/keys captured by a rolled-back attempt. {@link
@@ -5142,9 +5221,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean ownsLineageEs;
     private boolean ownsSearchWrite;
     private boolean ownsCache;
+    private boolean ownsPostCommitActions;
     private int rdfCheckpoint;
     private int lineageEsCheckpoint;
     private int searchWriteCheckpoint;
+    private int postCommitActionCheckpoint;
 
     private void reopenForAttempt() {
       if (opened) {
@@ -5160,10 +5241,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       rdfCheckpoint = RdfTagUpdater.checkpoint();
       lineageEsCheckpoint = LineageUtil.checkpoint();
       searchWriteCheckpoint = SearchRepository.searchWriteCheckpoint();
+      postCommitActionCheckpoint = PostCommitActionQueue.checkpoint();
       ownsRdf = RdfTagUpdater.beginDeferral();
       ownsLineageEs = LineageUtil.beginLineageDeferral();
       ownsSearchWrite = SearchRepository.beginSearchWriteDeferral();
       ownsCache = beginCacheInvalidationDeferral();
+      ownsPostCommitActions = PostCommitActionQueue.begin();
     }
 
     /**
@@ -5196,6 +5279,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         clearCacheInvalidations();
         beginCacheInvalidationDeferral();
       }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
+        PostCommitActionQueue.begin();
+      } else {
+        PostCommitActionQueue.rollbackToCheckpoint(postCommitActionCheckpoint);
+      }
     }
 
     private void finish(boolean committed) {
@@ -5221,12 +5310,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
       List<SearchRepository.DeferredSearchWrite> searchClosures =
           ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
+      List<Runnable> postCommitActions =
+          ownsPostCommitActions ? PostCommitActionQueue.drain() : List.of();
       if (ownsCache) {
         runGuarded(EntityRepository::drainCacheInvalidations);
       }
       runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
       runGuarded(() -> runLineageEsClosures(lineageClosures));
       runGuarded(() -> runSearchWriteClosures(searchClosures));
+      runGuarded(() -> PostCommitActionQueue.run(postCommitActions));
     }
 
     private void clear() {
@@ -5241,6 +5333,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (ownsCache) {
         clearCacheInvalidations();
+      }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
       }
     }
   }
@@ -5840,8 +5935,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .map(entity -> entity.getId().toString())
             .toList();
 
+    // Batch-delete only the entities' own custom-property rows (jsonSchema "customFieldSchema") in
+    // one statement per chunk. deleteAllBatch() would delete EVERY entity_extension row for the id
+    // -- including columnExtension rows -- so a bulk import update of a table that carries
+    // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
-      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
+      daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
     }
   }
 
@@ -6467,7 +6566,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // and the bulk subtree walkers — Team → Team, KnowledgePage → KnowledgePage,
     // Classification → Tag etc. express their hierarchy via PARENT_OF, and a CONTAINS-only
     // probe would skip them on restore even though delete already cascades through them.
-    List<CollectionDAO.EntityRelationshipRecord> records =
+    List<CoreRelationshipDAOs.EntityRelationshipRecord> records =
         daoCollection
             .relationshipDAO()
             .findTo(
@@ -6478,7 +6577,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     Map<String, List<UUID>> idsByType = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
+    for (CoreRelationshipDAOs.EntityRelationshipRecord record : records) {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
@@ -7000,16 +7099,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
     }
-    try (var ignored = phase("bulkHardDeleteFeedThreads")) {
-      Entity.getFeedRepository().deleteByAbout(entityIds);
+    try (var ignored = phase("bulkHardDeleteConversations")) {
+      Entity.getConversationRepository().deleteByEntity(entityType, entityIds);
     }
   }
 
   /**
    * Delete the Task 2.0 feed artifacts (tasks and announcements) that are about this entity.
    *
-   * <p>{@link FeedRepository#deleteByAbout} only clears the pre-2.0 {@code thread_entity} table and
-   * no-ops once legacy thread storage is unavailable. Tasks and announcements moved to their own
+   * <p>The legacy feed cleanup only cleared the pre-2.0 {@code thread_entity} table, which no longer
+   * exists now that conversations own their storage. Tasks and announcements moved to their own
    * tables in Task 2.0, so a hard delete left them behind as orphans whose {@code about} no longer
    * resolves. Both are reached through {@code entity --MENTIONED_IN--> artifact}, so they must be
    * collected here, before the entity's own relationship rows are removed.
@@ -8554,28 +8653,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public List<TagLabel> getAllTags(EntityInterface entity) {
     return entity.getTags();
-  }
-
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-    if (EntityUtil.isDescriptionTask(taskType)) {
-      return new DescriptionTaskWorkflow(threadContext);
-    } else if (EntityUtil.isTagTask(taskType)) {
-      return new TagTaskWorkflow(threadContext);
-    } else if (EntityUtil.isApprovalTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-    }
-  }
-
-  public final void validateTaskThread(ThreadContext threadContext) {
-    ThreadType threadType = threadContext.getThread().getType();
-    if (threadType != ThreadType.Task) {
-      throw new IllegalArgumentException(
-          String.format("Thread type %s is not task related", threadType));
-    }
   }
 
   protected void validateColumnTags(List<Column> columns) {
@@ -10542,7 +10619,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
-      CacheBundle.invalidateEntity(entityType, id, fqn);
+      deferCacheBundleInvalidation(entityType, id, fqn);
 
       EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 
@@ -11112,134 +11189,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       return json;
-    }
-  }
-
-  public static class DescriptionTaskWorkflow extends TaskWorkflow {
-    DescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setDescription(
-          org.openmetadata.service.util.DescriptionSanitizer.sanitize(resolveTask.getNewValue()));
-      return aboutEntity;
-    }
-  }
-
-  public static class TagTaskWorkflow extends TaskWorkflow {
-    TagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setTags(tags);
-      return aboutEntity;
-    }
-  }
-
-  /**
-   * Generic approval task workflow usable for any entity. Checks that the acting user is a
-   * reviewer of the entity, then delegates resolution to the governance WorkflowHandler. Falls
-   * back to a direct entityStatus patch when the Flowable workflow record no longer exists (e.g.
-   * after a corrupted restart).
-   */
-  public static class ApprovalTaskWorkflow extends TaskWorkflow {
-    ApprovalTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      EntityInterface entity = threadContext.getAboutEntity();
-      verifyReviewer(entity, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveLegacyThreadTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn("Workflow failed for taskId='{}', applying status directly", taskId);
-        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
-        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
-        EntityFieldUtils.setEntityField(
-            entity,
-            threadContext.getAbout().getEntityType(),
-            user,
-            FIELD_ENTITY_STATUS,
-            entityStatus,
-            true);
-      }
-
-      return entity;
-    }
-  }
-
-  /**
-   * Checks that {@code user} is an assignee of the given task thread. Throws
-   * {@link AuthorizationException} if not.
-   */
-  public static void checkUpdatedByTaskAssignee(Thread thread, String user) {
-    List<EntityReference> assignees = listOrEmpty(thread.getTask().getAssignees());
-    if (nullOrEmpty(assignees)) {
-      return; // no assignees configured – allow any user (backward compat)
-    }
-    boolean isAssignee =
-        assignees.stream()
-            .anyMatch(
-                ref -> {
-                  if (TEAM.equals(ref.getType())) {
-                    org.openmetadata.schema.entity.teams.Team team =
-                        Entity.getEntityByName(TEAM, ref.getName(), "users", Include.NON_DELETED);
-                    return team.getUsers().stream()
-                        .anyMatch(
-                            u ->
-                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
-                  }
-                  return ref.getName().equals(user)
-                      || (ref.getFullyQualifiedName() != null
-                          && ref.getFullyQualifiedName().equals(user));
-                });
-    if (!isAssignee) {
-      throw new AuthorizationException(notTaskAssignee(user));
-    }
-  }
-
-  /**
-   * Checks that {@code user} is a reviewer of the given entity. Throws {@link
-   * AuthorizationException} if not.
-   */
-  public static void verifyReviewer(EntityInterface entity, String user) {
-    List<EntityReference> reviewers = entity.getReviewers();
-    if (nullOrEmpty(reviewers)) {
-      return;
-    }
-    boolean isReviewer =
-        reviewers.stream()
-            .anyMatch(
-                e -> {
-                  if (TEAM.equals(e.getType())) {
-                    org.openmetadata.schema.entity.teams.Team team =
-                        Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                    return team.getUsers().stream()
-                        .anyMatch(
-                            u ->
-                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
-                  }
-                  return e.getName().equals(user) || e.getFullyQualifiedName().equals(user);
-                });
-    if (!isReviewer) {
-      throw new AuthorizationException(notReviewer(user));
     }
   }
 
@@ -12125,22 +12074,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
 
-    List<CollectionDAO.ExtensionRecordWithId> records =
+    List<CoreRelationshipDAOs.ExtensionRecordWithId> records =
         daoCollection
             .entityExtensionDAO()
             .getExtensionsBatch(entityListToStrings(entities), fieldFQNPrefix);
 
-    Map<UUID, List<CollectionDAO.ExtensionRecordWithId>> extensionsMap =
-        records.stream().collect(Collectors.groupingBy(CollectionDAO.ExtensionRecordWithId::id));
+    Map<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> extensionsMap =
+        records.stream()
+            .collect(Collectors.groupingBy(CoreRelationshipDAOs.ExtensionRecordWithId::id));
 
     Map<UUID, Object> result = new HashMap<>();
 
-    for (Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry : extensionsMap.entrySet()) {
+    for (Entry<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> entry :
+        extensionsMap.entrySet()) {
       UUID entityId = entry.getKey();
-      List<CollectionDAO.ExtensionRecordWithId> extensionRecords = entry.getValue();
+      List<CoreRelationshipDAOs.ExtensionRecordWithId> extensionRecords = entry.getValue();
 
       ObjectNode objectNode = JsonUtils.getObjectNode();
-      for (CollectionDAO.ExtensionRecordWithId record : extensionRecords) {
+      for (CoreRelationshipDAOs.ExtensionRecordWithId record : extensionRecords) {
         String fieldName = TypeRegistry.getPropertyName(record.extensionName());
         JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());
         objectNode.set(fieldName, extensionJsonNode);

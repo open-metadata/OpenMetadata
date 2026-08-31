@@ -79,6 +79,10 @@ public class MigrationFile implements Comparable<MigrationFile> {
     }
   }
 
+  public static List<String> parseSQLFile(File sqlFile, ConnectionType connectionType) {
+    return SqlStatementSplitter.splitFile(sqlFile.toPath(), connectionType);
+  }
+
   public String getMigrationProcessClassName() {
     String clazzName =
         String.format(
