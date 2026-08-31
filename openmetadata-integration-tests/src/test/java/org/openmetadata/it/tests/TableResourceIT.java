@@ -3606,8 +3606,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                   getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
                       .contains(originalColFqn));
 
-      // First rename: version is still 0.1 here, so this PATCH does not consolidate and the
-      // index moves to the uppercase FQN.
+      // Rename the column, paired with a description edit. A case-only rename on its own is not
+      // recorded as a field change (columnMatch is case-insensitive, so it is neither an add nor
+      // a delete, and the per-column updaters never track name), which would make reactUpdate()
+      // treat the request as a no-op and skip the deferred flush entirely.
+      sourceTable.setDescription("column renamed");
       sourceTable.setColumns(List.of(ColumnBuilder.of("REVERT_COL", "BIGINT").build()));
       sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
 
@@ -3621,8 +3624,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                       .contains(intermediateColFqn));
 
       // Revert within the same session: version is now > 0.1 and the updater/session match, so
-      // consolidateChanges() applies and the consolidated diff against the pre-session version
-      // is empty for columns.
+      // consolidateChanges() applies. The consolidated diff runs against the pre-session version,
+      // which still holds the original column name, so the final pass sees no column change at
+      // all -- only the first pass carries the REVERT_COL -> revert_col mapping the index needs.
+      // The description edit keeps the request from being a no-op, as above.
+      sourceTable.setDescription("column name reverted");
       sourceTable.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
       client.tables().update(sourceTable.getId().toString(), sourceTable);
 
