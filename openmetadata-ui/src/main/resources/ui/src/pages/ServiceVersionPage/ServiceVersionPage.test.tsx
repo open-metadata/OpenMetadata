@@ -50,7 +50,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  EmptyPlaceholder: jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(() => <div>ErrorPlaceHolder</div>),
 }));
 
 jest.mock(

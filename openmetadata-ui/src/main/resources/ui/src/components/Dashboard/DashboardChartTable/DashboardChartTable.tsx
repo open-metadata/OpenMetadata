@@ -455,7 +455,9 @@ export const DashboardChartTable = ({
         }
         locale={{
           emptyText: (
-            <div className="tw:relative tw:min-h-70" data-testid="no-data-placeholder">
+            <div
+              className="tw:relative tw:min-h-70"
+              data-testid="no-data-placeholder">
               <EmptyPlaceholder
                 icon={<Assets className="tw:text-utility-gray-600" />}
                 title={t('message.no-entity-data-available', {
