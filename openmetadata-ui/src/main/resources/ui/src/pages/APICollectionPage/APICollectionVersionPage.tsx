@@ -31,11 +31,7 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -44,12 +40,12 @@ import {
 } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApiCollectionByFQN,
@@ -66,10 +62,6 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -77,7 +69,6 @@ import APIEndpointsTab from './APIEndpointsTab';
 const APICollectionVersionPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { version, tab } = useRequiredParams<{
     version: string;
     tab: string;
@@ -95,9 +86,25 @@ const APICollectionVersionPage = () => {
     currentPage,
   } = pagingInfo;
 
-  const [collectionPermissions, setCollectionPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const {
+    permissions: collectionPermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(ResourceEntity.API_COLLECTION, decodedEntityFQN, {
+    enabled: Boolean(decodedEntityFQN),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  const [isCollectionLoading, setIsCollectionLoading] =
+    useState<boolean>(true);
+  const isLoading = isPermissionsLoading || isCollectionLoading;
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
 
@@ -123,19 +130,6 @@ const APICollectionVersionPage = () => {
       [currentVersionData]
     );
 
-  const viewVersionPermission = useMemo(
-    () => collectionPermissions.ViewAll || collectionPermissions.ViewBasic,
-    [collectionPermissions]
-  );
-
-  const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        collectionPermissions,
-        Operation.ViewCustomFields
-      ),
-    [collectionPermissions]
-  );
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
       () =>
@@ -148,36 +142,37 @@ const APICollectionVersionPage = () => {
       [currentVersionData?.changeDescription, owners, tier, domains]
     );
 
+  // Permission fetching now lives in useEntityPermissions (above). This keeps the same
+  // "only fetch the collection once view access is known" gate the old imperative `init()`
+  // had (its `if (permission.ViewAll || permission.ViewBasic)` branch) — just reactive to
+  // the hook's resolved viewVersionPermission instead of a same-tick local variable.
   const init = useCallback(async () => {
+    if (!viewVersionPermission) {
+      setIsCollectionLoading(false);
+
+      return;
+    }
     try {
-      setIsLoading(true);
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.API_COLLECTION,
-        decodedEntityFQN
+      setIsCollectionLoading(true);
+      const collectionResponse = await getApiCollectionByFQN(
+        decodedEntityFQN,
+        {
+          include: Include.All,
+        }
       );
-      setCollectionPermissions(permission);
+      setCollection(collectionResponse);
 
-      if (permission.ViewAll || permission.ViewBasic) {
-        const collectionResponse = await getApiCollectionByFQN(
-          decodedEntityFQN,
-          {
-            include: Include.All,
-          }
-        );
-        setCollection(collectionResponse);
+      const versions = await getApiCollectionVersions(
+        collectionResponse.id ?? ''
+      );
 
-        const versions = await getApiCollectionVersions(
-          collectionResponse.id ?? ''
-        );
-
-        setVersionList(versions);
-      }
+      setVersionList(versions);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsCollectionLoading(false);
     }
-  }, [decodedEntityFQN, getEntityPermissionByFqn]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   const getAPICollectionEndpoints = useCallback(
     async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
@@ -453,10 +448,10 @@ const APICollectionVersionPage = () => {
   ]);
 
   useEffect(() => {
-    if (!isEmpty(decodedEntityFQN)) {
+    if (!isEmpty(decodedEntityFQN) && !isPermissionsLoading) {
       init();
     }
-  }, [decodedEntityFQN]);
+  }, [decodedEntityFQN, isPermissionsLoading, init]);
 
   useEffect(() => {
     if (!isUndefined(collection)) {
