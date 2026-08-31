@@ -24,6 +24,7 @@ import {
   NoSearch,
 } from '@openmetadata/ui-core-components/icons';
 import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
   Key,

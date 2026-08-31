@@ -93,7 +93,9 @@ function DirectoryChildrenTable() {
           <div className="tw:relative tw:min-h-70">
             <EmptyPlaceholder
               icon={<Assets className="tw:text-utility-gray-600" />}
-              title={t('message.no-data-available')}
+              title={t('message.no-entity-data-available', {
+                entity: t('label.file-plural'),
+              })}
               variant="blank"
             />
           </div>
