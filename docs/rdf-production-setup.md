@@ -131,6 +131,19 @@ retry cost. If a larger batch approaches `RDF_REQUEST_TIMEOUT_MS`, either reduce
 the timeout. Wide tables can produce tens of megabytes of triples per 100-entity batch, so validate
 changes against representative catalogs.
 
+### Reading the run record's stage timings
+
+`readerTimeMs`, `processTimeMs` and `sinkTimeMs` on a run record are **aggregate work summed across
+concurrent workers**, not elapsed time. Reading runs on one worker per partition and translation on
+a pool of up to 50 threads, so those two stages overlap both each other and the writer. The
+consequence is deliberate but easy to misread: **the stage times can add up to more than the run
+actually took.** In the two-partition measurement below, the stages summed to 19.8 s for a run whose
+wall clock was 12.0 s — that gap is the parallelism working, not an error.
+
+Read them as "where did this run spend its effort", and take elapsed time from the run record's
+`startTime`/`endTime`. The one stage that does approximate wall clock is `sinkTimeMs`: RDF writes are
+serialized to a single in-flight request, so there is nothing for it to overlap with.
+
 ### Partition size decides read concurrency
 
 Measured end to end (`RdfIndexAppScaleIT`, 2,000 tables, Fuseki 6.2.0), the **read stage is about

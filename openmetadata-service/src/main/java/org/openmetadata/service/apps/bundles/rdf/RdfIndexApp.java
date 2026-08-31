@@ -1071,7 +1071,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
       entityStats.withProcessTimeMs(
           nullSafe(entityStats.getProcessTimeMs())
               + nullSafe(currentEntityStats.getProcessTimeMs()));
-      entityStats.withTotalTimeMs(nullSafe(entityStats.getSinkTimeMs()));
+      // Sum of the stages actually measured here, matching RdfDistributedJobStatsAggregator.
+      // This path has no reader instrumentation, so reader time is absent rather than zero.
+      entityStats.withTotalTimeMs(
+          nullSafe(entityStats.getProcessTimeMs()) + nullSafe(entityStats.getSinkTimeMs()));
     }
 
     StepStats jobStats = stats.getJobStats();
@@ -1099,7 +1102,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         .withFailedRecords(totalFailed)
         .withProcessTimeMs(totalProcessTimeMs)
         .withSinkTimeMs(totalSinkTimeMs)
-        .withTotalTimeMs(totalSinkTimeMs);
+        .withTotalTimeMs(totalProcessTimeMs + totalSinkTimeMs);
 
     rdfIndexStats.set(stats);
     jobData.setStats(stats);
