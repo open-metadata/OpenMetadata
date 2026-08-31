@@ -391,25 +391,30 @@
   dependencies:
     swagger-client "^3.29.3"
 
-"@auth0/auth0-react@^1.9.0":
+"@auth0/auth0-auth-js@^1.10.0":
   version "1.12.1"
-  resolved "https://registry.yarnpkg.com/@auth0/auth0-react/-/auth0-react-1.12.1.tgz#3a469518828137339c635434ab953e206e798fe8"
-  integrity sha512-8+ecK/4rE0AGsxLW2IDcr1oPbT55tuE6cQEzEIOkQjB6QGQxxWMzQy0D4nMKw3JUAc7nYcFVOABNFNbc471n9Q==
+  resolved "https://registry.yarnpkg.com/@auth0/auth0-auth-js/-/auth0-auth-js-1.12.1.tgz#cb0e644c31dfdfe1e6707ae9d59a33dbe4a5c4f2"
+  integrity sha512-YgYOAGmfwO40YOYkYSW7XvE6b+qkdlXdpzBshvOjCioygesUxIw2qRerilW1/8XQV41mnFvQIPnsTdEOHN9BeA==
   dependencies:
-    "@auth0/auth0-spa-js" "^1.22.6"
+    jose "^6.0.8"
+    openid-client "^6.8.0"
 
-"@auth0/auth0-spa-js@^1.22.6":
-  version "1.22.6"
-  resolved "https://registry.yarnpkg.com/@auth0/auth0-spa-js/-/auth0-spa-js-1.22.6.tgz#482c7cf546649e856020d20843cd496258bd9fa0"
-  integrity sha512-iL3O0vWanfKFVgy1J2ZHDPlAUK6EVHWEHWS6mUXwHEuPiK39tjlQtyUKQIJI1F5YsZB75ijGgRWMTawSDXlwCA==
+"@auth0/auth0-react@^2.24.1":
+  version "2.24.1"
+  resolved "https://registry.yarnpkg.com/@auth0/auth0-react/-/auth0-react-2.24.1.tgz#edb8fa5535096a969d2de89bb6f8f1621604eb8a"
+  integrity sha512-K6ymu7g0OoulMllSx/VE+m9yNao8IEy1YzeIX8NnzveIbVvYd2j3+PB5zU3NHXCeMhtT9RYu7EDBxKR1E4+W0A==
   dependencies:
-    abortcontroller-polyfill "^1.7.3"
-    browser-tabs-lock "^1.2.15"
-    core-js "^3.25.4"
+    "@auth0/auth0-spa-js" "^2.24.1"
+
+"@auth0/auth0-spa-js@^2.24.1":
+  version "2.24.1"
+  resolved "https://registry.yarnpkg.com/@auth0/auth0-spa-js/-/auth0-spa-js-2.24.1.tgz#bf3c046b7faa0372ea8e5cc454f5680b9d2b6ac0"
+  integrity sha512-iS18fBlWWxQ/FPtWgWzYYEImsNRumJG2cZ08xV0HsEmWtTBv+54A+fnyFx9eiNBP7cLp0emwDDjgeG+hQEbVBA==
+  dependencies:
+    "@auth0/auth0-auth-js" "^1.10.0"
+    browser-tabs-lock "^1.3.0"
+    dpop "^2.1.1"
     es-cookie "~1.3.2"
-    fast-text-encoding "^1.0.6"
-    promise-polyfill "^8.2.3"
-    unfetch "^4.2.0"
 
 "@azure/msal-browser@^3.25.0":
   version "3.30.0"
@@ -2203,8 +2208,9 @@
     compare-versions "^4.1.2"
 
 "@openmetadata/ui-core-components@link:../../../../../openmetadata-ui-core-components/src/main/resources/ui":
-  version "0.0.0"
-  uid ""
+  version "1.0.0"
+  dependencies:
+    "@untitledui/file-icons" "^0.0.9"
 
 "@ota-meshi/ast-token-store@^0.3.0":
   version "0.3.0"
@@ -4503,11 +4509,6 @@ abab@^2.0.6:
   resolved "https://registry.yarnpkg.com/abab/-/abab-2.0.6.tgz#41b80f2c871d19686216b82309231cfd3cb3d291"
   integrity sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==
 
-abortcontroller-polyfill@^1.7.3:
-  version "1.7.8"
-  resolved "https://registry.yarnpkg.com/abortcontroller-polyfill/-/abortcontroller-polyfill-1.7.8.tgz#fe8d4370403f02e2aa37e3d2b0b178bae9d83f49"
-  integrity sha512-9f1iZ2uWh92VcrU9Y8x+LdM4DLj75VE0MJB8zuF1iUnroEptStw+DQ8EQPMUdfe5k+PkB1uUfDQfWbhstH8LrQ==
-
 accessor-fn@1:
   version "1.5.3"
   resolved "https://registry.yarnpkg.com/accessor-fn/-/accessor-fn-1.5.3.tgz#5e2549d291d4ac022f532da9a554358dc525b0f7"
@@ -5110,7 +5111,7 @@ browser-resolve@^2.0.0:
   dependencies:
     resolve "^1.17.0"
 
-browser-tabs-lock@^1.2.15:
+browser-tabs-lock@^1.3.0:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/browser-tabs-lock/-/browser-tabs-lock-1.3.0.tgz#4c0381b47b55cd29feaaea5846b7bb97aac76053"
   integrity sha512-g6nHaobTiT0eMZ7jh16YpD2kcjAp+PInbiVq3M1x6KKaEIVhT4v9oURNIpZLOZ3LQbQ3XYfNhMAb/9hzNLIWrw==
@@ -5675,7 +5676,7 @@ core-js-pure@^3.48.0:
   resolved "https://registry.yarnpkg.com/core-js-pure/-/core-js-pure-3.49.0.tgz#ff8436b7251a3832f5fdbbe3e10f7f2e58e51fb1"
   integrity sha512-XM4RFka59xATyJv/cS3O3Kml72hQXUeGRuuTmMYFxwzc9/7C8OYTaIR/Ji+Yt8DXzsFLNhat15cE/JP15HrCgw==
 
-core-js@^3.23.5, core-js@^3.25.4, core-js@^3.39.0, core-js@^3.8.3:
+core-js@^3.23.5, core-js@^3.39.0, core-js@^3.8.3:
   version "3.49.0"
   resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.49.0.tgz#8b4d520ac034311fa21aa616f017ada0e0dbbddd"
   integrity sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==
@@ -6399,6 +6400,11 @@ dotenv@^16.0.0:
   version "16.6.1"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.6.1.tgz#773f0e69527a8315c7285d5ee73c4459d20a8020"
   integrity sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==
+
+dpop@^2.1.1:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/dpop/-/dpop-2.1.2.tgz#53e747dbcdca9a527550b0e8050beb1167d30609"
+  integrity sha512-hN3XjjCcgYWmNL8DFAV1Z3alXIvLolvjis189NI/U4k4Iu/m4rBeUYObbIjnRzQYDQv4zMaXXskjVDqSkmyh7Q==
 
 drange@^1.0.2:
   version "1.1.1"
@@ -8724,6 +8730,11 @@ jiti@^2.6.1:
   resolved "https://registry.yarnpkg.com/jiti/-/jiti-2.6.1.tgz#178ef2fc9a1a594248c20627cd820187a4d78d92"
   integrity sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==
 
+jose@^6.0.8, jose@^6.2.8:
+  version "6.2.10"
+  resolved "https://registry.yarnpkg.com/jose/-/jose-6.2.10.tgz#b70436c920c4b3f97314c28a8b8612c15b1d9e7f"
+  integrity sha512-iiW7J9qRFlGxvCOIBDBDxFePQSn7ZMAnrYGhrrOo6siO/MIqwfyilLR27pkfDgUk+raLuzADS8A3S/KLBisc0g==
+
 js-cookie@^3.0.1:
   version "3.0.7"
   resolved "https://registry.yarnpkg.com/js-cookie/-/js-cookie-3.0.7.tgz#0a53abfc459c8e89c85d7a38eb6cb68714965b8c"
@@ -9918,6 +9929,11 @@ nwsapi@^2.2.2:
   resolved "https://registry.yarnpkg.com/nwsapi/-/nwsapi-2.2.23.tgz#59712c3a88e6de2bb0b6ccc1070397267019cf6c"
   integrity sha512-7wfH4sLbt4M0gCDzGE6vzQBo0bfTKjU7Sfpqy/7gs1qBfYz2vEJH6vXcBKpO3+6Yu1telwd0t9HpyOoLEQQbIQ==
 
+oauth4webapi@^3.8.7:
+  version "3.8.7"
+  resolved "https://registry.yarnpkg.com/oauth4webapi/-/oauth4webapi-3.8.7.tgz#e9ba31b5fd21d0f7b531293971ce0f55aabdfb6d"
+  integrity sha512-4RxcKxXjuItDFZ20RRPf4YTw3kpeXJyCgJFxVzJ068A7PNJ18st2Dg90tlC1LkSDS0GecroagCLHYEIVUhCAkw==
+
 object-assign@^4.1.1:
   version "4.1.1"
   resolved "https://registry.yarnpkg.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
@@ -10043,6 +10059,14 @@ openapi-server-url-templating@^1.3.0:
   integrity sha512-DPlCms3KKEbjVQb0spV6Awfn6UWNheuG/+folQPzh/wUaKwuqvj8zt5gagD7qoyxtE03cIiKPgLFS3Q8Bz00uQ==
   dependencies:
     apg-lite "^1.0.4"
+
+openid-client@^6.8.0:
+  version "6.8.7"
+  resolved "https://registry.yarnpkg.com/openid-client/-/openid-client-6.8.7.tgz#1e77cab555e6b5730bca579960bec77b1c672a97"
+  integrity sha512-gtKthNu7evSBvTdrrlHb4F3Fi9dcwlb5QaITlCs+9mfpvuOi0Q3qtBf5+iY4sEP8hy1qCoAdxBNPDcmZeVSDzQ==
+  dependencies:
+    jose "^6.2.8"
+    oauth4webapi "^3.8.7"
 
 optionator@^0.9.3:
   version "0.9.4"
@@ -10471,11 +10495,6 @@ process@^0.11.10:
   version "0.11.10"
   resolved "https://registry.yarnpkg.com/process/-/process-0.11.10.tgz#7332300e840161bda3e69a1d1d91a7d4bc16f182"
   integrity sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==
-
-promise-polyfill@^8.2.3:
-  version "8.3.0"
-  resolved "https://registry.yarnpkg.com/promise-polyfill/-/promise-polyfill-8.3.0.tgz#9284810268138d103807b11f4e23d5e945a4db63"
-  integrity sha512-H5oELycFml5yto/atYqmjyigJoAo3+OXwolYiH7OfQuYlAqhxNvTfiNMbV9hsC6Yp83yE5r2KTVmtrG6R9i6Pg==
 
 prompts@^2.0.1:
   version "2.4.2"
@@ -13026,11 +13045,6 @@ undici@^6.23.0, undici@^6.28.0:
   version "6.28.0"
   resolved "https://registry.yarnpkg.com/undici/-/undici-6.28.0.tgz#9f0e385744fef5021d6596c5bccd783f61193c1c"
   integrity sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==
-
-unfetch@^4.2.0:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/unfetch/-/unfetch-4.2.0.tgz#7e21b0ef7d363d8d9af0fb929a5555f6ef97a3be"
-  integrity sha512-F9p7yYCn6cIW9El1zi0HI6vqpeIvBsr3dSuRO6Xuppb1u5rXpCPmMvLSyECLhybr9isec8Ohl0hPekMVrEinDA==
 
 unicode-canonical-property-names-ecmascript@^2.0.0:
   version "2.0.1"
