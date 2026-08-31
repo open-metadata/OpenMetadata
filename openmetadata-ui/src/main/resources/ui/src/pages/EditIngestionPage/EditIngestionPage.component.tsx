@@ -354,7 +354,7 @@ const EditIngestionPage = () => {
   if (isLoading) {
     return <Loader />;
   }
-  if (!errorMsg) {
+  if (errorMsg) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
