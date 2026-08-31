@@ -70,7 +70,7 @@ export const requiredField = (label: string, excludeSpace = false) => (
 
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
-    <p>
+    <p className='tw:leading-0'>
       {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
       {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
       {t('label.not-found-lowercase')}

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { ReasonForAccess } from '@openmetadata/ui-core-components/icons';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import KnowledgeCard from '../../components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
@@ -210,7 +210,7 @@ const KnowledgeCenterFilterPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
           description={
             <Transi18next
@@ -219,7 +219,7 @@ const KnowledgeCenterFilterPage = () => {
               values={{ entity: t('label.view-entity', { entity: t('label.context-center') }) }}
             />
           }
-          icon={<ReasonForAccess className="tw:text-secondary" />}
+          icon={<Lock className="tw:text-secondary" />}
           title={t('label.access-denied')}
         />
       </div>

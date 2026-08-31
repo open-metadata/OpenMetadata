@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -18,8 +20,6 @@ import { PagingWithoutTotal, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { ReasonForAccess } from '@openmetadata/ui-core-components/icons';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -56,12 +56,12 @@ import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -511,7 +511,7 @@ function ServiceVersionPage() {
 
     if (!viewVersionPermission) {
       return (
-        <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
           <EmptyPlaceholder
             description={
               <Transi18next
@@ -524,7 +524,7 @@ function ServiceVersionPage() {
                 }}
               />
             }
-            icon={<ReasonForAccess className="tw:text-secondary" />}
+            icon={<Lock className="tw:text-secondary" />}
             title={t('label.access-denied')}
           />
         </div>

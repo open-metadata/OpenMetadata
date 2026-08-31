@@ -71,6 +71,7 @@ export const useListingData = <
     setFilters,
     setCurrentPage,
     setPageSize,
+    resetAll,
   } = urlStateHook;
 
   const effectivePageSize = urlState.pageSize || pageSize;
@@ -190,6 +191,7 @@ export const useListingData = <
     aggregations: getAggregations(dataFetching.aggregations || {}),
     handleSearchChange,
     handleFilterChange,
+    handleClearAll: resetAll,
     handlePageChange,
     handlePageSizeChange,
     refetch,

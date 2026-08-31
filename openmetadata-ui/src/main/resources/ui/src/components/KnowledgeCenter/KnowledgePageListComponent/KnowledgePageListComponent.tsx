@@ -12,7 +12,7 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Articles, ReasonForAccess } from '@openmetadata/ui-core-components/icons';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
 import {
   Button,
   Col,
@@ -20,8 +20,7 @@ import {
   MenuProps,
   Row,
   Skeleton,
-  Space,
-  Typography,
+  Space
 } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -47,7 +46,6 @@ import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -511,7 +509,7 @@ const KnowledgePageListComponent = forwardRef<
                 values={{ entity: t('label.view-entity', { entity: t('label.article-plural') }) }}
               />
             }
-            icon={<ReasonForAccess className="tw:text-secondary" />}
+            icon={<Lock className="tw:text-secondary" />}
             title={t('label.access-denied')}
           />
         </div>
@@ -573,6 +571,7 @@ const KnowledgePageListComponent = forwardRef<
             title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.article'),
             })}
+            width={320}
           />
         </div>
       );

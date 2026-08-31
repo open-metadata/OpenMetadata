@@ -341,7 +341,7 @@ const AddIngestionPage = () => {
 
   if (isError) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
           description={getEntityMissingError(serviceCategory, serviceFQN)}
           icon={<Pipeline className="tw:text-secondary" />}

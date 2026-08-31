@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Typography , EmptyPlaceholder} from '@openmetadata/ui-core-components';
-import { Link } from '@openmetadata/ui-core-components/icons';
+import { Box, Card, EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { QuickLink } from '@openmetadata/ui-core-components/icons';
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
@@ -27,7 +27,6 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { SIZE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -170,7 +169,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
 
   if (!isLoading && isEmpty(quickLinksByTag) && !refreshTagsCategory) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <Card className="tw:relative tw:flex-1 tw:h-full tw:p-5">
         <EmptyPlaceholder
           actions={
             permissions.Create
@@ -182,10 +181,10 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 }]
               : []
           }
-          icon={<Link className="tw:text-secondary" />}
+          icon={<QuickLink className="tw:text-secondary" />}
           title={t('label.quick-link-plural')}
         />
-      </div>
+      </Card>
     );
   }
 

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
-import { Articles } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button,
   ButtonUtility,
   Card,
   Dialog,
+  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tree,
-  Typography,
-, EmptyPlaceholder} from '@openmetadata/ui-core-components';
+  Typography
+} from '@openmetadata/ui-core-components';
 import { Articles } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Trash01 } from '@untitledui/icons';
@@ -56,7 +56,6 @@ import {
 } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { SIZE } from '../../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -917,11 +916,12 @@ const KnowledgePagesHierarchy = forwardRef<
             )}
 
             {isHierarchyEmpty && (
-              <div className="tw:relative tw:flex-1 tw:min-h-0 tw:border-0 tw:px-4">
+              <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
                 <EmptyPlaceholder
                   description={t('message.no-articles-listed')}
                   icon={<Articles className="tw:text-secondary" />}
                   title={t('label.no-entity', { entity: t('label.article-plural') })}
+                  width={200}
                 />
               </div>
             )}

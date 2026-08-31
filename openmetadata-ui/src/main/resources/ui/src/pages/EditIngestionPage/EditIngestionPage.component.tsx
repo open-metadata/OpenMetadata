@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button , EmptyPlaceholder} from '@openmetadata/ui-core-components';
+import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Pipeline } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -354,9 +354,9 @@ const EditIngestionPage = () => {
   if (isLoading) {
     return <Loader />;
   }
-  if (errorMsg) {
+  if (!errorMsg) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
           description={errorMsg}
           icon={<Pipeline className="tw:text-secondary" />}

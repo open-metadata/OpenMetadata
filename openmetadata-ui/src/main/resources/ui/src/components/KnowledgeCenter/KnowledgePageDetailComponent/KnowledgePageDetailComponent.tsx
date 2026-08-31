@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -79,7 +81,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import i18n from '../../../utils/i18next/LocalUtil';
+import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -968,7 +970,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   if (!hasViewPermission) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div className="tw:relative tw:flex-1 tw:h-full">
         <EmptyPlaceholder
           description={
             <Transi18next
@@ -977,7 +979,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               values={{ entity: t('label.view-entity', { entity: t('label.article') }) }}
             />
           }
-          icon={<ReasonForAccess className="tw:text-secondary" />}
+          icon={<Lock className="tw:text-secondary" />}
           title={t('label.access-denied')}
         />
       </div>
@@ -986,7 +988,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   if (!knowledgePage) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div className="tw:relative tw:flex-1 tw:h-full">
         <EmptyPlaceholder
           icon={<Articles className="tw:text-secondary" />}
           title={t('label.no-entity', { entity: t('label.article') })}

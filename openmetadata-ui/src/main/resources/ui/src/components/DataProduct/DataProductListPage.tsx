@@ -18,9 +18,9 @@ import {
   EmptyPlaceholder,
   Input,
   PaginationCardDefault,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
-import { SearchIndex } from '@openmetadata/ui-core-components/icons';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -30,7 +30,7 @@ import {
   ReactNode,
   useCallback,
   useMemo,
-  useState,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -43,14 +43,14 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
   getClassificationTags,
-  getGlossaryTags,
+  getGlossaryTags
 } from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
-  NAME_CELL_CLIP_CLASS,
+  NAME_CELL_CLIP_CLASS
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -298,15 +298,12 @@ const DataProductListPage = ({
               actions={[{
                 color: 'primary',
                 key: 'clear-filters',
-                label: t('label.clear-filter-plural'),
-                onPress: () => {
-                  dataProductListing.handleSearchChange('');
-                  dataProductListing.handleFilterChange([]);
-                },
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: dataProductListing.handleClearAll,
               }]}
-              description={t('message.nothing-matches-current-filter')}
-              icon={<SearchIndex className="tw:text-secondary" />}
-              title={t('label.no-result-for-these-filter-plural')}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
             />
           </div>
         );
@@ -389,7 +386,7 @@ const DataProductListPage = ({
     dataProductListing.currentPage,
     dataProductListing.totalPages,
     dataProductListing.handlePageChange,
-    dataProductListing.handleSearchChange,
+    dataProductListing.handleClearAll,
     isSearchOrFilterActive,
     view,
     renderDataProductCell,

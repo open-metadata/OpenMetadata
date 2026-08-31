@@ -12,13 +12,15 @@
  */
 
 import type { Key, Selection } from '@openmetadata/ui-core-components';
-import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import {
-  Avatar,
-  Badge,
-  Box,
-  Tree,
-  Typography, EmptyPlaceholder} from '@openmetadata/ui-core-components';
+    Avatar,
+    Badge,
+    Box,
+    EmptyPlaceholder,
+    Tree,
+    Typography
+} from '@openmetadata/ui-core-components';
+import { Domain as DomainIcon, Expand, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -33,12 +35,12 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
-  addFollower,
-  getDomainByName,
-  getDomainChildrenPaginated,
-  patchDomains,
-  removeFollower,
-  searchDomains,
+    addFollower,
+    getDomainByName,
+    getDomainChildrenPaginated,
+    patchDomains,
+    removeFollower,
+    searchDomains
 } from '../../../rest/domainAPI';
 import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
@@ -46,9 +48,9 @@ import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
-  escapeESReservedCharacters,
-  getDecodedFqn,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getDecodedFqn,
+    getEncodedFqn
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -61,6 +63,7 @@ interface DomainTreeViewProps {
   filters?: Record<string, string[]>;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
+  onClearSearch?: () => void;
 }
 
 const INITIAL_PAGE_SIZE = 15;
@@ -72,6 +75,7 @@ const DomainTreeView = ({
   filters,
   refreshToken = 0,
   openAddDomainDrawer,
+  onClearSearch,
 }: DomainTreeViewProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -954,14 +958,32 @@ const DomainTreeView = ({
     t,
   ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
+    if (searchQuery?.trim() || hasActiveFilters) {
+      return (
+        <div className="tw:relative tw:flex-1 tw:h-full">
+          <EmptyPlaceholder
+            actions={[{
+              color: 'primary',
+              key: 'clear-filters',
+              label: t('label.clear-entity', { entity: t('label.all') }),
+              onPress: () => onClearSearch?.(),
+            }]}
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearch className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+          />
+        </div>
+      );
+    }
+
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div className="tw:relative tw:flex-1 tw:h-full">
         <EmptyPlaceholder
           actions={
             permissions.domain?.Create
               ? [{
                   color: 'primary',
-                  iconLeading: Plus,
+                  iconLeading: <Expand size={14}/>,
                   key: 'add-domain',
                   label: t('label.add-entity', { entity: t('label.domain') }),
                   onPress: openAddDomainDrawer,

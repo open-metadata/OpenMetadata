@@ -16,9 +16,9 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
-  PaginationCardDefault,
+  PaginationCardDefault
 } from '@openmetadata/ui-core-components';
-import { SearchIndex } from '@openmetadata/ui-core-components/icons';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -168,6 +168,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
+            onClearSearch={domainListing.handleClearAll}
           />
         </div>
       );
@@ -181,15 +182,12 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
               actions={[{
                 color: 'primary',
                 key: 'clear-filters',
-                label: t('label.clear-filter-plural'),
-                onPress: () => {
-                  domainListing.handleSearchChange('');
-                  domainListing.handleFilterChange([]);
-                },
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: domainListing.handleClearAll,
               }]}
-              description={t('message.nothing-matches-current-filter')}
-              icon={<SearchIndex className="tw:text-secondary" />}
-              title={t('label.no-result-for-these-filter-plural')}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
             />
           </div>
         );
@@ -273,7 +271,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.currentPage,
     domainListing.totalPages,
     domainListing.handlePageChange,
-    domainListing.handleSearchChange,
+    domainListing.handleClearAll,
     isSearchOrFilterActive,
     view,
     renderDomainCell,
