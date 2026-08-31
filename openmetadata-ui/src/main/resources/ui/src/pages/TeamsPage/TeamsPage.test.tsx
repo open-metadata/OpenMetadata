@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -21,7 +20,7 @@ import { mockUserData } from '../../mocks/MyDataPage.mock';
 import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../mocks/Teams.mock';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTeamByName, getTeams } from '../../rest/teamsAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import TeamsPage from './TeamsPage';
 
 jest.mock('react-router-dom', () => ({
@@ -113,27 +112,58 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
-const mockEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
+// TeamsPage now fetches its own permission via useEntityPermissions rather than the raw
+// PermissionProvider.getEntityPermissionByFqn REST boundary — mock the hook directly
+// (TableDetailsPageV1.test.tsx pattern), since this test file's `render` never wraps a
+// QueryClientProvider.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
+const setMockPermissions = (overrides: Partial<Record<string, boolean>> = {}) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
+setMockPermissions();
+
 describe('Test Teams Page', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('should render loader initially', async () => {
+    // The mocked hook resolves synchronously (unlike the real fetch), so this test needs an
+    // explicit still-loading state to exercise the loader — `setMockPermissions()`'s resolved
+    // default would flip isPageLoading to false within the same render() (see the
+    // denied-view effect in TeamsPage.tsx), never showing the loader at all.
+    const permissions = {} as never;
+    mockUseEntityPermissions.mockReturnValue({
+      permissions,
+      isLoading: true,
+      error: null,
+      refresh: jest.fn(),
+      ...getDerivedPermissionFlags(permissions, false),
+    });
+
     render(<TeamsPage />);
 
     expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 
-  it('should fetch getEntityPermissionByFqn on initial load', async () => {
+  it('should fetch its own permission via useEntityPermissions on initial load', async () => {
     render(<TeamsPage />);
 
-    expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       ResourceEntity.TEAM,
       'test'
     );
@@ -150,11 +180,7 @@ describe('Test Teams Page', () => {
   });
 
   it('should fetch getTeamByName and loadAdvancedDetails if having viewBasic or viewAll permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     const mockGetTeamByName = getTeamByName as jest.Mock;
 
@@ -187,11 +213,7 @@ describe('Test Teams Page', () => {
   });
 
   it('should render component data', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       render(<TeamsPage />);
@@ -201,11 +223,7 @@ describe('Test Teams Page', () => {
   });
 
   it('should render errorPlaceholder if getTeamByName api failed', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTeamByName as jest.Mock).mockImplementation(() => Promise.reject());
 
@@ -219,11 +237,7 @@ describe('Test Teams Page', () => {
   });
 
   it('should fetchAssetCount on page load', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTeamByName as jest.Mock).mockImplementation(() =>
       Promise.resolve({ ...MOCK_CURRENT_TEAM, teamType: TeamType.Group })
@@ -272,11 +286,7 @@ describe('Test Teams Page', () => {
   });
 
   it('should not fetchAssetCount on page load if TeamType is not Group', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTeamByName as jest.Mock).mockImplementation(() =>
       Promise.resolve({ ...MOCK_CURRENT_TEAM, teamType: TeamType.BusinessUnit })
@@ -303,11 +313,7 @@ describe('Test Teams Page', () => {
     });
 
     it('should fetch non-deleted teams when showDeletedTeam is false (default)', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
-          ViewBasic: true,
-        })),
-      }));
+      setMockPermissions({ ViewBasic: true });
 
       await act(async () => {
         render(<TeamsPage />);
@@ -321,11 +327,7 @@ describe('Test Teams Page', () => {
     });
 
     it('should fetch deleted teams when showDeletedTeam is toggled to true', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
-          ViewBasic: true,
-        })),
-      }));
+      setMockPermissions({ ViewBasic: true });
 
       await act(async () => {
         render(<TeamsPage />);
@@ -345,11 +347,7 @@ describe('Test Teams Page', () => {
     });
 
     it('should fetch non-deleted teams when showDeletedTeam is toggled back to false', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
-          ViewBasic: true,
-        })),
-      }));
+      setMockPermissions({ ViewBasic: true });
 
       await act(async () => {
         render(<TeamsPage />);
