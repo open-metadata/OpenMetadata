@@ -56,6 +56,14 @@ const AssetsTabs = withSuspenseFallback(
   )
 );
 
+const GlossaryTermRealizedAssets = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermRealizedAssets.component'
+    ).then((module) => ({ default: module.GlossaryTermRealizedAssets }))
+  )
+);
+
 const GlossaryTermTab = withSuspenseFallback(
   lazy(
     () =>
@@ -153,9 +161,8 @@ export const getGlossaryTermDetailPageTabs = (
     setPreviewAsset,
   } = props;
 
-  // Draft / In Review terms can still reach Approved, so use the actionable
-  // Terminal states (Rejected, Deprecated, Archived,
-  // will not, so use status-neutral copy that does not promise approval.
+  // Pending terms can still reach Approved, while terminal states cannot. The disabled copy must
+  // distinguish a temporary workflow gate from a permanent restriction.
   const glossaryTermStatus = glossaryTerm.entityStatus ?? EntityStatus.Approved;
   const isTermPendingApproval =
     glossaryTermStatus === EntityStatus.Draft ||
@@ -227,17 +234,20 @@ export const getGlossaryTermDetailPageTabs = (
                 firstPanel={{
                   className: 'glossary-term-resizable-panel-container',
                   children: (
-                    <AssetsTabs
-                      addDisabledMessage={assetsAddDisabledMessage}
-                      assetCount={assetCount}
-                      entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                      isSummaryPanelOpen={Boolean(previewAsset)}
-                      permissions={assetPermissions}
-                      ref={assetTabRef}
-                      onAddAsset={() => setAssetModalVisible(true)}
-                      onAssetClick={handleAssetClick}
-                      onRemoveAsset={handleAssetSave}
-                    />
+                    <>
+                      <GlossaryTermRealizedAssets termId={glossaryTerm.id} />
+                      <AssetsTabs
+                        addDisabledMessage={assetsAddDisabledMessage}
+                        assetCount={assetCount}
+                        entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                        isSummaryPanelOpen={Boolean(previewAsset)}
+                        permissions={assetPermissions}
+                        ref={assetTabRef}
+                        onAddAsset={() => setAssetModalVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
+                    </>
                   ),
                   flex: 0.7,
                   minWidth: 700,

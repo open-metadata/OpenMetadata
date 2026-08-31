@@ -82,6 +82,7 @@ Dialog.displayName = 'Dialog';
 interface SlideoutMenuProps
   extends Omit<AriaModalOverlayProps, 'children'>,
     RefAttributes<HTMLDivElement> {
+  'aria-label'?: string;
   children:
     | ReactNode
     | ((children: AriaModalRenderProps & { close: () => void }) => ReactNode);
@@ -90,13 +91,14 @@ interface SlideoutMenuProps
 }
 
 const Menu = ({
+  'aria-label': ariaLabel,
   children,
   dialogClassName,
   width,
   ...props
 }: SlideoutMenuProps) => {
   return (
-    <ModalOverlay {...props}>
+    <ModalOverlay aria-label={ariaLabel} {...props}>
       <Modal
         className={(state) =>
           cx(
@@ -107,7 +109,7 @@ const Menu = ({
         }
         style={width !== undefined ? { maxWidth: width } : undefined}>
         {(state) => (
-          <Dialog className={dialogClassName}>
+          <Dialog aria-label={ariaLabel} className={dialogClassName}>
             {({ close }) => {
               return typeof children === 'function'
                 ? children({ ...state, close })
