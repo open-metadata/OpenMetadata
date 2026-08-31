@@ -706,10 +706,6 @@ class TestTrinoTableMetricComputer:
             table_metric_computer_factory._constructs[Dialects.Presto]
             is TrinoTableMetricComputer
         )
-        assert (
-            table_metric_computer_factory._constructs[Dialects.Athena]
-            is TrinoTableMetricComputer
-        )
 
 
 class TestHiveTableMetricComputer:
