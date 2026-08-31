@@ -13,11 +13,46 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Chart, ChartType } from '../../../generated/entity/data/chart';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import ChartDetails from './ChartDetails.component';
 import { ChartDetailsProps } from './ChartDetails.interface';
+
+// ChartDetails now fetches its own permissions via useEntityPermissions (Task 8 Batch 9)
+// rather than an imperative usePermissionProvider().getEntityPermission(id) call — mock the
+// hook directly, mirroring TableDetailsPageV1.test.tsx / MetricDetailsPage.test.tsx's
+// setMockPermissions helper. `deleted` is threaded through so the SAME mocked return can
+// exercise both the deleted-gated edit flags and the ungated view flags this file destructures
+// from the one hook call, exactly as the real hook computes both from a single `deleted` arg.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+    deleted = false,
+  }: { isLoading?: boolean; error?: unknown; deleted?: boolean } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, deleted),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockChartDetails: Chart = {
   id: 'test-chart-id',
@@ -87,12 +122,6 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   }),
 }));
 
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockResolvedValue(DEFAULT_ENTITY_PERMISSION),
-  }),
-}));
-
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
@@ -120,10 +149,12 @@ jest.mock('../../AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((component) => component),
 }));
 
+const mockGetChartDetailPageTabs = jest.fn().mockReturnValue([]);
 jest.mock('../../../utils/ChartDetailsClassBase', () => ({
   __esModule: true,
   default: {
-    getChartDetailPageTabs: jest.fn().mockReturnValue([]),
+    getChartDetailPageTabs: (...args: unknown[]) =>
+      mockGetChartDetailPageTabs(...args),
   },
 }));
 
@@ -134,6 +165,11 @@ jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
 }));
 
 describe('ChartDetails component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({ EditAll: true, ViewAll: true });
+  });
+
   it('should render successfully', () => {
     const { container } = render(<ChartDetails {...mockProps} />, {
       wrapper: MemoryRouter,
@@ -152,6 +188,93 @@ describe('ChartDetails component', () => {
         pageTitle: 'testEntityName',
       }),
       expect.anything()
+    );
+  });
+
+  it('should call useEntityPermissions with the CHART resource, entity id, and deleted flag', () => {
+    render(<ChartDetails {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.CHART,
+      { id: mockChartDetails.id },
+      expect.objectContaining({ deleted: false, enabled: true })
+    );
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins) — the old
+  // raw `EditAll || EditX` OR let EditAll grant unconditionally.
+  it('denies lineage edit when EditLineage is explicitly false, even with EditAll true', () => {
+    setMockPermissions({ EditAll: true, EditLineage: false, ViewAll: true });
+
+    render(<ChartDetails {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockGetChartDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({ editLineagePermission: false })
+    );
+  });
+
+  it('denies custom-attribute edit when EditCustomFields is explicitly false, even with EditAll true', () => {
+    setMockPermissions({
+      EditAll: true,
+      EditCustomFields: false,
+      ViewAll: true,
+    });
+
+    render(<ChartDetails {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockGetChartDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({ editCustomAttributePermission: false })
+    );
+  });
+
+  it('grants lineage/custom-attribute edit via EditAll when the field-specific keys are absent', () => {
+    // Deliberately NOT merged with a full-fixture spread: a fixture defining every Operation
+    // key would make getPrioritizedEditPermission's "key present" check see EditLineage/
+    // EditCustomFields as explicitly denied rather than truly absent, masking the EditAll
+    // fallback this test exists to cover (SchemaTable.test.tsx precedent).
+    setMockPermissions({ EditAll: true } as OperationPermission);
+
+    render(<ChartDetails {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockGetChartDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editLineagePermission: true,
+        editCustomAttributePermission: true,
+      })
+    );
+  });
+
+  it('gates edit flags on deleted but leaves view flags ungated', () => {
+    setMockPermissions(
+      { EditAll: true, ViewAll: true },
+      { deleted: true }
+    );
+
+    render(<ChartDetails {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockGetChartDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editLineagePermission: false,
+        editCustomAttributePermission: false,
+        viewAllPermission: true,
+      })
+    );
+  });
+
+  it('passes the entity deleted state through to useEntityPermissions', () => {
+    render(
+      <ChartDetails
+        {...mockProps}
+        chartDetails={{ ...mockChartDetails, deleted: true }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.CHART,
+      { id: mockChartDetails.id },
+      expect.objectContaining({ deleted: true, enabled: true })
     );
   });
 });
