@@ -71,8 +71,6 @@ const test = base.extend<{ page: Page }>({
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
   // Create admin user and persona
@@ -84,8 +82,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
   // Delete user and persona
@@ -109,6 +105,7 @@ test.describe('Curated Assets Widget', () => {
     test(`Test ${entityType.displayName} with display name filter`, async ({
       page,
     }) => {
+      test.slow();
       test.slow(true);
 
       const testEntity = entityTypeToTestEntity[entityType.name];
@@ -302,6 +299,7 @@ test.describe('Curated Assets Widget', () => {
   });
 
   test('Multiple entity types with OR conditions', async ({ page }) => {
+    test.slow();
     test.slow(true);
 
     // Create a new curated asset widget
@@ -399,6 +397,7 @@ test.describe('Curated Assets Widget', () => {
   });
 
   test('Multiple entity types with AND conditions', async ({ page }) => {
+    test.slow();
     test.slow(true);
 
     // Create a new curated asset widget
@@ -513,6 +512,7 @@ test.describe('Curated Assets Widget', () => {
   });
 
   test('Complex nested groups', async ({ page }) => {
+    test.slow();
     test.slow(true);
 
     // Create a new curated asset widget

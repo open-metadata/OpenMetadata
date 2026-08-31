@@ -92,7 +92,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
-  test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -116,6 +115,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Assign Widgets', async ({ page }) => {
+    test.slow();
     test.slow(true);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await addAndVerifyWidget(
@@ -131,6 +131,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page, false);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
@@ -160,6 +161,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are added', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);

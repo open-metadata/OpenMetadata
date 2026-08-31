@@ -41,7 +41,6 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   // of the same rule in the same file stays invisible here.
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 12,
-    'om-playwright/no-blanket-test-slow': 83,
     'om-playwright/no-positional-locator': 1324,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 4,

@@ -103,8 +103,6 @@ const searchHitsAsUser = async (
 };
 
 test.describe('Domain isolation - search and explore @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, tables, users and role binding',
     async ({ browser }) => {

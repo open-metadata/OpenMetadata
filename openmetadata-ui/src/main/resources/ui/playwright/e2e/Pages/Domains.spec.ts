@@ -118,8 +118,6 @@ const test = base.extend<{
 });
 
 test.describe('Domains', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
@@ -318,6 +316,7 @@ test.describe('Domains', () => {
   });
 
   test('Create DataProducts and add remove assets', async ({ page }) => {
+    test.slow();
     test.slow(true);
 
     const { afterAction, apiContext } = await getApiContext(page);
@@ -592,6 +591,7 @@ test.describe('Domains', () => {
   test('Should clear assets from data products after deletion of data product in Domain', async ({
     page,
   }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain({
@@ -774,6 +774,7 @@ test.describe('Domains', () => {
   });
 
   test('Verify domain and subdomain asset count accuracy', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const { assets: domainAssets, assetCleanup: domainAssetCleanup } =
@@ -1356,6 +1357,7 @@ test.describe('Domains', () => {
   });
 
   test('Verify redirect path on data product delete', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -1700,8 +1702,6 @@ test.describe('Domains', () => {
 });
 
 test.describe('Domain Rename Comprehensive Tests', () => {
-  test.slow(true);
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -2723,8 +2723,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 });
 
 test.describe('Domains Rbac', () => {
-  test.slow(true);
-
   let domain1: Domain;
   let domain2: Domain;
   let domain3: Domain;
@@ -2832,8 +2830,6 @@ test.describe('Domains Rbac', () => {
 });
 
 test.describe('Data Consumer Domain Ownership', () => {
-  test.slow(true);
-
   let classification: ClassificationClass;
   let tag: TagClass;
   let glossary: Glossary;
@@ -2931,8 +2927,6 @@ test.describe('Data Consumer Domain Ownership', () => {
 });
 
 test.describe('Domain Access with hasDomain() Rule', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     mainDomain: Domain;
@@ -3000,8 +2994,6 @@ test.describe('Domain Access with hasDomain() Rule', () => {
 });
 
 test.describe('Domain Access with noDomain() Rule', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     mainDomain: Domain;
@@ -3349,8 +3341,6 @@ test.describe('Domain Tree View Functionality', () => {
 });
 
 test.describe('Domain asset dryRun — add confirmation', () => {
-  test.slow(true);
-
   const openDomainAssetsAddModal = async (page: Page, domain: Domain) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -3610,8 +3600,6 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 });
 
 test.describe('Domain assets — glossary and inherited glossary term', () => {
-  test.slow(true);
-
   let assetDomain: Domain;
   let assetGlossary: Glossary;
   let inheritedTerm: GlossaryTerm;

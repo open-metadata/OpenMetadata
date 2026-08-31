@@ -108,8 +108,6 @@ describeTagTaskWorkflowsInParallel(
   'Tag Task Workflows',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup users and entities', async ({ browser }) => {
       requesterUser = new UserClass();
       reviewerUser = new UserClass();

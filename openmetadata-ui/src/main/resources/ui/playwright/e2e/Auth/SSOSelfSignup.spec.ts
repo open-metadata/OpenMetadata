@@ -63,8 +63,6 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
 };
 
 test.describe('OIDC self-signup with mapped principal claims', () => {
-  test.slow();
-
   test.beforeAll(async ({ request }) => {
     await waitForMockOidcReady(request);
     await resetMockOidc(request);
@@ -78,6 +76,7 @@ test.describe('OIDC self-signup with mapped principal claims', () => {
     browser,
     request,
   }) => {
+    test.slow();
     await setDefaultLoginAccount(request, MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.sub);
 
     // Fresh context so the mock IdP performs a clean login as the steered

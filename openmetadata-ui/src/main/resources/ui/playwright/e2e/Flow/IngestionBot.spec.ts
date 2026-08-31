@@ -93,12 +93,11 @@ test.describe('Ingestion Bot ', () => {
     await redirectToHomePage(page);
   });
 
-  test.slow();
-
   test('Ingestion bot should be able to access domain specific domain', async ({
     ingestionBotPage,
     page,
   }) => {
+    test.slow();
     const { assets: domainAsset1, assetCleanup: assetCleanup1 } =
       await setupAssetsForDomain(page);
     const { assets: domainAsset2, assetCleanup: assetCleanup2 } =

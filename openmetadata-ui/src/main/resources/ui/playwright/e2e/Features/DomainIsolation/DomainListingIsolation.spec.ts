@@ -79,8 +79,6 @@ const openDomainListing = async (page: Page) => {
 };
 
 test.describe('Domain isolation - domain listing page @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, users and role binding',
     async ({ browser }) => {
