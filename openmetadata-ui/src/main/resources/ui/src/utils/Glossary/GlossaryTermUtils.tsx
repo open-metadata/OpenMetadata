@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { kebabCase } from 'lodash';
 import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
@@ -19,6 +20,7 @@ import type {
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
@@ -50,6 +52,14 @@ const AssetsTabs = withSuspenseFallback(
       import(
         '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component'
       )
+  )
+);
+
+const GlossaryTermRealizedAssets = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermRealizedAssets.component'
+    ).then((module) => ({ default: module.GlossaryTermRealizedAssets }))
   )
 );
 
@@ -112,6 +122,24 @@ export const getGlossaryTermDetailPageTabs = (
     setPreviewAsset,
   } = props;
 
+  // Pending terms can still reach Approved, while terminal states cannot. The disabled copy must
+  // distinguish a temporary workflow gate from a permanent restriction.
+  const glossaryTermStatus = glossaryTerm.entityStatus ?? EntityStatus.Approved;
+  const isTermPendingApproval =
+    glossaryTermStatus === EntityStatus.Draft ||
+    glossaryTermStatus === EntityStatus.InReview;
+  const assetsAddDisabledKey = isTermPendingApproval
+    ? 'message.assets-add-disabled-term-status'
+    : 'message.assets-add-restricted-term-status';
+  const assetsAddDisabledMessage =
+    glossaryTermStatus === EntityStatus.Approved
+      ? undefined
+      : i18n.t(assetsAddDisabledKey, {
+          status: i18n.t(`label.${kebabCase(glossaryTermStatus)}`, {
+            defaultValue: glossaryTermStatus,
+          }),
+        });
+
   return [
     {
       label: (
@@ -167,16 +195,20 @@ export const getGlossaryTermDetailPageTabs = (
                 firstPanel={{
                   className: 'glossary-term-resizable-panel-container',
                   children: (
-                    <AssetsTabs
-                      assetCount={assetCount}
-                      entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                      isSummaryPanelOpen={Boolean(previewAsset)}
-                      permissions={assetPermissions}
-                      ref={assetTabRef}
-                      onAddAsset={() => setAssetModalVisible(true)}
-                      onAssetClick={handleAssetClick}
-                      onRemoveAsset={handleAssetSave}
-                    />
+                    <>
+                      <GlossaryTermRealizedAssets termId={glossaryTerm.id} />
+                      <AssetsTabs
+                        addDisabledMessage={assetsAddDisabledMessage}
+                        assetCount={assetCount}
+                        entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                        isSummaryPanelOpen={Boolean(previewAsset)}
+                        permissions={assetPermissions}
+                        ref={assetTabRef}
+                        onAddAsset={() => setAssetModalVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
+                    </>
                   ),
                   flex: 0.7,
                   minWidth: 700,

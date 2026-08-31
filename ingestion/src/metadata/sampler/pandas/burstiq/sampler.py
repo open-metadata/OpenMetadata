@@ -26,6 +26,7 @@ from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.config import resolve_static_sampling_config
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -127,6 +128,8 @@ class BurstIQSampler(DatalakeSampler):
         """Override to filter columns to those present in the DataFrame.
         BurstIQ TQL responses can omit columns that exist in entity metadata."""
         cols = [col.name for col in columns] if columns else None
+        if sample_query is not None and not is_safe_pandas_query(sample_query):
+            raise RuntimeError(f"Unsafe sample query expression\n\n{sample_query}")
         available: list[str] = []
         rows = []
         for chunk in df_iterator():

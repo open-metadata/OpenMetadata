@@ -76,6 +76,21 @@ interface StreamConnection {
  */
 const activeStreams = new Map<string, StreamConnection>();
 
+/**
+ * Forgets a connection whose read loop has exited for good. Leaving it in
+ * activeStreams would hand every future subscriber a permanently silent
+ * stream; dropping it lets the next subscriber reconnect fresh. Guards
+ * against deleting a replacement connection registered under the same URL.
+ */
+const dropTerminatedConnection = (
+  url: string,
+  connection: StreamConnection
+): void => {
+  if (activeStreams.get(url) === connection) {
+    activeStreams.delete(url);
+  }
+};
+
 const broadcastHealth = (
   connection: StreamConnection,
   health: StreamHealth
@@ -152,6 +167,7 @@ const runStream = (url: string, connection: StreamConnection): void => {
         }
         if (error instanceof FatalStreamError) {
           updateHealth(error.health);
+          dropTerminatedConnection(url, connection);
 
           return;
         }

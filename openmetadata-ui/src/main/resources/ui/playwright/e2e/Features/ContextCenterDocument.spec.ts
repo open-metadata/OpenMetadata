@@ -20,6 +20,7 @@ import {
   expectBulkIdsRequest,
   expectSelectedCount,
   getDocumentRowByName,
+  getDocumentSearchInput,
   getFolderTreeItem,
   navigateToDocuments,
   parseResponseJson,
@@ -291,7 +292,7 @@ test.describe('Context Center - Documents Page', () => {
 
       await navigateToDocuments(page);
 
-      const row = getDocumentRowByName(page, fileName);
+      const row = await searchAndGetDocumentRow(page, fileName);
       await expect(row).toBeVisible();
       await row.scrollIntoViewIfNeeded();
 
@@ -381,7 +382,9 @@ test.describe('Context Center - Documents Page', () => {
       await navigateToDocuments(page);
       await selectFolderInSidebar(page, lastPageFolder.name);
       await expect(
-        getDocumentRowByName(page, fileName).getByTestId('document-folder-name')
+        (
+          await searchAndGetDocumentRow(page, fileName)
+        ).getByTestId('document-folder-name')
       ).toHaveText(lastPageFolder.name);
     });
   });
@@ -479,6 +482,103 @@ test.describe('Context Center - Documents Page', () => {
           .first()
       ).toBeVisible();
     });
+  });
+
+  // ─── Search scoped to selected folder ────────────────────────────────────
+
+  test('searching with folder selected scopes results to that folder only', async ({
+    browser,
+    page,
+  }) => {
+    const sharedToken = uuid();
+    const folderName = `search-scope-folder-${sharedToken}`;
+    const docInFolderName = `doc-${sharedToken}-in.txt`;
+    const docOutsideName = `doc-${sharedToken}-out.txt`;
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const folderRes = await apiContext.post(
+      '/api/v1/contextCenter/drive/folders',
+      { data: { name: folderName, displayName: folderName } }
+    );
+    const folderBody = await folderRes.text();
+
+    expect(folderRes.status(), folderBody).toBe(201);
+
+    const folder = parseResponseJson<ContextCenterFolder>(folderBody);
+
+    contextFolderIdsToCleanup.add(folder.id);
+
+    const inFolderDoc = await uploadDocument(
+      apiContext,
+      docInFolderName,
+      Buffer.from('document inside folder'),
+      folder.fullyQualifiedName
+    );
+    const outsideDoc = await uploadDocument(
+      apiContext,
+      docOutsideName,
+      Buffer.from('document outside folder')
+    );
+
+    await afterAction();
+
+    await page.route(
+      (url) =>
+        url.pathname.includes('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'contextFile',
+      async (route) => {
+        const isFolderScoped = decodeURIComponent(
+          route.request().url()
+        ).includes(folder.id);
+        const hits = isFolderScoped
+          ? [{ _source: { ...inFolderDoc } }]
+          : [{ _source: { ...inFolderDoc } }, { _source: { ...outsideDoc } }];
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            hits: { hits, total: { value: hits.length } },
+          }),
+        });
+      }
+    );
+
+    await navigateToDocuments(page);
+
+    const searchInput = page
+      .getByTestId('context-center-header')
+      .getByTestId('search-input')
+      .getByLabel('Search Documents');
+    const view = page.getByTestId('documents-view');
+
+    const noFolderSearchResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.url().includes('index=contextFile')
+    );
+
+    await searchInput.fill(sharedToken);
+    await noFolderSearchResPromise;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
+    ).toBeVisible();
+    await expect(
+      view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
+    ).toBeVisible();
+
+    await searchInput.clear();
+    await waitForAllLoadersToDisappear(page);
+    await selectFolderInSidebar(page, folderName);
+
+    await expect(
+      view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
+    ).toBeVisible();
+    await expect(
+      view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
+    ).not.toBeVisible();
   });
 
   // ─── Basic rendering ──────────────────────────────────────────────────────
@@ -625,7 +725,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
@@ -722,7 +822,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
@@ -774,7 +874,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
@@ -849,7 +949,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
     await row.click();
@@ -874,6 +974,7 @@ test.describe('Context Center - Documents Page', () => {
     expect(panelClipboardText).toContain(`document=${doc.id}`);
 
     await panel.getByTestId('close-preview-btn').click();
+    await panel.waitFor({ state: 'hidden' });
     await expect(panel).not.toBeVisible();
   });
 
@@ -894,7 +995,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
@@ -983,14 +1084,14 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
     await expect(
-      getDocumentRowByName(page, firstFileName).getByTestId(
-        'document-folder-name'
-      )
+      (
+        await searchAndGetDocumentRow(page, firstFileName)
+      ).getByTestId('document-folder-name')
     ).toHaveText(folderName);
     await expect(
-      getDocumentRowByName(page, secondFileName).getByTestId(
-        'document-folder-name'
-      )
+      (
+        await searchAndGetDocumentRow(page, secondFileName)
+      ).getByTestId('document-folder-name')
     ).toHaveText(folderName);
   });
 
@@ -1042,8 +1143,12 @@ test.describe('Context Center - Documents Page', () => {
       doc2.id,
     ]);
 
-    await expect(getDocumentRowByName(page, firstName)).not.toBeVisible();
-    await expect(getDocumentRowByName(page, secondName)).not.toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, firstName)
+    ).not.toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, secondName)
+    ).not.toBeVisible();
 
     await page.goto('/context-center/archive');
     await page
@@ -1082,7 +1187,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
     await row.getByTestId('manage-button').click();
@@ -1149,8 +1254,12 @@ test.describe('Context Center - Documents Page', () => {
     // Before selecting a folder: both documents should be visible and counts
     // reflect the global total (≥2 files; DocumentsView and DocumentFolderView
     // show the same number).
-    await expect(getDocumentRowByName(page, docInFolderName)).toBeVisible();
-    await expect(getDocumentRowByName(page, docOutsideName)).toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, docInFolderName)
+    ).toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, docOutsideName)
+    ).toBeVisible();
 
     const documentsViewCount = page.getByTestId('documents-view-file-count');
     const folderViewCount = page.getByTestId('folder-view-file-count');
@@ -1168,6 +1277,14 @@ test.describe('Context Center - Documents Page', () => {
       10
     );
     expect(folderCount).toBeGreaterThanOrEqual(globalCount);
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
+    await getDocumentSearchInput(page).clear();
+    await browseResPromise;
+    await waitForAllLoadersToDisappear(page);
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
@@ -1186,7 +1303,7 @@ test.describe('Context Center - Documents Page', () => {
     );
     expect(folderCountAfter).toBeGreaterThanOrEqual(globalCount);
 
-    const inFolderRow = getDocumentRowByName(page, docInFolderName);
+    const inFolderRow = await searchAndGetDocumentRow(page, docInFolderName);
     await inFolderRow.scrollIntoViewIfNeeded();
     await inFolderRow.getByTestId('manage-button').click();
     await expect(page.getByTestId('move-btn')).toBeVisible();

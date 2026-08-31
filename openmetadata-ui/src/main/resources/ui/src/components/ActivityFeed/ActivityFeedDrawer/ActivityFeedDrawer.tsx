@@ -15,7 +15,6 @@ import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
 import { FC, lazy, useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
 import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
@@ -110,6 +109,10 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
     );
   }
 
+  if (!selectedThread) {
+    return null;
+  }
+
   return (
     <Drawer
       className={classNames('activity-feed-drawer', className)}
@@ -118,9 +121,8 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       title={
         <FeedPanelHeader
           className="p-x-md"
-          entityLink={selectedThread?.about ?? ''}
-          feed={selectedThread!}
-          threadType={selectedThread?.type ?? ThreadType.Conversation}
+          entityLink={selectedThread.about ?? ''}
+          feed={selectedThread}
           onCancel={hideDrawer}
         />
       }
@@ -132,7 +134,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             isForFeedTab
             isOpenInDrawer
             showThread
-            feed={selectedThread!}
+            feed={selectedThread}
           />
         </Col>
       </Row>

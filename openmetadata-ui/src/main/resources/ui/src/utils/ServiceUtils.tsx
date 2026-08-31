@@ -35,6 +35,7 @@ import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSearchIndexFromService } from './ServicePureUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getOptionalFields = (
   service: ServicesType,
@@ -46,7 +47,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
+          <span className="m-b-0">{t('label.broker-plural') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -60,7 +61,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -74,7 +75,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -90,7 +91,7 @@ export const getOptionalFields = (
       return (
         <>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.registry')}:</label>
+            <span className="m-b-0">{t('label.registry')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -98,7 +99,7 @@ export const getOptionalFields = (
             </span>
           </div>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.tracking')}:</label>
+            <span className="m-b-0">{t('label.tracking')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -144,6 +145,33 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
     default:
       return entityUtilClassBase.getEntityLink(EntityType.DATABASE, fqn);
   }
+};
+
+/**
+ * Only honour a deep-linked serviceType (router `state.serviceType`) that is actually a supported
+ * connector for the given category; otherwise return '' so the wizard shows the connector grid
+ * rather than landing on the Connect step with an unknown/empty connector.
+ *
+ * Shared by both add-service pages: the onboarding connector picker deep-links this way, and so
+ * does picking a card in the flattened "all services" grid, which navigates to that connector's
+ * own category with the type in router state.
+ */
+export const getValidatedServiceType = (
+  state: unknown,
+  serviceCategory: string
+): string => {
+  const requested = (state as { serviceType?: string } | null)?.serviceType;
+  if (!requested) {
+    return '';
+  }
+  const supported = (
+    serviceUtilClassBase.getSupportedServiceFromList() as Record<
+      string,
+      string[]
+    >
+  )[serviceCategory];
+
+  return (supported ?? []).includes(requested) ? requested : '';
 };
 
 export const getAddServiceEntityBreadcrumb = (

@@ -21,7 +21,11 @@ import {
   LogStreamEvent,
   LogStreamEventType,
 } from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
-import { useLogStream } from './useLogStream';
+import {
+  getIngestionLogStreamUrl,
+  useLogStream,
+  withLogStreamCursor,
+} from './useLogStream';
 
 jest.mock('@microsoft/fetch-event-source', () => ({
   fetchEventSource: jest.fn(),
@@ -95,7 +99,7 @@ const openSendAndClose =
   };
 
 const renderStream = (enabled = true) =>
-  renderHook(() => useLogStream({ fqn: FQN, runId: RUN_ID, enabled }));
+  renderHook(() => useLogStream({ streamUrl: BASE_URL, enabled }));
 
 describe('useLogStream', () => {
   beforeEach(() => {
@@ -127,8 +131,8 @@ describe('useLogStream', () => {
     expect(mockFetchEventSource).not.toHaveBeenCalled();
   });
 
-  it('does not connect without a run id', async () => {
-    renderHook(() => useLogStream({ fqn: FQN, runId: '', enabled: true }));
+  it('does not connect without a stream url', async () => {
+    renderHook(() => useLogStream({ streamUrl: '', enabled: true }));
 
     await flushAsync();
 
@@ -336,5 +340,57 @@ describe('useLogStream', () => {
     unmount();
 
     expect(capturedOptions?.signal?.aborted).toBe(true);
+  });
+
+  it('resumes a url that already has query params with an ampersand', async () => {
+    const urlWithQuery = `${BASE_URL}?tail=true`;
+    mockFetchEventSource
+      .mockImplementationOnce(
+        openSendAndClose(
+          {
+            eventType: LogStreamEventType.Logs,
+            logs: 'chunk-1\n',
+            after: '7',
+          },
+          {
+            // A resumable end, so the reconnect is immediate rather than after a
+            // backoff this test would have to wait out.
+            eventType: LogStreamEventType.Complete,
+            reason: LogStreamEndReason.IdleTimeout,
+            after: '7',
+          }
+        )
+      )
+      .mockImplementationOnce(() => neverResolve());
+
+    renderHook(() => useLogStream({ streamUrl: urlWithQuery, enabled: true }));
+
+    await flushAsync();
+
+    expect(mockFetchEventSource.mock.calls[1][0]).toBe(
+      `${urlWithQuery}&after=7`
+    );
+  });
+});
+
+describe('log stream urls', () => {
+  it('builds the ingestion stream url with an encoded fqn and run id', () => {
+    expect(getIngestionLogStreamUrl(FQN, RUN_ID)).toBe(BASE_URL);
+  });
+
+  it('leaves a url untouched without a cursor', () => {
+    expect(withLogStreamCursor(BASE_URL)).toBe(BASE_URL);
+  });
+
+  it('appends the cursor as the only query param', () => {
+    expect(withLogStreamCursor(BASE_URL, 'chunk:12')).toBe(
+      `${BASE_URL}?after=chunk%3A12`
+    );
+  });
+
+  it('appends the cursor to a url that already has query params', () => {
+    expect(withLogStreamCursor(`${BASE_URL}?tail=true`, '5')).toBe(
+      `${BASE_URL}?tail=true&after=5`
+    );
   });
 });

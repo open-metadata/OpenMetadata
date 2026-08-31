@@ -78,7 +78,7 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
             </div>
 
             <div className="tw:flex tw:flex-col tw:gap-0.5">
-              <div className="tw:text-sm tw:font-semibold tw:text-primary">
+              <div className="tw:text-sm tw:font-medium tw:text-primary">
                 {option.label}
               </div>
               <div className="tw:text-sm tw:text-tertiary">

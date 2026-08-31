@@ -170,7 +170,7 @@ describe('Knowledge Card', () => {
 
     // component passes getEntityName(owners[0]) which returns displayName ?? name
     expect(screen.getByTestId('owner-name')).toHaveTextContent(
-      KNOWLEDGE_PAGE_MOCK_DATA.owners![0].name!
+      KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0]?.name as string
     );
   });
 

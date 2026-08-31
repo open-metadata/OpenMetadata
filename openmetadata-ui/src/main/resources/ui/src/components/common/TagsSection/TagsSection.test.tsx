@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,11 +19,12 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import TagsSection from './TagsSection';
 
-// Mock @react-awesome-query-builder/antd
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  ...jest.requireActual('@react-awesome-query-builder/antd'),
+// Mock @react-awesome-query-builder/ui
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Config: {},
   Utils: {
     loadFromJsonLogic: jest.fn(),
@@ -139,6 +140,7 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
         return (
           <div data-testid="tag-selectable-list">
             <div className="tag-selector" data-testid="async-select-list">
+              {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
               <input
                 data-testid="tag-selector-input"
                 value={inputValue}
@@ -917,6 +919,22 @@ describe('TagsSection', () => {
           document.querySelector('.tags-loading-container')
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('popover anchoring', () => {
+    it('should anchor the popover to the left edge of the selector, not centre it', async () => {
+      // The anchor is the full-width `.tag-selector-display` div, so a centred placement ('top')
+      // throws the popover into the middle of a wide container. `bottomLeft` pins it to the
+      // anchor's left edge, matching how GlossaryTermsSection anchors its own popover.
+      render(<TagsSection {...defaultProps} />);
+
+      await enterEditMode();
+
+      const { popoverProps } = (TagSelectableList as unknown as jest.Mock).mock
+        .calls[0][0];
+
+      expect(popoverProps.placement).toBe('bottomLeft');
     });
   });
 });

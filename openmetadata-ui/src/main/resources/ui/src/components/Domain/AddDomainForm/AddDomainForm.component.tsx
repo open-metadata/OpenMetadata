@@ -1039,7 +1039,7 @@ const AddDomainForm = ({
 
   return (
     <HookForm
-      className="tw:flex tw:flex-col tw:gap-6"
+      className="tw:flex tw:flex-col tw:gap-6 tw:**:data-[testid=form-item-label]:font-medium"
       data-testid="add-domain-form"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>

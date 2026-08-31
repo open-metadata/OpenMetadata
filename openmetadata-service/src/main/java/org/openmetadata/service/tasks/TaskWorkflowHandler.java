@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -66,7 +68,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 /**
  * Handles workflow integration for Task entities.
  *
- * <p>This is a clean replacement for FeedRepository.TaskWorkflow that works directly with the new
+ * <p>This handler works directly with Task V2 entities and their workflow lifecycle.
  * Task entity. It integrates with the Flowable-based Governance Workflow system while keeping all
  * task logic in the new system.
  *
@@ -79,9 +81,26 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
-  private static TaskWorkflowHandler instance;
+  static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 6;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 50L;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS =
+      (DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS - 1) * DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS;
 
-  private TaskWorkflowHandler() {}
+  /** Suggestion payload {@code source} marking a suggestion an agent produced. */
+  private static final String AGENT_SUGGESTION_SOURCE = "Agent";
+
+  private static TaskWorkflowHandler instance;
+  private final int runtimeTaskReadinessAttempts;
+  private final long runtimeTaskReadinessDelayMillis;
+
+  private TaskWorkflowHandler() {
+    this(DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS, DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS);
+  }
+
+  TaskWorkflowHandler(int runtimeTaskReadinessAttempts, long runtimeTaskReadinessDelayMillis) {
+    this.runtimeTaskReadinessAttempts = Math.max(1, runtimeTaskReadinessAttempts);
+    this.runtimeTaskReadinessDelayMillis = Math.max(0L, runtimeTaskReadinessDelayMillis);
+  }
 
   public static synchronized TaskWorkflowHandler getInstance() {
     if (instance == null) {
@@ -123,6 +142,8 @@ public class TaskWorkflowHandler {
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     TaskResolutionType effectiveResolutionType =
         resolveResolutionType(task, requestedResolutionType, selectedTransition);
+    validateResolutionComment(selectedTransition, comment);
+    validateMetricRejectionComment(task, effectiveResolutionType, comment);
     LOG.info(
         "[TaskWorkflowHandler] Resolving task: id='{}', transitionId='{}', resolutionType='{}', user='{}'",
         taskId,
@@ -156,6 +177,32 @@ public class TaskWorkflowHandler {
     }
   }
 
+  static void validateMetricRejectionComment(
+      Task task, TaskResolutionType resolutionType, String comment) {
+    if (isMetricApprovalRejection(task, resolutionType) && (comment == null || comment.isBlank())) {
+      throw new IllegalArgumentException("A rejection comment is required");
+    }
+  }
+
+  static void validateResolutionComment(TaskAvailableTransition transition, String comment) {
+    if (transition != null
+        && Boolean.TRUE.equals(transition.getRequiresComment())
+        && (comment == null || comment.isBlank())) {
+      throw new IllegalArgumentException("A rejection comment is required");
+    }
+  }
+
+  private static boolean isMetricApprovalRejection(Task task, TaskResolutionType resolutionType) {
+    return isMetricApprovalTask(task) && resolutionType == TaskResolutionType.Rejected;
+  }
+
+  private static boolean isMetricApprovalTask(Task task) {
+    return task != null
+        && task.getType() == TaskEntityType.RequestApproval
+        && task.getAbout() != null
+        && Entity.METRIC.equals(task.getAbout().getType());
+  }
+
   /**
    * Resolve a task that is managed by a Flowable workflow.
    */
@@ -172,6 +219,18 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task);
+
+    if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
+      throw new IllegalStateException(
+          String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+    }
+    if (requiresRuntimeTaskReadiness && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw new IllegalStateException(
+          String.format(
+              "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
+              taskId));
+    }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
       task = persistWorkflowAssignees(taskRepository, task, payloadAssignees, user);
@@ -205,21 +264,33 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    // Resolve in Flowable workflow
+    // Resolve in Flowable workflow. A null namespace map means the runtime user task never
+    // materialised (async advance timed out) — completing with no variables would drop the
+    // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
-    boolean workflowSuccess = workflowHandler.resolveTask(taskId, namespacedVariables);
+    boolean workflowSuccess =
+        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
+        // Workflow-managed Metric tasks must not bypass their approval workflow when the runtime
+        // task disappears between the readiness check and resolution.
+        if (requiresRuntimeTaskReadiness) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  taskId,
+                  transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+        }
         if (resolutionType == null) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format(
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
         if (TaskRepository.isTerminalStatus(task.getStatus())) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
         LOG.warn(
@@ -228,7 +299,7 @@ public class TaskWorkflowHandler {
         return applyTaskResolution(
             task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
       }
-      throw new IllegalStateException(
+      throw TaskStateConflictException.of(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
@@ -258,6 +329,29 @@ public class TaskWorkflowHandler {
     // Task threshold met, apply resolution
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
+    boolean isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+    int attempt = 1;
+    while (!isActive && attempt < runtimeTaskReadinessAttempts && waitForRuntimeTaskRetry(taskId)) {
+      isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+      attempt++;
+    }
+    return isActive;
+  }
+
+  private boolean waitForRuntimeTaskRetry(UUID taskId) {
+    boolean completed = true;
+    try {
+      TimeUnit.MILLISECONDS.sleep(runtimeTaskReadinessDelayMillis);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      completed = false;
+      LOG.warn(
+          "[TaskWorkflowHandler] Interrupted while waiting for Flowable runtime task '{}'", taskId);
+    }
+    return completed;
   }
 
   private Task persistWorkflowAssignees(
@@ -1015,6 +1109,24 @@ public class TaskWorkflowHandler {
     }
   }
 
+  /**
+   * Whether the text being applied is what the agent actually proposed.
+   *
+   * <p>The payload here is the reviewer's resolution merged over the task's, and the merge keeps the
+   * original {@code source} — so a reviewer who rewrote the text still arrives labelled
+   * {@code Agent}. Comparing against the task's own suggestion separates the two.
+   */
+  private boolean isAgentAuthored(Task task, JsonNode payloadNode, String appliedValue) {
+    boolean agentSourced =
+        AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null));
+    String proposed =
+        Optional.ofNullable(task)
+            .map(Task::getPayload)
+            .map(payload -> JsonUtils.valueToTree(payload).path("suggestedValue").asText(null))
+            .orElse(null);
+    return agentSourced && (proposed == null || proposed.equals(appliedValue));
+  }
+
   private void applySuggestion(
       Task task,
       Object payload,
@@ -1038,7 +1150,7 @@ public class TaskWorkflowHandler {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
           String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-          if (changeSummaryField != null) {
+          if (changeSummaryField != null && isAgentAuthored(task, payloadNode, suggestedValue)) {
             repository.patchChangeSummary(
                 entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
           }
@@ -1049,7 +1161,12 @@ public class TaskWorkflowHandler {
         }
         boolean success =
             FieldPathUtils.updateFieldDescription(
-                entity, repository, user, fieldPath, suggestedValue);
+                entity,
+                repository,
+                user,
+                fieldPath,
+                suggestedValue,
+                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
         if (success) {
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {

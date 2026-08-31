@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
@@ -19,8 +20,6 @@ import { Bucket } from 'Models';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
@@ -105,6 +104,10 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
     </Tooltip>
   );
 };
+
+const renderExploreTreeTitle = (node: DataNode) => (
+  <ExploreTreeTitle node={node as ExploreTreeNode} />
+);
 
 const getServiceStyleIcon = (bucket: Bucket) => {
   const iconURL = get(
@@ -309,7 +312,7 @@ const ExploreTree = ({
           let type = null;
           let logo = undefined;
           if (isEntityType) {
-            const iconClass = 'service-icon w-4 h-4 tw:text-quaternary';
+            const iconClass = 'service-icon w-4 h-4';
             logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
               <></>
             );
@@ -326,7 +329,7 @@ const ExploreTree = ({
             type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
-              'service-icon w-4 h-4 tw:text-quaternary'
+              'service-icon w-4 h-4'
             ) ?? <></>;
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
@@ -334,7 +337,7 @@ const ExploreTree = ({
             type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
-              'service-icon w-4 h-4 tw:text-quaternary'
+              'service-icon w-4 h-4'
             ) ?? <></>;
           } else if (bucketToFind === EntityFields.SERVICE) {
             const serviceIcon = getServiceStyleIcon(bucket);
@@ -405,7 +408,11 @@ const ExploreTree = ({
   );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
-    return expanded ? <IconDown /> : <IconRight />;
+    return expanded ? (
+      <ChevronDown className="tw:text-fg-tertiary!" />
+    ) : (
+      <ChevronRight className="tw:text-fg-tertiary!" />
+    );
   }, []);
 
   const onNodeSelect: TreeProps<DataNode>['onSelect'] = useCallback(
@@ -743,9 +750,7 @@ const ExploreTree = ({
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => (
-        <ExploreTreeTitle node={node as ExploreTreeNode} />
-      )}
+      titleRender={renderExploreTreeTitle}
       treeData={displayTreeData as DataNode[]}
       onExpand={(keys) => setExpandedKeys(keys)}
       onSelect={onNodeSelect}

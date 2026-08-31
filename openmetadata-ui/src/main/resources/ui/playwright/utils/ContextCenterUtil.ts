@@ -108,7 +108,7 @@ export const getDocumentRowByName = (page: Page, fileName: string): Locator =>
     .filter({ hasText: fileName });
 
 export const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
+  const row = await searchAndGetDocumentRow(page, fileName);
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
   await row.getByTestId('document-checkbox').click();
@@ -182,7 +182,7 @@ export const expectCapturedDownload = async (page: Page, fileName: string) => {
   expect(download.href.startsWith('blob:')).toBe(true);
 };
 
-export const DASHBOARD_URL = '/context-center/dashboard';
+export const DASHBOARD_URL = '/context-center/overview';
 export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
@@ -527,6 +527,54 @@ export async function waitForDocumentPermanentlyDeleted(
 
   throw new Error(
     `Document ${documentId} was still present in the archive API after ${timeout}ms`
+  );
+}
+
+export async function waitForDocumentAbsentFromSearch(
+  apiContext: APIRequestContext,
+  documentName: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/search/query', {
+      params: {
+        q: documentName,
+        index: 'contextFile',
+        deleted: false,
+        size: 100,
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling search for absence of ${documentName}: ${response.status()} ${body}`
+      );
+    }
+
+    const body = await response.json();
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentName} was still present in search results after ${timeout}ms`
   );
 }
 
@@ -1048,6 +1096,39 @@ export const readDraftStore = async (
   } catch {
     return {};
   }
+};
+
+/**
+ * The draft-content debounce (300ms in KnowledgePageDetailComponent) means the
+ * "Unsaved" badge appearing gives no guarantee the debounced write to
+ * localStorage has actually landed yet. Polling the real draft store removes
+ * that race instead of guessing a fixed timeout that can lose the race under
+ * CI load.
+ *
+ * The timeout is deliberately kept well under the real-save debounce
+ * (SHORT_DELAY, 3000ms): once that autosave completes it clears the draft
+ * from localStorage (see endTrackedSave -> removeDraft), so a long poll here
+ * risks racing the autosave itself and observing the draft after it has
+ * already been removed rather than confirming it landed in time.
+ */
+export const waitForDraftPersisted = async (
+  page: Page,
+  articleId: string,
+  expectedDescription: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const drafts = await readDraftStore(page);
+        const draft = drafts[articleId] as { description?: string } | undefined;
+
+        // The draft stores the editor's HTML output (e.g. wrapped in <p>...</p>),
+        // not the plain text that was typed, so match on substring containment.
+        return draft?.description?.includes(expectedDescription) ?? false;
+      },
+      { timeout: 2000, intervals: [50, 100, 200] }
+    )
+    .toBe(true);
 };
 
 /**

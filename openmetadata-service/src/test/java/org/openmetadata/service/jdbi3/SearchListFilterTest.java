@@ -32,10 +32,30 @@ public class SearchListFilterTest {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("includeFields", "field1,field2");
     searchListFilter.addQueryParam("excludeFields", "field3,field4");
-    searchListFilter.addQueryParam("testCaseStatus", "failed");
+    searchListFilter.addQueryParam("testCaseStatus", "Failed");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\",\"field3\",\"field4\"],\n\"include\": [\"field1\",\"field2\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testCaseResult.testCaseStatus\": \"failed\"}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\",\"field3\",\"field4\"],\n\"include\": [\"field1\",\"field2\"]},\"query\": {\"bool\": {\"filter\": [{\"terms\": {\"testCaseResult.testCaseStatus\": [\"Failed\"]}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testMultipleTestCaseStatusesAreMatchedAsOr() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testCaseStatus", "Failed,Aborted");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"terms\": {\"testCaseResult.testCaseStatus\": [\"Failed\", \"Aborted\"]}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testBlankTestCaseStatusesAreIgnored() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testCaseStatus", " , ");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"match_all\": {}}}";
     assertEquals(expected, actual);
   }
 
@@ -193,7 +213,7 @@ public class SearchListFilterTest {
     assertTrue(
         actual.contains(
             "{\"bool\":{\"should\": [{\"prefix\": {\"entityFQN\": \"service.db.schema.table.\"}},{\"term\": {\"entityFQN\": \"service.db.schema.table\"}}]}}"));
-    assertTrue(actual.contains("{\"term\": {\"testCaseResult.testCaseStatus\": \"Failed\"}}"));
+    assertTrue(actual.contains("{\"terms\": {\"testCaseResult.testCaseStatus\": [\"Failed\"]}}"));
     assertTrue(
         actual.contains(
             "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"suite-id\"}}}}"));

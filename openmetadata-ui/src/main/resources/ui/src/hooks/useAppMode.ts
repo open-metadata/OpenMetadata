@@ -21,19 +21,45 @@ import {
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import { DefaultAppMode } from '../generated/api/configuration/appConfiguration';
+import { Document } from '../generated/entity/docStore/document';
+import {
+  PersonaPreferences,
+  UICustomization,
+} from '../generated/system/ui/uiCustomization';
+import { AppMode } from '../generated/type/personaPreferences';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 
 /**
  * Payload persisted in `sessionStorage[APP_MODE_SESSION_KEY]`.
- * `personaAppMode` is the value the resolver saw from the persona doc
- * when this tuple was last written. `useResolvedAppMode` compares its
- * current view of the persona's `appMode` against this snapshot to
- * decide whether the persona has something new to say (invalidate the
- * session) or not (respect the tab's chosen mode).
+ * `personaAppMode` is the value the boot resolver saw from the persona
+ * doc when this tuple was last written.
+ *
+ * `source` records WHO wrote the tuple:
+ *   - `'manual'` — a UI toggle (profile dropdown, switcher popover,
+ *     plugin click). The user's active choice for this tab; sticky
+ *     against a boot re-resolve.
+ *   - `'resolver'` — legacy value written by the now-deleted
+ *     `useResolvedAppMode` hook. No longer produced, but still accepted
+ *     for backward compatibility with tuples persisted before this
+ *     refactor; treated as sticky like `'manual'`.
+ *   - `'boot'` — `AuthProvider.hydrateAndResolveAppMode`'s write. Now
+ *     the authoritative resolve (it resolves persona synchronously
+ *     within its fetch before writing), but kept `'boot'` so it stays
+ *     re-resolvable on the next reload — a later persona-doc edit takes
+ *     effect without needing the session cleared.
+ *   - `undefined` — legacy tuples from before this field existed;
+ *     treated as `'manual'` (respect them). Backward-compatible.
+ *
+ * `hydrateAndResolveAppMode`'s "keep the current session" skip only
+ * fires when `source !== 'boot'`, so a `'boot'` tuple is re-resolved on
+ * every reload while a `'manual'`/`'resolver'` tuple is left untouched.
  */
+export type AppModeSessionSource = 'manual' | 'resolver' | 'boot';
+
 export interface AppModeSession {
   personaAppMode: string | null;
   mode: string;
+  source?: AppModeSessionSource;
 }
 
 /**
@@ -80,8 +106,19 @@ const readSession = (): AppModeSession | null => {
       const tuple = parsed as AppModeSession;
       const personaAppMode =
         typeof tuple.personaAppMode === 'string' ? tuple.personaAppMode : null;
+      // Preserve `source` when it's one of the known values. Legacy
+      // tuples written before this field existed omit it — treat that
+      // as "manual" via the resolver's `source !== 'boot'` check.
+      const source: AppModeSessionSource | undefined =
+        tuple.source === 'manual' ||
+        tuple.source === 'resolver' ||
+        tuple.source === 'boot'
+          ? tuple.source
+          : undefined;
 
-      return { personaAppMode, mode: tuple.mode };
+      return source
+        ? { personaAppMode, mode: tuple.mode, source }
+        : { personaAppMode, mode: tuple.mode };
     }
   } catch {
     // fall through — malformed payloads are treated as absent
@@ -189,16 +226,13 @@ interface AppModeStore {
 const initialSession = readSession();
 // Only hydrate the in-memory store from the sessionStorage tuple at
 // module load — do NOT fall back to the cross-tab hint here. The hint
-// is a shared localStorage key and its mode may not be registered in
-// this tab (App.tsx installs the AI route in its own effect, which
-// hasn't run at module init). Seeding the store with an unregistered
-// mode causes `useAppMode()` to return e.g. `'ai'` on the first render
-// while the registry is still empty, so AI-only layouts try to render
-// against the Classic route tree — a "flash of broken AI" that's
-// worse than the "flash of Classic" it was trying to avoid. The
-// resolver (`useResolvedAppMode`) reads the hint safely, gated on
-// registration, and adopts it via `writeAppMode` once the AI route
-// registers.
+// is a shared localStorage key; seeding the in-memory store from it at
+// module init would let a stale/foreign hint drive the very first
+// render before the boot resolver has had a chance to validate it
+// against this user's persona/preference. The boot resolver
+// (`AuthProvider.hydrateAndResolveAppMode`) reads the hint safely after
+// auth and adopts it via `writeAppMode`, so an empty tuple simply boots
+// Classic until that runs.
 const initialMode = initialSession?.mode ?? DEFAULT_APP_MODE;
 
 export const useAppModeStore = create<AppModeStore>((set) => ({
@@ -255,25 +289,42 @@ export const useAppMode = (): string =>
  * - Writes the `sessionStorage` tuple so refreshes inside the same tab
  *   don't need to re-resolve.
  *
- * `personaAppMode` is the persona-scoping key: it captures what the
+ * `personaAppMode` is the persona-scoping key: it captures what the boot
  * resolver saw from the persona doc at the moment of write. Callers
  * that don't know the persona value (the switcher, the desktop lock)
  * omit it and the current tuple's `personaAppMode` is preserved.
+ *
+ * `source` records who is writing:
+ *   - `'manual'` (default) — a UI toggle; sticky against a boot
+ *     re-resolve.
+ *   - `'resolver'` — legacy value from the deleted `useResolvedAppMode`
+ *     hook; still accepted (sticky) for backward compatibility.
+ *   - `'boot'` — `AuthProvider.hydrateAndResolveAppMode`'s authoritative
+ *     write; re-resolvable on the next reload.
+ *
+ * All existing callers (UI switches) default to `'manual'`, so this
+ * is a backward-compatible signature change.
  */
 export const writeAppMode = (
   mode: string,
-  personaAppMode?: string | null
+  personaAppMode?: string | null,
+  options?: { source?: AppModeSessionSource }
 ): void => {
   const nextPersonaAppMode =
     personaAppMode === undefined
       ? readSession()?.personaAppMode ?? null
       : personaAppMode;
+  const source: AppModeSessionSource = options?.source ?? 'manual';
 
   useAppModeStore.getState().setMode(mode);
-  writeSession({ personaAppMode: nextPersonaAppMode, mode });
+  writeSession({ personaAppMode: nextPersonaAppMode, mode, source });
   // Cross-tab hint: sibling / newly-opened tabs read this at boot when
   // their sessionStorage is empty (see APP_MODE_HINT_STORAGE_KEY docs).
-  writeHint(mode);
+  // Do NOT write the hint for `'boot'` writes: a boot-provisional
+  // tuple shouldn't leak to sibling tabs as a "user chose this" hint.
+  if (source !== 'boot') {
+    writeHint(mode);
+  }
 };
 
 export const clearAppMode = (): void => {
@@ -292,6 +343,24 @@ export const clearAppMode = (): void => {
  */
 export const clearAppModeSessionOnly = (): void => {
   useAppModeStore.getState().reset();
+  removeSession();
+};
+
+/**
+ * Remove only the sessionStorage tuple; DO NOT touch the in-memory store
+ * or the cross-tab hint. Used by the resolver's boot-provisional override
+ * — the boot write has already set the store to a best-guess mode, and
+ * the resolver is about to overwrite the store via `writeAppMode(candidate)`
+ * once it has full context. Zustand notifies subscribers synchronously on
+ * every `set`, so calling `.reset()` between the boot write and the
+ * resolver's write forces a transient `currentMode === DEFAULT_APP_MODE`
+ * render that flips a non-default route ('/ai-automations',
+ * '/observability/*', etc.) through the Classic route tree's catch-all
+ * and redirects it to `/404` before the resolver's write lands. Leaving
+ * the store on boot's value means the only mode change subscribers see
+ * is the final resolver value, not an intermediate default.
+ */
+export const removeAppModeSession = (): void => {
   removeSession();
 };
 
@@ -318,65 +387,19 @@ export const isAppModeHintFresh = (hint: AppModeHint | null): boolean =>
   isHintFresh(hint);
 
 /**
- * True when a non-default app mode is active (e.g. Collate's AI mode).
- * OM core stays mode-agnostic, so this is a generic "a custom mode is on"
- * check rather than naming a specific mode. Defaults to false whenever the
- * active mode is the default.
+ * True when the active app mode is `AI_APP_MODE`. OM core stays
+ * mode-agnostic elsewhere, but this hook names the one specific mode a
+ * plugin registers under `'ai'` so AI-only layouts can gate on it directly.
+ * False for every other mode, including the default.
  */
-export const useIsAiMode = (): boolean => useAppMode() !== DEFAULT_APP_MODE;
-
-/**
- * Synchronously resolve the app mode a freshly-authenticated user should
- * land in, using the same precedence as {@link useResolvedAppMode} minus
- * the async persona lookup:
- *
- *   1. `sessionStorage` tuple (mid-session re-auth in an already-AI tab)
- *   2. Fresh cross-tab hint (a sibling tab in this browser is in AI)
- *   3. User's stored `preferences.appMode` (the "remember" checkbox)
- *   4. `DEFAULT_APP_MODE`
- *
- * Persona-based resolution requires an API call and is deferred to
- * `useResolvedAppMode`, which runs after login and will re-write the mode
- * if the persona disagrees. This helper only exists so the post-login
- * redirect can pick the right landing route (`/` for non-default modes,
- * `/my-data` for Classic) without waiting for the async resolver.
- *
- * Pure — no side effects. Safe to call from event handlers.
- */
-export const resolveInitialAppMode = (userName?: string): string => {
-  // Distinguish "explicit session tuple" from "no session at all" by
-  // reading the raw sessionStorage payload. `useAppModeStore.currentMode`
-  // returns `DEFAULT_APP_MODE` in BOTH cases, which would let a
-  // sibling-tab AI hint override an explicit Classic session — exactly
-  // what the resolver's `validSession` check guards against.
-  const session = readSession();
-  if (session) {
-    return session.mode;
-  }
-
-  const hint = readHint();
-  if (isHintFresh(hint) && hint && hint.mode !== DEFAULT_APP_MODE) {
-    return hint.mode;
-  }
-
-  if (userName) {
-    const pref = usePersistentStorage.getState().getUserPreference(userName);
-    if (pref?.appMode && pref.appMode !== DEFAULT_APP_MODE) {
-      return pref.appMode;
-    }
-  }
-
-  return DEFAULT_APP_MODE;
-};
+export const useIsAiMode = (): boolean => useAppMode() === AI_APP_MODE;
 
 /**
  * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
- * ("ai" | "classic") into the runtime mode string consumed by `useAppMode` /
- * `useResolvedAppMode`. Core has always used `DEFAULT_APP_MODE` ("default")
- * for Classic, while the Collate plugin registers its routes under
- * `AI_APP_MODE` ("ai"). The wire value stays the readable "ai"/"classic"
- * pair for admins; this map is the only place that needs to know the
- * runtime strings differ.
+ * ("ai" | "classic") into the runtime mode string consumed by `useAppMode`.
+ * Core uses `DEFAULT_APP_MODE` ("default") for Classic, while the plugin
+ * registers its routes under `AI_APP_MODE` ("ai"); the "classic" wire value
+ * is the only one whose runtime string differs from the wire token.
  */
 export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
   [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
@@ -393,14 +416,154 @@ export const translateWireMode = (
   wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
 
 /**
- * Resolve the effective app mode at boot from the fallback chain, highest
- * precedence first:
+ * Translates the runtime mode string (`DEFAULT_APP_MODE` / `AI_APP_MODE`)
+ * into the wire token persisted in the user's "remember this mode on login"
+ * preference (`AppModePreference.config.value`, enum
+ * `["ai", "classic", null]` — see
+ * `openmetadata-spec/.../api/teams/preferences/appModePreference.json`).
+ * Single source of truth for both directions of this translation;
+ * {@link PREFERENCE_MODE_TO_RUNTIME} below is its inverse. Consumed by
+ * `AppModeSwitcher`'s remember checkbox.
+ */
+export const RUNTIME_TO_PREFERENCE_WIRE: Record<string, string> = {
+  [DEFAULT_APP_MODE]: 'classic',
+  [AI_APP_MODE]: 'ai',
+};
+
+/**
+ * Inverse of {@link RUNTIME_TO_PREFERENCE_WIRE}: translates the stored
+ * `appMode` preference wire token (`"ai"` | `"classic"`) back into the
+ * runtime mode string consumed by `useAppMode`/`writeAppMode`.
+ */
+export const PREFERENCE_MODE_TO_RUNTIME: Record<string, string> = {
+  classic: DEFAULT_APP_MODE,
+  ai: AI_APP_MODE,
+};
+
+/**
+ * Safe wrapper around {@link PREFERENCE_MODE_TO_RUNTIME} for the nullable
+ * wire value read off the user's stored `appMode` preference. Unrecognised
+ * tokens pass through unchanged (matches `translateWireMode`'s sibling
+ * behavior of not inventing a fallback mode).
+ */
+export const translatePreferenceMode = (
+  wireMode: string | null | undefined
+): string | null =>
+  wireMode ? PREFERENCE_MODE_TO_RUNTIME[wireMode] ?? wireMode : null;
+
+/**
+ * Resolve the runtime app mode a persona forces on login from its
+ * UICustomization document. Looks up the `personaPreferences` entry for
+ * `personaId` and translates its admin-facing `appMode` (the
+ * personaPreferences AppMode enum, `"classic" | "AI"`) into the runtime
+ * mode string consumed by `useAppMode`:
  *
- *   1. `userPref`    — the user's own stored preference (`user_preferences`).
+ *   - `"classic"` -> `DEFAULT_APP_MODE`
+ *   - `"AI"`      -> `AI_APP_MODE`
+ *
+ * Reuses {@link translatePreferenceMode}, normalising the enum's uppercase
+ * `"AI"` to the lowercase `"ai"` wire token that map understands. Returns
+ * `null` when there is no doc, no persona, or the
+ * persona has no `appMode` set — callers fall through to the next
+ * precedence signal (user pref / tenant default).
+ *
+ * Pure — no side effects. Consumed by `AuthProvider.hydrateAndResolveAppMode`
+ * once the persona doc has been fetched at boot.
+ */
+export const resolvePersonaAppMode = (
+  doc: Document | undefined,
+  personaId: string | undefined
+): string | null => {
+  if (!doc || !personaId) {
+    return null;
+  }
+  const preferences = (doc.data as UICustomization | undefined)
+    ?.personaPreferences;
+  const entry = preferences?.find(
+    (p: PersonaPreferences) => p.personaId === personaId
+  );
+  if (!entry?.appMode) {
+    return null;
+  }
+  const wire = entry.appMode === AppMode.AI ? 'ai' : entry.appMode;
+
+  return translatePreferenceMode(wire);
+};
+
+/**
+ * Synchronously resolve the app mode a freshly-authenticated user should
+ * land in, using the same precedence as
+ * {@link resolveEffectiveAppMode} minus the async persona lookup:
+ *
+ *   1. `sessionStorage` tuple (mid-session re-auth in an already-AI tab)
+ *   2. Fresh cross-tab hint (a sibling tab in this browser is in AI)
+ *   3. User's stored `preferences.appMode` (the "remember" checkbox)
+ *   4. `DEFAULT_APP_MODE`
+ *
+ * Persona-based resolution requires an API call and is deferred to
+ * `AuthProvider.hydrateAndResolveAppMode`, which runs after login and
+ * will write the persona-forced mode when the persona disagrees. This
+ * helper only exists so the post-login redirect can pick the right
+ * landing route (`/` for non-default modes, `/my-data` for Classic)
+ * without waiting for that async persona-doc fetch.
+ *
+ * Pure — no side effects. Safe to call from event handlers.
+ */
+export const resolveInitialAppMode = (userName?: string): string => {
+  // Distinguish "explicit session tuple" from "no session at all" by
+  // reading the raw sessionStorage payload. `useAppModeStore.currentMode`
+  // returns `DEFAULT_APP_MODE` in BOTH cases, which would let a
+  // sibling-tab AI hint override an explicit Classic session — the same
+  // session-over-hint precedence the boot resolver enforces.
+  const session = readSession();
+  if (session) {
+    return session.mode;
+  }
+
+  const hint = readHint();
+  if (isHintFresh(hint) && hint && hint.mode !== DEFAULT_APP_MODE) {
+    return hint.mode;
+  }
+
+  if (userName) {
+    const pref = usePersistentStorage.getState().getUserPreference(userName);
+    // `pref.appMode` holds the preference's WIRE token ("classic" /
+    // "ai" / legacy "ai"), not the runtime mode string — translate
+    // before comparing/returning. See `translatePreferenceMode` and its
+    // #31906 follow-up doc comment above.
+    const runtimeMode = translatePreferenceMode(pref?.appMode ?? null);
+    if (runtimeMode && runtimeMode !== DEFAULT_APP_MODE) {
+      return runtimeMode;
+    }
+  }
+
+  return DEFAULT_APP_MODE;
+};
+
+/**
+ * Canonical precedence for the "no valid session tuple, no fresh hint"
+ * case. Used by `AuthProvider.hydrateAndResolveAppMode` (the boot-time
+ * resolver) after it has fetched the persona doc, so the fallback chain
+ * lives in exactly one place.
+ *
+ * Signals, highest precedence first:
+ *
+ *   1. `userPref`    — the user's own stored preference (`user_preferences`,
+ *                       aka the "remember" server-side toggle). A
+ *                       persistent user choice made through the switcher.
  *   2. `personaMode` — the admin-curated persona app mode, when known.
+ *                       The group-level default for this user's persona.
  *   3. `appDefault`  — the tenant-wide "first impression" default
  *                       (`appConfiguration.defaultAppMode`, translated).
  *   4. `DEFAULT_APP_MODE` — the hardcoded constant, last resort.
+ *
+ * Not included here (higher-priority signals handled by callers):
+ *   - Session tuple (`sessionStorage['omAppMode']`) — the manual in-tab
+ *     switch, wins unconditionally when valid. See
+ *     `hydrateAndResolveAppMode`'s session-tuple skip.
+ *   - Fresh cross-tab hint (`localStorage['omAppModeHint']`) — sits
+ *     between session and the chain above. See
+ *     `hydrateAndResolveAppMode`.
  *
  * Pure — no side effects, no storage reads. Callers are responsible for
  * supplying each signal (see `AuthProvider`'s bootstrap wiring).
@@ -415,8 +578,8 @@ export const resolveEffectiveAppMode = (
 // to the runtime string), populated once at boot from `getAppConfiguration()`
 // by `AuthProvider`. Deliberately NOT persisted anywhere — it is a soft
 // fallback consulted only when neither the user's preference nor the
-// persona have an opinion. See `resolveEffectiveAppMode` and
-// `useResolvedAppMode`, which both consult it as the third-priority signal.
+// persona have an opinion. See `resolveEffectiveAppMode`, which consults
+// it as the third-priority signal.
 let appDefaultMode: string | null = null;
 
 export const setAppDefaultMode = (mode: string | null): void => {

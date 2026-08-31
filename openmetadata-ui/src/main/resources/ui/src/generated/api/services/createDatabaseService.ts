@@ -371,6 +371,10 @@ export interface Connection {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
+     *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
@@ -974,6 +978,10 @@ export interface Connection {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
     /**
      * Ingest external and internal stages.
      */
@@ -2302,6 +2310,8 @@ export enum ConfigScheme {
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -2318,6 +2328,7 @@ export enum ConfigScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",

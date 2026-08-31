@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -60,7 +61,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
-import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -72,6 +73,7 @@ public class PersonaContextBuilder {
   static final int MAX_SHARED_KNOWLEDGE_ITEMS = 500;
   private static final int SEARCH_BATCH_SIZE = 100;
   private static final int DATA_PRODUCT_ASSET_BATCH_SIZE = 1000;
+  static final int METRIC_ASSET_BATCH_SIZE = 1000;
   private static final int DEFAULT_MAX_ASSETS = 200;
   private static final Set<String> KNOWLEDGE_ENTITY_TYPES =
       Set.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
@@ -447,8 +449,7 @@ public class PersonaContextBuilder {
     String entityType = rule.getEntityType();
     String fqn = stringValue(document.get("fullyQualifiedName"));
     try {
-      EntityInterface entity =
-          Entity.getEntityByName(entityType, fqn, knowledgeFields(entityType), Include.NON_DELETED);
+      EntityInterface entity = loadKnowledgeEntity(entityType, fqn);
       KnowledgeItem item = fullKnowledgeItem(entityType, entity);
       if (item == null) {
         return null;
@@ -469,10 +470,43 @@ public class PersonaContextBuilder {
     }
   }
 
-  private static String knowledgeFields(String entityType) {
+  private static EntityInterface loadKnowledgeEntity(String entityType, String fqn) {
+    EntityInterface entity =
+        Entity.getEntityByName(entityType, fqn, knowledgeFields(entityType), Include.NON_DELETED);
+    if (entity instanceof Metric metric) {
+      MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+      loadMetricAssets(metric, repository);
+    }
+    return entity;
+  }
+
+  static void loadMetricAssets(Metric metric, MetricRepository repository) {
+    List<EntityReference> assets = new ArrayList<>();
+    int offset = 0;
+    ResultList<MetricAssetDirection> page;
+    do {
+      page =
+          repository.listAssets(metric.getId(), METRIC_ASSET_BATCH_SIZE, offset, null, null, null);
+      List<MetricAssetDirection> linkedAssets = listOrEmpty(page.getData());
+      linkedAssets.stream()
+          .map(MetricAssetDirection::getAsset)
+          .filter(asset -> asset != null)
+          .forEach(assets::add);
+      offset += linkedAssets.size();
+    } while (hasNextMetricAssetPage(page, offset));
+    metric.setAssets(List.copyOf(assets));
+  }
+
+  private static boolean hasNextMetricAssetPage(ResultList<MetricAssetDirection> page, int offset) {
+    return page.getPaging() != null
+        && !nullOrEmpty(page.getData())
+        && offset < page.getPaging().getTotal();
+  }
+
+  static String knowledgeFields(String entityType) {
     return switch (entityType) {
       case Entity.PAGE -> "owners,tags,relatedEntities";
-      case Entity.METRIC -> "owners,tags,assets,relatedMetrics";
+      case Entity.METRIC -> "owners,tags,relatedMetrics";
       case Entity.GLOSSARY_TERM -> "owners,tags,relatedTerms";
       default -> "";
     };
@@ -592,7 +626,8 @@ public class PersonaContextBuilder {
       profiles =
           Entity.getCollectionDAO()
               .profilerDataTimeSeriesDao()
-              .getLatestExtensionsBatch(fqns, TableRepository.TABLE_PROFILE_EXTENSION);
+              .getLatestExtensionsBatch(
+                  fqns, CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION);
     } catch (RuntimeException exception) {
       LOG.warn("Failed to load batched persona profile summaries: {}", exception.getMessage());
       return;

@@ -32,6 +32,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../../utils/common';
 import {
   dismissTagSuggestions,
@@ -319,10 +320,9 @@ test.describe(
 
         await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
-        await toastNotification(page, 'Test case updated successfully.');
-        await page.getByTestId('alert-bar').waitFor({
-          state: 'detached',
-        });
+        const updateSuccessMessage = 'Test case updated successfully.';
+        await toastNotification(page, updateSuccessMessage);
+        await waitForToastToDisappear(page, updateSuccessMessage);
 
         await page
           .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
@@ -789,7 +789,9 @@ test.describe(
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
-          await expect(banner).toContainText('Next · Not scheduled');
+          await expect(banner.getByTestId('test-case-next-run')).toHaveText(
+            /^Next · Not scheduled$/i
+          );
         });
 
         const runResults = [
@@ -1113,6 +1115,37 @@ test.describe(
         await page.getByTestId('searchbar-component').locator('input').clear();
         await getTestCaseResponse;
 
+        // A pasted URL is full of Lucene reserved characters. The server parses `q` as literal
+        // text, so it must answer 200 where a query_string returned a 500 query_shard_exception.
+        // This is the only test covering the UI and the server composing on a real stack.
+        const pastedUrl = 'https://localhost:8585/table/orders';
+        const reservedCharSearchResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/search/list') &&
+            response.url().includes('8585')
+        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill(pastedUrl);
+        const reservedCharSearch = await reservedCharSearchResponse;
+
+        // The term must reach the API verbatim: the UI no longer escapes or wraps it, so any
+        // reintroduced client-side escaping fails here rather than silently changing the query.
+        expect(decodeURIComponent(reservedCharSearch.url())).toContain(
+          pastedUrl
+        );
+        expect(reservedCharSearch.status()).toBe(200);
+
+        // clear the reserved-character search
+        const clearReservedCharSearch = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.getByTestId('searchbar-component').locator('input').clear();
+        await clearReservedCharSearch;
+
         // Test case filter by service name
         const serviceResponse = page.waitForResponse(
           '/api/v1/search/query?q=*index=databaseService*'
@@ -1253,24 +1286,43 @@ test.describe(
         await testCaseTypeByAll;
 
         // Test case filter by status
-        const testCaseStatusBySuccess = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*`
-        );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Success').click();
+        const testCaseStatusBySuccess = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+            url.searchParams.get('testCaseStatus') === 'Success'
+          );
+        });
+        const statusFilter = page.getByTestId('status-select-filter');
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Success', { exact: true })
+          .click();
         await testCaseStatusBySuccess;
 
         await expect(
           page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
-        // Test case filter by status
-        const testCaseStatusByFailed = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*`
+        // Adding Failed must retain Success because selected statuses are combined with OR.
+        const testCaseStatusesBySuccessAndFailed = page.waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+              url.searchParams.get('testCaseStatus') === 'Success,Failed'
+            );
+          }
         );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Failed').click();
-        await testCaseStatusByFailed;
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Failed', { exact: true })
+          .click();
+        await testCaseStatusesBySuccessAndFailed;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
@@ -1456,20 +1508,19 @@ test.describe(
         });
 
         await test.step('Test page size dropdown', async () => {
-          await expect(
-            page.locator('[data-testid="page-size-selection-dropdown"]')
-          ).toBeVisible();
+          const pageSizeDropdown = page.getByTestId(
+            'page-size-selection-dropdown'
+          );
+          const pageSizeMenu = page.locator(
+            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
+          );
 
-          await page.click('[data-testid="page-size-selection-dropdown"]');
-
-          // Wait for dropdown menu to be visible
-          await page.locator('.ant-dropdown-menu').waitFor({
-            state: 'visible',
-            timeout: 5000,
-          });
-
-          // Verify dropdown options are visible
-          await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
+          await expect(pageSizeDropdown).toBeVisible();
+          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
+          // button only runs its preventDefault handler and may not open the menu.
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
         await paginationTable.delete(apiContext);

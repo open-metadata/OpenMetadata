@@ -16,8 +16,8 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product-new.svg';
 import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as DataProductIcon } from '../../../../assets/svg/widget/data-products.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -246,8 +246,8 @@ const DataProductsWidget = ({
         icon={
           <DataProductIcon
             className="data-products-widget-icon"
-            height={22}
-            width={22}
+            height={24}
+            width={24}
           />
         }
         isEditView={isEditView}

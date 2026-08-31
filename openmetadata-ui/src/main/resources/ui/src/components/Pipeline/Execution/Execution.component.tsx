@@ -172,9 +172,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                       setIsClickedCalendar(true);
                     }}>
                     <span className="date-container">
-                      {!datesSelected && (
-                        <label>{t('label.date-filter')}</label>
-                      )}
+                      {!datesSelected && <span>{t('label.date-filter')}</span>}
                       <DatePicker.RangePicker
                         allowClear
                         showNow

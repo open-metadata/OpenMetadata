@@ -1,0 +1,30 @@
+@prefix gs1: <https://open-metadata.org/library/gs1/core-vocabulary/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+gs1:Product a skos:Concept ;
+  skos:prefLabel "Product" .
+
+gs1:TradeItem a skos:Concept ;
+  skos:prefLabel "Trade Item" ;
+  skos:broader gs1:Product .
+
+gs1:Organization a skos:Concept ;
+  skos:prefLabel "Organization" .
+
+gs1:Brand a skos:Concept ;
+  skos:prefLabel "Brand" ;
+  skos:broader gs1:Organization .
+
+gs1:Place a skos:Concept ;
+  skos:prefLabel "Place" .
+
+gs1:Location a skos:Concept ;
+  skos:prefLabel "Location" ;
+  skos:broader gs1:Place .
+
+gs1:Offer a skos:Concept ;
+  skos:prefLabel "Offer" .
+
+gs1:PriceSpecification a skos:Concept ;
+  skos:prefLabel "Price Specification" ;
+  skos:broader gs1:Offer .

@@ -362,16 +362,21 @@ const GlossaryV1 = ({
   };
 
   const initializeGlossary = async () => {
-    const permission = await initPermissions();
-    if (permission?.ViewAll || permission?.ViewBasic) {
-      // Only load terms if we're viewing a glossary term, not a glossary
-      // GlossaryTermTab handles pagination for glossaries
-      if (!isGlossaryActive) {
-        loadGlossaryTerms();
+    try {
+      const permission = await initPermissions();
+      if (permission?.ViewAll || permission?.ViewBasic) {
+        // Only load terms if we're viewing a glossary term, not a glossary
+        // GlossaryTermTab handles pagination for glossaries
+        if (!isGlossaryActive) {
+          loadGlossaryTerms();
+        } else {
+          setIsLoading(false);
+        }
       } else {
         setIsLoading(false);
       }
-    } else {
+    } catch {
+      // Permission fetch already showed an error toast; ensure loading state is cleared
       setIsLoading(false);
     }
   };

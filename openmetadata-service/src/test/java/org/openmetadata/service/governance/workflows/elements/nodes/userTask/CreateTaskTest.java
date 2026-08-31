@@ -33,15 +33,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
 class CreateTaskTest {
 
@@ -770,6 +776,7 @@ class CreateTaskTest {
     Task prior =
         new Task()
             .withId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
             .withWorkflowDefinitionId(workflowDefinitionId)
             .withWorkflowInstanceId(UUID.randomUUID());
 
@@ -844,6 +851,50 @@ class CreateTaskTest {
   }
 
   @Test
+  void testIsSupersedableWhenPriorMissingDefinitionIdButInstanceResolvesIt() {
+    // Tasks migrated from the pre-2.0 thread model carry a workflowInstanceId but no
+    // workflowDefinitionId. The fallback resolves the definition id from the instance so the
+    // supersede match still fires instead of comparing against null and leaving a duplicate.
+    UUID workflowDefinitionId = UUID.randomUUID();
+    UUID priorInstanceId = UUID.randomUUID();
+    Task prior = new Task().withId(UUID.randomUUID()).withWorkflowInstanceId(priorInstanceId);
+    WorkflowInstanceRepository workflowInstanceRepository =
+        Mockito.mock(WorkflowInstanceRepository.class);
+    when(workflowInstanceRepository.getById(priorInstanceId))
+        .thenReturn(new WorkflowInstance().withWorkflowDefinitionId(workflowDefinitionId));
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(workflowInstanceRepository);
+
+      assertTrue(
+          CreateTask.isSupersedablePriorApprovalTask(
+              prior, workflowDefinitionId, UUID.randomUUID()));
+    }
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorDefinitionIdUnresolvable() {
+    // No workflowDefinitionId on the task and the instance record is gone (getById -> null): the
+    // fallback yields null, so the task is left alone rather than wrongly superseded.
+    UUID priorInstanceId = UUID.randomUUID();
+    Task prior = new Task().withId(UUID.randomUUID()).withWorkflowInstanceId(priorInstanceId);
+    WorkflowInstanceRepository workflowInstanceRepository =
+        Mockito.mock(WorkflowInstanceRepository.class);
+    when(workflowInstanceRepository.getById(priorInstanceId)).thenReturn(null);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(workflowInstanceRepository);
+
+      assertFalse(
+          CreateTask.isSupersedablePriorApprovalTask(prior, UUID.randomUUID(), UUID.randomUUID()));
+    }
+  }
+
+  @Test
   void testIsNotSupersedableWhenPriorTaskIsTerminal() {
     UUID workflowDefinitionId = UUID.randomUUID();
     Task prior =
@@ -868,6 +919,21 @@ class CreateTaskTest {
             .withStatus(TaskEntityStatus.Approved);
 
     assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorTaskHasApprovedResolution() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Approved)
+            .withResolution(new TaskResolution().withType(TaskResolutionType.Approved));
+
+    assertFalse(
         CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
 

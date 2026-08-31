@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -67,6 +68,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -92,6 +96,7 @@ public class IncidentGroupsIT {
   private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
   private static final String GROUP_BY_OWNER = "owner";
   private static final String MAX_LIMIT = "1000";
+  private static final String INCIDENT_BACKFILL_SQL = "INSERT INTO test_case_incident";
 
   private OpenMetadataClient client;
   private Table tableA;
@@ -858,6 +863,42 @@ public class IncidentGroupsIT {
         "the tied incident must enter the trend exactly once");
   }
 
+  @Test
+  void testLatestRecordBatchBreaksTimestampTiesByRecordId() throws Exception {
+    long timestamp = System.currentTimeMillis();
+    Table tieTable = createTable(schemaFqn, "latest_record_batch_tie_" + timestamp);
+    TestDefinition tieDefinition =
+        createTestDefinition(
+            "latest_record_batch_tie_def_" + timestamp, TestDefinitionEntityType.TABLE);
+    TestCase tieCase =
+        createTestCase(
+            "latest_record_batch_tie_case_" + timestamp,
+            tableLink(tieTable),
+            tieDefinition,
+            List.of());
+
+    String stateId = UUID.randomUUID().toString();
+    UUID lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID higherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    insertStatusRecords(
+        tieCase,
+        List.of(
+            seededRecord(stateId, timestamp, TestCaseResolutionStatusTypes.New, null)
+                .withId(lowerId),
+            seededRecord(stateId, timestamp, TestCaseResolutionStatusTypes.Ack, null)
+                .withId(higherId)));
+
+    List<CollectionDAO.LatestRecordWithFQNHash> latestRecords =
+        Entity.getCollectionDAO()
+            .testCaseResolutionStatusTimeSeriesDao()
+            .getLatestRecordBatch(List.of(tieCase.getFullyQualifiedName()));
+
+    assertEquals(1, latestRecords.size());
+    TestCaseResolutionStatus selected =
+        JsonUtils.readValue(latestRecords.getFirst().getJson(), TestCaseResolutionStatus.class);
+    assertEquals(higherId, selected.getId());
+  }
+
   // 60 distinct assignee names exceed GROUP_CONCAT's default 1024-char cap; the JSON aggregate
   // must deliver every name complete. Seeded via the database for speed and determinism.
   @Test
@@ -939,33 +980,25 @@ public class IncidentGroupsIT {
         statement.addBatch();
       }
       statement.executeBatch();
-      syncIncidentSummary(connection, postgres, fqnHash);
+      syncIncidentSummary(connection, postgres);
     }
   }
 
   // Direct SQL seeding bypasses the repository's write path, so the summary projection the
   // groups endpoint reads must be synced the way pre-existing history is at upgrade time: by
-  // the 2.1.0 backfill. The shipped migration file is executed verbatim (no hand copy that
-  // could drift from it) — safe unscoped because the upsert is idempotent, and it is exactly
-  // its MAX(id) tie-break that testDuplicateMaxTimestampTieBreak pins.
-  private void syncIncidentSummary(Connection connection, boolean postgres, String fqnHash)
-      throws Exception {
-    java.nio.file.Path migrationFile =
-        java.nio.file.Path.of(
-            "..",
-            "bootstrap",
-            "sql",
-            "migrations",
-            "native",
-            "2.1.0",
-            postgres ? "postgres" : "mysql",
-            "postDataMigrationSQLScript.sql");
-    if (!java.nio.file.Files.exists(migrationFile)) {
-      migrationFile = java.nio.file.Path.of("bootstrap").resolve(migrationFile.subpath(1, 8));
-    }
-    String backfill = java.nio.file.Files.readString(migrationFile);
-    try (java.sql.Statement statement = connection.createStatement()) {
-      statement.executeUpdate(backfill);
+  // the 2.1.0 backfill. Use the same dialect parser as the migration integration tests because
+  // MySQL JDBC deliberately rejects executing multiple migration statements in one call. Select
+  // only the incident statement so unrelated backfills cannot mutate concurrently running tests.
+  private void syncIncidentSummary(Connection connection, boolean postgres) throws Exception {
+    ConnectionType connectionType = postgres ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
+    String migrationStatement =
+        MetricMigrationSqlFixture.readMigrationScripts(connectionType).postStatements().stream()
+            .filter(statement -> statement.contains(INCIDENT_BACKFILL_SQL))
+            .findFirst()
+            .orElseThrow(
+                () -> new IllegalStateException("2.1.0 incident backfill statement not found"));
+    try (Statement statement = connection.createStatement()) {
+      statement.executeUpdate(migrationStatement);
     }
   }
 

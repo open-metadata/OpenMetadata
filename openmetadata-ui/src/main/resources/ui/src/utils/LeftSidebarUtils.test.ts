@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ROUTES } from '../constants/constants';
 import { SIDEBAR_NESTED_KEYS } from '../constants/LeftSidebar.constants';
-import { getSidebarActiveKeys } from './LeftSidebarUtils';
+import { getSidebarActiveKeys, getSidebarPathname } from './LeftSidebarUtils';
 
 describe('getSidebarActiveKeys', () => {
   it('should return the two-segment path for a list page', () => {
@@ -74,6 +75,15 @@ describe('getSidebarActiveKeys', () => {
     ).toEqual(['/observability/alerts']);
   });
 
+  it('should keep Incident Manager active for a direct test case detail route', () => {
+    expect(
+      getSidebarActiveKeys(
+        '/test-case/service.database.schema.table.test/results',
+        SIDEBAR_NESTED_KEYS
+      )
+    ).toEqual(['/incident-manager']);
+  });
+
   it('should keep the plural observability alerts list/add pages active', () => {
     expect(
       getSidebarActiveKeys('/observability/alerts', SIDEBAR_NESTED_KEYS)
@@ -85,8 +95,8 @@ describe('getSidebarActiveKeys', () => {
 
   it('should return a registered deep path as-is', () => {
     expect(
-      getSidebarActiveKeys('/context-center/dashboard', SIDEBAR_NESTED_KEYS)
-    ).toEqual(['/context-center/dashboard']);
+      getSidebarActiveKeys('/context-center/overview', SIDEBAR_NESTED_KEYS)
+    ).toEqual(['/context-center/overview']);
     expect(
       getSidebarActiveKeys('/governance/ontology', SIDEBAR_NESTED_KEYS)
     ).toEqual(['/governance/ontology']);
@@ -102,5 +112,25 @@ describe('getSidebarActiveKeys', () => {
     expect(getSidebarActiveKeys(CUSTOM_DEEP_PATH, nestedKeys)).toEqual([
       CUSTOM_DEEP_PATH,
     ]);
+  });
+});
+
+describe('getSidebarPathname', () => {
+  it('should map the in-place landing route `/` to the Home sidebar key', () => {
+    expect(getSidebarPathname(ROUTES.HOME, undefined)).toEqual(ROUTES.MY_DATA);
+  });
+
+  it('should leave `/my-data` untouched', () => {
+    expect(getSidebarPathname(ROUTES.MY_DATA, undefined)).toEqual(
+      ROUTES.MY_DATA
+    );
+  });
+
+  it('should prefer the breadcrumb origin url over the landing route', () => {
+    expect(
+      getSidebarPathname(ROUTES.HOME, {
+        breadcrumbData: [{ url: ROUTES.EXPLORE }],
+      })
+    ).toEqual(ROUTES.EXPLORE);
   });
 });

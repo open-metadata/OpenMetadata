@@ -27,6 +27,14 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 
+class OMetaClientInitError(ValueError):
+    """The OpenMetadata client could not be initialized.
+
+    Subclasses ValueError for backwards compatibility with callers that already
+    catch the flattened error this used to raise.
+    """
+
+
 def create_ometa_client(
     metadata_config: OpenMetadataConnection,
     user_agent: Optional[str] = None,  # noqa: UP045
@@ -50,8 +58,12 @@ def create_ometa_client(
         return metadata  # noqa: TRY300
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Wild error initialising the OMeta Client {exc}")
-        raise ValueError(exc)  # noqa: B904
+        # `raise ValueError(exc)` used to drop the class name, so a TypeError from a
+        # bad hostPort reached the user as a bare string with no hint of its origin.
+        raise OMetaClientInitError(
+            f"Could not initialize the OpenMetadata client against [{metadata_config.hostPort}]:"
+            f" {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def get_chart_entities_from_id(

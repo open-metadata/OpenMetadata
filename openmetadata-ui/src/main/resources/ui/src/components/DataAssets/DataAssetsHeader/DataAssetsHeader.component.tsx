@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   Copy01,
   File02,
@@ -151,6 +146,7 @@ export const DataAssetsHeader = ({
   onCertificationUpdate,
   onStyleUpdate,
   disableRunAgentsButtonMessage,
+  breadcrumbData,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -287,25 +283,23 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger>
-          <Link
-            to={{
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            }}>
-            <RedAlertIcon
-              className="tw:text-fg-error-primary"
-              height={24}
-              width={24}
-            />
-          </Link>
-        </TooltipTrigger>
+        <Link
+          to={{
+            pathname: getEntityDetailsPath(
+              entityType,
+              dataAsset?.fullyQualifiedName ?? '',
+              EntityTabs.LINEAGE
+            ),
+            search: QueryString.stringify({
+              layers: [LineageLayer.DataObservability],
+            }),
+          }}>
+          <RedAlertIcon
+            className="tw:text-fg-error-primary"
+            height={24}
+            width={24}
+          />
+        </Link>
       </Tooltip>
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, t]);
@@ -357,6 +351,34 @@ export const DataAssetsHeader = ({
       ),
     [entityType, dataAsset, entityName, parentContainers]
   );
+
+  const breadcrumbItems = useMemo(() => {
+    if (breadcrumbData?.length) {
+      return breadcrumbData.map((link, index) => ({
+        label: link.name,
+        href:
+          index < breadcrumbData.length - 1 && link.url
+            ? String(link.url)
+            : undefined,
+      }));
+    }
+
+    return [
+      ...(entityType === EntityType.METRIC ? [getGlossaryHomeCrumb(t)] : []),
+      ...breadcrumbs.map((link) => ({
+        label: link.name,
+        href: !isCustomizedView && link.url ? String(link.url) : undefined,
+      })),
+      { label: entityName },
+    ];
+  }, [
+    breadcrumbData,
+    breadcrumbs,
+    entityName,
+    entityType,
+    isCustomizedView,
+    t,
+  ]);
 
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
@@ -608,18 +630,16 @@ export const DataAssetsHeader = ({
           disableRunAgentsButtonMessage ??
           t('message.trigger-auto-pilot-application')
         }>
-        <TooltipTrigger>
-          <Button
-            color="primary"
-            data-testid="trigger-auto-pilot-application-button"
-            iconLeading={TriggerIcon}
-            isDisabled={disableRunAgentsButton}
-            isLoading={isLoading}
-            size="sm"
-            onPress={triggerTheAutoPilotApplication}>
-            {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
-          </Button>
-        </TooltipTrigger>
+        <Button
+          color="primary"
+          data-testid="trigger-auto-pilot-application-button"
+          iconLeading={TriggerIcon}
+          isDisabled={disableRunAgentsButton}
+          isLoading={isLoading}
+          size="sm"
+          onPress={triggerTheAutoPilotApplication}>
+          {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
+        </Button>
       </Tooltip>
     );
   }, [
@@ -642,20 +662,18 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="bottom" title={t('label.source-url')}>
-        <TooltipTrigger>
-          <Button
-            color="secondary"
-            data-testid="source-url-button"
-            href={sourceUrl}
-            iconLeading={IconExternalLink}
-            rel="noopener noreferrer"
-            size="sm"
-            target="_blank">
-            {t('label.view-in-service-type', {
-              serviceType: get(dataAsset, 'serviceType', ''),
-            })}
-          </Button>
-        </TooltipTrigger>
+        <Button
+          color="secondary"
+          data-testid="source-url-button"
+          href={sourceUrl}
+          iconLeading={IconExternalLink}
+          rel="noopener noreferrer"
+          size="sm"
+          target="_blank">
+          {t('label.view-in-service-type', {
+            serviceType: get(dataAsset, 'serviceType', ''),
+          })}
+        </Button>
       </Tooltip>
     );
   }, [dataAsset, t]);
@@ -689,19 +707,7 @@ export const DataAssetsHeader = ({
               <HeaderBreadcrumb
                 autoCollapse
                 className="tw:mb-0"
-                items={[
-                  ...(entityType === EntityType.METRIC
-                    ? [getGlossaryHomeCrumb(t)]
-                    : []),
-                  ...breadcrumbs.map((link) => ({
-                    label: link.name,
-                    href:
-                      !isCustomizedView && link.url
-                        ? String(link.url)
-                        : undefined,
-                  })),
-                  { label: entityName },
-                ]}
+                items={breadcrumbItems}
                 showHome={false}
                 size="xs"
               />
@@ -848,19 +854,18 @@ export const DataAssetsHeader = ({
                     ? t('message.link-copy-to-clipboard')
                     : t('label.copy-item', { item: t('label.url-uppercase') })
                 }>
-                <TooltipTrigger className="tw:flex tw:items-center">
-                  <Button
-                    aria-label={t('label.copy-item', {
-                      item: t('label.url-uppercase'),
-                    })}
-                    color="tertiary"
-                    data-testid="entity-header-copy-button"
-                    iconLeading={Copy01}
-                    size="xs"
-                    type="button"
-                    onClick={handleCopyEntityUrl}
-                  />
-                </TooltipTrigger>
+                <Button
+                  aria-label={t('label.copy-item', {
+                    item: t('label.url-uppercase'),
+                  })}
+                  className="tw:flex tw:items-center"
+                  color="tertiary"
+                  data-testid="entity-header-copy-button"
+                  iconLeading={Copy01}
+                  size="xs"
+                  type="button"
+                  onClick={handleCopyEntityUrl}
+                />
               </Tooltip>
               <LearningIcon pageId={entityType} />
             </div>
@@ -1039,14 +1044,15 @@ export const DataAssetsHeader = ({
                   )}
                 </div>
                 {(() => {
+                  const tableCertification = (dataAsset as Table).certification;
                   const certValue = (
                     <div
                       className="tw:text-sm tw:font-medium tw:text-primary"
                       data-testid="certification-value">
-                      {(dataAsset as Table).certification ? (
+                      {tableCertification ? (
                         <CertificationTag
                           showName
-                          certification={(dataAsset as Table).certification!}
+                          certification={tableCertification}
                         />
                       ) : (
                         NO_DATA_PLACEHOLDER
@@ -1087,11 +1093,7 @@ export const DataAssetsHeader = ({
           )}
 
           {entityType === EntityType.METRIC && onMetricUpdate && (
-            <MetricHeaderInfo
-              metricDetails={dataAsset}
-              metricPermissions={permissions}
-              onUpdateMetricDetails={onMetricUpdate}
-            />
+            <MetricHeaderInfo metricDetails={dataAsset} />
           )}
 
           {extraInfo}

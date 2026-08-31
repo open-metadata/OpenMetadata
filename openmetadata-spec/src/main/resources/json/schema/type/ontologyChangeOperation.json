@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyChangeOperation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyChangeOperation",
+  "description": "A typed, reversible operation in an ontology authoring session.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyChangeOperation",
+  "definitions": {
+    "operationType": {
+      "javaType": "org.openmetadata.schema.type.OntologyChangeOperationType",
+      "type": "string",
+      "enum": [
+        "CREATE_TERM",
+        "UPDATE_TERM",
+        "DELETE_TERM",
+        "ADD_RELATIONSHIP",
+        "UPDATE_RELATIONSHIP",
+        "DELETE_RELATIONSHIP",
+        "UPSERT_ATTRIBUTE",
+        "DELETE_ATTRIBUTE",
+        "UPSERT_MAPPING",
+        "DELETE_MAPPING",
+        "UPSERT_AXIOM",
+        "DELETE_AXIOM"
+      ]
+    },
+    "state": {
+      "javaType": "org.openmetadata.schema.type.OntologyChangeOperationState",
+      "type": "string",
+      "enum": ["ACTIVE", "UNDONE"],
+      "default": "ACTIVE"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "operationType": {
+      "$ref": "#/definitions/operationType"
+    },
+    "targetId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "baseVersion": {
+      "description": "Version used for optimistic concurrency. Omitted for create operations.",
+      "type": "number",
+      "minimum": 0.1,
+      "multipleOf": 0.1
+    },
+    "relationship": {
+      "$ref": "ontologyRelationship.json"
+    },
+    "attribute": {
+      "$ref": "ontologyAttribute.json"
+    },
+    "mapping": {
+      "$ref": "conceptMapping.json"
+    },
+    "axiom": {
+      "$ref": "../entity/data/ontologyAxiom.json"
+    },
+    "term": {
+      "$ref": "../entity/data/glossaryTerm.json"
+    },
+    "state": {
+      "$ref": "#/definitions/state"
+    }
+  },
+  "required": ["id", "operationType", "state"],
+  "additionalProperties": false
+}

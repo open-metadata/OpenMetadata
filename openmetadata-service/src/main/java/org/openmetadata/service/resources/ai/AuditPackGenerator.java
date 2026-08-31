@@ -40,6 +40,7 @@ import org.openmetadata.service.jdbi3.AuditReportRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -101,7 +102,9 @@ public final class AuditPackGenerator {
   }
 
   static void submit(UUID reportId) {
-    AsyncService.getInstance().execute(() -> run(reportId));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.AUDIT_PACK, reportId.toString(), () -> run(reportId));
   }
 
   private static void run(UUID reportId) {

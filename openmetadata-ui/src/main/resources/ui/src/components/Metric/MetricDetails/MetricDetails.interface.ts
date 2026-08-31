@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Metric } from '../../../generated/entity/data/metric';
-import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import type { Metric } from '../../../generated/entity/data/metric';
+import type { User } from '../../../generated/entity/teams/user';
 
 export interface MetricDetailsProps {
   metricDetails: Metric;
   metricPermissions: OperationPermission;
+  currentUser?: User;
   fetchMetricDetails: () => void;
+  onDeleteMetric: (isSoftDelete: boolean) => void;
   onFollowMetric: () => Promise<void>;
   onMetricUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
-  onToggleDelete: (version?: number) => void;
+  onRestoreMetric: () => Promise<void>;
   onUnFollowMetric: () => Promise<void>;
-  onUpdateMetricDetails: (data: DataAssetWithDomains) => void;
   onVersionChange: () => void;
-  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

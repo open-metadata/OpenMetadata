@@ -617,6 +617,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           i18nKey="message.configure-airflow"
           renderElement={
             <a
+              aria-label={t('label.documentation')}
               data-testid="airflow-doc-link"
               href={AIRFLOW_DOCS}
               rel="noopener noreferrer"

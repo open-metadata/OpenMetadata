@@ -10,15 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ColumnsType } from 'antd/es/table/interface';
+import { isEmpty } from 'lodash';
+import React, { ReactNode } from 'react';
 import type {
+  ColumnsType,
   ColumnType,
   FilterValue,
   SortOrder,
-} from 'antd/lib/table/interface';
-import { isEmpty } from 'lodash';
-import React, { ReactNode } from 'react';
+} from './Table.interface';
 import type { FlatRow } from './TableV2.interface';
+
+/**
+ * Resolves an aria selection back to the caller's row keys and records.
+ *
+ * Tree tables resolve against the flattened visible rows rather than the top-level data source:
+ * an expanded child is nested inside its parent record, so a top-level scan silently drops it.
+ * Select-all is the worst case — aria checks every visible row, so reporting only the roots would
+ * hand a bulk action a shorter list than the user can see is selected.
+ */
+export function resolveSelectedRows<T>({
+  selection,
+  isTree,
+  flatRows,
+  dataSource,
+  getRowKey,
+}: {
+  selection: 'all' | Iterable<string | number>;
+  isTree: boolean;
+  flatRows: FlatRow<T>[];
+  dataSource: T[];
+  getRowKey: (record: T, index: number) => string;
+}): { selectedKeys: string[]; selectedRows: T[] } {
+  const selectableKeys = isTree
+    ? flatRows.map((row) => row.rowKey)
+    : dataSource.map((record, index) => getRowKey(record, index));
+
+  const selectedKeys =
+    selection === 'all' ? selectableKeys : [...selection].map(String);
+  const selectedKeySet = new Set(selectedKeys);
+
+  const selectedRows = isTree
+    ? flatRows
+        .filter((row) => selectedKeySet.has(row.rowKey))
+        .map((row) => row.record)
+    : dataSource.filter((record, index) =>
+        selectedKeySet.has(getRowKey(record, index))
+      );
+
+  return { selectedKeys, selectedRows };
+}
 
 export function flattenTreeRows<T>(
   data: T[],

@@ -69,7 +69,10 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
-import { CSV_JOBS_REFRESH_EVENT } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -320,7 +323,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     try {
       // The export runs as a background job; the Background jobs tray surfaces
       // progress and the Download action once it completes.
-      await exportSearchResultsAsync(params);
+      const exportJob = await exportSearchResultsAsync(params);
+      // Claim the just-started job so the tray always surfaces it, even if it
+      // finishes before the tray's first fetch.
+      markCsvJobOwned(exportJob?.jobId);
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
       showSuccessToast(t('message.search-export-job-started'));
       setShowExportScopeModal(false);
@@ -761,8 +767,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Divider className="tw:my-2" orientation="vertical" />
 
             <Dropdown.Root>
+              {/* The Tools label should match the adjacent 14px Explore filters. */}
               <Button
-                className="tw:p-0"
+                hideFocusOutline
                 color="tertiary"
                 iconTrailing={<ChevronDown size={14} />}
                 size="sm">
@@ -860,10 +867,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
+          // Ant Card owns the title padding, so the spacing belongs on its header rather than the inner row.
+          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
+          titleClassName: 'tw:capitalize tw:font-medium',
+          titleContainerClassName: 'tw:items-center',
+          titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{

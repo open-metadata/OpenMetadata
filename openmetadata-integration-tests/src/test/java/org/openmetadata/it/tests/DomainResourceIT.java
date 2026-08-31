@@ -702,7 +702,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newParentName, renamedParent.getName());
     assertEquals(newParentName, renamedParent.getFullyQualifiedName());
 
-    // Verify child domains' FQNs are updated
+    // Verify child domains' FQNs are updated. Descendant FQN rewrite runs after the parent
+    // PATCH commits, so poll until both children reflect the new parent prefix.
+    Awaitility.await("Child domain FQNs must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe1 = getEntity(child1.getId().toString());
+              Domain probe2 = getEntity(child2.getId().toString());
+              assertTrue(probe1.getFullyQualifiedName().startsWith(newParentName + "."));
+              assertTrue(probe2.getFullyQualifiedName().startsWith(newParentName + "."));
+            });
     Domain updatedChild1 = getEntity(child1.getId().toString());
     Domain updatedChild2 = getEntity(child2.getId().toString());
 
@@ -766,7 +779,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     assertEquals(newGpName, renamedGp.getFullyQualifiedName());
 
-    // Verify all levels' FQNs are updated
+    // Verify all levels' FQNs are updated. Descendant FQN rewrite runs after the
+    // grandparent PATCH commits, so poll until both descendants reflect the new prefix.
+    Awaitility.await("Descendant domain FQNs must propagate after grandparent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probeParent = getEntity(parent.getId().toString());
+              Domain probeChild = getEntity(child.getId().toString());
+              assertTrue(probeParent.getFullyQualifiedName().startsWith(newGpName + "."));
+              assertTrue(probeChild.getFullyQualifiedName().startsWith(newGpName + "."));
+            });
     Domain updatedParent = getEntity(parent.getId().toString());
     Domain updatedChild = getEntity(child.getId().toString());
 
@@ -908,8 +934,19 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newDomainName, renamedDomain.getName());
     assertEquals(newDomainName, renamedDomain.getFullyQualifiedName());
 
-    Domain fetchedSubdomain = getEntity(subdomain.getId().toString());
+    // Subdomain FQN rewrite runs after the parent PATCH commits, so poll for it.
     String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    Awaitility.await("Subdomain FQN must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe = getEntity(subdomain.getId().toString());
+              assertEquals(expectedSubdomainFqn, probe.getFullyQualifiedName());
+            });
+    Domain fetchedSubdomain = getEntity(subdomain.getId().toString());
     assertEquals(expectedSubdomainFqn, fetchedSubdomain.getFullyQualifiedName());
 
     org.openmetadata.schema.entity.domains.DataProduct fetchedDataProduct =
@@ -976,9 +1013,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newAnalyticsName, renamedAnalytics.getName());
     assertEquals(newAnalyticsName, renamedAnalytics.getFullyQualifiedName());
 
-    // Verify database entities are correct
-    Domain updatedChild = getEntity(child.getId().toString());
+    // Verify database entities are correct. Descendant FQN rewrite runs after the
+    // parent PATCH commits, so poll until the child reflects the new prefix.
     String expectedChildFqn = newAnalyticsName + "." + childName;
+    Awaitility.await("Child domain FQN must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe = getEntity(child.getId().toString());
+              assertEquals(expectedChildFqn, probe.getFullyQualifiedName());
+            });
+    Domain updatedChild = getEntity(child.getId().toString());
     assertEquals(
         expectedChildFqn,
         updatedChild.getFullyQualifiedName(),
@@ -1067,8 +1115,21 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .anyMatch(tag -> tag.getTagFQN().equals(personalDataTagLabel().getTagFQN())),
         "Domain should still have PersonalData.Personal tag after rename");
 
-    Domain fetchedSubdomainAfterRename = getEntityWithFields(subdomain.getId().toString(), "tags");
+    // Subdomain FQN rewrite runs after the parent PATCH commits; poll for it, then
+    // re-fetch with tags for the downstream tag assertions.
     String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    String subdomainId = subdomain.getId().toString();
+    Awaitility.await("Subdomain FQN must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe = getEntity(subdomainId);
+              assertEquals(expectedSubdomainFqn, probe.getFullyQualifiedName());
+            });
+    Domain fetchedSubdomainAfterRename = getEntityWithFields(subdomainId, "tags");
     assertEquals(expectedSubdomainFqn, fetchedSubdomainAfterRename.getFullyQualifiedName());
     assertNotNull(
         fetchedSubdomainAfterRename.getTags(), "Subdomain tags should not be null after rename");

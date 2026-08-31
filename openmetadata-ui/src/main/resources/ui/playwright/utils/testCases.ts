@@ -29,6 +29,7 @@ import {
   fillTagDetails,
   pressKeyXTimes,
   startCsvPreviewAndWaitForGrid,
+  suppressCsvJobsTray,
 } from './importUtils';
 
 export const getFailedRowsData = (table: TableClass) => {
@@ -301,17 +302,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
       res.request().method() === 'GET' &&
       res.status() === 200
   );
-  await breadcrumb.getByRole('link', { name: tableName }).click();
-  await tableResponsePromise;
-
-  // The crumb opens the table's default tab; return to the Data Quality
-  // tab the flow started from so follow-up steps find the test case list.
-  await page.getByTestId('profiler').click();
-  const testCaseResponse = page.waitForResponse(
+  const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
-  await page.getByRole('tab', { name: 'Data Quality' }).click();
-  await testCaseResponse;
+  await breadcrumb.getByRole('link', { name: tableName }).click();
+  await Promise.all([tableResponsePromise, testCaseResponsePromise]);
 };
 
 export const findSystemTestDefinition = async (page: Page) => {
@@ -714,6 +709,25 @@ export const addTestCaseValidationRows = async (
   );
 };
 
+const IMPORT_LOAD_MASK_SELECTOR =
+  '.inovua-react-toolkit-load-mask__background-layer';
+
+/**
+ * Click the import preview's Update button once nothing is covering it.
+ *
+ * This used to pass { force: true } for an "element obscured by overlay" that
+ * was never pinned down. There are two real obstructions: the grid's load mask,
+ * which this waits out, and the background-jobs tray, which suppressCsvJobsTray
+ * makes click-through at the start of the flow. With both handled the click can
+ * go through Playwright's actionability checks, so a future overlay regression
+ * surfaces here instead of being forced past.
+ */
+const clickImportUpdateButton = async (page: Page) => {
+  await page.locator(IMPORT_LOAD_MASK_SELECTOR).waitFor({ state: 'detached' });
+
+  await page.click('[type="button"] >> text="Update"');
+};
+
 /**
  * Perform complete E2E export-import-validate flow
  * @param page - Playwright page object
@@ -727,6 +741,12 @@ export const performE2EExportImportFlow = async (
 ) => {
   const { validateImportStatus } = await import('./importUtils');
   const { test } = await import('@playwright/test');
+
+  // Step 1's export finishes mid-flow and auto-expands the background-jobs tray
+  // over the profiler's Manage button, so every later clickManageButton retries
+  // until the test times out. Neutralise the tray before the first export rather
+  // than inside the import helpers, which run after the first blocked click.
+  await suppressCsvJobsTray(page);
 
   // Step 1: Export test case details
   await test.step('Export test case details to downloads folder', async () => {
@@ -795,11 +815,10 @@ export const performE2EExportImportFlow = async (
         response.url().includes('recursive=true')
     );
 
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await page.click('[type="button"] >> text="Update"', { force: true });
+    await clickImportUpdateButton(page);
     await updateButtonResponse;
     await page
-      .locator('.inovua-react-toolkit-load-mask__background-layer')
+      .locator(IMPORT_LOAD_MASK_SELECTOR)
       .waitFor({ state: 'detached' });
     await toastNotification(page, /updated successfully/);
   });
@@ -872,11 +891,10 @@ export const performE2EExportImportFlow = async (
         response.url().includes('dryRun=false')
     );
 
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await page.click('[type="button"] >> text="Update"', { force: true });
+    await clickImportUpdateButton(page);
     await bulkEditUpdateResponse;
     await page
-      .locator('.inovua-react-toolkit-load-mask__background-layer')
+      .locator(IMPORT_LOAD_MASK_SELECTOR)
       .waitFor({ state: 'detached' });
     await toastNotification(page, /updated successfully/);
 

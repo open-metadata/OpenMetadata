@@ -58,7 +58,10 @@ import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
-import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
+import {
+  DataQualityTabProps,
+  ProfilerTabPath,
+} from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 export const QualityTab = () => {
@@ -98,6 +101,11 @@ export const QualityTab = () => {
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
+  const originBreadcrumb = (
+    location.state as {
+      breadcrumbData?: DataQualityTabProps['breadcrumbData'];
+    } | null
+  )?.breadcrumbData;
 
   const searchData = useMemo(() => {
     const param = location.search;
@@ -223,11 +231,15 @@ export const QualityTab = () => {
   };
 
   const tableBreadcrumb = useMemo(() => {
+    if (originBreadcrumb?.length) {
+      return originBreadcrumb;
+    }
+
     return table
       ? [
           ...getBreadcrumbForTable(table),
           {
-            name: getEntityName(table),
+            name: table.name,
             url: getEntityDetailsPath(
               EntityType.TABLE,
               table.fullyQualifiedName ?? '',
@@ -237,7 +249,7 @@ export const QualityTab = () => {
           },
         ]
       : undefined;
-  }, [table]);
+  }, [originBreadcrumb, table]);
 
   const handleTestCaseStatusChange = (value: TestCaseStatus) => {
     if (value !== selectedTestCaseStatus) {
@@ -353,7 +365,7 @@ export const QualityTab = () => {
           qualityTab: String(tab),
         }),
       },
-      { state: undefined, replace: true }
+      { state: location.state, replace: true }
     );
   };
 

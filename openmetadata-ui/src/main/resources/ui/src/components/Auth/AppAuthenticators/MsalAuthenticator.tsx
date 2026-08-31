@@ -20,9 +20,11 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
   useEffect,
   useImperativeHandle,
 } from 'react';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   msalLoginRequest,
   parseMSALResponse,
@@ -107,17 +109,27 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const renewIdToken = async () => {
+    const renewIdToken = useCallback(async () => {
       const user = await fetchIdToken(true);
 
       return user.id_token;
-    };
+    }, [account, accounts, instance]);
 
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewIdToken,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Azure/MSAL.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(renewIdToken);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [renewIdToken]);
 
     // Need to capture redirect and parse ID token
     // Call login success callback

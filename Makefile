@@ -10,6 +10,14 @@ help:
 prerequisites:
 	./scripts/check_prerequisites.sh
 
+.PHONY: dev_setup
+dev_setup:  ## One-call dev environment setup for macOS/Linux (pass flags via ARGS=...)
+	./scripts/dev_setup.sh $(ARGS)
+
+.PHONY: dev_check
+dev_check:  ## Diagnose the dev environment without changing anything
+	./scripts/dev_setup.sh --check
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
@@ -104,9 +112,12 @@ ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
 # runtimes will reject.
 #
 # For step 3, override ANTLR_MAVEN_BASE to pull from an internal Maven mirror
-# instead of Central. The fallback base is tried if the primary is unreachable,
-# so the default (both = Central) stays correct everywhere else.
-ANTLR_MAVEN_BASE ?= https://repo1.maven.org/maven2
+# instead of Central. The default primary is Google's Central mirror, which is
+# CDN-backed and not subject to repo1's per-IP 429 throttling that breaks
+# multi-arch Docker publishes; repo1 stays as the fallback if the mirror is
+# unreachable. The pinned SHA-256 below verifies whatever is fetched, so the
+# source is swappable without lowering trust.
+ANTLR_MAVEN_BASE ?= https://maven-central.storage-download.googleapis.com/maven2
 ANTLR_MAVEN_FALLBACK_BASE ?= https://repo1.maven.org/maven2
 ANTLR_COMPLETE_JAR_PATH := org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
 ANTLR_COMPLETE_JAR_URL := $(ANTLR_MAVEN_BASE)/$(ANTLR_COMPLETE_JAR_PATH)
@@ -229,6 +240,10 @@ snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies
 	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) --json > security-report/mysql-scan.json | true;
 	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
 	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
+
+.PHONY: docker-base-image-cve-test
+docker-base-image-cve-test:  ## Assert the ingestion-base image is free of the five Debian 12 OS CVEs and its driver stack still loads. Usage: make docker-base-image-cve-test IMAGE=<tag>
+	./ingestion/tests/docker/base_image_cve_test.sh $(IMAGE)
 
 .PHONY: snyk-ingestion-base-slim-report
 snyk-ingestion-base-slim-report:

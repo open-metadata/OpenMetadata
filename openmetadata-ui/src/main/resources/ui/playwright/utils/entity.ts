@@ -36,7 +36,6 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
-  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -94,15 +93,6 @@ export const visitEntityPage = async (data: {
 
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -141,7 +131,6 @@ export const visitEntityPageByFqn = async (data: {
 }) => {
   const { page, endpoint, fqn } = data;
   await waitForAllLoadersToDisappear(page);
-  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
@@ -1528,7 +1517,6 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
@@ -1688,12 +1676,33 @@ export const replyAnnouncement = async (page: Page) => {
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
   await page.click('[data-testid="edit-message"]');
 
-  await page.fill(
-    '[data-testid="editor-wrapper"] .ql-editor',
-    'Reply message edited'
+  // With the edit box open there are two Quill editors on the page: the reply's
+  // edit box and the drawer's reply composer. A page-level
+  // `[data-testid="editor-wrapper"] .ql-editor` binds to whichever mounted
+  // first, so the text can land in the composer instead. The edit box then
+  // saves unchanged content, the client sends no PATCH at all, and the final
+  // assertion times out on stale text. `.is_edit_post` is set only on the edit
+  // box (FeedCardBody passes it as `editorClass`), so scope to it — and no
+  // `.first()`, so strict mode fails loudly if it ever stops being unique.
+  const replyEditor = page.locator(
+    '[data-testid="editor-wrapper"] .is_edit_post .ql-editor'
+  );
+
+  // Pre-populated with the current reply, which proves the editor is mounted
+  // and that we are addressing the edit box rather than the empty composer.
+  await expect(replyEditor).toHaveText('Reply message');
+
+  await replyEditor.fill('Reply message edited');
+  await expect(replyEditor).toHaveText('Reply message edited');
+
+  const updatedPostResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/feed/') &&
+      response.request().method() === 'PATCH'
   );
 
   await page.click('[data-testid="save-button"]');
+  await updatedPostResponse;
 
   await expect(
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
@@ -1974,6 +1983,25 @@ export const checkForEditActions = async ({
   entityType: string;
   deleted?: boolean;
 }) => {
+  if (entityType === EntityTypeEndpoint.METRIC) {
+    await expect(page.getByTestId('manage-button')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Share' })).toBeVisible();
+
+    if (deleted) {
+      await expect(
+        page.getByRole('button', { name: /Follow(?:ing)?/ })
+      ).not.toBeVisible();
+      await expect(page.getByTestId('edit-metric-metadata')).not.toBeVisible();
+    } else {
+      await expect(
+        page.getByRole('button', { name: /Follow(?:ing)?/ })
+      ).toBeEnabled();
+      await expect(page.getByTestId('edit-metric-metadata')).toBeVisible();
+    }
+
+    return;
+  }
+
   for (const {
     containerSelector,
     elementSelector,
@@ -2120,6 +2148,20 @@ export const deletedEntityCommonChecks = async ({
   }
 
   await page.click('[data-testid="manage-button"]');
+
+  if (endPoint === EntityTypeEndpoint.METRIC) {
+    await expect(page.getByTestId('delete-button')).toBeVisible();
+    if (deleted) {
+      await expect(page.getByTestId('restore-button')).toBeVisible();
+      await expect(page.getByTestId('version-button')).not.toBeVisible();
+    } else {
+      await expect(page.getByTestId('restore-button')).not.toBeVisible();
+      await expect(page.getByTestId('version-button')).toBeVisible();
+    }
+    await clickOutside(page);
+
+    return;
+  }
 
   if (deleted) {
     // only two menu options (restore and delete) should be present

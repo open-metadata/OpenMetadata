@@ -92,6 +92,16 @@ export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
   value,
 }));
 
+// Sentinel for "no specific category chosen" on the add-service wizard's category-agnostic entry
+// points (the All Connections tab, the /settings/services landing page) — deliberately not a
+// ServiceCategory member, since that enum is consumed exhaustively elsewhere (search index maps,
+// resource-permission maps, entity-type maps) and a fake member would force all of those to handle
+// a non-category. Mirrors Collate's own `ConnectionsCategory = ConnectionsServiceCategory | 'all'`.
+export const ALL_SERVICES_CATEGORY = 'all' as const;
+export type ServiceCategoryParam =
+  | ServiceCategory
+  | typeof ALL_SERVICES_CATEGORY;
+
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   {
     name: 'label.select-field',
@@ -189,10 +199,12 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
+  MessagingServiceType.Nats,
   DashboardServiceType.SapS4Hana,
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
   PipelineServiceType.Prefect,
+  DatabaseServiceType.Iomete,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

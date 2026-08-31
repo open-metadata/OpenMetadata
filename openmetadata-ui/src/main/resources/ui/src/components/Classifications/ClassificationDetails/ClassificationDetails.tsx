@@ -15,7 +15,6 @@ import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
 import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
@@ -31,9 +30,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -44,13 +46,14 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import { getTags } from '../../../rest/tagAPI';
+import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
 import {
   getClassificationExtraDropdownContent,
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -63,11 +66,14 @@ import AppBadge from '../../common/Badge/Badge.component';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import Loader from '../../common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -103,11 +109,13 @@ const ClassificationDetails = forwardRef(
       isVersionView = false,
       isClassificationLoading = false,
       handleToggleDisable,
+      handleEditClassificationClick,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
     const { theme } = useApplicationStore();
     const { permissions } = usePermissionProvider();
+    const { showModal } = useEntityExportModalProvider();
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
@@ -206,7 +214,6 @@ const ClassificationDetails = forwardRef(
       editDescriptionPermission,
       createPermission,
       deletePermission,
-      editDisplayNamePermission,
       editOwnerPermission,
       editDomainPermission,
     } = useMemo(() => {
@@ -225,9 +232,6 @@ const ClassificationDetails = forwardRef(
             classificationPermissions.EditAll),
         deletePermission:
           classificationPermissions.Delete && !isSystemClassification,
-        editDisplayNamePermission:
-          classificationPermissions.EditAll ||
-          classificationPermissions.EditDisplayName,
         editOwnerPermission:
           isEditable &&
           (classificationPermissions.EditAll ||
@@ -260,29 +264,81 @@ const ClassificationDetails = forwardRef(
       [isTier, isSystemClassification, editClassificationPermission]
     );
 
+    // The edit drawer edits every classification field, so it needs full
+    // EditAll access.
+    const showEditOption = useMemo(
+      () =>
+        !isVersionView &&
+        !isClassificationDisabled &&
+        editClassificationPermission,
+      [isVersionView, isClassificationDisabled, editClassificationPermission]
+    );
+
+    // Import/export are not offered for system-generated classifications
+    // (e.g. Tier, Certification), whose tags are managed by the platform.
+    const showExportOption = useMemo(
+      () =>
+        !isVersionView &&
+        !isSystemClassification &&
+        classificationPermissions.ViewAll,
+      [isVersionView, isSystemClassification, classificationPermissions]
+    );
+
+    // Import creates/updates tags, so it needs full EditAll access and is not
+    // available in version view, on a disabled classification, or on a
+    // system-generated classification.
+    const showImportOption = useMemo(
+      () =>
+        !isVersionView &&
+        !isClassificationDisabled &&
+        !isSystemClassification &&
+        classificationPermissions.EditAll,
+      [
+        isVersionView,
+        isClassificationDisabled,
+        isSystemClassification,
+        classificationPermissions,
+      ]
+    );
+
     const showManageButton = useMemo(
       () =>
         !isVersionView &&
-        (editDisplayNamePermission || deletePermission || showDisableOption),
+        (showEditOption ||
+          deletePermission ||
+          showDisableOption ||
+          showExportOption ||
+          showImportOption),
       [
-        editDisplayNamePermission,
+        showEditOption,
         deletePermission,
         showDisableOption,
+        showExportOption,
+        showImportOption,
         isVersionView,
       ]
     );
 
-    const handleUpdateDisplayName = async (data: {
-      name: string;
-      displayName?: string;
-    }) => {
-      if (!isUndefined(currentClassification)) {
-        return handleUpdateClassification?.({
-          ...currentClassification,
-          ...data,
+    const handleClassificationExportClick = useCallback(() => {
+      if (currentClassification?.fullyQualifiedName) {
+        showModal({
+          name: currentClassification.fullyQualifiedName,
+          onExport: exportClassificationInCSVFormat,
+          exportTypes: [ExportTypes.CSV],
         });
       }
-    };
+    }, [currentClassification, showModal]);
+
+    const handleClassificationImportClick = useCallback(() => {
+      if (currentClassification?.fullyQualifiedName) {
+        navigate(
+          getEntityImportPath(
+            EntityType.CLASSIFICATION,
+            currentClassification.fullyQualifiedName
+          )
+        );
+      }
+    }, [currentClassification, navigate]);
 
     const handleUpdateDescription = async (updatedHTML: string) => {
       if (!isUndefined(currentClassification)) {
@@ -342,16 +398,61 @@ const ClassificationDetails = forwardRef(
     );
 
     const extraDropdownContent = useMemo(
-      () =>
-        getClassificationExtraDropdownContent(
+      () => [
+        ...getClassificationExtraDropdownContent(
           showDisableOption,
           isClassificationDisabled,
-          handleEnableDisableClassificationClick
+          handleEnableDisableClassificationClick,
+          showEditOption,
+          handleEditClassificationClick
         ),
+        ...(showImportOption
+          ? [
+              {
+                label: (
+                  <ManageButtonItemLabel
+                    description={t('message.import-entity-help', {
+                      entity: t('label.tag-lowercase-plural'),
+                    })}
+                    icon={ImportIcon}
+                    id="import-button"
+                    name={t('label.import')}
+                  />
+                ),
+                key: 'import-button',
+                onClick: handleClassificationImportClick,
+              },
+            ]
+          : []),
+        ...(showExportOption
+          ? [
+              {
+                label: (
+                  <ManageButtonItemLabel
+                    description={t('message.export-entity-help', {
+                      entity: t('label.tag-lowercase-plural'),
+                    })}
+                    icon={ExportIcon}
+                    id="export-button"
+                    name={t('label.export')}
+                  />
+                ),
+                key: 'export-button',
+                onClick: handleClassificationExportClick,
+              },
+            ]
+          : []),
+      ],
       [
         isClassificationDisabled,
         showDisableOption,
         handleEnableDisableClassificationClick,
+        showEditOption,
+        handleEditClassificationClick,
+        showImportOption,
+        handleClassificationImportClick,
+        showExportOption,
+        handleClassificationExportClick,
       ]
     );
 
@@ -472,19 +573,14 @@ const ClassificationDetails = forwardRef(
                     <ManageButton
                       isRecursiveDelete
                       afterDeleteAction={handleAfterDeleteAction}
-                      allowRename={!isSystemClassification}
                       allowSoftDelete={false}
                       canDelete={deletePermission && !isClassificationDisabled}
                       displayName={getEntityName(currentClassification)}
-                      editDisplayNamePermission={
-                        editDisplayNamePermission && !isClassificationDisabled
-                      }
                       entityFQN={currentClassification?.fullyQualifiedName}
                       entityId={currentClassification.id}
                       entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}
                       extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleUpdateDisplayName}
                     />
                   )}
                 </ButtonGroup>

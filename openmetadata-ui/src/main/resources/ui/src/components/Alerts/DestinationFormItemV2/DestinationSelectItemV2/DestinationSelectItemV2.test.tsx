@@ -52,7 +52,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       data-testid={tid}
       value={value ?? ''}
       onChange={(e) => onChange?.(e.target.value)}>
-      <option value="" />
+      <option aria-label="Empty option" value="" />
       {items.map((item) => (
         <option disabled={item.isDisabled} key={item.id} value={item.id}>
           {item.label}
@@ -134,13 +134,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
       defaultValue?: string;
     }) => (
       <div>
-        {label && <label>{label}</label>}
-        <input
-          data-testid={inputDataTestId ?? tid}
-          defaultValue={defaultValue}
-          value={value ?? ''}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
+        <label htmlFor={inputDataTestId ?? tid}>
+          {label}
+          <input
+            aria-label="Input"
+            data-testid={inputDataTestId ?? tid}
+            defaultValue={defaultValue}
+            id={inputDataTestId ?? tid}
+            value={value ?? ''}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+        </label>
       </div>
     ),
     Select: SelectBase,
@@ -153,10 +157,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       isSelected?: boolean;
       label?: ReactNode;
     }) => (
-      <label>
+      <label htmlFor="notify-downstream-toggle">
         <input
+          aria-label="Notify downstream"
           checked={isSelected ?? false}
           data-testid="notify-downstream-toggle"
+          id="notify-downstream-toggle"
           type="checkbox"
           onChange={(e) => onChange?.(e.target.checked)}
         />

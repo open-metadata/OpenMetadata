@@ -579,6 +579,36 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testResolveTaskRejectsMissingRequiredTransitionComment(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withCurrentDescription(table.getDescription())
+            .withNewDescription("Description rejected without a comment");
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("resolve-reject-comment-required"))
+                .withDescription("Task whose rejection requires a comment")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.DescriptionUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    ResolveTask resolveRequest = new ResolveTask().withResolutionType(TaskResolutionType.Rejected);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest));
+
+    Task unchanged = SdkClients.adminClient().tasks().get(task.getId().toString());
+    assertEquals(TaskEntityStatus.Open, unchanged.getStatus());
+  }
+
+  @Test
   void testListTasksByStatus(TestNamespace ns) {
     CreateTask request1 =
         new CreateTask()
@@ -4557,126 +4587,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             });
   }
 
-  // ==================== statusGroup buckets for DAR Granted (row-aware) ====================
-  //
-  // A Data Access Request task in status "Granted" reads as done from the user's perspective —
-  // requester's work complete, reviewer's work complete, access provisioned. The row-aware
-  // TaskBucketSql routes DAR-Granted to the Closed bucket and non-DAR-Granted (defensive
-  // fallback) to Open, mirroring how Approved is dispatched. Revoke stays reachable from the
-  // closed task via availableTransitions — GitHub-issue-reopen model. See TaskBucketSql for
-  // bucket definitions and the invariant openCount + completedCount = total.
-  //
-  // Every task created below is scoped to a fresh table (a unique aboutEntity FQN) and every
-  // list/count query filters on that FQN. Pagination limits therefore cannot miss the row
-  // and prior-run task residue in the shared testcontainer cannot flip the assertions.
-
-  private record GrantedDarFixture(Task task, String aboutEntityFqn) {}
-
-  private GrantedDarFixture createGrantedDarFixture(TestNamespace ns, String label) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
-    String tableFqn = table.getFullyQualifiedName();
-    CreateTask request =
-        new CreateTask()
-            .withName(ns.prefix(label + "-" + UUID.randomUUID()))
-            .withDescription("DAR pushed to Granted for group-filter test")
-            .withCategory(TaskCategory.DataAccess)
-            .withType(TaskEntityType.DataAccessRequest)
-            .withAbout(entityLink("table", tableFqn))
-            .withPayload(
-                new DataAccessRequestPayload()
-                    .withAccessType(DataAccessType.FullAccess)
-                    .withRequestedAccess(DataAccessPermission.Read)
-                    .withReason("integration-test")
-                    .withExpirationDate(System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000));
-    Task task = SdkClients.adminClient().tasks().create(request);
-    task.setStatus(TaskEntityStatus.Granted);
-    Task granted = SdkClients.adminClient().tasks().update(task.getId().toString(), task);
-    return new GrantedDarFixture(granted, tableFqn);
-  }
-
-  @Test
-  void testStatusGroupClosed_includesDarGrantedTasks(TestNamespace ns) {
-    GrantedDarFixture fixture = createGrantedDarFixture(ns, "closed-granted");
-    assertEquals(TaskEntityStatus.Granted, fixture.task().getStatus());
-
-    ListResponse<Task> closed =
-        SdkClients.adminClient()
-            .tasks()
-            .listWithFilters(
-                Map.of("statusGroup", "closed", "aboutEntity", fixture.aboutEntityFqn()));
-
-    assertNotNull(closed);
-    assertTrue(
-        closed.getData().stream().anyMatch(t -> t.getId().equals(fixture.task().getId())),
-        "statusGroup=closed must include Granted tasks (Slack-thread regression guard)");
-  }
-
-  @Test
-  void testStatusGroupOpen_excludesGrantedTasks(TestNamespace ns) {
-    GrantedDarFixture fixture = createGrantedDarFixture(ns, "open-granted");
-
-    ListResponse<Task> open =
-        SdkClients.adminClient()
-            .tasks()
-            .listWithFilters(
-                Map.of("statusGroup", "open", "aboutEntity", fixture.aboutEntityFqn()));
-
-    assertNotNull(open);
-    assertFalse(
-        open.getData().stream().anyMatch(t -> t.getId().equals(fixture.task().getId())),
-        "statusGroup=open must NOT include Granted DAR-shaped tasks — the reported bug");
-  }
-
-  @Test
-  void testStatusGroupActive_stillIncludesGrantedForLiveAccessLookup(TestNamespace ns) {
-    GrantedDarFixture fixture = createGrantedDarFixture(ns, "active-granted");
-
-    ListResponse<Task> active =
-        SdkClients.adminClient()
-            .tasks()
-            .listWithFilters(
-                Map.of("statusGroup", "active", "aboutEntity", fixture.aboutEntityFqn()));
-
-    assertNotNull(active);
-    assertTrue(
-        active.getData().stream().anyMatch(t -> t.getId().equals(fixture.task().getId())),
-        "statusGroup=active must still include Granted — useDataAccessRequest depends on it");
-  }
-
-  /**
-   * Independent guard on the {@code getTaskCountSummary} CASE arms. The row-aware buckets in
-   * {@link org.openmetadata.service.jdbi3.ListFilter#buildTaskStatusGroupCondition} and the
-   * count-summary SQL in {@link
-   * org.openmetadata.service.jdbi3.CollectionDAO.TaskDAO#getTaskCountSummary} are two
-   * hand-maintained SQL sites. The other DAR-Granted tests here exercise the first site — this
-   * one exercises the second so a divergence between the two cannot leave list-view and
-   * tab-count answers inconsistent while every other test passes. Scoping via {@code
-   * aboutEntity} keeps the count deterministic even with shared-testcontainer residue.
-   */
-  @Test
-  void testGetCount_DarGrantedLandsInCompletedAndPreservesTotalInvariant(TestNamespace ns) {
-    GrantedDarFixture fixture = createGrantedDarFixture(ns, "count-granted");
-
-    TaskCount count =
-        SdkClients.adminClient().tasks().getCount(null, null, fixture.aboutEntityFqn());
-
-    assertNotNull(count);
-    assertEquals(
-        1,
-        count.getTotal(),
-        "Fresh table scope should return exactly the one DAR-Granted task just created");
-    assertEquals(
-        1,
-        count.getCompleted(),
-        "DAR + Granted must land in completedCount (GitHub-issue-closed model)");
-    assertEquals(0, count.getOpen(), "DAR + Granted must not double-count into openCount");
-    assertEquals(
-        1, count.getGranted(), "Standalone grantedCount metric should still bump for reporting");
-    assertEquals(
-        count.getTotal(),
-        count.getOpen() + count.getCompleted(),
-        "openCount + completedCount = total invariant must hold across the new Granted CASE arm");
-  }
+  // NOTE: The row-aware statusGroup + task-count tests for DAR-Granted moved to
+  // collate-integration-tests/src/test/java/io/collate/it/governance/DarStatusGroupIT.java —
+  // they need the DAR workflow + policyAgentTask handler that Collate seeds via MigrationUtil
+  // 2.0.0, so they cannot run against the OSS OpenMetadataApplication used by this file.
 }

@@ -293,39 +293,65 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         )
         .toBeTruthy();
 
-      await addMultiOwner({
-        page,
-        ownerNames: [OWNER2.getUserDisplayName()],
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: entity.endpoint,
-        type: 'Users',
-      });
+      if (entity.type === 'Metric') {
+        const metric = entity as MetricClass;
+        const owner1Name = OWNER1.getUserDisplayName();
+        const owner2Name = OWNER2.getUserDisplayName();
+        await metric.updateOwnerSelection({
+          added: [owner2Name],
+          included: [owner2Name],
+          page,
+        });
+        await metric.updateOwnerSelection({
+          added: [owner1Name],
+          included: [owner2Name, owner1Name],
+          page,
+        });
+        await metric.updateOwnerSelection({
+          included: [owner2Name],
+          page,
+          removed: [owner1Name],
+        });
+        await metric.updateOwnerSelection({
+          included: [],
+          page,
+          removed: [owner2Name],
+        });
+      } else {
+        await addMultiOwner({
+          page,
+          ownerNames: [OWNER2.getUserDisplayName()],
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: entity.endpoint,
+          type: 'Users',
+        });
 
-      await addMultiOwner({
-        page,
-        ownerNames: [OWNER1.getUserDisplayName()],
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: entity.endpoint,
-        type: 'Users',
-        clearAll: false,
-      });
+        await addMultiOwner({
+          page,
+          ownerNames: [OWNER1.getUserDisplayName()],
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: entity.endpoint,
+          type: 'Users',
+          clearAll: false,
+        });
 
-      await removeOwnersFromList({
-        page,
-        ownerNames: [OWNER1.getUserDisplayName()],
-        endpoint: entity.endpoint,
-        dataTestId: 'data-assets-header',
-      });
+        await removeOwnersFromList({
+          page,
+          ownerNames: [OWNER1.getUserDisplayName()],
+          endpoint: entity.endpoint,
+          dataTestId: 'data-assets-header',
+        });
 
-      await removeOwner({
-        page,
-        endpoint: entity.endpoint,
-        ownerName: OWNER2.getUserDisplayName(),
-        type: 'Users',
-        dataTestId: 'data-assets-header',
-      });
+        await removeOwner({
+          page,
+          endpoint: entity.endpoint,
+          ownerName: OWNER2.getUserDisplayName(),
+          type: 'Users',
+          dataTestId: 'data-assets-header',
+        });
+      }
 
       await OWNER1.delete(apiContext);
       await OWNER2.delete(apiContext);
@@ -2112,30 +2138,32 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests announcement lifecycle management
      * @description Tests creating an announcement on an entity, editing it, and deleting it
      */
-    test(`Announcement create, edit & delete`, async ({ page }) => {
-      test.slow();
+    if (entity.type !== 'Metric') {
+      test(`Announcement create, edit & delete`, async ({ page }) => {
+        test.slow();
 
-      await entity.announcement(page);
-    });
+        await entity.announcement(page);
+      });
 
-    /**
-     * Tests inactive announcement management
-     * @description Tests creating an inactive announcement and then deleting it
-     */
-    test(`Inactive Announcement create & delete`, async ({ page }) => {
-      // used slow as test contain page reload which might lead to timeout
-      test.slow(true);
-      await entity.inactiveAnnouncement(page);
-    });
+      /**
+       * Tests inactive announcement management
+       * @description Tests creating an inactive announcement and then deleting it
+       */
+      test(`Inactive Announcement create & delete`, async ({ page }) => {
+        // used slow as test contain page reload which might lead to timeout
+        test.slow(true);
+        await entity.inactiveAnnouncement(page);
+      });
 
-    /**
-     * Tests entity voting functionality
-     * @description Tests upvoting an entity and downvoting it, verifying vote state changes
-     */
-    test(`UpVote & DownVote entity`, async ({ page }) => {
-      await entity.upVote(page);
-      await entity.downVote(page);
-    });
+      /**
+       * Tests entity voting functionality
+       * @description Tests upvoting an entity and downvoting it, verifying vote state changes
+       */
+      test(`UpVote & DownVote entity`, async ({ page }) => {
+        await entity.upVote(page);
+        await entity.downVote(page);
+      });
+    }
 
     /**
      * Tests entity following functionality
@@ -2155,8 +2183,35 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      */
     test(`Copy entity URL from header`, async ({ page }) => {
       const pageUrl = page.url();
-      const copyButton = page.getByTestId('entity-header-copy-button');
-      const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+      if (entity.type === 'Metric') {
+        await page.evaluate(() => {
+          let clipboardText = '';
+
+          Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {
+              readText: async () => clipboardText,
+              writeText: async (text: string) => {
+                clipboardText = text;
+              },
+            },
+          });
+        });
+
+        await page.getByRole('button', { exact: true, name: 'Share' }).click();
+
+        await expect
+          .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+          .toBe(pageUrl);
+
+        return;
+      }
+
+      const clipboardText = await copyAndGetClipboardText(
+        page,
+        page.getByTestId('entity-header-copy-button')
+      );
 
       expect(clipboardText).toBe(pageUrl);
     });
@@ -2219,9 +2274,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         await entity.visitEntityPage(dataConsumerPage);
 
-        await expect(
-          dataConsumerPage.locator('[data-testid="edit-description"]')
-        ).not.toBeVisible();
+        if (entity.type === 'Metric') {
+          await expect(
+            dataConsumerPage.getByTestId('metric-header-description')
+          ).toBeVisible();
+          await expect(
+            dataConsumerPage.getByTestId('edit-description')
+          ).toHaveCount(0);
+        } else {
+          await expect(
+            dataConsumerPage.locator('[data-testid="edit-description"]')
+          ).not.toBeVisible();
+        }
       });
     });
 
@@ -2283,8 +2347,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           // Wait for activity feed API call (all tab is selected by default)
           const activityFeedResponse = page.waitForResponse(
             (response) =>
-              response.url().includes('/api/v1/feed') &&
-              response.url().includes('entityLink')
+              response.url().includes('/api/v1/activity/') &&
+              response.url().includes('/name/')
           );
 
           await activityFeedTab.click();

@@ -13,12 +13,14 @@
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
 import { isString } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,6 +34,15 @@ const IncidentManager = ({
   isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
   const { t } = useTranslation();
+  const breadcrumbData = useMemo(
+    () => [
+      {
+        name: t('label.incident-manager'),
+        url: observabilityRouterClassBase.getIncidentManagerPath(),
+      },
+    ],
+    [t]
+  );
   const {
     commonTestCasePermission,
     filters,
@@ -183,6 +194,7 @@ const IncidentManager = ({
       </div>
 
       <IncidentManagerTable
+        breadcrumbData={breadcrumbData}
         handleAssigneeUpdate={handleAssigneeUpdate}
         handleSeveritySubmit={handleSeveritySubmit}
         handleStatusSubmit={handleStatusSubmit}

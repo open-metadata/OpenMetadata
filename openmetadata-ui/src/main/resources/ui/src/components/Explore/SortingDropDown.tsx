@@ -42,11 +42,13 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
 
   return (
     <Dropdown.Root data-testid="dropdown">
+      {/* Keep sorting labels aligned with the 14px filter treatment across consumers. */}
       <Button
-        className="tw:p-0"
+        hideFocusOutline
         color="tertiary"
         data-testid="sorting-dropdown-label"
-        iconTrailing={<ChevronDown size={14} />}>
+        iconTrailing={<ChevronDown size={14} />}
+        size="sm">
         {label}
       </Button>
 

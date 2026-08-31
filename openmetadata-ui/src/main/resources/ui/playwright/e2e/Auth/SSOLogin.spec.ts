@@ -18,6 +18,7 @@ import {
   swapSecurityConfig,
   verifyLoggedInUserMatches,
 } from '../../utils/ssoAuth';
+import { SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -53,8 +54,11 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   );
 
   test.afterAll('Restore original security configuration', async () => {
+    test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
     await userPage?.close();
     await userContext?.close();
+
     await restoreSecurity?.();
   });
 
@@ -81,6 +85,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
       await expect(signInButton).toBeVisible();
       await signInButton.click();
       await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+
+      // #29597 regression guard: the front-channel authorize request must carry
+      // the server-configured response_type, not oidc-client's 'id_token' default.
+      if (helper.expectedResponseType) {
+        const responseType = new URL(page.url()).searchParams.get(
+          'response_type'
+        );
+
+        expect(responseType).toBe(helper.expectedResponseType);
+      }
     });
 
     await test.step('Authenticate at the identity provider', async () => {
@@ -90,7 +104,9 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await test.step('Return to OpenMetadata and complete self-signup if needed', async () => {
       await page.waitForURL(
         (url) =>
-          url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
+          url.pathname.endsWith('/signup') ||
+          url.pathname.endsWith('/my-data') ||
+          url.pathname === '/',
         { timeout: 60_000 }
       );
 
@@ -99,7 +115,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
         await expect(createButton).toBeEnabled();
         await createButton.click();
-        await page.waitForURL('**/my-data', { timeout: 60_000 });
+        await page.waitForURL(
+          (url) => url.pathname === '/' || url.pathname === '/my-data',
+          { timeout: 60_000 }
+        );
       }
 
       await redirectToHomePage(page);
@@ -114,7 +133,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const page = userPage!;
 
     await page.reload();
-    await page.waitForURL('**/my-data', { timeout: 30_000 });
+    await page.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { timeout: 30_000 }
+    );
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     await verifyLoggedInUserMatches(page, username);
   });
@@ -124,7 +146,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
     try {
       await extraPage.goto('/');
-      await extraPage.waitForURL('**/my-data', { timeout: 30_000 });
+      await extraPage.waitForURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data',
+        { timeout: 30_000 }
+      );
       await expect(extraPage.getByTestId('dropdown-profile')).toBeVisible();
       await verifyLoggedInUserMatches(extraPage, username);
     } finally {
