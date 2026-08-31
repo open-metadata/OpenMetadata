@@ -2329,6 +2329,7 @@ public class TableRepository extends EntityRepository<Table> {
     private final Set<String> pendingDeletedColumnFqns = new LinkedHashSet<>();
     private final HashMap<String, String> pendingRenameColumnFqns = new HashMap<>();
     private boolean columnLineageUpdateDeferred = false;
+    private int updatePassCount = 0;
 
     public TableUpdater(
         Table original, Table updated, Operation operation, ChangeSource changeSource) {
@@ -2340,14 +2341,14 @@ public class TableRepository extends EntityRepository<Table> {
       // The retry prologue clears deferredReactOperations; without resetting this guard the
       // replayed attempt would never re-enqueue the lineage flush and search cleanup is lost.
       columnLineageUpdateDeferred = false;
+      updatePassCount = 0;
       pendingDeletedColumnFqns.clear();
       pendingRenameColumnFqns.clear();
     }
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      pendingDeletedColumnFqns.clear();
-      pendingRenameColumnFqns.clear();
+      updatePassCount++;
       Table origTable = original;
       Table updatedTable = updated;
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
@@ -2520,20 +2521,20 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      // Accumulate within this pass. entitySpecificUpdate() clears both collections at the
-      // start of each updateInternal() pass, so stale data from a prior consolidation pass
-      // never leaks into the flush. Using addAll/putAll (not clear+replace) here means nested
-      // column levels all contribute their deletes/renames to the same deferred flush.
-      if (hasDeletes) {
+      // Only the first pass diffs against the persisted state that the search index reflects.
+      // Consolidation replays updateInternal() up to four times: the revert passes invert that
+      // diff, and the final pass rebases onto the pre-session version, so their FQNs match no
+      // indexed document — and a net-zero consolidation (rename away and back within the
+      // session) leaves them empty, stranding the intermediate FQN in the index. Within this
+      // first pass, addAll/putAll let every nested column level contribute to one flush.
+      boolean isSearchBaselinePass = updatePassCount <= 1;
+      if (isSearchBaselinePass) {
         pendingDeletedColumnFqns.addAll(deletedColumns);
-      }
-      if (hasRenames) {
         pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
-      }
-
-      if (!columnLineageUpdateDeferred && (hasDeletes || hasRenames)) {
-        columnLineageUpdateDeferred = true;
-        deferReactOperation(this::flushPendingColumnLineageSearchUpdates);
+        if (!columnLineageUpdateDeferred && (hasDeletes || hasRenames)) {
+          columnLineageUpdateDeferred = true;
+          deferReactOperation(this::flushPendingColumnLineageSearchUpdates);
+        }
       }
     }
 

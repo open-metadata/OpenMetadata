@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -3543,6 +3544,102 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
   }
 
+  // Regression test for the consolidation baseline: renaming a column and reverting it within
+  // the same session window must still leave the search index consistent. Consolidation replays
+  // updateInternal() against the pre-session version, so the final pass sees a net-zero column
+  // diff; only the first pass diffs against the state the index actually holds. If the flush
+  // reads anything but that first pass, the index is stranded on the intermediate FQN.
+  @Test
+  void test_revertedColumnRenameWithinSessionPropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_revert_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_revert_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String originalColFqn = sourceTable.getFullyQualifiedName() + ".revert_col";
+    String intermediateColFqn = sourceTable.getFullyQualifiedName() + ".REVERT_COL";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference()
+                                .withId(sourceTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
+                        .withToEntity(
+                            new EntityReference()
+                                .withId(targetTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(originalColFqn))
+                                            .withToColumn(targetColFqn))))));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(originalColFqn));
+
+      // First rename: version is still 0.1 here, so this PATCH does not consolidate and the
+      // index moves to the uppercase FQN.
+      sourceTable.setColumns(List.of(ColumnBuilder.of("REVERT_COL", "BIGINT").build()));
+      sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the intermediate column FQN to reach search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(intermediateColFqn));
+
+      // Revert within the same session: version is now > 0.1 and the updater/session match, so
+      // consolidateChanges() applies and the consolidated diff against the pre-session version
+      // is empty for columns.
+      sourceTable.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the reverted column FQN to be restored in search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(originalColFqn)
+                    && !upstreamLineage.contains(intermediateColFqn);
+              });
+    }
+  }
+
   private String getUpstreamLineageFromIndex(Rest5Client searchClient, String tableId)
       throws Exception {
     String query =
@@ -3552,8 +3649,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
     request.setJsonEntity(query);
     Response response = searchClient.performRequest(request);
-    return new String(
-        response.getEntity().getContent().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    try (InputStream content = response.getEntity().getContent()) {
+      return new String(content.readAllBytes(), StandardCharsets.UTF_8);
+    }
   }
 
   // ===================================================================

@@ -10626,10 +10626,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Added columns are skipped by the existing-column loop below.
       storeColumnExtensions(entityId, addedColumns);
 
-      // Build a lookup map from origColumns to avoid O(n²) stream search per updated column
+      // Build a lookup map from origColumns to avoid O(n²) stream search per updated column.
+      // putIfAbsent keeps the first match on a duplicate key, matching the stream findAny()
+      // this replaced — sibling columns colliding only on name case would otherwise carry
+      // forward metadata from a different column than before.
       Map<ColumnKey, Column> origColumnByKey = new HashMap<>();
       for (Column col : origColumns) {
-        origColumnByKey.put(columnLookupKey(col), col);
+        origColumnByKey.putIfAbsent(columnLookupKey(col), col);
       }
 
       // Carry forward the user generated metadata from existing columns to new columns
