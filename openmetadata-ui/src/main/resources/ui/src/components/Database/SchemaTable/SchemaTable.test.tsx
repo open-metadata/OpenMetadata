@@ -20,6 +20,7 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../rest/tableAPI';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import SchemaTable from './SchemaTable.component';
@@ -639,6 +640,70 @@ describe('Test EntityTable Component', () => {
       expect(mockColumnsWithNested[1].children).toBeDefined();
       expect(mockColumnsWithNested[1].children).toHaveLength(3);
       expect(mockColumnsWithNested[1].children?.[0].name).toBe('product_id');
+    });
+  });
+
+  // Task 8 Batch 3: editDisplayNamePermission's raw
+  // `(tablePermissions.EditDisplayName || tablePermissions.EditAll) && !deleted` ->
+  // canEditDisplayName (getDerivedPermissionFlags). Documented explicit-deny-wins behavior
+  // change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditDisplayName: false` now wins over a bare `EditAll: true` grant, where the old raw OR
+  // granted regardless.
+  describe('editDisplayNamePermission (explicit-deny-wins)', () => {
+    afterEach(() => {
+      mockGenericContextProps.permissions = DEFAULT_ENTITY_PERMISSION;
+    });
+
+    it('grants the edit displayName button via EditAll when EditDisplayName is not present', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+        data: columnsWithDisplayName,
+        paging: { total: columnsWithDisplayName.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithDisplayName,
+      } as Table;
+      // Deliberately NOT spreading DEFAULT_ENTITY_PERMISSION here: it defines every
+      // Operation key (including EditDisplayName) as an explicit `false`, which would make
+      // getPrioritizedEditPermission's "key present" check see EditDisplayName as an explicit
+      // deny rather than absent, masking the EditAll fallback this test exists to cover.
+      mockGenericContextProps.permissions = {
+        EditAll: true,
+      } as OperationPermission;
+
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(
+        await screen.findAllByTestId('edit-displayName-button')
+      ).not.toHaveLength(0);
+    });
+
+    it('denies the edit displayName button when EditDisplayName is explicitly false, even with EditAll true', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+        data: columnsWithDisplayName,
+        paging: { total: columnsWithDisplayName.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithDisplayName,
+      } as Table;
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: true,
+        EditDisplayName: false,
+      };
+
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(
+        screen.queryByTestId('edit-displayName-button')
+      ).not.toBeInTheDocument();
     });
   });
 });
