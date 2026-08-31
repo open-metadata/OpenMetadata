@@ -14,26 +14,54 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
   mockGetDatabaseSchemaDetailsByFQNData,
   mockPatchDatabaseSchemaDetailsData,
 } from './mocks/DatabaseSchemaPage.mock';
-const mockEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
+// Permissions now come from useEntityPermissions (Task 8 Batch 10) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring DataModelPage.test.tsx's approach.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = DEFAULT_ENTITY_PERMISSION,
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
+
+// Establishes the sticky base return value (all-false, matching the old top-level
+// `mockEntityPermissionByFqn` default) before any test renders. Individual tests below
+// override it explicitly via `setMockPermissions(...)` where they need a different value —
+// none rely on an automatic revert-to-default between tests, so this sticky base is safe.
+setMockPermissions();
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -168,12 +196,6 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
 );
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
-}));
-
 jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseSchemaDetailsByFQN: jest
     .fn()
@@ -293,9 +315,10 @@ describe('Tests for DatabaseSchemaPage', () => {
   it('DatabaseSchemaPage should fetch permissions', () => {
     renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
-    expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
-      'databaseSchema',
-      mockParams.fqn
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.DATABASE_SCHEMA,
+      mockParams.fqn,
+      expect.objectContaining({ enabled: true })
     );
   });
 
@@ -307,11 +330,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should render permission placeholder if not have required permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: false,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: false });
 
     await act(async () => {
       renderWithQueryClient(<DatabaseSchemaPageComponent />);
@@ -321,11 +340,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should fetch details with basic fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(<DatabaseSchemaPageComponent />);
@@ -338,11 +353,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should fetch storedProcedure with basic fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(<DatabaseSchemaPageComponent />);
@@ -355,11 +366,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should render page for ViewBasic permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewBasic: true,
-      }),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
@@ -379,11 +386,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should render tables by default', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewBasic: true,
-      }),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
@@ -407,11 +410,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       tab: 'table',
     });
 
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewBasic: true,
-      }),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     const { rerender } = renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
@@ -468,11 +467,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       Promise.resolve(mockSchemaData)
     );
 
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(<DatabaseSchemaPageComponent />);
