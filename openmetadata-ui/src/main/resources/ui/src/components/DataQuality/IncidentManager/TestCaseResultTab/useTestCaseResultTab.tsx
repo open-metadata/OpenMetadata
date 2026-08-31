@@ -44,6 +44,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getTagsWithoutTier,
@@ -162,7 +163,14 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
           hasEditGlossaryTermsPermission: false,
         }
       : {
-          hasEditPermission: testCasePermission?.EditAll,
+          // testCasePermission is undefined until the store's fetch-owner populates it (out
+          // of this file's scope); the `&&` short-circuit preserves the old
+          // `testCasePermission?.EditAll` undefined-when-absent behavior (matching the
+          // sibling fields below), rather than coercing to `false` via a DEFAULT_ENTITY_
+          // PERMISSION fallback.
+          hasEditPermission:
+            testCasePermission &&
+            getDerivedPermissionFlags(testCasePermission).canEditAll,
           hasEditDescriptionPermission:
             testCasePermission &&
             getPrioritizedEditPermission(
