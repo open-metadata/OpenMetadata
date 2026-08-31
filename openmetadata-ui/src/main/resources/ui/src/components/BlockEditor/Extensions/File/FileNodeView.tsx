@@ -41,7 +41,6 @@ const MediaPlayer: FC<{
   const label = fileName || t('label.media');
 
   return isVideo ? (
-    // eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for user-uploaded media
     <video
       controls
       aria-label={label}
@@ -49,7 +48,6 @@ const MediaPlayer: FC<{
       src={mediaSrc}
     />
   ) : (
-    // eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for user-uploaded media
     <audio
       controls
       aria-label={label}
