@@ -15,6 +15,7 @@ package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.deployMissingGovernanceWorkflows;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
@@ -50,6 +51,7 @@ public class Migration extends MigrationProcessImpl {
     ConversationReferenceMigration.migrate(handle, MYSQL);
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
