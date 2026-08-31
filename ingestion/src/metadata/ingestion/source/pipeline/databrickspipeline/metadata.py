@@ -1247,6 +1247,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     if not (source_table_full_name and target_table_full_name):
                         continue
 
+                    # A table never derives from itself. The system tables record
+                    # access rather than derivation, so a streaming or CDC write
+                    # legitimately names its target as its own source. Kept as
+                    # lineage it renders as a loop on the node and says nothing.
+                    if source_table_full_name == target_table_full_name:
+                        logger.debug(f"Skipping self-referencing lineage row for {source_table_full_name}")
+                        continue
+
                     source = fqn.split_table_name(source_table_full_name)
                     target = fqn.split_table_name(target_table_full_name)
                     for dbservicename in self.get_db_service_names() or ["*"]:
