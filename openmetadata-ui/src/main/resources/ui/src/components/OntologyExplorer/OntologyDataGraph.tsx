@@ -221,8 +221,12 @@ function* projectObservedLineageEdge(
   edge: OntologyEdge,
   termIdsByAsset: Map<string, Set<string>>
 ): Generator<OntologyEdge> {
-  const fromTermIds = termIdsByAsset.get(edge.from) ?? [];
-  const toTermIds = termIdsByAsset.get(edge.to) ?? [];
+  const fromTermIds = termIdsByAsset.get(edge.from);
+  const toTermIds = termIdsByAsset.get(edge.to);
+
+  if (!fromTermIds || !toTermIds) {
+    return;
+  }
 
   for (const fromTermId of fromTermIds) {
     for (const toTermId of toTermIds) {
