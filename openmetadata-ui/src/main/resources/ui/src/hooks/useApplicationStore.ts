@@ -30,6 +30,7 @@ import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 import { useDomainStore } from './useDomainStore';
 import {
+  clearUserProfileCache,
   getPersistedUserProfiles,
   persistUserProfile,
 } from './user-profile/userProfileCache.utils';
@@ -234,6 +235,10 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({
       userProfilePics: { ...get()?.userProfilePics, [id]: user },
     });
+  },
+  resetUserProfilePics: () => {
+    clearUserProfileCache();
+    set({ userProfilePics: {} });
   },
   updateCachedEntityData: ({
     id,

@@ -76,6 +76,7 @@ export interface ApplicationStore
     claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
+  resetUserProfilePics: () => void;
   updateCachedEntityData: (data: {
     id: string;
     entityDetails: EntityUnion;

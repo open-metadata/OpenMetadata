@@ -22,28 +22,82 @@ interface UserProfileCache {
   profiles: Record<string, User>;
 }
 
-const readRawCache = (): UserProfileCache | null => {
+/**
+ * In-memory source of truth for the current tab. localStorage is only read once
+ * (lazily, on first access) and thereafter written from this mirror, so a burst
+ * of avatar misses does not re-parse/re-serialize the whole blob per entry.
+ */
+let memoryCache: UserProfileCache | null = null;
+let hydrated = false;
+let flushScheduled = false;
+
+const isValidShape = (value: unknown): value is UserProfileCache => {
+  const cache = value as UserProfileCache | null;
+
+  return (
+    typeof cache === 'object' &&
+    cache !== null &&
+    typeof cache.timestamp === 'number' &&
+    typeof cache.profiles === 'object' &&
+    cache.profiles !== null
+  );
+};
+
+const isExpired = (cache: UserProfileCache): boolean =>
+  Date.now() - cache.timestamp >= TWENTY_FOUR_HOUR_MS;
+
+/**
+ * Loads the persisted cache into memory exactly once per tab. A malformed blob
+ * (invalid JSON, wrong shape, or an older cache format) or an expired window is
+ * discarded so callers fall back to re-fetching instead of crashing.
+ */
+const ensureHydrated = (): void => {
+  if (hydrated) {
+    return;
+  }
+  hydrated = true;
+
   try {
     const raw = localStorage.getItem(USER_PROFILE_CACHE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
 
-    return raw ? (JSON.parse(raw) as UserProfileCache) : null;
+    if (isValidShape(parsed) && !isExpired(parsed)) {
+      memoryCache = parsed;
+    } else {
+      memoryCache = null;
+      if (raw) {
+        localStorage.removeItem(USER_PROFILE_CACHE_KEY);
+      }
+    }
   } catch {
-    // Corrupt/inaccessible storage falls back to no cache; the profiles simply
-    // get re-fetched instead of breaking the app.
-    return null;
+    memoryCache = null;
   }
 };
 
-const writeRawCache = (cache: UserProfileCache): void => {
+const flush = (): void => {
+  flushScheduled = false;
   try {
-    localStorage.setItem(USER_PROFILE_CACHE_KEY, JSON.stringify(cache));
+    if (memoryCache) {
+      localStorage.setItem(USER_PROFILE_CACHE_KEY, JSON.stringify(memoryCache));
+    } else {
+      localStorage.removeItem(USER_PROFILE_CACHE_KEY);
+    }
   } catch {
     // Storage full/unavailable — persistence is best-effort, so ignore.
   }
 };
 
-const isExpired = (cache: UserProfileCache): boolean =>
-  Date.now() - cache.timestamp >= TWENTY_FOUR_HOUR_MS;
+/**
+ * Coalesces a burst of writes into a single serialize+persist on the next tick,
+ * keeping the render hot path free of repeated full-cache JSON.stringify calls.
+ */
+const scheduleFlush = (): void => {
+  if (flushScheduled) {
+    return;
+  }
+  flushScheduled = true;
+  setTimeout(flush, 0);
+};
 
 /**
  * An error-path placeholder (see useUserProfile) has an empty email and no
@@ -55,23 +109,13 @@ const isPlaceholderProfile = (user: User): boolean =>
 
 /**
  * Returns the persisted profiles keyed by name, or an empty map when the whole
- * cache has aged past its 24h window (in which case the stale blob is cleared).
- * The window is fixed from first write — it does not slide on reads.
+ * cache has aged past its 24h window. The window is fixed from first write — it
+ * does not slide on reads.
  */
 export const getPersistedUserProfiles = (): Record<string, User> => {
-  const cache = readRawCache();
+  ensureHydrated();
 
-  if (!cache) {
-    return {};
-  }
-
-  if (isExpired(cache)) {
-    localStorage.removeItem(USER_PROFILE_CACHE_KEY);
-
-    return {};
-  }
-
-  return cache.profiles;
+  return memoryCache?.profiles ?? {};
 };
 
 /**
@@ -85,20 +129,35 @@ export const persistUserProfile = (id: string, user: User): void => {
     return;
   }
 
-  const existing = readRawCache();
-  const cache: UserProfileCache =
-    existing && !isExpired(existing)
-      ? existing
-      : { timestamp: Date.now(), profiles: {} };
+  ensureHydrated();
 
-  cache.profiles[id] = user;
+  if (!memoryCache || isExpired(memoryCache)) {
+    memoryCache = { timestamp: Date.now(), profiles: {} };
+  }
 
-  const ids = Object.keys(cache.profiles);
+  memoryCache.profiles[id] = user;
+
+  const ids = Object.keys(memoryCache.profiles);
   if (ids.length > USER_PROFILE_CACHE_MAX_SIZE) {
     ids
       .slice(0, ids.length - USER_PROFILE_CACHE_MAX_SIZE)
-      .forEach((staleId) => delete cache.profiles[staleId]);
+      .forEach((staleId) => delete memoryCache?.profiles[staleId]);
   }
 
-  writeRawCache(cache);
+  scheduleFlush();
+};
+
+/**
+ * Drops the cache from memory and storage. Called on logout so one user's
+ * cached profiles cannot leak into the next session on a shared browser.
+ */
+export const clearUserProfileCache = (): void => {
+  memoryCache = null;
+  hydrated = true;
+  flushScheduled = false;
+  try {
+    localStorage.removeItem(USER_PROFILE_CACHE_KEY);
+  } catch {
+    // best-effort
+  }
 };

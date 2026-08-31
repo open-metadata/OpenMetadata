@@ -16,10 +16,8 @@ import {
   USER_PROFILE_CACHE_MAX_SIZE,
 } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
-import {
-  getPersistedUserProfiles,
-  persistUserProfile,
-} from './userProfileCache.utils';
+
+type CacheModule = typeof import('./userProfileCache.utils');
 
 const buildUser = (name: string): User =>
   ({
@@ -29,16 +27,46 @@ const buildUser = (name: string): User =>
     profile: { images: { image512: `${name}-512` } },
   } as User);
 
+const readStorage = () =>
+  JSON.parse(localStorage.getItem(USER_PROFILE_CACHE_KEY) ?? 'null');
+
 describe('userProfileCache.utils', () => {
+  let getPersistedUserProfiles: CacheModule['getPersistedUserProfiles'];
+  let persistUserProfile: CacheModule['persistUserProfile'];
+  let clearUserProfileCache: CacheModule['clearUserProfileCache'];
+
   beforeEach(() => {
+    // Reset module-level in-memory cache so each test hydrates from a clean slate.
+    jest.resetModules();
+    jest.useFakeTimers();
+    jest.setSystemTime(1_000_000);
     localStorage.clear();
-    jest.restoreAllMocks();
+    ({
+      getPersistedUserProfiles,
+      persistUserProfile,
+      clearUserProfileCache,
+    } = require('./userProfileCache.utils'));
   });
 
-  it('persists and reads back a profile', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('persists and reads back a profile from the in-memory mirror', () => {
     persistUserProfile('john', buildUser('john'));
 
     expect(getPersistedUserProfiles().john.email).toBe('john@example.com');
+  });
+
+  it('coalesces writes into a single storage flush on the next tick', () => {
+    persistUserProfile('a', buildUser('a'));
+    persistUserProfile('b', buildUser('b'));
+
+    expect(readStorage()).toBeNull();
+
+    jest.runAllTimers();
+
+    expect(Object.keys(readStorage().profiles)).toEqual(['a', 'b']);
   });
 
   it('drops the whole cache once it is older than 24 hours', () => {
@@ -55,29 +83,24 @@ describe('userProfileCache.utils', () => {
   });
 
   it('keeps a fixed window across writes (does not slide on new writes)', () => {
-    const nowSpy = jest.spyOn(Date, 'now');
-
-    nowSpy.mockReturnValue(1000);
+    jest.setSystemTime(1000);
     persistUserProfile('a', buildUser('a'));
 
-    nowSpy.mockReturnValue(1000 + TWENTY_FOUR_HOUR_MS - 1);
+    jest.setSystemTime(1000 + TWENTY_FOUR_HOUR_MS - 1);
     persistUserProfile('b', buildUser('b'));
+    jest.runAllTimers();
 
-    const raw = JSON.parse(
-      localStorage.getItem(USER_PROFILE_CACHE_KEY) ?? '{}'
-    );
+    const raw = readStorage();
 
     expect(raw.timestamp).toBe(1000);
     expect(Object.keys(raw.profiles)).toEqual(['a', 'b']);
   });
 
   it('starts a fresh window when writing into an expired cache', () => {
-    const nowSpy = jest.spyOn(Date, 'now');
-
-    nowSpy.mockReturnValue(1000);
+    jest.setSystemTime(1000);
     persistUserProfile('old', buildUser('old'));
 
-    nowSpy.mockReturnValue(1000 + TWENTY_FOUR_HOUR_MS + 5);
+    jest.setSystemTime(1000 + TWENTY_FOUR_HOUR_MS + 5);
     persistUserProfile('new', buildUser('new'));
 
     const result = getPersistedUserProfiles();
@@ -88,8 +111,10 @@ describe('userProfileCache.utils', () => {
 
   it('does not persist error placeholders (no profile, empty email)', () => {
     persistUserProfile('ghost', { id: 'ghost', name: 'ghost', email: '' });
+    jest.runAllTimers();
 
     expect(getPersistedUserProfiles()).toEqual({});
+    expect(readStorage()).toBeNull();
   });
 
   it('evicts the oldest entries once the size cap is exceeded', () => {
@@ -104,9 +129,32 @@ describe('userProfileCache.utils', () => {
     expect(result[`user-${USER_PROFILE_CACHE_MAX_SIZE}`]).toBeDefined();
   });
 
-  it('returns an empty map when storage is corrupt', () => {
+  it('returns an empty map when storage is corrupt (invalid JSON)', () => {
     localStorage.setItem(USER_PROFILE_CACHE_KEY, 'not-json');
 
     expect(getPersistedUserProfiles()).toEqual({});
+  });
+
+  it('falls back to empty for a valid-JSON blob of the wrong shape', () => {
+    // e.g. the pre-refactor Record<string, {user, timestamp}> format, or null.
+    localStorage.setItem(
+      USER_PROFILE_CACHE_KEY,
+      JSON.stringify({ someUser: { user: buildUser('x'), timestamp: 1 } })
+    );
+
+    expect(getPersistedUserProfiles()).toEqual({});
+    expect(() => persistUserProfile('y', buildUser('y'))).not.toThrow();
+  });
+
+  it('clearUserProfileCache wipes memory and storage', () => {
+    persistUserProfile('john', buildUser('john'));
+    jest.runAllTimers();
+
+    expect(readStorage()).not.toBeNull();
+
+    clearUserProfileCache();
+
+    expect(getPersistedUserProfiles()).toEqual({});
+    expect(localStorage.getItem(USER_PROFILE_CACHE_KEY)).toBeNull();
   });
 });

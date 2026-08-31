@@ -284,6 +284,7 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
     isAuthenticating,
+    resetUserProfilePics,
   } = useApplicationStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
@@ -373,6 +374,11 @@ export const AuthProvider = ({
     useExploreCache.getState().clearCache();
     clearEtagCache();
     queryClient.clear();
+
+    // Drop the persisted (localStorage) + in-memory user profile cache so the
+    // next principal on this browser cannot see the previous user's cached
+    // names/emails/avatars.
+    resetUserProfilePics();
 
     // Drop the tab-scoped app-mode session so the next user boots into
     // their own persona/preference-resolved mode rather than inheriting
