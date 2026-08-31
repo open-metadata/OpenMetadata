@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,469 +11,1093 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import '@testing-library/jest-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityStatus } from '../../../generated/entity/data/metric';
+import {
+  EntityStatus,
+  Metric,
+  MetricGranularity,
+  MetricType,
+} from '../../../generated/entity/data/metric';
+import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
+import {
+  deleteMetricAsync,
+  exportMetricDetailsInCSV,
+} from '../../../rest/metricsAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-
 import MetricListPage from './MetricListPage';
 
 const mockNavigate = jest.fn();
+const mockGetResourcePermission = jest.fn();
+const mockShowErrorToast = jest.fn();
+const mockShowSuccessToast = jest.fn();
+const mockDocumentTitle = jest.fn();
 
-const buildSearchResponse = (metrics: Array<Record<string, unknown>>) => ({
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => {
+    mockDocumentTitle(title);
+
+    return null;
+  },
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = jest.requireActual('react');
+  const SelectionContext = React.createContext({
+    disabledKeys: new Set<string>(),
+    selectedKeys: new Set<string>(),
+    onRowAction: undefined as ((id: string) => void) | undefined,
+    onSelectionChange: (_selection: Set<string>) => undefined,
+  });
+  const MenuContext = React.createContext(undefined) as React.Context<
+    ((id: string) => void) | undefined
+  >;
+  const ButtonGroupContext = React.createContext(undefined) as React.Context<
+    ((selection: Set<string>) => void) | undefined
+  >;
+
+  const Box = ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement>) => {
+    const {
+      align: _align,
+      direction: _direction,
+      gap: _gap,
+      justify: _justify,
+      ...domProps
+    } = props as Record<string, unknown>;
+
+    return <div {...domProps}>{children}</div>;
+  };
+  const Button = ({
+    children,
+    isDisabled,
+    isLoading,
+    onPress,
+    iconLeading: _iconLeading,
+    iconTrailing: _iconTrailing,
+    color: _color,
+    ...props
+  }: Record<string, unknown>) => (
+    <button
+      {...props}
+      disabled={Boolean(isDisabled || isLoading)}
+      onClick={onPress as React.MouseEventHandler<HTMLButtonElement>}>
+      {children as React.ReactNode}
+    </button>
+  );
+  const Card = ({
+    children,
+    isSelected,
+    ...props
+  }: Record<string, unknown>) => (
+    <section data-selected={Boolean(isSelected)} {...props}>
+      {children as React.ReactNode}
+    </section>
+  );
+  Card.Content = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  Card.Header = ({ title }: { title: string }) => <h2>{title}</h2>;
+  Card.Footer = ({ children }: { children: React.ReactNode }) => (
+    <footer>{children}</footer>
+  );
+
+  const Table = ({
+    children,
+    disabledKeys = [],
+    selectedKeys = new Set(),
+    onRowAction,
+    onSelectionChange,
+    'aria-label': ariaLabel,
+  }: Record<string, unknown>) => {
+    const selectionContextValue = React.useMemo(
+      () => ({
+        disabledKeys: new Set(disabledKeys as string[]),
+        selectedKeys: selectedKeys as Set<string>,
+        onRowAction: onRowAction as ((id: string) => void) | undefined,
+        onSelectionChange: onSelectionChange as (
+          selection: Set<string>
+        ) => void,
+      }),
+      [disabledKeys, onRowAction, onSelectionChange, selectedKeys]
+    );
+
+    return (
+      <SelectionContext.Provider value={selectionContextValue}>
+        <table aria-label={ariaLabel as string} data-testid="core-metric-table">
+          {children as React.ReactNode}
+        </table>
+      </SelectionContext.Provider>
+    );
+  };
+  Table.Header = ({ children }: { children: React.ReactNode }) => (
+    <thead>
+      <tr>
+        <th aria-label="selection" />
+        {children}
+      </tr>
+    </thead>
+  );
+  Table.Head = ({
+    children,
+    label,
+    ...props
+  }: React.ThHTMLAttributes<HTMLTableCellElement> & { label?: string }) => (
+    <th data-uses-label={Boolean(label)} {...props}>
+      {label ?? children}
+    </th>
+  );
+  Table.Body = ({ children }: { children: React.ReactNode }) => (
+    <tbody>{children}</tbody>
+  );
+  const TableRow = ({
+    children,
+    hideSelectionCell,
+    id,
+    ...props
+  }: {
+    children: React.ReactNode;
+    hideSelectionCell?: boolean;
+    id: string;
+  } & React.HTMLAttributes<HTMLTableRowElement>) => {
+    const selection = React.useContext(SelectionContext);
+    const isDisabled = selection.disabledKeys.has(id);
+    const isSelected = selection.selectedKeys.has(id);
+
+    return (
+      <tr {...props}>
+        {!hideSelectionCell && (
+          <td>
+            <button
+              data-testid={`open-${id}`}
+              disabled={isDisabled}
+              onClick={() => selection.onRowAction?.(id)}>
+              open
+            </button>
+            <button
+              aria-pressed={isSelected}
+              data-testid={`select-${id}`}
+              disabled={isDisabled}
+              onClick={() => {
+                const next = new Set(selection.selectedKeys);
+                isSelected ? next.delete(id) : next.add(id);
+                selection.onSelectionChange(next);
+              }}>
+              select
+            </button>
+          </td>
+        )}
+        {children}
+      </tr>
+    );
+  };
+  Table.Row = TableRow;
+  Table.Cell = ({
+    children,
+    ...props
+  }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+    <td {...props}>{children}</td>
+  );
+
+  const Dialog = ({
+    children,
+    title,
+  }: {
+    children: React.ReactNode;
+    title: string;
+  }) => (
+    <div aria-label={title} role="dialog">
+      {children}
+    </div>
+  );
+  Dialog.Content = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  Dialog.Footer = ({ children }: { children: React.ReactNode }) => (
+    <footer>{children}</footer>
+  );
+
+  const Menu = ({ children, onAction }: Record<string, unknown>) => (
+    <MenuContext.Provider value={onAction as (id: string) => void}>
+      <div>{children as React.ReactNode}</div>
+    </MenuContext.Provider>
+  );
+  const MenuItem = ({ id, label, isDisabled }: Record<string, unknown>) => {
+    const onAction = React.useContext(MenuContext);
+
+    return (
+      <button
+        data-testid={`menu-item-${id}`}
+        disabled={Boolean(isDisabled)}
+        onClick={() => onAction?.(String(id))}>
+        {label as string}
+      </button>
+    );
+  };
+
+  return {
+    Avatar: ({ initials, size }: { initials: string; size: string }) => (
+      <span data-avatar-size={size}>{initials}</span>
+    ),
+    Badge: ({
+      children,
+      className,
+      color,
+      size,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      color?: string;
+      size?: string;
+    }) => (
+      <span
+        className={className}
+        data-badge-color={color}
+        data-badge-size={size}>
+        {children}
+      </span>
+    ),
+    Box,
+    Breadcrumbs: ({ items }: { items: Array<{ label: string }> }) => (
+      <nav>{items.map(({ label }) => label).join(' / ')}</nav>
+    ),
+    Button,
+    ButtonGroup: ({
+      children,
+      onSelectionChange,
+      ...props
+    }: Record<string, unknown>) => (
+      <ButtonGroupContext.Provider
+        value={onSelectionChange as (selection: Set<string>) => void}>
+        <div {...props} role="group">
+          {children as React.ReactNode}
+        </div>
+      </ButtonGroupContext.Provider>
+    ),
+    ButtonGroupItem: ({ id, ...props }: Record<string, unknown>) => {
+      const onSelectionChange = React.useContext(ButtonGroupContext);
+
+      return (
+        <button {...props} onClick={() => onSelectionChange?.(new Set([id]))} />
+      );
+    },
+    Card,
+    Checkbox: ({
+      'aria-label': ariaLabel,
+      isSelected,
+      onChange,
+    }: Record<string, unknown>) => (
+      <button
+        aria-checked={Boolean(isSelected)}
+        aria-label={ariaLabel as string}
+        role="checkbox"
+        onClick={() =>
+          (onChange as ((selected: boolean) => void) | undefined)?.(!isSelected)
+        }
+      />
+    ),
+    Dialog,
+    Dropdown: {
+      Root: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+      DotsButton: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+        <button {...props} />
+      ),
+      Popover: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+      Menu,
+      Item: MenuItem,
+    },
+    EmptyPlaceholder: ({
+      title,
+      description,
+    }: {
+      title: string;
+      description: string;
+    }) => (
+      <div data-testid="metric-empty-placeholder">
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+    ),
+    Input: ({
+      onChange,
+      ...props
+    }: React.InputHTMLAttributes<HTMLInputElement>) => (
+      <input aria-label="Search" {...props} onChange={onChange} />
+    ),
+    Modal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    ModalOverlay: ({
+      children,
+      isOpen,
+    }: {
+      children: React.ReactNode;
+      isOpen: boolean;
+    }) => (isOpen ? <>{children}</> : null),
+    Skeleton: () => <div data-testid="skeleton" />,
+    Table,
+    FeaturedIcon: ({
+      children,
+      'data-testid': dataTestId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <span data-testid={dataTestId}>{children}</span>,
+    Typography: ({
+      as: Component = 'span',
+      children,
+      size,
+      weight,
+      ...props
+    }: {
+      as?: React.ElementType;
+      children: React.ReactNode;
+      size?: string;
+      weight?: string;
+    } & React.HTMLAttributes<HTMLElement>) => (
+      <Component data-size={size} data-weight={weight} {...props}>
+        {children}
+      </Component>
+    ),
+  };
+});
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    getResourcePermission: mockGetResourcePermission,
+  }),
+}));
+
+jest.mock('../../../hooks/useMetricHierarchy');
+jest.mock('../../../rest/searchAPI');
+jest.mock('../../../rest/metricsAPI', () => ({
+  deleteMetricAsync: jest.fn(),
+  exportMetricDetailsInCSV: jest.fn(),
+}));
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+  showSuccessToast: (...args: unknown[]) => mockShowSuccessToast(...args),
+}));
+jest.mock('../../../hoc/LimitWrapper', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+jest.mock(
+  '../../../components/Metric/MetricListHealth/MetricListHealth.component',
+  () => ({
+    __esModule: true,
+    default: ({ metricId }: { metricId: string }) => (
+      <span data-testid={`metric-health-${metricId}`}>Healthy</span>
+    ),
+  })
+);
+
+const mockUseMetricHierarchy = useMetricHierarchy as jest.Mock;
+const mockSearchQuery = searchQuery as jest.Mock;
+const mockDeleteMetric = deleteMetricAsync as jest.Mock;
+const mockExportMetrics = exportMetricDetailsInCSV as jest.Mock;
+
+const rootMetric: Metric = {
+  id: 'metric-1',
+  name: 'net_sales',
+  fullyQualifiedName: 'net_sales',
+  description: 'Net sales after returns',
+  childrenCount: 2,
+  entityStatus: EntityStatus.Approved,
+  owners: [{ id: 'owner-1', name: 'alice', type: 'user' }],
+};
+
+const hierarchyActions = {
+  toggleExpand: jest.fn(),
+  toggleGroup: jest.fn(),
+  loadMoreChildren: jest.fn(),
+  loadMoreGroupMembers: jest.fn(),
+  expandAll: jest.fn(),
+  collapseAll: jest.fn(),
+  reset: jest.fn(),
+  refetch: jest.fn(),
+};
+
+const setHierarchy = ({
+  rows = [rootMetric],
+  total = rows.length,
+  topLevelNodes = [{ row: rootMetric }],
+  error,
+  isPending = false,
+  collapsedGroupIds = [],
+}: {
+  rows?: unknown[];
+  total?: number;
+  topLevelNodes?: unknown[];
+  error?: Error;
+  isPending?: boolean;
+  collapsedGroupIds?: string[];
+} = {}) => {
+  mockUseMetricHierarchy.mockImplementation(() => ({
+    topLevelNodes,
+    buildRows: () => rows,
+    paging: { total, offset: 0, limit: 20 },
+    isPending,
+    isFetching: isPending,
+    error,
+    expandedRowKeys: [],
+    collapsedGroupIds,
+    loadingParentIds: [],
+    loadingGroupIds: [],
+    ...hierarchyActions,
+  }));
+};
+
+const buildSearchResponse = (metrics: Metric[], total = metrics.length) => ({
   hits: {
     hits: metrics.map((metric) => ({ _source: metric })),
-    total: { value: metrics.length },
+    total: { value: total },
   },
 });
 
-const renderPage = () =>
-  render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }>
+const renderPage = () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
+  return render(
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <MetricListPage />
       </MemoryRouter>
     </QueryClientProvider>
   );
+};
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Avatar: jest
-    .fn()
-    .mockImplementation(({ initials }) => <span>{initials}</span>),
-  Badge: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({ children, onClick, onPress, 'data-testid': testId, isDisabled }) => (
-        <button
-          data-testid={testId}
-          disabled={isDisabled}
-          onClick={onPress ?? onClick}>
-          {children}
-        </button>
-      )
-    ),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({ icon, onClick, className, 'data-testid': testId }) => (
-        <button className={className} data-testid={testId} onClick={onClick}>
-          {icon}
-        </button>
-      )
-    ),
-  EmptyPlaceholder: jest
-    .fn()
-    .mockImplementation(({ title }: { title?: string }) => (
-      <div data-testid="metric-empty-placeholder">{title}</div>
-    )),
-  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
-  Input: jest
-    .fn()
-    .mockImplementation(({ placeholder, value, onChange }) => (
-      <input
-        aria-label="Search"
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-      />
-    )),
-  Typography: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-  Dropdown: {
-    DotsButton: jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId }) => (
-        <button data-testid={testId}>Actions</button>
-      )),
-    Item: jest.fn().mockImplementation(({ label }) => <div>{label}</div>),
-    Menu: jest.fn().mockImplementation(({ children, onAction }) => (
-      <div>
-        {(Array.isArray(children) ? children : [children]).flat().map((child) =>
-          child?.props?.id ? (
-            <button
-              data-testid={`status-option-${child.props.id}`}
-              key={child.props.id}
-              type="button"
-              onClick={() => onAction?.(child.props.id)}>
-              {child.props.label ?? child.props.children}
-            </button>
-          ) : (
-            child
-          )
-        )}
-      </div>
-    )),
-    Popover: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Separator: jest.fn().mockImplementation(() => <hr />),
-  },
-  defaultColors: { gray: { 50: '#fafafa' } },
-}));
-
-const mockLocationPathname = '/mock-path';
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: mockLocationPathname,
-  })),
-  useNavigate: jest.fn(() => mockNavigate),
-}));
-
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    permissions: {
-      metric: { ViewAll: true, ViewBasic: true, Create: true },
-    },
-    getResourcePermission: jest.fn().mockResolvedValue({
+describe('MetricListPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorage.clear();
+    window.matchMedia = jest.fn().mockReturnValue({ matches: false });
+    mockGetResourcePermission.mockResolvedValue({
       ViewAll: true,
       ViewBasic: true,
       Create: true,
       Delete: true,
       EditAll: true,
-    }),
-  }),
-}));
-
-jest.mock('../../../rest/metricsAPI', () => ({
-  exportMetricDetailsInCSV: jest.fn().mockResolvedValue({}),
-  deleteMetricAsync: jest.fn().mockResolvedValue({}),
-}));
-
-jest.mock('../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn(),
-}));
-
-jest.mock('../../../hooks/paging/usePaging', () => {
-  const handlePageChange = jest.fn();
-  const handlePagingChange = jest.fn();
-  const handlePageSizeChange = jest.fn();
-
-  return {
-    usePaging: () => ({
-      paging: { total: 0 },
-      handlePagingChange,
-      currentPage: 1,
-      handlePageChange,
-      pageSize: 15,
-      handlePageSizeChange,
-      showPagination: false,
-      pagingCursor: {},
-    }),
-  };
-});
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
-  showWarningToast: jest.fn(),
-}));
-
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => ({
-    __esModule: true,
-    default: ({ doc }: { doc: string }) => (
-      <div data-testid="error-placeholder">
-        <a href={doc} rel="noreferrer" target="_blank">
-          docs
-        </a>
-      </div>
-    ),
-  })
-);
-
-jest.mock('../../../components/common/Table/TableV2', () => ({
-  __esModule: true,
-  default: ({
-    dataSource,
-    locale,
-    rowSelection,
-  }: {
-    dataSource: Array<{ id: string; name: string }>;
-    locale: { emptyText: React.ReactNode };
-    rowSelection?: { onChange: (keys: string[]) => void };
-  }) => (
-    <div>
-      {dataSource.length ? (
-        <>
-          <button
-            data-testid="select-first-metric"
-            onClick={() => rowSelection?.onChange([dataSource[0].id])}>
-            select
-          </button>
-          {dataSource.map((metric) => (
-            <span key={metric.id}>{metric.name}</span>
-          ))}
-        </>
-      ) : (
-        locale.emptyText
-      )}
-    </div>
-  ),
-}));
-
-jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
-
-jest.mock('../../../components/PageHeader/PageHeader.component', () => ({
-  __esModule: true,
-  default: ({ data }: { data: { header: string; subHeader: string } }) => (
-    <div data-testid="page-header">{data.header}</div>
-  ),
-}));
-
-jest.mock('../../../hoc/LimitWrapper', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
-  __esModule: true,
-  default: ({ open, onDelete }: { open: boolean; onDelete: () => void }) =>
-    open ? (
-      <button data-testid="confirm-button" onClick={onDelete}>
-        Delete
-      </button>
-    ) : null,
-}));
-
-describe('MetricListPage', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockResolvedValue(buildSearchResponse([]));
+    });
+    mockSearchQuery.mockResolvedValue(buildSearchResponse([]));
+    mockDeleteMetric.mockResolvedValue({});
+    mockExportMetrics.mockResolvedValue({});
+    setHierarchy();
   });
 
-  it('renders the docs link with correct URL when empty state is shown', async () => {
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery
-      .mockResolvedValueOnce(
-        buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+  it('renders the accessible core table with hierarchy, status, health, and no excluded content', async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole('table', { name: 'label.metric-plural' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('net_sales')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-health-metric-1')).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'label.approved' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'label.metric' })
+    ).toHaveAttribute('data-uses-label', 'true');
+    expect(
+      screen.getByRole('columnheader', {
+        name: 'label.glossary-term-plural',
+      })
+    ).toHaveAttribute('data-uses-label', 'true');
+    expect(screen.getByText('AL')).toHaveAttribute('data-avatar-size', 'xs');
+    expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
+    expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/value trend/i)).not.toBeInTheDocument();
+    expect(mockDocumentTitle).toHaveBeenCalledWith('label.metric-plural');
+  });
+
+  it('renders metric type colors and uppercase mono granularity consistently', async () => {
+    const styledMetric = {
+      ...rootMetric,
+      childrenCount: 0,
+      granularity: MetricGranularity.Day,
+      metricType: MetricType.Sum,
+    };
+    setHierarchy({
+      rows: [styledMetric],
+      topLevelNodes: [{ row: styledMetric }],
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('label.sum')).toHaveAttribute(
+      'data-badge-color',
+      'blue'
+    );
+    expect(screen.getByText('label.sum')).toHaveAttribute(
+      'data-badge-size',
+      'xs'
+    );
+    expect(screen.getByText('label.sum')).toHaveClass(
+      'tw:font-mono',
+      'tw:uppercase',
+      'tw:tracking-wide'
+    );
+    expect(screen.getByText('label.day')).toHaveClass(
+      'tw:font-mono',
+      'tw:uppercase',
+      'tw:tracking-wide',
+      'tw:text-xs',
+      'tw:font-semibold'
+    );
+  });
+
+  it('matches the prototype page heading and single-line toolbar structure', async () => {
+    renderPage();
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'label.metric-plural',
+    });
+
+    expect(heading).toHaveAttribute('data-size', 'text-xl');
+    expect(heading).toHaveAttribute('data-weight', 'bold');
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.getByTestId('metric-search')).toHaveClass('tw:sm:max-w-84');
+    expect(screen.getByTestId('metric-list-toolbar')).toHaveClass(
+      'tw:sm:flex-row'
+    );
+  });
+
+  it('navigates through the metric row action while keeping checkbox selection separate', async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole('link', { name: 'net_sales' })
+    ).toHaveAttribute('href', '/metric/net_sales');
+
+    fireEvent.click(screen.getByTestId('open-metric-1'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/metric/net_sales');
+
+    mockNavigate.mockClear();
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('shows loading, empty, no-permission, and retryable error states', async () => {
+    let resolvePermission: (value: unknown) => void = (_value) => undefined;
+    mockGetResourcePermission.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePermission = resolve;
+      })
+    );
+    const first = renderPage();
+
+    expect(screen.getByTestId('metric-list-loading')).toBeInTheDocument();
+
+    resolvePermission({ ViewAll: true, Create: true });
+    await screen.findByText('net_sales');
+    first.unmount();
+
+    setHierarchy({ rows: [], total: 0, topLevelNodes: [] });
+    const empty = renderPage();
+
+    expect(
+      await screen.findByTestId('metric-empty-placeholder')
+    ).toHaveTextContent('message.metric-empty-state-title');
+
+    empty.unmount();
+
+    mockGetResourcePermission.mockResolvedValueOnce({});
+    const denied = renderPage();
+
+    expect(
+      await screen.findByText('message.no-permission-to-view')
+    ).toBeInTheDocument();
+
+    denied.unmount();
+
+    mockGetResourcePermission.mockRejectedValue(new Error('permission boom'));
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    const callsBeforeRetry = mockGetResourcePermission.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'label.try-again' }));
+    await waitFor(() =>
+      expect(mockGetResourcePermission).toHaveBeenCalledTimes(
+        callsBeforeRetry + 1
       )
-      .mockResolvedValue(buildSearchResponse([]));
+    );
 
-    renderPage();
-
-    await screen.findByText('p_metric');
-
-    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
-
-    const link = await screen.findByText('docs');
-
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', METRICS_DOCS);
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noreferrer');
+    expect(mockShowErrorToast).toHaveBeenCalled();
   });
 
-  it('passes filtered metric scope when bulk edit is clicked without selection', async () => {
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockResolvedValue(
-      buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+  it('switches and persists card/table mode and defaults narrow screens to cards', async () => {
+    const first = renderPage();
+    await screen.findByRole('table');
+    fireEvent.click(screen.getByTestId('metric-card-view-button'));
+
+    expect(await screen.findByTestId('metric-card-view')).toBeInTheDocument();
+    expect(localStorage.getItem('metricsList.viewMode.v1')).toBe('card');
+
+    first.unmount();
+
+    const persisted = renderPage();
+
+    expect(await screen.findByTestId('metric-card-view')).toBeInTheDocument();
+
+    persisted.unmount();
+
+    localStorage.clear();
+    window.matchMedia = jest.fn().mockReturnValue({ matches: true });
+    renderPage();
+
+    expect(await screen.findByTestId('metric-card-view')).toBeInTheDocument();
+  });
+
+  it('preserves hierarchy indentation in card view', async () => {
+    const child = {
+      id: 'child-1',
+      name: 'net_sales_emea',
+      fullyQualifiedName: 'net_sales.net_sales_emea',
+    };
+    const parent = { ...rootMetric, children: [child] };
+    setHierarchy({
+      rows: [parent],
+      topLevelNodes: [{ row: parent }],
+    });
+    renderPage();
+
+    await screen.findByRole('table');
+    fireEvent.click(screen.getByTestId('metric-card-view-button'));
+
+    const childCard = await screen.findByTestId('metric-card-child-1');
+    const childLink = within(childCard).getByRole('link', {
+      name: 'net_sales_emea',
+    });
+
+    expect(childLink.closest('[data-metric-fqn]')).toHaveClass('tw:pl-4');
+  });
+
+  it('keeps group context when hierarchy search matches a group or descendant', async () => {
+    const groupRow = {
+      id: 'group:group-1',
+      isGroupRow: true,
+      group: {
+        id: 'group-1',
+        name: 'profitability',
+        displayName: 'Profitability',
+      },
+      memberCount: 1,
+    };
+    const descendant = {
+      id: 'child-1',
+      name: 'net_sales_emea',
+      fullyQualifiedName: 'net_sales.net_sales_emea',
+      parent: { id: 'metric-1', type: 'metric' },
+      metricGroup: { id: 'group-1', type: 'metricGroup' },
+    };
+    mockUseMetricHierarchy.mockImplementation(
+      ({ query }: { query?: string }) => {
+        const isMatchingHierarchy = Boolean(query);
+        const topLevelNodes = isMatchingHierarchy
+          ? [{ row: groupRow, groupId: 'group-1', members: [descendant] }]
+          : [{ row: rootMetric }];
+
+        return {
+          topLevelNodes,
+          buildRows: () =>
+            isMatchingHierarchy ? [groupRow, descendant] : [rootMetric],
+          paging: { total: 1, offset: 0, limit: 20 },
+          isPending: false,
+          isFetching: false,
+          expandedRowKeys: [],
+          collapsedGroupIds: [],
+          loadingParentIds: [],
+          loadingGroupIds: [],
+          ...hierarchyActions,
+        };
+      }
     );
+    renderPage();
+    const input = await screen.findByTestId('metric-search');
+    fireEvent.change(input, { target: { value: 'profitability' } });
+
+    expect(
+      await screen.findByText('net_sales_emea', {}, { timeout: 2000 })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('metric-group-profitability')
+    ).toBeInTheDocument();
+    expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        page: 1,
+        query: 'profitability',
+      })
+    );
+
+    fireEvent.change(input, { target: { value: 'emea' } });
+
+    await waitFor(() =>
+      expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'emea' })
+      )
+    );
+
+    expect(mockSearchQuery).not.toHaveBeenCalled();
+  });
+
+  it('offers and applies every metric status through server-side filtering', async () => {
+    mockSearchQuery.mockResolvedValue(
+      buildSearchResponse([
+        {
+          id: 'rejected-1',
+          name: 'rejected_metric',
+          fullyQualifiedName: 'rejected_metric',
+          entityStatus: EntityStatus.Rejected,
+        },
+      ])
+    );
+    renderPage();
+    await screen.findByText('net_sales');
+
+    for (const status of Object.values(EntityStatus)) {
+      expect(screen.getByTestId(`menu-item-${status}`)).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
+
+    expect(await screen.findByText('rejected_metric')).toBeInTheDocument();
+    expect(mockSearchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryFilter: getTermQuery({ entityStatus: EntityStatus.Rejected }),
+      })
+    );
+  });
+
+  it('renders full-width group banners, variant controls, and group paging', async () => {
+    const groupRow = {
+      id: 'group:group-1',
+      isGroupRow: true,
+      group: {
+        id: 'group-1',
+        name: 'profitability',
+        displayName: 'Profitability',
+        description: 'Margin, profit, and revenue-quality metrics',
+      },
+      memberCount: 3,
+    };
+    const groupedMetric = {
+      ...rootMetric,
+      metricGroup: { id: 'group-1', type: 'metricGroup' },
+    };
+    const loadMoreRow = {
+      id: 'load-more:group:group-1',
+      isLoadMoreRow: true,
+      scope: 'group',
+      parentId: 'group-1',
+      parentFqn: '',
+      remaining: 2,
+    };
+    setHierarchy({
+      rows: [groupRow, groupedMetric, loadMoreRow],
+      total: 1,
+      topLevelNodes: [
+        { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
+      ],
+    });
+    renderPage();
+
+    const groupToggle = await screen.findByTestId('metric-group-profitability');
+    const groupRowElement = groupToggle.closest('tr');
+    const groupCell = groupToggle.closest('td');
+
+    expect(groupRowElement).toHaveAttribute(
+      'data-testid',
+      'metric-group-row-group-1'
+    );
+    expect(groupRowElement?.querySelectorAll('td')).toHaveLength(1);
+    expect(groupCell).toHaveAttribute('colspan', '7');
+    expect(groupCell).toHaveTextContent(
+      'Margin, profit, and revenue-quality metrics'
+    );
+    expect(
+      screen.queryByTestId('select-group:group-1')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(groupToggle);
+
+    expect(hierarchyActions.toggleGroup).toHaveBeenCalledWith('group:group-1');
+
+    fireEvent.click(screen.getByTestId('expand-metric-1'));
+
+    expect(hierarchyActions.toggleExpand).toHaveBeenCalledWith(
+      true,
+      groupedMetric
+    );
+
+    fireEvent.click(screen.getByTestId('load-more-group-group-1'));
+
+    expect(hierarchyActions.loadMoreGroupMembers).toHaveBeenCalledWith(
+      'group-1'
+    );
+
+    expect(
+      screen.queryByTestId('add-variant-metric-1')
+    ).not.toBeInTheDocument();
+  });
+
+  it('expands group banners once by default without expanding metric variants or overriding collapse', async () => {
+    const groupRow = {
+      id: 'group:group-1',
+      isGroupRow: true,
+      group: {
+        id: 'group-1',
+        name: 'profitability',
+        displayName: 'Profitability',
+      },
+      memberCount: 1,
+    };
+    const groupedMetric = {
+      ...rootMetric,
+      metricGroup: { id: 'group-1', type: 'metricGroup' },
+    };
+    setHierarchy({
+      rows: [groupRow, groupedMetric],
+      total: 1,
+      topLevelNodes: [
+        { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() =>
+      expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1)
+    );
+
+    const cardViewButton = await screen.findByTestId('metric-card-view-button');
+
+    expect(hierarchyActions.toggleExpand).not.toHaveBeenCalled();
+    expect(screen.getByTestId('expand-metric-1')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('metric-group-profitability'));
+
+    expect(hierarchyActions.toggleGroup).toHaveBeenCalledWith('group:group-1');
+
+    setHierarchy({
+      collapsedGroupIds: ['group:group-1'],
+      rows: [groupRow],
+      total: 1,
+      topLevelNodes: [
+        { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
+      ],
+    });
+    fireEvent.click(cardViewButton);
+
+    expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('metric-group-profitability')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('does not mount health queries for roots hidden inside collapsed groups', async () => {
+    const groupRow = {
+      id: 'group:group-1',
+      isGroupRow: true,
+      group: {
+        id: 'group-1',
+        name: 'profitability',
+        displayName: 'Profitability',
+      },
+      memberCount: 1,
+    };
+    setHierarchy({
+      collapsedGroupIds: [groupRow.id],
+      rows: [groupRow],
+      total: 1,
+      topLevelNodes: [{ row: groupRow, groupId: 'group-1' }],
+    });
 
     renderPage();
 
-    const searchInput = await screen.findByPlaceholderText(
-      'label.search-entity'
+    expect(
+      await screen.findByTestId('metric-group-profitability')
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByTestId('metric-health-metric-1')
+    ).not.toBeInTheDocument();
+  });
+
+  it('persists customizable columns', async () => {
+    renderPage();
+    await screen.findByText('net_sales');
+    fireEvent.click(screen.getByRole('button', { name: 'label.health' }));
+
+    expect(
+      JSON.parse(localStorage.getItem('metricsList.columnPrefs.v2') ?? '[]')
+    ).not.toContain('health');
+  });
+
+  it('uses normal top-level pagination and clears selection between pages', async () => {
+    setHierarchy({ total: 41 });
+    renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('metric-page-next'));
+
+    await waitFor(() =>
+      expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2, pageSize: 20, query: '' })
+      )
     );
 
-    fireEvent.change(searchInput, { target: { value: 'sales' } });
+    expect(
+      screen.queryByText(/1 label.selected-lowercase/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('prunes hidden child selections when their group is collapsed', async () => {
+    const groupRow = {
+      id: 'group:group-1',
+      isGroupRow: true,
+      group: { id: 'group-1', name: 'profitability' },
+      memberCount: 2,
+    };
+    const child = {
+      id: 'child-1',
+      name: 'emea_margin',
+      fullyQualifiedName: 'emea_margin',
+    };
+    const parent = {
+      ...rootMetric,
+      metricGroup: { id: 'group-1', type: 'metricGroup' },
+      children: [child],
+    };
+    setHierarchy({
+      rows: [groupRow, parent],
+      total: 1,
+      topLevelNodes: [{ row: groupRow, groupId: 'group-1', members: [parent] }],
+    });
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-child-1'));
+
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+
+    setHierarchy({
+      rows: [groupRow],
+      total: 1,
+      topLevelNodes: [{ row: groupRow, groupId: 'group-1', members: [] }],
+      collapsedGroupIds: ['group:group-1'],
+    });
+    fireEvent.click(screen.getByTestId('metric-card-view-button'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/1 label.selected-lowercase/)
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('bulk-delete-metric')).not.toBeInTheDocument();
+  });
+
+  it('passes filtered and selected scopes to bulk edit', async () => {
+    const filtered = renderPage();
+    const input = await screen.findByTestId('metric-search');
+    fireEvent.change(input, { target: { value: 'sales' } });
     fireEvent.click(screen.getByTestId('bulk-edit-metric'));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenLastCalledWith(
       getEntityBulkEditPath(EntityType.METRIC, '*'),
       {
         state: {
           metricBulkEditScope: {
             mode: 'filtered',
-            filters: {
-              searchText: 'sales',
-              statusFilter: undefined,
-            },
+            filters: { searchText: 'sales', statusFilter: undefined },
           },
         },
       }
     );
-  });
 
-  it('passes selected metric scope when selected rows are bulk edited', async () => {
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockResolvedValue(
-      buildSearchResponse([
-        { id: 'metric-id', name: 'net_sales', displayName: 'Net Sales' },
-      ])
-    );
+    filtered.unmount();
 
     renderPage();
-
-    fireEvent.click(await screen.findByTestId('select-first-metric'));
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
     fireEvent.click(screen.getByTestId('bulk-edit-metric'));
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(
-        getEntityBulkEditPath(EntityType.METRIC, '*'),
-        {
-          state: {
-            metricBulkEditScope: {
-              mode: 'selected',
-              metricIds: ['metric-id'],
-              metricNames: ['net_sales'],
-              filters: {
-                searchText: '',
-                statusFilter: undefined,
-              },
-            },
-          },
-        }
-      );
-    });
-  });
-
-  it('starts async export directly from the listing action menu', async () => {
-    const { exportMetricDetailsInCSV } = require('../../../rest/metricsAPI');
-    const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
-
-    renderPage();
-
-    fireEvent.click(await screen.findByText('label.export'));
-
-    await waitFor(() => {
-      expect(exportMetricDetailsInCSV).toHaveBeenCalledWith('*');
-      expect(dispatchEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'csv-jobs-refresh' })
-      );
-    });
-
-    dispatchEventSpy.mockRestore();
-  });
-
-  it('filters the listing by status via a server-side search query', async () => {
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockImplementation((req: { queryFilter?: unknown }) => {
-      const isDraftFilter = JSON.stringify(req.queryFilter ?? {}).includes(
-        EntityStatus.Draft
-      );
-
-      return Promise.resolve(
-        buildSearchResponse(
-          isDraftFilter
-            ? [{ id: 'd1', name: 'draft_metric', entityStatus: 'Draft' }]
-            : [
-                { id: 'a1', name: 'approved_metric', entityStatus: 'Approved' },
-                { id: 'd1', name: 'draft_metric', entityStatus: 'Draft' },
-              ]
-        )
-      );
-    });
-
-    renderPage();
-
-    expect(await screen.findByText('approved_metric')).toBeInTheDocument();
-    expect(screen.getByText('draft_metric')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
-
-    await waitFor(() =>
-      expect(screen.queryByText('approved_metric')).not.toBeInTheDocument()
-    );
-
-    expect(screen.getByText('draft_metric')).toBeInTheDocument();
-    expect(searchQuery).toHaveBeenLastCalledWith(
+    expect(mockNavigate).toHaveBeenLastCalledWith(
+      getEntityBulkEditPath(EntityType.METRIC, '*'),
       expect.objectContaining({
-        queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
+        state: expect.objectContaining({
+          metricBulkEditScope: expect.objectContaining({
+            mode: 'selected',
+            metricIds: ['metric-1'],
+            metricNames: ['net_sales'],
+          }),
+        }),
       })
     );
   });
 
-  it('applies both the debounced search text and the status filter to the query', async () => {
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockResolvedValue(
-      buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+  it('confirms bulk deletion, refreshes hierarchy, and exposes mutation progress', async () => {
+    let resolveDelete: () => void = () => undefined;
+    mockDeleteMetric.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveDelete = resolve;
+      })
     );
-
     renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
 
-    const searchInput = await screen.findByPlaceholderText(
-      'label.search-entity'
-    );
+    expect(screen.getByTestId('confirm-button')).toBeDisabled();
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1');
 
-    fireEvent.change(searchInput, { target: { value: 'sales' } });
-    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
+    resolveDelete();
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
 
-    await waitFor(
-      () =>
-        expect(searchQuery).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            query: 'sales',
-            queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
-          })
-        ),
-      { timeout: 2000 }
-    );
+    expect(mockShowSuccessToast).toHaveBeenCalled();
   });
 
-  it('does not flash the create placeholder while a cleared search is still pending', async () => {
-    const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockImplementation((req: { query?: string }) =>
-      Promise.resolve(
-        buildSearchResponse(
-          req.query === 'zzz' ? [] : [{ id: 'a', name: 'a_metric' }]
-        )
-      )
+  it('exports metrics from the core action menu', async () => {
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+    renderPage();
+    fireEvent.click(await screen.findByTestId('menu-item-export'));
+
+    await waitFor(() => expect(mockExportMetrics).toHaveBeenCalledWith('*'));
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'csv-jobs-refresh' })
     );
 
-    renderPage();
-
-    const searchInput = await screen.findByPlaceholderText(
-      'label.search-entity'
-    );
-
-    fireEvent.change(searchInput, { target: { value: 'zzz' } });
-
-    await screen.findByTestId('error-placeholder', {}, { timeout: 2000 });
-
-    fireEvent.change(searchInput, { target: { value: '' } });
-
-    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('metric-empty-placeholder')
-    ).not.toBeInTheDocument();
-  });
-
-  it('surfaces an error when the permission fetch fails', async () => {
-    const {
-      usePermissionProvider,
-    } = require('../../../context/PermissionProvider/PermissionProvider');
-    usePermissionProvider.mockReturnValue({
-      getResourcePermission: jest
-        .fn()
-        .mockRejectedValue(new Error('permission boom')),
-    });
-    const { showErrorToast } = require('../../../utils/ToastUtils');
-
-    renderPage();
-
-    expect(await screen.findByTestId('error-placeholder')).toBeInTheDocument();
-
-    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+    dispatchSpy.mockRestore();
   });
 });

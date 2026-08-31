@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -938,6 +939,55 @@ describe('Test GlossaryTermTab component', () => {
 
       expect(mockShowSuccessToast).toHaveBeenCalledWith('Vote recorded.');
       expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
+    });
+
+    it('should require and submit a comment when rejecting from the glossary list', async () => {
+      const term = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: 'In Review',
+      };
+      mockUseGlossaryStore.glossaryChildTerms = [term];
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-1',
+            about: { fullyQualifiedName: term.fullyQualifiedName },
+            assignees: [{ id: 'user-1' }],
+          },
+        ],
+      });
+      mockPermissionForApproveOrReject.mockReturnValue({
+        permission: true,
+        taskId: 'task-1',
+      });
+      mockResolveTask.mockResolvedValue({ id: 'task-1', status: 'Rejected' });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const rejectButton = await screen.findByTestId(`${term.name}-reject-btn`);
+      fireEvent.click(rejectButton);
+
+      const confirmButton = screen.getByTestId('confirm-reject-glossary-term');
+
+      expect(confirmButton).toBeDisabled();
+
+      fireEvent.change(
+        within(screen.getByTestId('glossary-term-reject-comment')).getByRole(
+          'textbox'
+        ),
+        { target: { value: 'Duplicate glossary term' } }
+      );
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+          comment: 'Duplicate glossary term',
+          newValue: 'rejected',
+          resolutionType: 'Rejected',
+        });
+      });
     });
   });
 

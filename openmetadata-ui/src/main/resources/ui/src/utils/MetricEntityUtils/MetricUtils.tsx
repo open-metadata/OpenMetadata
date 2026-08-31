@@ -14,10 +14,6 @@
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../../components/common/Loader/Loader';
 import type { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
@@ -55,9 +51,19 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const MetricExpression = withSuspenseFallback(
+const MetricHierarchyCard = withSuspenseFallback(
   lazy(
-    () => import('../../components/Metric/MetricExpression/MetricExpression')
+    () =>
+      import('../../components/Metric/MetricHierarchyCard/MetricHierarchyCard')
+  )
+);
+
+const MetricDefinitionCard = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Metric/MetricDefinitionCard/MetricDefinitionCard'
+      )
   )
 );
 
@@ -75,15 +81,22 @@ const MetricMeasures = withSuspenseFallback(
   lazy(() => import('../../components/Metric/MetricMeasures/MetricMeasures'))
 );
 
-const CustomPropertyTable = withSuspenseFallback(
-  lazy(() =>
+const MetricObservabilityTab = lazy(
+  () =>
     import(
-      '../../components/common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
-  )
-) as <T extends ExtentionEntitiesKeys>(
-  props: CustomPropertyProps<T>
-) => JSX.Element;
+      '../../components/Metric/MetricObservability/MetricObservabilityTab.component'
+    )
+);
+
+const MetricApprovalTab = lazy(
+  () =>
+    import('../../components/Metric/MetricApproval/MetricApprovalTab.component')
+);
+
+const MetricAssetsTab = lazy(
+  () =>
+    import('../../components/Metric/MetricAssetsTab/MetricAssetsTab.component')
+);
 
 const EntityLineageTab = lazy(() =>
   import('../../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -95,13 +108,12 @@ export const getMetricDetailsPageTabs = ({
   feedCount,
   activeTab,
   editLineagePermission,
-  editCustomAttributePermission,
-  viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchMetricDetails,
   metricDetails,
   handleFeedCount,
   labelMap,
+  metricPermissions,
 }: MetricDetailPageTabProps) => {
   return [
     {
@@ -114,47 +126,6 @@ export const getMetricDetailsPageTabs = ({
       key: EntityTabs.OVERVIEW,
       children: <GenericTab type={PageType.Metric} />,
     },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.EXPRESSION}
-          name={labelMap[EntityTabs.EXPRESSION] ?? i18n.t('label.expression')}
-        />
-      ),
-      key: EntityTabs.EXPRESSION,
-      children: (
-        <div className="p-t-sm m-x-lg">
-          <MetricExpression />
-        </div>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={
-            labelMap[EntityTabs.ACTIVITY_FEED] ??
-            i18n.t('label.activity-feed-and-task-plural')
-          }
-        />
-      ),
-      key: EntityTabs.ACTIVITY_FEED,
-      children: (
-        <ActivityFeedTab
-          refetchFeed
-          entityFeedTotalCount={feedCount.totalCount}
-          entityType={EntityType.METRIC}
-          feedCount={feedCount}
-          layoutType={ActivityFeedLayoutType.THREE_PANEL}
-          onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={fetchMetricDetails}
-          onUpdateFeedCount={handleFeedCount}
-        />
-      ),
-    },
-
     {
       label: (
         <TabsLabel
@@ -177,20 +148,81 @@ export const getMetricDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          id={EntityTabs.CUSTOM_PROPERTIES}
+          count={metricDetails?.assets?.length ?? 0}
+          id={EntityTabs.ASSETS}
+          isActive={activeTab === EntityTabs.ASSETS}
+          name={labelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
+        />
+      ),
+      key: EntityTabs.ASSETS,
+      children: metricDetails && metricPermissions && (
+        <Suspense fallback={<Loader />}>
+          <MetricAssetsTab
+            metric={metricDetails}
+            permissions={metricPermissions}
+            onAssetsChange={fetchMetricDetails}
+          />
+        </Suspense>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.DATA_OBSERVABILITY}
           name={
-            labelMap[EntityTabs.CUSTOM_PROPERTIES] ??
-            i18n.t('label.custom-property-plural')
+            labelMap[EntityTabs.DATA_OBSERVABILITY] ??
+            i18n.t('label.data-observability')
           }
         />
       ),
-      key: EntityTabs.CUSTOM_PROPERTIES,
+      key: EntityTabs.DATA_OBSERVABILITY,
       children: metricDetails && (
-        <CustomPropertyTable<EntityType.METRIC>
-          entityType={EntityType.METRIC}
-          hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewCustomPropertiesPermission}
+        <Suspense fallback={<Loader />}>
+          <MetricObservabilityTab metric={metricDetails} />
+        </Suspense>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          count={feedCount.totalCount}
+          id={EntityTabs.ACTIVITY_FEED}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          name={
+            labelMap[EntityTabs.ACTIVITY_FEED] ??
+            i18n.t('label.activity-and-task-plural')
+          }
         />
+      ),
+      key: EntityTabs.ACTIVITY_FEED,
+      children: (
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.METRIC}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchMetricDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.APPROVAL}
+          name={labelMap[EntityTabs.APPROVAL] ?? i18n.t('label.approval')}
+        />
+      ),
+      key: EntityTabs.APPROVAL,
+      children: metricDetails && (
+        <Suspense fallback={<Loader />}>
+          <MetricApprovalTab
+            metric={metricDetails}
+            onStatusChange={fetchMetricDetails}
+          />
+        </Suspense>
       ),
     },
   ];
@@ -199,6 +231,14 @@ export const getMetricDetailsPageTabs = ({
 export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
     return <RelatedMetrics />;
+  }
+
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_HIERARCHY)) {
+    return <MetricHierarchyCard />;
+  }
+
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DEFINITION)) {
+    return <MetricDefinitionCard />;
   }
 
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DIMENSIONS)) {
