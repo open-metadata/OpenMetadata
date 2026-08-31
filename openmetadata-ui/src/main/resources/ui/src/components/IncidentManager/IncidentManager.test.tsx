@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { act } from 'react';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
@@ -1231,6 +1232,47 @@ describe('IncidentManagerPage', () => {
           },
         ],
       });
+    });
+  });
+
+  describe('permission gating (useIncidentManagerListPage.commonTestCasePermission)', () => {
+    // usePermissionProvider is called more than once per render (this component plus
+    // useIncidentManagerListPage internally), so `mockReturnValueOnce` only overrides the
+    // FIRST call and silently falls back to the granted default for the rest — use a
+    // persistent override for the duration of this test, restored afterward so later tests
+    // (and other describe blocks, if this file's order ever changes) keep the granted default.
+    const grantedReturnValue = (usePermissionProvider as jest.Mock).getMockImplementation?.();
+
+    afterEach(() => {
+      if (grantedReturnValue) {
+        (usePermissionProvider as jest.Mock).mockImplementation(
+          grantedReturnValue
+        );
+      }
+    });
+
+    it('shows the permission placeholder instead of the table when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        permissions: {
+          testCase: {
+            ViewAll: false,
+            ViewBasic: false,
+          },
+        },
+        getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-case-incident-manager-table')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('incident-filter-bar')).not.toBeInTheDocument();
     });
   });
 });
