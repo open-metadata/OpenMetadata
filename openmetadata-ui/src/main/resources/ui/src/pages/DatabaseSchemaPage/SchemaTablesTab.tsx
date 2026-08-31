@@ -60,6 +60,7 @@ import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -115,6 +116,18 @@ function SchemaTablesTab({
       getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
     );
   }, [permissions, isVersionView]);
+
+  // Resource-level permission (usePermissionProvider().permissions.table, itself
+  // OperationPermission-shaped) run through getDerivedPermissionFlags per the Batch 8
+  // ContextCenter-trio precedent — the fetch stays untouched (still a plain object off the
+  // provider), only the raw `.EditAll` read is replaced. Deleted-gated: the old raw
+  // expression explicitly ANDed `!databaseSchemaDetails.deleted`.
+  const canBulkEditTables = useMemo(
+    () =>
+      getDerivedPermissionFlags(permissions.table, databaseSchemaDetails.deleted)
+        .canEditAll,
+    [permissions.table, databaseSchemaDetails.deleted]
+  );
 
   const searchValue = useMemo(() => {
     const param = location.search;
@@ -378,10 +391,7 @@ function SchemaTablesTab({
               </Typography.Text>
             </span>
 
-            {getBulkEditButton(
-              permissions.table.EditAll && !databaseSchemaDetails.deleted,
-              handleEditTable
-            )}
+            {getBulkEditButton(canBulkEditTables, handleEditTable)}
           </>
         )
       }
