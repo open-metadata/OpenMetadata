@@ -195,71 +195,21 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
     return None
 
 
-# The wildcards a Databricks glob include may use. Shared so that the directory
-# reduction and the matcher always agree on what makes a pattern a pattern.
-GLOB_WILDCARDS = ("*", "?")
-
-
-def is_glob_pattern(include: str) -> bool:
-    """True when the include selects a set of files rather than naming one."""
-    return any(wildcard in include for wildcard in GLOB_WILDCARDS)
-
-
 def glob_base_directory(include: str) -> str:
     """
-    Reduce a glob include pattern to the directory the caller should list.
+    Reduce a glob include to the path the caller should read.
 
-    Everything from the first wildcard onward is dropped, and the result always
-    ends with `/`. `/tx/**`, `/tx/*.sql` and `/tx/**/*.sql` all reduce to `/tx/`.
-    The pattern itself is kept on the returned `DLTLibrarySource` so the listing
-    can be filtered back down to what the pattern actually selects.
-
-    A pattern with no wildcard is already a concrete path and is returned as is.
+    The pipelines API only accepts an exact file, a directory, or a directory
+    with a trailing `**`, and rejects every other wildcard form outright, so the
+    reduction is just dropping the `**`. Truncating at any other stray wildcard
+    keeps an unexpected include pointed at a real directory rather than at a path
+    that cannot be read at all.
     """
-    if not is_glob_pattern(include):
+    wildcard = include.find("*")
+    if wildcard == -1:
         return include
-    first_wildcard = min(include.index(w) for w in GLOB_WILDCARDS if w in include)
-    base = include[:first_wildcard]
-    if not base.endswith("/"):
-        # a partial segment such as "/tx/staging*" leaves "/tx/staging", whose
-        # directory is the widest thing that is certain to contain the matches
-        base = base.rsplit("/", 1)[0] + "/"
-    return base
-
-
-def glob_matches(path: str, pattern: Optional[str]) -> bool:  # noqa: UP045
-    """
-    Check a workspace path against a Databricks glob include.
-
-    `**` spans directories, `*` and `?` stay inside one segment. `fnmatch` is not
-    used because there `*` also crosses `/`, which would make `/tx/*.sql` match
-    files nested in subdirectories.
-
-    An entry with no pattern matches, so notebook and file libraries pass through.
-    """
-    if not pattern:
-        return True
-
-    regex = []
-    index = 0
-    while index < len(pattern):
-        char = pattern[index]
-        if pattern.startswith("**/", index):
-            regex.append("(?:.*/)?")
-            index += 3
-        elif pattern.startswith("**", index):
-            regex.append(".*")
-            index += 2
-        elif char == "*":
-            regex.append("[^/]*")
-            index += 1
-        elif char == "?":
-            regex.append("[^/]")
-            index += 1
-        else:
-            regex.append(re.escape(char))
-            index += 1
-    return re.fullmatch("".join(regex), path) is not None
+    base = include[:wildcard]
+    return base if base.endswith("/") else base.rsplit("/", 1)[0] + "/"
 
 
 def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # noqa: UP006
@@ -296,19 +246,14 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                 glob_entry = lib.get("glob")
                 include = glob_entry.get("include") if isinstance(glob_entry, dict) else glob_entry
                 if include:
-                    # an include without a wildcard names a path rather than selecting
-                    # a set, so it carries no pattern to filter the listing against
-                    pattern = include if is_glob_pattern(include) else None
                     base_path = glob_base_directory(include)
                     libraries.append(
                         DLTLibrarySource(
                             path=base_path,
-                            pattern=pattern,
-                            # a wildcard always reduces to a directory to list, and a
-                            # slash-terminated include names one outright. Anything else
-                            # is unknowable from the string, so it is left to the caller
-                            # to settle by listing it.
-                            is_directory=True if pattern or include.endswith("/") else None,
+                            # a `**` or a trailing slash names a directory outright.
+                            # Anything else is unknowable from the string, so it is
+                            # left to the caller to settle by listing it.
+                            is_directory=True if base_path.endswith("/") else None,
                         )
                     )
                     logger.info(f"   ✓ Found glob {include}, listing: {base_path}")

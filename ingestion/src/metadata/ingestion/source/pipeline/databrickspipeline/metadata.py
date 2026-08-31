@@ -64,7 +64,6 @@ from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_kafka_sources,
     get_pipeline_libraries,
-    glob_matches,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
@@ -423,14 +422,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
         max_depth: int = 5,
     ) -> List[str]:  # noqa: UP006
         """
-        List the notebooks and files a library's glob selects.
+        List every notebook and file under a library directory.
 
-        The Databricks `workspace/list` API returns immediate children only, so a
-        recursive `**` include needs the subdirectories walked explicitly. A `*`
-        include stays one level deep, and every candidate is checked against the
-        pattern so a selective include such as `/transformations/*.sql` does not
-        pull in the rest of the directory. Depth is capped so an unexpected cycle
-        cannot spin forever.
+        The Databricks `workspace/list` API returns immediate children only, so
+        subdirectories are walked explicitly. A library is either a file or a
+        directory taken in full, so there is nothing to filter the listing
+        against. Depth is capped so an unexpected cycle cannot spin forever.
         """
         collected = []
         path = path or library.path
@@ -442,14 +439,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 if not obj_path:
                     continue
                 if obj_type in ("NOTEBOOK", "FILE"):
-                    if not glob_matches(obj_path, library.pattern):
-                        logger.debug(f"   ⊗ {obj_path} does not match {library.pattern}")
-                        continue
                     collected.append(obj_path)
                     logger.info(f"   ✓ Found {obj_type.lower()}: {obj_path}")
                 elif obj_type == "DIRECTORY":
-                    if not library.is_recursive:
-                        continue
                     if max_depth <= 0:
                         logger.warning(f"   ⊗ Max depth reached, not descending into {obj_path}")
                         continue
@@ -758,7 +750,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                 logger.info(f"✓ Total notebook paths found: {len(notebook_paths)}")
                 for idx, library in enumerate(notebook_paths):
-                    logger.info(f"   {idx + 1}. {library.pattern or library.path}")
+                    logger.info(f"   {idx + 1}. {library.path}")
             except Exception as exc:
                 logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")
                 logger.debug(traceback.format_exc())
@@ -789,7 +781,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     expanded_paths.append(library.path)
                     logger.debug(f"   Direct path: {library.path}")
                 else:
-                    logger.debug(f"   ⊗ Nothing matched {library.pattern or library.path}")
+                    logger.debug(f"   ⊗ Nothing found under {library.path}")
 
             logger.info(f"✓ Total notebooks to process: {len(expanded_paths)}")
 

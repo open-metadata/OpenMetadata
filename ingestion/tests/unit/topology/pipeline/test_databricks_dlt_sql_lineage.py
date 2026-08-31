@@ -45,8 +45,6 @@ from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     get_pipeline_libraries,
     glob_base_directory,
-    glob_matches,
-    is_glob_pattern,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
@@ -455,11 +453,9 @@ class TestGlobNormalisation:
     def test_a_concrete_path_is_left_alone(self):
         assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
 
-    def test_glob_library_keeps_its_pattern_for_filtering(self):
-        libraries = get_pipeline_libraries({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]})
-        assert libraries == [DLTLibrarySource(path="/tx/", pattern="/tx/**/*.sql", is_directory=True)]
-        assert libraries[0].is_directory
-        assert libraries[0].is_recursive
+    def test_a_glob_library_reduces_to_a_known_directory(self):
+        libraries = get_pipeline_libraries({"libraries": [{"glob": {"include": "/tx/**"}}]})
+        assert libraries == [DLTLibrarySource(path="/tx/", is_directory=True)]
 
     def test_all_library_shapes_are_collected(self):
         libraries = get_pipeline_libraries(
@@ -476,7 +472,7 @@ class TestGlobNormalisation:
         assert libraries == [
             DLTLibrarySource(path="/repo/nb"),
             DLTLibrarySource(path="/repo/transform.sql"),
-            DLTLibrarySource(path="/repo/tx/", pattern="/repo/tx/**", is_directory=True),
+            DLTLibrarySource(path="/repo/tx/", is_directory=True),
         ]
 
     def test_missing_or_empty_config_is_safe(self):
@@ -547,8 +543,9 @@ class TestConnectorCaches:
 
 class TestGlobExpansion:
     """
-    A glob selects specific files. Expanding it must not widen the selection, or a
-    pipeline picks up transformations that belong to something else.
+    A library directory is taken in full. The pipelines API accepts only an exact
+    file or a directory, so there is no narrower selection to honour and nothing
+    to filter the listing against.
     """
 
     WORKSPACE: ClassVar[dict] = {
@@ -559,62 +556,38 @@ class TestGlobExpansion:
         ],
         "/tx/archive/": [{"object_type": "FILE", "path": "/tx/archive/old_v1.sql"}],
     }
+    WHOLE_TREE: ClassVar[list] = ["/tx/a.sql", "/tx/notes.py", "/tx/archive/old_v1.sql"]
 
-    def _expand(self, pattern):
+    def _source(self):
         with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
             source = DatabrickspipelineSource(None, None)
         source.client = MagicMock()
         source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
-        return source._expand_workspace_directory(DLTLibrarySource(path=glob_base_directory(pattern), pattern=pattern))
+        return source
 
-    def test_single_star_stays_in_the_directory_and_respects_the_extension(self):
-        assert self._expand("/tx/*.sql") == ["/tx/a.sql"]
+    def _expand(self, include):
+        return self._source()._expand_workspace_directory(DLTLibrarySource(path=glob_base_directory(include)))
 
-    def test_double_star_takes_the_whole_tree(self):
-        assert self._expand("/tx/**") == [
-            "/tx/a.sql",
-            "/tx/notes.py",
-            "/tx/archive/old_v1.sql",
-        ]
+    def test_a_recursive_include_takes_the_whole_tree(self):
+        assert self._expand("/tx/**") == self.WHOLE_TREE
 
-    def test_directory_segment_wildcard_descends(self):
-        assert self._expand("/tx/arch*/*.sql") == ["/tx/archive/old_v1.sql"]
+    def test_a_slash_terminated_include_takes_the_whole_tree(self):
+        assert self._expand("/tx/") == self.WHOLE_TREE
 
-    def test_double_star_with_extension_recurses_but_still_filters(self):
-        assert self._expand("/tx/**/*.sql") == ["/tx/a.sql", "/tx/archive/old_v1.sql"]
+    def test_subdirectories_are_walked_rather_than_listed_once(self):
+        """`workspace/list` returns immediate children only, so nesting needs recursion."""
+        assert "/tx/archive/old_v1.sql" in self._expand("/tx/**")
 
-    def test_a_directory_without_a_pattern_takes_everything_below_it(self):
+    def test_a_directory_without_a_trailing_slash_takes_everything_below_it(self):
         """A source_path fallback points at a tree, not one level of it."""
-        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
-            source = DatabrickspipelineSource(None, None)
-        source.client = MagicMock()
-        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        assert self._source()._expand_workspace_directory(DLTLibrarySource(path="/tx/")) == self.WHOLE_TREE
 
-        library = DLTLibrarySource(path="/tx/")
-        assert library.is_recursive is True
-        assert source._expand_workspace_directory(library) == [
-            "/tx/a.sql",
-            "/tx/notes.py",
-            "/tx/archive/old_v1.sql",
+    def test_depth_is_capped(self):
+        source = self._source()
+        source.client.list_workspace_objects.side_effect = lambda path: [
+            {"object_type": "DIRECTORY", "path": f"{path}d"}
         ]
-
-
-class TestGlobMatching:
-    """`*` stays within a path segment, `**` spans them."""
-
-    def test_single_star_does_not_cross_a_directory_boundary(self):
-        assert glob_matches("/tx/a.sql", "/tx/*.sql") is True
-        assert glob_matches("/tx/archive/old.sql", "/tx/*.sql") is False
-
-    def test_double_star_spans_directories(self):
-        assert glob_matches("/tx/archive/old.sql", "/tx/**/*.sql") is True
-        assert glob_matches("/tx/a.sql", "/tx/**/*.sql") is True
-
-    def test_extension_is_honoured(self):
-        assert glob_matches("/tx/notes.py", "/tx/*.sql") is False
-
-    def test_an_entry_without_a_pattern_always_matches(self):
-        assert glob_matches("/tx/anything", None) is True
+        assert source._expand_workspace_directory(DLTLibrarySource(path="/tx/"), max_depth=3) == []
 
 
 class TestLibraryListIsHomogeneous:
@@ -691,22 +664,6 @@ class TestLibraryListIsHomogeneous:
         assert all(isinstance(library, DLTLibrarySource) for library in libraries)
 
 
-class TestQuestionMarkGlob:
-    """`?` is a wildcard, so it must reduce to a directory like `*` does."""
-
-    def test_question_mark_include_is_treated_as_a_pattern(self):
-        assert is_glob_pattern("/tx/file_?.sql") is True
-        assert glob_base_directory("/tx/file_?.sql") == "/tx/"
-
-    def test_question_mark_matches_exactly_one_character(self):
-        assert glob_matches("/tx/file_1.sql", "/tx/file_?.sql") is True
-        assert glob_matches("/tx/file_10.sql", "/tx/file_?.sql") is False
-
-    def test_a_concrete_include_is_not_a_pattern(self):
-        assert is_glob_pattern("/tx/one.sql") is False
-        assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
-
-
 class TestLibraryShapeMatrix:
     """
     Every `spec.libraries` shape, end to end from the spec to the selected files.
@@ -724,6 +681,7 @@ class TestLibraryShapeMatrix:
         "/tx/sub/": [{"object_type": "FILE", "path": "/tx/sub/d.sql"}],
         "/tx/2024_1/": [{"object_type": "FILE", "path": "/tx/2024_1/file.sql"}],
     }
+    WHOLE_TREE: ClassVar[list] = ["/tx/a.sql", "/tx/n.py", "/tx/sub/d.sql", "/tx/2024_1/file.sql"]
 
     def _select(self, spec):
         with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
@@ -752,22 +710,15 @@ class TestLibraryShapeMatrix:
             "/tx/2024_1/file.sql",
         ]
 
-    def test_single_level_glob_filters_by_extension(self):
-        assert self._select({"libraries": [{"glob": {"include": "/tx/*.sql"}}]}) == ["/tx/a.sql"]
-
-    def test_recursive_glob_with_extension(self):
-        assert self._select({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]}) == [
-            "/tx/a.sql",
-            "/tx/sub/d.sql",
-            "/tx/2024_1/file.sql",
-        ]
-
-    def test_wildcard_in_a_directory_segment_still_descends(self):
-        """`/tx/2024_?/file.sql` names a child directory, so traversal is required."""
-        assert self._select({"libraries": [{"glob": {"include": "/tx/2024_?/file.sql"}}]}) == ["/tx/2024_1/file.sql"]
-
-    def test_question_mark_glob_selects_one_character(self):
-        assert self._select({"libraries": [{"glob": {"include": "/tx/?.py"}}]}) == ["/tx/n.py"]
+    def test_an_unexpected_wildcard_include_falls_back_to_its_directory(self):
+        """
+        The pipelines API rejects every wildcard but a trailing `**`, so these cannot
+        reach us from a working pipeline. If one ever does, truncating at the wildcard
+        keeps it pointed at a real directory and over-collects rather than reading a
+        path that does not exist and finding nothing.
+        """
+        for include in ("/tx/*.sql", "/tx/**/*.sql", "/tx/2024_*/file.sql"):
+            assert self._select({"libraries": [{"glob": {"include": include}}]}) == self.WHOLE_TREE, include
 
     def test_glob_naming_a_concrete_file_is_read_directly(self):
         assert self._select({"libraries": [{"glob": {"include": "/tx/one.sql"}}]}) == ["/tx/one.sql"]
@@ -788,8 +739,6 @@ class TestLibraryShapeMatrix:
         source.client = MagicMock()
         source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
 
-        library = DLTLibrarySource(path="/tx", is_directory=True)
-        assert library.is_recursive is True
         # the listing key is normalised by the producer, so expansion is driven by path
         library = DLTLibrarySource(path="/tx/", is_directory=True)
         assert source._expand_workspace_directory(library) == [
@@ -804,13 +753,10 @@ class TestLibraryShapeMatrix:
             {
                 "libraries": [
                     {"notebook": {"path": "/nb"}},
-                    {"glob": {"include": "/tx/*.sql"}},
+                    {"glob": {"include": "/tx/**"}},
                 ]
             }
-        ) == [
-            "/nb",
-            "/tx/a.sql",
-        ]
+        ) == ["/nb", *self.WHOLE_TREE]
 
 
 class TestUnknownDirectoryness:
