@@ -12,13 +12,12 @@
  */
 package org.openmetadata.service.rdf.translator;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,24 +37,35 @@ class RdfJenaBootstrapTest {
   @Test
   @DisplayName("a fresh JVM whose first Jena touch is the translator initializes cleanly")
   void translatorIsSafeAsTheFirstJenaTouch() throws IOException, InterruptedException {
-    Process probe = startProbeJvm();
-    String output = new String(probe.getInputStream().readAllBytes(), UTF_8);
-
-    assertTrue(
-        probe.waitFor(PROBE_TIMEOUT_MINUTES, TimeUnit.MINUTES),
-        "Jena bootstrap probe did not exit; output so far:\n" + output);
-    assertEquals(0, probe.exitValue(), "Jena bootstrap probe failed:\n" + output);
+    Path probeLog = Files.createTempFile("jena-bootstrap-probe", ".log");
+    try {
+      Process probe = startProbeJvm(probeLog);
+      boolean exited = probe.waitFor(PROBE_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+      if (!exited) {
+        probe.destroyForcibly().waitFor();
+      }
+      String output = Files.readString(probeLog);
+      assertTrue(exited, "Jena bootstrap probe did not exit; output so far:\n" + output);
+      assertEquals(0, probe.exitValue(), "Jena bootstrap probe failed:\n" + output);
+    } finally {
+      Files.deleteIfExists(probeLog);
+    }
   }
 
-  private static Process startProbeJvm() throws IOException {
+  /**
+   * Output goes to a file rather than a pipe so the timeout above is real. Draining {@code
+   * getInputStream()} blocks until the process exits, and a JVM wedged in class initialization -
+   * one of the ways this defect can present - would hang the test there instead of failing it.
+   * A file also cannot fill the way a pipe buffer can, so a probe that dies with a long stack
+   * trace still terminates on its own.
+   */
+  private static Process startProbeJvm(Path probeLog) throws IOException {
     String java =
         Path.of(System.getProperty("java.home"), "bin", "java").toAbsolutePath().toString();
-    List<String> command =
-        List.of(
-            java,
-            "-cp",
-            System.getProperty("java.class.path"),
-            JenaFirstTouchProbe.class.getName());
-    return new ProcessBuilder(command).redirectErrorStream(true).start();
+    return new ProcessBuilder(
+            java, "-cp", System.getProperty("java.class.path"), JenaFirstTouchProbe.class.getName())
+        .redirectErrorStream(true)
+        .redirectOutput(probeLog.toFile())
+        .start();
   }
 }
