@@ -402,4 +402,71 @@ describe('GlossaryHeader component', () => {
       expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
     });
   });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 4):
+  // an explicit EditDisplayName: false must win over a bare EditAll grant
+  // (explicit-deny-wins, Task 6 Finding 1) — the old raw
+  // `permissions.EditAll || permissions.EditDisplayName` let EditAll grant
+  // unconditionally. Self-contained (explicit setup + reset), matching the
+  // 'import/export visibility with conditional policies' block above rather than the
+  // implicit state-leak pattern some earlier tests in this file rely on.
+  describe('rename menu item explicit-deny-wins', () => {
+    afterEach(() => {
+      mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockContext.type = EntityType.GLOSSARY;
+      mockGlossaryTermPermission.All = true;
+      mockGlossaryTermPermission.EditAll = true;
+    });
+
+    it('denies the rename menu item when EditDisplayName is explicitly false, even with EditAll true', async () => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: true,
+        EditDisplayName: false,
+      };
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission.EditAll = false;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.queryByText('label.rename')).not.toBeInTheDocument();
+      // EditAll still independently grants the style/change-parent menu items.
+      expect(screen.getByText('label.style')).toBeInTheDocument();
+    });
+
+    it('renders the rename menu item when EditDisplayName is true, even with EditAll false', async () => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditDisplayName: true,
+      };
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission.EditAll = false;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.getByText('label.rename')).toBeInTheDocument();
+    });
+  });
 });
