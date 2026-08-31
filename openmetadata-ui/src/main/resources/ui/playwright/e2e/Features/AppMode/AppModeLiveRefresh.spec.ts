@@ -17,7 +17,7 @@ import { Domain } from '../../../support/domain/Domain';
 import { getApiContext } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
-import { seedAiAppMode } from '../../Utils/appModeSession';
+import { enableAiAppMode } from '../../Utils/appMode';
 import { expect, test } from './fixtures';
 
 // The OSS Marketplace module (marketplace.module.tsx) wires the Domains and
@@ -49,7 +49,7 @@ const openListInAiMode = async (
   route: string,
   urlMatcher: RegExp
 ) => {
-  await seedAiAppMode(page);
+  await enableAiAppMode(page);
   await page.goto(route, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   await expect(page).toHaveURL(urlMatcher);
