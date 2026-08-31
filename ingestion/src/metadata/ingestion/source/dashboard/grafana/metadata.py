@@ -96,9 +96,7 @@ class GrafanaSource(DashboardServiceSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GrafanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, GrafanaConnection):
-            raise InvalidSourceException(
-                f"Expected GrafanaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected GrafanaConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -110,7 +108,7 @@ class GrafanaSource(DashboardServiceSource):
         for ds in datasources:
             self.datasources[ds.uid] = ds
             self.datasources[ds.name] = ds
-        logger.info(f"Found {len(datasources)} datasources")
+        logger.info("Found %s datasources", len(datasources))
 
     def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """Get list of dashboards"""
@@ -121,35 +119,25 @@ class GrafanaSource(DashboardServiceSource):
         """Get dashboard name"""
         return dashboard.uid
 
-    def get_dashboard_details(
-        self, dashboard: dict
-    ) -> Optional[GrafanaDashboardResponse]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: dict) -> Optional[GrafanaDashboardResponse]:  # noqa: UP045
         """Get detailed dashboard information"""
         try:
             return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
-            logger.warning(
-                f"Failed to get dashboard details for {dashboard['uid']}: {exc}"
-            )
+            logger.warning("Failed to get dashboard details for %s: %s", dashboard["uid"], exc)
             return None
 
-    def get_owner_ref(
-        self, dashboard_details: GrafanaDashboardResponse
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> Optional[EntityReferenceList]:  # noqa: UP045
         """Get owner reference from dashboard metadata"""
         try:
             if dashboard_details.meta.createdBy:
                 # Try to get user by email if available
-                return self.metadata.get_reference_by_email(
-                    dashboard_details.meta.createdBy
-                )
+                return self.metadata.get_reference_by_email(dashboard_details.meta.createdBy)
         except Exception as err:
-            logger.debug(f"Could not fetch owner data: {err}")
+            logger.debug("Could not fetch owner data: %s", err)
         return None
 
-    def yield_dashboard(
-        self, dashboard_details: GrafanaDashboardResponse
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
             dashboard_url = f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.meta.url}"
@@ -201,7 +189,7 @@ class GrafanaSource(DashboardServiceSource):
 
     @staticmethod
     def _flatten_panels(
-        panels: List[GrafanaPanel],
+        panels: list[GrafanaPanel],
     ) -> List[GrafanaPanel]:  # noqa: UP006
         """Flatten top-level panels, recursing into collapsed row panels.
 
@@ -237,9 +225,7 @@ class GrafanaSource(DashboardServiceSource):
                 chart_name = f"{dashboard_details.dashboard.uid}_{panel.id}"
                 chart_display_name = panel.title or f"Panel {panel.id}"
 
-                if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart_display_name
-                ):
+                if filter_by_chart(self.source_config.chartFilterPattern, chart_display_name):
                     self.status.filter(chart_display_name, "Chart filtered out")
                     continue
 
@@ -249,13 +235,9 @@ class GrafanaSource(DashboardServiceSource):
                 chart_request = CreateChartRequest(
                     name=EntityName(chart_name),
                     displayName=chart_display_name,
-                    description=(
-                        Markdown(panel.description) if panel.description else None
-                    ),
+                    description=(Markdown(panel.description) if panel.description else None),
                     chartType=chart_type,
-                    service=FullyQualifiedEntityName(
-                        self.context.get().dashboard_service
-                    ),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}"
                         f"{dashboard_details.meta.url}?viewPanel={panel.id}"
@@ -355,13 +337,9 @@ class GrafanaSource(DashboardServiceSource):
             dialect = Dialect.ANSI
             try:
                 if prefix_service_name:
-                    db_service_entity = self.metadata.get_by_name(
-                        entity=DatabaseService, fqn=prefix_service_name
-                    )
+                    db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=prefix_service_name)
                     if db_service_entity and db_service_entity.serviceType:
-                        dialect = ConnectionTypeDialectMapper.dialect_of(
-                            db_service_entity.serviceType.value
-                        )
+                        dialect = ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
             except Exception:
                 pass
 
@@ -378,9 +356,7 @@ class GrafanaSource(DashboardServiceSource):
                 table_name_str = str(table)
                 db_sch_table = fqn.split_table_name(table_name_str)
                 database_name = db_sch_table.get("database") or database_name_hint
-                schema_name = self.check_database_schema_name(
-                    db_sch_table.get("database_schema")
-                )
+                schema_name = self.check_database_schema_name(db_sch_table.get("database_schema"))
                 base_table_name = db_sch_table.get("table")
 
                 # Apply prefix filters when provided
@@ -390,17 +366,9 @@ class GrafanaSource(DashboardServiceSource):
                     and prefix_database_name.lower() != str(database_name).lower()
                 ):
                     continue
-                if (
-                    prefix_schema_name
-                    and schema_name
-                    and prefix_schema_name.lower() != str(schema_name).lower()
-                ):
+                if prefix_schema_name and schema_name and prefix_schema_name.lower() != str(schema_name).lower():
                     continue
-                if (
-                    prefix_table_name
-                    and base_table_name
-                    and prefix_table_name.lower() != str(base_table_name).lower()
-                ):
+                if prefix_table_name and base_table_name and prefix_table_name.lower() != str(base_table_name).lower():
                     continue
 
                 # Build ES FQN search string and fetch matching table entities
@@ -428,12 +396,10 @@ class GrafanaSource(DashboardServiceSource):
 
         except Exception as exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
+            logger.debug("%sError processing panel lineage: %s", hash_prefix, exc)
             logger.error(traceback.format_exc())
 
-    def _extract_datasource_name(
-        self, target: GrafanaTarget, panel: GrafanaPanel
-    ) -> Optional[str]:  # noqa: UP045
+    def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> Optional[str]:  # noqa: UP045
         """Extract datasource name from target or panel"""
         try:
             # Try target datasource first
@@ -452,12 +418,10 @@ class GrafanaSource(DashboardServiceSource):
 
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error extracting datasource name: {exc}")
+            logger.debug("Error extracting datasource name: %s", exc)
             return None
 
-    def _extract_sql_query(
-        self, target: GrafanaTarget, datasource: GrafanaDatasource
-    ) -> Optional[str]:  # noqa: UP045
+    def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> Optional[str]:  # noqa: UP045
         """Extract SQL query from target based on datasource type"""
         try:
             # Handle different datasource types
@@ -475,7 +439,7 @@ class GrafanaSource(DashboardServiceSource):
                 # Try generic query field
                 return target.query
         except Exception as exc:
-            logger.debug(f"Error extracting SQL query: {exc}")
+            logger.debug("Error extracting SQL query: %s", exc)
             return None
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:

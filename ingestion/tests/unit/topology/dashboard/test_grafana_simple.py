@@ -13,8 +13,11 @@
 Simple unit tests for Grafana connector components
 """
 
-from unittest import TestCase
 from unittest.mock import MagicMock
+
+from tests.unit.topology.dashboard.fixtures.grafana_fixtures import (
+    DASHBOARD_WITH_COLLAPSED_ROW,
+)
 
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
 from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
@@ -22,12 +25,9 @@ from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaDashboardResponse,
     GrafanaPanel,
 )
-from tests.unit.topology.dashboard.fixtures.grafana_fixtures import (
-    DASHBOARD_WITH_COLLAPSED_ROW,
-)
 
 
-class TestGrafanaComponents(TestCase):
+class TestGrafanaComponents:
     """Test individual Grafana components"""
 
     def test_panel_type_mapping(self):
@@ -36,9 +36,7 @@ class TestGrafanaComponents(TestCase):
         source = MagicMock(spec=GrafanaSource)
 
         # Add the method we want to test
-        source._map_panel_type_to_chart_type = (
-            GrafanaSource._map_panel_type_to_chart_type.__get__(source)
-        )
+        source._map_panel_type_to_chart_type = GrafanaSource._map_panel_type_to_chart_type.__get__(source)
 
         test_cases = {
             "graph": "Line",
@@ -59,14 +57,12 @@ class TestGrafanaComponents(TestCase):
         for panel_type, expected_chart_type in test_cases.items():
             result = source._map_panel_type_to_chart_type(panel_type)
             # The method returns an enum value, compare its value
-            self.assertEqual(result.value, expected_chart_type)
+            assert result.value == expected_chart_type
 
     def test_extract_datasource_name(self):
         """Test datasource name extraction"""
         source = MagicMock(spec=GrafanaSource)
-        source._extract_datasource_name = (
-            GrafanaSource._extract_datasource_name.__get__(source)
-        )
+        source._extract_datasource_name = GrafanaSource._extract_datasource_name.__get__(source)
 
         # Test with string datasource in target
         target = MagicMock()
@@ -74,19 +70,16 @@ class TestGrafanaComponents(TestCase):
         panel = MagicMock()
         panel.datasource = None
 
-        result = source._extract_datasource_name(target, panel)
-        self.assertEqual(result, "postgres-uid")
+        assert source._extract_datasource_name(target, panel) == "postgres-uid"
 
         # Test with dict datasource in target
         target.datasource = {"uid": "postgres-uid", "type": "postgres"}
-        result = source._extract_datasource_name(target, panel)
-        self.assertEqual(result, "postgres-uid")
+        assert source._extract_datasource_name(target, panel) == "postgres-uid"
 
         # Test fallback to panel datasource
         target.datasource = None
         panel.datasource = "panel-datasource"
-        result = source._extract_datasource_name(target, panel)
-        self.assertEqual(result, "panel-datasource")
+        assert source._extract_datasource_name(target, panel) == "panel-datasource"
 
     def test_dashboard_response_parsing(self):
         """Test parsing of dashboard response"""
@@ -116,10 +109,10 @@ class TestGrafanaComponents(TestCase):
         }
 
         response = GrafanaDashboardResponse(**dashboard_data)
-        self.assertEqual(response.dashboard.uid, "test-uid")
-        self.assertEqual(response.dashboard.title, "Test Dashboard")
-        self.assertEqual(len(response.dashboard.panels), 1)
-        self.assertEqual(response.meta.slug, "test-dashboard")
+        assert response.dashboard.uid == "test-uid"
+        assert response.dashboard.title == "Test Dashboard"
+        assert len(response.dashboard.panels) == 1
+        assert response.meta.slug == "test-dashboard"
 
     def test_flatten_panels_collapsed_row(self):
         """Panels nested inside a collapsed row must be surfaced at the top level."""
@@ -130,17 +123,13 @@ class TestGrafanaComponents(TestCase):
         # id=1 top-level, id=3 and id=4 from inside the collapsed row,
         # id=2 (the row itself) is replaced by its children,
         # id=5 (expanded row) stays as-is, id=6 expanded-row child at top level.
-        self.assertIn(1, panel_ids, "Top-level panel must survive")
-        self.assertIn(3, panel_ids, "First panel inside collapsed row must be surfaced")
-        self.assertIn(
-            4, panel_ids, "Second panel inside collapsed row must be surfaced"
-        )
-        self.assertNotIn(
-            2, panel_ids, "Collapsed row sentinel must not appear in output"
-        )
-        self.assertIn(5, panel_ids, "Expanded row sentinel stays (for type filtering)")
-        self.assertIn(6, panel_ids, "Child of expanded row at top level must survive")
-        self.assertEqual(len(flat), 5)
+        assert 1 in panel_ids, "Top-level panel must survive"
+        assert 3 in panel_ids, "First panel inside collapsed row must be surfaced"
+        assert 4 in panel_ids, "Second panel inside collapsed row must be surfaced"
+        assert 2 not in panel_ids, "Collapsed row sentinel must not appear in output"
+        assert 5 in panel_ids, "Expanded row sentinel stays (for type filtering)"
+        assert 6 in panel_ids, "Child of expanded row at top level must survive"
+        assert len(flat) == 5
 
     def test_flatten_panels_expanded_row_unchanged(self):
         """An expanded row (collapsed=False, empty panels) must not lose panels."""
@@ -150,12 +139,12 @@ class TestGrafanaComponents(TestCase):
             GrafanaPanel(id=3, type="stat", title="After Row"),
         ]
         flat = GrafanaSource._flatten_panels(panels)
-        self.assertEqual([p.id for p in flat], [1, 2, 3])
+        assert [p.id for p in flat] == [1, 2, 3]
 
     def test_flatten_panels_no_panels(self):
         """Empty or None input must not raise."""
-        self.assertEqual(GrafanaSource._flatten_panels([]), [])
-        self.assertEqual(GrafanaSource._flatten_panels(None), [])
+        assert GrafanaSource._flatten_panels([]) == []
+        assert GrafanaSource._flatten_panels(None) == []
 
     def test_api_client_initialization(self):
         """Test API client initialization"""
@@ -166,11 +155,11 @@ class TestGrafanaComponents(TestCase):
             page_size=50,
         )
 
-        self.assertEqual(client.host_port, "https://grafana.example.com")
-        self.assertEqual(client.page_size, 50)
-        self.assertTrue(client.verify_ssl)
+        assert client.host_port == "https://grafana.example.com"
+        assert client.page_size == 50
+        assert client.verify_ssl
 
         # Test session headers
         session = client.session
-        self.assertEqual(session.headers["Authorization"], "Bearer test_key")
-        self.assertEqual(session.headers["Accept"], "application/json")
+        assert session.headers["Authorization"] == "Bearer test_key"
+        assert session.headers["Accept"] == "application/json"

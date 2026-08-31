@@ -76,19 +76,15 @@ class GrafanaPanel(BaseModel):
     title: Optional[str] = None  # noqa: UP045
     description: Optional[str] = None  # noqa: UP045
     datasource: Optional[Union[str, Dict[str, Any]]] = None  # noqa: UP006, UP007, UP045
-    targets: Optional[List[GrafanaTarget]] = Field(
-        default_factory=list
-    )  # noqa: UP006, UP045
+    targets: list[GrafanaTarget] | None = Field(default_factory=list)
     gridPos: Optional[Dict[str, int]] = None  # noqa: N815, UP006, UP045
     options: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
     fieldConfig: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
     transparent: Optional[bool] = None  # noqa: UP045
     pluginVersion: Optional[str] = None  # noqa: N815, UP045
     # Row-panel fields: when a row is collapsed Grafana nests child panels here
-    collapsed: Optional[bool] = None  # noqa: UP045
-    panels: Optional[List["GrafanaPanel"]] = Field(
-        default_factory=list
-    )  # noqa: UP006, UP045
+    collapsed: bool | None = None
+    panels: list["GrafanaPanel"] | None = Field(default_factory=list)
 
 
 GrafanaPanel.model_rebuild()
@@ -103,9 +99,7 @@ class GrafanaDashboard(BaseModel):
     tags: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
     style: Optional[str] = None  # noqa: UP045
     timezone: Optional[str] = None  # noqa: UP045
-    panels: Optional[List[GrafanaPanel]] = Field(
-        default_factory=list
-    )  # noqa: UP006, UP045
+    panels: list[GrafanaPanel] | None = Field(default_factory=list)
     editable: Optional[bool] = None  # noqa: UP045
     time: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
     timepicker: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
