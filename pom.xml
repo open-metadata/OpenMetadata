@@ -80,7 +80,7 @@
     <dropwizard.version>5.0.0</dropwizard.version>
     <dropwizard-jdbi3.version>5.0.0</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <jersey-bom.version>3.1.11</jersey-bom.version>
+    <jersey-bom.version>4.0.2</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
