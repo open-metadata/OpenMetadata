@@ -1,6 +1,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
@@ -18,6 +19,15 @@ public interface RdfStorageInterface {
    * Store an entity model in the RDF store
    */
   void storeEntity(String entityType, UUID entityId, Model entityModel);
+
+  /**
+   * Maximum JVM heap of the remote storage server in bytes, when the backend exposes it (Fuseki
+   * publishes it at {@code /$/metrics}). Empty when unknown or unreachable — callers fall back to
+   * configured defaults.
+   */
+  default OptionalLong fetchServerMaxHeapBytes() {
+    return OptionalLong.empty();
+  }
 
   /**
    * Bulk-write multiple entity models in a single SPARQL transaction.

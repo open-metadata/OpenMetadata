@@ -2,11 +2,16 @@ package org.openmetadata.service.rdf.storage;
 
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.io.StringWriter;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
@@ -20,12 +25,14 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +44,9 @@ import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.atlas.web.HttpException;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryFactory;
@@ -50,8 +59,12 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.rdfconnection.RDFConnectionFuseki;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.riot.system.StreamRDFOps;
+import org.apache.jena.riot.system.StreamRDFWriter;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -95,6 +108,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
 
   private static final long SLOW_REQUEST_WARN_THRESHOLD_MS = 10_000L;
+
+  private static final int STREAM_PIPE_BUFFER_BYTES = 64 * 1024;
+  private static final String CONTENT_TYPE_RDF_THRIFT = "application/rdf+thrift";
+  private static final String HEADER_CONTENT_TYPE = "Content-Type";
+  private static final String HEADER_CONTENT_ENCODING = "Content-Encoding";
+  private static final String ENCODING_GZIP = "gzip";
   private static final String METRIC_FUSEKI_REQUEST = "rdf.fuseki.request";
   private static final String METRIC_FUSEKI_TIMEOUTS = "rdf.fuseki.timeouts";
   private static final String METRIC_FUSEKI_PAYLOAD_BYTES = "rdf.fuseki.payload.bytes";
@@ -140,6 +159,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final long writeRetryMaxBackoffMs;
   private final int maxUpdatePayloadBytes;
   private final int maxAppendPayloadBytes;
+  private final boolean streamingAppendEnabled;
+  private final boolean gzipRequests;
+  private final HttpClient streamingHttpClient;
   private final LongConsumer retryDelayMs;
 
   private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
@@ -175,6 +197,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     this.writeRetryMaxBackoffMs = resolveWriteRetryMaxBackoffMs(config);
     this.maxUpdatePayloadBytes = RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
     this.maxAppendPayloadBytes = RdfStorageInterface.resolveMaxAppendPayloadBytes(config);
+    this.streamingAppendEnabled =
+        config.getStreamingAppendEnabled() == null || config.getStreamingAppendEnabled();
+    this.gzipRequests = Boolean.TRUE.equals(config.getGzipRequests());
+    this.streamingHttpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
     this.retryDelayMs = retryDelayMs;
 
     // Best-effort attempt to create the dataset at startup; callers should invoke
@@ -684,7 +710,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     Throwable cause = t;
     boolean result = false;
     while (cause != null && !result) {
-      if (cause instanceof org.apache.jena.atlas.web.HttpException httpException) {
+      if (cause instanceof HttpException httpException) {
         int code = httpException.getStatusCode();
         result = code == 502 || code == 503 || code == 504;
       }
@@ -1153,35 +1179,185 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * accepted race as before.
    */
   private void bulkAppendEntities(List<EntityWriteRequest> requests) {
-    Model combinedModel = ModelFactory.createDefaultModel();
+    long estimatedBytes = 0;
+    long tripleCount = 0;
     for (EntityWriteRequest req : requests) {
-      combinedModel.add(req.model());
+      tripleCount += req.model().size();
     }
+    estimatedBytes = tripleCount * RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE;
+    if (tripleCount == 0) {
+      return;
+    }
+    Metrics.summary(METRIC_FUSEKI_PAYLOAD_BYTES, TAG_OPERATION, "bulkAppendEntities")
+        .record(estimatedBytes);
     try {
-      if (!combinedModel.isEmpty()) {
-        long estimatedBytes =
-            combinedModel.size() * (long) RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE;
-        Metrics.summary(METRIC_FUSEKI_PAYLOAD_BYTES, TAG_OPERATION, "bulkAppendEntities")
-            .record(estimatedBytes);
+      if (streamingAppendEnabled) {
         runWriteWithRetry(
-            () ->
-                runWithTimeout(
-                    () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkAppendEntities"),
+            () -> runWithTimeout(() -> streamAppend(requests), "bulkAppendEntities"),
             "bulkAppendEntities",
             estimatedBytes,
             maxAppendPayloadBytes);
-        LOG.debug(
-            "Bulk-appended {} entities ({} triples) to {}",
-            requests.size(),
-            combinedModel.size(),
-            KNOWLEDGE_GRAPH);
+      } else {
+        appendViaLibraryUpload(requests, estimatedBytes);
       }
+      LOG.debug(
+          "Bulk-appended {} entities ({} triples) to {}",
+          requests.size(),
+          tripleCount,
+          KNOWLEDGE_GRAPH);
     } catch (Exception e) {
       LOG.error("Failed to bulk-append {} entities in Fuseki", requests.size(), e);
       throw new RuntimeException("Failed to bulk-store entities in RDF", e);
+    }
+  }
+
+  /**
+   * Fallback transport ({@code streamingAppendEnabled=false}): union the models and hand the
+   * upload to the connection library. Costs peak heap proportional to chunk size — the reason the
+   * streaming path is the default.
+   */
+  private void appendViaLibraryUpload(List<EntityWriteRequest> requests, long estimatedBytes) {
+    Model combinedModel = ModelFactory.createDefaultModel();
+    try {
+      for (EntityWriteRequest req : requests) {
+        combinedModel.add(req.model());
+      }
+      runWriteWithRetry(
+          () ->
+              runWithTimeout(
+                  () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkAppendEntities"),
+          "bulkAppendEntities",
+          estimatedBytes,
+          maxAppendPayloadBytes);
     } finally {
       combinedModel.close();
     }
+  }
+
+  /**
+   * Streamed GSP POST: per-entity models are written incrementally into the request body as RDF
+   * Thrift, so indexer memory stays constant regardless of chunk size and no combined model or
+   * body string is ever materialized. Blank-node labels stay correctly scoped because all models
+   * share one continuous serialization. Optionally gzips the body — Fuseki inflates gzip request
+   * bodies, and since it reads the body INSIDE its single-writer transaction, compression directly
+   * shortens writer-lock hold time on slow links. Only gzip: Fuseki maps {@code deflate} to a
+   * compressing stream (upstream bug), so it must never be sent.
+   */
+  private void streamAppend(List<EntityWriteRequest> requests) {
+    String gspUrl =
+        endpoint + "/data?graph=" + URLEncoder.encode(KNOWLEDGE_GRAPH, StandardCharsets.UTF_8);
+    try {
+      PipedOutputStream pipeOut = new PipedOutputStream();
+      PipedInputStream pipeIn = new PipedInputStream(pipeOut, STREAM_PIPE_BUFFER_BYTES);
+      Future<?> bodyProducer = TIMEOUT_EXECUTOR.submit(() -> writeThriftBody(requests, pipeOut));
+      try {
+        HttpRequest.Builder requestBuilder =
+            HttpRequest.newBuilder()
+                .uri(URI.create(gspUrl))
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_RDF_THRIFT)
+                .POST(HttpRequest.BodyPublishers.ofInputStream(() -> pipeIn));
+        if (gzipRequests) {
+          requestBuilder.header(HEADER_CONTENT_ENCODING, ENCODING_GZIP);
+        }
+        addBasicAuth(requestBuilder, username, password);
+        HttpResponse<String> response =
+            streamingHttpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() / 100 != 2) {
+          // HttpException is the type the circuit-breaker classification already
+          // understands (502/503/504 count as availability failures).
+          throw new HttpException(response.statusCode(), "GSP append failed", response.body());
+        }
+      } finally {
+        // If the HTTP side failed before consuming the body, the producer is
+        // parked writing into the pipe; cancelling + closing unblocks it.
+        bodyProducer.cancel(true);
+        closeQuietly(pipeIn);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("GSP streaming append failed", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("GSP streaming append interrupted", e);
+    }
+  }
+
+  /** Runs on a producer task; feeds the HTTP request body through the pipe. */
+  private void writeThriftBody(List<EntityWriteRequest> requests, PipedOutputStream rawOut) {
+    try (OutputStream out =
+        gzipRequests ? new GZIPOutputStream(rawOut, STREAM_PIPE_BUFFER_BYTES) : rawOut) {
+      StreamRDF writer = StreamRDFWriter.getWriterStream(out, Lang.RDFTHRIFT);
+      writer.start();
+      for (EntityWriteRequest request : requests) {
+        StreamRDFOps.sendGraphToStream(request.model().getGraph(), writer);
+      }
+      writer.finish();
+    } catch (IOException e) {
+      // Expected teardown when the HTTP side closed the pipe after an early failure.
+      LOG.debug("RDF streaming body producer terminated early: {}", e.getMessage());
+    }
+  }
+
+  private static void closeQuietly(Closeable closeable) {
+    try {
+      closeable.close();
+    } catch (IOException e) {
+      LOG.debug("Ignoring close failure: {}", e.getMessage());
+    }
+  }
+
+  @Override
+  public OptionalLong fetchServerMaxHeapBytes() {
+    OptionalLong result = OptionalLong.empty();
+    DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    if (info != null) {
+      try {
+        HttpRequest.Builder requestBuilder =
+            HttpRequest.newBuilder().uri(URI.create(info.serverBaseUrl() + "/$/metrics")).GET();
+        addBasicAuth(requestBuilder, username, password, info.userInfo());
+        HttpResponse<String> response =
+            streamingHttpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200) {
+          result = parseJvmMaxHeapBytes(response.body());
+        }
+      } catch (IOException e) {
+        LOG.debug("Fuseki metrics endpoint unreachable: {}", e.getMessage());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Sums {@code jvm_memory_max_bytes{area="heap",...}} samples from Prometheus text exposition.
+   * Pools reporting -1 (unbounded) are skipped.
+   */
+  static OptionalLong parseJvmMaxHeapBytes(String prometheusText) {
+    double totalBytes = 0;
+    boolean found = false;
+    for (String line : prometheusText.split("\n")) {
+      if (line.startsWith("jvm_memory_max_bytes") && line.contains("area=\"heap\"")) {
+        double value = parseSampleValue(line);
+        if (value > 0) {
+          totalBytes += value;
+          found = true;
+        }
+      }
+    }
+    return found ? OptionalLong.of((long) totalBytes) : OptionalLong.empty();
+  }
+
+  private static double parseSampleValue(String prometheusLine) {
+    double result = -1;
+    int lastSpace = prometheusLine.lastIndexOf(' ');
+    if (lastSpace > 0) {
+      try {
+        result = Double.parseDouble(prometheusLine.substring(lastSpace + 1).trim());
+      } catch (NumberFormatException e) {
+        LOG.debug("Skipping unparsable metrics line: {}", prometheusLine);
+      }
+    }
+    return result;
   }
 
   @Override
@@ -1546,7 +1722,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       model.read(turtleStream, null, "TURTLE");
       try {
         connection.delete(graphUri);
-      } catch (org.apache.jena.atlas.web.HttpException e) {
+      } catch (HttpException e) {
         if (e.getStatusCode() != 404) {
           throw e;
         }

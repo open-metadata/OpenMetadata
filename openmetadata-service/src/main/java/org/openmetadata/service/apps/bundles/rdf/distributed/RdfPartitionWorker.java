@@ -15,9 +15,13 @@ package org.openmetadata.service.apps.bundles.rdf.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +31,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
+import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.HeapBackpressure;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.RdfIndexingFields;
@@ -37,152 +43,272 @@ public class RdfPartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
   private static final int PROGRESS_UPDATE_INTERVAL = 100;
 
+  /**
+   * Read-ahead bound: how many submitted-but-unacknowledged batches a worker may hold. Each
+   * pending batch pins its entities and translated models, so this is a memory ceiling; beyond
+   * "keep the single sink writer fed" more lookahead only adds heap pressure.
+   */
+  private static final int MAX_OUTSTANDING_BATCHES = 3;
+
   private final DistributedRdfIndexCoordinator coordinator;
+  private final RdfBulkSink sink;
   private final RdfBatchProcessor batchProcessor;
   private final int batchSize;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
 
   public RdfPartitionWorker(
-      DistributedRdfIndexCoordinator coordinator, RdfBatchProcessor batchProcessor, int batchSize) {
+      DistributedRdfIndexCoordinator coordinator,
+      RdfBulkSink sink,
+      RdfBatchProcessor batchProcessor,
+      int batchSize) {
     this.coordinator = coordinator;
+    this.sink = sink;
     this.batchProcessor = batchProcessor;
     this.batchSize = batchSize;
   }
 
+  /** One read-batch in flight at the sink; folded into the accumulator when its acks arrive. */
+  private record PendingSubmission(
+      long cursorDelta,
+      int dataCount,
+      int unrecoverable,
+      String readerError,
+      CompletableFuture<RdfBatchProcessor.BatchProcessingResult> mainAck,
+      CompletableFuture<RdfBatchProcessor.BatchProcessingResult> recoveredAck) {}
+
+  /**
+   * Fold state. {@code ackedOffset} is the crash-resume point: it advances only when a batch's
+   * acknowledgement arrives (FIFO from the sink, so acks are contiguous), never at read time —
+   * the reader may be several batches ahead of what the store has durably accepted.
+   */
+  private static final class Accumulator {
+    private long ackedOffset;
+    private long processedCount;
+    private long successCount;
+    private long failedCount;
+    private long readerTimeMs;
+    private long sinkTimeMs;
+    private long relationshipFailureCount;
+    private String lastError;
+    private boolean truncatedByStop;
+  }
+
   public PartitionResult processPartition(RdfIndexPartition partition) {
     String entityType = partition.getEntityType();
-    long currentOffset = Math.max(partition.getCursor(), partition.getRangeStart());
-    long processedCount = partition.getProcessedCount();
-    long successCount = partition.getSuccessCount();
-    long failedCount = partition.getFailedCount();
+    long readOffset = Math.max(partition.getCursor(), partition.getRangeStart());
+    Accumulator acc = new Accumulator();
+    acc.ackedOffset = readOffset;
+    acc.processedCount = partition.getProcessedCount();
+    acc.successCount = partition.getSuccessCount();
+    acc.failedCount = partition.getFailedCount();
     // Seeded from the partition row (like the counts) so a reclaimed partition
     // keeps the prior claim's accumulated timing instead of restarting at zero.
-    long readerTimeMs = partition.getReaderTimeMs();
-    long sinkTimeMs = partition.getSinkTimeMs();
-    long relationshipFailureCount = 0;
-    String lastError = null;
+    acc.readerTimeMs = partition.getReaderTimeMs();
+    acc.sinkTimeMs = partition.getSinkTimeMs();
+    Deque<PendingSubmission> pending = new ArrayDeque<>();
 
     try {
-      String keysetCursor = initializeKeysetCursor(partition, entityType, currentOffset);
-      while (currentOffset < partition.getRangeEnd()
+      String keysetCursor = initializeKeysetCursor(partition, entityType, readOffset);
+      while (readOffset < partition.getRangeEnd()
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
-        int currentBatchSize = (int) Math.min(batchSize, partition.getRangeEnd() - currentOffset);
+        // The reader is the only stage that may run ahead; pause it when the JVM
+        // heap is under pressure — pending batches pin translated models.
+        HeapBackpressure.awaitHeadroom();
+        int currentBatchSize = (int) Math.min(batchSize, partition.getRangeEnd() - readOffset);
         long readStartNanos = System.nanoTime();
         ResultList<? extends EntityInterface> resultList =
             readEntitiesKeyset(entityType, keysetCursor, currentBatchSize);
-        readerTimeMs += TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - readStartNanos);
+        acc.readerTimeMs += TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - readStartNanos);
 
         if (resultList == null || listOrEmpty(resultList.getData()).isEmpty()) {
           break;
         }
 
-        RdfBatchProcessor.BatchProcessingResult batchResult =
-            batchProcessor.processEntities(entityType, resultList.getData(), stopped::get);
+        pending.add(submitBatch(entityType, resultList));
+        readOffset += pending.peekLast().cursorDelta();
 
-        // Reader failures are rows the source could not fully hydrate. They were
-        // previously counted as failed records and dropped from the graph with no
-        // diagnostic — operators saw the failure count climb with no way to find
-        // the affected entities (#29211).
-        //
-        // An entity that DESERIALIZED but failed FIELD resolution (e.g. one
-        // relationship the reindex field-set requests can't be resolved) still
-        // carries its core stored data on the EntityError. Re-index it with that
-        // core data so a single unresolvable field does not leave the whole entity
-        // missing from RDF; its relationship edges are still rebuilt from the DB by
-        // processBatchRelationships. Only rows that could not be deserialized at all
-        // (no entity attached) remain hard failures. logReaderFailures attributes
-        // each one (id + reason), mirroring search-index PartitionWorker.
-        List<EntityError> readerFailures = listOrEmpty(resultList.getErrors());
-        String readerError = logReaderFailures(entityType, readerFailures);
-        List<EntityInterface> recoverable = recoverableEntities(readerFailures);
-        RdfBatchProcessor.BatchProcessingResult recovered =
-            recoverable.isEmpty()
-                ? new RdfBatchProcessor.BatchProcessingResult(0, 0)
-                : batchProcessor.processEntities(entityType, recoverable, stopped::get);
-        int unrecoverable = readerFailures.size() - recoverable.size();
-        long batchProcessed = resultList.getData().size() + readerFailures.size();
-
-        processedCount += batchProcessed;
-        successCount += batchResult.successCount() + recovered.successCount();
-        // failedCount tracks entity-level failures only (matches the failedRecords
-        // stat semantics where one record == one entity). Recovered entities indexed
-        // with core data are NOT failures; only un-deserializable rows and any
-        // core-index failures remain. Relationship/lineage edge failures are counted
-        // separately and surfaced through relationshipFailureCount.
-        failedCount += batchResult.failedCount() + recovered.failedCount() + unrecoverable;
-        relationshipFailureCount +=
-            batchResult.relationshipFailureCount() + recovered.relationshipFailureCount();
-        sinkTimeMs += batchResult.sinkTimeMs() + recovered.sinkTimeMs();
-        currentOffset += batchProcessed;
-        if (batchResult.lastError() != null) {
-          lastError = batchResult.lastError();
-        } else if (recovered.lastError() != null) {
-          lastError = recovered.lastError();
-        } else if (readerError != null) {
-          lastError = readerError;
+        foldCompletedHead(partition, pending, acc);
+        while (pending.size() >= MAX_OUTSTANDING_BATCHES && !acc.truncatedByStop) {
+          foldOne(partition, pending.remove(), acc);
         }
-
-        if (processedCount % PROGRESS_UPDATE_INTERVAL < batchProcessed) {
-          coordinator.updatePartitionProgress(
-              partition.toBuilder()
-                  .cursor(currentOffset)
-                  .processedCount(processedCount)
-                  .successCount(successCount)
-                  .failedCount(failedCount)
-                  .readerTimeMs(readerTimeMs)
-                  .sinkTimeMs(sinkTimeMs)
-                  .build());
+        if (acc.truncatedByStop) {
+          break;
         }
 
         keysetCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
-        if (keysetCursor == null && currentOffset < partition.getRangeEnd()) {
-          keysetCursor = initializeKeysetCursor(partition, entityType, currentOffset);
+        if (keysetCursor == null && readOffset < partition.getRangeEnd()) {
+          keysetCursor = initializeKeysetCursor(partition, entityType, readOffset);
           if (keysetCursor == null) {
             break;
           }
         }
       }
 
+      while (!pending.isEmpty() && !acc.truncatedByStop) {
+        foldOne(partition, pending.remove(), acc);
+      }
+      pending.clear();
+
       // Flush the final timing interval before terminal-state updates: the
       // completion/fail updates deliberately do NOT touch the timing columns,
       // so this is the write that makes the tail of the partition's timing
-      // durable.
+      // durable. The persisted cursor is the ACKED offset — never the read
+      // offset — so a crash or stop resumes from the last batch the store
+      // actually accepted.
       flushTimingProgress(
           partition,
-          currentOffset,
-          processedCount,
-          successCount,
-          failedCount,
-          readerTimeMs,
-          sinkTimeMs);
+          acc.ackedOffset,
+          acc.processedCount,
+          acc.successCount,
+          acc.failedCount,
+          acc.readerTimeMs,
+          acc.sinkTimeMs);
 
-      if (stopped.get() || Thread.currentThread().isInterrupted()) {
+      if (acc.truncatedByStop || stopped.get() || Thread.currentThread().isInterrupted()) {
         return new PartitionResult(
-            processedCount, successCount, failedCount, relationshipFailureCount, true, lastError);
+            acc.processedCount,
+            acc.successCount,
+            acc.failedCount,
+            acc.relationshipFailureCount,
+            true,
+            acc.lastError);
       }
 
       coordinator.completePartition(
-          partition.getId(), currentOffset, processedCount, successCount, failedCount, lastError);
+          partition.getId(),
+          acc.ackedOffset,
+          acc.processedCount,
+          acc.successCount,
+          acc.failedCount,
+          acc.lastError);
       return new PartitionResult(
-          processedCount, successCount, failedCount, relationshipFailureCount, false, lastError);
+          acc.processedCount,
+          acc.successCount,
+          acc.failedCount,
+          acc.relationshipFailureCount,
+          false,
+          acc.lastError);
     } catch (Exception e) {
       LOG.error("Failed to process RDF partition {}", partition.getId(), e);
       coordinator.failPartition(
           partition.getId(),
-          currentOffset,
-          processedCount,
-          successCount,
-          failedCount,
+          acc.ackedOffset,
+          acc.processedCount,
+          acc.successCount,
+          acc.failedCount,
           e.getMessage());
       return new PartitionResult(
-          processedCount,
-          successCount,
-          failedCount,
-          relationshipFailureCount,
+          acc.processedCount,
+          acc.successCount,
+          acc.failedCount,
+          acc.relationshipFailureCount,
           false,
           e.getMessage());
     }
+  }
+
+  /**
+   * Submit the read batch (and, separately, any reader-recoverable entities) to the sink. The
+   * recoverable batch rides FIFO immediately behind its main batch, so both are folded together
+   * when this submission's turn comes.
+   */
+  private PendingSubmission submitBatch(
+      String entityType, ResultList<? extends EntityInterface> resultList)
+      throws InterruptedException {
+    List<EntityError> readerFailures = listOrEmpty(resultList.getErrors());
+    String readerError = logReaderFailures(entityType, readerFailures);
+    List<EntityInterface> recoverable = recoverableEntities(readerFailures);
+    CompletableFuture<RdfBatchProcessor.BatchProcessingResult> mainAck =
+        sink.submit(entityType, resultList.getData());
+    CompletableFuture<RdfBatchProcessor.BatchProcessingResult> recoveredAck =
+        recoverable.isEmpty() ? null : sink.submit(entityType, recoverable);
+    return new PendingSubmission(
+        resultList.getData().size() + readerFailures.size(),
+        resultList.getData().size(),
+        readerFailures.size() - recoverable.size(),
+        readerError,
+        mainAck,
+        recoveredAck);
+  }
+
+  private void foldCompletedHead(
+      RdfIndexPartition partition, Deque<PendingSubmission> pending, Accumulator acc) {
+    while (!acc.truncatedByStop
+        && !pending.isEmpty()
+        && pending.peek().mainAck().isDone()
+        && (pending.peek().recoveredAck() == null || pending.peek().recoveredAck().isDone())) {
+      foldOne(partition, pending.remove(), acc);
+    }
+  }
+
+  private void foldOne(RdfIndexPartition partition, PendingSubmission submission, Accumulator acc) {
+    int recoveredCount =
+        (int) submission.cursorDelta() - submission.dataCount() - submission.unrecoverable();
+    RdfBatchProcessor.BatchProcessingResult main =
+        joinAck(submission.mainAck(), submission.dataCount());
+    RdfBatchProcessor.BatchProcessingResult recovered =
+        submission.recoveredAck() != null
+            ? joinAck(submission.recoveredAck(), recoveredCount)
+            : new RdfBatchProcessor.BatchProcessingResult(0, 0);
+
+    // A batch the sink skipped because the run is stopping reports zero counts.
+    // Do NOT advance the acked cursor past it: those entities were never
+    // written, and the resume must re-read them.
+    if (stopped.get()
+        && submission.dataCount() > 0
+        && main.successCount() + main.failedCount() == 0) {
+      acc.truncatedByStop = true;
+      return;
+    }
+
+    acc.processedCount += submission.cursorDelta();
+    acc.successCount += main.successCount() + recovered.successCount();
+    // failedCount tracks entity-level failures only (one record == one entity);
+    // relationship/lineage edge failures are counted separately.
+    acc.failedCount += main.failedCount() + recovered.failedCount() + submission.unrecoverable();
+    acc.relationshipFailureCount +=
+        main.relationshipFailureCount() + recovered.relationshipFailureCount();
+    acc.sinkTimeMs += main.sinkTimeMs() + recovered.sinkTimeMs();
+    acc.ackedOffset += submission.cursorDelta();
+    if (main.lastError() != null) {
+      acc.lastError = main.lastError();
+    } else if (recovered.lastError() != null) {
+      acc.lastError = recovered.lastError();
+    } else if (submission.readerError() != null) {
+      acc.lastError = submission.readerError();
+    }
+
+    if (acc.processedCount % PROGRESS_UPDATE_INTERVAL < submission.cursorDelta()) {
+      coordinator.updatePartitionProgress(
+          partition.toBuilder()
+              .cursor(acc.ackedOffset)
+              .processedCount(acc.processedCount)
+              .successCount(acc.successCount)
+              .failedCount(acc.failedCount)
+              .readerTimeMs(acc.readerTimeMs)
+              .sinkTimeMs(acc.sinkTimeMs)
+              .build());
+    }
+  }
+
+  /**
+   * An exceptionally-completed ack (translation failure or unexpected sink error) accounts the
+   * whole sub-batch as failed rather than aborting the partition: the failure is already recorded
+   * and logged, and the remaining batches are unaffected.
+   */
+  private RdfBatchProcessor.BatchProcessingResult joinAck(
+      CompletableFuture<RdfBatchProcessor.BatchProcessingResult> ack, int terminalFailureCount) {
+    RdfBatchProcessor.BatchProcessingResult result;
+    try {
+      result = ack.join();
+    } catch (CompletionException e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      LOG.error("RDF sink batch failed terminally", cause);
+      result =
+          new RdfBatchProcessor.BatchProcessingResult(0, terminalFailureCount, cause.getMessage());
+    }
+    return result;
   }
 
   public void stop() {

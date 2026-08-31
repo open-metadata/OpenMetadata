@@ -2,11 +2,13 @@ package org.openmetadata.service.apps.bundles.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.RDF_INDEX_JOB_BROADCAST_CHANNEL;
 
+import io.micrometer.core.instrument.Metrics;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -46,6 +48,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobStatsAggregator;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
+import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
@@ -78,8 +81,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private static final Set<String> EXCLUDED_ENTITY_TYPES =
       RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
 
+  private static final String METRIC_RDF_INDEX_JOB = "rdf.index.job";
+  private static final String TAG_OUTCOME = "outcome";
+  private static final double DEFAULT_MIN_SUCCESS_RATIO = 0.95d;
+
   private final RdfRepository rdfRepository;
   private RdfBatchProcessor batchProcessor;
+
+  // Package-private so tests can replace the guard with a fake; production wiring
+  // happens in the constructor.
+  RdfReindexAdmissionGuard admissionGuard;
+
+  // The repository used by the current run, retained so run teardown can clear the
+  // auto-tune payload-budget override on exactly the instance that received it.
+  private volatile RdfRepository runRepository;
+  // Single-writer sink for the legacy (non-distributed) path; the distributed path creates its
+  // own inside DistributedRdfIndexExecutor.runWorkers.
+  private volatile RdfBulkSink legacySink;
   // Non-null only while a blue/green rebuild is populating an idle dataset; cleared once the
   // rebuild is promoted or abandoned.
   private volatile String buildDataset;
@@ -111,6 +129,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     super(collectionDAO, searchRepository);
     this.rdfRepository = RdfRepository.getInstance();
     this.batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    this.admissionGuard = RdfReindexAdmissionGuard.forProduction(collectionDAO);
   }
 
   @Override
@@ -121,6 +140,18 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    long jobStartNanos = System.nanoTime();
+    try {
+      executeInternal(jobExecutionContext);
+    } finally {
+      String outcome =
+          jobData != null && jobData.getStatus() != null ? jobData.getStatus().value() : "unknown";
+      Metrics.timer(METRIC_RDF_INDEX_JOB, TAG_OUTCOME, outcome)
+          .record(System.nanoTime() - jobStartNanos, TimeUnit.NANOSECONDS);
+    }
+  }
+
+  private void executeInternal(JobExecutionContext jobExecutionContext) {
     this.jobExecutionContext = jobExecutionContext;
     stopped = false;
     producersDone.set(false);
@@ -146,6 +177,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
               .withErrorSource(IndexingError.ErrorSource.JOB)
               .withMessage("RDF Repository is not enabled"));
       sendUpdates(jobExecutionContext, true);
+      return;
+    }
+
+    if (!admitAgainstSearchReindex(jobExecutionContext)) {
       return;
     }
 
@@ -182,9 +217,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
       buildDataset = resolveBlueGreenBuildDataset();
       RdfRepository indexingRepository =
           buildDataset != null ? rdfRepository.forDataset(buildDataset) : rdfRepository;
+      runRepository = indexingRepository;
+      RdfAutoTune.applyTo(jobData, indexingRepository);
       batchProcessor =
           new RdfBatchProcessor(
               collectionDAO, indexingRepository, RdfIndexingRunContext.forJob(jobData));
+      if (!Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
+        legacySink = new RdfBulkSink(indexingRepository, batchProcessor, () -> stopped);
+      }
 
       LOG.info(
           "RDF Index Job Started for Entities: {}, RecreateIndex: {}, BuildDataset: {}",
@@ -235,9 +275,70 @@ public class RdfIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
+      clearAutoTuneOverride();
+      closeLegacySink();
       sendUpdates(jobExecutionContext, true);
       cleanupExecutors();
     }
+  }
+
+  private void clearAutoTuneOverride() {
+    RdfRepository repository = runRepository;
+    runRepository = null;
+    if (repository != null) {
+      repository.clearAppendPayloadBudgetOverride();
+    }
+  }
+
+  private void closeLegacySink() {
+    RdfBulkSink sink = legacySink;
+    legacySink = null;
+    if (sink != null) {
+      sink.close();
+    }
+  }
+
+  /**
+   * Cron-triggered runs defer while a Search reindex is active — two concurrent full entity-table
+   * scans thrash the database. On-demand runs bypass the guard (operator intent wins) but log the
+   * contention. Returns false when the run was deferred past the guard's window and ended STOPPED.
+   */
+  private boolean admitAgainstSearchReindex(JobExecutionContext jobExecutionContext) {
+    boolean admitted = true;
+    String triggerType =
+        (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
+    if (ON_DEMAND_JOB.equals(triggerType)) {
+      admissionGuard
+          .currentContention()
+          .ifPresent(
+              contention ->
+                  LOG.warn(
+                      "Starting on-demand RDF reindex despite active search reindex ({}); "
+                          + "concurrent full entity scans will degrade both jobs",
+                      contention));
+    } else if (admissionGuard.currentContention().isPresent()) {
+      RdfReindexAdmissionGuard.AdmissionResult result = admissionGuard.awaitAdmission();
+      if (!result.admitted()) {
+        markRunDeferred(jobExecutionContext, result);
+        admitted = false;
+      }
+    }
+    return admitted;
+  }
+
+  private void markRunDeferred(
+      JobExecutionContext jobExecutionContext, RdfReindexAdmissionGuard.AdmissionResult result) {
+    String message =
+        String.format(
+            "RDF reindex deferred to avoid concurrent full entity-table scans and aborted after "
+                + "%d minutes: %s. It will run at the next scheduled time, or trigger it manually "
+                + "to override the guard.",
+            TimeUnit.MILLISECONDS.toMinutes(result.waitedMs()), result.contention());
+    LOG.warn(message);
+    updateJobStatus(EventPublisherJob.Status.STOPPED);
+    jobData.setFailure(
+        new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
+    sendUpdates(jobExecutionContext, true);
   }
 
   /**
@@ -398,6 +499,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
                   + "%d triples",
               buildDataset, successRecords, triples));
     }
+    requirePromotionSuccessRatio(successRecords);
     rdfRepository.activateDataset(buildDataset, getApp() != null ? getApp().getName() : "system");
     LOG.info(
         "Activated RDF dataset '{}' ({} triples). Previous dataset retained for rollback until "
@@ -405,6 +507,38 @@ public class RdfIndexApp extends AbstractNativeApplication {
         buildDataset,
         triples);
     buildDataset = null;
+  }
+
+  /**
+   * Blue/green promotion gate: refuse to flip the serving pointer when the rebuild lost more than
+   * the configured fraction of records — the old dataset keeps serving and the run fails visibly
+   * instead of silently promoting a hollow graph. Skipped when totals are unavailable (an
+   * accounting gap must not veto an otherwise successful rebuild).
+   */
+  private void requirePromotionSuccessRatio(long successRecords) {
+    long totalRecords = totalRecordsSoFar();
+    double minSuccessRatio =
+        jobData.getMinSuccessRatio() != null
+            ? jobData.getMinSuccessRatio()
+            : DEFAULT_MIN_SUCCESS_RATIO;
+    if (totalRecords > 0 && (double) successRecords / totalRecords < minSuccessRatio) {
+      throw new IllegalStateException(
+          String.format(
+              "Refusing to activate RDF dataset '%s': success ratio %.4f (%d/%d) is below "
+                  + "minSuccessRatio %.2f. The previous dataset keeps serving.",
+              buildDataset,
+              (double) successRecords / totalRecords,
+              successRecords,
+              totalRecords,
+              minSuccessRatio));
+    }
+  }
+
+  private long totalRecordsSoFar() {
+    Stats stats = rdfIndexStats.get();
+    StepStats jobStats = stats != null ? stats.getJobStats() : null;
+    Integer totalRecords = jobStats != null ? jobStats.getTotalRecords() : null;
+    return totalRecords != null ? totalRecords : 0L;
   }
 
   /**
@@ -657,8 +791,15 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
+      // Consumers submit through the shared single-writer sink and block on their
+      // own acknowledgement: multiple consumers still translate concurrently (the
+      // sink's translate pool), but storage writes are serialized so this process
+      // never queues two requests on Fuseki's writer lock. When no sink exists
+      // (defensive), fall back to the inline path.
       RdfBatchProcessor.BatchProcessingResult result =
-          batchProcessor.processEntities(entityType, entities, () -> stopped);
+          legacySink != null
+              ? legacySink.submit(entityType, entities).join()
+              : batchProcessor.processEntities(entityType, entities, () -> stopped);
 
       // failedRecords stays an entity-level stat (relationship failures are
       // per-edge, not per-record). But for surfacing failures on the run

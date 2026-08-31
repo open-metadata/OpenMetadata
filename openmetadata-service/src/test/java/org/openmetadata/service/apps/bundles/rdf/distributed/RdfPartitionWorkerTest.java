@@ -24,6 +24,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
+import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 
@@ -32,12 +33,13 @@ class RdfPartitionWorkerTest {
 
   @Mock private DistributedRdfIndexCoordinator coordinator;
   @Mock private RdfBatchProcessor batchProcessor;
+  @Mock private RdfBulkSink sink;
 
   private RdfPartitionWorker worker;
 
   @BeforeEach
   void setUp() {
-    worker = new RdfPartitionWorker(coordinator, batchProcessor, 100);
+    worker = new RdfPartitionWorker(coordinator, sink, batchProcessor, 100);
   }
 
   @Test

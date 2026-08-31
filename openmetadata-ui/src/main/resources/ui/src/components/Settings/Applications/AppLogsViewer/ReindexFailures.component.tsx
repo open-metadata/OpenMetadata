@@ -16,20 +16,26 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getReindexFailures,
-  SearchIndexFailureRecord,
-} from '../../../../rest/searchAPI';
+import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
+import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
+import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { ReindexFailuresProps } from './ReindexFailures.interface';
+import {
+  ReindexFailureRecord,
+  ReindexFailuresProps,
+} from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;
 
-const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
+const ReindexFailures = ({
+  visible,
+  onClose,
+  appName,
+}: ReindexFailuresProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<SearchIndexFailureRecord[]>([]);
+  const [data, setData] = useState<ReindexFailureRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [entityTypeFilter, setEntityTypeFilter] = useState<string | undefined>(
@@ -41,7 +47,11 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
     async (page: number, entityType?: string) => {
       setLoading(true);
       try {
-        const response = await getReindexFailures({
+        const fetcher =
+          appName === RDF_INDEX_APP_NAME
+            ? getRdfReindexFailures
+            : getReindexFailures;
+        const response = await fetcher({
           offset: (page - 1) * PAGE_SIZE,
           limit: PAGE_SIZE,
           entityType,
@@ -59,7 +69,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         setLoading(false);
       }
     },
-    []
+    [appName]
   );
 
   useEffect(() => {
@@ -87,7 +97,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
     [fetchFailures]
   );
 
-  const columns: ColumnsType<SearchIndexFailureRecord> = useMemo(
+  const columns: ColumnsType<ReindexFailureRecord> = useMemo(
     () => [
       {
         title: t('label.entity-type'),

@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -541,6 +542,37 @@ class JenaFusekiStorageTest {
       String result = JenaFusekiStorage.maskUserInfo("not a url://user:pw@host/ds");
       assertNotNull(result);
       assertFalse(result.contains("user:pw"));
+    }
+  }
+
+  @Nested
+  @DisplayName("parseJvmMaxHeapBytes")
+  class MetricsParsingTests {
+
+    @Test
+    @DisplayName("Prometheus heap samples sum across pools, skipping unbounded pools")
+    void prometheusHeapParsing() {
+      String text =
+          """
+          # HELP jvm_memory_max_bytes The maximum amount of memory in bytes
+          # TYPE jvm_memory_max_bytes gauge
+          jvm_memory_max_bytes{area="heap",id="G1 Eden Space",} -1.0
+          jvm_memory_max_bytes{area="heap",id="G1 Old Gen",} 4.294967296E9
+          jvm_memory_max_bytes{area="heap",id="G1 Survivor Space",} 1.073741824E9
+          jvm_memory_max_bytes{area="nonheap",id="Metaspace",} 2.68435456E8
+          """;
+
+      OptionalLong parsed = JenaFusekiStorage.parseJvmMaxHeapBytes(text);
+
+      assertTrue(parsed.isPresent());
+      assertEquals((4L << 30) + (1L << 30), parsed.getAsLong());
+    }
+
+    @Test
+    @DisplayName("metrics text without heap samples parses to empty")
+    void noHeapSamplesParsesEmpty() {
+      assertTrue(
+          JenaFusekiStorage.parseJvmMaxHeapBytes("jvm_threads_live_threads 42.0\n").isEmpty());
     }
   }
 

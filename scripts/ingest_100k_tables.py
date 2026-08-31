@@ -107,28 +107,62 @@ def create_schema(metadata: OpenMetadata, database_fqn: str, schema_name: str):
     return created
 
 
+BASE_COLUMNS = [
+    Column(name="id", dataType=DataType.BIGINT, description="Primary key"),
+    Column(name="name", dataType=DataType.VARCHAR, dataLength=255),
+    Column(name="description", dataType=DataType.TEXT),
+    Column(name="created_at", dataType=DataType.TIMESTAMP),
+    Column(name="updated_at", dataType=DataType.TIMESTAMP),
+    Column(name="status", dataType=DataType.VARCHAR, dataLength=50),
+    Column(name="metadata", dataType=DataType.JSON),
+]
+
+
+def build_columns(total: int) -> list:
+    """Widen the base column set to `total` columns.
+
+    Wide tables are the interesting shape for RDF/search reindex benchmarks: a
+    single wide table serializes into a far larger payload than its row count
+    suggests, which is what makes byte-budgeted batching matter.
+    """
+    columns = list(BASE_COLUMNS[:total])
+    for i in range(len(columns), total):
+        columns.append(
+            Column(
+                name=f"col_{i:03d}",
+                dataType=DataType.VARCHAR,
+                dataLength=255,
+                description=f"Generated column {i} for wide-table benchmarking",
+            )
+        )
+    return columns
+
+
 def create_tables_batch(
-    metadata: OpenMetadata, schema_fqn: str, start_idx: int, count: int
+    metadata: OpenMetadata,
+    schema_fqn: str,
+    start_idx: int,
+    count: int,
+    columns: list = None,
+    wide_columns: list = None,
+    wide_every: int = 0,
 ) -> int:
     """Create a batch of tables."""
     created_count = 0
-    columns = [
-        Column(name="id", dataType=DataType.BIGINT, description="Primary key"),
-        Column(name="name", dataType=DataType.VARCHAR, dataLength=255),
-        Column(name="description", dataType=DataType.TEXT),
-        Column(name="created_at", dataType=DataType.TIMESTAMP),
-        Column(name="updated_at", dataType=DataType.TIMESTAMP),
-        Column(name="status", dataType=DataType.VARCHAR, dataLength=50),
-        Column(name="metadata", dataType=DataType.JSON),
-    ]
+    columns = columns if columns is not None else list(BASE_COLUMNS)
 
     for i in range(start_idx, start_idx + count):
         table_name = f"test_table_{i:06d}"
+        table_columns = (
+            wide_columns
+            if wide_every and wide_columns and i % wide_every == 0
+            else columns
+        )
         try:
             table = CreateTableRequest(
                 name=table_name,
                 databaseSchema=schema_fqn,
-                columns=columns,
+                columns=table_columns,
                 description=f"Test table {i} for distributed indexing benchmark",
             )
             metadata.create_or_update(table)
@@ -145,11 +179,22 @@ def ingest_tables(
     total_tables: int = 100000,
     batch_size: int = 100,
     workers: int = 10,
+    columns: int = 7,
+    wide_columns: int = 500,
+    wide_every: int = 0,
 ):
     """Ingest tables into OpenMetadata."""
     print(f"Starting ingestion of {total_tables} tables...", flush=True)
     print(f"Server: {server_url}", flush=True)
     print(f"Batch size: {batch_size}, Workers: {workers}", flush=True)
+    narrow_column_list = build_columns(columns)
+    wide_column_list = build_columns(wide_columns) if wide_every else None
+    if wide_every:
+        print(
+            f"Every {wide_every}th table gets {wide_columns} columns "
+            f"(others get {columns})",
+            flush=True,
+        )
     print("-" * 60, flush=True)
 
     # Create main client for setup
@@ -185,7 +230,15 @@ def ingest_tables(
         start_idx, count = batch_info
         # Each worker needs its own client
         worker_metadata = create_metadata_client(server_url, token)
-        return create_tables_batch(worker_metadata, schema_fqn, start_idx, count)
+        return create_tables_batch(
+            worker_metadata,
+            schema_fqn,
+            start_idx,
+            count,
+            columns=narrow_column_list,
+            wide_columns=wide_column_list,
+            wide_every=wide_every,
+        )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {executor.submit(process_batch, batch): batch for batch in batches}
@@ -253,6 +306,27 @@ def main():
         default=10,
         help="Number of parallel workers (default: 10)",
     )
+    parser.add_argument(
+        "--columns",
+        type=int,
+        default=7,
+        help="Columns per ordinary table (default: 7)",
+    )
+    parser.add_argument(
+        "--wide-columns",
+        type=int,
+        default=500,
+        help="Columns on wide tables (default: 500)",
+    )
+    parser.add_argument(
+        "--wide-every",
+        type=int,
+        default=0,
+        help=(
+            "Make every Nth table wide. 0 (default) creates no wide tables; "
+            "100 mixes in the wide-table shape that dominates reindex payload size."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -262,6 +336,9 @@ def main():
         total_tables=args.tables,
         batch_size=args.batch_size,
         workers=args.workers,
+        columns=args.columns,
+        wide_columns=args.wide_columns,
+        wide_every=args.wide_every,
     )
 
 

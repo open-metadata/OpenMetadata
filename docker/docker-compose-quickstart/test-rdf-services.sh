@@ -1,56 +1,150 @@
 #!/bin/bash
+#
+# Smoke tests for the RDF services (Apache Jena Fuseki + OpenSearch).
+#
+# Exits non-zero if any check fails, so it can gate a local deployment or CI job.
+# The runaway-UPDATE check is opt-in (--with-timeout-test) because it deliberately
+# waits out the server-side arq:updateTimeout, which takes over two minutes.
 
-# Test script for RDF services
+set -u
+
+FUSEKI_URL="${FUSEKI_URL:-http://localhost:3030}"
+FUSEKI_DATASET="${FUSEKI_DATASET:-openmetadata}"
+FUSEKI_USER="${FUSEKI_USER:-admin}"
+FUSEKI_PASSWORD="${FUSEKI_PASSWORD:-admin}"
+FUSEKI_CONTAINER="${FUSEKI_CONTAINER:-openmetadata-fuseki}"
+OPENSEARCH_URL="${OPENSEARCH_URL:-http://localhost:9200}"
+# arq:updateTimeout in docker/rdf-store/config.ttl, in seconds, and the client-side
+# budget that must exceed it so curl never gives up before the server aborts.
+UPDATE_TIMEOUT_SECONDS="${UPDATE_TIMEOUT_SECONDS:-120}"
+UPDATE_TIMEOUT_BUDGET_SECONDS="${UPDATE_TIMEOUT_BUDGET_SECONDS:-200}"
+
+RUN_TIMEOUT_TEST=false
+[ "${1:-}" = "--with-timeout-test" ] && RUN_TIMEOUT_TEST=true
+
+FAILURES=0
+
+pass() { echo "✓ $1"; }
+fail() { echo "✗ $1"; FAILURES=$((FAILURES + 1)); }
+skip() { echo "- $1 (skipped)"; }
 
 echo "=== Testing RDF Services ==="
-echo ""
+echo
+echo "Testing Apache Jena Fuseki at ${FUSEKI_URL}..."
 
-# Test Fuseki
-echo "Testing Apache Jena Fuseki..."
-echo -n "  Checking health: "
-if curl -s http://localhost:3030/$/ping > /dev/null 2>&1; then
-    echo "✓ OK"
-    
-    echo -n "  Checking datasets: "
-    if curl -s http://localhost:3030/$/datasets | grep -q "openmetadata"; then
-        echo "✓ openmetadata dataset found"
+if curl -sf "${FUSEKI_URL}/\$/ping" > /dev/null 2>&1; then
+    pass "health: /\$/ping"
+
+    if curl -sf -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" "${FUSEKI_URL}/\$/datasets" | grep -q "${FUSEKI_DATASET}"; then
+        pass "dataset '${FUSEKI_DATASET}' registered"
     else
-        echo "✗ openmetadata dataset not found"
+        fail "dataset '${FUSEKI_DATASET}' not found"
     fi
-    
-    echo -n "  Testing SPARQL endpoint: "
-    SPARQL_TEST=$(curl -s -X POST http://localhost:3030/openmetadata/sparql \
+
+    if curl -sf -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/sparql" \
         -H "Content-Type: application/x-www-form-urlencoded" \
-        -d 'query=SELECT ?s WHERE { ?s ?p ?o } LIMIT 1' 2>&1)
-    if echo "$SPARQL_TEST" | grep -q "results"; then
-        echo "✓ SPARQL endpoint working"
+        -d 'query=SELECT ?s WHERE { ?s ?p ?o } LIMIT 1' 2>&1 | grep -q "results"; then
+        pass "SPARQL query endpoint"
     else
-        echo "✗ SPARQL endpoint not responding correctly"
+        fail "SPARQL query endpoint not responding correctly"
+    fi
+
+    # Prometheus scrape target. shiro.ini marks it anon, matching /$/ping and /$/stats.
+    if curl -sf "${FUSEKI_URL}/\$/metrics" | grep -q "jvm_memory_max_bytes"; then
+        pass "/\$/metrics exposes JVM gauges (Prometheus scrape target)"
+    else
+        fail "/\$/metrics unreachable or missing JVM gauges"
+    fi
+
+    # Jena 6.x requires Java 21 and ships the admin UI launcher; confirm the running
+    # server is the version we expect rather than a stale image on the same volume.
+    SERVER_VERSION=$(curl -sf -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" "${FUSEKI_URL}/\$/server" \
+        | grep -o '"version"[^,]*' | head -1 | cut -d'"' -f4)
+    if [ -n "${SERVER_VERSION}" ]; then
+        pass "server version: ${SERVER_VERSION}"
+    else
+        fail "could not read server version from /\$/server"
+    fi
+
+    if command -v docker > /dev/null 2>&1 && docker ps --format '{{.Names}}' | grep -q "^${FUSEKI_CONTAINER}$"; then
+        CONTAINER_UID=$(docker exec "${FUSEKI_CONTAINER}" id -u 2>/dev/null)
+        if [ "${CONTAINER_UID}" = "1000" ]; then
+            pass "container runs as non-root (uid ${CONTAINER_UID})"
+        else
+            fail "container runs as uid ${CONTAINER_UID:-unknown}, expected non-root 1000"
+        fi
+    else
+        skip "non-root check (container '${FUSEKI_CONTAINER}' not running locally)"
+    fi
+
+    # A client timeout does NOT stop Fuseki's server-side work, so a runaway UPDATE
+    # holds the single TDB2 writer lock until the server itself aborts it. That abort
+    # only exists when the server is launched with --config (arq:updateTimeout is
+    # config-file-only), which is exactly what this check proves.
+    if [ "${RUN_TIMEOUT_TEST}" = true ]; then
+        echo "  running runaway-UPDATE abort check (expect an abort near ${UPDATE_TIMEOUT_SECONDS}s)..."
+        # Seed a small graph, then join it against itself four ways behind a filter that
+        # never passes. ARQ materializes an update's solutions, so a plain cross product
+        # exhausts heap in seconds instead of running long; the always-false filter keeps
+        # the collected solution set empty while still forcing the full enumeration.
+        SEED=$(for i in $(seq 1 500); do printf '<urn:om:n%s> ' "$i"; done)
+        curl -s -o /dev/null -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
+            -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \
+            -H "Content-Type: application/sparql-update" \
+            --data "INSERT { GRAPH <urn:om:timeout-probe> { ?s <urn:om:p> ?s } } WHERE { VALUES ?s { ${SEED} } }"
+        RUNAWAY_UPDATE='INSERT { GRAPH <urn:om:timeout-probe-out> { <urn:om:s> <urn:om:p> <urn:om:o> } } WHERE { GRAPH <urn:om:timeout-probe> { ?a ?p1 ?b . ?c ?p2 ?d . ?e ?p3 ?f . ?g ?p4 ?h } FILTER(STRLEN(CONCAT(STR(?a), STR(?c), STR(?e), STR(?g))) > 100000) }'
+        START=$(date +%s)
+        HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            --max-time "${UPDATE_TIMEOUT_BUDGET_SECONDS}" \
+            -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
+            -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \
+            -H "Content-Type: application/sparql-update" \
+            --data "${RUNAWAY_UPDATE}")
+        ELAPSED=$(( $(date +%s) - START ))
+        MIN_ELAPSED=$(( UPDATE_TIMEOUT_SECONDS * 80 / 100 ))
+        if [ "${HTTP_CODE}" = "000" ]; then
+            fail "runaway UPDATE ran past ${ELAPSED}s without a server-side abort (is --config in use?)"
+        elif [ "${ELAPSED}" -lt "${MIN_ELAPSED}" ]; then
+            # A parse or heap error also returns a code, but in seconds - that would be a
+            # false pass, so anything much faster than the configured timeout is a failure.
+            fail "UPDATE ended after only ${ELAPSED}s (HTTP ${HTTP_CODE}); expected an abort near ${UPDATE_TIMEOUT_SECONDS}s, not an early error"
+        else
+            pass "server aborted runaway UPDATE after ${ELAPSED}s (HTTP ${HTTP_CODE}), matching arq:updateTimeout"
+            if curl -sf "${FUSEKI_URL}/\$/ping" > /dev/null 2>&1; then
+                pass "server healthy after the aborted UPDATE"
+            else
+                fail "server unhealthy after the aborted UPDATE"
+            fi
+        fi
+    else
+        skip "runaway-UPDATE abort check (pass --with-timeout-test to run it)"
     fi
 else
-    echo "✗ Fuseki not responding on port 3030"
+    fail "Fuseki not responding at ${FUSEKI_URL}"
 fi
 
-echo ""
-
-# Test OpenSearch
-echo "Testing OpenSearch..."
-echo -n "  Checking health: "
-HEALTH=$(curl -s http://localhost:9200/_cluster/health 2>/dev/null)
-if echo "$HEALTH" | grep -q "status"; then
-    STATUS=$(echo "$HEALTH" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-    echo "✓ OK (status: $STATUS)"
-    
-    echo -n "  Checking version: "
-    VERSION=$(curl -s http://localhost:9200 | grep -o '"number":"[^"]*"' | cut -d'"' -f4)
-    echo "✓ Version $VERSION"
-    
-    echo -n "  Checking indices: "
-    INDICES=$(curl -s http://localhost:9200/_cat/indices?v 2>/dev/null | wc -l)
-    echo "✓ $((INDICES-1)) indices"
+echo
+echo "Testing OpenSearch at ${OPENSEARCH_URL}..."
+HEALTH=$(curl -s "${OPENSEARCH_URL}/_cluster/health" 2>/dev/null)
+if echo "${HEALTH}" | grep -q "status"; then
+    STATUS=$(echo "${HEALTH}" | grep -oE '"status"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+    pass "health: ${STATUS}"
+    VERSION=$(curl -s "${OPENSEARCH_URL}" | grep -oE '"number"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+    if [ -n "${VERSION}" ]; then
+        pass "version: ${VERSION}"
+    else
+        fail "could not read OpenSearch version"
+    fi
+    INDICES=$(curl -s "${OPENSEARCH_URL}/_cat/indices?v" 2>/dev/null | wc -l)
+    pass "indices: $((INDICES - 1))"
 else
-    echo "✗ OpenSearch not responding on port 9200"
+    fail "OpenSearch not responding at ${OPENSEARCH_URL}"
 fi
 
-echo ""
-echo "=== Test Complete ==="
+echo
+if [ "${FAILURES}" -eq 0 ]; then
+    echo "=== All checks passed ==="
+    exit 0
+fi
+echo "=== ${FAILURES} check(s) failed ==="
+exit 1

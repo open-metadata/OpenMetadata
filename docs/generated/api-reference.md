@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1760 endpoints** across 74 resource packages · 1750 carry a summary.
+**1762 endpoints** across 74 resource packages · 1752 carry a summary.
 
 ## (root)
 
@@ -287,6 +287,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `GET` | `/v1/audit/logs` | List audit log events |
 | `GET` | `/v1/audit/logs/export` | Export audit log events as JSON (async) |
+| `GET` | `/v1/audit/logs/export/{jobId}` | Get the status of an audit log export job |
 | `GET` | `/v1/audit/logs/export/{jobId}/result` | Download a completed audit log export |
 
 ## automations
@@ -1385,6 +1386,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/graph/explore` | Explore entity graph |
 | `GET` | `/v1/rdf/graph/explore/export` | Export explored entity graph |
 | `GET` | `/v1/rdf/inference/lineage/{entityId}` | Get full lineage with inference |
+| `GET` | `/v1/rdf/reindex/failures` | Get RDF reindex failures |
 | `GET` | `/v1/rdf/search/recommendations/{userId}` | Get personalized recommendations |
 | `GET` | `/v1/rdf/search/semantic` | Semantic search across entities |
 | `GET` | `/v1/rdf/search/similar/{entityType}/{id}` | Find similar entities |

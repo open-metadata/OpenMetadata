@@ -15819,6 +15819,26 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM rdf_index_failures")
     int deleteAll();
 
+    @SqlQuery("SELECT COUNT(*) FROM rdf_index_failures")
+    int countAll();
+
+    @SqlQuery(
+        "SELECT * FROM rdf_index_failures ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RdfIndexFailureMapper.class)
+    List<RdfIndexFailureRecord> findAll(@Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM rdf_index_failures WHERE entityType = :entityType")
+    int countByEntityType(@Bind("entityType") String entityType);
+
+    @SqlQuery(
+        "SELECT * FROM rdf_index_failures WHERE entityType = :entityType "
+            + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RdfIndexFailureMapper.class)
+    List<RdfIndexFailureRecord> findByEntityType(
+        @Bind("entityType") String entityType,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     class RdfIndexFailureMapper implements RowMapper<RdfIndexFailureRecord> {
       @Override
       public RdfIndexFailureRecord map(ResultSet rs, StatementContext ctx) throws SQLException {

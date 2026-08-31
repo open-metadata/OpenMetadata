@@ -36,6 +36,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfRepository.LineageEdgeData;
+import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 @Slf4j
 public class RdfBatchProcessor {
@@ -73,6 +74,28 @@ public class RdfBatchProcessor {
 
   public BatchProcessingResult processEntities(
       String entityType, List<? extends EntityInterface> entities, BooleanSupplier stopRequested) {
+    return processEntitiesInternal(entityType, entities, null, stopRequested);
+  }
+
+  /**
+   * Variant for the indexing sink: entities arrive with their RDF models already built on the
+   * translate pool, so the single writer thread spends its time on storage round trips instead of
+   * CPU-bound translation. The failure path is byte-identical to {@link #processEntities} — the
+   * bisect retranslates its halves, which is acceptable because it only runs when a write failed.
+   */
+  public BatchProcessingResult processEntitiesPreTranslated(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      List<RdfStorageInterface.EntityWriteRequest> preTranslated,
+      BooleanSupplier stopRequested) {
+    return processEntitiesInternal(entityType, entities, preTranslated, stopRequested);
+  }
+
+  private BatchProcessingResult processEntitiesInternal(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      List<RdfStorageInterface.EntityWriteRequest> preTranslated,
+      BooleanSupplier stopRequested) {
     if (entities == null || entities.isEmpty()) {
       return new BatchProcessingResult(0, 0);
     }
@@ -121,8 +144,15 @@ public class RdfBatchProcessor {
     if (!effectiveStopRequested.getAsBoolean()) {
       long writeStartNanos = System.nanoTime();
       BisectResult bisect =
-          writeWithBisect(
-              entityType, entities, effectiveStopRequested, bisectDeadlineNanos(), indexedEntities);
+          preTranslated != null
+              ? writePreTranslatedWithBisectFallback(
+                  entityType, entities, preTranslated, effectiveStopRequested, indexedEntities)
+              : writeWithBisect(
+                  entityType,
+                  entities,
+                  effectiveStopRequested,
+                  bisectDeadlineNanos(),
+                  indexedEntities);
       sinkTimeNanos += System.nanoTime() - writeStartNanos;
       successCount = bisect.successCount();
       failedCount = bisect.failedCount();
@@ -173,6 +203,35 @@ public class RdfBatchProcessor {
     return budgetMs > 0
         ? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budgetMs)
         : Long.MAX_VALUE;
+  }
+
+  /**
+   * First attempt uses the pre-built models; any failure falls into the standard bisect over the
+   * ENTITY list (retranslating halves), so failure semantics, budget, breaker handling and
+   * failure-record writing are shared with the non-pre-translated path. The bisect deadline
+   * starts here — at flush — so time spent queued in the sink never consumes the write budget.
+   */
+  private BisectResult writePreTranslatedWithBisectFallback(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      List<RdfStorageInterface.EntityWriteRequest> preTranslated,
+      BooleanSupplier stopRequested,
+      List<EntityInterface> indexedEntities) {
+    BisectResult result;
+    if (stopRequested.getAsBoolean()) {
+      result = BisectResult.EMPTY;
+    } else {
+      try {
+        rdfRepository.bulkStorePreTranslated(preTranslated, runContext.writeMode());
+        indexedEntities.addAll(entities);
+        result = BisectResult.success(entities.size());
+      } catch (Exception e) {
+        result =
+            handleBisectFailure(
+                entityType, entities, stopRequested, bisectDeadlineNanos(), indexedEntities, e);
+      }
+    }
+    return result;
   }
 
   private BisectResult writeWithBisect(

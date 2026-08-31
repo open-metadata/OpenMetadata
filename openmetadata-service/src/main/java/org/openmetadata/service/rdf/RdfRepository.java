@@ -19,12 +19,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
@@ -134,6 +136,7 @@ public class RdfRepository {
 
   private final RdfConfiguration config;
   private final RdfStorageInterface storageService;
+  private final AtomicLong appendBudgetOverrideBytes = new AtomicLong(0);
   private final JsonLdTranslator translator;
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
@@ -341,9 +344,37 @@ public class RdfRepository {
   }
 
   long payloadBudgetBytes(RdfWriteMode writeMode) {
-    return writeMode == RdfWriteMode.INSERT_ONLY
-        ? RdfStorageInterface.resolveMaxAppendPayloadBytes(config)
-        : RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
+    long result;
+    if (writeMode == RdfWriteMode.INSERT_ONLY) {
+      long configured = RdfStorageInterface.resolveMaxAppendPayloadBytes(config);
+      long override = appendBudgetOverrideBytes.get();
+      result = override > 0 ? Math.min(configured, override) : configured;
+    } else {
+      result = RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
+    }
+    return result;
+  }
+
+  /** Configured (pre-override) insert-only budget; the ceiling auto-tune may shrink from. */
+  public long configuredAppendPayloadBytes() {
+    return RdfStorageInterface.resolveMaxAppendPayloadBytes(config);
+  }
+
+  /**
+   * Run-scoped auto-tune override for the insert-only append budget. Only ever shrinks the
+   * configured value (the operator's config remains the ceiling); cleared by the indexing app in
+   * its run teardown so live appends after the run see the configured budget again.
+   */
+  public void setAppendPayloadBudgetOverride(long bytes) {
+    appendBudgetOverrideBytes.set(Math.max(0, bytes));
+  }
+
+  public void clearAppendPayloadBudgetOverride() {
+    appendBudgetOverrideBytes.set(0);
+  }
+
+  public OptionalLong fetchStorageMaxHeapBytes() {
+    return storageService.fetchServerMaxHeapBytes();
   }
 
   static final int BATCH_WRITE_BUDGET_TIMEOUT_MULTIPLIER = 4;
@@ -498,18 +529,49 @@ public class RdfRepository {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
       return;
     }
-    List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
-    for (EntityInterface entity : entities) {
-      String entityType = entity.getEntityReference().getType();
-      Model rdfModel = translator.toRdf(entity);
-      requests.add(
-          new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
-    }
     try {
-      bulkStoreEntityRequests(requests, writeMode);
+      bulkStoreEntityRequests(translateEntities(entities), writeMode);
       LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
+      throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
+    }
+  }
+
+  /**
+   * Translation half of {@link #bulkCreateOrUpdate(List, RdfWriteMode)}, exposed separately so the
+   * indexing sink can run it on a translate pool while the single writer thread is busy with the
+   * previous chunk's storage round trip. Translation is CPU-only and thread-safe (the mapper and
+   * its caches are shared, verified under concurrent workers), so hoisting it off the writer
+   * thread turns translate time into overlap instead of writer-lock idle time.
+   */
+  public List<RdfStorageInterface.EntityWriteRequest> translateEntities(
+      List<? extends EntityInterface> entities) {
+    List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
+    if (isEnabled()) {
+      for (EntityInterface entity : entities) {
+        String entityType = entity.getEntityReference().getType();
+        Model rdfModel = translator.toRdf(entity);
+        requests.add(
+            new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
+      }
+    }
+    return requests;
+  }
+
+  /**
+   * Write half of {@link #bulkCreateOrUpdate(List, RdfWriteMode)} for callers holding
+   * pre-translated requests. Same chunking, budgets and failure semantics as the combined call.
+   */
+  public void bulkStorePreTranslated(
+      List<RdfStorageInterface.EntityWriteRequest> requests, RdfWriteMode writeMode) {
+    if (!isEnabled() || requests == null || requests.isEmpty()) {
+      return;
+    }
+    try {
+      bulkStoreEntityRequests(requests, writeMode);
+    } catch (Exception e) {
+      LOG.error("Failed to bulk store {} pre-translated entities in RDF", requests.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
     }
   }

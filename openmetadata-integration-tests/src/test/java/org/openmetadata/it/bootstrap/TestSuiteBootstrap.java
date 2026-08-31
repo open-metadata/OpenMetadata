@@ -128,6 +128,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
   // ensureDatasetExists() handles dataset creation via /$/datasets, so we
   // don't need stain's `FUSEKI_DATASET_1` shortcut here.
+  // Override with -DrdfContainerImage=openmetadata-fuseki:6.2.0 to run the suite
+  // against the image we ship (docker/rdf-store), e.g. to verify Jena server upgrades.
   private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
@@ -486,12 +488,23 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     FUSEKI_CONTAINER =
         new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
+            // Both spellings: secoresearch/fuseki reads ADMIN_PASSWORD, the OpenMetadata
+            // image (docker/rdf-store) renders shiro.ini from FUSEKI_ADMIN_PASSWORD. Setting
+            // both lets -DrdfContainerImage swap images without touching this cell.
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            // The OpenMetadata image ships a 4g production heap; tests get a small one.
+            .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
             // tmpfs the TDB2 dataset dir so each container start gets a clean
             // store and a long IT run doesn't grow the container's writable
             // layer. secoresearch/fuseki stores datasets under /fuseki/databases
             // by default — mounting tmpfs there keeps writes off-disk entirely.
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
+            // mode=1777 matters: the OpenMetadata image runs as non-root uid 1000, and a
+            // default tmpfs mount is root-owned, which its startup writability guard rejects.
+            .withTmpFs(
+                java.util.Map.of(
+                    "/fuseki/databases", "rw,size=256m,mode=1777",
+                    "/fuseki-data", "rw,size=256m,mode=1777"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)

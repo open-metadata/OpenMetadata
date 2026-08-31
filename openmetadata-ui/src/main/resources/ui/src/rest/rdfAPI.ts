@@ -193,6 +193,51 @@ export const exportGlossaryAsOntology = async (
   return response.data;
 };
 
+export interface RdfIndexFailureRecord {
+  id: string;
+  jobId: string;
+  serverId?: string;
+  entityType: string;
+  entityId?: string;
+  entityFqn?: string;
+  failureStage: string;
+  errorMessage?: string;
+  stackTrace?: string;
+  timestamp: number;
+}
+
+export interface RdfReindexFailuresResponse {
+  data: RdfIndexFailureRecord[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface GetRdfReindexFailuresParams {
+  offset?: number;
+  limit?: number;
+  entityType?: string;
+}
+
+export const getRdfReindexFailures = async (
+  params: GetRdfReindexFailuresParams = {}
+): Promise<RdfReindexFailuresResponse> => {
+  const { offset = 0, limit = 50, entityType } = params;
+
+  const response = await APIClient.get<RdfReindexFailuresResponse>(
+    '/rdf/reindex/failures',
+    {
+      params: {
+        offset,
+        limit,
+        entityType: entityType || undefined,
+      },
+    }
+  );
+
+  return response.data;
+};
+
 export const downloadGlossaryOntology = async (
   glossaryId: string,
   glossaryName: string,

@@ -864,6 +864,8 @@ rdf:
   maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
   maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
   bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
+  streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
+  gzipRequests: ${RDF_GZIP_REQUESTS:-false}
   blueGreenRebuildEnabled: ${RDF_BLUE_GREEN_REBUILD_ENABLED:-false}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
