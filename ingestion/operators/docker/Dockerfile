@@ -208,6 +208,14 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # 3.5.6-1~deb13u2, while trixie-security carries the CVE-2026-14457 fix in
 # 3.5.7-1~deb13u2. Querying the source package upgrades openssl, libssl3t64,
 # and libssl-dev together so no scanner-visible binary is left behind.
+# linux-libc-dev is the third, and the reason CVE-2026-68082 is reported against
+# this image: libc6-dev pulls the kernel headers in for build-essential, a
+# container runs the host kernel so they are a build artifact whose kernel CVEs
+# are not reachable at runtime, but scanners flag the installed version anyway.
+# trixie-security carries the fixed 6.12.105-1 (DSA-6466-1), so this clears the
+# finding on the next build rather than being a speculative no-op. Purging it
+# instead would cascade through libc6-dev to build-essential and break runtime
+# pip builds of C extensions.
 # The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
@@ -215,11 +223,14 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # binary it forgot, and liblastlog2-2 is exactly the one that is easy to forget.
 # Asking dpkg which installed packages came from the source cannot miss one, and
 # stays correct if Debian splits the source differently later.
-# util-linux and openssl are asserted non-empty; expat deliberately is not.
-# expat is transitive, so an empty query is a legitimate image with nothing to
-# patch. The required-package checks matter because `apt-get install
-# --only-upgrade` with no package arguments exits 0 and would otherwise allow a
-# green build that skipped the security upgrades. Fail closed.
+# util-linux and openssl are asserted non-empty; expat and linux-libc-dev
+# deliberately are not. util-linux and openssl are explicitly installed, so an
+# empty query there means dpkg-query misbehaved and the build must not continue,
+# whereas the other two are transitive and an empty query is a legitimate image
+# with nothing to patch. Asserting the required packages is what the
+# check is for -- `apt-get install --only-upgrade` with no package arguments
+# exits 0, so an all-empty query would give a green build that shipped the
+# vulnerable packages anyway. Fail closed.
 # This deliberately does NOT go in the top-of-file apt RUN: that layer's cache
 # key never changes, so an upgrade placed there freezes its Debian index with it
 # and the image keeps shipping whatever was current when the layer was first
@@ -231,8 +242,9 @@ RUN set -eu; \
     ex="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="expat"{print $2}')"; \
     ossl="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="openssl"{print $2}')"; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
+    kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $ul $ex $ossl; \
+    apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \
