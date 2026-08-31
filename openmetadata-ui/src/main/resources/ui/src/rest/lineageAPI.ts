@@ -35,6 +35,19 @@ export const updateLineageEdge = async (edge: AddLineage) => {
   return response.data;
 };
 
+export const deleteLineageEdge = async (
+  fromEntity: string,
+  fromId: string,
+  toEntity: string,
+  toId: string
+) => {
+  const response = await APIClient.delete(
+    `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
+  );
+
+  return response.data;
+};
+
 export const exportLineageAsync = async (
   fqn: string,
   entityType?: string,

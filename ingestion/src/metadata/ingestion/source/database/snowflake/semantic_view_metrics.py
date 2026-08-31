@@ -14,9 +14,10 @@ Builders that turn Snowflake semantic-view catalog rows into OpenMetadata
 
 A Snowflake semantic view's METRICS are aggregations (``SUM(...)``, ``COUNT(...)``)
 over the view's FACTS/DIMENSIONS. Each becomes a first-class OpenMetadata ``Metric``
-carrying its expression, inferred type, the view's dimensions/facts, and an
-``assets`` link back to the semantic-view table. Metric names are fully qualified
-because the ``Metric`` namespace is global (FQN == name).
+carrying its expression, inferred type, and the view's dimensions/facts. The
+semantic-view lineage stage links the view to the metric after both entities exist.
+Metric names are fully qualified because the ``Metric`` namespace is global
+(FQN == name).
 """
 
 import hashlib
@@ -32,8 +33,6 @@ from metadata.generated.schema.entity.data.metric import (
     Type,
 )
 from metadata.generated.schema.type.basic import EntityName
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
@@ -192,7 +191,6 @@ def build_metric_request(
     metric_row,
     dimension_rows: List[tuple],  # noqa: UP006
     fact_rows: List[tuple],  # noqa: UP006
-    view_ref: Optional[EntityReference],  # noqa: UP045
 ) -> CreateMetricRequest:
     """Assemble a CreateMetricRequest for a single Snowflake metric row."""
     metric = metric_row[SEMANTIC_NAME_IDX]
@@ -201,7 +199,6 @@ def build_metric_request(
     dimensions = [_dimension(row) for row in dimension_rows] or None
     measures = [_measure(row) for row in fact_rows] or None
     metric_expression = MetricExpression(language=Language.SQL, code=expression) if expression else None
-    assets = EntityReferenceList(root=[view_ref]) if view_ref is not None else None
     return CreateMetricRequest(  # pyright: ignore[reportCallIssue]
         name=EntityName(build_metric_name(service, database, schema, view, table, metric)),
         displayName=metric,
@@ -210,5 +207,4 @@ def build_metric_request(
         metricExpression=metric_expression,
         dimensions=dimensions,
         measures=measures,
-        assets=assets,
     )

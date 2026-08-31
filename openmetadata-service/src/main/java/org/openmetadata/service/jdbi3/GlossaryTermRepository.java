@@ -485,7 +485,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Resolve parent/glossary references in batch to avoid per-entity relationship lookups.
     populateParentAndGlossaryReferencesInBulk(entities);
 
-    fetchAndSetFields(entities, fields);
+    fetchAndSetFieldsExcept(entities, fields, Set.of("parent"));
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
