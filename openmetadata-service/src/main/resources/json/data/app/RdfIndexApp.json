@@ -11,7 +11,8 @@
     "useDistributedIndexing": true,
     "partitionSize": 10000,
     "maxRetries": 3,
-    "minSuccessRatio": 0.95
+    "minSuccessRatio": 0.95,
+    "blueGreenRebuild": false
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",

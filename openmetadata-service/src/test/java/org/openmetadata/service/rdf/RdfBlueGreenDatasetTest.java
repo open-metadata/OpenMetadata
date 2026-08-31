@@ -73,23 +73,21 @@ class RdfBlueGreenDatasetTest {
   class RepositoryRoutingTests {
 
     @Test
-    @DisplayName("blue/green stays off unless both configured and supported by the backend")
-    void blueGreenRequiresConfigAndBackendSupport() {
+    @DisplayName("capability follows backend dataset support, not a server flag")
+    void blueGreenCapabilityFollowsBackendSupport() {
+      // Whether a given run *uses* blue/green is a per-run app-config choice; the
+      // repository only answers whether this deployment *can*.
       RdfStorageInterface unsupported = mock(RdfStorageInterface.class);
       lenient().when(unsupported.supportsDatasetManagement()).thenReturn(false);
       assertFalse(
-          new RdfRepository(config().withBlueGreenRebuildEnabled(true), unsupported, null)
-              .isBlueGreenRebuildEnabled(),
+          new RdfRepository(config(), unsupported, null).supportsBlueGreenRebuild(),
           "a backend without dataset management cannot do blue/green");
 
       RdfStorageInterface supported = mock(RdfStorageInterface.class);
       lenient().when(supported.supportsDatasetManagement()).thenReturn(true);
-      assertFalse(
-          new RdfRepository(config(), supported, null).isBlueGreenRebuildEnabled(),
-          "blue/green must stay off by default");
       assertTrue(
-          new RdfRepository(config().withBlueGreenRebuildEnabled(true), supported, null)
-              .isBlueGreenRebuildEnabled());
+          new RdfRepository(config(), supported, null).supportsBlueGreenRebuild(),
+          "a dataset-managing backend is capable regardless of any server flag");
     }
 
     @Test
@@ -111,8 +109,7 @@ class RdfBlueGreenDatasetTest {
       when(storage.currentDatasetName()).thenReturn("openmetadata");
       // With no pointer row readable in a unit context, the active dataset falls back
       // to the configured one, so the build target is the first alternate.
-      RdfRepository repository =
-          new RdfRepository(config().withBlueGreenRebuildEnabled(true), storage, null);
+      RdfRepository repository = new RdfRepository(config(), storage, null);
 
       String target = repository.resolveBuildDatasetName();
 

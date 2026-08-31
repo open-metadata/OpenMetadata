@@ -465,7 +465,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
    */
   private String resolveBlueGreenBuildDataset() {
     String target = null;
-    if (Boolean.TRUE.equals(jobData.getRecreateIndex()) && rdf().isBlueGreenRebuildEnabled()) {
+    if (Boolean.TRUE.equals(jobData.getRecreateIndex())
+        && Boolean.TRUE.equals(jobData.getBlueGreenRebuild())
+        && rdf().supportsBlueGreenRebuild()) {
       try {
         target = rdf().resolveBuildDatasetName();
       } catch (Exception e) {

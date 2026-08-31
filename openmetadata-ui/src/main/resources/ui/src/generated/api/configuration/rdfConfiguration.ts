@@ -13,7 +13,7 @@
 /**
  * Configuration for RDF/Knowledge Graph support in OpenMetadata
  */
-export interface RDFConfiguration {
+export interface Out20493 {
     /**
      * Expose optional AI-assisted Ontology Studio flows. Manual authoring remains available
      * when disabled.
@@ -23,13 +23,6 @@ export interface RDFConfiguration {
      * Base URI for RDF resources
      */
     baseUri?: string;
-    /**
-     * Build full RDF rebuilds into an idle dataset and switch to it on success, instead of
-     * clearing the served dataset first. When disabled (the default), a rebuild clears the live
-     * graph up front and queries return partial results for the duration of the run. Requires
-     * the storage backend to support creating and deleting datasets.
-     */
-    blueGreenRebuildEnabled?: boolean;
     /**
      * Maximum number of entity models written in a single insert-only (append) bulk request.
      * Acts as a guard alongside maxAppendPayloadBytes so a chunk of very small entities cannot

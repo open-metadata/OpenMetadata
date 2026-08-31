@@ -166,7 +166,8 @@ weekly schedule. Custom schedules and applications with scheduling disabled are 
 
 By default a `recreateIndex` run clears the served dataset before it starts repopulating it, so
 every query returns partial results until the run finishes — on a large catalog that window is
-measured in hours. Setting `RDF_BLUE_GREEN_REBUILD_ENABLED=true` changes the shape of a rebuild:
+measured in hours. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
+(alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
 previous graph keeps serving throughout and remains available for rollback until the next rebuild
 reuses it.
@@ -174,6 +175,13 @@ reuses it.
 Two datasets alternate — for a configured dataset named `openmetadata`, the builds land in
 `openmetadata_a` and `openmetadata_b` — which bounds disk at two copies rather than leaking a new
 dataset per run. Size the volume per the capacity-planning formula above.
+
+It is a per-run application setting rather than server configuration because it changes the shape of
+one rebuild, not the capability of the deployment: an administrator can enable it, watch one weekend
+run, and turn it back off without a redeploy. Servers always follow the dataset pointer, so every
+pod converges on a promoted dataset without restarting. If the volume cannot hold two datasets the
+build fails before promotion and the previous dataset keeps serving — the same failure mode
+blue/green exists to provide.
 
 Promotion is gated twice:
 
@@ -231,7 +239,6 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` |
 | `RDF_GZIP_REQUESTS` | `false` |
-| `RDF_BLUE_GREEN_REBUILD_ENABLED` | `false` |
 | `RDF_REMOTE_USERNAME` | `admin` |
 | `RDF_REMOTE_PASSWORD` | `admin` |
 | `RDF_DATASET` | `openmetadata` |

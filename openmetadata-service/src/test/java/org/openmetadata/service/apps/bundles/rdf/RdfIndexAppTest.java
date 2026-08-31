@@ -216,6 +216,99 @@ class RdfIndexAppTest {
   }
 
   @Nested
+  @DisplayName("Blue/green lifecycle tests")
+  class BlueGreenLifecycleTests {
+
+    private TestableRdfIndexApp appWith(boolean recreate, boolean blueGreen) throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      EventPublisherJob jobConfig =
+          new EventPublisherJob()
+              .withEntities(Set.of("table"))
+              .withRecreateIndex(recreate)
+              .withBlueGreenRebuild(blueGreen);
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+      return testApp;
+    }
+
+    private Object invoke(TestableRdfIndexApp app, String method) throws Exception {
+      var m = RdfIndexApp.class.getDeclaredMethod(method);
+      m.setAccessible(true);
+      return m.invoke(app);
+    }
+
+    @Test
+    @DisplayName("blue/green is chosen only when recreate, the app flag, and support all agree")
+    void buildDatasetRequiresRecreateFlagAndSupport() throws Exception {
+      doReturn(true).when(mockRdfRepository).supportsBlueGreenRebuild();
+      doReturn("openmetadata_a").when(mockRdfRepository).resolveBuildDatasetName();
+
+      assertEquals("openmetadata_a", invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+      assertNull(
+          invoke(appWith(true, false), "resolveBlueGreenBuildDataset"),
+          "the per-run app flag governs; a capable server alone must not opt a run in");
+      assertNull(
+          invoke(appWith(false, true), "resolveBlueGreenBuildDataset"),
+          "an incremental run has no build dataset to promote");
+    }
+
+    @Test
+    @DisplayName("an unsupported backend falls back to rebuilding in place")
+    void unsupportedBackendFallsBackInPlace() throws Exception {
+      doReturn(false).when(mockRdfRepository).supportsBlueGreenRebuild();
+
+      assertNull(invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+      verify(mockRdfRepository, never()).resolveBuildDatasetName();
+    }
+
+    @Test
+    @DisplayName("a failure resolving the target degrades to an in-place rebuild, not a crash")
+    void resolutionFailureDegradesToInPlace() throws Exception {
+      doReturn(true).when(mockRdfRepository).supportsBlueGreenRebuild();
+      doThrow(new IllegalStateException("pointer table unreadable"))
+          .when(mockRdfRepository)
+          .resolveBuildDatasetName();
+
+      assertNull(invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+    }
+
+    @Test
+    @DisplayName("preparing a build dataset empties and re-seeds it before any write")
+    void prepareBuildDatasetEmptiesAndSeeds() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      RdfRepository buildRepository = mock(RdfRepository.class);
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "prepareBuildDataset", RdfRepository.class, String.class);
+      method.setAccessible(true);
+
+      method.invoke(testApp, buildRepository, "openmetadata_a");
+
+      // Order matters: an un-cleared reuse would merge the previous rebuild's triples.
+      InOrder order = inOrder(mockRdfRepository, buildRepository);
+      order.verify(mockRdfRepository).createBuildDataset("openmetadata_a");
+      order.verify(buildRepository).clearAll();
+      order.verify(buildRepository).compactStorage();
+      order.verify(buildRepository).reloadOntologies();
+    }
+
+    @Test
+    @DisplayName("abandoning a build leaves the serving pointer untouched")
+    void abandoningBuildLeavesServingAlone() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      var buildField = RdfIndexApp.class.getDeclaredField("buildDataset");
+      buildField.setAccessible(true);
+      buildField.set(testApp, "openmetadata_a");
+
+      invoke(testApp, "abandonBuildDataset");
+
+      assertNull(buildField.get(testApp));
+      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString());
+    }
+  }
+
+  @Nested
   @DisplayName("Promotion ratio gate tests")
   class PromotionRatioGateTests {
 

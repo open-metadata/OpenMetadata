@@ -209,7 +209,8 @@ public class DistributedRdfIndexExecutor {
     // serving pointer, so writes from all pods land in the dataset the coordinator will promote.
     RdfRepository rdfRepository = RdfRepository.getInstance();
     if (Boolean.TRUE.equals(jobConfiguration.getRecreateIndex())
-        && rdfRepository.isBlueGreenRebuildEnabled()) {
+        && Boolean.TRUE.equals(jobConfiguration.getBlueGreenRebuild())
+        && rdfRepository.supportsBlueGreenRebuild()) {
       rdfRepository = rdfRepository.forDataset(rdfRepository.resolveBuildDatasetName());
     }
     RdfBatchProcessor batchProcessor =

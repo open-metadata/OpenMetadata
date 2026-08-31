@@ -13,7 +13,7 @@
 /**
  * This schema defines Event Publisher Job.
  */
-export interface EventPublisherJob {
+export interface EpjOut {
     /**
      * Provide After in case of failure to start reindexing after the issue is solved
      */
@@ -27,6 +27,13 @@ export interface EventPublisherJob {
      * Maximum number of events sent in a batch (Default 10).
      */
     batchSize?: number;
+    /**
+     * Build a full RDF rebuild into an idle dataset and switch to it only after the run
+     * succeeds, instead of clearing the served graph up front. Requires roughly twice the
+     * dataset size on disk, since two datasets alternate. Ignored by apps that do not rebuild
+     * an RDF store.
+     */
+    blueGreenRebuild?: boolean;
     /**
      * Override settings applied to staged indexes during bulk reindex. Unset fields fall back
      * to: replicas=0, refresh=-1, translog durability=async, translog sync=30s,

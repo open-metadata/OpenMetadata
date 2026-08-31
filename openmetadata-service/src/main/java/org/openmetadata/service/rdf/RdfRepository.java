@@ -209,7 +209,11 @@ public class RdfRepository {
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
 
       loadOntologies();
-      if (isBlueGreenRebuildEnabled()) {
+      // Unconditional: a pod that never runs the indexing app still has to follow a
+      // dataset flip performed by the pod that did. Gating this on a server flag meant
+      // enabling blue/green required restarting every pod. The watcher is a 15s read of
+      // a single-row table and is a no-op until a rebuild actually writes the pointer.
+      if (supportsBlueGreenRebuild()) {
         refreshActiveDataset();
         startActiveDatasetWatcher();
       }
@@ -266,10 +270,13 @@ public class RdfRepository {
   private final Map<String, RdfStorageInterface> buildStorages = new ConcurrentHashMap<>();
   private ScheduledExecutorService activeDatasetWatcher;
 
-  public boolean isBlueGreenRebuildEnabled() {
-    return isEnabled()
-        && Boolean.TRUE.equals(config.getBlueGreenRebuildEnabled())
-        && storageService.supportsDatasetManagement();
+  /**
+   * Whether this deployment *can* run blue/green rebuilds. Whether a given rebuild *should* is a
+   * per-run choice on the app configuration ({@code blueGreenRebuild}), because it changes the
+   * shape of one run rather than the capability of the server.
+   */
+  public boolean supportsBlueGreenRebuild() {
+    return isEnabled() && storageService.supportsDatasetManagement();
   }
 
   /** Dataset named in the configured endpoint — what serving used before blue/green existed. */
@@ -357,7 +364,7 @@ public class RdfRepository {
 
   /** Re-point the serving storage if another server has flipped the pointer. */
   public void refreshActiveDataset() {
-    if (!isBlueGreenRebuildEnabled()) {
+    if (!supportsBlueGreenRebuild()) {
       return;
     }
     try {

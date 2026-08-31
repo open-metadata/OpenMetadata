@@ -232,6 +232,11 @@
       },
       "uniqueItems": true
     },
+    "blueGreenRebuild": {
+      "description": "Build a full RDF rebuild into an idle dataset and switch to it only after the run succeeds, instead of clearing the served graph up front. Requires roughly twice the dataset size on disk, since two datasets alternate. Ignored by apps that do not rebuild an RDF store.",
+      "type": "boolean",
+      "default": false
+    },
     "recreateIndex": {
       "description": "This schema publisher run modes.",
       "type": "boolean"

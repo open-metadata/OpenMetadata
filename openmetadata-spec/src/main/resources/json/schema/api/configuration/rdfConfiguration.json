@@ -9,14 +9,24 @@
     "reasoningLevel": {
       "description": "Level of reasoning/inference to apply to SPARQL queries",
       "type": "string",
-      "enum": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"],
+      "enum": [
+        "NONE",
+        "RDFS",
+        "OWL_LITE",
+        "OWL_DL",
+        "CUSTOM"
+      ],
       "default": "NONE"
     },
     "shaclValidationMode": {
       "description": "SHACL validation behavior for RDF import and asynchronous projections.",
       "javaType": "org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode",
       "type": "string",
-      "enum": ["OFF", "REPORT", "ENFORCE_IMPORTS"],
+      "enum": [
+        "OFF",
+        "REPORT",
+        "ENFORCE_IMPORTS"
+      ],
       "default": "REPORT"
     }
   },
@@ -29,7 +39,10 @@
     "storageType": {
       "description": "Type of RDF storage backend",
       "type": "string",
-      "enum": ["FUSEKI", "QLEVER"],
+      "enum": [
+        "FUSEKI",
+        "QLEVER"
+      ],
       "default": "FUSEKI"
     },
     "remoteEndpoint": {
@@ -110,11 +123,6 @@
     },
     "gzipRequests": {
       "description": "Compress streamed insert-only request bodies with gzip. The backend reads the request body inside its single-writer transaction, so on network-constrained links compression directly shortens writer-lock hold time. Off by default; enable after verifying throughput on your deployment. Only gzip is ever used - deflate is intentionally unsupported.",
-      "type": "boolean",
-      "default": false
-    },
-    "blueGreenRebuildEnabled": {
-      "description": "Build full RDF rebuilds into an idle dataset and switch to it on success, instead of clearing the served dataset first. When disabled (the default), a rebuild clears the live graph up front and queries return partial results for the duration of the run. Requires the storage backend to support creating and deleting datasets.",
       "type": "boolean",
       "default": false
     },
@@ -205,6 +213,9 @@
       "default": null
     }
   },
-  "required": ["enabled", "storageType"],
+  "required": [
+    "enabled",
+    "storageType"
+  ],
   "additionalProperties": false
 }
