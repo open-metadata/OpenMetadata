@@ -279,8 +279,10 @@ class KafkaConnectClient:
         if connector_details.config:
             connector_details.description = connector_details.config.get("description", None)
 
-            # For CDC connectors without explicit topics, try to infer from server name
-            if not connector_details.topics and connector_details.conn_type.lower() == "source":
+            # For CDC connectors without explicit topics, try to infer from server name.
+            # Only while topics is None: an empty list is the runtime reporting no data
+            # topics, and inferring against that would contradict it.
+            if connector_details.topics is None and connector_details.conn_type.lower() == "source":
                 database_server_name = connector_details.config.get(
                     "database.server.name"
                 ) or connector_details.config.get("topic.prefix")

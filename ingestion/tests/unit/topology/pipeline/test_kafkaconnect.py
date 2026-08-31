@@ -1405,7 +1405,10 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
             config=config,
             # None, not [], when the runtime supplied nothing: an empty list is the
             # runtime authoritatively reporting no data topics, which suppresses inference.
-            topics=[KafkaConnectTopics(name=name) for name in pipeline_topics] if pipeline_topics else None,
+            # Keyed on `is not None` so a caller can pass [] to mean exactly that.
+            topics=(
+                [KafkaConnectTopics(name=name) for name in pipeline_topics] if pipeline_topics is not None else None
+            ),
         )
 
         with patch(
