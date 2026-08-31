@@ -201,7 +201,13 @@ const DataProductsContainer = ({
         </Space>
       )
     );
-  }, [showHeader, dataProducts, hasPermission, showAddTagButton, domainMissing]);
+  }, [
+    showHeader,
+    dataProducts,
+    hasPermission,
+    showAddTagButton,
+    domainMissing,
+  ]);
 
   const addTagButton = useMemo(
     () =>

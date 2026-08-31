@@ -387,9 +387,7 @@ test.describe(
       await selectorInput.fill(otherDomainDataProduct.data.displayName);
       await otherSearchResponse;
 
-      await expect(
-        page.getByTestId(`tag-${otherDomainFqn}`)
-      ).not.toBeVisible();
+      await expect(page.getByTestId(`tag-${otherDomainFqn}`)).not.toBeVisible();
     });
   }
 );
