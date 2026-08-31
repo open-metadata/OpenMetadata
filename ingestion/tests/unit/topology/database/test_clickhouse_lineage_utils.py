@@ -109,6 +109,26 @@ class TestMaterializedViewTargetTable:
                 ("db2", "target"),
                 id="double-quoted-view-name",
             ),
+            pytest.param(
+                r"CREATE MATERIALIZED VIEW db.`weird\`name to x` TO db2.target AS SELECT 1",
+                ("db2", "target"),
+                id="backslash-escaped-delimiter-in-the-view-name",
+            ),
+            pytest.param(
+                r"CREATE MATERIALIZED VIEW db.`a``b to c` TO db2.target AS SELECT 1",
+                ("db2", "target"),
+                id="doubled-delimiter-in-the-view-name",
+            ),
+            pytest.param(
+                r"CREATE MATERIALIZED VIEW db.mv ON CLUSTER 'it\'s to me' TO db2.target AS SELECT 1",
+                ("db2", "target"),
+                id="escaped-quote-in-a-string-literal",
+            ),
+            pytest.param(
+                r"CREATE MATERIALIZED VIEW db.mv TO db2.`target\`x` AS SELECT 1",
+                ("db2", "target`x"),
+                id="escaped-delimiter-in-the-target-name",
+            ),
         ],
     )
     def test_target_table_is_extracted(self, view_definition, expected):
@@ -145,6 +165,11 @@ class TestMaterializedViewTargetTable:
                 "CREATE MATERIALIZED VIEW db.`orders to ship` (`id` UInt64) ENGINE = MergeTree "
                 "ORDER BY id AS SELECT id FROM db.src",
                 id="keyword-inside-a-quoted-view-name-without-a-target",
+            ),
+            pytest.param(
+                r"CREATE MATERIALIZED VIEW db.`weird\`name to x` (`id` UInt64) ENGINE = MergeTree "
+                "ORDER BY id AS SELECT id FROM db.src",
+                id="escaped-delimiter-in-a-view-name-without-a-target",
             ),
             pytest.param(
                 "CREATE MATERIALIZED VIEW db.`as of`.`to` (`id` UInt64) ENGINE = MergeTree "

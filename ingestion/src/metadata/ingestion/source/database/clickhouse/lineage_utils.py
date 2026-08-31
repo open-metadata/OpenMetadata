@@ -39,7 +39,16 @@ logger = ingestion_logger()
 
 # One SQL token: a quoted identifier, a string literal, a bare word, or a single
 # character of punctuation. Whitespace matches nothing and is skipped by `findall`.
-TOKEN_PATTERN = re.compile(r"`[^`]*`|\"[^\"]*\"|'[^']*'|[A-Za-z_$][\w$]*|\S")
+# A quoted token honours both ways Clickhouse escapes its delimiter -- a backslash and
+# a doubled delimiter -- so that a token never ends inside a quoted name.
+TOKEN_PATTERN = re.compile(
+    r"`(?:\\.|``|[^`\\])*`"
+    r"|\"(?:\\.|\"\"|[^\"\\])*\""
+    r"|'(?:\\.|''|[^'\\])*'"
+    r"|[A-Za-z_$][\w$]*"
+    r"|\S",
+    re.DOTALL,
+)
 
 MATERIALIZED_VIEW_HEADER_PATTERN = re.compile(r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\b", re.IGNORECASE)
 
@@ -63,11 +72,13 @@ def _is_keyword(token: str, keyword: str) -> bool:
 
 
 def _identifier(token: Optional[str]) -> Optional[str]:  # noqa: UP045
-    """The token's name, unquoted, or None when the token is not an identifier"""
+    """The token's name, unquoted and unescaped, or None when it is not an identifier"""
     if not token:
         return None
     if token.startswith(_QUOTES):
-        return token[1:-1] or None
+        quote = token[0]
+        name = token[1:-1].replace(quote * 2, quote)
+        return re.sub(r"\\(.)", r"\1", name) or None
     return token if token[0].isalpha() or token[0] in "_$" else None
 
 
