@@ -180,4 +180,41 @@ describe('UserTab', () => {
       expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
     });
   });
+
+  // Task 8 Batch 3: editUserPermission's raw `permission.EditAll || permission.EditUsers` ->
+  // can(Operation.EditUsers) (getDerivedPermissionFlags). Documented explicit-deny-wins
+  // behavior change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditUsers: false` now wins over a bare `EditAll: true` grant, where the old raw OR
+  // granted regardless. The 'Component should render' test above already covers the
+  // EditAll-fallback grant case (permission: { EditAll: true }, no EditUsers key) via the
+  // remove-user-btn's enabled state.
+  describe('editUserPermission (explicit-deny-wins)', () => {
+    it('disables the remove-user button when EditUsers is explicitly false, even with EditAll true', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={
+              { EditAll: true, EditUsers: false } as OperationPermission
+            }
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('remove-user-btn')).toBeDisabled();
+    });
+
+    it('enables the remove-user button via EditAll when EditUsers is not present', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('remove-user-btn')).toBeEnabled();
+    });
+  });
 });
