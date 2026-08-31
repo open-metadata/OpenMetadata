@@ -87,7 +87,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * Assembles the {@link AIContext} (Context Profile) for a data asset: the common knowledge envelope
  * (attached glossary terms and Context Center articles) that applies to every entity type, plus the
  * type-specific structural {@link AssetContext} (schema, primary/foreign keys, frequent joins for
- * tables). It is the server-side, permission-agnostic core behind the {@code get_asset_context} MCP
+ * tables). It is the server-side core behind the {@code get_asset_context} MCP
  * tool and REST endpoint, so any agent can pull an asset's full context in a single call.
  *
  * <p>The structural transforms ({@link #buildTableContext}, {@link #extractForeignKeys}, etc.) are
@@ -527,6 +527,15 @@ public class AIContextBuilder {
       return upstreamDataQuality;
     }
     upstreamDataQualityResolved = true;
+    // Upstream test status is caller-relative: without a caller to authorize there is nobody to
+    // check VIEW_TESTS for, so the signal is not computed rather than disclosed. The only caller
+    // without security is persona materialization (PersonaContextBuilder builds shared, persona-
+    // keyed documents — threading a requester in would bake one member's permissions into
+    // everyone's cached doc), and persona docs exclude pills anyway, so the stamped value would be
+    // discarded; the guard still removes the unauthorized upstream reads that computation performs.
+    if (authorizer == null || securityContext == null) {
+      return null;
+    }
     Map<UUID, EntityReference> nodeRefs = new HashMap<>();
     for (EntityReference node : listOrEmpty(lineage == null ? null : lineage.getNodes())) {
       nodeRefs.put(node.getId(), node);
@@ -543,8 +552,10 @@ public class AIContextBuilder {
       // Being allowed to view this asset does not imply access to its upstreams. The only datum
       // read from the upstream is its test-suite summary, which the platform field-gates behind
       // VIEW_TESTS (TableResource), so VIEW_BASIC is not sufficient. The asset's own DQ needs no
-      // check here: the AI-context endpoints already require VIEW_ALL on the requested asset,
-      // which subsumes every View* operation including VIEW_TESTS.
+      // such check on the direct path: AI-context endpoints require VIEW_ALL on the requested
+      // asset, which subsumes VIEW_TESTS. Persona documents are different — they are admin-curated
+      // shared artifacts whose boundary is the persona's rule set, not a requesting caller — which
+      // is exactly why the caller-relative upstream signal above is suppressed there.
       if (!canViewKnowledge(
           Entity.TABLE, ref.getFullyQualifiedName(), MetadataOperation.VIEW_TESTS)) {
         continue;
@@ -768,8 +779,9 @@ public class AIContextBuilder {
    * knowledge needs VIEW_BASIC, while a table's test-suite summary is a VIEW_TESTS-protected field
    * (TableResource maps {@code testSuite} to VIEW_TESTS), so upstream data-quality stamping checks
    * that operation instead. Server-internal callers (authorizer == null, e.g. persona
-   * materialization over the pre-filtered persona cache) are not filtered — the same fail-open
-   * convention as every other per-item check in this builder.
+   * materialization) are not filtered here — the same fail-open convention as the other per-item
+   * checks in this builder. {@link #upstreamDataQuality()} is the deliberate exception: it is a
+   * caller-relative signal, so it is suppressed rather than computed without a caller.
    */
   static boolean canViewKnowledge(
       Authorizer authorizer,
