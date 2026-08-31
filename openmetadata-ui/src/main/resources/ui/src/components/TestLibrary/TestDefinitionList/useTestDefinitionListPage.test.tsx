@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { act } from 'react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CursorType } from '../../../enums/pagination.enum';
+import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
+import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';
 import {
   deleteTestDefinitionByFqn,
   getListTestDefinitions,
@@ -43,10 +44,25 @@ const MOCK_TEST_DEFINITIONS = [
 
 const MOCK_PAGING = { after: 'after-cursor', before: undefined, total: 2 };
 
+// This suite exercises the real (unmocked) useTestDefinitionRowPermissions,
+// which is now folded onto useBulkEntityPermissions (Task 9) — the per-row
+// fetch moved from usePermissionProvider().getEntityPermissionByFqn to
+// rest/permissionAPI's getEntityPermissionByFqn (react-query owned), so
+// mockGetEntityPermissionByFqn is wired to that seam instead, and its
+// resolved value is now the raw ResourcePermission shape getOperationPermissions
+// converts into MOCK_PERMISSION (the value assertions still compare against).
 const MOCK_PERMISSION = {
   ViewAll: true,
   ViewBasic: true,
-} as unknown as OperationPermission;
+};
+
+const MOCK_PERMISSION_API_RESPONSE = {
+  resource: 'testDefinition',
+  permissions: [
+    { operation: 'ViewAll', access: Access.Allow },
+    { operation: 'ViewBasic', access: Access.Allow },
+  ],
+};
 
 const mockHandlePageChange = jest.fn();
 const mockHandlePagingChange = jest.fn();
@@ -77,8 +93,13 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
         ViewAll: true,
       },
     },
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),
+}));
+
+jest.mock('../../../rest/permissionAPI', () => ({
+  getEntityPermissionByFqn: (
+    ...args: Parameters<typeof getEntityPermissionByFqn>
+  ) => mockGetEntityPermissionByFqn(...args),
 }));
 
 jest.mock('../../../hooks/paging/usePaging', () => ({
@@ -114,8 +135,18 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
 const renderTestDefinitionListPage = () =>
-  renderHook(() => useTestDefinitionListPage());
+  renderHook(() => useTestDefinitionListPage(), { wrapper: createWrapper() });
 
 const renderAndSettle = async () => {
   const rendered = renderTestDefinitionListPage();
@@ -142,7 +173,9 @@ describe('useTestDefinitionListPage', () => {
     mockHandlePageSizeChange.mockReset();
     mockUpdateUrlParams.mockReset();
     (showSuccessToast as jest.Mock).mockClear();
-    mockGetEntityPermissionByFqn.mockReset().mockResolvedValue(MOCK_PERMISSION);
+    mockGetEntityPermissionByFqn
+      .mockReset()
+      .mockResolvedValue(MOCK_PERMISSION_API_RESPONSE);
     (getListTestDefinitions as jest.Mock)
       .mockReset()
       .mockResolvedValue({ data: MOCK_TEST_DEFINITIONS, paging: MOCK_PAGING });
@@ -233,7 +266,7 @@ describe('useTestDefinitionListPage', () => {
       expect(mockHandlePagingChange).toHaveBeenCalledWith(MOCK_PAGING);
     });
 
-    it('should fan out per-row permissions via Promise.allSettled and key them by definition name', async () => {
+    it('should fan out per-row permissions via useBulkEntityPermissions and key them by definition name', async () => {
       const { result } = await renderAndSettle();
 
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
@@ -271,7 +304,7 @@ describe('useTestDefinitionListPage', () => {
       expect(result.current.permissionLoading).toBe(true);
 
       await act(async () => {
-        resolvePermission(MOCK_PERMISSION);
+        resolvePermission(MOCK_PERMISSION_API_RESPONSE);
       });
 
       await waitFor(() => {
@@ -381,7 +414,13 @@ describe('useTestDefinitionListPage', () => {
       });
 
       await waitFor(() => {
-        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(4);
+        // Was 4 pre-fold: the old Promise.allSettled loop re-fetched every
+        // row's permission unconditionally on each fetchTestDefinitionPermissions
+        // call. useBulkEntityPermissions caches by resource+fqn
+        // (PERMISSION_STALE_TIME), so refiltering to the SAME two definition
+        // fqns is served from cache — a real dedup improvement, not a
+        // regression (see useBulkEntityPermissions.ts's module doc).
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
         expect(result.current.permissionLoading).toBe(false);
       });
     });
@@ -597,7 +636,9 @@ describe('useTestDefinitionListPage', () => {
       });
 
       await waitFor(() => {
-        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(4);
+        // Was 4 pre-fold; see the url-filter-refetch test above for why the
+        // post-fold refetch of the same fqn set is cache-served (2).
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
         expect(result.current.permissionLoading).toBe(false);
       });
 
@@ -726,7 +767,9 @@ describe('useTestDefinitionListPage', () => {
 
       await waitFor(() => {
         expect(getListTestDefinitions).toHaveBeenCalledTimes(1);
-        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(4);
+        // Was 4 pre-fold; see the url-filter-refetch test above for why the
+        // post-fold refetch of the same fqn set is cache-served (2).
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
         expect(result.current.permissionLoading).toBe(false);
       });
     });

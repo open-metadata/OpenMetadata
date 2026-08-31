@@ -10,20 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { act } from 'react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
+import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { useTestDefinitionRowPermissions } from './useTestDefinitionRowPermissions';
 
-const MOCK_PERMISSION = {
+// This hook is now folded onto useBulkEntityPermissions (Task 9) — the row
+// fetch moved from usePermissionProvider().getEntityPermissionByFqn to
+// rest/permissionAPI's getEntityPermissionByFqn (react-query owned), so the
+// mock target moves with it. The resource-level create/view flags are
+// untouched (still usePermissionProvider().permissions via checkPermission),
+// so that mock stays as-is.
+const MOCK_OPERATION_PERMISSION = {
   ViewAll: true,
   ViewBasic: true,
-} as unknown as OperationPermission;
+} as const;
+
+const MOCK_API_RESPONSE = {
+  resource: 'testDefinition',
+  permissions: [
+    { operation: 'ViewAll', access: Access.Allow },
+    { operation: 'ViewBasic', access: Access.Allow },
+  ],
+};
 
 const DEF_A = {
   name: 'defA',
@@ -36,6 +51,12 @@ const DEF_B = {
 
 const mockGetEntityPermissionByFqn = jest.fn();
 
+jest.mock('../../../rest/permissionAPI', () => ({
+  getEntityPermissionByFqn: (
+    ...args: Parameters<typeof getEntityPermissionByFqn>
+  ) => mockGetEntityPermissionByFqn(...args),
+}));
+
 // The provider mock reads `mockPermissions` at call time so a test can supply a
 // grant/deny permission set before rendering and assert how the resource-level
 // create/view flags are derived.
@@ -46,19 +67,32 @@ let mockPermissions: Record<string, Record<string, boolean>> = {
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: mockPermissions,
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),
 }));
 
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
 const renderPermissions = () =>
-  renderHook(() => useTestDefinitionRowPermissions());
+  renderHook(() => useTestDefinitionRowPermissions(), {
+    wrapper: createWrapper(),
+  });
 
 describe('useTestDefinitionRowPermissions', () => {
   beforeEach(() => {
     mockPermissions = {
       testDefinition: { Create: true, ViewBasic: true, ViewAll: true },
     };
-    mockGetEntityPermissionByFqn.mockReset().mockResolvedValue(MOCK_PERMISSION);
+    mockGetEntityPermissionByFqn
+      .mockReset()
+      .mockResolvedValue(MOCK_API_RESPONSE);
   });
 
   describe('return shape', () => {
@@ -113,28 +147,34 @@ describe('useTestDefinitionRowPermissions', () => {
         await result.current.fetchTestDefinitionPermissions([DEF_A, DEF_B]);
       });
 
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
-      expect(mockGetEntityPermissionByFqn).toHaveBeenNthCalledWith(
-        1,
+      await waitFor(() =>
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2)
+      );
+
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
         ResourceEntity.TEST_DEFINITION,
         'fqn.defA'
       );
-      expect(mockGetEntityPermissionByFqn).toHaveBeenNthCalledWith(
-        2,
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
         ResourceEntity.TEST_DEFINITION,
         'fqn.defB'
       );
-      expect(result.current.testDefinitionPermissions).toEqual({
-        defA: MOCK_PERMISSION,
-        defB: MOCK_PERMISSION,
-      });
+
+      await waitFor(() =>
+        expect(result.current.testDefinitionPermissions).toEqual({
+          defA: MOCK_OPERATION_PERMISSION,
+          defB: MOCK_OPERATION_PERMISSION,
+        })
+      );
     });
 
     it('should fall back to DEFAULT_ENTITY_PERMISSION for a rejected lookup only', async () => {
-      mockGetEntityPermissionByFqn
-        .mockReset()
-        .mockResolvedValueOnce(MOCK_PERMISSION)
-        .mockRejectedValueOnce(new Error('boom'));
+      mockGetEntityPermissionByFqn.mockImplementation(
+        (_resource: ResourceEntity, fqn: string) =>
+          fqn === 'fqn.defB'
+            ? Promise.reject(new Error('boom'))
+            : Promise.resolve(MOCK_API_RESPONSE)
+      );
 
       const { result } = renderPermissions();
 
@@ -142,13 +182,25 @@ describe('useTestDefinitionRowPermissions', () => {
         await result.current.fetchTestDefinitionPermissions([DEF_A, DEF_B]);
       });
 
-      expect(result.current.testDefinitionPermissions).toEqual({
-        defA: MOCK_PERMISSION,
-        defB: DEFAULT_ENTITY_PERMISSION,
-      });
+      await waitFor(() =>
+        expect(result.current.testDefinitionPermissions).toEqual({
+          defA: MOCK_OPERATION_PERMISSION,
+          defB: DEFAULT_ENTITY_PERMISSION,
+        })
+      );
     });
 
-    it('should pass an empty fqn string for a row missing a fullyQualifiedName', async () => {
+    it('should skip the lookup and degrade to DEFAULT_ENTITY_PERMISSION for a row missing a fullyQualifiedName', async () => {
+      // Behavior consequence of the fold (Task 9): useBulkEntityPermissions
+      // filters falsy fqns out of its own query list (fqns.filter(Boolean)),
+      // so a row with no identifier to query never reaches
+      // getEntityPermissionByFqn at all — pre-fold, the empty string WAS
+      // sent to the API (and this mock's default resolved value made that
+      // row look granted). Degrading straight to DEFAULT_ENTITY_PERMISSION
+      // without a network call is the more correct outcome for an
+      // unidentifiable row (no false grant), and matches the fold's
+      // prescribed shape (drive useBulkEntityPermissions off the stored
+      // definitions' fqns).
       const { result } = renderPermissions();
 
       await act(async () => {
@@ -157,12 +209,9 @@ describe('useTestDefinitionRowPermissions', () => {
         ]);
       });
 
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
-        ResourceEntity.TEST_DEFINITION,
-        ''
-      );
+      expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
       expect(result.current.testDefinitionPermissions).toEqual({
-        noFqn: MOCK_PERMISSION,
+        noFqn: DEFAULT_ENTITY_PERMISSION,
       });
     });
 
@@ -188,7 +237,7 @@ describe('useTestDefinitionRowPermissions', () => {
       expect(result.current.permissionLoading).toBe(false);
 
       let resolvePermission: (value: unknown) => void = (_value) => undefined;
-      mockGetEntityPermissionByFqn.mockImplementationOnce(
+      mockGetEntityPermissionByFqn.mockImplementation(
         () =>
           new Promise((resolve) => {
             resolvePermission = resolve;
@@ -199,10 +248,10 @@ describe('useTestDefinitionRowPermissions', () => {
         result.current.fetchTestDefinitionPermissions([DEF_A]);
       });
 
-      expect(result.current.permissionLoading).toBe(true);
+      await waitFor(() => expect(result.current.permissionLoading).toBe(true));
 
       await act(async () => {
-        resolvePermission(MOCK_PERMISSION);
+        resolvePermission(MOCK_API_RESPONSE);
       });
 
       await waitFor(() => {
