@@ -79,6 +79,6 @@ jobs:
       coarse_bundle: ${{ inputs.coarse_bundle }}
       # Release branches accumulate flakes faster than main; give each test
       # two retries instead of the config default of one.
-      retries: "2"
+      retries: 2
       send_slack_notification: ${{ inputs.send_slack_notification }}
       slack_run_title: "PostgreSQL Playwright E2E on ${{ inputs.branch }}"

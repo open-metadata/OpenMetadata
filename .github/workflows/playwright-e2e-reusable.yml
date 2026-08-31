@@ -66,13 +66,13 @@ on:
         default: true
       retries:
         description: >-
-          Per-test Playwright retry count for the sharded test job, exported to
-          playwright.config.ts as PLAYWRIGHT_RETRIES. Empty (default) keeps the
-          config's CI default of 1. Only the shard test step honours it — the
-          fixture populator and bundle-smoke keep their own behaviour.
+          Playwright per-test retry count, exported to playwright.config.ts as
+          PLAYWRIGHT_RETRIES on the shard test step only (the fixture populator
+          and bundle-smoke keep the config default). The default matches the
+          config's CI default of 1; release-branch nightlies raise it to 2.
         required: false
-        type: string
-        default: ""
+        type: number
+        default: 1
       send_slack_notification:
         description: Post a Slack summary once the run finishes.
         required: false
