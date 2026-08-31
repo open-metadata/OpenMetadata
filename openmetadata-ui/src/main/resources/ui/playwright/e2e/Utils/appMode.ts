@@ -12,7 +12,6 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { getDefaultAdminAPIContext } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // The mode lives in a per-tab `sessionStorage` tuple written by `writeAppMode`
@@ -130,42 +129,16 @@ export const enableAiAppMode = async (page: Page): Promise<void> => {
 };
 
 /**
- * Best-effort DELETE of the default admin's server-side `appMode` preference
- * (404 — nothing to remove — is fine). Node-side via `getDefaultAdminAPIContext`
- * because the auth token lives in IndexedDB and `disableAiAppMode` is usually
- * called before the first navigation, when an in-page `fetch()` has neither a
- * relative URL nor the token available.
- */
-const clearServerAppModePreference = async (page: Page): Promise<void> => {
-  const browser = page.context().browser();
-  if (!browser) {
-    return;
-  }
-  let afterAction: (() => Promise<void>) | undefined;
-  try {
-    const admin = await getDefaultAdminAPIContext(browser);
-    afterAction = admin.afterAction;
-    const me = await admin.apiContext.get('/api/v1/users/loggedInUser');
-    if (!me.ok()) {
-      return;
-    }
-    const { id } = (await me.json()) as { id?: string };
-    if (!id) {
-      return;
-    }
-    await admin.apiContext.delete(`/api/v1/users/${id}/preferences/appMode`);
-  } catch {
-    // Best-effort — never fail the test on cleanup.
-  } finally {
-    await afterAction?.();
-  }
-};
-
-/**
  * Leave AI mode: clear the seeded session tuple + hint, strip the cached
  * `appMode` from the persisted `user-preferences-store` slice (the resolver
- * reads it as rung 4), best-effort DELETE the server preference, and remove the
- * preferences stub `enableAiAppMode` may have installed on this page.
+ * reads it as rung 4), and remove the preferences stub `enableAiAppMode` may
+ * have installed on this page.
+ *
+ * The server-side `appMode` preference is NOT cleared here — this helper does
+ * not know which user is logged in, and the fixtures (`fixtures.ts`) already
+ * DELETE the isolated admin's preference per test. Clearing "some" user's
+ * preference here (e.g. via the shared super-admin) would target the wrong
+ * account and mask, rather than reset, state.
  */
 export const disableAiAppMode = async (page: Page): Promise<void> => {
   const pageWithFlag = page as Page & {
@@ -216,8 +189,6 @@ export const disableAiAppMode = async (page: Page): Promise<void> => {
     },
     [APP_MODE_SESSION_KEY, APP_MODE_HINT_STORAGE_KEY]
   );
-
-  await clearServerAppModePreference(page);
 
   await page
     .unroute(/\/api\/v1\/users\/[^/]+\/preferences(?:$|\?)/)
