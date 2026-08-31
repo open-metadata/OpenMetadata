@@ -23,10 +23,6 @@ def matview_schema(postgres_container):
                 f"SELECT id, sum(amount) AS total FROM {MATVIEW_SCHEMA}.base_table GROUP BY 1"
             )
         )
-    yield
-    with engine.begin() as conn:
-        conn.execute(text(f"DROP SCHEMA {MATVIEW_SCHEMA} CASCADE"))
-    engine.dispose()
 
 
 @pytest.fixture(scope="module")
@@ -50,7 +46,6 @@ def test_materialized_view_ingested_as_materialized_view(ingested_metadata, meta
             Table,
             params={"databaseSchema": f"{db_service.fullyQualifiedName.root}.dvdrental.{MATVIEW_SCHEMA}"},
             fields=["columns"],
-            limit=100,
         ).entities
     }
 
