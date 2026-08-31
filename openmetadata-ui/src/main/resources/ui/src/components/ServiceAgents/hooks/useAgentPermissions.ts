@@ -11,70 +11,42 @@
  *  limitations under the License.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { useMemo } from 'react';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { useBulkEntityPermissions } from '../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { AgentActionPermissions } from '../AgentsPage.interface';
 
-const FQN_KEY_SEPARATOR = '|';
-
+/**
+ * Row-level trigger/edit/delete permissions for the agent list, one cached
+ * query per FQN via {@link useBulkEntityPermissions} — a failed row degrades
+ * to no-permission instead of failing the list (same contract the old
+ * Promise.allSettled loop had). `fqns` is re-filtered on every render, but
+ * useBulkEntityPermissions keys its queries off resource+fqn (not array
+ * identity), so an SSE-driven re-map of `agentFqns` with unchanged content
+ * doesn't trigger a refetch.
+ */
 export const useAgentPermissions = (
   agentFqns: string[],
   resourceEntity: ResourceEntity = ResourceEntity.INGESTION_PIPELINE
 ) => {
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [agentPermissions, setAgentPermissions] = useState<
-    Record<string, AgentActionPermissions>
-  >({});
+  const fqns = useMemo(() => agentFqns.filter(Boolean), [agentFqns]);
+  const { flagsByFqn } = useBulkEntityPermissions(resourceEntity, fqns);
 
-  // Agent lists are re-mapped on every SSE progress tick; keying on the joined
-  // FQNs keeps the effect from refetching permissions when only run state changed.
-  const fqnKey = agentFqns.filter(Boolean).join(FQN_KEY_SEPARATOR);
-  const fqns = useMemo(
-    () => (fqnKey ? fqnKey.split(FQN_KEY_SEPARATOR) : []),
-    [fqnKey]
+  const agentPermissions = useMemo(
+    () =>
+      fqns.reduce<Record<string, AgentActionPermissions>>((acc, fqn) => {
+        const flags = flagsByFqn[fqn];
+        acc[fqn] = {
+          trigger: flags?.can(Operation.Trigger) ?? false,
+          edit: flags?.canEditAll ?? false,
+          delete: flags?.canDelete ?? false,
+        };
+
+        return acc;
+      }, {}),
+    [fqns, flagsByFqn]
   );
-
-  useEffect(() => {
-    if (fqns.length === 0) {
-      setAgentPermissions({});
-
-      return;
-    }
-
-    let isMounted = true;
-
-    Promise.allSettled(
-      fqns.map((fqn) => getEntityPermissionByFqn(resourceEntity, fqn))
-    ).then((results) => {
-      if (!isMounted) {
-        return;
-      }
-
-      setAgentPermissions(
-        results.reduce<Record<string, AgentActionPermissions>>(
-          (acc, result, index) => {
-            const permissions =
-              result.status === 'fulfilled' ? result.value : undefined;
-
-            acc[fqns[index]] = {
-              trigger: permissions?.[Operation.Trigger] ?? false,
-              edit: permissions?.[Operation.EditAll] ?? false,
-              delete: permissions?.[Operation.Delete] ?? false,
-            };
-
-            return acc;
-          },
-          {}
-        )
-      );
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [fqns, resourceEntity]);
 
   return { agentPermissions };
 };
