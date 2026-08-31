@@ -12,9 +12,12 @@
  */
 
 import {
+  act,
   findByText,
+  fireEvent,
   queryByText,
   render,
+  screen,
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -22,8 +25,11 @@ import {
   mockedGlossaries,
   mockedGlossaryTerms,
 } from '../../mocks/Glossary.mock';
+import { addGlossaryTerm } from '../../rest/glossaryAPI';
 import GlossaryV1 from './GlossaryV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
+
+const mockAddGlossaryTerm = addGlossaryTerm as jest.Mock;
 
 const params = {
   glossaryName: 'GlossaryName',
@@ -113,13 +119,33 @@ jest.mock('../ActivityFeed/FeedEditor/FeedEditor', () => {
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((component) => component),
 }));
+
+jest.mock('../../rest/glossaryAPI', () => ({
+  addGlossaryTerm: jest.fn(),
+  getFirstLevelGlossaryTermsPaginated: jest.fn().mockResolvedValue({
+    data: [],
+    paging: { after: undefined },
+  }),
+  patchGlossaryTerm: jest.fn(),
+}));
+
+jest.mock('./GlossaryTermModal/GlossaryTermModal.component', () =>
+  jest.fn().mockImplementation(({ onSave }) => (
+    <button type="button" onClick={() => onSave({ name: 'NewTerm' })}>
+      SaveGlossaryTermModal
+    </button>
+  ))
+);
+
 const mockSetTermsStatusFilter = jest.fn();
 const mockSetTermsSearchTerm = jest.fn();
 const mockResetChildrenCounts = jest.fn();
+const mockSetGlossaryFunctionRef = jest.fn();
+const mockFetchChildrenCount = jest.fn();
 const mockUseGlossaryStore = jest.fn().mockImplementation(() => ({
   activeGlossary: mockedGlossaryTerms[0],
   updateActiveGlossary: jest.fn(),
-  setGlossaryFunctionRef: jest.fn(),
+  setGlossaryFunctionRef: mockSetGlossaryFunctionRef,
   termsLoading: false,
   setTermsLoading: jest.fn(),
   glossaryChildTerms: [],
@@ -128,6 +154,7 @@ const mockUseGlossaryStore = jest.fn().mockImplementation(() => ({
   setTermsStatusFilter: mockSetTermsStatusFilter,
   setTermsSearchTerm: mockSetTermsSearchTerm,
   resetChildrenCounts: mockResetChildrenCounts,
+  fetchChildrenCount: mockFetchChildrenCount,
 }));
 
 jest.mock('./useGlossary.store', () => ({
@@ -311,6 +338,78 @@ describe('Test Glossary component', () => {
 
       await waitFor(() => {
         expect(mockResetChildrenCounts).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Real-time badge update after adding a term', () => {
+    beforeEach(() => {
+      mockAddGlossaryTerm.mockClear();
+      mockSetGlossaryFunctionRef.mockClear();
+      mockFetchChildrenCount.mockClear();
+      mockUseGlossaryStore.mockImplementation(() => ({
+        activeGlossary: mockedGlossaryTerms[0],
+        updateActiveGlossary: jest.fn(),
+        setGlossaryFunctionRef: mockSetGlossaryFunctionRef,
+        termsLoading: false,
+        setTermsLoading: jest.fn(),
+        glossaryChildTerms: [],
+        setGlossaryChildTerms: jest.fn(),
+        insertNewGlossaryTermToChildTerms: jest.fn(),
+        setTermsStatusFilter: mockSetTermsStatusFilter,
+        setTermsSearchTerm: mockSetTermsSearchTerm,
+        resetChildrenCounts: mockResetChildrenCounts,
+        fetchChildrenCount: mockFetchChildrenCount,
+      }));
+    });
+
+    // Regression test for the dead childrenRefreshTrigger prop: adding a term
+    // used to only bump a number nothing read, so the Terms tab badge stayed
+    // stale until a full page reload. onTermModalSuccess now calls the store's
+    // fetchChildrenCount directly for the active entity — the same action the
+    // badge itself (GlossaryTermChildrenCountBadge) already reads from, so the
+    // badge re-renders with the fresh count as soon as this resolves.
+    it('calls fetchChildrenCount for the active entity once a new term is successfully added', async () => {
+      mockAddGlossaryTerm.mockResolvedValue({
+        id: 'new-term-id',
+        name: 'NewTerm',
+        fullyQualifiedName: 'Business Glossary.Clothing.NewTerm',
+      });
+
+      render(
+        <GlossaryV1
+          {...mockProps}
+          isGlossaryActive={false}
+          selectedData={mockedGlossaryTerms[0]}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      await findByText(document.body, /Glossary-Term component/i);
+
+      await waitFor(() => {
+        expect(mockSetGlossaryFunctionRef).toHaveBeenCalled();
+      });
+
+      // Open the add-term modal exactly the way the real "Add Term" button
+      // does: via the onAddGlossaryTerm ref GlossaryV1 registers with the store.
+      const lastCall =
+        mockSetGlossaryFunctionRef.mock.calls[
+          mockSetGlossaryFunctionRef.mock.calls.length - 1
+        ][0];
+      act(() => {
+        lastCall.onAddGlossaryTerm();
+      });
+
+      const saveButton = await screen.findByText('SaveGlossaryTermModal');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      await waitFor(() => {
+        expect(mockFetchChildrenCount).toHaveBeenCalledWith(
+          mockedGlossaryTerms[0].fullyQualifiedName
+        );
       });
     });
   });

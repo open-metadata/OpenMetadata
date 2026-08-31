@@ -99,12 +99,11 @@ const GlossaryV1 = ({
   const [editMode, setEditMode] = useState(false);
 
   // Bumped on a successful term add so the (otherwise fetch-on-mount-only) Terms
-  // tab count badge re-fetches immediately instead of waiting for a page reload.
-  // Kept as two independent counters — only one of the two views is ever mounted
-  // at a time, but each badge should only ever react to its own trigger.
+  // tab table/badge on the Glossary root page re-fetches immediately instead of
+  // waiting for a page reload. The Glossary Term page's own children-count
+  // badge doesn't need an equivalent trigger — it reads directly from
+  // useGlossaryStore, so the fetchChildrenCount() call below is enough.
   const [glossaryTermsRefreshTrigger, setGlossaryTermsRefreshTrigger] =
-    useState(0);
-  const [childrenCountRefreshTrigger, setChildrenCountRefreshTrigger] =
     useState(0);
 
   const {
@@ -117,6 +116,7 @@ const GlossaryV1 = ({
     setTermsStatusFilter,
     setTermsSearchTerm,
     resetChildrenCounts,
+    fetchChildrenCount,
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
@@ -290,7 +290,9 @@ const GlossaryV1 = ({
       // Force the Terms tab count badge to re-fetch immediately, rather than
       // waiting for a page reload.
       setGlossaryTermsRefreshTrigger((prev) => prev + 1);
-      setChildrenCountRefreshTrigger((prev) => prev + 1);
+      if (selectedData.fullyQualifiedName) {
+        fetchChildrenCount(selectedData.fullyQualifiedName);
+      }
     },
     [isGlossaryActive, tab, selectedData, refreshGlossaryList]
   );
@@ -502,7 +504,6 @@ const GlossaryV1 = ({
             glossaryContent
           ) : (
             <GlossaryTermsV1
-              childrenRefreshTrigger={childrenCountRefreshTrigger}
               glossaryTerm={selectedData as GlossaryTerm}
               handleGlossaryTermDelete={onGlossaryTermDelete}
               handleGlossaryTermUpdate={onGlossaryTermUpdate}

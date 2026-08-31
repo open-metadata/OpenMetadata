@@ -25,5 +25,4 @@ export interface GlossaryTermsV1Props {
   refreshActiveGlossaryTerm?: () => void;
   isTabExpanded: boolean;
   toggleTabExpanded: () => void;
-  childrenRefreshTrigger?: number;
 }
