@@ -12,6 +12,10 @@
  */
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import {
+  findApplicationCard,
+  openApplicationDetails,
+} from '../../utils/applications';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
@@ -93,11 +97,7 @@ test.describe(
         await redirectToHomePage(page);
         await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await openApplicationDetails(page, 'search-indexing-application-card');
       });
 
       await test.step('Click Live Indexing tab', async () => {
@@ -144,11 +144,7 @@ test.describe(
         await redirectToHomePage(page);
         await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await openApplicationDetails(page, 'search-indexing-application-card');
       });
 
       await test.step('Verify empty state message when queue is empty', async () => {
@@ -214,11 +210,7 @@ test.describe(
         await redirectToHomePage(page);
         await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await openApplicationDetails(page, 'search-indexing-application-card');
       });
 
       await test.step('Mock and verify retry queue data', async () => {
@@ -278,13 +270,15 @@ test.describe(
       });
 
       await test.step('Verify Live Indexing tab is absent on non-search apps', async () => {
-        // Check if DataInsightsReportApplication card exists
-        const diCard = page.locator(
-          '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
-        );
+        // DataInsightsReportApplication is not installed on every deployment,
+        // so treat "not on any page" as nothing to assert rather than a failure.
+        const diCard = await findApplicationCard(
+          page,
+          'data-insights-report-application-card'
+        ).catch(() => null);
 
-        if (await diCard.isVisible()) {
-          await diCard.click();
+        if (diCard) {
+          await diCard.getByTestId('config-btn').click();
 
           const liveIndexingTab = page.getByRole('tab', {
             name: 'Live Indexing',

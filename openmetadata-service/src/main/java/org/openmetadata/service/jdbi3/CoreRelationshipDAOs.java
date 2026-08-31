@@ -508,8 +508,8 @@ public interface CoreRelationshipDAOs {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, :json) "
-                + "ON DUPLICATE KEY UPDATE json = :json",
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, CONVERT(:json USING utf8mb4)) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -1017,6 +1017,24 @@ public interface CoreRelationshipDAOs {
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship er "
+            + "JOIN metric_entity me ON er.toId = me.id "
+            + "WHERE er.fromId = :fromId AND er.fromEntity = 'metric' AND er.relation = :relation "
+            + "AND er.toEntity = 'metric' AND (me.deleted = false OR me.deleted IS NULL)")
+    int countNonDeletedChildMetrics(
+        @BindUUID("fromId") UUID fromId, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN metric_entity me ON er.toId = me.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = 'metric' AND er.relation = :relation "
+            + "AND er.toEntity = 'metric' AND (me.deleted = false OR me.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedChildMetricsBatch(
+        @BindList("fromIds") List<String> fromIds, @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
