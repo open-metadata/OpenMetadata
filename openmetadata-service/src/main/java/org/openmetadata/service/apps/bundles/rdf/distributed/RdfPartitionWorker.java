@@ -87,6 +87,7 @@ public class RdfPartitionWorker {
     private long successCount;
     private long failedCount;
     private long readerTimeMs;
+    private long processTimeMs;
     private long sinkTimeMs;
     private long relationshipFailureCount;
     private String lastError;
@@ -104,6 +105,7 @@ public class RdfPartitionWorker {
     // Seeded from the partition row (like the counts) so a reclaimed partition
     // keeps the prior claim's accumulated timing instead of restarting at zero.
     acc.readerTimeMs = partition.getReaderTimeMs();
+    acc.processTimeMs = partition.getProcessTimeMs();
     acc.sinkTimeMs = partition.getSinkTimeMs();
     Deque<PendingSubmission> pending = new ArrayDeque<>();
 
@@ -163,6 +165,7 @@ public class RdfPartitionWorker {
           acc.successCount,
           acc.failedCount,
           acc.readerTimeMs,
+          acc.processTimeMs,
           acc.sinkTimeMs);
 
       if (acc.truncatedByStop || stopped.get() || Thread.currentThread().isInterrupted()) {
@@ -270,6 +273,7 @@ public class RdfPartitionWorker {
     acc.relationshipFailureCount +=
         main.relationshipFailureCount() + recovered.relationshipFailureCount();
     acc.sinkTimeMs += main.sinkTimeMs() + recovered.sinkTimeMs();
+    acc.processTimeMs += main.processTimeMs() + recovered.processTimeMs();
     acc.ackedOffset += submission.cursorDelta();
     if (main.lastError() != null) {
       acc.lastError = main.lastError();
@@ -287,6 +291,7 @@ public class RdfPartitionWorker {
               .successCount(acc.successCount)
               .failedCount(acc.failedCount)
               .readerTimeMs(acc.readerTimeMs)
+              .processTimeMs(acc.processTimeMs)
               .sinkTimeMs(acc.sinkTimeMs)
               .build());
     }
@@ -322,6 +327,7 @@ public class RdfPartitionWorker {
       long successCount,
       long failedCount,
       long readerTimeMs,
+      long processTimeMs,
       long sinkTimeMs) {
     try {
       coordinator.updatePartitionProgress(
@@ -331,6 +337,7 @@ public class RdfPartitionWorker {
               .successCount(successCount)
               .failedCount(failedCount)
               .readerTimeMs(readerTimeMs)
+              .processTimeMs(processTimeMs)
               .sinkTimeMs(sinkTimeMs)
               .build());
     } catch (Exception statsFailure) {

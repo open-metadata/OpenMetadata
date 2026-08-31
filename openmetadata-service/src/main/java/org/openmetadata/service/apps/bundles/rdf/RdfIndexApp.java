@@ -826,6 +826,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
           new StepStats()
               .withSuccessRecords(result.successCount())
               .withFailedRecords(result.failedCount())
+              .withProcessTimeMs(result.processTimeMs())
               .withSinkTimeMs(sinkTimeMs);
       updateEntityStats(entityType, currentStats);
       if (result.hasAnyFailure() && result.lastError() != null) {
@@ -1067,6 +1068,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // as "instantaneous" on the run record rather than "never measured".
       entityStats.withSinkTimeMs(
           nullSafe(entityStats.getSinkTimeMs()) + nullSafe(currentEntityStats.getSinkTimeMs()));
+      entityStats.withProcessTimeMs(
+          nullSafe(entityStats.getProcessTimeMs())
+              + nullSafe(currentEntityStats.getProcessTimeMs()));
       entityStats.withTotalTimeMs(nullSafe(entityStats.getSinkTimeMs()));
     }
 
@@ -1085,9 +1089,15 @@ public class RdfIndexApp extends AbstractNativeApplication {
             .mapToLong(stat -> nullSafe(stat.getSinkTimeMs()))
             .sum();
 
+    long totalProcessTimeMs =
+        stats.getEntityStats().getAdditionalProperties().values().stream()
+            .mapToLong(stat -> nullSafe(stat.getProcessTimeMs()))
+            .sum();
+
     jobStats
         .withSuccessRecords(totalSuccess)
         .withFailedRecords(totalFailed)
+        .withProcessTimeMs(totalProcessTimeMs)
         .withSinkTimeMs(totalSinkTimeMs)
         .withTotalTimeMs(totalSinkTimeMs);
 

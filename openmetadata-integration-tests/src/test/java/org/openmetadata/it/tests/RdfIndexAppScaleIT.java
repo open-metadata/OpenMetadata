@@ -173,11 +173,11 @@ public class RdfIndexAppScaleIT {
     config.put("entities", List.of("table"));
     config.put("recreateIndex", true);
     config.put("batchSize", 100);
-    config.put("producerThreads", 2);
+    config.put("producerThreads", Integer.getInteger("rdfScaleProducerThreads", 2));
     config.put("consumerThreads", 3);
     config.put("queueSize", 5000);
     config.put("useDistributedIndexing", Boolean.getBoolean("rdfScaleDistributed"));
-    config.put("partitionSize", 10000);
+    config.put("partitionSize", Integer.getInteger("rdfScalePartitionSize", 10000));
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(3))

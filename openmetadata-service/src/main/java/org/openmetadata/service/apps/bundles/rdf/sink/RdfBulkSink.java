@@ -102,10 +102,14 @@ public class RdfBulkSink implements AutoCloseable {
   private final Thread writerThread;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
+  /** Translation output plus the time the translate task itself spent, excluding queue wait. */
+  private record TranslatedBatch(
+      List<RdfStorageInterface.EntityWriteRequest> requests, long translateMs) {}
+
   private record SubmittedBatch(
       String entityType,
       List<? extends EntityInterface> entities,
-      CompletableFuture<List<RdfStorageInterface.EntityWriteRequest>> translation,
+      CompletableFuture<TranslatedBatch> translation,
       CompletableFuture<BatchProcessingResult> ack) {}
 
   public RdfBulkSink(
@@ -131,9 +135,18 @@ public class RdfBulkSink implements AutoCloseable {
     if (closed.get()) {
       throw new IllegalStateException("RdfBulkSink is closed");
     }
-    CompletableFuture<List<RdfStorageInterface.EntityWriteRequest>> translation =
+    CompletableFuture<TranslatedBatch> translation =
         CompletableFuture.supplyAsync(
-            () -> rdfRepository.translateEntities(entities), TRANSLATE_EXECUTOR);
+            () -> {
+              // Timed here rather than around the join so queue wait is not billed as
+              // translation; this is the value reported as processTimeMs.
+              long startedAt = System.nanoTime();
+              List<RdfStorageInterface.EntityWriteRequest> requests =
+                  rdfRepository.translateEntities(entities);
+              return new TranslatedBatch(
+                  requests, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt));
+            },
+            TRANSLATE_EXECUTOR);
     SubmittedBatch batch =
         new SubmittedBatch(entityType, entities, translation, new CompletableFuture<>());
     submissionQueue.put(batch);
@@ -167,10 +180,12 @@ public class RdfBulkSink implements AutoCloseable {
    */
   private void completeBatch(SubmittedBatch batch) {
     try {
-      List<RdfStorageInterface.EntityWriteRequest> preTranslated = batch.translation().join();
+      TranslatedBatch translated = batch.translation().join();
       BatchProcessingResult result =
-          batchProcessor.processEntitiesPreTranslated(
-              batch.entityType(), batch.entities(), preTranslated, stopRequested);
+          batchProcessor
+              .processEntitiesPreTranslated(
+                  batch.entityType(), batch.entities(), translated.requests(), stopRequested)
+              .withProcessTimeMs(translated.translateMs());
       batch.ack().complete(result);
     } catch (Exception e) {
       // Translation failure or an unexpected processor error: the ack carries the

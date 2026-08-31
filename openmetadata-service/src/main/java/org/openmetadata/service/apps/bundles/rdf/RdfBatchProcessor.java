@@ -962,9 +962,25 @@ public class RdfBatchProcessor {
       int failedCount,
       int relationshipFailureCount,
       String lastError,
-      long sinkTimeMs) {
+      long sinkTimeMs,
+      long processTimeMs) {
     public BatchProcessingResult(int successCount, int failedCount) {
-      this(successCount, failedCount, 0, null, 0L);
+      this(successCount, failedCount, 0, null, 0L, 0L);
+    }
+
+    public BatchProcessingResult(
+        int successCount,
+        int failedCount,
+        int relationshipFailureCount,
+        String lastError,
+        long sinkTimeMs) {
+      this(successCount, failedCount, relationshipFailureCount, lastError, sinkTimeMs, 0L);
+    }
+
+    /** Translation is measured by the sink, which owns the translate pool. */
+    public BatchProcessingResult withProcessTimeMs(long translateMs) {
+      return new BatchProcessingResult(
+          successCount, failedCount, relationshipFailureCount, lastError, sinkTimeMs, translateMs);
     }
 
     public BatchProcessingResult(int successCount, int failedCount, String lastError) {

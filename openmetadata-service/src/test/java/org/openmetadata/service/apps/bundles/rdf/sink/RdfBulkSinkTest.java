@@ -30,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
@@ -220,5 +221,30 @@ class RdfBulkSinkTest {
     sink.submit("table", batchOf(1)).join();
 
     assertTrue(sawStopSupplier.get());
+  }
+
+  @Test
+  @DisplayName("translation time is measured and reported as processTimeMs")
+  void translationTimeIsReportedAsProcessTime() throws Exception {
+    when(rdfRepository.translateEntities(any()))
+        .thenAnswer(
+            invocation -> {
+              // Deliberate work so the measured translate time cannot be zero.
+              long until = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(15);
+              while (System.nanoTime() < until) {
+                Thread.onSpinWait();
+              }
+              return List.of();
+            });
+    when(batchProcessor.processEntitiesPreTranslated(any(), any(), any(), any()))
+        .thenReturn(new RdfBatchProcessor.BatchProcessingResult(1, 0));
+
+    RdfBatchProcessor.BatchProcessingResult result =
+        sink.submit("table", List.of(mock(EntityInterface.class))).get(30, TimeUnit.SECONDS);
+
+    // Previously always 0: the run record showed no translation cost at all.
+    assertTrue(
+        result.processTimeMs() >= 10,
+        "translation time must be measured, saw " + result.processTimeMs() + "ms");
   }
 }
