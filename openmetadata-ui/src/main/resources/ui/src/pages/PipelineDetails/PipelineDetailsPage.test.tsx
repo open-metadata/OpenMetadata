@@ -12,6 +12,11 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import PipelineDetailsPage from './PipelineDetailsPage.component';
 
@@ -49,67 +54,66 @@ jest.mock(
   }
 );
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    permissions: {},
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      EditAll: true,
-      EditCustomFields: true,
-      EditDataProfile: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditLineage: true,
-      EditOwners: true,
-      EditQueries: true,
-      EditSampleData: true,
-      EditTags: true,
-      EditTests: true,
-      EditTier: true,
-      ViewAll: true,
-      ViewDataProfile: true,
-      ViewQueries: true,
-      ViewSampleData: true,
-      ViewTests: true,
-      ViewUsage: true,
-    }),
-  })),
-}));
+// Permissions now come from useEntityPermissions (Task 8 Batch 10) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring DataModelPage.test.tsx's approach.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {
-    Create: true,
-    Delete: true,
-    EditAll: true,
-    EditCustomFields: true,
-    EditDataProfile: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditLineage: true,
-    EditOwners: true,
-    EditQueries: true,
-    EditSampleData: true,
-    EditTags: true,
-    EditTests: true,
-    EditTier: true,
-    ViewAll: true,
-    ViewDataProfile: true,
-    ViewQueries: true,
-    ViewSampleData: true,
-    ViewTests: true,
-    ViewUsage: true,
-  },
-  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 describe('Test PipelineDetailsPage component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({ ViewAll: true, ViewBasic: true, ViewUsage: true });
+  });
+
   it('PipelineDetailsPage component should render properly', async () => {
     renderWithQueryClient(<PipelineDetailsPage />);
 
     await waitFor(() =>
       expect(screen.getByText(/PipelineDetails.component/i)).toBeInTheDocument()
     );
+  });
+
+  it('calls useEntityPermissions with the resource and decoded fqn', async () => {
+    renderWithQueryClient(<PipelineDetailsPage />);
+
+    await waitFor(() =>
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.PIPELINE,
+        'sample_airflow.snowflake_etl',
+        expect.objectContaining({ enabled: true })
+      )
+    );
+  });
+
+  it('shows the permission placeholder when view access is denied', async () => {
+    setMockPermissions({});
+
+    renderWithQueryClient(<PipelineDetailsPage />);
+
+    expect(
+      await screen.findByText(/ErrorPlaceHolder.component/i)
+    ).toBeInTheDocument();
   });
 });
