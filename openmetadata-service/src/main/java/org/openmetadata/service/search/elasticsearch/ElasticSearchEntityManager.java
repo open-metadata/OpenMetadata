@@ -923,11 +923,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               s.source(ss -> ss.scriptString(UPDATE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
                                   .params(params))
-                      // refresh=false: rely on the index's default refresh interval (default 1s
-                      // unless configured otherwise)
-                      // instead
-                      // of forcing a blocking shard refresh after each updateByQuery. Lineage
-                      // cleanup does not require immediate read-after-write consistency.
+                      // A missing index must not abort cleanup of the remaining ones
+                      .ignoreUnavailable(true)
+                      // refresh=false: lineage cleanup needs no read-after-write consistency;
+                      // the index refresh interval covers it
                       .refresh(false));
 
       LOG.info(
@@ -978,11 +977,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               s.source(ss -> ss.scriptString(DELETE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
                                   .params(params))
-                      // refresh=false: rely on the index's default refresh interval (default 1s
-                      // unless configured otherwise)
-                      // instead
-                      // of forcing a blocking shard refresh after each updateByQuery. Lineage
-                      // cleanup does not require immediate read-after-write consistency.
+                      // A missing index must not abort cleanup of the remaining ones
+                      .ignoreUnavailable(true)
+                      // refresh=false: lineage cleanup needs no read-after-write consistency;
+                      // the index refresh interval covers it
                       .refresh(false));
 
       LOG.info(

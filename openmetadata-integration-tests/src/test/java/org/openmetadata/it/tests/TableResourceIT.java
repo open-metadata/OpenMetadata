@@ -3461,6 +3461,88 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
   }
 
+  // Covers the rename leg of #26674: renamed column FQNs must be rewritten in downstream
+  // upstreamLineage via the same deferred flush. A case-only rename is used because
+  // EntityUtil.columnMatch matches names with equalsIgnoreCase — the column is treated as the
+  // same column while its FQN changes, which is what populates the rename map.
+  @Test
+  void test_renamedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_ren_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("col_to_rename", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the rename PATCH below
+    sourceTable.setDescription("lineage rename test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_ren_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_rename";
+    String renamedColFqn = sourceTable.getFullyQualifiedName() + ".COL_TO_RENAME";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference()
+                                .withId(sourceTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
+                        .withToEntity(
+                            new EntityReference()
+                                .withId(targetTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(sourceColFqn))
+                                            .withToColumn(targetColFqn))))));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+
+      // PATCH the source column to its uppercase name — same column per columnMatch, new FQN
+      sourceTable.setColumns(List.of(ColumnBuilder.of("COL_TO_RENAME", "BIGINT").build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for renamed column lineage to be rewritten in search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(renamedColFqn)
+                    && !upstreamLineage.contains(sourceColFqn);
+              });
+    }
+  }
+
   private String getUpstreamLineageFromIndex(Rest5Client searchClient, String tableId)
       throws Exception {
     String query =

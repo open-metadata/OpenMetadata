@@ -2336,6 +2336,15 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    protected void resetForRetryAttempt() {
+      // The retry prologue clears deferredReactOperations; without resetting this guard the
+      // replayed attempt would never re-enqueue the lineage flush and search cleanup is lost.
+      columnLineageUpdateDeferred = false;
+      pendingDeletedColumnFqns.clear();
+      pendingRenameColumnFqns.clear();
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       pendingDeletedColumnFqns.clear();
       pendingRenameColumnFqns.clear();

@@ -42,8 +42,11 @@ public interface SearchClient
   // Comma-separated list of indices that store upstreamLineage.columns (column-level lineage).
   // Used by updateColumnsInUpstreamLineage / deleteColumnsInUpstreamLineage to avoid scanning
   // the entire cluster via GLOBAL_SEARCH_ALIAS when only these indices can contain column lineage.
-  // Entity types that support column-level children: Table, Topic, Container, DashboardDataModel,
-  // SearchIndex, APIEndpoint, MlModel, Dashboard.
+  // Source of truth: LineageRepository.getChildrenNames — only these 8 entity types can be the
+  // "to" side of a column-lineage edge (validateLineageDetails drops the rest), and upstreamLineage
+  // is stored on the "to" entity's document. Other index mappings that declare upstreamLineage
+  // fields are shared boilerplate and can never hold column lineage. KEEP IN SYNC: adding an entity
+  // type to getChildrenNames requires adding its index here, or its cleanup is silently skipped.
   String COLUMN_LINEAGE_SEARCH_INDICES =
       "table_search_index,topic_search_index,container_search_index,"
           + "dashboard_data_model_search_index,search_entity_search_index,"
