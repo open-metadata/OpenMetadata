@@ -155,6 +155,7 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -465,6 +466,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setIsLoading(false);
     }
   }, [serviceCategory, decodedServiceFQN]);
+
+  // Fetch mechanism intentionally left untouched (Task 8 documented-deferral precedent,
+  // GlossaryV1.component.tsx): the resource type is chosen dynamically per service category
+  // (getResourceEntityFromServiceCategory) and `isLoading` is shared with the entity fetch, so
+  // folding this into useEntityPermissions would be an architecture change, not a mechanical
+  // one. Only the local raw `.EditAll`/`.ViewAll`/`.ViewBasic` reads convert to named flags. No
+  // `deleted` argument: none of the raw reads below were ever gated on the service's own
+  // `deleted` field in the old code, so getDerivedPermissionFlags defaults to `deleted = false`
+  // — a pure rename, not a semantic change.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(servicePermission),
+    [servicePermission]
+  );
 
   const goToEditConnection = useCallback(() => {
     navigate(
@@ -1429,11 +1443,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const isTestingDisabled = useMemo(
     () =>
-      !servicePermission.EditAll ||
+      !flags.canEditAll ||
       (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
       isUndefined(connectionDetails),
     [
-      servicePermission,
+      flags.canEditAll,
       serviceCategory,
       decodedServiceFQN,
       connectionDetails,
@@ -1596,10 +1610,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
+    if (flags.hasViewAccess) {
       fetchServiceDetails();
     }
-  }, [decodedServiceFQN, serviceCategory, servicePermission]);
+  }, [decodedServiceFQN, serviceCategory, flags.hasViewAccess]);
 
   useEffect(() => {
     if (!isOpenMetadataService) {
@@ -1741,7 +1755,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Space className="w-full justify-end">
             <Tooltip
               title={
-                servicePermission.EditAll
+                flags.canEditAll
                   ? t('label.edit-entity', {
                       entity: t('label.connection'),
                     })
@@ -1750,7 +1764,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               <Button
                 ghost
                 data-testid="edit-connection-button"
-                disabled={!servicePermission.EditAll}
+                disabled={!flags.canEditAll}
                 type="primary"
                 onClick={goToEditConnection}>
                 {t('label.edit-entity', {
@@ -1784,7 +1798,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       </div>
     );
   }, [
-    servicePermission.EditAll,
+    flags.canEditAll,
     allowTestConn,
     goToEditConnection,
     serviceDetails,
@@ -1924,7 +1938,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     tabs.push({
       name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
+      isHidden: !flags.canEditAll,
       key: EntityTabs.CONNECTION,
       children: testConnectionTab,
     });
@@ -1973,6 +1987,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceCategory,
     paging,
     servicePermission,
+    flags.canEditAll,
     handleDescriptionUpdate,
     showDeleted,
     handleShowDeleted,
@@ -2034,7 +2049,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return <PageLoader />;
   }
 
-  if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
+  if (!flags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
