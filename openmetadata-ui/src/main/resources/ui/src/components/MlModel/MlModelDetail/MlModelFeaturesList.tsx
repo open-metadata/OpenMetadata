@@ -29,6 +29,7 @@ import { TagSource } from '../../../generated/type/schema';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -88,13 +89,11 @@ const MlModelFeaturesList = () => {
     setDisplayedColumns(mlFeatures || []);
   }, [mlFeatures, setDisplayedColumns]);
 
-  const hasEditPermission = useMemo(
-    () => permissions.EditTags || permissions.EditAll,
-    [permissions]
-  );
-
-  const hasEditGlossaryTermPermission = useMemo(
-    () => permissions.EditGlossaryTerms || permissions.EditAll,
+  // Ungated: isDeleted is threaded separately to each TableTags/TableDescription call as
+  // `isReadOnly` below (SearchIndexFieldsTab.tsx/TopicSchema.tsx precedent), never folded
+  // into these edit flags.
+  const { canEditTags, canEditGlossaryTerms, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
     [permissions]
   );
 
@@ -230,7 +229,7 @@ const MlModelFeaturesList = () => {
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditPermission}
+                            hasTagEditAccess={canEditTags}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}
@@ -253,7 +252,7 @@ const MlModelFeaturesList = () => {
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditGlossaryTermPermission}
+                            hasTagEditAccess={canEditGlossaryTerms}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}
@@ -279,9 +278,7 @@ const MlModelFeaturesList = () => {
                             }}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
-                            hasEditPermission={
-                              permissions.EditAll || permissions.EditDescription
-                            }
+                            hasEditPermission={canEditDescription}
                             index={index}
                             isReadOnly={isDeleted}
                             onClick={() => {
