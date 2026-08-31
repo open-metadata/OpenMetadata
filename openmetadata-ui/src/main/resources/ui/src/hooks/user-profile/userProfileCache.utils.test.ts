@@ -41,25 +41,49 @@ describe('userProfileCache.utils', () => {
     expect(getPersistedUserProfiles().john.email).toBe('john@example.com');
   });
 
-  it('drops entries older than 24 hours and rewrites the pruned cache', () => {
-    const fresh = buildUser('fresh');
-    const stale = buildUser('stale');
-    const now = Date.now();
+  it('drops the whole cache once it is older than 24 hours', () => {
     localStorage.setItem(
       USER_PROFILE_CACHE_KEY,
       JSON.stringify({
-        fresh: { user: fresh, timestamp: now },
-        stale: { user: stale, timestamp: now - TWENTY_FOUR_HOUR_MS - 1 },
+        timestamp: Date.now() - TWENTY_FOUR_HOUR_MS - 1,
+        profiles: { fresh: buildUser('fresh'), stale: buildUser('stale') },
       })
     );
 
+    expect(getPersistedUserProfiles()).toEqual({});
+    expect(localStorage.getItem(USER_PROFILE_CACHE_KEY)).toBeNull();
+  });
+
+  it('keeps a fixed window across writes (does not slide on new writes)', () => {
+    const nowSpy = jest.spyOn(Date, 'now');
+
+    nowSpy.mockReturnValue(1000);
+    persistUserProfile('a', buildUser('a'));
+
+    nowSpy.mockReturnValue(1000 + TWENTY_FOUR_HOUR_MS - 1);
+    persistUserProfile('b', buildUser('b'));
+
+    const raw = JSON.parse(
+      localStorage.getItem(USER_PROFILE_CACHE_KEY) ?? '{}'
+    );
+
+    expect(raw.timestamp).toBe(1000);
+    expect(Object.keys(raw.profiles)).toEqual(['a', 'b']);
+  });
+
+  it('starts a fresh window when writing into an expired cache', () => {
+    const nowSpy = jest.spyOn(Date, 'now');
+
+    nowSpy.mockReturnValue(1000);
+    persistUserProfile('old', buildUser('old'));
+
+    nowSpy.mockReturnValue(1000 + TWENTY_FOUR_HOUR_MS + 5);
+    persistUserProfile('new', buildUser('new'));
+
     const result = getPersistedUserProfiles();
 
-    expect(result.fresh).toBeDefined();
-    expect(result.stale).toBeUndefined();
-    expect(
-      JSON.parse(localStorage.getItem(USER_PROFILE_CACHE_KEY) ?? '{}')
-    ).not.toHaveProperty('stale');
+    expect(result.old).toBeUndefined();
+    expect(result.new).toBeDefined();
   });
 
   it('does not persist error placeholders (no profile, empty email)', () => {
@@ -69,9 +93,7 @@ describe('userProfileCache.utils', () => {
   });
 
   it('evicts the oldest entries once the size cap is exceeded', () => {
-    const nowSpy = jest.spyOn(Date, 'now');
     for (let i = 0; i <= USER_PROFILE_CACHE_MAX_SIZE; i++) {
-      nowSpy.mockReturnValue(i);
       persistUserProfile(`user-${i}`, buildUser(`user-${i}`));
     }
 

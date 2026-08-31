@@ -17,22 +17,20 @@ import {
 } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
 
-interface CachedUserProfile {
-  user: User;
+interface UserProfileCache {
   timestamp: number;
+  profiles: Record<string, User>;
 }
 
-type UserProfileCache = Record<string, CachedUserProfile>;
-
-const readRawCache = (): UserProfileCache => {
+const readRawCache = (): UserProfileCache | null => {
   try {
     const raw = localStorage.getItem(USER_PROFILE_CACHE_KEY);
 
-    return raw ? (JSON.parse(raw) as UserProfileCache) : {};
+    return raw ? (JSON.parse(raw) as UserProfileCache) : null;
   } catch {
-    // Corrupt/inaccessible storage falls back to an empty cache; the profiles
-    // simply get re-fetched instead of breaking the app.
-    return {};
+    // Corrupt/inaccessible storage falls back to no cache; the profiles simply
+    // get re-fetched instead of breaking the app.
+    return null;
   }
 };
 
@@ -44,56 +42,62 @@ const writeRawCache = (cache: UserProfileCache): void => {
   }
 };
 
+const isExpired = (cache: UserProfileCache): boolean =>
+  Date.now() - cache.timestamp >= TWENTY_FOUR_HOUR_MS;
+
 /**
  * An error-path placeholder (see useUserProfile) has an empty email and no
  * profile. We never persist those so a transient 4xx/5xx does not suppress a
- * user's avatar for a full 24 hours.
+ * user's avatar for the lifetime of the cache.
  */
 const isPlaceholderProfile = (user: User): boolean =>
   !user.profile && (user.email ?? '') === '';
 
 /**
- * Returns the non-expired persisted profiles keyed by name and rewrites the
- * pruned map back to storage. Used to hydrate the in-memory store on load.
+ * Returns the persisted profiles keyed by name, or an empty map when the whole
+ * cache has aged past its 24h window (in which case the stale blob is cleared).
+ * The window is fixed from first write — it does not slide on reads.
  */
 export const getPersistedUserProfiles = (): Record<string, User> => {
   const cache = readRawCache();
-  const now = Date.now();
-  const valid: Record<string, User> = {};
-  const pruned: UserProfileCache = {};
 
-  Object.entries(cache).forEach(([id, entry]) => {
-    if (entry && now - entry.timestamp < TWENTY_FOUR_HOUR_MS) {
-      valid[id] = entry.user;
-      pruned[id] = entry;
-    }
-  });
-
-  if (Object.keys(pruned).length !== Object.keys(cache).length) {
-    writeRawCache(pruned);
+  if (!cache) {
+    return {};
   }
 
-  return valid;
+  if (isExpired(cache)) {
+    localStorage.removeItem(USER_PROFILE_CACHE_KEY);
+
+    return {};
+  }
+
+  return cache.profiles;
 };
 
 /**
- * Write-through a single profile with a fresh 24h timestamp. Skips error
- * placeholders and evicts the oldest entries once the cache exceeds its cap.
+ * Write-through a single profile into the shared cache. The 24h window is
+ * stamped once when the cache is (re)created and preserved across subsequent
+ * writes; an expired cache is discarded and a new window started. Skips error
+ * placeholders and evicts the oldest entries once the cap is exceeded.
  */
 export const persistUserProfile = (id: string, user: User): void => {
   if (isPlaceholderProfile(user)) {
     return;
   }
 
-  const cache = readRawCache();
-  cache[id] = { user, timestamp: Date.now() };
+  const existing = readRawCache();
+  const cache: UserProfileCache =
+    existing && !isExpired(existing)
+      ? existing
+      : { timestamp: Date.now(), profiles: {} };
 
-  const ids = Object.keys(cache);
+  cache.profiles[id] = user;
+
+  const ids = Object.keys(cache.profiles);
   if (ids.length > USER_PROFILE_CACHE_MAX_SIZE) {
     ids
-      .sort((a, b) => cache[a].timestamp - cache[b].timestamp)
       .slice(0, ids.length - USER_PROFILE_CACHE_MAX_SIZE)
-      .forEach((staleId) => delete cache[staleId]);
+      .forEach((staleId) => delete cache.profiles[staleId]);
   }
 
   writeRawCache(cache);
