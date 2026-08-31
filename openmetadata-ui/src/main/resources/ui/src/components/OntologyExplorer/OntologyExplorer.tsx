@@ -19,8 +19,13 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
-import { AxiosError } from 'axios';
+import { NoFilterFunnel, NoSearch } from '@openmetadata/ui-core-components/icons';
+import {
+  Cube02,
+  CubeOutline,
+  LayoutGrid01,
+  SearchMd
+} from '@untitledui/icons';
 import classNames from 'classnames';
 import React, {
   Key,
@@ -44,14 +49,8 @@ import {
 } from '../../rest/glossaryAPI';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import {
-  NoFilteredResultsPlaceholder,
-  NoSearchResultsPlaceholder,
-} from '../common/EmptyPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
-import ExportGraphPanel from './ExportGraphPanel';
-import GraphSettingsPanel from './GraphSettingsPanel';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyAuthoringInspector from './OntologyAuthoringInspector';
 import OntologyConceptDraftInspector from './OntologyConceptDraftInspector';
@@ -163,21 +162,35 @@ function FilteredGraphEmptyState({
   readonly description: string;
   readonly testId: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid={testId}>
-      <NoFilteredResultsPlaceholder description={description} />
+      <EmptyPlaceholder
+        description={description}
+        icon={<NoFilterFunnel className="tw:text-secondary" />}
+        title={t('label.no-result-for-these-filter-plural')}
+        variant="blank"
+      />
     </div>
   );
 }
 
 function SearchGraphEmptyState() {
+  const { t } = useTranslation();
+
   return (
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid="ontology-graph-search-empty">
-      <NoSearchResultsPlaceholder />
+      <EmptyPlaceholder
+        description={t('message.check-spelling-or-try-shorter-term')}
+        icon={<NoSearch className="tw:text-secondary" />}
+        title={t('label.no-matching-result-plural')}
+        variant="blank"
+      />
     </div>
   );
 }
