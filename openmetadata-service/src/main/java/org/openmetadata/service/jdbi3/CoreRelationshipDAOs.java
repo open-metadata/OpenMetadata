@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -46,11 +47,14 @@ import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.ontology.RelationshipTypeIds;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
@@ -409,13 +413,6 @@ public interface CoreRelationshipDAOs {
 
   @Getter
   @Builder
-  class RelationTypeUsageCount {
-    private String relationType;
-    private Integer count;
-  }
-
-  @Getter
-  @Builder
   class EntityRelationshipObject {
     private String fromId;
     private String toId;
@@ -426,6 +423,17 @@ public interface CoreRelationshipDAOs {
     private String json;
     private String jsonSchema;
   }
+
+  record OntologyRelationshipRow(
+      UUID fromId,
+      UUID toId,
+      String fromEntity,
+      String toEntity,
+      int relation,
+      String relationType,
+      UUID relationshipId,
+      UUID relationshipTypeId,
+      String json) {}
 
   @Getter
   @Builder
@@ -517,6 +525,49 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation,
         @Bind("relationType") String relationType,
         @BindJson("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, "
+                + "relationType, relationshipId, relationshipTypeId, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, "
+                + ":relationshipId, :relationshipTypeId, :json) ON DUPLICATE KEY UPDATE "
+                + "relationshipId = VALUES(relationshipId), "
+                + "relationshipTypeId = VALUES(relationshipTypeId), json = VALUES(json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, "
+                + "relationType, relationshipId, relationshipTypeId, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, "
+                + ":relationshipId, :relationshipTypeId, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET "
+                + "relationshipId = EXCLUDED.relationshipId, "
+                + "relationshipTypeId = EXCLUDED.relationshipTypeId, json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertOntologyRelationship(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
+        @BindUUID("relationshipId") UUID relationshipId,
+        @BindUUID("relationshipTypeId") UUID relationshipTypeId,
+        @BindJson("json") String json);
+
+    default void insertOntologyRelationship(OntologyRelationshipRow relationship) {
+      insertOntologyRelationship(
+          relationship.fromId(),
+          relationship.toId(),
+          relationship.fromEntity(),
+          relationship.toEntity(),
+          relationship.relation(),
+          relationship.relationType(),
+          relationship.relationshipId(),
+          relationship.relationshipTypeId(),
+          relationship.json());
+    }
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -915,12 +966,21 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END AS relationType, "
-            + "COUNT(*) AS cnt FROM entity_relationship "
-            + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-            + "GROUP BY CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END")
+        "SELECT MAX(rt.id) AS relationshipTypeId, "
+            + "COALESCE(rt.name, NULLIF(er.relationType, ''), '"
+            + DEFAULT_RELATION_TYPE
+            + "') AS relationshipTypeName, COUNT(*) AS cnt "
+            + "FROM entity_relationship er LEFT JOIN relationship_type_entity rt "
+            + "ON rt.id = er.relationshipTypeId OR (er.relationshipTypeId IS NULL "
+            + "AND rt.name = COALESCE(NULLIF(er.relationType, ''), '"
+            + DEFAULT_RELATION_TYPE
+            + "')) WHERE er.fromEntity = :fromEntity "
+            + "AND er.toEntity = :toEntity AND er.relation = :relation "
+            + "GROUP BY COALESCE(rt.name, NULLIF(er.relationType, ''), '"
+            + DEFAULT_RELATION_TYPE
+            + "') ORDER BY relationshipTypeName")
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
-    List<RelationTypeUsageCount> countByRelationType(
+    List<RelationshipTypeUsage> countByRelationType(
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
@@ -1566,13 +1626,22 @@ public interface CoreRelationshipDAOs {
       }
     }
 
-    class RelationTypeUsageCountMapper implements RowMapper<RelationTypeUsageCount> {
+    class RelationTypeUsageCountMapper implements RowMapper<RelationshipTypeUsage> {
       @Override
-      public RelationTypeUsageCount map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return RelationTypeUsageCount.builder()
-            .relationType(rs.getString("relationType"))
-            .count(rs.getInt("cnt"))
-            .build();
+      public RelationshipTypeUsage map(ResultSet rs, StatementContext ctx) throws SQLException {
+        String relationshipTypeName = rs.getString("relationshipTypeName");
+        String relationshipTypeId = rs.getString("relationshipTypeId");
+        EntityReference relationshipType =
+            new EntityReference()
+                .withId(
+                    relationshipTypeId == null
+                        ? RelationshipTypeIds.stableId(relationshipTypeName)
+                        : UUID.fromString(relationshipTypeId))
+                .withType(Entity.RELATIONSHIP_TYPE)
+                .withName(relationshipTypeName);
+        return new RelationshipTypeUsage()
+            .withRelationshipType(relationshipType)
+            .withCount(rs.getInt("cnt"));
       }
     }
 
