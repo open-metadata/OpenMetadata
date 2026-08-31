@@ -44,6 +44,7 @@ import {
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../../../utils/TablePureUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getAllTags } from '../../../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
@@ -173,6 +174,19 @@ const ModelTab = () => {
     }),
     [dataModel]
   );
+  // Consumer via useGenericContext() (Task 8 rule 2). Two derivations, not one: the old code
+  // never gated description/tags/glossary-term edit on `deleted` (the columns that consume
+  // them separately receive `isReadOnly={isReadOnly}` and handle the deleted case there), but
+  // DID gate the display-name edit on it — folding all four into one `deleted`-gated
+  // derivation would regress the first three on a soft-deleted data model.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+  const gatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions, Boolean(deleted)),
+    [permissions, deleted]
+  );
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
@@ -180,15 +194,12 @@ const ModelTab = () => {
     editDisplayNamePermission,
   } = useMemo(() => {
     return {
-      hasEditDescriptionPermission:
-        permissions.EditAll || permissions.EditDescription,
-      hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
-      hasEditGlossaryTermPermission:
-        permissions.EditAll || permissions.EditGlossaryTerms,
-      editDisplayNamePermission:
-        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+      hasEditDescriptionPermission: ungatedFlags.canEditDescription,
+      hasEditTagsPermission: ungatedFlags.canEditTags,
+      hasEditGlossaryTermPermission: ungatedFlags.canEditGlossaryTerms,
+      editDisplayNamePermission: gatedFlags.canEditDisplayName,
     };
-  }, [permissions]);
+  }, [ungatedFlags, gatedFlags]);
 
   const tagFilter = useMemo(() => {
     const tags = getAllTags(data ?? []);
