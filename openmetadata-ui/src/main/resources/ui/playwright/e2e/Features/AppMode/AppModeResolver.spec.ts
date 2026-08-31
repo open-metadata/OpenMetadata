@@ -198,9 +198,10 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
       const putResponse = page.waitForResponse(isRememberPreferencePut);
       await rememberToggle.click();
       await putResponse;
-      await expect(
-        rememberToggle.locator('[role="checkbox"]')
-      ).toHaveAttribute('aria-checked', 'true');
+      await expect(rememberToggle.locator('[role="checkbox"]')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
     });
 
     await test.step('Simulate closing every tab (session + hint gone)', async () => {
