@@ -53,4 +53,18 @@ class RdfUtilsTest {
     assertNull(RdfUtils.getProvType(null));
     assertNull(RdfUtils.getProvType(""));
   }
+
+  @ParameterizedTest
+  @CsvSource({
+    "llmModel,LLMModel",
+    "LLMMODEL,LLMModel",
+    "aiApplication,AIApplication",
+    "apiEndpoint,APIEndpoint",
+    "mlModel,MLModel",
+    "mcpServer,McpServer",
+    "table,Table"
+  })
+  void getOpenMetadataTypePreservesCanonicalAcronyms(String entityType, String expectedType) {
+    assertEquals(expectedType, RdfUtils.getOpenMetadataType(entityType));
+  }
 }

@@ -1,5 +1,7 @@
 package org.openmetadata.service.rdf.storage;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -47,6 +49,7 @@ import java.util.function.UnaryOperator;
 import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.atlas.web.HttpException;
+import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryFactory;
@@ -70,6 +73,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
@@ -82,6 +86,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
+  private static final String GRAPH_TRIPLE_COUNT_QUERY =
+      "SELECT (COUNT(*) as ?count) WHERE { GRAPH ?graph { ?s ?p ?o } }";
 
   // Defaults keep TCP connect fail-fast while giving production Fuseki enough
   // time for larger SPARQL UPDATE transactions. The request timeout bounds the
@@ -1685,16 +1691,29 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private String formatModel(Model model, String format) {
     StringWriter writer = new StringWriter();
-
-    RDFFormat rdfFormat =
-        format.equalsIgnoreCase("turtle")
-            ? RDFFormat.TURTLE
-            : format.equalsIgnoreCase("jsonld")
-                ? RDFFormat.JSONLD
-                : format.equalsIgnoreCase("ntriples") ? RDFFormat.NTRIPLES : RDFFormat.RDFXML;
-
-    RDFDataMgr.write(writer, model, rdfFormat);
+    RDFDataMgr.write(writer, model, resolveGraphFormat(format));
     return writer.toString();
+  }
+
+  /**
+   * Resolves a CONSTRUCT/DESCRIBE serialization, accepting short names and media types alike.
+   *
+   * <p>The previous chain compared against the short names only, so every caller passing a media
+   * type - {@code EntityNeighborhoodTool} asks for {@code text/turtle}, {@code OntologyDescribeTool}
+   * passes {@code format.mediaType()} - silently landed on the RDF/XML fallback while the surrounding
+   * response still advertised {@code "format":"turtle"}. Callers got XML labelled as Turtle, which is
+   * worse than an outright failure because it parses cleanly as the wrong thing. An unrecognised
+   * value still falls back to RDF/XML rather than throwing, but it is logged instead of passing
+   * silently.
+   */
+  private static RDFFormat resolveGraphFormat(String format) {
+    try {
+      return RdfSerializationFormat.parseOrDefault(format, RdfSerializationFormat.RDF_XML)
+          .rdfFormat();
+    } catch (IllegalArgumentException exception) {
+      LOG.warn("Unrecognised RDF serialization '{}'; falling back to RDF/XML", format);
+      return RDFFormat.RDFXML;
+    }
   }
 
   @Override
@@ -1785,6 +1804,48 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
 
     return 0;
+  }
+
+  @Override
+  public long getTripleCount(final String graphUri) {
+    throwIfCircuitOpen("getTripleCount");
+    final Query query = graphTripleCountQuery(graphUri);
+    long tripleCount = 0;
+    try (QueryExecution queryExecution = connection.query(query)) {
+      final ResultSet results = queryExecution.execSelect();
+      if (results.hasNext()) {
+        tripleCount = results.next().getLiteral("count").getLong();
+      }
+      recordSuccess();
+    } catch (RuntimeException exception) {
+      if (isCircuitBreakerFailure(exception)) {
+        recordFailure();
+      }
+      throw exception;
+    }
+    return tripleCount;
+  }
+
+  static Query graphTripleCountQuery(final String graphUri) {
+    final URI validatedGraphUri = requireAbsoluteGraphUri(graphUri);
+    final ParameterizedSparqlString query = new ParameterizedSparqlString(GRAPH_TRIPLE_COUNT_QUERY);
+    query.setIri("graph", validatedGraphUri.toASCIIString());
+    return query.asQuery();
+  }
+
+  private static URI requireAbsoluteGraphUri(final String graphUri) {
+    if (nullOrEmpty(graphUri) || graphUri.isBlank()) {
+      throw new IllegalArgumentException("graphUri must be a valid absolute IRI");
+    }
+    try {
+      final URI uri = URI.create(graphUri);
+      if (!uri.isAbsolute()) {
+        throw new IllegalArgumentException("graphUri must be a valid absolute IRI");
+      }
+      return uri;
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalArgumentException("graphUri must be a valid absolute IRI", exception);
+    }
   }
 
   @Override

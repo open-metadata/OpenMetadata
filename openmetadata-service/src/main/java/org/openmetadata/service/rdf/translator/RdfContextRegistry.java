@@ -66,10 +66,6 @@ public final class RdfContextRegistry {
           "testcaseresult",
           "testcaseresolutionstatus" -> "quality";
       case "ingestionpipeline",
-          "workflow",
-          "workflowdefinition",
-          "workflowinstance",
-          "workflowinstancestate",
           "eventsubscription",
           "kpi",
           "datainsightchart",
@@ -78,6 +74,17 @@ public final class RdfContextRegistry {
           "appmarketplacedefinition",
           "document",
           "page" -> "operations";
+      case "llmmodel",
+          "aiapplication",
+          "mcpserver",
+          "mcpexecution",
+          "agentexecution",
+          "prompttemplate" -> "ai";
+      case "workflow",
+          "workflowdefinition",
+          "workflowinstance",
+          "workflowinstancestate",
+          "automation" -> "automation";
       default -> "base";
     };
   }

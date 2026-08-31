@@ -32,6 +32,7 @@ const EndpointRow: FC<{
   onSelect: (node: GraphNode3D) => void;
 }> = ({ node, sublabel, onSelect }) => (
   <button
+    aria-label={node.name}
     className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-b tw:border-white/[0.08] tw:py-2 tw:text-left tw:transition hover:tw:opacity-80"
     type="button"
     onClick={() => onSelect(node)}>
@@ -64,6 +65,7 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
           : LINK_ONTOLOGY_COLOR;
 
         return (
+          // eslint-disable-next-line react/no-array-index-key -- path may revisit a node; index disambiguates
           <div key={`${step}-${index}`}>
             <div className="tw:flex tw:items-center tw:gap-2.5">
               <span

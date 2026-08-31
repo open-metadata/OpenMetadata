@@ -51,12 +51,14 @@ import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfIndexingFields;
+import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -85,7 +87,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private static final String TAG_OUTCOME = "outcome";
   private static final double DEFAULT_MIN_SUCCESS_RATIO = 0.95d;
 
-  private final RdfRepository rdfRepository;
+  // Not final: resolved lazily via rdf() so the app can still be constructed when RDF
+  // is disabled at startup and enabled later.
+  private RdfRepository rdfRepository;
   private RdfBatchProcessor batchProcessor;
 
   // Package-private so tests can replace the guard with a fake; production wiring
@@ -127,9 +131,20 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   public RdfIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
-    this.rdfRepository = RdfRepository.getInstance();
-    this.batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    this.rdfRepository = RdfRepository.getInstanceOrNull();
+    this.batchProcessor =
+        this.rdfRepository == null
+            ? null
+            : new RdfBatchProcessor(collectionDAO, this.rdfRepository);
     this.admissionGuard = RdfReindexAdmissionGuard.forProduction(collectionDAO);
+  }
+
+  private RdfRepository rdf() {
+    if (rdfRepository == null) {
+      rdfRepository = RdfRepository.getInstance();
+      batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    }
+    return rdfRepository;
   }
 
   @Override
@@ -169,7 +184,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
     }
 
-    if (!rdfRepository.isEnabled()) {
+    if (!rdf().isEnabled()) {
       LOG.error("RDF Repository is not enabled. Please enable RDF in configuration.");
       updateJobStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(
@@ -185,7 +200,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      rdfRepository.ensureStorageReady();
+      rdf().ensureStorageReady();
     } catch (Exception e) {
       LOG.error("RDF storage is not ready; aborting indexing job", e);
       updateJobStatus(EventPublisherJob.Status.FAILED);
@@ -216,7 +231,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // previous clear-and-reconcile implementation.
       buildDataset = resolveBlueGreenBuildDataset();
       RdfRepository indexingRepository =
-          buildDataset != null ? rdfRepository.forDataset(buildDataset) : rdfRepository;
+          buildDataset != null ? rdf().forDataset(buildDataset) : rdf();
       runRepository = indexingRepository;
       RdfAutoTune.applyTo(jobData, indexingRepository);
       batchProcessor =
@@ -362,7 +377,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
               + "and only append after");
     } else {
       try {
-        rdfRepository.compactStorage();
+        rdf().compactStorage();
       } catch (RuntimeException compactFailure) {
         LOG.warn(
             "Post-run compaction failed for this RDF reindex job; disk reclamation "
@@ -396,7 +411,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         && jobData.getEntities() != null
         && jobData.getEntities().contains(Entity.GLOSSARY_TERM)) {
       LOG.info("Clearing existing glossary term relations before re-indexing");
-      rdfRepository.clearAllGlossaryTermRelations();
+      rdf().clearAllGlossaryTermRelations();
     }
 
     if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
@@ -450,10 +465,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
    */
   private String resolveBlueGreenBuildDataset() {
     String target = null;
-    if (Boolean.TRUE.equals(jobData.getRecreateIndex())
-        && rdfRepository.isBlueGreenRebuildEnabled()) {
+    if (Boolean.TRUE.equals(jobData.getRecreateIndex()) && rdf().isBlueGreenRebuildEnabled()) {
       try {
-        target = rdfRepository.resolveBuildDatasetName();
+        target = rdf().resolveBuildDatasetName();
       } catch (Exception e) {
         LOG.warn(
             "Could not resolve a blue/green build dataset; falling back to rebuilding the "
@@ -472,7 +486,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
    */
   private void prepareBuildDataset(RdfRepository indexingRepository, String targetDataset) {
     LOG.info("Preparing blue/green build dataset '{}'", targetDataset);
-    rdfRepository.createBuildDataset(targetDataset);
+    rdf().createBuildDataset(targetDataset);
     indexingRepository.clearAll();
     indexingRepository.compactStorage();
     indexingRepository.reloadOntologies();
@@ -500,7 +514,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
               buildDataset, successRecords, triples));
     }
     requirePromotionSuccessRatio(successRecords);
-    rdfRepository.activateDataset(buildDataset, getApp() != null ? getApp().getName() : "system");
+    rdf().activateDataset(buildDataset, getApp() != null ? getApp().getName() : "system");
     LOG.info(
         "Activated RDF dataset '{}' ({} triples). Previous dataset retained for rollback until "
             + "the next rebuild.",
@@ -569,7 +583,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   private void clearRdfData() {
     try {
-      rdfRepository.clearAll();
+      rdf().clearAll();
       LOG.info("Cleared all RDF data");
       // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
       // on-disk dataset and journal keep growing across runs. Compact NOW while
@@ -578,11 +592,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // accumulates ~1x the dataset size on disk and the PVC eventually fills.
       // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
       // copied through compaction unnecessarily.
-      rdfRepository.compactStorage();
+      rdf().compactStorage();
       // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
       // before indexing starts so SPARQL queries that depend on the ontology
       // (inference, federated, etc.) work after the wipe.
-      rdfRepository.reloadOntologies();
+      rdf().reloadOntologies();
     } catch (Exception e) {
       LOG.error("Failed to clear RDF data", e);
       throw new RuntimeException("Failed to clear RDF data", e);
@@ -1059,17 +1073,33 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void updateJobStatus(EventPublisherJob.Status newStatus) {
-    EventPublisherJob.Status currentStatus = jobData.getStatus();
-
-    if (stopped
-        && newStatus != EventPublisherJob.Status.STOP_IN_PROGRESS
-        && newStatus != EventPublisherJob.Status.STOPPED) {
+    final EventPublisherJob.Status currentStatus = jobData.getStatus();
+    final boolean canUpdate =
+        !stopped
+            || newStatus == EventPublisherJob.Status.STOP_IN_PROGRESS
+            || newStatus == EventPublisherJob.Status.STOPPED;
+    if (canUpdate) {
+      LOG.info("Updating job status from {} to {}", currentStatus, newStatus);
+      recordRebuildTransition(currentStatus, newStatus);
+      jobData.setStatus(newStatus);
+    } else {
       LOG.info("Skipping status update to {} because stop has been initiated", newStatus);
-      return;
     }
+  }
 
-    LOG.info("Updating job status from {} to {}", currentStatus, newStatus);
-    jobData.setStatus(newStatus);
+  private static void recordRebuildTransition(
+      final EventPublisherJob.Status currentStatus, final EventPublisherJob.Status newStatus) {
+    if (currentStatus != newStatus) {
+      switch (newStatus) {
+        case RUNNING -> OntologyMetrics.recordGraphRebuildStarted();
+        case COMPLETED, SUCCESS -> {
+          OntologyMetrics.recordGraphRebuildCompleted();
+          RdfProjectionHealth.markReady();
+        }
+        case FAILED, ACTIVE_ERROR, STOPPED -> OntologyMetrics.recordGraphRebuildFailed();
+        case STARTED, ACTIVE, STOP_IN_PROGRESS -> {}
+      }
+    }
   }
 
   private void sendUpdates(JobExecutionContext jobExecutionContext, boolean forceUpdate) {

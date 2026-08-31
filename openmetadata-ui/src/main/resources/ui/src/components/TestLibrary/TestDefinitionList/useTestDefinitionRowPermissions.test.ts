@@ -187,7 +187,7 @@ describe('useTestDefinitionRowPermissions', () => {
 
       expect(result.current.permissionLoading).toBe(false);
 
-      let resolvePermission: (value: unknown) => void = () => undefined;
+      let resolvePermission: (value: unknown) => void = (_value) => undefined;
       mockGetEntityPermissionByFqn.mockImplementationOnce(
         () =>
           new Promise((resolve) => {

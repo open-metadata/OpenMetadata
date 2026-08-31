@@ -26,8 +26,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobSta
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO.SearchReindexLockRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO.SearchReindexLockRecord;
 
 /**
  * Defers a cron-triggered RDF full reindex while a Search reindex is active, so the two heavy apps

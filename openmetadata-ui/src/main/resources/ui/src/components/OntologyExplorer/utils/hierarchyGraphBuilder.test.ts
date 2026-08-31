@@ -39,7 +39,7 @@ describe('buildHierarchyGraphs combo label resolution', () => {
     const result = buildHierarchyGraphs({
       terms,
       relations,
-      relationSettings: null,
+      relationTypes: [],
       relationColors: RELATION_COLORS,
       glossaryNames: { 'gloss-id': 'Pharmaceuticals' },
     });
@@ -56,7 +56,7 @@ describe('buildHierarchyGraphs combo label resolution', () => {
     const result = buildHierarchyGraphs({
       terms,
       relations,
-      relationSettings: null,
+      relationTypes: [],
       relationColors: RELATION_COLORS,
       glossaryNames: {}, // caller cannot resolve gloss-id
     });
@@ -75,7 +75,7 @@ describe('buildHierarchyGraphs combo label resolution', () => {
     const result = buildHierarchyGraphs({
       terms: termsNoGroup,
       relations,
-      relationSettings: null,
+      relationTypes: [],
       relationColors: RELATION_COLORS,
       glossaryNames: {},
     });
@@ -93,7 +93,7 @@ describe('buildHierarchyGraphs combo label resolution', () => {
     const result = buildHierarchyGraphs({
       terms: blankGroupTerms,
       relations,
-      relationSettings: null,
+      relationTypes: [],
       relationColors: RELATION_COLORS,
       glossaryNames: {},
     });

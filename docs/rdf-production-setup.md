@@ -236,6 +236,16 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_REMOTE_PASSWORD` | `admin` |
 | `RDF_DATASET` | `openmetadata` |
 | `RDF_INFERENCE_ENABLED` | `false` |
+| `RDF_MATERIALIZED_INFERENCE_ENABLED` | `false` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | `100000` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | `100000` |
+| `RDF_MATERIALIZED_INFERENCE_ENABLED` | `false` |
+| `RDF_SHACL_VALIDATION_MODE` | `REPORT` |
+| `RDF_DEREFERENCEABLE_IRIS` | `false` |
+| `RDF_STRICT_OWL_PROFILE` | `true` |
+| `RDF_ASK_COLLATE_ENABLED` | `false` |
+| `RDF_FEDERATION_ENABLED` | `false` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
 backward compatibility, and `RDF_ENDPOINT` takes precedence when both are set. Override the
@@ -269,17 +279,9 @@ credentials, and network reachability before increasing retries.
 
 ## Inference
 
-In-process inference is disabled by default. Enabling `RDF_INFERENCE_ENABLED=true` causes general
-queries to construct the entire graph in the OpenMetadata JVM and should be limited to small
-graphs. The SPARQL console retains its explicit `inference` option for administrative experiments,
-but it has the same small-graph constraint.
+Materialized inference is the production path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs.
 
-Use SPARQL 1.1 property paths for transitive lineage, inverse ownership, and domain or glossary
-inheritance. These execute inside Fuseki without copying the graph into the OpenMetadata process.
-Deployments that require persistent RDFS or OWL semantics should configure a Fuseki assembler
-dataset with an appropriate Jena reasoner and size it independently; server-side materialization or
-reasoning is operationally safer than per-request full-graph inference in OpenMetadata.
-
+Legacy in-process inference is bounded by `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` and refuses to copy a larger store into the OpenMetadata JVM. Keep the default bound unless a measured small deployment has enough heap. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
 The complete-lineage endpoint intentionally does not impose a row limit on its property-path query.
 Size `RDF_REQUEST_TIMEOUT_MS`, Fuseki resources, and client response handling for the largest
 lineage graph operators can request. Semantic search is not an exhaustive traversal: each seed

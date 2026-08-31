@@ -114,7 +114,7 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.19</spring.version>
+    <spring.version>7.0.9</spring.version>
     <log4j.version>2.25.5</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <org.junit.platform.version>1.11.4</org.junit.platform.version>
@@ -145,7 +145,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
-    <micrometer.version>1.15.12</micrometer.version>
+    <micrometer.version>1.16.7</micrometer.version>
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
@@ -230,10 +230,28 @@
         <artifactId>logging-interceptor</artifactId>
         <version>4.12.0</version>
       </dependency>
+      <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
+           azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7
+           and reactor-netty 1.3.7 are the aligned release, so mixing lines is avoided. -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-core</artifactId>
+        <version>3.8.7</version>
+      </dependency>
+      <!-- CVE-2026-47874: reactor-netty-http < 1.3.7. The fix ships only on the 1.3.x line (1.2.18
+           is the last 1.2.x GA, no backport), and reactor-netty 1.3.x requires Netty 4.2.x — see
+           the netty-bom pin below, raised to 4.2.x in lockstep so 1.3.x's Netty 4.2 APIs resolve.
+           Pin -core alongside -http so a path that reaches -core directly cannot drag the 1.2 line
+           back in. This mirrors ai-platform's ADR-0018, which moves the same three together. -->
+      <dependency>
+        <groupId>io.projectreactor.netty</groupId>
+        <artifactId>reactor-netty-core</artifactId>
+        <version>1.3.7</version>
+      </dependency>
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
-        <version>1.2.18</version>
+        <version>1.3.7</version>
       </dependency>
       <!-- CVE-2026-45292: opentelemetry-api 1.37.0 (transitive of
            co.elastic.clients:elasticsearch-java, shaded into elasticsearch-deps)
@@ -550,14 +568,14 @@
         <version>${dropwizard.version}</version>
       </dependency>
 
-      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.15.x
-           (pulls client_java 1.3.10); leaving this at 1.3.6 splits the prometheus-metrics
-           family so the 1.3.10 exposition layer calls config APIs absent in 1.3.6
+      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.16.x
+           (pulls client_java 1.4.3); a mismatched version splits the prometheus-metrics
+           family so one layer calls config APIs absent in the other
            (NoSuchMethodError at runtime). Drives -core/-config across all modules. -->
       <dependency>
         <groupId>io.prometheus</groupId>
         <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
-        <version>1.3.10</version>
+        <version>1.4.3</version>
       </dependency>
 
 
@@ -669,6 +687,11 @@
         <version>${jackson.version}</version>
       </dependency>
       <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jakarta-jsonp</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
         <version>2.3.0</version>
@@ -739,12 +762,14 @@
         <version>1.15.2</version>
       </dependency>
       <!-- Pin all transitive io.netty:* to one patched line via the BOM (netty-codec-http et al.
-           arrive transitively through reactor-netty-http and others). 4.1.137.Final clears the
-           CorsHandler Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
+           arrive transitively through reactor-netty-http and others). Held on the 4.2.x line
+           because reactor-netty 1.3.x (pinned above) is built against Netty 4.2; 4.2.17.Final is
+           newer than the 4.1.137.Final we previously held, so it still clears the CorsHandler
+           Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.137.Final</version>
+        <version>4.2.17.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

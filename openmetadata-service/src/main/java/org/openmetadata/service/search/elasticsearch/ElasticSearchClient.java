@@ -590,6 +590,17 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter, subjectContext);
+  }
+
+  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
@@ -934,6 +945,12 @@ public class ElasticSearchClient implements SearchClient {
   public void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
     genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+  }
+
+  @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    return genericManager.getIndexTemplateFingerprints(templateNamePattern);
   }
 
   @Override

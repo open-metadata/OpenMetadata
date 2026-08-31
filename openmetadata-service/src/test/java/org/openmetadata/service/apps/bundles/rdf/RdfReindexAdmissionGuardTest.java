@@ -31,10 +31,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO.SearchReindexLockRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO.SearchReindexLockRecord;
 
 @DisplayName("RdfReindexAdmissionGuard")
 class RdfReindexAdmissionGuardTest {

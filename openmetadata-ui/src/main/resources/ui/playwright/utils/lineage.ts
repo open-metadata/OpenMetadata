@@ -1015,10 +1015,16 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
-  await page
+  // React Flow mounts nodes after its own layout pass, which runs well after the
+  // getLineage response the caller waited on. Clicking straight away leaves the
+  // action auto-waiting with no timeout of its own, so a graph that is slow to
+  // lay out surfaces as a bare test timeout with nothing naming the node.
+  const nodeTitle = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .locator(`[data-testid="entity-header-display-name"]`)
-    .click();
+    .locator(`[data-testid="entity-header-display-name"]`);
+
+  await expect(nodeTitle).toBeVisible();
+  await nodeTitle.click();
 };
 
 export const updateLineageConfigFromModal = async (

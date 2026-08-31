@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,10 +36,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.search.SearchRepository;
@@ -98,6 +100,7 @@ class RdfIndexAppTest {
     mockRdfRepository = mock(RdfRepository.class);
     rdfRepositoryMockedStatic = mockStatic(RdfRepository.class);
     rdfRepositoryMockedStatic.when(RdfRepository::getInstance).thenReturn(mockRdfRepository);
+    rdfRepositoryMockedStatic.when(RdfRepository::getInstanceOrNull).thenReturn(mockRdfRepository);
   }
 
   @AfterAll
@@ -105,6 +108,11 @@ class RdfIndexAppTest {
     if (rdfRepositoryMockedStatic != null) {
       rdfRepositoryMockedStatic.close();
     }
+  }
+
+  @AfterEach
+  void resetProjectionHealth() {
+    RdfProjectionHealth.markReady();
   }
 
   @BeforeEach
@@ -899,6 +907,7 @@ class RdfIndexAppTest {
 
       RdfIndexJob completedJob =
           RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
+      RdfProjectionHealth.markDegraded();
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
           var ignored =
@@ -934,6 +943,7 @@ class RdfIndexAppTest {
       recreateFlow.verify(mockRdfRepository).reloadOntologies();
       verify(mockRdfRepository, times(1)).compactStorage();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
+      assertFalse(RdfProjectionHealth.isDegraded());
     }
 
     @Test
