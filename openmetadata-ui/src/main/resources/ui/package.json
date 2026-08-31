@@ -86,7 +86,7 @@
     "@internationalized/date": "^3.11.0",
     "@melloware/react-logviewer": "6.4.1",
     "@microsoft/fetch-event-source": "^2.0.1",
-    "@okta/okta-auth-js": "^7.11.3",
+    "@okta/okta-auth-js": "^8.0.1",
     "@okta/okta-react": "^6.4.3",
     "@openmetadata/ui-core-components": "link:../../../../../openmetadata-ui-core-components/src/main/resources/ui",
     "@react-aria/utils": "^3.33.0",
