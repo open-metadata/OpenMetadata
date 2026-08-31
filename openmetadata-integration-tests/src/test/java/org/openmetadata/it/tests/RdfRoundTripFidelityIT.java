@@ -214,7 +214,7 @@ public class RdfRoundTripFidelityIT {
 
   private static Model parse(final String rdf, final Lang language) {
     final Model model = ModelFactory.createDefaultModel();
-    RDFParser.fromString(rdf).lang(language).parse(model);
+    RDFParser.fromString(rdf, language).parse(model);
     return model;
   }
 
