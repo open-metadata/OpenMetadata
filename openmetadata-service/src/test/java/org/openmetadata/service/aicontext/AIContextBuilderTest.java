@@ -162,6 +162,20 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void excerpt_zeroOrNegativeLimitYieldsEmptyWithoutCrashing() {
+    assertEquals("", AIContextBuilder.excerpt("lead paragraph", 0));
+    assertEquals("", AIContextBuilder.excerpt("lead paragraph", -3));
+  }
+
+  @Test
+  void structuralPreview_outlineExhaustingTheLimitDoesNotCrash() {
+    String body = "Lead paragraph.\n\n## Recognition timing\n\n## Refund exclusions";
+    // Limit exactly at the outline's length: the lead's excerpt allowance drops to 0.
+    String preview = AIContextBuilder.structuralPreview(body, 40);
+    assertTrue(preview.contains("Sections:"), "outline still renders when the lead is elided");
+  }
+
+  @Test
   void applyKnowledgeBudget_keepsShortItemsFullAndExcerptsOversized() {
     KnowledgeItem term = knowledgeItem("term", "x".repeat(100));
     KnowledgeItem metric = knowledgeItem("metric", "y".repeat(100));

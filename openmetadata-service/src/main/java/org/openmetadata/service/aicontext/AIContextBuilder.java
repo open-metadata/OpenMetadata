@@ -375,11 +375,18 @@ public class AIContextBuilder {
   /**
    * A lead excerpt bounded to {@code limit} characters, cut on a word boundary. The ellipsis is
    * counted inside the limit so budget accounting that charges {@code excerpt.length()} can never
-   * overrun the share it was sized against.
+   * overrun the share it was sized against, and a non-positive limit yields an empty excerpt
+   * (the structural-preview path passes 0 when its heading outline consumes the whole allowance).
    */
   static String excerpt(String content, int limit) {
+    if (content == null) {
+      return null;
+    }
+    if (limit <= 0) {
+      return "";
+    }
     String result = content;
-    if (content != null && content.length() > limit) {
+    if (content.length() > limit) {
       int boundary = content.lastIndexOf(' ', limit - 1);
       int cut = boundary < limit / 2 ? limit - 1 : boundary;
       result = content.substring(0, cut).stripTrailing() + "…";
