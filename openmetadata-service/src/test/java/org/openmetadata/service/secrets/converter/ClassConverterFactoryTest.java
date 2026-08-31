@@ -27,6 +27,7 @@ import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
+import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
@@ -58,6 +59,7 @@ public class ClassConverterFactoryTest {
         MatillionConnection.class,
         OpenLineageConnection.class,
         PubSubConnection.class,
+        PrefectConnection.class,
       })
   void testClassConverterIsSet(Class<?> clazz) {
     assertFalse(
