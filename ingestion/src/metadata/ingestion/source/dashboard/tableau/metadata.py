@@ -13,6 +13,7 @@ Tableau source module
 """
 
 # pylint: disable=too-many-lines
+import re
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -108,6 +109,15 @@ logger = ingestion_logger()
 
 TABLEAU_TAG_CATEGORY = "TableauTags"
 TABLEAU_FIELD_TYPE_DISPLAY = "Tableau Field"
+# Tableau titles database column names when it builds fields (`order_date` becomes
+# `Order Date`), so separators and casing carry no meaning when comparing the two.
+NON_ALPHANUMERIC = re.compile(r"[^0-9a-z]")
+
+
+def normalize_column_name(name: str) -> str:
+    """Strip separators and casing so a Tableau field name can be compared to the physical
+    column it wraps (``Order Date`` vs ``order_date``)."""
+    return NON_ALPHANUMERIC.sub("", name.casefold())
 
 
 class TableauSource(DashboardServiceSource):
@@ -1074,14 +1084,20 @@ class TableauSource(DashboardServiceSource):
         column: its value is a transformation, so the physical column stays visible as a child and
         its ``remoteType`` must not be reported as the field's own type. ``formula`` is only
         populated by the ``... on CalculatedField`` fragment, which makes it the field-type marker.
+
+        Names are compared normalized: Tableau titles database column names when it builds the
+        field, so a Databricks column ``order_date`` surfaces as a field named ``Order Date``.
+        Those are still the same column, and comparing them raw would leave the mirror nested.
         """
         mirrored_column = None
         upstream_columns = [column for column in field.upstreamColumns or [] if column]
         if not field.formula and len(upstream_columns) == 1:
             upstream_column = upstream_columns[0]
-            field_name = field.name or field.id
-            upstream_column_name = upstream_column.name or upstream_column.id
-            if field_name.casefold() == upstream_column_name.casefold():
+            field_name = normalize_column_name(field.name or field.id)
+            upstream_column_name = normalize_column_name(
+                upstream_column.name or upstream_column.id
+            )
+            if field_name and field_name == upstream_column_name:
                 mirrored_column = upstream_column
         return mirrored_column
 
@@ -1105,6 +1121,10 @@ class TableauSource(DashboardServiceSource):
                     "name": truncate_column_name(field.id),
                     "displayName": field.name if field.name else field.id,
                     "description": description or None,
+                    # Always set explicitly, even when empty: the patch path merges each column
+                    # onto the stored one and only overlays fields present in `model_fields_set`,
+                    # so leaving `children` unset would resurrect children ingested previously.
+                    "children": [],
                 }
                 mirrored_column = self._get_mirrored_upstream_column(field=field)
                 if mirrored_column:
@@ -1113,9 +1133,7 @@ class TableauSource(DashboardServiceSource):
                     if mirrored_column.remoteType == DataType.ARRAY.value:
                         parsed_fields["arrayDataType"] = DataType.UNKNOWN
                 else:
-                    child_columns = self.get_child_columns(field=field)
-                    if child_columns:
-                        parsed_fields["children"] = child_columns
+                    parsed_fields["children"] = self.get_child_columns(field=field)
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
