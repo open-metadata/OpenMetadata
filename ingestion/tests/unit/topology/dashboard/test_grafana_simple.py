@@ -15,10 +15,6 @@ Simple unit tests for Grafana connector components
 
 from unittest.mock import MagicMock
 
-from tests.unit.topology.dashboard.fixtures.grafana_fixtures import (
-    DASHBOARD_WITH_COLLAPSED_ROW,
-)
-
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
 from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
 from metadata.ingestion.source.dashboard.grafana.models import (
@@ -116,13 +112,26 @@ class TestGrafanaComponents:
 
     def test_flatten_panels_collapsed_row(self):
         """Panels nested inside a collapsed row must be surfaced at the top level."""
-        response = GrafanaDashboardResponse(**DASHBOARD_WITH_COLLAPSED_ROW)
-        flat = GrafanaSource._flatten_panels(response.dashboard.panels)
+        panels = [
+            GrafanaPanel(id=1, type="graph", title="Top Level"),
+            GrafanaPanel(
+                id=2,
+                type="row",
+                title="Collapsed",
+                collapsed=True,
+                panels=[
+                    GrafanaPanel(id=3, type="stat", title="Nested A"),
+                    GrafanaPanel(id=4, type="table", title="Nested B"),
+                ],
+            ),
+            GrafanaPanel(id=5, type="row", title="Expanded", collapsed=False, panels=[]),
+            GrafanaPanel(id=6, type="bargauge", title="After Expanded Row"),
+        ]
+        flat = GrafanaSource._flatten_panels(panels)
 
         panel_ids = [p.id for p in flat]
-        # id=1 top-level, id=3 and id=4 from inside the collapsed row,
-        # id=2 (the row itself) is replaced by its children,
-        # id=5 (expanded row) stays as-is, id=6 expanded-row child at top level.
+        # Collapsed row (id=2) is replaced by its children 3 & 4; the expanded
+        # row (id=5) stays as-is and its child (id=6) is already top-level.
         assert 1 in panel_ids, "Top-level panel must survive"
         assert 3 in panel_ids, "First panel inside collapsed row must be surfaced"
         assert 4 in panel_ids, "Second panel inside collapsed row must be surfaced"
