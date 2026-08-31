@@ -13,7 +13,12 @@
 
 import { Alert } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
+import {
+  CustomValidator,
+  FormValidation,
+  RegistryFieldsType,
+  RJSFSchema,
+} from '@rjsf/utils';
 
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import {
@@ -59,6 +64,7 @@ import {
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
 import { shouldTestConnection } from '../../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -239,6 +245,41 @@ const ConnectionConfigForm = forwardRef<
       [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
     );
 
+    const customValidate: CustomValidator<ConfigData> = useCallback(
+      (formData, errors) => {
+        const secretPrefixErrors =
+          serviceUtilClassBase.validateSecretPrefixFields(
+            schemaWithoutDefaultFilterPatternFields,
+            (formData ?? {}) as Record<string, unknown>
+          );
+
+        secretPrefixErrors.forEach(({ path, message }) => {
+          const target = path.reduce<FormValidation<unknown>>((node, key) => {
+            const record = node as unknown as Record<
+              string | number,
+              FormValidation<unknown>
+            >;
+            record[key] ??= {} as FormValidation<unknown>;
+
+            return record[key];
+          }, errors as FormValidation<unknown>);
+
+          if (typeof target.addError === 'function') {
+            target.addError(message);
+          } else {
+            const legacyTarget = target as FormValidation<unknown> & {
+              __errors?: string[];
+            };
+            legacyTarget.__errors ??= [];
+            legacyTarget.__errors.push(message);
+          }
+        });
+
+        return errors;
+      },
+      [schemaWithoutDefaultFilterPatternFields]
+    );
+
     const uiSchema = useMemo(() => {
       return getUISchemaWithAuthFieldsAsSelect(
         schemaWithoutDefaultFilterPatternFields,
@@ -407,6 +448,7 @@ const ConnectionConfigForm = forwardRef<
         <AirflowMessageBanner />
         <FormBuilderV1
           cancelText={cancelText ?? ''}
+          customValidate={customValidate}
           fields={customFields}
           formContext={formContext}
           formData={currentFormData}

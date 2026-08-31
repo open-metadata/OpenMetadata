@@ -83,6 +83,14 @@ jest.mock('../../../rest/testAPI', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockNavigationState = {
+  breadcrumbData: [
+    {
+      name: 'Data Quality',
+      url: '/data-quality/test-cases',
+    },
+  ],
+};
 const mockGetEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => Promise.resolve(MOCK_PERMISSIONS));
@@ -101,6 +109,10 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () =>
+  jest.fn().mockImplementation(() => ({ state: mockNavigationState }))
+);
 
 let mockParams: Record<string, string | undefined> = {
   fqn: mockTestCaseFqn,
@@ -224,7 +236,9 @@ describe('useTestCaseDetailPage', () => {
       result.current.handleTabChange(TestCasePageTabs.ISSUES);
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(expect.any(String), {
+      state: mockNavigationState,
+    });
   });
 
   it('handleOwnerChange should patch the test case owners', async () => {
@@ -273,7 +287,9 @@ describe('useTestCaseDetailPage', () => {
       result.current.onVersionClick();
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(expect.any(String), {
+      state: mockNavigationState,
+    });
   });
 
   it('should fetch the version list and version details on version pages', async () => {

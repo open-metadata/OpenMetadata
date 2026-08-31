@@ -86,7 +86,7 @@ def get_lineage_config() -> AirflowLineageConfig:
     """
 
     # Import conf settings at call time
-    from airflow.configuration import conf  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    from airflow.configuration import conf  # pylint: disable=import-outside-toplevel
 
     airflow_service_name = conf.get(LINEAGE, "airflow_service_name", fallback=None)
     if airflow_service_name:

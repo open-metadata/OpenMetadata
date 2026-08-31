@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, Fragment } from 'react';
+import { FC, Fragment, KeyboardEvent, MouseEvent } from 'react';
 import {
   ContextKnowledgePillarCardProps,
   PillarRecentItem,
@@ -35,8 +35,28 @@ function RecentItem({
   readonly Icon: FC<{ className?: string }>;
   readonly item: PillarRecentItem;
 }) {
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    item.onClick();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      item.onClick();
+    }
+  };
+
   return (
-    <Box align="center" className="tw:py-1.5" gap={2}>
+    <Box
+      align="center"
+      className="tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+      gap={2}
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}>
       {item.icon ? (
         item.icon
       ) : (
@@ -58,7 +78,8 @@ function RecentItem({
         </div>
         <Box align="center" gap={1}>
           {item.meta.map((metaItem, index) => (
-            <Fragment key={`${index}-${metaItem}`}>
+            // eslint-disable-next-line react/no-array-index-key -- meta strings may repeat; index disambiguates
+            <Fragment key={`${metaItem}-${index}`}>
               <div className="tw:max-w-20">
                 <Typography
                   ellipsis

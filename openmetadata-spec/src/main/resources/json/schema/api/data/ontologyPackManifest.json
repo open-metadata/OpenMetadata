@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackManifest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPackManifest",
+  "description": "Typed, versioned catalogue manifest for an Ontology Studio library pack.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackManifest",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "abbreviation": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 12
+    },
+    "standard": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "licenseUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "bundled": {
+      "description": "Whether every selected module can be installed from verified classpath content.",
+      "type": "boolean"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyPackModule.json"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "abbreviation",
+    "standard",
+    "version",
+    "description",
+    "license",
+    "licenseUrl",
+    "sourceUrl",
+    "bundled",
+    "modules"
+  ],
+  "additionalProperties": false
+}

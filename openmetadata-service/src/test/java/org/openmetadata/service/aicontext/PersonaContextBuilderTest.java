@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,6 +100,29 @@ class PersonaContextBuilderTest {
     assertEquals(1, empty.at("/query/bool/filter").size());
     assertThrows(
         IllegalArgumentException.class, () -> PersonaContextBuilder.activeEntityFilter("[]"));
+  }
+
+  @Test
+  void searchSurfacesTheUnderlyingSearchFailureWithItsCause() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    PersonaContextBuilder builder = new PersonaContextBuilder(persona(), repository);
+    ContextRule rule = new ContextRule().withName("Knowledge Articles").withEntityType(Entity.PAGE);
+    IOException failure = new IOException("Failed to parse query filter: boom");
+    when(repository.listWithDeepPagination(
+            anyString(),
+            nullable(String.class),
+            anyString(),
+            any(String[].class),
+            any(SearchSortFilter.class),
+            anyInt(),
+            nullable(Object[].class)))
+        .thenThrow(failure);
+
+    ServiceUnavailableException thrown =
+        assertThrows(ServiceUnavailableException.class, () -> builder.search(rule));
+
+    assertSame(failure, thrown.getCause());
+    assertTrue(thrown.getMessage().contains("Knowledge Articles"));
   }
 
   @Test

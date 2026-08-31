@@ -23,8 +23,9 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
+import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
-import { getServiceIcon } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
@@ -159,9 +160,16 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        role="button"
+        tabIndex={0}
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
-        }}>
+        }}
+        onKeyDown={handleKeyboardActivation(
+          () =>
+            handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab),
+          true
+        )}>
         <Row className="data-asset-info-row" wrap={false}>
           {showCheckboxes && (
             <Col className="flex-center" flex="20px">
@@ -199,7 +207,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="m-t-xs" key={i}>
+              <span className="m-t-xs" key={data.key}>
                 {`${data.value} ${t('label.in-lowercase')} 
                 ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
               </span>

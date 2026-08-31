@@ -112,7 +112,9 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'dashboards',
     createInstance: (namespace) =>
-      new DashboardClass(namespace.name('dashboard-service')),
+      new DashboardClass(undefined, undefined, {
+        name: namespace.name('dashboard-service'),
+      }),
     typeName: 'dashboard',
   },
   {

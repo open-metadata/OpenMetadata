@@ -533,15 +533,15 @@ public class AppsResourceIT {
   void test_listApps_filterBySingleAgentType(TestNamespace ns) throws Exception {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
 
-    String appName1 = ns.prefix("testAppCollateAI");
-    String appName2 = ns.prefix("testAppMetadata");
+    String appName1 = ns.prefix("testAppMetadata1");
+    String appName2 = ns.prefix("testAppMetadata2");
 
     try {
       CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
           new CreateAppMarketPlaceDefinitionReq()
               .withName(appName1)
-              .withDisplayName("CollateAI App")
-              .withDescription("Test CollateAI app")
+              .withDisplayName("Metadata App 1")
+              .withDescription("Test Metadata app 1")
               .withFeatures("test features")
               .withDeveloper("Test Developer")
               .withDeveloperUrl("https://www.example.com")
@@ -553,12 +553,12 @@ public class AppsResourceIT {
               .withRuntime(new ScheduledExecutionContext().withEnabled(true))
               .withAppConfiguration(new HashMap<>())
               .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
 
       CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
           new CreateAppMarketPlaceDefinitionReq()
               .withName(appName2)
-              .withDisplayName("Metadata App")
+              .withDisplayName("Metadata App 2")
               .withDescription("Test Metadata app")
               .withFeatures("test features")
               .withDeveloper("Test Developer")
@@ -590,7 +590,7 @@ public class AppsResourceIT {
       App app1 =
           Apps.install()
               .name(marketPlaceDef1.getName())
-              .withDescription("CollateAI test app")
+              .withDescription("Metadata test app 1")
               .execute();
 
       App app2 =
@@ -600,148 +600,33 @@ public class AppsResourceIT {
               .execute();
 
       String responseJson =
-          httpClient.executeForString(HttpMethod.GET, "/v1/apps?agentType=CollateAI", null, null);
-      ResultList<App> apps =
-          JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
-
-      assertNotNull(apps);
-      assertNotNull(apps.getData());
-
-      boolean foundCollateAIApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
-      assertTrue(
-          foundCollateAIApp,
-          "CollateAI app should be found when filtering by CollateAI agent type");
-
-      responseJson =
           httpClient.executeForString(HttpMethod.GET, "/v1/apps?agentType=Metadata", null, null);
-      apps = JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
-
-      assertNotNull(apps);
-      assertNotNull(apps.getData());
-
-      boolean foundMetadataApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName2));
-      assertTrue(
-          foundMetadataApp, "Metadata app should be found when filtering by Metadata agent type");
-
-    } finally {
-      try {
-        Apps.uninstall(appName1, true);
-      } catch (Exception ignored) {
-      }
-      try {
-        Apps.uninstall(appName2, true);
-      } catch (Exception ignored) {
-      }
-    }
-  }
-
-  @Test
-  void test_listApps_filterByMultipleAgentTypes(TestNamespace ns) throws Exception {
-    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-
-    String appName1 = ns.prefix("testAppCollateAI2");
-    String appName2 = ns.prefix("testAppMetadata2");
-    String appName3 = ns.prefix("testAppTierAgent");
-
-    try {
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName1)
-              .withDisplayName("CollateAI App 2")
-              .withDescription("Test CollateAI app 2")
-              .withFeatures("test features")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
-
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName2)
-              .withDisplayName("Metadata App 2")
-              .withDescription("Test Metadata app 2")
-              .withFeatures("test features")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
-
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq3 =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName3)
-              .withDisplayName("Tier Agent App")
-              .withDescription("Test Tier Agent app")
-              .withFeatures("test features")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All)
-              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAITierAgent);
-
-      AppMarketPlaceDefinition marketPlaceDef1 =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq1,
-              AppMarketPlaceDefinition.class);
-
-      AppMarketPlaceDefinition marketPlaceDef2 =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq2,
-              AppMarketPlaceDefinition.class);
-
-      AppMarketPlaceDefinition marketPlaceDef3 =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq3,
-              AppMarketPlaceDefinition.class);
-
-      Apps.install().name(marketPlaceDef1.getName()).execute();
-      Apps.install().name(marketPlaceDef2.getName()).execute();
-      Apps.install().name(marketPlaceDef3.getName()).execute();
-
-      String responseJson =
-          httpClient.executeForString(
-              HttpMethod.GET, "/v1/apps?agentType=CollateAI,CollateAITierAgent", null, null);
       ResultList<App> apps =
           JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
 
       assertNotNull(apps);
       assertNotNull(apps.getData());
 
-      boolean foundCollateAIApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
-      boolean foundTierAgentApp =
-          apps.getData().stream().anyMatch(app -> app.getName().equals(appName3));
-
+      boolean foundApp1 = apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
+      boolean foundApp2 = apps.getData().stream().anyMatch(app -> app.getName().equals(appName2));
       assertTrue(
-          foundCollateAIApp || foundTierAgentApp,
-          "Should find apps matching CollateAI or CollateAITierAgent agent types");
+          foundApp1 && foundApp2,
+          "Both Metadata apps should be found when filtering by Metadata agent type");
+
+      // Exclusion coverage: a non-matching agent type must not return the Metadata apps,
+      // so a no-op filter that returns everything fails here.
+      String excludedJson =
+          httpClient.executeForString(
+              HttpMethod.GET, "/v1/apps?agentType=NonMatchingType", null, null);
+      ResultList<App> excluded =
+          JsonUtils.readValue(excludedJson, new TypeReference<ResultList<App>>() {});
+      boolean app1Excluded =
+          excluded.getData().stream().noneMatch(app -> app.getName().equals(appName1));
+      boolean app2Excluded =
+          excluded.getData().stream().noneMatch(app -> app.getName().equals(appName2));
+      assertTrue(
+          app1Excluded && app2Excluded,
+          "Metadata apps must be excluded when filtering by a non-matching agent type");
 
     } finally {
       try {
@@ -750,10 +635,6 @@ public class AppsResourceIT {
       }
       try {
         Apps.uninstall(appName2, true);
-      } catch (Exception ignored) {
-      }
-      try {
-        Apps.uninstall(appName3, true);
       } catch (Exception ignored) {
       }
     }
@@ -765,7 +646,7 @@ public class AppsResourceIT {
 
     String responseJson =
         httpClient.executeForString(
-            HttpMethod.GET, "/v1/apps?agentType= CollateAI , Metadata ", null, null);
+            HttpMethod.GET, "/v1/apps?agentType= Metadata , NonExistent ", null, null);
     ResultList<App> apps =
         JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
 
@@ -806,7 +687,7 @@ public class AppsResourceIT {
 
     String responseJson =
         httpClient.executeForString(
-            HttpMethod.GET, "/v1/apps?agentType=CollateAI,Metadata&limit=50", null, null);
+            HttpMethod.GET, "/v1/apps?agentType=Metadata&limit=50", null, null);
     ResultList<App> apps =
         JsonUtils.readValue(responseJson, new TypeReference<ResultList<App>>() {});
 

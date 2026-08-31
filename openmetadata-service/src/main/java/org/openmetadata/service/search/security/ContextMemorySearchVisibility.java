@@ -47,14 +47,20 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * serves both Elasticsearch and OpenSearch. Each OR-group is a bool with only {@code should}
  * clauses so the engine default {@code minimum_should_match = 1} applies (the {@link OMQueryBuilder}
  * abstraction exposes no way to set it explicitly).
+ *
+ * <p><b>A new predicate needs three edits.</b> This class renders the rule as {@link OMQueryBuilder}
+ * clauses; {@link org.openmetadata.service.search.vector.VectorSearchQueryBuilder} renders it as raw
+ * JSON (it serves both engines from a {@code StringBuilder}); {@link
+ * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser} decides it
+ * in-memory for the REST read paths. Nothing compares them automatically.
  */
 public class ContextMemorySearchVisibility {
 
-  static final String FIELD_ENTITY_TYPE = "entityType";
-  static final String FIELD_VISIBILITY = "visibility";
-  static final String FIELD_OWNERS = "owners";
-  static final String FIELD_OWNERS_ID = "owners.id";
-  static final String FIELD_SHARED_WITH_IDS = "sharedWithIds";
+  public static final String FIELD_ENTITY_TYPE = "entityType";
+  public static final String FIELD_VISIBILITY = "visibility";
+  public static final String FIELD_OWNERS = "owners";
+  public static final String FIELD_OWNERS_ID = "owners.id";
+  public static final String FIELD_SHARED_WITH_IDS = "sharedWithIds";
 
   private final QueryBuilderFactory queryBuilderFactory;
 
@@ -110,7 +116,13 @@ public class ContextMemorySearchVisibility {
         && subjectContext.user().getId() != null;
   }
 
-  private boolean isVisibilityEnforced(SubjectContext subjectContext) {
+  /**
+   * Whether this subject must have the filter applied at all: identifiable, and not an admin. Public
+   * so the raw-JSON rendering in {@link
+   * org.openmetadata.service.search.vector.VectorSearchQueryBuilder} decides from the same predicate
+   * instead of re-deriving it.
+   */
+  public boolean isVisibilityEnforced(SubjectContext subjectContext) {
     return isSubjectResolvable(subjectContext) && !subjectContext.isAdmin();
   }
 
@@ -161,7 +173,12 @@ public class ContextMemorySearchVisibility {
                 queryBuilderFactory.termsQuery(FIELD_SHARED_WITH_IDS, sharedPrincipalIds(user))));
   }
 
-  private List<String> sharedPrincipalIds(User user) {
+  /**
+   * The principals a {@code Shared} memory may name to reach this user: the user, their teams and
+   * their domains. Public and static so every rendering of the rule derives the same set — see the
+   * class doc on the two renderings.
+   */
+  public static List<String> sharedPrincipalIds(User user) {
     List<String> principalIds = new ArrayList<>();
     principalIds.add(user.getId().toString());
     for (EntityReference team : listOrEmpty(user.getTeams())) {

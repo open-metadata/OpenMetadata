@@ -161,6 +161,7 @@ export type DataAssetsHeaderProps = {
   onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
   onStyleUpdate?: (style: Style | null) => Promise<void>;
   disableRunAgentsButtonMessage?: string;
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
 } & (
   | DataAssetTable
   | DataAssetTopic

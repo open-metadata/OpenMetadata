@@ -178,6 +178,37 @@ if [[ -n "$ingestion_image_path" ]]; then
   fi
 fi
 
+# Pre-pull the compose images with retries so a transient Docker Hub blip does
+# not fail the shard on the very first step. Docker Hub's auth endpoint is
+# unreliable enough that a single request per image regularly times out (see
+# run 30730142750 where chromium-14/19/20 all failed on
+# `Get "https://auth.docker.io/token?..."` with no test having run). Separating
+# the pull from `docker compose up` also gives a clearer error when pulls
+# actually fail — no orphan containers, exit before the health-wait loop.
+pull_image_with_retry() {
+  local image=$1
+  if docker image inspect "$image" >/dev/null 2>&1; then
+    return 0  # already cached from a previous invocation on the same runner
+  fi
+  local delay=10
+  local attempt
+  for attempt in 1 2 3; do
+    if docker pull --quiet "$image"; then
+      return 0
+    fi
+    if [[ $attempt -eq 3 ]]; then
+      echo "docker pull failed for $image after 3 attempts" >&2
+      return 1
+    fi
+    echo "docker pull $image failed on attempt $attempt; retrying in ${delay}s" >&2
+    sleep "$delay"
+    delay=$(( delay * 2 ))
+  done
+}
+
+pull_image_with_retry "$PW_POSTGRES_IMAGE"
+pull_image_with_retry "$PW_OPENSEARCH_IMAGE"
+
 docker compose -f "$compose_file" -f "$fast_compose_file" up -d --no-build postgresql opensearch
 
 for service in postgresql opensearch; do

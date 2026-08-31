@@ -314,7 +314,7 @@ class ColumnTypeParser:
 
     try:
         # pylint: disable=import-outside-toplevel
-        from teradatasqlalchemy import BYTE, VARBYTE  # noqa: PLC0415
+        from teradatasqlalchemy import BYTE, VARBYTE
 
         _COLUMN_TYPE_MAPPING[BYTE] = "BINARY"
         _SOURCE_TYPE_TO_OM_TYPE["BYTE"] = "BINARY"

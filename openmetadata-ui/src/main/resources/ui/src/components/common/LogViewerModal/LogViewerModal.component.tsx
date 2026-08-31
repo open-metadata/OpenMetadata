@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlignLeft,
+  ArrowDown,
   ChevronDownDouble,
   Copy01,
   Download01,
@@ -43,10 +44,13 @@ import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
-import { LogViewerModalProps } from './LogViewerModal.interface';
+import {
+  LogViewerModalProps,
+  LogViewerScrollValues,
+} from './LogViewerModal.interface';
 import { formatLogPart } from './LogViewerModal.utils';
-
-const SCROLL_BOTTOM_THRESHOLD_PX = 40;
+import LogViewerToolbarToggle from './LogViewerToolbarToggle.component';
+import { useLogAutoFollow } from './useLogAutoFollow';
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
@@ -70,17 +74,24 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     downloading = false,
     logs,
     mode = 'static',
+    streamHealth,
+    streamTruncated = false,
+    streamError = null,
   } = props;
 
-  // 'stream' == live run. Today the caller polls and grows `logs` while active,
-  // flipping to 'static' on terminal state. Reserved for future SSE self-fetch.
+  // 'stream' == live run: the caller grows `logs` while the run is active and
+  // flips to 'static' on terminal state.
   const isLive = mode === 'stream';
+  // A live run whose SSE tail is between attempts. The content on screen is
+  // still valid, it has just stopped growing for the moment.
+  const isReconnecting = isLive && streamHealth === 'connecting';
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const [wrap, setWrap] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const lazyLogRef = useRef<LazyLog>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -90,8 +101,6 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
 
   const resolvedLogs = logs;
   const resolvedLoading = loading;
-  // While a run is live (polled), auto-follow the tail; otherwise respect the prop.
-  const resolvedFollow = isLive ? true : follow;
   const resolvedTotalLines = totalLines;
 
   const hasFooter = Boolean(
@@ -127,30 +136,63 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     setSearchText(event.target.value);
   };
 
-  const handleScroll = useCallback(
-    (scrollValues: {
-      scrollTop: number;
-      scrollHeight: number;
-      clientHeight: number;
-    }) => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollValues;
-      const isBottom =
-        Math.abs(clientHeight + scrollTop - scrollHeight) <
-        SCROLL_BOTTOM_THRESHOLD_PX;
-
-      if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
-        onLoadMore();
-      }
-    },
-    [hasMore, loadingMore, query, onLoadMore]
-  );
-
-  const handleJumpToEnd = useCallback(() => {
+  const scrollToEnd = useCallback(() => {
     const totalCount = lazyLogRef.current?.state?.count;
     if (lazyLogRef.current?.listRef?.current && totalCount) {
       lazyLogRef.current.listRef.current.scrollToIndex(totalCount - 1);
     }
   }, []);
+
+  const {
+    followTail,
+    trackScroll,
+    resumeFollowingTail,
+    toggleFollow,
+    markViewerScroll,
+  } = useLogAutoFollow({
+    bodyRef,
+    follow,
+    isLive,
+    logs,
+    open,
+    scrollerLabel: t('label.log-plural'),
+    scrollToEnd,
+  });
+
+  // Following the tail only means anything while the content grows, so it is a
+  // live-run concept — a static run keeps honouring the prop as before.
+  const resolvedFollow = isLive ? followTail : follow;
+
+  const handleScroll = useCallback(
+    (scrollValues: LogViewerScrollValues) => {
+      const { isBottom } = trackScroll(scrollValues);
+
+      if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
+        onLoadMore();
+      }
+    },
+    [trackScroll, hasMore, loadingMore, query, onLoadMore]
+  );
+
+  const handleJumpToEnd = useCallback(() => {
+    if (isLive) {
+      resumeFollowingTail();
+
+      return;
+    }
+
+    scrollToEnd();
+  }, [isLive, resumeFollowingTail, scrollToEnd]);
+
+  const handleToggleWrap = useCallback(() => {
+    markViewerScroll();
+    setWrap((value) => !value);
+  }, [markViewerScroll]);
+
+  const handleToggleFullScreen = useCallback(() => {
+    markViewerScroll();
+    setIsFullScreen((value) => !value);
+  }, [markViewerScroll]);
 
   const isFullScreenClass = isFullScreen ? 'lvm-fullscreen' : '';
 
@@ -199,17 +241,29 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 </span>
               </div>
               <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
-                {isLive && (
-                  <span
-                    aria-label={t('label.live')}
-                    className="lvm-dot lvm-dot--live"
-                    data-testid="log-viewer-live-indicator"
-                  />
-                )}
+                {isLive &&
+                  (isReconnecting ? (
+                    <span
+                      aria-label={t('label.reconnecting')}
+                      className="lvm-dot lvm-dot--reconnecting"
+                      data-testid="log-viewer-reconnecting-indicator"
+                      role="status"
+                      title={t('label.reconnecting')}
+                    />
+                  ) : (
+                    <span
+                      aria-label={t('label.live')}
+                      className="lvm-dot lvm-dot--live"
+                      data-testid="log-viewer-live-indicator"
+                    />
+                  ))}
                 {enableSearch && (
                   <div className="lvm-search">
                     <SearchMd aria-hidden className="lvm-search-icon" />
                     <input
+                      aria-label={t('label.search-entity', {
+                        entity: t('label.log-lowercase-plural'),
+                      })}
                       className="lvm-search-input"
                       data-testid="log-viewer-search"
                       placeholder={t('label.search-entity', {
@@ -244,6 +298,15 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                     </TooltipTrigger>
                   </Tooltip>
                 )}
+                {isLive && (
+                  <LogViewerToolbarToggle
+                    icon={<ArrowDown aria-hidden className="lvm-icon" />}
+                    isActive={followTail}
+                    label={t('label.live-auto-scroll')}
+                    testId="log-viewer-follow"
+                    onToggle={toggleFollow}
+                  />
+                )}
                 <Tooltip
                   delay={500}
                   placement="top"
@@ -256,45 +319,30 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                     <ChevronDownDouble aria-hidden className="lvm-icon" />
                   </TooltipTrigger>
                 </Tooltip>
-                <Tooltip delay={500} placement="top" title={t('label.wrap')}>
-                  <TooltipTrigger
-                    aria-label={t('label.wrap')}
-                    aria-pressed={wrap}
-                    className={classNames('lvm-icon-button', {
-                      'lvm-icon-button--active': wrap,
-                    })}
-                    data-testid="log-viewer-wrap"
-                    onPress={() => setWrap((value) => !value)}>
-                    <AlignLeft aria-hidden className="lvm-icon" />
-                  </TooltipTrigger>
-                </Tooltip>
-                <Tooltip
-                  delay={500}
-                  placement="top"
-                  title={
-                    isFullScreen
-                      ? t('label.exit-full-screen')
-                      : t('label.full-screen-view')
-                  }>
-                  <TooltipTrigger
-                    aria-label={
-                      isFullScreen
-                        ? t('label.exit-full-screen')
-                        : t('label.full-screen-view')
-                    }
-                    aria-pressed={isFullScreen}
-                    className={classNames('lvm-icon-button', {
-                      'lvm-icon-button--active': isFullScreen,
-                    })}
-                    data-testid="log-viewer-fullscreen"
-                    onPress={() => setIsFullScreen((value) => !value)}>
-                    {isFullScreen ? (
+                <LogViewerToolbarToggle
+                  icon={<AlignLeft aria-hidden className="lvm-icon" />}
+                  isActive={wrap}
+                  label={t('label.wrap')}
+                  testId="log-viewer-wrap"
+                  onToggle={handleToggleWrap}
+                />
+                <LogViewerToolbarToggle
+                  icon={
+                    isFullScreen ? (
                       <Minimize01 aria-hidden className="lvm-icon" />
                     ) : (
                       <Maximize01 aria-hidden className="lvm-icon" />
-                    )}
-                  </TooltipTrigger>
-                </Tooltip>
+                    )
+                  }
+                  isActive={isFullScreen}
+                  label={
+                    isFullScreen
+                      ? t('label.exit-full-screen')
+                      : t('label.full-screen-view')
+                  }
+                  testId="log-viewer-fullscreen"
+                  onToggle={handleToggleFullScreen}
+                />
                 {onDownload &&
                   (downloading ? (
                     <span
@@ -327,9 +375,26 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 </Tooltip>
               </div>
             </div>
+            {streamTruncated && (
+              <div
+                className="lvm-notice tw:px-4 tw:py-2"
+                data-testid="log-viewer-truncated-notice"
+                role="status">
+                {t('message.log-stream-truncated')}
+              </div>
+            )}
+            {streamError && (
+              <div
+                className="lvm-notice lvm-notice--error tw:px-4 tw:py-2"
+                data-testid="log-viewer-stream-error"
+                role="alert">
+                {streamError}
+              </div>
+            )}
             <div
               className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
-              data-testid="log-viewer-body">
+              data-testid="log-viewer-body"
+              ref={bodyRef}>
               {resolvedLoading ? (
                 <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
                   <Loader />

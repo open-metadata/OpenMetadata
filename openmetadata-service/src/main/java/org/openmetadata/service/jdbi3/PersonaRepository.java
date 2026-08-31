@@ -39,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
 import org.openmetadata.service.aicontext.PersonaContextCache;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -168,13 +169,15 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
     // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
     // bypassing invalidateCachesAfterStore — so every affected persona would keep stale
-    // "default=true" in both CACHE_WITH_ID and CACHE_WITH_NAME variants. Passing fqn lets
+    // "default=true" in both EntityRepository.CACHE_WITH_ID and EntityRepository.CACHE_WITH_NAME
+    // variants.
+    // Passing fqn lets
     // invalidateCacheForEntity drop the by-name cache alongside the by-id one.
     List<EntityDAO.EntityIdFqnPair> affected =
         daoCollection.personaDAO().findOtherDefaultPersonaIdsWithFqn(newDefaultPersonaId);
     daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
     for (EntityDAO.EntityIdFqnPair persona : affected) {
-      invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
+      EntityRepository.invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
     }
   }
 
@@ -296,6 +299,13 @@ public class PersonaRepository extends EntityRepository<Persona> {
     } else {
       invalidateUserContexts(persona.getUsers(), List.of());
     }
+    // Creates don't broadcast (only the update and delete paths publish), so peers would keep a
+    // user context without the persona this create just assigned for the full 15-minute TTL —
+    // long enough for the user's persona selection to be rejected as "not assigned".
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(PERSONA, persona.getId(), persona.getFullyQualifiedName(), "create");
+    }
   }
 
   @Override
@@ -323,13 +333,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
     // Users/teams that had this persona cached embed the persona reference in their serialized
     // JSON. Drop their cached entries so the next read rebuilds without the now-deleted persona.
     for (EntityReference user : listOrEmpty(users)) {
-      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     }
     for (EntityReference user : listOrEmpty(defaultUsers)) {
-      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     }
     for (EntityReference team : listOrEmpty(teams)) {
-      invalidateCacheForEntity(Entity.TEAM, team.getId(), team.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     }
     if (Boolean.TRUE.equals(persona.getDefault()) || !teams.isEmpty()) {
       SubjectCache.invalidateAllUserContexts();

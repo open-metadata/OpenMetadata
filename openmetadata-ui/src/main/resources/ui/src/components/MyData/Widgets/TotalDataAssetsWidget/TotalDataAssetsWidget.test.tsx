@@ -34,6 +34,13 @@ import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
 // Mock dependencies
 jest.mock('../../../../rest/DataInsightAPI', () => ({
   getChartPreviewByName: jest.fn(),
@@ -95,9 +102,17 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
         sortOptions,
         selectedSortBy,
         onSortChange,
+        onTitleClick,
       }) => (
         <div data-testid="widget-header">
-          <span>{title}</span>
+          <span
+            data-testid="widget-title"
+            role="button"
+            tabIndex={0}
+            onClick={onTitleClick}
+            onKeyDown={onTitleClick}>
+            {title}
+          </span>
           {isEditView && (
             <button
               data-testid="remove-widget-button"
@@ -111,11 +126,13 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
                 data-testid="sort-by-dropdown"
                 value={selectedSortBy}
                 onChange={(e) => onSortChange?.(e.target.value)}>
-                {sortOptions.map((option: any) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
+                {sortOptions.map(
+                  (option: { key: string; label: React.ReactNode }) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  )
+                )}
               </select>
             </div>
           )}
@@ -144,10 +161,10 @@ jest.mock('recharts', () => ({
   PieChart: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="pie-chart">{children}</div>
   ),
-  Pie: ({ data }: { data: any[] }) => (
+  Pie: ({ data }: { data: { name: string; value: number }[] }) => (
     <div data-length={data.length} data-testid="pie">
-      {data.map((item, index) => (
-        <div data-testid={`pie-cell-${item.name}`} key={index}>
+      {data.map((item) => (
+        <div data-testid={`pie-cell-${item.name}`} key={item.name}>
           {item.name}: {item.value}
         </div>
       ))}
@@ -224,6 +241,20 @@ describe('TotalDataAssetsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getChartPreviewByName as jest.Mock).mockResolvedValue(mockChartData);
+  });
+
+  describe('Navigation', () => {
+    it('should navigate to the data assets tab on title click', async () => {
+      // The bare /data-insights route has no tab segment, which leaves the page
+      // dependent on an in-page redirect. Link straight to the real tab.
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      fireEvent.click(screen.getByTestId('widget-title'));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/data-insights/data-assets');
+    });
   });
 
   describe('Component Rendering', () => {
@@ -498,12 +529,14 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Find and click on the first date
-      const firstDateBox = screen.getByText('01').closest('.date-box');
+      const firstDateBox = screen
+        .getByText('01')
+        .closest('.date-box') as HTMLElement;
 
       expect(firstDateBox).toBeInTheDocument();
 
       await act(async () => {
-        fireEvent.click(firstDateBox!);
+        fireEvent.click(firstDateBox);
       });
 
       // Should now show data for the first date (150 + 75 = 225)
@@ -626,9 +659,11 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Verify that data is processed correctly for different dates
-      const firstDateBox = screen.getByText('01').closest('.date-box');
+      const firstDateBox = screen
+        .getByText('01')
+        .closest('.date-box') as HTMLElement;
       await act(async () => {
-        fireEvent.click(firstDateBox!);
+        fireEvent.click(firstDateBox);
       });
 
       // First date should show 150 + 75 = 225

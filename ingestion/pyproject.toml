@@ -204,6 +204,10 @@ ignore = [
     "PLR2004",  # magic-value comparison   — fires on every HTTP status, port number, retry count
     "PLR1711",  # useless-return None      — explicit-is-better-than-implicit defense
     "PLR2044",  # empty-comment            — too pedantic for the value
+
+    # ── Lazy imports are a deliberate tool here, not a smell ──
+    "PLC0415",  # import-outside-top-level — function-local imports keep heavy subtrees out
+                # of import time; see .importlinter and tests/unit/test_import_cost.py
 ]
 
 # Existing violations were grandfathered via `ruff check --add-noqa` during
@@ -354,7 +358,4 @@ allowedUntypedLibraries = []
 # [[tool.basedpyright.executionEnvironments]]
 # root = "src/metadata/utils"
 # reportMissingParameterType = "error"
-
-[tool.uv.extra-build-dependencies]
-cx-oracle = ["pkg_resources"]
 

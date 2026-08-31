@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
@@ -27,6 +28,7 @@ import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTING
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
 import com.cronutils.utils.StringUtils;
@@ -46,6 +48,7 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -62,6 +65,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.RelationCategory;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -167,6 +171,9 @@ public class SettingsCache {
                       .withJwtTokenExpiryTime(3600));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialise App Configuration (tenant-wide "first impression" default app mode)
+    seedAppConfiguration(applicationConfig);
 
     // Initialise Search Settings
     Settings storedSearchSettings =
@@ -490,6 +497,48 @@ public class SettingsCache {
               .withConfigType(GLOSSARY_TERM_RELATION_SETTINGS)
               .withConfigValue(
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+    Settings sparqlQuerySettings =
+        Entity.getSystemRepository().getConfigWithKey(SPARQL_QUERY_SETTINGS.toString());
+    if (sparqlQuerySettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/sparqlQuerySettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(SPARQL_QUERY_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, SparqlQuerySettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default SPARQL query settings", e);
+      }
+    }
+  }
+
+  /**
+   * Seeds {@link SettingsType#APP_CONFIGURATION} from yaml on first boot only. If a DB row
+   * already exists, yaml is ignored - the DB is the source of truth once seeded, and admins
+   * mutate it at runtime via {@code /v1/system/settings/appConfiguration}.
+   *
+   * <p>Extracted from {@link #createDefaultConfiguration} so it can be unit tested in isolation
+   * without exercising every other settings-seed block in that method.
+   */
+  public static void seedAppConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+    Settings storedAppConfig =
+        Entity.getSystemRepository().getConfigWithKey(APP_CONFIGURATION.toString());
+    if (storedAppConfig == null) {
+      AppConfiguration appConfig =
+          applicationConfig.getAppConfiguration() != null
+              ? applicationConfig.getAppConfiguration()
+              : new AppConfiguration();
+      Settings setting =
+          new Settings().withConfigType(APP_CONFIGURATION).withConfigValue(appConfig);
       Entity.getSystemRepository().createNewSetting(setting);
     }
   }

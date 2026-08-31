@@ -141,7 +141,7 @@ class CardinalityDistribution(HybridMetric):
         Pandas implementation for dataframes
         """
         # pylint: disable=import-outside-toplevel
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
 
         if self.col is None:
             return None

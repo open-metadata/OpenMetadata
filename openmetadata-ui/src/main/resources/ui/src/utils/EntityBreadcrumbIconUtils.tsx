@@ -12,16 +12,15 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import type { FC } from 'react';
 import { createPath } from 'react-router-dom';
 import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { EntityType } from '../enums/entity.enum';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getEntityIcon } from './EntityIconUtils';
 import { getEntityName } from './EntityNameUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getEntityIcon } from './TableUtils';
 
 type BreadcrumbIconFC = FC<{ className?: string }>;
 
@@ -33,11 +32,7 @@ export const getBreadcrumbIcon = (
   entityType?: EntityType | string
 ): BreadcrumbIconFC | undefined =>
   entityType
-    ? ({ className }) => (
-        <>
-          {getEntityIcon(entityType, classNames(className, 'tw:text-gray-500'))}
-        </>
-      )
+    ? ({ className }) => <>{getEntityIcon(entityType, className)}</>
     : undefined;
 
 /**

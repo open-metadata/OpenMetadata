@@ -15,8 +15,8 @@ import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -176,10 +176,11 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       "descriptionStatus = 'INCOMPLETE'"
     );
 
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.waitForResponse(
+    const descriptionChartResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await descriptionChartResponse;
 
     await page.getByTestId('explore-asset-with-no-owner').click();
     await page.waitForURL('/explore/tables?*');
@@ -266,18 +267,17 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    const kpiResponse = page.waitForResponse(
-      'api/v1/kpi?fields=dataInsightChart'
+    await redirectToHomePage(page);
+
+    // `kpi-widget` is a child of the KPI widget, not its layout key. The landing-page helper
+    // keys off the layout key — the testid the widget renders on its wrapper and the one its
+    // DeferredWidget slot is named after — so an inner testid reveals nothing.
+    const kpiWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.KPI'
     );
 
-    // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
-    await redirectToHomePage(page, false);
-
-    await kpiResponse;
-
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+    await expect(kpiWidget.getByTestId('kpi-widget')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {

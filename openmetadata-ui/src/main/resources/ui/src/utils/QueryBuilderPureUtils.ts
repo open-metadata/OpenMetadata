@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,7 @@ import type {
   Fields,
   OldJsonItem,
   OldJsonTree,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -777,6 +777,10 @@ export const getEntityTypeAggregationFilter = (
   qFilter: QueryFilterInterface,
   entityType: string | string[]
 ): QueryFilterInterface => {
+  if (entityType === EntityType.ALL) {
+    return qFilter;
+  }
+
   if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
     const firstMustBlock = (
       qFilter.query?.bool?.must as QueryFieldInterface[]

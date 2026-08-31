@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
@@ -34,7 +35,10 @@ const ColumnBulkOperations = () => {
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div className="tw:flex tw:flex-col tw:gap-4">
+      <div
+        className={classNames('tw:flex tw:flex-col', {
+          'tw:gap-4': isAiMode,
+        })}>
         {isAiMode ? (
           <HeaderShell
             breadcrumb={

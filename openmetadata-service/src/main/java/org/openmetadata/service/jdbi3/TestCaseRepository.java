@@ -10,6 +10,7 @@ import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -22,7 +23,6 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -43,8 +43,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,12 +58,9 @@ import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
@@ -73,8 +68,6 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.Resolved;
-import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -87,7 +80,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -112,7 +104,10 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -129,14 +124,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
+  private static final String PLATFORM_WIDE_EXPORT = "*";
+  // `domains` is required so the CSV paths can post-filter on the domain each test case inherits
+  // from its linked table — test cases never materialize a domain relationship of their own.
+  private static final String EXPORT_FIELDS = "testDefinition,testSuite,domains";
+  private static final String PLATFORM_WIDE_EXPORT_FIELDS =
+      "testDefinition,testSuite,dataProducts,domains";
+  private static final String OUT_OF_DOMAIN_MESSAGE =
+      "Entity '%s' is outside the domains you have access to";
+  // One message for "absent" and for "outside your domains" — telling them apart would turn the
+  // row detail into a cross-domain existence oracle.
+  private static final String TEST_SUITE_UNAVAILABLE_MESSAGE = "Test suite '%s' not found";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
   public static final String TEST_SUITES_REVISION_EXTENSION =
       "internal.testCase.testSuitesRevision";
   public static final String TEST_SUITES_REVISION_FIELD = "testSuitesRevision";
   private static final String TEST_SUITES_REVISION_SCHEMA = "testSuitesRevision";
-  private final ExecutorService asyncExecutor =
-      Executors.newFixedThreadPool(
-          1, java.lang.Thread.ofPlatform().name("om-test-case-async").factory());
 
   public TestCaseRepository() {
     super(
@@ -1115,7 +1118,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           (TestCaseResolutionStatusRepository)
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
       AsyncService.getInstance()
-          .execute(
+          .executeDatabaseTask(
+              DatabaseOperation.TEST_CASE_CLEANUP,
+              "resolution-status:" + children.size(),
               () -> {
                 for (CollectionDAO.EntityRelationshipRecord child : children) {
                   try {
@@ -1132,21 +1137,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected void entitySpecificCleanup(TestCase entityInterface) {
-    deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
+    deleteAllTestCaseResults(List.of(entityInterface.getFullyQualifiedName()));
   }
 
-  private void deleteAllTestCaseResults(String fqn) {
+  @Override
+  protected void bulkEntitySpecificCleanup(List<TestCase> testCases, String deletedBy) {
+    deleteAllTestCaseResults(
+        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList());
+  }
+
+  private void deleteAllTestCaseResults(List<String> testCaseFQNs) {
+    if (testCaseFQNs.isEmpty()) {
+      return;
+    }
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    testCaseResultRepository.deleteAllTestCaseResults(fqn);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            testCaseResultRepository.deleteAllTestCaseResults(fqn);
-          } catch (Exception e) {
-            LOG.error("Error deleting test case results for test case {}", fqn, e);
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.TEST_CASE_CLEANUP,
+            "test-results:" + testCaseFQNs.size(),
+            () -> {
+              try {
+                testCaseResultRepository.deleteAllTestCaseResults(testCaseFQNs);
+              } catch (RuntimeException e) {
+                LOG.error(
+                    "Error deleting test case results for {} test cases", testCaseFQNs.size(), e);
+              }
+            });
   }
 
   @SneakyThrows
@@ -1356,14 +1373,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             List.of(testSuiteId),
             TestSuiteRepository.TESTS_REVISION_EXTENSION,
             TestSuiteRepository.getTestsRevisionSchema());
-    Map<UUID, Long> testCaseRevisions = getTestSuiteRelationshipRevisions(testCaseIds);
+    Map<UUID, Long> testCaseRevisions =
+        getTestSuiteRelationshipRevisions(daoCollection, testCaseIds);
     if (testCaseRevisions.size() != testCaseIds.size()) {
-      throw new IllegalStateException("Failed to persist every test suite relationship revision");
+      throw new IllegalStateException(
+          String.format(
+              "Read back %d of %d test suite relationship revisions for test suite '%s'",
+              testCaseRevisions.size(), testCaseIds.size(), testSuiteId));
     }
     Long relationshipRevision =
-        TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuiteId)).get(testSuiteId);
+        TestSuiteRepository.getTestsRelationshipRevisions(daoCollection, List.of(testSuiteId))
+            .get(testSuiteId);
     if (relationshipRevision == null) {
-      throw new IllegalStateException("Failed to persist the test suite tests revision");
+      throw new IllegalStateException(
+          String.format("Read back no tests revision for test suite '%s'", testSuiteId));
     }
 
     return new LogicalSuiteRelationshipChange(
@@ -1371,10 +1394,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public static Map<UUID, Long> getTestSuiteRelationshipRevisions(List<UUID> testCaseIds) {
+    return getTestSuiteRelationshipRevisions(Entity.getCollectionDAO(), testCaseIds);
+  }
+
+  /**
+   * Reads the revisions through the caller's own DAO, so a caller that has just written them reads
+   * them back over the same connection and therefore inside the same transaction.
+   *
+   * <p>The no-DAO overload resolves {@link Entity#getCollectionDAO()}, which is a mutable global that
+   * the application and the integration-test bootstrap each set to an on-demand DAO over their own
+   * {@link org.jdbi.v3.core.Jdbi}. A repository captures {@code daoCollection} once at construction,
+   * so the two can name different instances — and then a write made on one connection is read back on
+   * another. MySQL pins a REPEATABLE READ snapshot at the transaction's first read and so cannot see
+   * the other connection's later commit at all, which surfaced as this method reporting rows it had
+   * just written as missing. Postgres re-snapshots per statement and hid the same bug.
+   */
+  public static Map<UUID, Long> getTestSuiteRelationshipRevisions(
+      CollectionDAO collectionDAO, List<UUID> testCaseIds) {
     if (nullOrEmpty(testCaseIds)) {
       return Map.of();
     }
-    CollectionDAO collectionDAO = Entity.getCollectionDAO();
     if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
       return Map.of();
     }
@@ -1454,19 +1493,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new TestUpdater(original, updated, operation);
   }
 
-  @Override
-  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-
-    // Handle test case failure resolution tasks
-    if (EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
-      return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
-    }
-
-    return super.getTaskWorkflow(threadContext);
-  }
-
   @Transaction
   public TestCase addFailedRowsSample(
       TestCase testCase, TableData tableData, boolean validateColumns) {
@@ -1515,136 +1541,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
     return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
-  }
-
-  public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
-    final TestCaseResolutionStatusRepository testCaseResolutionStatusRepository;
-    final CollectionDAO.DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao;
-
-    TestCaseFailureResolutionTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-      super(threadContext);
-      this.testCaseResolutionStatusRepository =
-          (TestCaseResolutionStatusRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-
-      this.dataQualityDataTimeSeriesDao = Entity.getCollectionDAO().dataQualityDataTimeSeriesDao();
-    }
-
-    /**
-     * If the task is resolved, we'll resolve the Incident with the given reason
-     */
-    @Override
-    @Transaction
-    public TestCase performTask(String userName, ResolveTask resolveTask) {
-
-      // We need to get the latest test case resolution status to get the state id
-      TestCaseResolutionStatus latestTestCaseResolutionStatus =
-          testCaseResolutionStatusRepository.getLatestRecord(resolveTask.getTestCaseFQN());
-
-      if (latestTestCaseResolutionStatus == null) {
-        throw new EntityNotFoundException(
-            String.format(
-                "Failed to find test case resolution status for %s", resolveTask.getTestCaseFQN()));
-      }
-      long resolvedTimestamp =
-          Math.max(
-              System.currentTimeMillis(),
-              latestTestCaseResolutionStatus.getTimestamp() != null
-                  ? latestTestCaseResolutionStatus.getTimestamp() + 1
-                  : System.currentTimeMillis());
-      User user = getEntityByName(Entity.USER, userName, "", Include.ALL);
-      TestCaseResolutionStatus testCaseResolutionStatus =
-          new TestCaseResolutionStatus()
-              .withId(UUID.randomUUID())
-              .withStateId(latestTestCaseResolutionStatus.getStateId())
-              .withTimestamp(resolvedTimestamp)
-              .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
-              .withTestCaseResolutionStatusDetails(
-                  new Resolved()
-                      .withTestCaseFailureComment(resolveTask.getNewValue())
-                      .withTestCaseFailureReason(resolveTask.getTestCaseFailureReason())
-                      .withResolvedBy(user.getEntityReference()))
-              .withUpdatedAt(resolvedTimestamp)
-              .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
-              .withUpdatedBy(user.getEntityReference());
-
-      EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
-      testCaseResolutionStatus.setTestCaseReference(null);
-      Entity.getCollectionDAO()
-          .testCaseResolutionStatusTimeSeriesDao()
-          .insert(
-              testCaseReference.getFullyQualifiedName(),
-              Entity.TEST_CASE_RESOLUTION_STATUS,
-              JsonUtils.pojoToJson(testCaseResolutionStatus));
-      testCaseResolutionStatus.setTestCaseReference(testCaseReference);
-      testCaseResolutionStatusRepository.storeRelationship(testCaseResolutionStatus);
-      testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
-
-      // Return the TestCase with the StateId to avoid any unnecessary PATCH when resolving the task
-      // in the feed repo,
-      // since the `threadContext.getAboutEntity()` will give us the task with the `incidentId`
-      // informed, which
-      // we'll remove here.
-      TestCase testCaseEntity =
-          Entity.getEntity(testCaseResolutionStatus.getTestCaseReference(), "", Include.ALL);
-      return testCaseEntity.withIncidentId(latestTestCaseResolutionStatus.getStateId());
-    }
-
-    /**
-     * If we close the task, we'll flag the incident as Resolved as a False Positive, if it is not
-     * resolved yet. Closing the task means that the incident is not applicable.
-     */
-    @Override
-    @Transaction
-    public void closeTask(String userName, CloseTask closeTask) {
-      TestCaseResolutionStatus latestTestCaseResolutionStatus =
-          testCaseResolutionStatusRepository.getLatestRecord(closeTask.getTestCaseFQN());
-      if (latestTestCaseResolutionStatus == null) {
-        return;
-      }
-
-      if (latestTestCaseResolutionStatus
-          .getTestCaseResolutionStatusType()
-          .equals(TestCaseResolutionStatusTypes.Resolved)) {
-        // if the test case is already resolved then we'll return. We don't need to update the state
-        return;
-      }
-
-      long resolvedTimestamp =
-          Math.max(
-              System.currentTimeMillis(),
-              latestTestCaseResolutionStatus.getTimestamp() != null
-                  ? latestTestCaseResolutionStatus.getTimestamp() + 1
-                  : System.currentTimeMillis());
-      User user = getEntityByName(Entity.USER, userName, "", Include.ALL);
-      TestCaseResolutionStatus testCaseResolutionStatus =
-          new TestCaseResolutionStatus()
-              .withId(UUID.randomUUID())
-              .withStateId(latestTestCaseResolutionStatus.getStateId())
-              .withTimestamp(resolvedTimestamp)
-              .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
-              .withTestCaseResolutionStatusDetails(
-                  new Resolved()
-                      .withTestCaseFailureComment(closeTask.getComment())
-                      // If we close the task directly we won't know the reason
-                      .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
-                      .withResolvedBy(user.getEntityReference()))
-              .withUpdatedAt(resolvedTimestamp)
-              .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
-              .withUpdatedBy(user.getEntityReference());
-
-      EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
-      testCaseResolutionStatus.setTestCaseReference(null);
-      Entity.getCollectionDAO()
-          .testCaseResolutionStatusTimeSeriesDao()
-          .insert(
-              testCaseReference.getFullyQualifiedName(),
-              Entity.TEST_CASE_RESOLUTION_STATUS,
-              JsonUtils.pojoToJson(testCaseResolutionStatus));
-      testCaseResolutionStatus.setTestCaseReference(testCaseReference);
-      testCaseResolutionStatusRepository.storeRelationship(testCaseResolutionStatus);
-      testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
-    }
   }
 
   @Override
@@ -1978,7 +1874,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user, null).exportCsv(testCases, callback);
+    List<TestCase> visibleTestCases =
+        DomainAccessFilter.retainAccessible(testCases, SubjectContext.getSubjectContext(user));
+    return new TestCaseCsv(user, null).exportCsv(visibleTestCases, callback);
   }
 
   @Override
@@ -2011,10 +1909,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       boolean recursive,
       String targetEntityType)
       throws IOException {
-    TestSuite targetBundleSuite =
-        TEST_SUITE.equals(targetEntityType)
-            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
-            : null;
+    TestSuite targetBundleSuite = resolveTargetBundleSuite(name, targetEntityType, user);
     return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
 
@@ -2028,11 +1923,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String targetEntityType,
       CsvImportProgressCallback callback)
       throws IOException {
-    TestSuite targetBundleSuite =
-        TEST_SUITE.equals(targetEntityType)
-            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
-            : null;
+    TestSuite targetBundleSuite = resolveTargetBundleSuite(name, targetEntityType, user);
     return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
+  }
+
+  /**
+   * Resolves the Bundle Suite the imported test cases get attached to, rejecting a suite outside the
+   * importing user's domains — attaching test cases to it is a write the domain policy must gate.
+   */
+  private TestSuite resolveTargetBundleSuite(String name, String targetEntityType, String user) {
+    TestSuite targetBundleSuite = null;
+    if (TEST_SUITE.equals(targetEntityType)) {
+      // Unlike the per-row suite, this one distinguishes 403 (exists, foreign) from 404 (absent).
+      // Nothing is written yet, so refusing loudly is the useful behaviour, and the bit it reveals
+      // is already available from GET /v1/dataQuality/testSuites/name/{fqn}.
+      targetBundleSuite = Entity.getEntityByName(TEST_SUITE, name, FIELD_DOMAINS, Include.ALL);
+      SubjectContext subjectContext = SubjectContext.getSubjectContext(user);
+      if (!DomainAccessFilter.isAccessible(subjectContext, targetBundleSuite.getDomains())) {
+        throw new AuthorizationException(
+            String.format(OUT_OF_DOMAIN_MESSAGE, targetBundleSuite.getFullyQualifiedName()));
+      }
+    }
+    return targetBundleSuite;
   }
 
   private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
@@ -2041,10 +1953,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // 2. A test suite FQN - export test cases in that test suite
     // 3. "*" - export all test cases (platform-wide)
 
-    if ("*".equals(name)) {
+    if (PLATFORM_WIDE_EXPORT.equals(name)) {
       // Platform-wide export
-      return listAll(
-          new Fields(allowedFields, "testDefinition,testSuite, dataProducts"), new ListFilter());
+      return listAll(new Fields(allowedFields, PLATFORM_WIDE_EXPORT_FIELDS), new ListFilter());
     }
 
     // Try to determine if name is a table or test suite
@@ -2071,13 +1982,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     ListFilter filter = new ListFilter(ALL);
     filter.addQueryParam("entityFQN", tableFqn);
     filter.addQueryParam("includeAllTests", "true");
-    return new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
+    return new ArrayList<>(listAll(new Fields(allowedFields, EXPORT_FIELDS), filter));
   }
 
   private List<TestCase> getTestCasesForTestSuite(UUID testSuiteId) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("testSuiteId", testSuiteId.toString());
-    return listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter);
+    return listAll(new Fields(allowedFields, EXPORT_FIELDS), filter);
   }
 
   public static class TestCaseCsv extends EntityCsv<TestCase> {
@@ -2088,10 +1999,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
     private final EntityRepository<EntityInterface> versioningRepo =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
+    private final SubjectContext subjectContext;
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
       this.targetBundleSuite = targetBundleSuite;
+      this.subjectContext = SubjectContext.getSubjectContext(user);
     }
 
     @Override
@@ -2117,8 +2030,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
           String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
 
-          // Convert entityFQN to EntityLink
-          String entityLink = convertFQNToEntityLink(entityFQN);
+          // Rows may target any entity, not just the one the endpoint was authorized against, so
+          // the domain policy has to be enforced per row before anything is created or updated.
+          String entityLink = resolveAccessibleTargetLink(printer, csvRecord, entityFQN);
+          if (entityLink == null) {
+            continue;
+          }
 
           // Get test definition
           TestDefinition testDefinition =
@@ -2163,18 +2080,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
           // Get test suite if provided, otherwise get or create default test suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
-            try {
-              TestSuite testSuite =
-                  Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
-              testCase.withTestSuite(testSuite.getEntityReference());
-              importedTestSuiteIds.putIfAbsent(
-                  testSuite.getFullyQualifiedName(), testSuite.getId());
-            } catch (EntityNotFoundException e) {
-              importFailure(
-                  printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
-              importResult.withStatus(ApiStatus.ABORTED);
+            TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
+            if (testSuite == null) {
               continue;
             }
+            testCase.withTestSuite(testSuite.getEntityReference());
+            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           } else {
             // No test suite provided - get or create the default basic test suite
             EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
@@ -2274,6 +2185,90 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
         }
       }
+    }
+
+    /**
+     * Resolves the entity link for the row's target, or reports the row as failed and returns null.
+     * The row is reported as a failure rather than aborting the whole import: rows are applied one
+     * by one and are not rolled back, so aborting would misreport the rows already written.
+     *
+     * <p>For a domain-restricted subject, a target that cannot be resolved at all and one that
+     * resolves outside their domains take the identical branch, so the row detail is the same for
+     * both and the response cannot be used as a cross-domain existence oracle — the rule {@link
+     * #resolveAccessibleTestSuite} applies to the CSV-supplied suite. Resolution has to happen
+     * inside this gate rather than before it: {@link #convertFQNToEntityLink} looks the FQN up to
+     * decide whether it names a table or a column, so leaving it outside would report "no such
+     * table" for an absent target before the gate ever ran. Subjects the filter does not apply to
+     * keep the underlying resolution error, which is what tells them their CSV is wrong.
+     */
+    private String resolveAccessibleTargetLink(
+        CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
+      String entityLink;
+      if (DomainAccessFilter.shouldApply(subjectContext)) {
+        entityLink = resolveInDomainTargetLink(entityFQN);
+        if (entityLink == null) {
+          importFailure(printer, String.format(OUT_OF_DOMAIN_MESSAGE, entityFQN), csvRecord);
+          importResult.withStatus(ApiStatus.FAILURE);
+        }
+      } else {
+        entityLink = convertFQNToEntityLink(entityFQN);
+      }
+      return entityLink;
+    }
+
+    /**
+     * Returns the entity link of a target the subject may write to, or null when the CSV-supplied
+     * FQN names nothing, cannot be resolved to a table or column, or sits outside their domains.
+     *
+     * <p>The lookup is per row rather than batched because the row's target is only known once the
+     * row is parsed; it reads through the 30-second entity cache, so a CSV repeating a table costs
+     * one query, not one per row.
+     */
+    private String resolveInDomainTargetLink(String entityFQN) {
+      String entityLink = null;
+      try {
+        String candidate = convertFQNToEntityLink(entityFQN);
+        EntityInterface target =
+            Entity.getEntity(EntityLink.parse(candidate), FIELD_DOMAINS, Include.NON_DELETED);
+        if (subjectContext.hasDomains(target.getDomains())) {
+          entityLink = candidate;
+        }
+      } catch (EntityNotFoundException | IllegalArgumentException e) {
+        LOG.debug("Target '{}' named in the imported CSV is unavailable", entityFQN);
+      }
+      return entityLink;
+    }
+
+    /**
+     * Resolves the test suite named by the row, or reports the row as failed and returns null. The
+     * CSV-supplied suite needs the same domain gate as the row's target entity: attaching a test
+     * case adds a CONTAINS relationship from the suite and bumps its version, so an
+     * attacker-controlled column must not reach a suite outside the importing user's domains.
+     *
+     * <p>"Does not exist" and "outside your domains" deliberately take the identical branch, so the
+     * row detail is the same for both and the response cannot be used as a cross-domain existence
+     * oracle. (The status set here is advisory only — {@code EntityCsv.setFinalStatus} recomputes the
+     * reported status from the row counts — but taking one branch keeps the two indistinguishable
+     * regardless of what any future caller does with it.)
+     */
+    private TestSuite resolveAccessibleTestSuite(
+        CSVPrinter printer, CSVRecord csvRecord, String testSuiteFqn) throws IOException {
+      TestSuite testSuite = null;
+      try {
+        TestSuite candidate =
+            Entity.getEntityByName(TEST_SUITE, testSuiteFqn, FIELD_DOMAINS, Include.NON_DELETED);
+        if (DomainAccessFilter.isAccessible(subjectContext, candidate.getDomains())) {
+          testSuite = candidate;
+        }
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Test suite '{}' named in the imported CSV does not exist", testSuiteFqn);
+      }
+      if (testSuite == null) {
+        importFailure(
+            printer, String.format(TEST_SUITE_UNAVAILABLE_MESSAGE, testSuiteFqn), csvRecord);
+        importResult.withStatus(ApiStatus.ABORTED);
+      }
+      return testSuite;
     }
 
     @Override

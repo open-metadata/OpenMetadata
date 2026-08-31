@@ -51,7 +51,7 @@ class DSVDataFrameReader(DataFrameReader):
     """
 
     def _reformat_malformed_csv_data(self, chunk_list: List, parsed_columns: List, separator: str):  # noqa: UP006
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
             updated_chunk_list = []
@@ -85,7 +85,7 @@ class DSVDataFrameReader(DataFrameReader):
 
         Returns the fixed chunk_list.
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401, PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401
 
         if not chunk_list:
             return chunk_list
@@ -115,7 +115,7 @@ class DSVDataFrameReader(DataFrameReader):
         storage_options: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
         compression: Optional[str] = None,  # noqa: UP045
     ) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         # Determine compression based on file extension if not provided
         if compression is None and path.endswith(".gz"):
@@ -156,7 +156,7 @@ class DSVDataFrameReader(DataFrameReader):
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         compression = "gzip" if key.endswith(".gz") else None
 

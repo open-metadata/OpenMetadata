@@ -45,17 +45,20 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      for (let i = 1; i <= 20; i++) {
+      // Created concurrently: 20 sequential round-trips accumulate enough
+      // latency under load to blow the 60s beforeAll budget on their own.
+      const paginationUsers = Array.from({ length: 20 }, () => {
         const uniqueId = uuid();
-        const user = new UserClass({
+
+        return new UserClass({
           firstName: `pw_pagination_User${uniqueId}`,
           lastName: `LastName${uniqueId}`,
           email: `pw_pagination_user${uniqueId}@example.com`,
           password: 'User@OMD123',
         });
+      });
 
-        await user.create(apiContext);
-      }
+      await Promise.all(paginationUsers.map((user) => user.create(apiContext)));
 
       await afterAction();
     });
@@ -259,9 +262,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('insights').click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton-active').first().waitFor({
-        state: 'detached',
-      });
+      await page
+        .getByTestId('total-data-assets-widget')
+        .locator('.ant-skeleton')
+        .first()
+        .waitFor({
+          state: 'detached',
+        });
 
       const databaseResponsePromise = page.waitForResponse((response) =>
         response.url().includes('/api/v1/databases')
@@ -340,13 +347,24 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Metrics page', () => {
+    const metrics: MetricClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
         const metric = new MetricClass();
         await metric.create(apiContext);
+        metrics.push(metric);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(metrics.map((metric) => metric.delete(apiContext)));
 
       await afterAction();
     });
@@ -357,6 +375,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Notification Alerts page', () => {
+    const notificationAlerts: AlertClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -379,7 +399,18 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         });
 
         await alert.create(apiContext);
+        notificationAlerts.push(alert);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(
+        notificationAlerts.map((alert) => alert.delete(apiContext))
+      );
 
       await afterAction();
     });
@@ -400,6 +431,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Observability Alerts page', () => {
+    const observabilityAlerts: AlertClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -422,7 +455,18 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         });
 
         await alert.create(apiContext);
+        observabilityAlerts.push(alert);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(
+        observabilityAlerts.map((alert) => alert.delete(apiContext))
+      );
 
       await afterAction();
     });
@@ -1004,6 +1048,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Pagination tests for Roles page', () => {
     let policy: PolicyClass;
+    const roles: RolesClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -1014,7 +1059,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         {
           name: 'pw-policy-rule',
           resources: ['all'],
-          operations: ['all'],
+          operations: ['All'],
           effect: 'allow',
         },
       ]);
@@ -1022,7 +1067,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Create Roles
       for (let i = 1; i <= 20; i++) {
         const role = new RolesClass();
-        await role.create(apiContext, [policy.responseData.id!]);
+        await role.create(apiContext, [policy.responseData.name]);
+        roles.push(role);
       }
 
       await afterAction();
@@ -1030,7 +1076,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+
+      // Roles reference the policy, so they have to go first.
+      await Promise.all(roles.map((role) => role.delete(apiContext)));
       await policy.delete(apiContext);
+
       await afterAction();
     });
 
@@ -1041,6 +1091,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Policies page', () => {
+    const policies: PolicyClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -1051,11 +1103,20 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           {
             name: `pw-policy-rule-${i}`,
             resources: ['all'],
-            operations: ['all'],
+            operations: ['All'],
             effect: 'allow',
           },
         ]);
+        policies.push(p);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(policies.map((policy) => policy.delete(apiContext)));
 
       await afterAction();
     });
@@ -1067,6 +1128,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Bots page', () => {
+    const bots: BotClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -1074,7 +1137,16 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       for (let i = 1; i <= 20; i++) {
         const bot = new BotClass();
         await bot.create(apiContext);
+        bots.push(bot);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(bots.map((bot) => bot.delete(apiContext)));
 
       await afterAction();
     });
@@ -1105,6 +1177,14 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       pipeline.entity.tasks = tasks;
       await pipeline.create(apiContext);
       pipelineFqn = pipeline.entityResponseData.fullyQualifiedName;
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await pipeline.delete(apiContext);
 
       await afterAction();
     });

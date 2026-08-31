@@ -143,7 +143,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -161,6 +161,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Restore openmetadata-ui dist cache
+        # Only the next step (openmetadata-dist -am) transitively builds UI.
+        uses: ./.github/actions/cache-ui-dist
 
       - name: Build openmetadata-dist tarball
         # ContainerizedServer.buildLocalImageContainer needs
@@ -193,7 +197,7 @@ jobs:
           ls -lh /tmp/jpw-server-image.tar
 
       - name: Upload server image artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: jpw-server-image-${{ github.run_id }}
           path: /tmp/jpw-server-image.tar
@@ -231,7 +235,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -296,7 +300,8 @@ jobs:
           # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
           # Embedded nightly recreates a fresh stack each run, so data never persists — these
           # small-footprint suites always create on the fly (jpw.data.mode=ingest). Static/ensure
-          # reuse is only for the persistent external cluster (see java-playwright-external.yml).
+          # reuse only pays off against a cluster you keep around between runs, which no workflow
+          # here does; set OM_URL + OM_ADMIN_TOKEN to point the suites at one by hand.
           STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
             -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
             -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
@@ -320,7 +325,7 @@ jobs:
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-traces
@@ -329,7 +334,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-videos-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-videos
@@ -338,7 +343,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -359,7 +364,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v3.0.5
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
@@ -400,7 +405,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -428,7 +433,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-search-it-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -445,7 +450,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v3.0.5
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook

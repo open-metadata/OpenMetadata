@@ -26,7 +26,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
@@ -43,6 +42,7 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -85,9 +85,8 @@ const DomainTreeView = ({
   const [hierarchy, setHierarchy] = useState<Domain[]>([]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedFqn, setSelectedFqn] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<EntityTabs>(
-    EntityTabs.DOCUMENTATION
-  );
+  // Undefined = no explicit tab; DomainDetails resolves it to the persona's first tab.
+  const [activeTab, setActiveTab] = useState<EntityTabs | undefined>(undefined);
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [isHierarchyLoading, setIsHierarchyLoading] = useState<boolean>(false);
   const [isDomainLoading, setIsDomainLoading] = useState<boolean>(false);
@@ -128,14 +127,13 @@ const DomainTreeView = ({
     return Object.values(filters).some((values) => values && values.length > 0);
   }, [filters]);
 
-  // TODO: Revert these changes once the backend API for domain search is implemented.
-  // const queryFilter = useMemo(() => {
-  //   if (!hasActiveFilters || !filters) {
-  //     return undefined;
-  //   }
+  const queryFilter = useMemo(() => {
+    if (!hasActiveFilters || !filters) {
+      return undefined;
+    }
 
-  //   return domainBuildESQuery(filters);
-  // }, [filters, hasActiveFilters]);
+    return domainBuildESQuery(filters);
+  }, [filters, hasActiveFilters]);
 
   useEffect(() => {
     const map: Record<string, Domain> = {};
@@ -199,6 +197,7 @@ const DomainTreeView = ({
       const firstDomain = selectDomain(domains, resetExpandedItems, domainFqn);
 
       if ((firstDomain?.childrenCount || 0) > 0 && shouldLoadChildren) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- useCallback defined below
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
@@ -212,8 +211,8 @@ const DomainTreeView = ({
         const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
         const results: Domain[] = await searchDomains(
           encodedValue,
-          1
-          // queryFilter
+          1,
+          queryFilter
         );
 
         const filteredResults =
@@ -235,7 +234,7 @@ const DomainTreeView = ({
         setIsHierarchyLoading(false);
       }
     },
-    [t, isDomainRestricted, userDomains]
+    [t, isDomainRestricted, userDomains, queryFilter]
   );
 
   const fetchDomainDetails = useCallback(
@@ -478,13 +477,17 @@ const DomainTreeView = ({
     },
     [loadingChildren, rootPaging, applySelection, loadChildDomains]
   );
+  // Keyed on `queryFilter`, not `hasActiveFilters`: swapping one active filter
+  // for another leaves the boolean true, so the tree would keep showing the
+  // previous result set. `urlState` is memoised on the search params, so the
+  // filter object only changes identity when the URL does.
   useEffect(() => {
     if (searchQuery || hasActiveFilters) {
       searchDomain(searchQuery);
     } else {
       loadDomains();
     }
-  }, [refreshToken, searchQuery, hasActiveFilters]);
+  }, [refreshToken, searchQuery, queryFilter]);
 
   useEffect(() => {
     if (selectedFqn) {
@@ -495,7 +498,8 @@ const DomainTreeView = ({
 
   useEffect(() => {
     if (selectedFqn) {
-      setActiveTab(EntityTabs.DOCUMENTATION);
+      // Reset so the newly selected domain lands on its first rendered tab.
+      setActiveTab(undefined);
     }
   }, [selectedFqn]);
 
@@ -730,7 +734,8 @@ const DomainTreeView = ({
         if (requestedTab && Object.values(EntityTabs).includes(requestedTab)) {
           setActiveTab(requestedTab);
         } else {
-          setActiveTab(EntityTabs.DOCUMENTATION);
+          // No tab in the URL -- let DomainDetails resolve the first rendered tab.
+          setActiveTab(undefined);
         }
 
         updateExpansionForFqn(decodedFqn);
@@ -971,30 +976,32 @@ const DomainTreeView = ({
   }
 
   return (
+    // No panel title: the page header above already carries the "Domains"
+    // heading and its learning icon, and the row cost the tree ~55px of list
+    // height. `h-full` on the container and both scrollers replaces a pair of
+    // `max-h-[calc(80vh-Npx)]` guesses that left dead space below the panels
+    // at some viewport heights and overflowed the card at others.
     <ResizableLeftPanels
-      showLearningIcon
+      className="tw:h-full"
       firstPanel={{
         className: 'domain-tree-panel border-right border-gray-200',
         minWidth: 280,
         flex: 0.25,
-        title: t('label.domain-plural'),
         children: (
           <div
-            className="tw:pt-4.5 tw:pr-3 tw:overflow-y-auto tw:max-h-[calc(80vh-220px)]"
+            className="tw:h-full tw:min-h-0 tw:pt-4.5 tw:pr-3 tw:overflow-y-auto"
             ref={scrollContainerRef}
             onScroll={handleScroll}>
             {hierarchySection}
           </div>
         ),
       }}
-      learningPageId={LEARNING_PAGE_IDS.DOMAIN}
-      learningTitle={t('label.domain-plural')}
       secondPanel={{
         className: 'domain-details-panel',
         minWidth: 600,
         flex: 0.75,
         children: (
-          <div className="tw:pt-3 tw:overflow-y-auto tw:max-h-[calc(80vh-160px)]">
+          <div className="tw:h-full tw:min-h-0 tw:pt-3 tw:overflow-y-auto">
             {domainSection}
           </div>
         ),

@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -23,6 +23,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -73,6 +74,12 @@ const ColumnBulkOperations = withPageSuspenseFallback(
 const DataAssetRulesPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
+  )
+);
+
+const DefaultAppModePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/Settings/DefaultAppModePage/DefaultAppModePage')
   )
 );
 
@@ -322,6 +329,25 @@ const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
+/**
+ * The bare `/settings/services` path is served by this generic category route, so the services
+ * guard has to live inside it. Matching a literal `services` path instead looks equivalent and is
+ * not: `GlobalSettingCategoryPage` resolves its content from the `:settingCategory` route param, so
+ * a literal path leaves it undefined and the page renders empty.
+ */
+const SettingCategoryRoute = () => {
+  const { settingCategory } = useParams<{ settingCategory: string }>();
+
+  if (
+    settingCategory === GlobalSettingsMenuCategory.SERVICES &&
+    connectionsRouterClassBase.isServicesSettingsRouteDisabled()
+  ) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
+
+  return <GlobalSettingCategoryPage />;
+};
+
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
@@ -470,7 +496,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AddNotificationPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
           />
@@ -548,7 +574,7 @@ const SettingsRouter = () => {
       />
 
       <Route
-        element={<GlobalSettingCategoryPage />}
+        element={<SettingCategoryRoute />}
         path={ROUTES.SETTINGS_WITH_CATEGORY.replace(ROUTES.SETTINGS, '')}
       />
 
@@ -849,8 +875,23 @@ const SettingsRouter = () => {
         )}
       />
 
+      {/* An app mode that replaces the service listing outright makes these two routes a second,
+          divergent way to reach it. Everything that used to link here now goes through
+          connectionsRouterClassBase.getSettingsServicesPath(), which that mode overrides — so the
+          paths are unreachable from inside the app and are treated as not found rather than
+          rendering a competing page.
+
+          Gated on isServicesSettingsRouteDisabled() and NOT on isEmbeddedMode(): the latter is
+          also true while Classic merely displays an embedded experience, which 404'd Classic's own
+          Settings > Services for the rest of the browser session. */}
       <Route
-        element={<ServicesPage />}
+        element={
+          connectionsRouterClassBase.isServicesSettingsRouteDisabled() ? (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          ) : (
+            <ServicesPage />
+          )
+        }
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.SERVICES
         ).replace(ROUTES.SETTINGS, '')}
@@ -894,6 +935,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LEARNING_RESOURCES
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultAppModePage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.APP_MODE
         )}
       />
       <Route

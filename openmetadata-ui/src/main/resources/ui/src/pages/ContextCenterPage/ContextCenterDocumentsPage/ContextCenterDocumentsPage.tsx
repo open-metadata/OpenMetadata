@@ -21,6 +21,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
@@ -41,6 +42,7 @@ import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { queryClient } from '../../../queryClient';
 import {
   bulkDeleteDriveFiles,
   bulkMoveFilesToFolder,
@@ -56,6 +58,10 @@ import {
   downloadBlob,
   handleAssetDownload,
 } from '../../../utils/ContextCenterPureUtils';
+import {
+  CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -76,6 +82,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<ContextFile>();
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -196,6 +203,15 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders]
   );
 
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedSearchQuery(documentSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [documentSearchQuery]);
+
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (!after) {
@@ -211,12 +227,21 @@ const ContextCenterDocumentsPage: FC = () => {
         setIsDocumentsLoading(true);
       }
       try {
-        if (documentSearchQuery) {
+        if (debouncedSearchQuery) {
           const results = await fetchSearchResults({
-            query: documentSearchQuery,
+            query: debouncedSearchQuery,
             searchIndex: SearchIndex.DRIVE_FILE,
             sortField: 'updatedAt',
             sortOrder: 'desc',
+            ...(selectedFolderId && {
+              queryFilter: {
+                query: {
+                  bool: {
+                    filter: { term: { 'folder.id': selectedFolderId } },
+                  },
+                },
+              },
+            }),
           });
           if (generation !== fetchGenerationRef.current) {
             return;
@@ -259,7 +284,7 @@ const ContextCenterDocumentsPage: FC = () => {
         }
       }
     },
-    [documentSearchQuery, pageSize, handlePagingChange, selectedFolderId]
+    [debouncedSearchQuery, pageSize, handlePagingChange, selectedFolderId]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -267,12 +292,12 @@ const ContextCenterDocumentsPage: FC = () => {
       paging.after &&
       !isDocumentsLoading &&
       !isLoadingMoreRef.current &&
-      !documentSearchQuery
+      !debouncedSearchQuery
     ) {
       isLoadingMoreRef.current = true;
       fetchDocuments(paging.after);
     }
-  }, [paging.after, isDocumentsLoading, documentSearchQuery, fetchDocuments]);
+  }, [paging.after, isDocumentsLoading, debouncedSearchQuery, fetchDocuments]);
 
   useEffect(() => {
     fetchDocuments();
@@ -331,14 +356,21 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [
-    allDocuments,
-    isDocumentsLoading,
-    previewFile,
-    searchParams,
-    t,
-    setSearchParams,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
+
+  useEffect(() => {
+    const folderId = searchParams.get('folder');
+    if (!folderId || isFoldersLoading || selectedFolderId) {
+      return;
+    }
+    setSelectedFolderId(folderId);
+    setSearchParams((prev) => {
+      prev.delete('folder');
+
+      return prev;
+    });
+  }, [isFoldersLoading, selectedFolderId, searchParams, setSearchParams]);
 
   const handleDeleteFile = useCallback((file: ContextFile) => {
     setFileToDelete(file);
@@ -356,6 +388,12 @@ const ContextCenterDocumentsPage: FC = () => {
     try {
       setIsDeletingFile(true);
       await deleteDriveFile(fileToDelete.id, false);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+      });
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
@@ -456,6 +494,14 @@ const ContextCenterDocumentsPage: FC = () => {
       const failedCount = result.numberOfRowsFailed ?? 0;
       const deletedDocuments = allDocuments.filter((d) => deletedIds.has(d.id));
 
+      if (deletedIds.size > 0) {
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+        });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        });
+      }
       setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
       setTotalFileCount((prev) => prev - deletedIds.size);
       setGlobalFileCount((prev) => prev - deletedIds.size);
@@ -588,6 +634,9 @@ const ContextCenterDocumentsPage: FC = () => {
 
   const handleUploaded = useCallback(
     (newFiles: ContextFile[]) => {
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
       setAllDocuments((prev) => [...newFiles, ...prev]);
       setTotalFileCount((prev) => prev + newFiles.length);
       setGlobalFileCount((prev) => prev + newFiles.length);
@@ -619,6 +668,7 @@ const ContextCenterDocumentsPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
+      <DocumentTitle title={t('label.document-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           breadcrumbs={[

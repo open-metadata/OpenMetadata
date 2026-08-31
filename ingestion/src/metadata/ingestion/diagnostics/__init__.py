@@ -122,7 +122,7 @@ def install(workflow: Any) -> bool:
         return False
 
     try:
-        from metadata.ingestion.diagnostics.handler import DiagnosticsHandler  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.handler import DiagnosticsHandler
 
         handler = DiagnosticsHandler.build(workflow)
         handler.start()

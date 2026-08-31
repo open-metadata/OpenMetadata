@@ -32,7 +32,7 @@ def get_security_module():
             return None  # Will use no-op decorator
         else:  # noqa: RET505
             # Airflow 2.x uses api_connexion
-            from airflow.api_connexion import security  # noqa: PLC0415
+            from airflow.api_connexion import security
 
             return security
     except ImportError:

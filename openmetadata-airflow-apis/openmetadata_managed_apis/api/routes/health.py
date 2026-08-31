@@ -36,13 +36,13 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf  # noqa: PLC0415
+        from airflow.www.app import csrf
     else:
-        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/health", methods=["GET"])
     @csrf.exempt

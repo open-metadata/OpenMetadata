@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -28,11 +29,7 @@ import org.openmetadata.schema.entity.ai.AuditReportFormat;
 import org.openmetadata.schema.entity.ai.AuditReportManifest;
 import org.openmetadata.schema.entity.ai.AuditReportScope;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
-import org.openmetadata.schema.entity.ai.GovernanceMetadata;
-import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpServer;
-import org.openmetadata.schema.type.AICompliance;
-import org.openmetadata.schema.type.AIComplianceRecord;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -43,6 +40,7 @@ import org.openmetadata.service.jdbi3.AuditReportRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -62,13 +60,26 @@ import org.openmetadata.service.util.EntityUtil;
  * ({@link #findActiveDuplicate(AuditReport)}) instead of generating the same pack twice.
  *
  * <p>Storage strategy is deliberately simple in v1: the artifact bytes are
- * embedded directly in the artifacts[] entry's downloadUrl. PDF rendering is
- * deferred — Pdf/Both reports complete as JSON-only with a note in the manifest.
+ * embedded directly in the artifacts[] entry's downloadUrl. The requested
+ * {@link AuditReportFormat} selects which artifacts are produced — {@code Json} the
+ * lossless machine-readable bundle, {@code Pdf} the auditor-facing document, {@code Both}
+ * one of each. The PDF itself is rendered by whichever {@link AuditPackPdfRenderer} the
+ * distribution registered via {@link #setPdfRenderer(AuditPackPdfRenderer)}; with none
+ * registered the pack still completes, carrying JSON alone.
  */
 @Slf4j
 public final class AuditPackGenerator {
   private static final String ADMIN_USER = "admin";
   private static final int PAGE_SIZE = 500;
+  private static final String JSON_DATA_URL_PREFIX = "data:application/json;base64,";
+  private static final String PDF_DATA_URL_PREFIX = "data:application/pdf;base64,";
+  private static final String CHECKSUM_PREFIX = "sha256:";
+
+  /**
+   * Set once at startup, read by audit jobs on virtual threads — volatile so a generator thread
+   * cannot observe a half-published renderer.
+   */
+  private static volatile AuditPackPdfRenderer pdfRenderer;
 
   /**
    * A {@code Running} report whose {@code startedAt} is older than this is treated as orphaned by
@@ -81,8 +92,19 @@ public final class AuditPackGenerator {
 
   private AuditPackGenerator() {}
 
+  /**
+   * Installs the renderer that turns audit packs into PDFs. Call once during server startup and
+   * before {@link #recoverInterruptedReports()}, otherwise packs recovered from a restart complete
+   * as JSON-only. Passing {@code null} restores the JSON-only default.
+   */
+  public static void setPdfRenderer(AuditPackPdfRenderer renderer) {
+    pdfRenderer = renderer;
+  }
+
   static void submit(UUID reportId) {
-    AsyncService.getInstance().execute(() -> run(reportId));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.AUDIT_PACK, reportId.toString(), () -> run(reportId));
   }
 
   private static void run(UUID reportId) {
@@ -106,28 +128,88 @@ public final class AuditPackGenerator {
     }
     try {
       AuditPackPayload payload = assemble(report);
-      String json = JsonUtils.pojoToJson(payload.body);
-      byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-      AuditReportArtifact artifact = new AuditReportArtifact();
-      artifact.setFormat(AuditReportFormat.Json);
-      artifact.setSizeBytes(bytes.length);
-      artifact.setChecksum("sha256:" + sha256(bytes));
-      artifact.setDownloadUrl(
-          "data:application/json;base64," + Base64.getEncoder().encodeToString(bytes));
-      List<AuditReportArtifact> artifacts = new ArrayList<>();
-      artifacts.add(artifact);
-
-      AuditReportManifest manifest = new AuditReportManifest();
-      manifest.setAssetCount(payload.assetCount);
-      manifest.setFrameworkCount(payload.frameworkCount);
-      manifest.setControlCount(payload.controlCount);
-      manifest.setComplianceRecordCount(payload.complianceRecordCount);
-
-      completeRunning(reportId, artifacts, manifest);
+      AuditReportManifest manifest = manifestOf(payload);
+      completeRunning(reportId, buildArtifacts(report, payload.body, manifest), manifest);
     } catch (Exception failure) {
       LOG.warn("Audit pack generation failed for {}", reportId, failure);
       failRunning(reportId, failureMessage(failure));
     }
+  }
+
+  private static AuditReportManifest manifestOf(AuditPackPayload payload) {
+    AuditReportManifest manifest = new AuditReportManifest();
+    manifest.setAssetCount(payload.assetCount);
+    manifest.setFrameworkCount(payload.frameworkCount);
+    manifest.setControlCount(payload.controlCount);
+    manifest.setComplianceRecordCount(payload.complianceRecordCount);
+    return manifest;
+  }
+
+  /**
+   * Produces one artifact per format the request asked for. An unset format keeps the historical
+   * JSON-only behaviour so packs requested before PDF rendering existed still regenerate identically
+   * on recovery. JSON is also emitted as the fallback when a {@code Pdf} pack cannot be rendered, so
+   * a Completed report always has something to download rather than an empty artifact list.
+   */
+  static List<AuditReportArtifact> buildArtifacts(
+      AuditReport report, AuditPackDocument body, AuditReportManifest manifest) {
+    AuditReportFormat format =
+        report.getFormat() == null ? AuditReportFormat.Json : report.getFormat();
+    Optional<byte[]> pdf =
+        format == AuditReportFormat.Json ? Optional.empty() : renderPdf(body, manifest);
+    List<AuditReportArtifact> artifacts = new ArrayList<>();
+    if (format != AuditReportFormat.Pdf || pdf.isEmpty()) {
+      artifacts.add(jsonArtifact(body));
+    }
+    pdf.ifPresent(
+        bytes -> artifacts.add(artifact(AuditReportFormat.Pdf, PDF_DATA_URL_PREFIX, bytes)));
+    return artifacts;
+  }
+
+  private static Optional<byte[]> renderPdf(AuditPackDocument body, AuditReportManifest manifest) {
+    AuditPackPdfRenderer renderer = pdfRenderer;
+    Optional<byte[]> result = Optional.empty();
+    if (renderer == null) {
+      LOG.warn("Audit pack PDF requested but no renderer is registered; completing with JSON only");
+    } else {
+      result = renderSafely(renderer, body, manifest);
+    }
+    return result;
+  }
+
+  /**
+   * The renderer is supplied by the distribution, so from here it is untrusted code: the
+   * JSON-fallback guarantee has to hold even when an implementation ignores the contract and
+   * throws, or hands back a null Optional. Without this the exception would reach
+   * {@link #run(UUID)} and mark the whole report Failed — exactly what pluggability was meant to
+   * avoid. Broad by design: any failure inside a third-party renderer must degrade rather than
+   * lose the pack.
+   */
+  private static Optional<byte[]> renderSafely(
+      AuditPackPdfRenderer renderer, AuditPackDocument body, AuditReportManifest manifest) {
+    Optional<byte[]> result = Optional.empty();
+    try {
+      Optional<byte[]> rendered = renderer.render(body, manifest);
+      result = rendered == null ? Optional.empty() : rendered;
+    } catch (Exception rendererFailure) {
+      LOG.warn("Audit pack PDF renderer failed; completing with JSON only", rendererFailure);
+    }
+    return result;
+  }
+
+  private static AuditReportArtifact jsonArtifact(AuditPackDocument body) {
+    byte[] bytes = JsonUtils.pojoToJson(body).getBytes(StandardCharsets.UTF_8);
+    return artifact(AuditReportFormat.Json, JSON_DATA_URL_PREFIX, bytes);
+  }
+
+  private static AuditReportArtifact artifact(
+      AuditReportFormat format, String dataUrlPrefix, byte[] bytes) {
+    AuditReportArtifact artifact = new AuditReportArtifact();
+    artifact.setFormat(format);
+    artifact.setSizeBytes(bytes.length);
+    artifact.setChecksum(CHECKSUM_PREFIX + sha256(bytes));
+    artifact.setDownloadUrl(dataUrlPrefix + Base64.getEncoder().encodeToString(bytes));
+    return artifact;
   }
 
   /**
@@ -312,7 +394,7 @@ public final class AuditPackGenerator {
   private static int countComplianceRecords(List<AuditPackAsset> assets) {
     int total = 0;
     for (AuditPackAsset asset : assets) {
-      total += asset.complianceRecordCount();
+      total += asset.complianceRecords().size();
     }
     return total;
   }
@@ -388,16 +470,6 @@ public final class AuditPackGenerator {
     return result;
   }
 
-  private static AICompliance aiCompliance(Object governanceMetadata) {
-    AICompliance result = null;
-    if (governanceMetadata instanceof GovernanceMetadata governance) {
-      result = governance.getAiCompliance();
-    } else if (governanceMetadata instanceof McpGovernanceMetadata governance) {
-      result = governance.getAiCompliance();
-    }
-    return result;
-  }
-
   private static boolean matchesDomain(List<EntityReference> domains, UUID targetDomainId) {
     if (domains == null) {
       return false;
@@ -425,31 +497,5 @@ public final class AuditPackGenerator {
     int frameworkCount;
     int controlCount;
     int complianceRecordCount;
-  }
-
-  private record AuditPackDocument(
-      String reportId,
-      String name,
-      String scope,
-      EntityReference framework,
-      EntityReference scopeTarget,
-      Long asOfDate,
-      long generatedAt,
-      List<AuditPackAsset> assets) {}
-
-  private record AuditPackAsset(
-      String entityType,
-      String id,
-      String name,
-      String displayName,
-      String fullyQualifiedName,
-      Object governanceMetadata,
-      Long updatedAt) {
-    private int complianceRecordCount() {
-      AICompliance aiCompliance = aiCompliance(governanceMetadata);
-      List<AIComplianceRecord> records =
-          aiCompliance == null ? null : aiCompliance.getComplianceRecords();
-      return records == null ? 0 : records.size();
-    }
   }
 }

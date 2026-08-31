@@ -49,7 +49,7 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
         par.relnamespace::regnamespace::text as schema,
         par.relname as table_name,
         partition_strategy,
-        col.column_name
+        col.attname as column_name
     from
         (select
              partrelid,
@@ -66,24 +66,27 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
     on
         par.oid = pt.partrelid
     left join
-        information_schema.columns col
+        pg_attribute col
     on
-        col.table_schema = par.relnamespace::regnamespace::text
-        and col.table_name = par.relname
-        and ordinal_position = pt.column_index
+        col.attrelid = par.oid
+        and col.attnum = pt.column_index
+        and not col.attisdropped
      where par.relname=:table_name and  par.relnamespace::regnamespace::text=:schema_name
     """
 )
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
-SELECT object_id, polname, table_catalog, table_schema, table_name  
-FROM information_schema.tables AS it
-JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
-      FROM pg_policy AS pp
-      JOIN pg_class AS pc ON pp.polrelid = pc.oid
-      JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
-WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
-"""  # noqa: W291
+SELECT pc.oid              AS object_id,
+       pp.polname          AS polname,
+       current_database()  AS table_catalog,
+       pn.nspname          AS table_schema,
+       pc.relname          AS table_name
+FROM      pg_policy    AS pp
+JOIN      pg_class     AS pc ON pp.polrelid    = pc.oid
+JOIN      pg_namespace AS pn ON pc.relnamespace = pn.oid
+WHERE pn.nspname = :schema_name
+  AND current_database() = :database_name
+"""
 
 POSTGRES_SCHEMA_COMMENTS = """
     SELECT n.nspname AS schema_name, 
@@ -124,14 +127,16 @@ select datname from pg_catalog.pg_database
 """
 
 POSTGRES_TEST_GET_TAGS = """
-SELECT object_id, polname, table_catalog , table_schema ,table_name  
-FROM information_schema.tables AS it
-JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
-      FROM pg_policy AS pp
-      JOIN pg_class AS pc ON pp.polrelid = pc.oid
-      JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
-      LIMIT 1
-"""  # noqa: W291
+SELECT pc.oid              AS object_id,
+       pp.polname          AS polname,
+       current_database()  AS table_catalog,
+       pn.nspname          AS table_schema,
+       pc.relname          AS table_name
+FROM      pg_policy    AS pp
+JOIN      pg_class     AS pc ON pp.polrelid    = pc.oid
+JOIN      pg_namespace AS pn ON pc.relnamespace = pn.oid
+LIMIT 1
+"""
 
 POSTGRES_TEST_GET_QUERIES = """
       SELECT

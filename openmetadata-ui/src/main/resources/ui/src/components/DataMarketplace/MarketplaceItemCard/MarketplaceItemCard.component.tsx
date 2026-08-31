@@ -13,6 +13,7 @@
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
+import { renderBreakableTooltip } from '../../../utils/TooltipUtils';
 
 interface MarketplaceItemCardProps {
   icon: ReactNode;
@@ -47,14 +48,14 @@ const MarketplaceItemCard = ({
       <div className="tw:flex tw:flex-col tw:min-w-0 tw:gap-0.5">
         <Typography
           as="span"
-          className="tw:font-semibold tw:text-sm tw:leading-5 tw:text-primary tw:truncate tw:block"
-          title={name}>
+          className="tw:font-semibold tw:text-sm tw:leading-5 tw:text-primary tw:truncate tw:block tw:text-left"
+          ellipsis={{ tooltip: renderBreakableTooltip(name) }}>
           {name}
         </Typography>
         <Typography
           as="span"
-          className="tw:text-xs tw:leading-[18px] tw:text-tertiary tw:truncate tw:block"
-          title={subtitle}>
+          className="tw:text-xs tw:leading-[18px] tw:text-tertiary tw:truncate tw:block tw:text-left"
+          ellipsis={{ tooltip: renderBreakableTooltip(subtitle) }}>
           {subtitle}
         </Typography>
       </div>

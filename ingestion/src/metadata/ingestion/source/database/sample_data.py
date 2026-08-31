@@ -921,13 +921,15 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
             )
         except Exception as exc:
-            import traceback  # noqa: PLC0415
+            import traceback
 
             logger.warning(f"Drive sample data not found: {exc}")
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
 
-        self.ai_governance = AIGovernanceSampleData(
+        # Optional, like the drive bundle above: a sampleDataFolder that predates this
+        # fixture set should cost us the AI Governance showcase, not the whole catalog.
+        self.ai_governance = AIGovernanceSampleData.load_optional(
             Path(sample_data_folder) / "ai_governance",
             metadata,
         )
@@ -984,8 +986,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
-        for request in self.ai_governance.iter_requests():
-            yield Either(left=None, right=request)
+        if self.ai_governance is not None:
+            for request in self.ai_governance.iter_requests():
+                yield Either(left=None, right=request)
 
     def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
         """Ingest sample domains"""
@@ -1635,7 +1638,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             # Patch certification if present in the sample data
             if table.get("certification"):
                 try:
-                    from metadata.generated.schema.type.assetCertification import (  # noqa: PLC0415
+                    from metadata.generated.schema.type.assetCertification import (
                         AssetCertification,
                     )
 
@@ -2370,6 +2373,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 right=OMetaTestSuiteSample(
                     test_suite=CreateTestSuiteRequest(
                         name=test_suite["testSuiteName"],
+                        displayName=test_suite.get("testSuiteDisplayName"),
                         description=test_suite["testSuiteDescription"],
                         basicEntityReference=test_suite["executableEntityReference"],
                     )
@@ -2383,6 +2387,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         for logical_test_suite in self.logical_test_suites["tests"]:
             test_suite = CreateTestSuiteRequest(
                 name=logical_test_suite["testSuiteName"],
+                displayName=logical_test_suite.get("testSuiteDisplayName"),
                 description=logical_test_suite["testSuiteDescription"],
             )  # type: ignore
             test_cases: List[TestCase] = []  # noqa: UP006
@@ -2415,6 +2420,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 test_case_req = OMetaTestCaseSample(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
+                        displayName=test_case.get("displayName"),
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],

@@ -16,6 +16,7 @@ working with OpenMetadata entities.
 """
 
 import traceback
+import types
 from collections import OrderedDict
 from collections.abc import Generator
 from itertools import chain
@@ -62,6 +63,7 @@ from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationPro
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
 from metadata.ingestion.ometa.mixins.container_mixin import OMetaContainerMixin
+from metadata.ingestion.ometa.mixins.conversation_mixin import OMetaConversationMixin
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
@@ -71,7 +73,6 @@ from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContrac
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
-from metadata.ingestion.ometa.mixins.feed_mixin import OMetaFeedMixin
 from metadata.ingestion.ometa.mixins.file_mixin import OMetaFileMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
@@ -145,7 +146,10 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
     def _unwrap_annotation(annotation):
         """Unwrap Optional and other Union types to get the actual model class."""
         origin = get_origin(annotation)
-        if origin is Union:
+        # PEP 604 unions (`X | None`) report `types.UnionType`, not `typing.Union`. Generated
+        # models emit that form, so matching only `Union` here silently stops unwrapping and
+        # nested env keys never get case-normalized.
+        if origin in (Union, types.UnionType):
             args = get_args(annotation)
             for arg in args:
                 if arg is not type(None) and hasattr(arg, "model_fields"):
@@ -278,7 +282,7 @@ class OpenMetadata(
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
-    OMetaFeedMixin,
+    OMetaConversationMixin,
     OMetaAnnouncementMixin,
     OMetaTaskMixin,
     OMetaDomainMixin,
@@ -335,6 +339,9 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            # The OpenMetadata API never answers HTML, so a page here means the
+            # request reached the UI or a proxy instead of the API.
+            raise_on_html=True,
             **(additional_client_config_arguments or {}),
         )
 
@@ -818,8 +825,10 @@ class OpenMetadata(
         }
         url = f"{self.get_suffix(entity)}/deleteStale"
         try:
-            resp = self.client.put(url, json=request)
+            resp = self.client.delete(url, json=request)
         except APIError as err:
+            # A server without the endpoint routes DELETE /<collection>/deleteStale to
+            # `deleteById`, whose UUID path param rejects "deleteStale" with a 404.
             if err.status_code == 404:
                 logger.debug(
                     "deleteStale endpoint unavailable for %s; falling back to legacy delete",
@@ -1043,10 +1052,9 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run version api call. Return `true` if response is not None
+        Run version api call. Raises with an actionable message if the API is not reachable.
         """
-        raw_version = self.client.get("/system/version")["version"]
-        return raw_version is not None
+        return bool(self.get_server_version())
 
     def close(self):
         """

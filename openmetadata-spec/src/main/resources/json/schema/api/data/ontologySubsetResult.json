@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologySubsetResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologySubsetResult",
+  "description": "A durable Draft change set and pinned provenance for an application ontology subset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologySubsetResult",
+  "properties": {
+    "sourceGlossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "targetGlossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "sourceGlossaryVersion": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "changeSet": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "terms": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyRelationship.json"
+      },
+      "default": []
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologySourceProvenance.json"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "sourceGlossary",
+    "targetGlossary",
+    "sourceGlossaryVersion",
+    "changeSet",
+    "terms",
+    "relationships",
+    "sources"
+  ],
+  "additionalProperties": false
+}

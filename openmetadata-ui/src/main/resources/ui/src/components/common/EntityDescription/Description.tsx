@@ -18,14 +18,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Edit02,
-  MessageChatSquare,
-  MessagePlusSquare,
-} from '@untitledui/icons';
+import { MessageChatSquare, MessagePlusSquare } from '@untitledui/icons';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
@@ -173,7 +170,10 @@ const Description = ({
             <Button
               color="secondary"
               data-testid="edit-description"
-              iconLeading={Edit02}
+              // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
+              // page (glossary terms, tags, the header's domain/owner/tier) uses this asset, and
+              // Edit02 is a visibly different pencil — no underline, stroked instead of filled.
+              iconLeading={EditIcon}
               size="xxs"
               onPress={handleEditDescription}
             />

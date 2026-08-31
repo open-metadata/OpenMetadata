@@ -80,15 +80,15 @@ class QlikCloudClient:
         Method to initialise websocket connection
         """
         # pylint: disable=import-outside-toplevel
-        import ssl  # noqa: PLC0415
+        import ssl
 
-        from websocket import create_connection  # noqa: PLC0415
+        from websocket import create_connection
 
         if self.socket_connection:
             self.socket_connection.close()
         self.socket_connection = create_connection(
             f"wss://{clean_uri(self.config.hostPort.host)}/app/{dashboard_id or ''}",
-            sslopt={"cert_reqs": ssl.CERT_NONE},
+            sslopt={"cert_reqs": ssl.CERT_REQUIRED},
             header={"Authorization": f"Bearer {self.config.token.get_secret_value()}"},
         )
         self.socket_connection.recv()

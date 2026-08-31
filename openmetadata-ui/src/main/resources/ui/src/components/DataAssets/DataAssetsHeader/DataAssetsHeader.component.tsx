@@ -151,6 +151,7 @@ export const DataAssetsHeader = ({
   onCertificationUpdate,
   onStyleUpdate,
   disableRunAgentsButtonMessage,
+  breadcrumbData,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -357,6 +358,34 @@ export const DataAssetsHeader = ({
       ),
     [entityType, dataAsset, entityName, parentContainers]
   );
+
+  const breadcrumbItems = useMemo(() => {
+    if (breadcrumbData?.length) {
+      return breadcrumbData.map((link, index) => ({
+        label: link.name,
+        href:
+          index < breadcrumbData.length - 1 && link.url
+            ? String(link.url)
+            : undefined,
+      }));
+    }
+
+    return [
+      ...(entityType === EntityType.METRIC ? [getGlossaryHomeCrumb(t)] : []),
+      ...breadcrumbs.map((link) => ({
+        label: link.name,
+        href: !isCustomizedView && link.url ? String(link.url) : undefined,
+      })),
+      { label: entityName },
+    ];
+  }, [
+    breadcrumbData,
+    breadcrumbs,
+    entityName,
+    entityType,
+    isCustomizedView,
+    t,
+  ]);
 
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
@@ -689,19 +718,7 @@ export const DataAssetsHeader = ({
               <HeaderBreadcrumb
                 autoCollapse
                 className="tw:mb-0"
-                items={[
-                  ...(entityType === EntityType.METRIC
-                    ? [getGlossaryHomeCrumb(t)]
-                    : []),
-                  ...breadcrumbs.map((link) => ({
-                    label: link.name,
-                    href:
-                      !isCustomizedView && link.url
-                        ? String(link.url)
-                        : undefined,
-                  })),
-                  { label: entityName },
-                ]}
+                items={breadcrumbItems}
                 showHome={false}
                 size="xs"
               />
@@ -1039,14 +1056,15 @@ export const DataAssetsHeader = ({
                   )}
                 </div>
                 {(() => {
+                  const tableCertification = (dataAsset as Table).certification;
                   const certValue = (
                     <div
                       className="tw:text-sm tw:font-medium tw:text-primary"
                       data-testid="certification-value">
-                      {(dataAsset as Table).certification ? (
+                      {tableCertification ? (
                         <CertificationTag
                           showName
-                          certification={(dataAsset as Table).certification!}
+                          certification={tableCertification}
                         />
                       ) : (
                         NO_DATA_PLACEHOLDER

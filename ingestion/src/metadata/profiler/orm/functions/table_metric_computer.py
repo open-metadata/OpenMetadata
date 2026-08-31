@@ -44,6 +44,13 @@ from metadata.ingestion.source.database.timescale.queries import (
     TIMESCALE_GET_APPROXIMATE_METRICS,
     TIMESCALE_IS_HYPERTABLE,
 )
+from metadata.profiler.constants import (
+    COLUMN_COUNT,
+    COLUMN_NAMES,
+    CREATE_DATETIME,
+    ROW_COUNT,
+    SIZE_IN_BYTES,
+)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
@@ -58,12 +65,6 @@ from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
-
-COLUMN_COUNT = "columnCount"
-COLUMN_NAMES = "columnNames"
-ROW_COUNT = "rowCount"
-SIZE_IN_BYTES = "sizeInBytes"
-CREATE_DATETIME = "createDateTime"
 
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
@@ -845,8 +846,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
-        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
 
         col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
             COLUMN_NAMES
@@ -1069,6 +1070,8 @@ class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Extract numRecords from DESCRIBE DETAIL."""
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return super().compute()
         query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
         result = self.runner._session.execute(query).first()
         if result:

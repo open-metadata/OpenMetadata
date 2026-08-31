@@ -26,10 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -74,23 +72,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
-  }
-
-  /**
-   * Only org-wide ({@link MemoryVisibility#ENTITY}) memories are embedded. The vector query path
-   * has no per-document visibility filter to apply — chunk documents carry neither {@code
-   * visibility} nor {@code sharedWithIds} — so a restricted memory reachable through semantic
-   * search could be returned to any caller. Keyword search does not need this restriction because
-   * {@link org.openmetadata.service.search.security.ContextMemorySearchVisibility} filters it per
-   * subject.
-   */
-  @Override
-  public boolean isVectorEmbeddable(EntityInterface entity) {
-    boolean embeddable = false;
-    if (entity instanceof ContextMemory memory && memory.getShareConfig() != null) {
-      embeddable = memory.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
-    }
-    return embeddable;
   }
 
   @Override
@@ -208,8 +189,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> idsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
       idsByType
-          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .computeIfAbsent(fromType, type -> new HashSet<>())
           .add(UUID.fromString(record.getFromId()));
     }
     Map<String, EntityReference> refById = new HashMap<>();

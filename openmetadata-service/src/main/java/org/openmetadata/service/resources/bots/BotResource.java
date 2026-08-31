@@ -69,6 +69,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -95,6 +96,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    boolean shouldSeed = SeedDataGate.getInstance().shouldSeed();
     String domain = SecurityUtil.getDomain(config);
     // First, load the bot users and assign their roles
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -123,6 +125,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               .toList());
       // Add or update User Bot
       UserUtil.addOrUpdateBotUser(user);
+    }
+
+    if (!shouldSeed) {
+      return;
     }
 
     // Then, load the bots and bind them to the users

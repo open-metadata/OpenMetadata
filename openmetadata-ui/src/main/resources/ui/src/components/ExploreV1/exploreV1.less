@@ -27,16 +27,13 @@
   margin-bottom: var(--om-space-20);
 
   .content-height-with-resizable-panel {
-    height: calc(
-      100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
-    );
+    // 86px quick-filters bar (@quick-filters-container-height) + 8px gap
+    --content-panel-offset: 94px;
     overflow-y: auto;
 
     &.filter-applied {
-      height: calc(
-        100vh - @om-navbar-height - @quick-filters-container-height - @size-xs -
-          40px // filter applied height adjustment
-      );
+      // + 40px applied-filters row
+      --content-panel-offset: 134px;
     }
   }
 
@@ -76,9 +73,9 @@
     overflow: auto;
 
     .ant-tree-switcher-icon {
-      width: 12px;
-      height: 12px;
-      color: @grey-4;
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.5
     }
 
     .ant-tree-switcher_open:hover,

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -57,7 +63,14 @@ jest.mock('./Steps/ScheduleIntervalStep', () => {
 });
 
 jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {
-  return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
+  return jest.fn().mockImplementation(({ onReady }) => (
+    <div>
+      Ingestion workflow form
+      <button data-testid="mock-form-ready" onClick={() => onReady?.()}>
+        ready
+      </button>
+    </div>
+  ));
 });
 
 jest.mock('../../../../utils/SchedularUtils', () => ({
@@ -80,5 +93,34 @@ describe('Test AddIngestion component', () => {
 
     expect(addIngestionContainer).toBeInTheDocument();
     expect(configureIngestion).toBeInTheDocument();
+  });
+
+  it('should report the configure step as ready only once the workflow form mounts', async () => {
+    const onStepReadyChange = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        onStepReadyChange={onStepReadyChange}
+      />
+    );
+
+    expect(onStepReadyChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.click(await screen.findByTestId('mock-form-ready'));
+
+    expect(onStepReadyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('should report the schedule step as ready without waiting for the workflow form', () => {
+    const onStepReadyChange = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        onStepReadyChange={onStepReadyChange}
+      />
+    );
+
+    expect(onStepReadyChange).toHaveBeenLastCalledWith(true);
   });
 });

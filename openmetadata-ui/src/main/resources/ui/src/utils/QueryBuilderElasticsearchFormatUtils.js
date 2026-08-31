@@ -89,6 +89,7 @@ function buildEsRangeParameters(value, operator) {
       };
 
     case 'greater_or_equal':
+    case 'greater':
       return {
         gte: ''.concat(dateTime),
       };
@@ -96,11 +97,6 @@ function buildEsRangeParameters(value, operator) {
     case 'less':
       return {
         lt: ''.concat(dateTime),
-      };
-
-    case 'greater':
-      return {
-        gte: ''.concat(dateTime),
       };
 
     default:
@@ -161,6 +157,27 @@ function determineField(fieldName) {
   // todo: ElasticSearchTextField - not used
   // return config.fields[fieldName].ElasticSearchTextField || fieldName;
   return fieldName;
+}
+
+/**
+ * Strips parameters the user has not filled in yet. `JSON.stringify` drops `undefined` values, so
+ * a clause built from them collapses to `{"term":{}}` — which Elasticsearch and OpenSearch both
+ * reject outright, failing the whole search rather than the one incomplete row.
+ *
+ * @param {object} parameters - The DSL parameters built for a single rule
+ * @returns {object|undefined} - The entered parameters, or undefined when the rule is incomplete
+ * @private
+ */
+function definedParameters(parameters) {
+  if (!parameters) {
+    return undefined;
+  }
+
+  const entered = Object.entries(parameters).filter(
+    ([, parameter]) => parameter !== undefined
+  );
+
+  return entered.length ? Object.fromEntries(entered) : undefined;
 }
 
 function buildParameters(
@@ -489,7 +506,12 @@ function buildExtensionQuery(
 
   // Use customPropertiesTyped for structured queries
   // Handle text search operators first (like, not_like, regexp) - these need special query types
-  if (operator === 'like' || operator === 'not_like') {
+  if (
+    operator === 'like' ||
+    operator === 'not_like' ||
+    operator === 'multiselect_contains' ||
+    operator === 'multiselect_not_contains'
+  ) {
     // Contains/Not contains: use wildcard query on stringValue (keyword field)
     // All searchable values are now stored in stringValue for wildcard support
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -591,17 +613,11 @@ function buildExtensionQuery(
       value,
       operator
     );
-  } else if (fieldType === 'hyperlink' && nestedField) {
-    // Hyperlink: both URL and displayText are stored in stringValue for exact/wildcard matching
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-  } else if (fieldType === 'table' && nestedField) {
-    // Table: row data is stored in both stringValue (for wildcard) and textValue (for full-text)
-    // Use stringValue for exact match queries
+  } else if (
+    (fieldType === 'hyperlink' || fieldType === 'table') &&
+    nestedField
+  ) {
+    // Hyperlink/Table: values are stored in stringValue for exact/wildcard matching
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
       'stringValue',
@@ -674,32 +690,6 @@ function buildExtensionQuery(
         'equal'
       );
     }
-  } else if (
-    operator === 'multiselect_contains' ||
-    operator === 'multiselect_not_contains'
-  ) {
-    // Multiselect contains: use wildcard on stringValue (enum values are stored there)
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                wildcard: {
-                  'customPropertiesTyped.stringValue': {
-                    value: '*' + searchValue + '*',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
   } else {
     // Default text search: use match query on textValue
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -773,6 +763,19 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   if (!fieldName || !operator || value === undefined) {
     return undefined;
   } // rule is not fully entered
+
+  // A row the user has half-filled (field and operator picked, nothing typed) carries a value
+  // list of undefined. Building from it yields a bodiless clause such as `{"term":{}}` once
+  // JSON.stringify drops the undefined, and both Elasticsearch and OpenSearch reject that
+  // outright — failing the whole search instead of ignoring the one incomplete row. Operators
+  // with no value at all (is_null and friends) carry an empty list and stay valid.
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => entry === undefined)
+  ) {
+    return undefined;
+  }
 
   if (
     (operator === 'between' || operator === 'not_between') &&
@@ -900,19 +903,24 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     parameters = buildParameters(queryType, value, op, actualFieldName, config);
   }
 
+  const enteredParameters = definedParameters(parameters);
+  if (!enteredParameters) {
+    return undefined;
+  } // rule is not fully entered
+
   // Build the main query
   let mainQuery;
   if (not) {
     mainQuery = {
       bool: {
         must_not: {
-          [queryType]: { ...parameters },
+          [queryType]: { ...enteredParameters },
         },
       },
     };
   } else {
     mainQuery = {
-      [queryType]: { ...parameters },
+      [queryType]: { ...enteredParameters },
     };
   }
 
@@ -1002,20 +1010,20 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
 
         return {
           bool: {
-            [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
-              buildEsRule(
-                field,
-                [val],
-                operator,
-                extendedConfig,
-                valueSrc,
-                syntax
+            // An option the user has not picked yet yields no rule; keeping the hole would
+            // serialize to a null clause, which the search engines reject.
+            [useAndLogic ? 'must' : 'should']: value[0]
+              .map((val) =>
+                buildEsRule(field, [val], operator, extendedConfig, valueSrc)
               )
-            ),
+              .filter((rule) => rule !== undefined),
           },
         };
       } else {
-        return buildEsRule(field, value, operator, config, valueSrc, syntax);
+        // extendedConfig, as in every other branch: buildEsRule resolves the field's widget
+        // through the config it is given, and a raw one resolves none — so a fully entered
+        // condition builds no clause at all when this runs on a rule node directly.
+        return buildEsRule(field, value, operator, extendedConfig, valueSrc);
       }
     }
 
@@ -1040,6 +1048,68 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   } catch {
     return {};
   }
+}
+
+/**
+ * A rule that produced no clause, or a multiselect wrapper with no options picked, adds no
+ * constraint at all.
+ *
+ * @param {object|undefined} clause - What elasticSearchFormat produced for a single rule
+ * @returns {boolean} - Whether the rule ended up constraining nothing
+ * @private
+ */
+function producesNoConstraint(clause) {
+  if (!clause) {
+    return true;
+  }
+
+  const options = clause.bool?.must ?? clause.bool?.should;
+
+  return Array.isArray(options) && options.length === 0;
+}
+
+/**
+ * Reports whether the tree holds a condition the user started but did not finish — a row naming a
+ * field whose value was never entered.
+ *
+ * Such a row is dropped from the emitted query (a bodiless clause like `{"term":{}}` is rejected by
+ * both search engines), so persisting it would silently widen the filter to match everything. The
+ * answer comes from asking elasticSearchFormat what the row actually produces, so this check and
+ * buildEsRule cannot drift apart.
+ *
+ * A row with no field picked is deliberately not flagged: that is the query builder's own empty
+ * state, which it creates and keeps on its own, and it has always been dropped. Only a row that
+ * names a field carries intent that could be silently lost.
+ *
+ * @param {object} tree - The immutable query-builder tree
+ * @param {object} config - The same config passed to elasticSearchFormat
+ * @param {string} syntax - The version of ElasticSearch syntax to generate
+ * @returns {boolean} - Whether any condition was started but left unfinished
+ */
+export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
+  if (!tree) {
+    return false;
+  }
+
+  const type = tree.get('type');
+  if (type === 'rule') {
+    const field = tree.get('properties')?.get('field');
+
+    return (
+      Boolean(field) &&
+      producesNoConstraint(elasticSearchFormat(tree, config, syntax))
+    );
+  }
+
+  const children = tree.get('children1');
+  if (!children || typeof children.valueSeq !== 'function') {
+    return false;
+  }
+
+  return children
+    .valueSeq()
+    .toArray()
+    .some((child) => hasUnfinishedRule(child, config, syntax));
 }
 
 export function elasticSearchFormatForJSONLogic(

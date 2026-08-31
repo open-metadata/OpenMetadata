@@ -919,3 +919,31 @@ class TestPostgresCommonMappings(TestCase):
 
         tid_type = pg_ischema_names["tid"]
         self.assertIs(tid_type, SqlAlchemyString)
+
+    def test_citext_maps_to_string(self):
+        """'citext' must map to a String type so it is not reflected as CITEXT/UNKNOWN."""
+        from sqlalchemy import String as SqlAlchemyString
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        self.assertIs(pg_ischema_names["citext"], SqlAlchemyString)
+
+    def test_citext_resolves_to_string_datatype(self):
+        """A citext column must resolve to a known OM dataType, not UNKNOWN (#19467)."""
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+        from metadata.ingestion.source.database.column_type_parser import (
+            ColumnTypeParser,
+        )
+
+        citext_type = pg_ischema_names["citext"]
+        # Resolve an instantiated type, matching how the dialect passes column
+        # types into the parser during reflection.
+        data_type = ColumnTypeParser.get_column_type(citext_type())
+        self.assertEqual(data_type, "STRING")

@@ -16,6 +16,7 @@ package org.openmetadata.service.notifications.recipients.strategy.impl;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,6 +66,7 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
 
       return adminUsers.stream()
           .map(user -> Recipient.fromUser(user, destination.getType()))
+          .filter(Objects::nonNull)
           .collect(Collectors.toSet());
 
     } catch (Exception e) {

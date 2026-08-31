@@ -71,40 +71,48 @@ const combineGrep = (base?: RegExp) => {
     [...new Set(`${base.flags}${shardGrep.flags}`)].join('')
   );
 };
+// Each conditional group is annotated separately: TypeScript does not propagate a
+// contextual type into a spread expression, so inlining these ternaries would widen
+// the tuples to arrays and break assignability to ReporterDescription.
+const htmlReporter: ReporterDescription[] = isPlannedShard
+  ? []
+  : [['html', { outputFolder: './playwright/output/playwright-report' }]];
+
+const blobReporter: ReporterDescription[] = isPlannedShard
+  ? [
+      [
+        'blob',
+        {
+          outputDir: './playwright/output/blob-report',
+          fileName: `report-${process.env.PW_SHARD_ID ?? 'local'}.zip`,
+        },
+      ],
+    ]
+  : [['blob']];
+
+const performanceReporter: ReporterDescription[] = isPlannedShard
+  ? [
+      [
+        './playwright/reporters/PerformanceReporter.ts',
+        { outputFile: './playwright/output/playwright-timings.json' },
+      ],
+    ]
+  : [];
+
 const reporters: ReporterDescription[] = [
   ['list'],
-  ...(!isPlannedShard
-    ? [['html', { outputFolder: './playwright/output/playwright-report' }]]
-    : []),
+  ...htmlReporter,
   [
     '@estruyf/github-actions-reporter',
     {
       useDetails: true,
       showError: true,
-      includeResults: ['skipped', 'fail', 'flaky'],
       showArtifactsLink: true,
     },
   ],
-  ...(isPlannedShard
-    ? [
-        [
-          'blob',
-          {
-            outputDir: './playwright/output/blob-report',
-            fileName: `report-${process.env.PW_SHARD_ID ?? 'local'}.zip`,
-          },
-        ],
-      ]
-    : [['blob']]),
+  ...blobReporter,
   ['json', { outputFile: './playwright/output/results.json' }],
-  ...(isPlannedShard
-    ? [
-        [
-          './playwright/reporters/PerformanceReporter.ts',
-          { outputFile: './playwright/output/playwright-timings.json' },
-        ],
-      ]
-    : []),
+  ...performanceReporter,
 ];
 
 /**
@@ -124,8 +132,10 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry on CI only; PLAYWRIGHT_RETRIES (set per workflow via the reusable's
+   * `retries` input) overrides the CI default of 1. The parens are semantic:
+   * without them `?? CI ? 1 : 0` collapses every override to 1. */
+  retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
@@ -175,6 +185,11 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      name: 'ontology-rdf-setup',
+      testMatch: '**/ontology-rdf.setup.ts',
+      dependencies: ['entity-data-setup'],
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -200,9 +215,21 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
+        '**/VisualRegression/**',
       ],
+    },
+    {
+      name: 'visual-regression',
+      testMatch: '**/VisualRegression/**/*.spec.ts',
+      dependencies: ['setup', 'entity-data-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: 'playwright/.auth/admin.json',
+      },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
     // Playwright to do discovery for it on every default run even though its spec files are
@@ -221,10 +248,12 @@ export default defineConfig({
       name: 'sso-auth',
       testMatch: [
         '**/OktaSelfSignupClaims.spec.ts',
+        '**/OktaSessionRenewalPublic.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/SSORenewal.spec.ts',
+        '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
     },
@@ -251,7 +280,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      grep: /data-insight/,
+      grep: combineGrep(/@data-insight/),
       teardown: 'entity-data-teardown',
     },
     {
@@ -264,9 +293,11 @@ export default defineConfig({
     {
       name: 'Ontology RDF',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
+      fullyParallel: false,
+      workers: 1,
     },
     {
       name: 'DataAssetRulesEnabled',
@@ -394,6 +425,17 @@ export default defineConfig({
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+    },
+    // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
+    // waitForResponse/debounce flow is not interleaved with other chromium shards.
+    {
+      name: 'AdvancedSearch',
+      testMatch: '**/AdvancedSearch.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: entityDependencies,
+      grep: shardGrep,
+      fullyParallel: true,
+      teardown: entityTeardown,
     },
   ],
 

@@ -105,6 +105,38 @@ export const disableEtagConditionalReads = async (page: Page) => {
   }
 };
 
+const LOGGED_IN_USERS_KEY = 'loggedInUsers';
+
+/**
+ * Suppress the landing-page welcome banner at the source.
+ *
+ * MyDataPage renders the welcome banner only when the logged-in user's `name`
+ * is absent from the `loggedInUsers` localStorage list (see
+ * MyDataPage.component.tsx). Seeding that list with the user's name before the
+ * first navigation means the banner never renders for the session, so no test
+ * has to dismiss it. `userName` must equal the app's `currentUser.name` — for a
+ * created UserClass that is `responseData.name`; the email local-part is the
+ * server-assigned fallback for a pure login (e.g. admin).
+ */
+export const suppressWelcomeScreen = async (page: Page, userName: string) => {
+  const name = userName.includes('@') ? userName.split('@')[0] : userName;
+  const seed = ({ key, value }: { key: string; value: string }) => {
+    const existing = (localStorage.getItem(key) ?? '')
+      .split(',')
+      .filter(Boolean);
+    if (!existing.includes(value)) {
+      localStorage.setItem(key, [...existing, value].join(','));
+    }
+  };
+  const arg = { key: LOGGED_IN_USERS_KEY, value: name };
+
+  await page.addInitScript(seed, arg);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate(seed, arg);
+  }
+};
+
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
@@ -126,29 +158,6 @@ export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
   await page.waitForURL('**/explore');
   await waitForAllLoadersToDisappear(page);
-};
-
-export const removeLandingBanner = async (page: Page) => {
-  try {
-    const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
-    await welcomePageCloseButton
-      .waitFor({
-        state: 'visible',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Do nothing if the welcome banner does not exist
-        return;
-      });
-
-    // Close the welcome banner if it exists
-    if (await welcomePageCloseButton.isVisible()) {
-      await welcomePageCloseButton.click();
-    }
-  } catch {
-    // Do nothing if the welcome banner does not exist
-    return;
-  }
 };
 
 type CreateNewPageResult = {
@@ -343,6 +352,49 @@ export const toastNotification = async (
   await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
+/**
+ * Waits until the toast carrying `message` is gone.
+ *
+ * Always filter by message instead of waiting on a bare `alert-bar` locator: toasts
+ * are a stacking queue, and the backend fans async-delete/job notifications out to
+ * every socket of the logged-in user — so a parallel worker's cleanup can pop an
+ * unrelated toast into this page and turn an unfiltered locator into a strict-mode
+ * violation.
+ */
+export const waitForToastToDisappear = async (
+  page: Page,
+  message: string | RegExp,
+  timeout?: number
+) => {
+  await page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first()
+    .waitFor({ state: 'detached', timeout });
+};
+
+/**
+ * Asserts that the page is showing no error toast, optionally narrowed to the
+ * ones carrying `message`.
+ *
+ * Scoped to the error variant on purpose — a bare `alert-bar` assertion also
+ * catches the background success notifications the backend fans out to every
+ * socket of the logged-in user (async delete, export jobs), which a parallel
+ * worker can trigger at any moment.
+ */
+export const expectNoErrorToast = async (
+  page: Page,
+  message?: string | RegExp
+) => {
+  const errorToast = page.locator(
+    '[data-testid="alert-bar"][data-variant="error"]'
+  );
+
+  await expect(
+    message ? errorToast.filter({ hasText: message }) : errorToast
+  ).toHaveCount(0);
+};
+
 export const clickOutside = async (page: Page) => {
   await page.locator('body').click({
     position: {
@@ -350,6 +402,29 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   });
+};
+
+/**
+ * Blocks until every open Ant Design overlay has finished its enter animation.
+ *
+ * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
+ * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
+ * before the `-active` class that begins the transition. Playwright's actionability
+ * check ("bounding box unchanged across two consecutive animation frames") can be
+ * satisfied on those pre-transition frames, so the click point gets computed against
+ * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
+ * item above the intended one — the click silently selects the wrong option.
+ *
+ * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
+ * is the signal that the popup geometry is final.
+ */
+export const waitForAntdPopupToSettle = async (page: Page) => {
+  await expect(
+    page.locator(
+      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
+        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
+    )
+  ).toHaveCount(0);
 };
 
 export const searchFromSearchInput = async (
@@ -654,10 +729,13 @@ export const assignDataProduct = async (
     );
 
     await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
+      // Match any Data Product search response. The dropdown filters by the
+      // asset's domain only when the "Data Product Domain Validation" rule is
+      // enabled; when it is disabled the query carries no domain, so we cannot
+      // key the wait on the domain name. The tag visibility check below is the
+      // real synchronization guard.
+      const searchDataProduct = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
       await page.locator('[data-testid="data-product-selector"] input').clear();
       await page
@@ -785,7 +863,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -850,19 +929,27 @@ export const verifyDomainLinkInCard = async (
 export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
-  result: Locator
+  result: Locator,
+  tabSelector?: Locator
 ) => {
   let hasSubmittedSearch = false;
 
   await expect
     .poll(
       async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.request().method() === 'GET',
-          { timeout: 15_000 }
-        );
+        // Swallow the timeout: this wait only exists to let the search settle
+        // before checking the result, and the enclosing poll is what decides
+        // success. Left unhandled, a single slow search rejects and the
+        // exception aborts the whole poll instead of counting as "not yet" —
+        // so a 45s budget could fail after one 15s iteration.
+        const searchResponse = page
+          .waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.request().method() === 'GET',
+            { timeout: 15_000 }
+          )
+          .catch(() => null);
 
         if (hasSubmittedSearch) {
           await Promise.all([searchResponse, page.reload()]);
@@ -875,6 +962,8 @@ export const waitForSearchResult = async (
           hasSubmittedSearch = true;
         }
         await waitForAllLoadersToDisappear(page);
+        await tabSelector?.click();
+        await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();
       },
@@ -886,7 +975,8 @@ export const waitForSearchResult = async (
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
-  childFqnSearchTerm: string
+  childFqnSearchTerm: string,
+  exploreTabName?: string
 ) => {
   // Domain propagation from the parent service to its children — and the
   // subsequent search reindex — is eventually consistent. Gate on the search
@@ -939,9 +1029,71 @@ export const verifyDomainPropagation = async (
   await searchBox.press('Enter');
   await waitForAllLoadersToDisappear(page);
 
+  if (exploreTabName) {
+    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await waitForAllLoadersToDisappear(page);
+  }
+
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   await expect(entityCard).toBeVisible({ timeout: 30_000 });
   await expect(entityCard).toContainText(domain.displayName);
+};
+
+/**
+ * Wait for a hard-deleted entity to disappear from the search index.
+ *
+ * Search-index deletion is eventually consistent: a selection dropdown
+ * queried immediately after `DELETE /api/v1/...?hardDelete=true` can still
+ * return the deleted entity and fail a `not.toBeVisible()` assertion (the
+ * ExplorePageRightPanel deleted-entity flake family — run 32500973433).
+ * Gate on the search API no longer returning the entity before asserting
+ * its absence in the UI, mirroring how verifyDomainPropagation gates on
+ * presence.
+ */
+export const waitForDeletionFromSearchIndex = async (
+  apiContext: APIRequestContext,
+  searchTerm: string,
+  searchIndex: string,
+  matchNames: string[]
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            searchTerm
+          )}&index=${searchIndex}&from=0&size=10`
+        );
+
+        // This poll resolves on `false` ("entity gone"), the OPPOSITE
+        // polarity of verifyDomainPropagation — so a transient search error
+        // must read as "still present" (keep polling), never as an empty
+        // result set, or a single flaky 5xx would pass the gate against a
+        // stale index.
+        if (!response.ok()) {
+          return true;
+        }
+
+        const hits: {
+          _source?: {
+            name?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+          };
+        }[] = (await response.json())?.hits?.hits ?? [];
+
+        return hits.some((hit) =>
+          matchNames.some(
+            (name) =>
+              hit._source?.name === name ||
+              hit._source?.displayName === name ||
+              hit._source?.fullyQualifiedName === name
+          )
+        );
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000, 5_000] }
+    )
+    .toBe(false);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
@@ -1173,13 +1325,15 @@ export const testPaginationNavigation = async (
     if (validateRowCount) {
       expect(initialRowCount).toBeLessThanOrEqual(15);
     }
+    await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await pageSizeDropdown.hover();
-    const isMenuVisibleAfterHover = await menuItem.isVisible();
-    if (!isMenuVisibleAfterHover) {
-      await pageSizeDropdown.click();
-    }
-    await menuItem.waitFor({ state: 'visible' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await menuItem.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
     const pageSizeChangePromise = page.waitForResponse((response) =>
       response.url().includes(apiEndpointPattern)
@@ -1400,11 +1554,13 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  if (!(await menuItem.isVisible())) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
+  await expect(async () => {
+    await pageSizeDropdown.hover();
+    if (!(await menuItem.isVisible())) {
+      await pageSizeDropdown.click();
+    }
+    await expect(menuItem).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
   await menuItem.click();
   await waitForAllLoadersToDisappear(page);
 

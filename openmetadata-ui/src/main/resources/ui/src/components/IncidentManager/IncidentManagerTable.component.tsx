@@ -15,6 +15,8 @@ import {
   EmptyPlaceholder,
   Skeleton,
   Table,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@untitledui/icons';
 import { useMemo } from 'react';
@@ -141,9 +143,16 @@ const IncidentManagerTable = ({
   const loadingSkeletons = useMemo(
     () => (
       <div className="tw:p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
-        ))}
+        {Array.from({ length: 5 }, (_, i) => `incident-skeleton-${i}`).map(
+          (skeletonKey) => (
+            <Skeleton
+              className="tw:mb-2"
+              height={40}
+              key={skeletonKey}
+              width="100%"
+            />
+          )
+        )}
       </div>
     ),
     []
@@ -162,9 +171,14 @@ const IncidentManagerTable = ({
 
     return (
       <Table.Row id={record.id ?? ''} key={record.id}>
-        <Table.Cell className="tw:w-72 tw:min-w-56">
+        {/* The table lays out `auto`, so `wrap-break-word` would leave a long
+            test case name as one unbreakable min-content word and stretch the
+            column to fit it. `wrap-anywhere` shrinks that contribution; the
+            floor matches the declared width so auto-layout cannot then
+            collapse the column and wrap every name onto three lines. */}
+        <Table.Cell className="tw:w-72 tw:min-w-72">
           <Link
-            className="tw:m-0 tw:wrap-break-word"
+            className="tw:m-0 tw:wrap-anywhere"
             data-testid={`test-case-${ref?.name}`}
             state={{ breadcrumbData }}
             to={observabilityRouterClassBase.getTestCaseDetailPagePath(
@@ -175,19 +189,22 @@ const IncidentManagerTable = ({
         </Table.Cell>
         {isIncidentPage && (
           <Table.Cell>
-            <Link
-              className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
-              data-testid="table-link"
-              title={getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}
-              onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
-            </Link>
+            <Tooltip placement="top" title={tableFqn}>
+              <TooltipTrigger>
+                <Link
+                  className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
+                  data-testid="table-link"
+                  to={getEntityDetailsPath(
+                    EntityType.TABLE,
+                    tableFqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.DATA_QUALITY
+                  )}
+                  onClick={(e) => e.stopPropagation()}>
+                  {getNameFromFQN(tableFqn) || ref?.fullyQualifiedName}
+                </Link>
+              </TooltipTrigger>
+            </Tooltip>
           </Table.Cell>
         )}
         <Table.Cell className="tw:whitespace-nowrap">
@@ -217,7 +234,12 @@ const IncidentManagerTable = ({
             />
           )}
         </Table.Cell>
-        <Table.Cell>
+        {/* antd's `.ant-typography` sets `word-break: break-word`, which drops
+            the "No Assignee" placeholder's min-content contribution to a single
+            character. Owner names render nowrap+ellipsis already, so once every
+            row is unassigned nothing holds the column open and it collapses,
+            stacking the placeholder one letter per line. */}
+        <Table.Cell className="tw:whitespace-nowrap">
           {testCaseResolutionStatusDetailsRender(
             record.testCaseResolutionStatusDetails,
             record

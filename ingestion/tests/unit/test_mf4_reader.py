@@ -13,11 +13,31 @@
 MF4 reader tests
 """
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from metadata.readers.dataframe.mf4 import MF4DataFrameReader
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
+
+
+def test_local_mf4_reading_with_installed_asammdf():
+    from asammdf import MDF
+
+    from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+        LocalConfig,
+    )
+
+    with TemporaryDirectory() as tmp_dir:
+        file_path = Path(tmp_dir) / "empty.mf4"
+        with MDF(version="4.10") as mdf:
+            mdf.save(file_path)
+
+        reader = MF4DataFrameReader(LocalConfig(), None)
+        result = reader._read(key=str(file_path), bucket_name="")
+
+    assert list(result.dataframes()) == []
 
 
 class TestMF4DataFrameReader(TestCase):

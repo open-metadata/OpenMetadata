@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type { FormEvent, ReactNode } from 'react';
 import {
   Controller,
@@ -23,13 +29,23 @@ import {
   DomainType,
 } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { EntityReference } from '../../../generated/entity/type';
+import {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
+import {
+  FieldKind,
+  IntakeForm,
+  TargetEntityType,
+} from '../../../generated/governance/intakeForm';
 import {
   LabelType,
   State,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -39,6 +55,8 @@ import {
   DomainFormSelectItem,
   DomainFormValues,
 } from './AddDomainForm.interface';
+import AddDomainFormExtensionFields from './AddDomainFormExtensionFields';
+import { getExtensionFormKey } from './AddDomainFormExtensionFields.utils';
 
 // Mock i18next
 jest.mock('react-i18next', () => ({
@@ -52,6 +70,18 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {},
   }),
+}));
+
+jest.mock('../../../rest/intakeFormsAPI', () => ({
+  getIntakeFormByEntityType: jest
+    .fn()
+    .mockImplementation(() => new Promise(() => undefined)),
+}));
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getCustomPropertiesByEntityType: jest
+    .fn()
+    .mockImplementation(() => new Promise(() => undefined)),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -119,6 +149,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ICON_PICKER: 'icon_picker',
       TAG_SUGGESTION: 'tag_suggestion',
       COLOR_PICKER: 'color_picker',
+      NUMBER: 'number',
       SELECT: 'select',
       TEXT: 'text',
       USER_TEAM_SELECT: 'user_team_select',
@@ -178,8 +209,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
       name: string;
       label: ReactNode;
       props?: { 'data-testid'?: string };
+      type?: string;
     }) => (
-      <div data-testid={field.props?.['data-testid'] ?? field.id ?? field.name}>
+      <div
+        data-field-type={field.type}
+        data-testid={field.props?.['data-testid'] ?? field.id ?? field.name}>
         {field.label}
       </div>
     ),
@@ -240,10 +274,32 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
   })
 );
 
+jest.mock('./AddDomainFormExtensionFields', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="extension-fields">AddDomainFormExtensionFields</div>
+    )
+);
+
+const mockedGetIntakeFormByEntityType =
+  getIntakeFormByEntityType as jest.MockedFunction<
+    typeof getIntakeFormByEntityType
+  >;
+const mockedGetCustomPropertiesByEntityType =
+  getCustomPropertiesByEntityType as jest.MockedFunction<
+    typeof getCustomPropertiesByEntityType
+  >;
+const mockedAddDomainFormExtensionFields =
+  AddDomainFormExtensionFields as jest.MockedFunction<
+    typeof AddDomainFormExtensionFields
+  >;
+
 const mockOnCancel = jest.fn();
 const mockOnSubmit = jest.fn();
 
 type HarnessProps = {
+  defaultValues?: DomainFormValues;
   loading?: boolean;
   isFormInDialog?: boolean;
   type?: DomainFormType;
@@ -251,13 +307,14 @@ type HarnessProps = {
 };
 
 const AddDomainFormHarness = ({
+  defaultValues = DOMAIN_FORM_DEFAULTS,
   loading = false,
   isFormInDialog = false,
   type = DomainFormType.DOMAIN,
   parentDomain,
 }: HarnessProps) => {
   const form = useForm<DomainFormValues>({
-    defaultValues: DOMAIN_FORM_DEFAULTS,
+    defaultValues,
   });
 
   return (
@@ -329,12 +386,186 @@ describe('AddDomainForm', () => {
     expect(saveButton).toBeInTheDocument();
   });
 
+  it('removes internal extension state from in-form submissions', async () => {
+    const definition: CustomProperty = {
+      description: '',
+      name: 'count',
+      propertyType: {
+        id: 'integer-id',
+        name: 'integer',
+        type: 'type',
+      },
+    };
+    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
+      entityType: TargetEntityType.Domain,
+      id: 'intake-form-id',
+      name: 'domainIntake',
+      requiredFields: [
+        {
+          fieldKind: FieldKind.CustomProperty,
+          fieldLabel: 'Count',
+          fieldPath: 'extension.count',
+        },
+      ],
+    } as IntakeForm);
+    mockedGetCustomPropertiesByEntityType.mockResolvedValueOnce([definition]);
+
+    render(
+      <AddDomainFormHarness
+        defaultValues={{
+          ...DOMAIN_FORM_DEFAULTS,
+          description: 'Description',
+          extensionFormValues: {
+            [getExtensionFormKey('count')]: '42',
+          },
+          name: 'domain',
+        }}
+      />
+    );
+
+    await waitFor(() =>
+      expect(mockedAddDomainFormExtensionFields).toHaveBeenCalled()
+    );
+    fireEvent.submit(screen.getByTestId('add-domain-form'));
+
+    await waitFor(() =>
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          extension: { count: 42 },
+        })
+      )
+    );
+
+    expect(mockOnSubmit.mock.calls[0][0]).not.toHaveProperty(
+      'extensionDefinitions'
+    );
+    expect(mockOnSubmit.mock.calls[0][0]).not.toHaveProperty(
+      'extensionFormValues'
+    );
+  });
+
   it('should render form for DATA_PRODUCT type', () => {
     render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
 
     const form = document.querySelector('form');
 
     expect(form).toBeInTheDocument();
+  });
+
+  it('wires the configured entity-reference and hyperlink intake fields', async () => {
+    const formFields = [
+      {
+        fieldKind: FieldKind.CustomProperty,
+        fieldLabel: 'Business Term',
+        fieldPath: 'extension.businessTerm',
+        required: false,
+      },
+      {
+        fieldKind: FieldKind.CustomProperty,
+        fieldLabel: 'Homepage',
+        fieldPath: 'extension.homepage',
+        required: true,
+      },
+    ];
+    const customProperties: CustomProperty[] = [
+      {
+        customPropertyConfig: { config: ['glossaryTerm'] },
+        description: '',
+        name: 'businessTerm',
+        propertyType: {
+          id: 'entity-reference-id',
+          name: 'entityReference',
+          type: 'type',
+        },
+      },
+      {
+        description: '',
+        name: 'homepage',
+        propertyType: {
+          id: 'hyperlink-id',
+          name: 'hyperlink-cp',
+          type: 'type',
+        },
+      },
+    ];
+    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
+      entityType: TargetEntityType.DataProduct,
+      id: 'intake-form-id',
+      name: 'dataProductIntake',
+      formFields,
+    } as IntakeForm);
+    mockedGetCustomPropertiesByEntityType.mockResolvedValueOnce(
+      customProperties
+    );
+
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
+
+    await waitFor(() => {
+      const props = mockedAddDomainFormExtensionFields.mock.calls.at(-1)?.[0];
+
+      expect(props).toMatchObject({
+        customProperties,
+        formFields,
+      });
+    });
+  });
+
+  it('waits for custom-property definitions before rendering intake fields', async () => {
+    const requiredFields = [
+      {
+        fieldKind: FieldKind.CustomProperty,
+        fieldLabel: 'Business Term',
+        fieldPath: 'extension.businessTerm',
+      },
+    ];
+    const customProperties: CustomProperty[] = [
+      {
+        customPropertyConfig: { config: ['glossaryTerm'] },
+        description: '',
+        name: 'businessTerm',
+        propertyType: {
+          id: 'entity-reference-id',
+          name: 'entityReference',
+          type: 'type',
+        },
+      },
+    ];
+    let resolveCustomProperties: (properties: CustomProperty[]) => void = (
+      _properties
+    ) => undefined;
+    const customPropertiesRequest = new Promise<CustomProperty[]>((resolve) => {
+      resolveCustomProperties = resolve;
+    });
+
+    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
+      entityType: TargetEntityType.DataProduct,
+      id: 'intake-form-id',
+      name: 'dataProductIntake',
+      requiredFields,
+    } as IntakeForm);
+    mockedGetCustomPropertiesByEntityType.mockReturnValueOnce(
+      customPropertiesRequest
+    );
+
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
+
+    await act(async () => undefined);
+
+    expect(mockedAddDomainFormExtensionFields).not.toHaveBeenCalled();
+
+    await act(async () => resolveCustomProperties(customProperties));
+
+    await waitFor(() =>
+      expect(
+        mockedAddDomainFormExtensionFields.mock.calls.at(-1)?.[0]
+      ).toMatchObject({
+        customProperties,
+        formFields: requiredFields.map((field) => ({
+          ...field,
+          required: true,
+        })),
+      })
+    );
   });
 
   it('should render form for SUBDOMAIN type with parent domain', () => {
@@ -441,6 +672,19 @@ describe('transformDomainFormData', () => {
 
   const buildItem = (id: string, value: unknown): DomainFormSelectItem =>
     ({ id, value } as unknown as DomainFormSelectItem);
+
+  const buildDefinition = (
+    name: string,
+    propertyType: string
+  ): CustomProperty => ({
+    description: '',
+    name,
+    propertyType: {
+      id: `${propertyType}-id`,
+      name: propertyType,
+      type: 'type',
+    },
+  });
 
   const baseForm: DomainFormValues = {
     name: 'marketing',
@@ -639,5 +883,60 @@ describe('transformDomainFormData', () => {
     expect(result.extension?.tier).toBe('Gold');
     expect(result.extension?.notes).toBe('plain text stays as-is');
     expect(result.extension?.count).toBe(7);
+  });
+
+  it('serializes type-aware extension values and omits the definitions registry', () => {
+    const glossaryTerm: EntityReference = {
+      id: 'term-1',
+      type: 'glossaryTerm',
+      name: 'Revenue',
+    };
+    const extensionDefinitions = {
+      count: buildDefinition('count', 'integer'),
+      homepage: buildDefinition('homepage', 'hyperlink-cp'),
+      steward: buildDefinition('steward', 'entityReference'),
+      tier: buildDefinition('tier', 'enum'),
+      emptyNotes: buildDefinition('emptyNotes', 'string'),
+      'sla.target[0]': buildDefinition('sla.target[0]', 'string'),
+    };
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        count: '42',
+        homepage: {
+          displayText: '',
+          url: 'https://example.com',
+        },
+        steward: {
+          id: glossaryTerm.id,
+          label: glossaryTerm.name,
+          value: glossaryTerm,
+        },
+        tier: { id: 'Gold', label: 'Gold', value: 'Gold' },
+        emptyNotes: '',
+      },
+      extensionDefinitions,
+      extensionFormValues: {
+        [getExtensionFormKey('sla.target[0]')]: 'four hours',
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & {
+      extension?: Record<string, unknown>;
+      extensionDefinitions?: unknown;
+    };
+
+    expect(result.extension).toEqual({
+      count: 42,
+      homepage: { url: 'https://example.com' },
+      steward: glossaryTerm,
+      tier: ['Gold'],
+      'sla.target[0]': 'four hours',
+    });
+    expect(result).not.toHaveProperty('extensionDefinitions');
+    expect(result).not.toHaveProperty('extensionFormValues');
   });
 });

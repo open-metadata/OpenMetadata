@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload Retire.js Report
         if: success()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: retire-js-report
           path: openmetadata-ui/src/main/resources/ui/retire-report.json
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload Retire.js Slack artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: retire-slack
           path: |
@@ -212,6 +212,9 @@ jobs:
           source env/bin/activate
           make install_all install_apis
 
+      - name: Restore openmetadata-ui dist cache
+        uses: ./.github/actions/cache-ui-dist
+
       - name: Maven build
         id: maven-build
         continue-on-error: true
@@ -264,7 +267,7 @@ jobs:
 
       - name: Upload Snyk Reports
         if: always() && steps.maven-build.outcome == 'success'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: security-report
           path: security-report
@@ -339,13 +342,24 @@ jobs:
 
           retire_counts = load_counts("retire-report/_retire_counts.json")
           snyk_counts = load_counts("security-report/_counts.json")
+          snyk_fixable = (snyk_counts or {}).get("fixable", 0)
 
-          if retire == "success" and snyk == "success":
-              overall = "🟢"
-          elif retire == "failure" or snyk == "failure":
+          # The Snyk icon reflects whether there's anything to act on, not merely
+          # whether vulnerabilities exist. High/critical findings with no upstream
+          # fix are nothing we can do, so they stay 🟢; only a fixable Snyk finding
+          # (or a Snyk run that broke before producing a report) turns it red. The
+          # "Fail on high/critical" gate below still fails CI independently, so the
+          # run can read ❌ while this icon reads 🟢.
+          if retire == "cancelled" or snyk == "cancelled":
+              overall = "⚠️"
+          elif retire == "failure":
+              overall = "🚨"
+          elif snyk == "failure" and not snyk_counts:
+              overall = "🚨"
+          elif snyk_fixable > 0:
               overall = "🚨"
           else:
-              overall = "⚠️"
+              overall = "🟢"
 
           header = (
               f"{overall}  *Security scan* — *OpenMetadata Repo*\n"
@@ -353,6 +367,7 @@ jobs:
               f"• Vulnerability scan (Retire.js): {status_icon(retire)}"
               f"{totals_line(retire_counts)}\n"
               f"• Security scan (Snyk): {status_icon(snyk)}"
+              f"  ·  {snyk_fixable} fix{'es' if snyk_fixable != 1 else ''} available"
               f"{totals_line(snyk_counts)}"
           )
           fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
@@ -367,7 +382,7 @@ jobs:
       - name: Send Slack — header
         id: send-header
         if: env.SEND_SLACK_NOTIFICATION == 'true'
-        uses: slackapi/slack-github-action@v4
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -424,7 +439,7 @@ jobs:
 
       - name: Send Slack — thread reply
         if: always() && env.SEND_SLACK_NOTIFICATION == 'true' && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
-        uses: slackapi/slack-github-action@v4
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}

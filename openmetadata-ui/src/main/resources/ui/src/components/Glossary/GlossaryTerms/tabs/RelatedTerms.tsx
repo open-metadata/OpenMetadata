@@ -12,7 +12,6 @@
  */
 
 import {
-  Badge,
   BadgeWithIcon,
   Button,
   Tooltip,
@@ -20,7 +19,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { groupBy, isEmpty } from 'lodash';
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -32,18 +30,16 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
-import { GlossaryTermRelationType } from '../../../../generated/configuration/glossaryTermRelationSettings';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
 import { TermRelation } from '../../../../generated/type/termRelation';
-import {
-  getGlossaryTermRelationSettings,
-  searchGlossaryTermsPaginated,
-} from '../../../../rest/glossaryAPI';
+import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
+import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getChangedEntityNewValue,
@@ -62,6 +58,7 @@ import {
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
+  BadgeListProps,
   RelatedTermTagButtonProps,
   RelationEditRow,
   TermsRowEditorProps,
@@ -69,16 +66,27 @@ import {
 import TermsRowEditor from './TermsRowEditor.component';
 const MAX_VISIBLE_BADGES = 5;
 
-const BadgeList: React.FC<{ items: ReactNode[] }> = ({ items }) => {
+const BadgeList: React.FC<BadgeListProps> = ({ items, testId }) => {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
   const hiddenCount = Math.max(0, items.length - MAX_VISIBLE_BADGES);
 
+  const handleToggle = useCallback(() => setIsExpanded((prev) => !prev), []);
+
   return (
-    <div className="tw:flex tw:flex-wrap tw:mt-2 tw:gap-1">
-      {items.slice(0, MAX_VISIBLE_BADGES)}
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:mt-2 tw:gap-1">
+      {isExpanded ? items : items.slice(0, MAX_VISIBLE_BADGES)}
       {hiddenCount > 0 && (
-        <Badge color="gray" size="sm" type="pill-color">
-          +{hiddenCount}
-        </Badge>
+        <Button
+          aria-expanded={isExpanded}
+          color="link-color"
+          data-testid={testId}
+          size="sm"
+          onClick={handleToggle}>
+          {isExpanded
+            ? t('label.show-less')
+            : t('label.plus-count-more', { count: hiddenCount })}
+        </Button>
       )}
     </div>
   );
@@ -146,9 +154,7 @@ const RelatedTerms = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingRows, setEditingRows] = useState<RelationEditRow[]>([]);
-  const [relationTypes, setRelationTypes] = useState<
-    GlossaryTermRelationType[]
-  >([]);
+  const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [preloadedTerms, setPreloadedTerms] = useState<GlossaryTerm[]>([]);
 
   const termRelations = useMemo(() => {
@@ -161,10 +167,8 @@ const RelatedTerms = () => {
 
   const fetchRelationTypes = useCallback(async () => {
     try {
-      const settings = await getGlossaryTermRelationSettings();
-      if (settings?.relationTypes) {
-        setRelationTypes(settings.relationTypes);
-      }
+      const response = await listRelationshipTypes({ limit: 1000 });
+      setRelationTypes(response.data);
     } catch {
       setRelationTypes(DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK);
     }
@@ -218,11 +222,15 @@ const RelatedTerms = () => {
           relationType,
           terms: relations
             .filter((r) => r.term?.fullyQualifiedName)
-            .map((r) => ({
-              value: r.term!.fullyQualifiedName!,
-              label: getEntityName(r.term as EntityReference),
-              entity: r.term as EntityReference,
-            })),
+            .map((r) => {
+              const term = r.term as EntityReference;
+
+              return {
+                value: term.fullyQualifiedName ?? '',
+                label: getEntityName(term),
+                entity: term,
+              };
+            }),
         }))
       );
     }
@@ -414,6 +422,7 @@ const RelatedTerms = () => {
                       ? [getRelatedTermElement(tr.term, tr.relationType)]
                       : []
                 )}
+                testId={`related-terms-toggle-${relationType}`}
               />
             </div>
           ))}

@@ -17,6 +17,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  descriptionBox,
   redirectToHomePage,
   waitForMetricsSearchResponse,
 } from '../../utils/common';
@@ -128,6 +129,62 @@ test.describe(
     test('Verify Related Metrics Update', async ({ page }) => {
       await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
       await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
+    });
+
+    test('Dimensions and measures render and description is editable', async ({
+      page,
+    }) => {
+      await expect(page.getByTestId('metric-dimensions-widget')).toBeVisible();
+      await expect(page.getByTestId('metric-measures-widget')).toBeVisible();
+
+      await expect(page.getByTestId('semantic-item-order_date')).toBeVisible();
+      await expect(page.getByTestId('semantic-item-region')).toBeVisible();
+      await expect(page.getByTestId('semantic-item-engagements')).toBeVisible();
+
+      await expect(
+        page
+          .getByTestId('metric-dimensions-widget')
+          .getByTestId('semantic-list-count')
+      ).toHaveText('2');
+
+      await expect(
+        page.getByTestId('semantic-item-badge-order_date')
+      ).toContainText('TIME');
+      await expect(
+        page.getByTestId('semantic-item-badge-engagements')
+      ).toContainText('SUM');
+
+      await page.getByTestId('edit-description-order_date').click();
+
+      await page
+        .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
+        .clear();
+      await page
+        .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
+        .fill('Updated dimension description.');
+
+      const patchPromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response.url().includes('/api/v1/metrics/') &&
+          response.ok()
+      );
+
+      await page
+        .locator(`[data-testid="markdown-editor"] [data-testid="save"]`)
+        .click();
+
+      await patchPromise;
+
+      await expect(page.getByTestId('semantic-item-order_date')).toContainText(
+        'Updated dimension description.'
+      );
+
+      await page.reload();
+
+      await expect(page.getByTestId('semantic-item-order_date')).toContainText(
+        'Updated dimension description.'
+      );
     });
   }
 );

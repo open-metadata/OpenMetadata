@@ -14,6 +14,7 @@ import type { FC, ReactNode } from 'react';
 import { useRef } from 'react';
 import type { PopoverProps } from 'react-aria-components';
 import { Popover } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { useActiveFieldDoc } from './field-doc-context';
 
@@ -65,6 +66,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   maxHeight = 480,
   ...popoverProps
 }) => {
+  const { t } = useCoreTranslation();
   const { entry, name } = useActiveFieldDoc();
   const anchorRef = useRef<HTMLElement | null>(null);
   // Re-find the anchor by field name on every render so positioning survives
@@ -100,7 +102,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       {/* A plain container, not a Dialog — the doc popover must never take
           focus, or it would steal it from the field being edited. */}
       <div
-        aria-label="Field documentation"
+        aria-label={t('label.field-documentation', 'Field documentation')}
         className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
         role="note">
         {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}

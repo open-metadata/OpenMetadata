@@ -141,7 +141,7 @@ class TableAdapter(EntityAdapter[Table]):
         profiler_config: Any,
         source_config: Any,
     ) -> dict | None:
-        from metadata.utils.profiler_utils import get_context_entities  # noqa: PLC0415
+        from metadata.utils.profiler_utils import get_context_entities
 
         schema_entity, database_entity, _ = get_context_entities(entity=entity, metadata=metadata)
         if database_entity is None:

@@ -103,14 +103,18 @@
     <postgres.connector.version>42.7.12</postgres.connector.version>
     <jsonschema2pojo.version>1.3.1</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
-    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <tomcat-jdbc.version>11.0.11</tomcat-jdbc.version>
     <hikaricp.version>7.0.2</hikaricp.version>
+    <!-- CVE-2026-15687: Directory Traversal in copyDirectoryFromPod, vulnerable [,25.0.1).
+         Lives at the root because two modules consume it — openmetadata-service and
+         openmetadata-integration-tests. Keep it here so a bump cannot miss one of them. -->
+    <kubernetes-client.version>25.0.1</kubernetes-client.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.19</spring.version>
+    <spring.version>7.0.9</spring.version>
     <log4j.version>2.25.5</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <org.junit.platform.version>1.11.4</org.junit.platform.version>
@@ -138,7 +142,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
-    <micrometer.version>1.15.12</micrometer.version>
+    <micrometer.version>1.16.7</micrometer.version>
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
@@ -212,10 +216,39 @@
         <artifactId>okhttp</artifactId>
         <version>4.12.0</version>
       </dependency>
+      <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
+           which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
+           artifact, so it would sit on the classpath duplicating the pinned okhttp 4.12.0 jar
+           (split package, resolved by classpath order). client-java 25.0.1 references the exact
+           same 118 okhttp/okio members as 24.0.0, so 4.12.0 satisfies it. Drop this pin only as
+           part of a real okhttp 5 migration. -->
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>logging-interceptor</artifactId>
+        <version>4.12.0</version>
+      </dependency>
+      <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
+           azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7
+           and reactor-netty 1.3.7 are the aligned release, so mixing lines is avoided. -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-core</artifactId>
+        <version>3.8.7</version>
+      </dependency>
+      <!-- CVE-2026-47874: reactor-netty-http < 1.3.7. The fix ships only on the 1.3.x line (1.2.18
+           is the last 1.2.x GA, no backport), and reactor-netty 1.3.x requires Netty 4.2.x — see
+           the netty-bom pin below, raised to 4.2.x in lockstep so 1.3.x's Netty 4.2 APIs resolve.
+           Pin -core alongside -http so a path that reaches -core directly cannot drag the 1.2 line
+           back in. This mirrors ai-platform's ADR-0018, which moves the same three together. -->
+      <dependency>
+        <groupId>io.projectreactor.netty</groupId>
+        <artifactId>reactor-netty-core</artifactId>
+        <version>1.3.7</version>
+      </dependency>
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
-        <version>1.2.16</version>
+        <version>1.3.7</version>
       </dependency>
       <!-- CVE-2026-45292: opentelemetry-api 1.37.0 (transitive of
            co.elastic.clients:elasticsearch-java, shaded into elasticsearch-deps)
@@ -232,12 +265,15 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
-      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
-           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
+      <!-- CVE-2026-43869 + CVE-2026-45112 (unbounded read) + CVE-2026-48586 (zlib data
+           amplification): pin to 0.24.0, the first release carrying all three fixes. No Jena
+           release ships a fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be
+           retired by upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
+           statically references TException. -->
       <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
-        <version>0.23.0</version>
+        <version>0.24.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -529,14 +565,14 @@
         <version>${dropwizard.version}</version>
       </dependency>
 
-      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.15.x
-           (pulls client_java 1.3.10); leaving this at 1.3.6 splits the prometheus-metrics
-           family so the 1.3.10 exposition layer calls config APIs absent in 1.3.6
+      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.16.x
+           (pulls client_java 1.4.3); a mismatched version splits the prometheus-metrics
+           family so one layer calls config APIs absent in the other
            (NoSuchMethodError at runtime). Drives -core/-config across all modules. -->
       <dependency>
         <groupId>io.prometheus</groupId>
         <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
-        <version>1.3.10</version>
+        <version>1.4.3</version>
       </dependency>
 
 
@@ -648,6 +684,11 @@
         <version>${jackson.version}</version>
       </dependency>
       <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jakarta-jsonp</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
         <version>2.3.0</version>
@@ -717,10 +758,15 @@
         <artifactId>azure-identity</artifactId>
         <version>1.15.2</version>
       </dependency>
+      <!-- Pin all transitive io.netty:* to one patched line via the BOM (netty-codec-http et al.
+           arrive transitively through reactor-netty-http and others). Held on the 4.2.x line
+           because reactor-netty 1.3.x (pinned above) is built against Netty 4.2; 4.2.17.Final is
+           newer than the 4.1.137.Final we previously held, so it still clears the CorsHandler
+           Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.136.Final</version>
+        <version>4.2.17.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -774,28 +820,66 @@
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5</artifactId>
+        <version>5.4.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
         <artifactId>httpcore5-h2</artifactId>
         <version>5.4.3</version>
+      </dependency>
+      <!--
+        Keep this in step with the httpcore5 pin above - Apache releases the two together
+        and mixing lines breaks search. httpclient5 5.5/5.5.2 are built against httpcore5
+        5.3.x; on 5.4.x their I/O reactor dispatchers die silently, leaking connection-pool
+        leases until every request fails with DeadlineTimeoutException. 5.6.4 declares
+        httpcore5 5.4.3 (identical to 5.6.3), so client and core match.
+
+        5.6.3 was the first release outside the CVE-2026-64607 range (affects
+        5.0-alpha1 through 5.6.2: the classic i/o client leaks a connection when a response
+        carries an invalid Content-Encoding). 5.6.4 additionally closes CVE-2026-71290
+        (improper certificate validation: HostnameVerificationPolicy#BUILTIN had no effect on
+        the async TLS upgrade path, so SSL parameters were not applied).
+
+        The 5.6 line enables automatic content decompression in the async client, which the
+        search transports also do - see disableContentCompression() in OpenSearchClient and
+        ElasticSearchClient. Do not drop those when touching this pin.
+      -->
+      <dependency>
+        <groupId>org.apache.httpcomponents.client5</groupId>
+        <artifactId>httpclient5</artifactId>
+        <version>5.6.4</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
         <version>1.26.0</version>
       </dependency>
+      <!-- CVE-2026-75140: quadratic memory in XmlTreeBuilder namespace-map copying lets a
+           deeply nested, uniquely-namespaced XML document exhaust the heap. Vulnerable through
+           1.23.1; the fix (jsoup PR #2556) ships in 1.23.2. jsoup is not declared by any module -
+           it arrives only as a transitive of flexmark-html2md-converter, which declares 1.15.4.
+           That is a soft requirement, so managing it here overrides it. Remove this pin only if
+           flexmark ever ships a release declaring 1.23.2 or newer itself (0.64.8 is its latest). -->
+      <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>1.23.2</version>
+      </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcutil-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
            3.1.5 adds CVE-2026-59889. jsonschema2pojo-core is scope=provided so none of this

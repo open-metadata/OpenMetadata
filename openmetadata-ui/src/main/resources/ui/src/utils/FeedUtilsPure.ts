@@ -12,12 +12,12 @@
  */
 
 import type { AxiosError } from 'axios';
-import type { Operation } from 'fast-json-patch';
-import { isEqual, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import type { Dispatch, SetStateAction } from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { ROUTES } from '../constants/constants';
 import {
   EntityField,
   entityLinkRegEx,
@@ -30,24 +30,14 @@ import {
   teamsLinkRegEx,
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
-import type {
-  EntityTestResultSummaryObject,
-  Thread,
-} from '../generated/entity/feed/thread';
-import { TestCaseStatus, ThreadType } from '../generated/entity/feed/thread';
+import type { EntityTestResultSummaryObject } from '../generated/entity/feed/testCaseResult';
+import { TestCaseStatus } from '../generated/entity/feed/testCaseResult';
 import type { FeedCounts } from '../interface/feed.interface';
-import {
-  deletePostById,
-  deleteThread,
-  getEntityActivityByFqn,
-  getFeedById,
-  updatePost,
-  updateThread,
-} from '../rest/feedsAPI';
+import { getEntityActivityByFqn } from '../rest/activityAPI';
+import { listConversations } from '../rest/conversationsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
-import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
@@ -75,10 +65,9 @@ export const getEntityField = (entityLink: string) => {
 };
 
 /**
- * Helper to check if about field is an EntityReference object (Task entity)
- * vs a string entity link (Thread entity).
+ * Helper to check if about is a Task EntityReference or a Conversation entity link.
  * Task entities have about as EntityReference: { id, type, fullyQualifiedName }
- * Thread entities have about as string: <#E::table::fqn>
+ * Conversations have about as string: <#E::table::fqn>
  */
 export const isEntityReferenceAbout = (
   about: string | { type?: string; fullyQualifiedName?: string } | undefined
@@ -87,7 +76,7 @@ export const isEntityReferenceAbout = (
 };
 
 /**
- * Get entity type from about field, handling both Thread (string) and Task (EntityReference).
+ * Get entity type from a Conversation link or Task EntityReference.
  * @param about - Either a string entity link or an EntityReference object
  * @returns The entity type
  */
@@ -105,7 +94,7 @@ export const getEntityTypeFromAbout = (
 };
 
 /**
- * Get entity FQN from about field, handling both Thread (string) and Task (EntityReference).
+ * Get entity FQN from a Conversation link or Task EntityReference.
  * @param about - Either a string entity link or an EntityReference object
  * @returns The entity fully qualified name
  */
@@ -120,16 +109,6 @@ export const getEntityFQNFromAbout = (
   }
 
   return EntityLink.getEntityFqn(about);
-};
-
-export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
-  const updatedFeedList = feedList.map((feed) => ({
-    ...feed,
-    relativeDay: getRelativeCalendar(feed.updatedAt || 0),
-  }));
-  const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
-
-  return { updatedFeedList, relativeDays };
 };
 
 export const getReplyText = (
@@ -157,9 +136,10 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
   } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
-    return `${document.location.protocol}//${
-      document.location.host
-    }/knowledge-center/${getEncodedFqn(entityFqn)}`;
+    // Articles live under the Context Center; /knowledge-center/<fqn> is not a registered route.
+    return `${document.location.protocol}//${document.location.host}${
+      ROUTES.CONTEXT_CENTER_ARTICLES
+    }/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
@@ -303,20 +283,6 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
   return displayName;
 };
 
-export const getFeedPanelHeaderText = (
-  threadType: ThreadType = ThreadType.Conversation
-) => {
-  switch (threadType) {
-    case ThreadType.Announcement:
-      return t('label.announcement');
-    case ThreadType.Task:
-      return t('label.task');
-    case ThreadType.Conversation:
-    default:
-      return t('label.conversation');
-  }
-};
-
 export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
   const fieldNameLabelMapping = {
     [EntityField.DESCRIPTION]: t('label.description'),
@@ -424,119 +390,6 @@ export const MarkdownToHTMLConverter = new Showdown.Converter({
   simpleLineBreaks: true,
 });
 
-export const getUpdatedThread = (id: string) => {
-  return new Promise<Thread>((resolve, reject) => {
-    getFeedById(id)
-      .then((res) => {
-        if (res.status === 200) {
-          resolve(res.data);
-        } else {
-          reject(res.data);
-        }
-      })
-      .catch((error: AxiosError) => {
-        reject(error);
-      });
-  });
-};
-
-export const deletePost = async (
-  threadId: string,
-  postId: string,
-  isThread: boolean,
-  callback?: (value: SetStateAction<Thread[]>) => void
-) => {
-  if (isThread) {
-    try {
-      const data = await deleteThread(threadId);
-      callback?.((prev) => prev.filter((thread) => thread.id !== data.id));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  } else {
-    try {
-      const deleteResponse = await deletePostById(threadId, postId);
-      if (deleteResponse && callback) {
-        const data = await getUpdatedThread(threadId);
-        callback((pre) => {
-          return pre.map((thread) => {
-            if (thread.id === data.id) {
-              return {
-                ...thread,
-                posts: data.posts && data.posts.slice(-3),
-                postsCount: data.postsCount,
-              };
-            } else {
-              return thread;
-            }
-          });
-        });
-      } else {
-        throw t('server.fetch-updated-conversation-error');
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }
-};
-
-export const updateThreadData = async (
-  threadId: string,
-  postId: string,
-  isThread: boolean,
-  data: Operation[],
-  callback: (value: SetStateAction<Thread[]>) => void
-): Promise<void> => {
-  if (isThread) {
-    try {
-      const res = await updateThread(threadId, data);
-      callback((prevData) => {
-        return prevData.map((thread) => {
-          if (isEqual(threadId, thread.id)) {
-            return {
-              ...thread,
-              reactions: res.reactions,
-              message: res.message,
-              announcement: res?.announcement,
-            };
-          } else {
-            return thread;
-          }
-        });
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  } else {
-    try {
-      const res = await updatePost(threadId, postId, data);
-      callback((prevData) => {
-        return prevData.map((thread) => {
-          if (isEqual(threadId, thread.id)) {
-            const updatedPosts = (thread.posts || []).map((post) => {
-              if (isEqual(postId, post.id)) {
-                return {
-                  ...post,
-                  reactions: res.reactions,
-                  message: res.message,
-                };
-              } else {
-                return post;
-              }
-            });
-
-            return { ...thread, posts: updatedPosts };
-          } else {
-            return thread;
-          }
-        });
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }
-};
-
 export const prepareFeedLink = (
   entityType: string,
   entityFQN: string,
@@ -559,6 +412,20 @@ export const prepareFeedLink = (
   }
 };
 
+/**
+ * The entity tab header has to equal the sum of its two sub-tab badges: All
+ * shows conversations + activity change-events, and Tasks shows the count for
+ * the active filter, which defaults to open. Counting every task here — closed
+ * ones included — made the header exceed the sub-tabs by the number of
+ * non-open tasks on any entity with a resolved task.
+ */
+export const getFeedTotalCount = ({
+  conversationCount,
+  activityCount,
+  openTaskCount,
+}: Pick<FeedCounts, 'conversationCount' | 'activityCount' | 'openTaskCount'>) =>
+  conversationCount + activityCount + openTaskCount;
+
 export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
@@ -577,28 +444,39 @@ export const getFeedCounts = async (
       return;
     }
 
-    const [activityRes, taskCounts] = await Promise.all([
+    const [conversations, activityRes, taskCounts] = await Promise.all([
+      listConversations({
+        entityLink: getEntityFeedLink(entityType, entityFQN),
+        limit: 1,
+      }),
       getEntityActivityByFqn(entityType, entityFQN, {
         days: 30,
-        limit: 100,
+        limit: 0,
         domain,
       }),
       getTaskCounts({ aboutEntity: entityFQN, domain }),
     ]);
 
-    const activityCount = activityRes?.data?.length ?? 0;
+    const conversationCount = conversations.paging.total ?? 0;
+    const mentionCount = 0;
+    const activityCount = activityRes?.paging?.total ?? 0;
 
     const openTaskCount = taskCounts.open ?? 0;
     const closedTaskCount = taskCounts.completed ?? 0;
     const totalTasksCount = taskCounts.total ?? 0;
 
     feedCountCallback({
-      conversationCount: activityCount,
+      conversationCount,
+      activityCount,
       totalTasksCount,
       openTaskCount,
       closedTaskCount,
-      totalCount: activityCount + totalTasksCount,
-      mentionCount: 0,
+      totalCount: getFeedTotalCount({
+        conversationCount,
+        activityCount,
+        openTaskCount,
+      }),
+      mentionCount,
     });
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
@@ -622,7 +500,11 @@ export const fetchEntityTaskCountsInto = async (
         openTaskCount,
         closedTaskCount,
         totalTasksCount,
-        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+        totalCount: getFeedTotalCount({
+          conversationCount: prev.conversationCount ?? 0,
+          activityCount: prev.activityCount ?? 0,
+          openTaskCount,
+        }),
       };
     });
   } catch (err) {
@@ -637,18 +519,33 @@ export const fetchEntityActivityCountInto = async (
   domain?: string
 ) => {
   try {
-    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
-      days: 30,
-      limit: 0,
-      domain,
-    });
+    // Conversations and activity change-events live in separate stores; the
+    // entity feed shows both, so the count must include both.
+    const [activityRes, conversations] = await Promise.all([
+      getEntityActivityByFqn(entityType, entityFqn, {
+        days: 30,
+        limit: 0,
+        domain,
+      }),
+      listConversations({
+        entityLink: getEntityFeedLink(entityType, entityFqn),
+        limit: 1,
+      }),
+    ]);
     setFeedCount((prev) => {
-      const conversationCount = activityRes?.paging?.total ?? 0;
+      const activityCount = activityRes?.paging?.total ?? 0;
+      const conversationCount = conversations.paging.total ?? 0;
 
       return {
         ...prev,
+        activityCount,
         conversationCount,
-        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+        mentionCount: 0,
+        totalCount: getFeedTotalCount({
+          conversationCount,
+          activityCount,
+          openTaskCount: prev.openTaskCount ?? 0,
+        }),
       };
     });
   } catch (err) {

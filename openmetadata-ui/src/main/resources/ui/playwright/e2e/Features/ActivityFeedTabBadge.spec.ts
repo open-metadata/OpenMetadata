@@ -14,6 +14,7 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
@@ -75,7 +76,23 @@ async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('open-tasks').click();
   await tasksListResponse;
 }
-test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
+const waitForMentionedConversationResponse = (
+  page: import('@playwright/test').Page
+) =>
+  page.waitForResponse((response) => {
+    if (
+      response.request().method() !== 'GET' ||
+      !response.url().includes('/api/v1/conversations')
+    ) {
+      return false;
+    }
+
+    return (
+      new URL(response.url()).searchParams.get('filterType') === 'MENTIONS'
+    );
+  });
+
+test.describe('ActivityFeedTab — task filter badge, placeholder and mentions', () => {
   const table = new TableClass();
   const assigneeUser = new UserClass();
 
@@ -156,6 +173,152 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
       await expect(page.getByText(/Nothing Closed Yet/i)).not.toBeVisible();
     } finally {
       await emptyTable.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('entity tab count equals the sum of the All and Tasks badges', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+
+    // Own table: the sibling tests resolve tasks on the shared one and chromium
+    // runs fullyParallel, so sharing it would make these exact counts depend on
+    // test order.
+    const countedTable = new TableClass();
+
+    try {
+      await countedTable.create(apiContext);
+
+      const fqn = countedTable.entityResponseData?.fullyQualifiedName as string;
+      const assignee = assigneeUser.responseData.name;
+
+      // One open task and one resolved task. The resolved one is the whole
+      // point: the header counted every task while the Tasks badge counts only
+      // the open ones, so with no closed task the two agree by accident.
+      await createOpenTask(apiContext, fqn, assignee);
+      const resolvedTask = await createOpenTask(apiContext, fqn, assignee);
+      await resolveTask(apiContext, resolvedTask.id);
+
+      await countedTable.visitEntityPage(page);
+
+      const headerCount = page
+        .getByRole('tab', { name: /activity feeds & tasks/i })
+        .getByTestId('count');
+
+      await expect(headerCount).toBeVisible();
+
+      await navigateToTasksPanel(page);
+
+      const allBadge = page
+        .getByTestId('left-panel-all-count')
+        .getByTestId('filter-count');
+
+      await expect(allBadge).toBeVisible();
+      // Open filter is the default, and exactly one task is still open.
+      await expect(badge(page)).toHaveText('1', { timeout: 30_000 });
+
+      // Poll the difference: all three numbers land after first paint, so a
+      // single read races the count request and compares stale values. A
+      // non-zero delta is the defect — the header counting the resolved task
+      // that neither sub-tab badge includes.
+      await expect
+        .poll(
+          async () => {
+            const [header, all, tasks] = await Promise.all([
+              headerCount.innerText(),
+              allBadge.innerText(),
+              badge(page).innerText(),
+            ]);
+
+            return (
+              Number(header.trim()) -
+              (Number(all.trim()) + Number(tasks.trim()))
+            );
+          },
+          { timeout: 30_000 }
+        )
+        .toBe(0);
+    } finally {
+      await countedTable.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Mentions sub-tab lists only the conversations that mention the user', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+
+    // Own table: the assertions below are exact card counts and chromium runs
+    // fullyParallel, so sharing the describe-level table would make them depend
+    // on test order.
+    const mentionTable = new TableClass();
+
+    try {
+      await mentionTable.create(apiContext);
+
+      const fqn = mentionTable.entityResponseData?.fullyQualifiedName as string;
+      const assignee = assigneeUser.responseData.name;
+
+      // A task about the entity: it must stay out of the Mentions list, which
+      // reads conversations, not tasks.
+      await createOpenTask(apiContext, fqn, assignee);
+      await createConversationThread(
+        apiContext,
+        mentionTable,
+        'A conversation nobody is mentioned in'
+      );
+      await createConversationThread(
+        apiContext,
+        mentionTable,
+        'Please take a look <#E::user::admin>'
+      );
+
+      await mentionTable.visitEntityPage(page);
+      await navigateToTasksPanel(page);
+
+      // My Tasks lists the tasks about the entity.
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+
+      const mentionsResponse = waitForMentionedConversationResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsResponse;
+
+      // The list has to actually switch — only the conversation that mentions
+      // the logged-in user renders, and no task card survives the switch.
+      const mentionCards = page
+        .locator('#center-container')
+        .getByTestId('feed-card-v2-sidebar');
+
+      await expect(mentionCards).toHaveCount(1);
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(0);
+      await expect(
+        page.getByTestId('no-data-placeholder-container')
+      ).toHaveCount(0);
+
+      // Switching back restores the task list — guards the paging-cursor reset.
+      const myTasksResponse = waitForTaskListResponse(page);
+      await page.getByTestId('my-tasks-toggle').click();
+      await myTasksResponse;
+
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+
+      // Landing on the mentions URL directly used to show the empty placeholder.
+      const mentionsAgain = waitForMentionedConversationResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsAgain;
+
+      await page.reload();
+      await waitForPageLoaded(page);
+
+      await expect(mentionCards).toHaveCount(1);
+    } finally {
+      await mentionTable.delete(apiContext);
       await afterAction();
     }
   });

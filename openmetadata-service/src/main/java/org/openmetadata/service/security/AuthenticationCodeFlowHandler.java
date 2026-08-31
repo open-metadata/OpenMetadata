@@ -121,6 +121,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           ClientAuthenticationMethod.PRIVATE_KEY_JWT,
           ClientAuthenticationMethod.NONE);
 
+  // OIDC spec error codes meaning "silent auth not possible; interactive login required"
+  private static final Set<String> SILENT_AUTH_ERRORS =
+      Set.of(
+          "login_required",
+          "interaction_required",
+          "consent_required",
+          "account_selection_required");
+
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
@@ -450,10 +458,16 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   // Callback
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
-      UserSession pendingSession =
-          sessionService
-              .getPendingSession(req, resp)
-              .orElseThrow(() -> new TechnicalException("No pending session found for callback"));
+      Optional<UserSession> maybePendingSession = sessionService.getPendingSession(req, resp);
+      if (maybePendingSession.isEmpty()) {
+        // The cookie points at no live pending session (invalidated, restarted, or already
+        // consumed). A 500 here strands the browser in a login loop; getPendingSession has
+        // already cleared the stale cookie, so route the user to interactive signin instead.
+        LOG.warn("No pending session found for callback, redirecting to signin");
+        resp.sendRedirect(serverUrl + "/signin");
+        return;
+      }
+      UserSession pendingSession = maybePendingSession.get();
 
       LOG.debug(
           "Performing Auth Callback For User Session: {} ",
@@ -464,6 +478,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           AuthenticationResponseParser.parse(new URI(computedCallbackUrl), parameters);
 
       if (response instanceof AuthenticationErrorResponse authenticationErrorResponse) {
+        // login_required & friends are the IdP's spec-defined "silent auth not possible"
+        // replies (e.g. prompt=none with no IdP session). Fall back to interactive signin
+        // instead of a 500 the frontend cannot recover from.
+        String errorCode = authenticationErrorResponse.getErrorObject().getCode();
+        if (SILENT_AUTH_ERRORS.contains(errorCode)) {
+          LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
+          resp.sendRedirect(serverUrl + "/signin");
+          return;
+        }
         LOG.error(
             "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
         throw new TechnicalException("Bad authentication response");

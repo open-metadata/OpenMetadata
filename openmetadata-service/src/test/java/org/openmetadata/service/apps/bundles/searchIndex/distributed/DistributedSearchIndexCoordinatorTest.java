@@ -56,16 +56,16 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.EntityStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.AggregatedStatsRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.EntityStatsRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -1319,6 +1319,147 @@ class DistributedSearchIndexCoordinatorTest {
         coordinator.getPartitionStartCursor(jobId, "table", 10000L),
         "Cache should be evicted once the job reaches a terminal state — long-running"
             + " servers must not retain cursor blobs across many reindex runs.");
+  }
+
+  @Test
+  void testCheckAndUpdateJobCompletion_MovesToPromotingNotCompleted() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString()))
+        .thenReturn(createJobRecord(jobId, IndexJobStatus.RUNNING, null, "{}"));
+    when(partitionDAO.findByJobIdAndStatus(eq(jobId.toString()), anyString()))
+        .thenReturn(List.of());
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    // All partitions are done, but the job must go to PROMOTING (non-terminal), NOT COMPLETED — the
+    // coordinator/pod must stay alive for the promotion sweep. Pre-fix this wrote COMPLETED and the
+    // pod could be torn down mid-promotion, orphaning the tail of entities on stale pre-reindex
+    // indexes.
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.PROMOTING.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+    verify(jobDAO, never())
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void testMarkPromotionComplete_PromotingToCompleted() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString()))
+        .thenReturn(createJobRecord(jobId, IndexJobStatus.PROMOTING, null, "{}"));
+    when(partitionDAO.findByJobIdAndStatus(eq(jobId.toString()), anyString()))
+        .thenReturn(List.of());
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
+
+    coordinator.markPromotionComplete(jobId, true);
+
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void testMarkPromotionComplete_NotAllPromotedGivesCompletedWithErrors() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString()))
+        .thenReturn(createJobRecord(jobId, IndexJobStatus.PROMOTING, null, "{}"));
+    when(partitionDAO.findByJobIdAndStatus(eq(jobId.toString()), anyString()))
+        .thenReturn(List.of());
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
+
+    coordinator.markPromotionComplete(jobId, false);
+
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED_WITH_ERRORS.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void testMarkPromotionComplete_NoOpWhenNotPromoting() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString()))
+        .thenReturn(createJobRecord(jobId, IndexJobStatus.RUNNING, null, "{}"));
+
+    coordinator.markPromotionComplete(jobId, true);
+
+    // Only a PROMOTING job is terminalized; a RUNNING job is left untouched (idempotent guard).
+    verify(jobDAO, never())
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void testMarkOrphanedJobCompletedWithErrors_TerminalizesPromotingJob() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString()))
+        .thenReturn(createJobRecord(jobId, IndexJobStatus.PROMOTING, null, "{}"));
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
+
+    coordinator.markOrphanedJobCompletedWithErrors(jobId);
+
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED_WITH_ERRORS.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
   }
 
   @Test

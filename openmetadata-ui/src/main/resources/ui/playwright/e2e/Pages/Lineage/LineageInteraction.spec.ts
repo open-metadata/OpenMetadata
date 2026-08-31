@@ -34,6 +34,7 @@ import {
   editLineage,
   editLineageClick,
   fitToScreen,
+  removeColumnLineage,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
@@ -69,11 +70,13 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            type: 'domain',
-            id: EntityDataClass.domain1.responseData.id,
-          },
+          path: '/domains',
+          value: [
+            {
+              type: 'domain',
+              id: EntityDataClass.domain1.responseData.id,
+            },
+          ],
         },
       ],
     });
@@ -692,6 +695,135 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       await editLineageClick(page);
+    });
+  });
+
+  test.describe('Edge removal persists across refresh', () => {
+    // Focused coverage for a bug where removing a column-level lineage
+    // edge only mutated local React state (setEntityLineage /
+    // removeEdgeById / setColumnsHavingLineage) while the PUT
+    // /api/v1/lineage silently sent the unchanged columnsLineage array
+    // back to the server — so the removed edge reappeared on refresh.
+    // The pattern here is: act via UI → reload → re-assert against a
+    // fresh /api/v1/lineage/getLineage response.
+    const sourceTable = new TableClass();
+    const targetTable = new TableClass();
+
+    let sourceFqn: string;
+    let targetFqn: string;
+    let sourceCol: string;
+    let targetCol: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await Promise.all([
+        sourceTable.create(apiContext),
+        targetTable.create(apiContext),
+      ]);
+
+      sourceFqn = get(sourceTable, 'entityResponseData.fullyQualifiedName');
+      targetFqn = get(targetTable, 'entityResponseData.fullyQualifiedName');
+      sourceCol = `${sourceFqn}.${get(
+        sourceTable,
+        'entityResponseData.columns[0].name'
+      )}`;
+      targetCol = `${targetFqn}.${get(
+        targetTable,
+        'entityResponseData.columns[0].name'
+      )}`;
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        sourceTable.delete(apiContext),
+        targetTable.delete(apiContext),
+      ]);
+      await afterAction();
+    });
+
+    test('Node-to-node edge deletion persists across a page refresh', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+
+      try {
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: sourceTable.entityResponseData.id, type: 'table' },
+          { id: targetTable.entityResponseData.id, type: 'table' }
+        );
+
+        await sourceTable.visitEntityPage(page);
+        await visitLineageTab(page);
+        await fitToScreen(page);
+
+        await expect(
+          page.getByTestId(`edge-${sourceFqn}-${targetFqn}`)
+        ).toBeVisible();
+
+        await editLineage(page);
+        await clickEdgeBetweenNodes(page, sourceTable, targetTable, false);
+
+        await page.getByTestId('add-pipeline').click();
+        await page.getByTestId('remove-edge-button').click();
+
+        const deleteRes = page.waitForResponse('/api/v1/lineage/**');
+        await page.getByRole('button', { name: /confirm/i }).click();
+        await deleteRes;
+
+        // Reload to prove the server actually dropped the edge, not just
+        // that local state was optimistically updated.
+        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        await page.reload();
+        await lineageRes;
+
+        await expect(
+          page.getByTestId(`edge-${sourceFqn}-${targetFqn}`)
+        ).not.toBeVisible();
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test('Column-level edge deletion persists across a page refresh', async ({
+      page,
+    }) => {
+      // Regression: before the fix in EntityLineageEdgeUtils.getColumnLineageData,
+      // this assertion would flip back to visible after the reload
+      // because the PUT body still contained the removed column pair.
+      const { apiContext, afterAction } = await getApiContext(page);
+
+      try {
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: sourceTable.entityResponseData.id, type: 'table' },
+          { id: targetTable.entityResponseData.id, type: 'table' },
+          [{ fromColumns: [sourceCol], toColumn: targetCol }]
+        );
+
+        await sourceTable.visitEntityPage(page);
+        await visitLineageTab(page);
+        await activateColumnLayer(page);
+        await fitToScreen(page);
+
+        await expect(
+          page.getByTestId(`column-edge-${sourceCol}-${targetCol}`)
+        ).toBeVisible();
+
+        await editLineageClick(page);
+
+        // removeColumnLineage reloads and re-asserts against a fresh
+        // getLineage response internally — that reload is the assertion
+        // that would have failed before the fix.
+        await removeColumnLineage(page, sourceCol, targetCol);
+      } finally {
+        await afterAction();
+      }
     });
   });
 

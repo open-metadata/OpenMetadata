@@ -13,8 +13,8 @@
 
 import { OwnerType } from '../../../enums/user.enum';
 import {
+  ConfigType,
   CreateIngestionPipeline,
-  FluffyType as ConfigType,
   PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';

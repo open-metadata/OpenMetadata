@@ -40,7 +40,9 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { Folder } from '../../../generated/entity/data/folder';
+import { queryClient } from '../../../queryClient';
 import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
+import { CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
@@ -51,6 +53,7 @@ import {
 } from './DocumentsView.interface';
 
 const FOLDERS_SCROLL_THRESHOLD = 100;
+const FOLDER_LABEL_KEY = 'label.folder';
 
 const DocumentFolderView = (
   {
@@ -271,12 +274,15 @@ const DocumentFolderView = (
     try {
       setIsDeletingFolder(true);
       await deleteFolder(folderToDelete.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
       onFoldersChanged();
       if (selectedFolderId === folderToDelete.id) {
         onSelectFolder(undefined);
       }
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.folder') })
+        t('server.entity-deleted-successfully', { entity: t(FOLDER_LABEL_KEY) })
       );
       setFolderToDelete(undefined);
     } catch (err) {
@@ -315,7 +321,7 @@ const DocumentFolderView = (
             </div>
             <div>
               <Typography size="text-md" weight="semibold">
-                {t('label.folder')}
+                {t(FOLDER_LABEL_KEY)}
               </Typography>
               <Typography
                 className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
@@ -337,7 +343,7 @@ const DocumentFolderView = (
               data-testid="add-folder-btn"
               icon={Plus}
               size="sm"
-              tooltip={t('label.add-entity', { entity: t('label.folder') })}
+              tooltip={t('label.add-entity', { entity: t(FOLDER_LABEL_KEY) })}
               onClick={() => setIsCreateModalOpen(true)}
             />
           )}
@@ -348,14 +354,17 @@ const DocumentFolderView = (
           onScroll={handleFoldersScroll}>
           {isLoading ? (
             <div className="tw:flex tw:flex-col tw:gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton
-                  height="32px"
-                  key={i}
-                  variant="rounded"
-                  width="100%"
-                />
-              ))}
+              {/* Static-length skeleton placeholder, never reordered */}
+              {Array.from({ length: 4 }, (_, i) => `folder-skeleton-${i}`).map(
+                (skeletonKey) => (
+                  <Skeleton
+                    height="32px"
+                    key={skeletonKey}
+                    variant="rounded"
+                    width="100%"
+                  />
+                )
+              )}
             </div>
           ) : (
             <Tree
@@ -434,7 +443,7 @@ const DocumentFolderView = (
 
                           {canDelete && (
                             <ButtonUtility
-                              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
+                              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
                               color="tertiary"
                               data-testid={`delete-folder-btn-${folder.id}`}
                               icon={<TrashIcon height={18} width={18} />}
@@ -459,10 +468,14 @@ const DocumentFolderView = (
                           className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
                           showExpandIcon={false}>
                           <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
-                            {Array.from({ length: 2 }).map((_, i) => (
+                            {/* Static-length skeleton placeholder, never reordered */}
+                            {Array.from(
+                              { length: 2 },
+                              (_, i) => `folder-item-skeleton-${i}`
+                            ).map((skeletonKey) => (
                               <Skeleton
                                 height="20px"
-                                key={i}
+                                key={skeletonKey}
                                 variant="rounded"
                                 width="100%"
                               />

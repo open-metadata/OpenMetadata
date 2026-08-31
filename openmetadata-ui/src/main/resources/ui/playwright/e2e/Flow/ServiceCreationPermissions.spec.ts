@@ -17,6 +17,7 @@ import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -30,6 +31,7 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
   getAgentCard,
@@ -111,11 +113,35 @@ const visitAgentCard = async (page: Page) => {
 
 const openPipelineActions = async (page: Page) => {
   const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
-
   await actionButton.waitFor();
-  await actionButton.click();
 
-  await page.getByTestId('actions-dropdown').waitFor();
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
+  // every render, but the async per-FQN permission fetch can still be in
+  // flight when the menu is first opened — some items (edit-gated: redeploy,
+  // edit, pause/resume) are briefly absent. Close and reopen until the
+  // permission-gated items are present instead of polling a single stale
+  // open instance.
+  await expect
+    .poll(
+      async () => {
+        await actionButton.click();
+        await actionsDropdown.waitFor();
+        const hasReDeploy = await actionsDropdown
+          .getByTestId('re-deploy-button')
+          .isVisible()
+          .catch(() => false);
+        if (!hasReDeploy) {
+          await page.keyboard.press('Escape');
+          await actionsDropdown.waitFor({ state: 'hidden' });
+        }
+
+        return hasReDeploy;
+      },
+      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
+    )
+    .toBe(true);
 };
 
 test.describe(
@@ -329,6 +355,7 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
@@ -645,8 +672,12 @@ test.describe(
     }) => {
       await openPipelineActions(page);
 
-      await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
       await expect(
         getAgentCard(page, ingestionPipelineName).getByTestId(
           'run-agent-button'

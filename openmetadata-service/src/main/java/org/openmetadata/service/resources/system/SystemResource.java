@@ -1,12 +1,14 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -45,8 +47,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -58,13 +63,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
+import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
@@ -73,6 +84,7 @@ import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
@@ -91,8 +103,10 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
@@ -121,6 +135,17 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+
+  // Settings that hold no secrets and that the UI must read to render entity pages for every
+  // authenticated user — glossary term relation types populate the Related Terms dropdown and the
+  // ontology explorer legend. Creating, updating and deleting them stays admin-only.
+  private static final Set<String> USER_READABLE_SETTINGS =
+      Set.of(
+          LINEAGE_SETTINGS.value().toLowerCase(Locale.ROOT),
+          GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT),
+          // appConfiguration is read by every user at boot (fallback-chain resolution),
+          // not just admins; PATCH remains admin-only.
+          APP_CONFIGURATION.value().toLowerCase(Locale.ROOT));
   private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
       Executors.newFixedThreadPool(
           2,
@@ -136,7 +161,6 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
-  private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -153,10 +177,6 @@ public class SystemResource {
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
-    this.isNlqEnabled =
-        config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
-            ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
-            : false;
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -264,7 +284,7 @@ public class SystemResource {
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
+    if (!isUserReadableSetting(name)) {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
@@ -275,7 +295,9 @@ public class SystemResource {
   @Operation(
       operationId = "listGlossaryTermRelationTypes",
       summary = "List glossary term relation types",
-      description = "Get a paginated list of configured glossary term relation types.")
+      description =
+          "Get a paginated list of configured glossary term relation types. Readable by any "
+              + "authenticated user; only admins can create, update or delete relation types.")
   public ResultList<GlossaryTermRelationType> listGlossaryTermRelationTypes(
       @Context SecurityContext securityContext,
       @Parameter(description = "Limit records. (1 to 100, default = 15)")
@@ -290,7 +312,6 @@ public class SystemResource {
           @Min(0)
           @Max(1000000)
           int offset) {
-    authorizer.authorizeAdmin(securityContext);
     List<GlossaryTermRelationType> relationTypes =
         SettingsCache.getSetting(
                 GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class)
@@ -383,7 +404,7 @@ public class SystemResource {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     int usageCount =
-        glossaryTermRepository.getRelationTypeUsageCounts().getOrDefault(existing.getName(), 0);
+        relationTypeUsage(existing.getName(), glossaryTermRepository.getRelationTypeUsageCounts());
     if (usageCount > 0) {
       throw new SystemSettingsException(
           String.format(
@@ -454,7 +475,19 @@ public class SystemResource {
       })
   public Response checkSearchSettings(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return Response.ok().entity(isNlqEnabled).build();
+    return Response.ok().entity(isNaturalLanguageSearchEnabled()).build();
+  }
+
+  /**
+   * Natural language search is served by a distribution-specific endpoint, not by OpenMetadata, so
+   * this reflects the operator's {@code elasticsearch.naturalLanguageSearch.enabled} setting only.
+   * OpenMetadata does not expose that setting, leaving it disabled.
+   */
+  private boolean isNaturalLanguageSearchEnabled() {
+    ElasticSearchConfiguration searchConfig = applicationConfig.getElasticSearchConfiguration();
+    NaturalLanguageSearchConfiguration nlqConfig =
+        searchConfig != null ? searchConfig.getNaturalLanguageSearch() : null;
+    return nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled());
   }
 
   @GET
@@ -614,6 +647,7 @@ public class SystemResource {
       }
     }
 
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
     if (GLOSSARY_TERM_RELATION_SETTINGS
         .value()
         .equalsIgnoreCase(settingName.getConfigType().toString())) {
@@ -623,11 +657,67 @@ public class SystemResource {
       GlossaryTermRelationSettingsUtil.validateUniqueNames(relationSettings);
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
+      relationshipTypeUpdate = relationshipTypeUpdate(relationSettings);
+    }
+    if (SPARQL_QUERY_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SparqlQuerySettings querySettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), SparqlQuerySettings.class);
+      validateSparqlQuerySettings(querySettings);
+      settingName.setConfigValue(querySettings);
     }
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
 
     return response;
+  }
+
+  private LegacyRelationshipTypeUpdate relationshipTypeUpdate(
+      GlossaryTermRelationSettings updated) {
+    return new LegacyRelationshipTypeUpdate(previousRelationshipTypeSettings(), updated);
+  }
+
+  private GlossaryTermRelationSettings previousRelationshipTypeSettings() {
+    Settings previousSetting =
+        systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    return previousSetting == null
+        ? new GlossaryTermRelationSettings().withRelationTypes(List.of())
+        : JsonUtils.convertValue(
+            previousSetting.getConfigValue(), GlossaryTermRelationSettings.class);
+  }
+
+  private static LegacyRelationshipTypeUpdate patchedRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, Response response) {
+    LegacyRelationshipTypeUpdate update = null;
+    if (previous != null && response.getEntity() instanceof Settings settings) {
+      GlossaryTermRelationSettings updated =
+          JsonUtils.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
+      update = new LegacyRelationshipTypeUpdate(previous, updated);
+    }
+    return update;
+  }
+
+  private static boolean isRelationshipTypeSetting(String settingName) {
+    return GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName);
+  }
+
+  private static void synchronizeRelationshipTypes(
+      LegacyRelationshipTypeUpdate update,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Response.Status.Family responseFamily) {
+    if (update != null && responseFamily == Response.Status.Family.SUCCESSFUL) {
+      RelationshipTypeRepository repository =
+          (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+      LegacyRelationshipTypeSynchronizer synchronizer =
+          new LegacyRelationshipTypeSynchronizer(repository);
+      synchronizer.synchronize(
+          update.previous(),
+          update.updated(),
+          uriInfo,
+          securityContext.getUserPrincipal().getName());
+    }
   }
 
   @PUT
@@ -737,7 +827,32 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.patchSetting(settingName, patch);
+    GlossaryTermRelationSettings previous =
+        isRelationshipTypeSetting(settingName) ? previousRelationshipTypeSettings() : null;
+    Response response = patchSetting(settingName, patch);
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate =
+        patchedRelationshipTypeUpdate(previous, response);
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
+    return response;
+  }
+
+  private Response patchSetting(String settingName, JsonPatch patch) {
+    Response response =
+        isRelationshipTypeSetting(settingName)
+            ? systemRepository.patchGlossaryTermRelationSettings(
+                patch, this::preparePatchedRelationshipTypeSettings)
+            : systemRepository.patchSetting(settingName, patch);
+    return response;
+  }
+
+  private GlossaryTermRelationSettings preparePatchedRelationshipTypeSettings(
+      GlossaryTermRelationSettings updated) {
+    normalizeGlossaryTermRelationSettings(updated);
+    Settings settings =
+        new Settings().withConfigType(GLOSSARY_TERM_RELATION_SETTINGS).withConfigValue(updated);
+    validateGlossaryTermRelationSettingsUpdate(settings);
+    return updated;
   }
 
   @GET
@@ -906,6 +1021,9 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      SecurityConfiguration originalConfig =
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+      preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
       // Auto-populate publicKeyUrls for OIDC confidential clients before saving
@@ -931,7 +1049,7 @@ public class SystemResource {
       // Reload entire security system
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
-      return Response.ok(securityConfig).build();
+      return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
@@ -977,6 +1095,7 @@ public class SystemResource {
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+      preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
@@ -1025,6 +1144,46 @@ public class SystemResource {
       LOG.error("Failed to patch security configuration", e);
       throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
     }
+  }
+
+  static void preserveMaskedSecuritySecrets(
+      SecurityConfiguration updated, SecurityConfiguration original) {
+    if (updated != null && original != null) {
+      AuthenticationConfiguration updatedAuthentication = updated.getAuthenticationConfiguration();
+      AuthenticationConfiguration originalAuthentication =
+          original.getAuthenticationConfiguration();
+      if (updatedAuthentication != null && originalAuthentication != null) {
+        preserveOidcSecret(updatedAuthentication, originalAuthentication);
+        preserveLdapPassword(updatedAuthentication, originalAuthentication);
+      }
+    }
+  }
+
+  private static void preserveOidcSecret(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    OidcClientConfig updatedOidc = updated.getOidcConfiguration();
+    OidcClientConfig originalOidc = original.getOidcConfiguration();
+    if (updatedOidc != null && originalOidc != null) {
+      updatedOidc.setSecret(restoredSecret(updatedOidc.getSecret(), originalOidc.getSecret()));
+    }
+  }
+
+  private static void preserveLdapPassword(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    LdapConfiguration updatedLdap = updated.getLdapConfiguration();
+    LdapConfiguration originalLdap = original.getLdapConfiguration();
+    if (updatedLdap != null && originalLdap != null) {
+      updatedLdap.setDnAdminPassword(
+          restoredSecret(updatedLdap.getDnAdminPassword(), originalLdap.getDnAdminPassword()));
+    }
+  }
+
+  private static String restoredSecret(String replacement, String original) {
+    String restored = replacement;
+    if (restored == null || PasswordEntityMasker.PASSWORD_MASK.equals(restored)) {
+      restored = original;
+    }
+    return restored;
   }
 
   @POST
@@ -1420,23 +1579,73 @@ public class SystemResource {
 
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
+    List<RelationshipTypeUsage> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
 
     List<String> inUseRelationTypes =
         removedRelationTypes.stream()
-            .filter(name -> usageCounts.getOrDefault(name, 0) > 0)
+            .filter(name -> relationTypeUsage(name, usageCounts) > 0)
             .toList();
 
     if (!inUseRelationTypes.isEmpty()) {
       StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
       for (String relationTypeName : inUseRelationTypes) {
-        int count = usageCounts.get(relationTypeName);
+        int count = relationTypeUsage(relationTypeName, usageCounts);
         message.append(
             String.format("%s (%d usage%s), ", relationTypeName, count, count == 1 ? "" : "s"));
       }
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+  }
+
+  private static int relationTypeUsage(
+      String relationTypeName, List<RelationshipTypeUsage> usageCounts) {
+    return usageCounts.stream()
+        .filter(usage -> relationTypeName.equals(usage.getRelationshipType().getName()))
+        .mapToInt(RelationshipTypeUsage::getCount)
+        .findFirst()
+        .orElse(0);
+  }
+
+  private void validateSparqlQuerySettings(SparqlQuerySettings settings) {
+    if (settings == null || settings.getQueryTemplates() == null) {
+      throw new SystemSettingsException("SPARQL query templates are required");
+    }
+    if (settings.getQueryTemplates().size() > 50) {
+      throw new SystemSettingsException("At most 50 SPARQL query templates are allowed");
+    }
+
+    Set<UUID> queryIds = new HashSet<>();
+    for (SavedSparqlQuery query : settings.getQueryTemplates()) {
+      if (query == null || query.getId() == null || !queryIds.add(query.getId())) {
+        throw new SystemSettingsException("SPARQL query template IDs must be present and unique");
+      }
+      String name = query.getName() == null ? "" : query.getName().trim();
+      if (name.isEmpty() || name.length() > 256) {
+        throw new SystemSettingsException(
+            "SPARQL query template names must contain 1 to 256 characters");
+      }
+      String queryBody = query.getQuery() == null ? "" : query.getQuery().trim();
+      if (queryBody.isEmpty() || queryBody.length() > 100000) {
+        throw new SystemSettingsException(
+            "SPARQL query template bodies must contain 1 to 100000 characters");
+      }
+      if (query.getFormat() == null
+          || query.getInference() == null
+          || query.getSavedAt() == null
+          || query.getSavedAt() < 0) {
+        throw new SystemSettingsException("SPARQL query template metadata is incomplete");
+      }
+      query.setName(name);
+    }
+  }
+
+  private void normalizeGlossaryTermRelationSettings(GlossaryTermRelationSettings settings) {
+    GlossaryTermRelationSettingsUtil.normalize(settings);
+  }
+
+  private boolean isUserReadableSetting(String name) {
+    return USER_READABLE_SETTINGS.contains(name.toLowerCase(Locale.ROOT));
   }
 
   private GlossaryTermRelationSettings getGlossaryTermRelationSettings() {
@@ -1458,7 +1667,9 @@ public class SystemResource {
         }
       }
     }
-
     throw new NotFoundException(String.format("Relation type '%s' was not found.", name));
   }
+
+  private record LegacyRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, GlossaryTermRelationSettings updated) {}
 }

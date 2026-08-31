@@ -239,9 +239,9 @@ class AirflowLineageRunner:
         """
         logger.info("Attempting to collect pipeline status via Airflow REST API")
         try:
-            from datetime import datetime  # noqa: PLC0415
+            from datetime import datetime
 
-            import requests  # noqa: PLC0415
+            import requests
 
             # Get authentication credentials from environment or config
             airflow_username = os.getenv("AIRFLOW_USERNAME", "admin")
@@ -275,7 +275,7 @@ class AirflowLineageRunner:
                     logger.warning(f"JWT response: {auth_response.text[:200]}")
             except Exception as auth_error:
                 logger.warning(f"JWT authentication failed with exception: {auth_error}")
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 logger.warning(f"Auth traceback: {traceback.format_exc()}")
 
@@ -288,7 +288,7 @@ class AirflowLineageRunner:
                 logger.info("Using JWT token for authentication")
             else:
                 # Fallback to basic auth
-                import base64  # noqa: PLC0415
+                import base64
 
                 credentials = base64.b64encode(f"{airflow_username}:{airflow_password}".encode()).decode()
                 headers = {
@@ -419,7 +419,7 @@ class AirflowLineageRunner:
 
         except Exception as e:
             logger.error(f"Error collecting pipeline status via API: {e}")
-            import traceback  # noqa: PLC0415
+            import traceback
 
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
@@ -455,7 +455,7 @@ class AirflowLineageRunner:
 
         # Fallback to direct DB access (will likely fail in Airflow 3.x)
         try:
-            from airflow.models import DagRun  # noqa: PLC0415
+            from airflow.models import DagRun
 
             dag_runs = DagRun.find(dag_id=self.dag.dag_id, state=None)
             if not dag_runs:

@@ -26,9 +26,16 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
 
+  // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
+  // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
+  private String sortField;
+  private String sortOrder;
+
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
+  private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
+  private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -36,6 +43,20 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getSortField() {
+    return sortField;
+  }
+
+  public String getSortOrder() {
+    return sortOrder;
+  }
+
+  public ListFilter withSort(String sortField, String sortOrder) {
+    this.sortField = sortField;
+    this.sortOrder = sortOrder;
+    return this;
   }
 
   public String getCondition(String tableName) {
@@ -87,6 +108,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition(tableName));
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getExcludeProviderCondition(tableName));
+    conditions.add(getConnectorTypeCondition(tableName));
     conditions.add(getTaskStatusCondition(tableName));
     conditions.add(getTaskFormTypeCondition(tableName));
     conditions.add(getTaskFormCategoryCondition(tableName));
@@ -102,8 +125,38 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getNameFilterCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
+    conditions.add(getGlossaryIdCondition(tableName));
+    conditions.add(getOntologyChangeSetStateCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
+  }
+
+  private String getGlossaryIdCondition(String tableName) {
+    String glossaryId = queryParams.get("glossaryId");
+    String condition = "";
+    if (!nullOrEmpty(glossaryId) && tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)) {
+      queryParams.put("glossaryIdParam", glossaryId);
+      condition = qualifyColumn(tableName, "glossaryId") + " = :glossaryIdParam";
+    }
+    return condition;
+  }
+
+  private String getOntologyChangeSetStateCondition(String tableName) {
+    String state = queryParams.get("state");
+    String condition = "";
+    if (!nullOrEmpty(state) && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      queryParams.put("ontologyChangeSetStateParam", state);
+      condition = qualifyColumn(tableName, "state") + " = :ontologyChangeSetStateParam";
+    }
+    return condition;
+  }
+
+  private static String qualifyColumn(String tableName, String column) {
+    return nullOrEmpty(tableName) ? column : tableName + '.' + column;
+  }
+
+  private static boolean tableMatches(String tableName, String expectedTable) {
+    return !nullOrEmpty(tableName) && tableName.contains(expectedTable);
   }
 
   public ResourceContext getResourceContext(String entityType) {
@@ -262,13 +315,19 @@ public class ListFilter extends Filter<ListFilter> {
     if (mentionedUser == null) {
       return "";
     }
-    queryParams.put("mentionedUserParam", mentionedUser);
+    // TaskRepository.storeMentions writes the task id into toFQN and the mentioned
+    // user into fromFQNHash (via @BindFQN). field_relationship has no toId column, so
+    // selecting one made every mentionedUser query fail with an SQLSyntaxErrorException.
+    // hashUserName quotes first, so a dotted name matches whether the caller sends the
+    // quoted FQN ("john.doe") or the bare name (john.doe) — bare would otherwise hash
+    // as three FQN segments and match nothing.
+    queryParams.put("mentionedUserHash", hashUserName(mentionedUser));
     return String.format(
-        "(id IN (SELECT fr.toId FROM field_relationship fr "
-            + "WHERE fr.fromFQN = :mentionedUserParam "
-            + "AND fr.toType = 'task' "
+        "(id IN (SELECT fr.toFQN FROM field_relationship fr "
+            + "WHERE fr.fromFQNHash = :mentionedUserHash "
+            + "AND fr.toType = '%s' "
             + "AND fr.relation = %d))",
-        Relationship.MENTIONED_IN.ordinal());
+        Entity.TASK, Relationship.MENTIONED_IN.ordinal());
   }
 
   /**
@@ -414,6 +473,39 @@ public class ListFilter extends Filter<ListFilter> {
             : String.format("%s.json->>'provider' = :provider", tableName);
       }
     }
+  }
+
+  // Negated mirror of getProviderCondition, used to hide platform-managed services (provider
+  // 'system') from user-facing listings. COALESCE is required: user-created entities have no
+  // provider key at all, and in SQL `NULL <> 'system'` is NULL, which would drop every such row.
+  public String getExcludeProviderCondition(String tableName) {
+    String provider = queryParams.get("excludeProvider");
+    String result = "";
+    if (!nullOrEmpty(provider)) {
+      String column = tableName == null ? "json" : tableName + ".json";
+      result =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? String.format(
+                  "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider')), '') <> :excludeProvider",
+                  column)
+              : String.format("COALESCE(%s->>'provider', '') <> :excludeProvider", column);
+    }
+    return result;
+  }
+
+  // Filters service entities by connector type (e.g. 'Snowflake'). Deliberately separate from
+  // getServiceTypeCondition, whose `serviceType` param means "the service a pipeline belongs to"
+  // and which is a no-op for every table except pipeline_entity. Every service table exposes
+  // serviceType as a generated column, so this reads the column rather than the JSON blob.
+  public String getConnectorTypeCondition(String tableName) {
+    String connectorTypes = queryParams.get("connectorType");
+    String result = "";
+    if (!nullOrEmpty(connectorTypes)) {
+      String inCondition = buildIndexedBindParams("connectorType", connectorTypes);
+      String column = tableName == null ? "serviceType" : tableName + ".serviceType";
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
   }
 
   private String getEventSubscriptionAlertType() {

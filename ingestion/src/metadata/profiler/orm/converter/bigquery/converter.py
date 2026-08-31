@@ -34,7 +34,7 @@ class BigqueryMapTypes(CommonMapTypes):
     def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
         """returns an ORM type"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         return {
             **CommonMapTypes.map_sqa_to_om_types(),

@@ -59,6 +59,14 @@ def is_mapped_file(path: str, impact_map: dict[str, Any]) -> bool:
     )
 
 
+def remove_delegated_specs(
+    selected: dict[str, set[str]], delegated_patterns: list[str]
+) -> None:
+    for spec in list(selected):
+        if matches(spec, delegated_patterns):
+            del selected[spec]
+
+
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
     direct_changed_specs = plan.get("directChangedSpecs", [])
     lineage_representative_only = (
@@ -144,6 +152,8 @@ def main() -> None:
             for entry in impact_map["canary"]:
                 add_selection(selected, entry, repo_root)
 
+        remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
+
         plan = {
             "version": 1,
             "mode": "targeted",
@@ -155,9 +165,16 @@ def main() -> None:
             "deletedChangedSpecs": sorted(deleted_changed_specs),
             "directChangedSpecs": sorted(direct_changed_specs),
             "changedFiles": changed_files,
+            # Drop specs that are delegated to a dedicated lane (@ontology-rdf /
+            # @knowledge-graph, Auth, nightly, VisualRegression, …). A directly
+            # changed delegated spec already routes to delegatedChangedSpecs
+            # above; this also drops ones pulled in by a source->spec mapping
+            # glob (e.g. `OntologyStudio*.spec.ts` matching the RDF spec), which
+            # otherwise plan a postgres shard with zero runnable tests.
             "selectors": [
                 {"spec": spec, "projects": sorted(projects)}
                 for spec, projects in sorted(selected.items())
+                if not matches(spec, impact_map.get("delegatedSpecs", []))
             ],
         }
 

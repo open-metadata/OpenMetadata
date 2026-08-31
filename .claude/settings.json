@@ -36,6 +36,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); UI=openmetadata-ui/src/main/resources/ui; case \"$FILE\" in *\"$UI\"/src/*.ts|*\"$UI\"/src/*.tsx) REL=\"${FILE#*$UI/}\"; cd \"$UI\" || exit 0; yarn --silent lint:base \"$REL\" || exit 2;; esac",
+            "description": "Lint a just-written UI file so the agent sees the same eslint errors CI would report, in the same turn"
+          }
+        ]
+      }
     ]
   }
 }

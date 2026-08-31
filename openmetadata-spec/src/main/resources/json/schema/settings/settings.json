@@ -41,7 +41,10 @@
         "entityRulesSettings",
         "openLineageSettings",
         "mcpConfiguration",
-        "glossaryTermRelationSettings"
+        "glossaryTermRelationSettings",
+        "sparqlQuerySettings",
+        "appConfiguration",
+        "startupChecksums"
       ]
     }
   },
@@ -117,6 +120,15 @@
         },
         {
           "$ref": "../configuration/glossaryTermRelationSettings.json"
+        },
+        {
+          "$ref": "../configuration/sparqlQuerySettings.json"
+        },
+        {
+          "$ref": "../api/configuration/appConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/startupChecksums.json"
         }
       ]
     }

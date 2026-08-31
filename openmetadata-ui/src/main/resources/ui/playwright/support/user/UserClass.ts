@@ -17,9 +17,11 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
+  suppressWelcomeScreen,
   uuid,
 } from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
@@ -55,7 +57,10 @@ export class UserClass {
       '/api/v1/roles/name/DataConsumer'
     );
 
-    const dataConsumerRole = await dataConsumerRoleResponse.json();
+    const dataConsumerRole = await okJson(
+      dataConsumerRoleResponse,
+      'UserClass.create'
+    );
 
     const response = await apiContext.post('/api/v1/users/signup', {
       data: this.data,
@@ -133,17 +138,16 @@ export class UserClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/users/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/users/${this.responseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'UserClass.patch');
 
     return {
       entity: response.body,
@@ -254,8 +258,22 @@ export class UserClass {
   async login(
     page: Page,
     userName = this.data.email,
-    password = this.data.password
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
   ) {
+    const { suppressWelcomeScreen: shouldSuppressWelcomeScreen = true } =
+      options;
+
+    // Seed `loggedInUsers` before the first navigation so the landing-page
+    // welcome banner never renders for this session. Prefer the authoritative
+    // entity name from create(); fall back to the login email's local-part
+    // (the server-assigned username) for a pure login such as admin. Tests that
+    // exercise the welcome banner itself (e.g. Tour) opt out with
+    // `suppressWelcomeScreen: false`.
+    if (shouldSuppressWelcomeScreen) {
+      await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
+    }
+
     await page.goto('/signin');
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });

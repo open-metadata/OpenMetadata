@@ -84,7 +84,7 @@ const COLUMN_LAYOUT: Record<
   table: { minWidth: 300, maxWidth: 360 },
   column: { minWidth: 110 },
   incident: { minWidth: 130 },
-  actions: { minWidth: 90, fixed: 'right' },
+  actions: { minWidth: 136, maxWidth: 136, fixed: 'right' },
 };
 
 // Per-column min-widths give the table an intrinsic width so the core Table's
@@ -316,13 +316,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             : SORT_ORDER.DESC,
       });
     } else if (
-      descriptor.column === 'table' ||
-      descriptor.column === 'column'
+      (descriptor.column === 'table' || descriptor.column === 'column') &&
+      isApiSortingEnabled.current
     ) {
-      if (isApiSortingEnabled.current) {
-        isApiSortingEnabled.current = false;
-        fetchTestCases?.(undefined);
-      }
+      isApiSortingEnabled.current = false;
+      fetchTestCases?.(undefined);
     }
   };
 
@@ -554,7 +552,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     ];
 
     return (
-      <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
+      <div className="tw:flex tw:w-full tw:items-center tw:justify-end tw:gap-5">
         {dimensions.length > 0 && (
           <Tooltip
             placement="top"
@@ -651,18 +649,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             data-testid={record.name}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
-            <Link
-              className="tw:block tw:min-w-0 tw:truncate"
-              state={{ breadcrumbData }}
-              title={getEntityName(record)}
-              to={{
-                pathname:
-                  observabilityRouterClassBase.getTestCaseDetailPagePath(
-                    record.fullyQualifiedName ?? ''
-                  ),
-              }}>
-              {getEntityName(record)}
-            </Link>
+            <Tooltip placement="top" title={getEntityName(record)}>
+              <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
+                <Link
+                  className="tw:block tw:min-w-0 tw:truncate"
+                  state={{ breadcrumbData }}
+                  to={{
+                    pathname:
+                      observabilityRouterClassBase.getTestCaseDetailPagePath(
+                        record.fullyQualifiedName ?? ''
+                      ),
+                  }}>
+                  {getEntityName(record)}
+                </Link>
+              </TooltipTrigger>
+            </Tooltip>
           </Box>
         </Table.Cell>
         {showTableColumn && (
@@ -835,11 +836,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             renderEmptyState={() =>
               isLoading ? (
                 <div className="tw:p-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {Array.from(
+                    { length: 5 },
+                    (_, i) => `data-quality-skeleton-${i}`
+                  ).map((skeletonKey) => (
                     <Skeleton
                       className="tw:mb-2"
                       height={40}
-                      key={i}
+                      key={skeletonKey}
                       width="100%"
                     />
                   ))}

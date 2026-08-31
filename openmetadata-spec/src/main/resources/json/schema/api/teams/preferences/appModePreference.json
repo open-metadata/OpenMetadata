@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://open-metadata.org/schema/api/teams/preferences/appModePreference.json",
+  "title": "AppModePreference",
+  "description": "User preference for app-mode boot behavior (AI vs Classic).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.teams.preferences.AppModePreference",
+  "properties": {
+    "type": { "type": "string", "enum": ["appMode"] },
+    "config": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": ["string", "null"],
+          "enum": ["ai", "classic", null]
+        }
+      },
+      "required": ["value"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["type", "config"],
+  "additionalProperties": false
+}

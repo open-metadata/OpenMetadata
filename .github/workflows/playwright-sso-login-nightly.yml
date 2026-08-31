@@ -36,7 +36,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  group: sso-login-nightly-${{ github.ref }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
   cancel-in-progress: true
 
 jobs:
@@ -50,6 +50,11 @@ jobs:
   #      variable for the password if the provider uses a real (non-fixture)
   #      credential.
   #   3. Register the helper in playwright/utils/sso-providers/index.ts.
+  #   4. Set `excluded_tags` to the provider tags this fixture cannot serve,
+  #      pipe-separated. Specs carry a provider tag (@okta) or a capability tag
+  #      (@tokenRenewal); untagged specs run everywhere. An entry that omits
+  #      `excluded_tags` collects every spec, so wrong-provider tests fail
+  #      loudly rather than silently not running.
   sso-login:
     runs-on: ubuntu-latest
     environment: test
@@ -59,12 +64,12 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+          && fromJSON('[{"name":"okta","env_prefix":"OKTA","excluded_tags":"@tokenRenewal"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta|@tokenRenewal"}]')
           || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
-              && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+              && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta"}]')
               || (github.event.inputs.sso_provider == 'keycloak-azure-saml-crosssite'
-                  && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
-                  || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]'))) }}
+                  && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta|@tokenRenewal"}]')
+                  || fromJSON('[{"name":"okta","env_prefix":"OKTA","excluded_tags":"@tokenRenewal"}]'))) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -81,7 +86,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Cache Maven Dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -110,8 +115,15 @@ jobs:
 
       - name: Start Keycloak SAML IdP
         if: startsWith(matrix.provider.name, 'keycloak-')
+        env:
+          # Must name the host this leg's browser uses, or Keycloak answers
+          # "Invalid Request". The '-crosssite' leg fronts the IdP on 127.0.0.1.
+          KEYCLOAK_HOSTNAME: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
+          # The OM container needs to reach Keycloak by name; localhost:8080 is
+          # its own loopback. Tolerates a missing network and a repeat attach.
+          docker network connect ometa_network openmetadata-keycloak-saml || true
           timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 
       - name: Run SSO Login Spec
@@ -127,11 +139,11 @@ jobs:
           # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
           KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
           PLAYWRIGHT_IS_OSS: true
-        run: npx playwright test --project=sso-auth --workers=1
+        run: npx playwright test --project=sso-auth --workers=1 --grep-invert "${{ matrix.provider.excluded_tags }}"
 
       - name: Upload HTML report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sso-login-html-report-${{ matrix.provider.name }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report

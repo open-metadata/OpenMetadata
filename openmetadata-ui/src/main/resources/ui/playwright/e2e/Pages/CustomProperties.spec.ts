@@ -327,16 +327,30 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
 
         if (key === 'entity_table') {
-          for (let i = 0; i < 5; i++) {
-            const user = new UserClass();
-            await user.create(apiContext);
-            users.push(user);
+          // Created concurrently: sequential round-trips in this hook
+          // accumulate enough latency under load to exhaust its 60s budget.
+          // allSettled rather than all, so a partial failure still registers
+          // whatever was created for teardown before the hook fails — the
+          // rejection is rethrown, never swallowed.
+          const newUsers = Array.from({ length: 5 }, () => new UserClass());
+          const created = await Promise.allSettled(
+            newUsers.map((user) => user.create(apiContext))
+          );
+          // create() persists the user via /users/signup and only then assigns
+          // roles, so a rejection can still leave a real user behind. Register
+          // by "did it get an id", not by "did the promise settle happily".
+          users.push(...newUsers.filter((user) => user.responseData?.id));
+          const failed = created.find((result) => result.status === 'rejected');
+          if (failed) {
+            throw failed.reason;
           }
         } else if (key === 'entity_dashboard') {
           dashboardTopic1 = new TopicClass();
           dashboardTopic2 = new TopicClass();
-          await dashboardTopic1.create(apiContext);
-          await dashboardTopic2.create(apiContext);
+          await Promise.all([
+            dashboardTopic1.create(apiContext),
+            dashboardTopic2.create(apiContext),
+          ]);
           await setupCustomPropertyAdvancedSearchTest(
             page,
             cpasTestData,
@@ -929,26 +943,26 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator .ant-select'),
+            ruleLocator.locator('.rule--operator'),
             CONDITIONS_MUST.equalTo.name
           );
 
@@ -971,7 +985,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator .ant-select'),
+            ruleLocator.locator('.rule--operator'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1223,28 +1237,28 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator .ant-select'),
+              ruleLocator.locator('.rule--operator'),
               CONDITIONS_MUST.equalTo.name
             );
 
