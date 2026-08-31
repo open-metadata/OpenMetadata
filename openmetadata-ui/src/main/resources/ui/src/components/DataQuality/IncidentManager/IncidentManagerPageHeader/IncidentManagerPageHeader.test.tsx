@@ -151,7 +151,12 @@ jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
 }));
 
+// jest.requireActual is load-bearing (Task 8 Batch 3 note 5): the useTestCaseIncidentHeader
+// hook this component renders calls getDerivedPermissionFlags, which calls
+// getPrioritizedEditPermission/getPrioritizedViewPermission from this same module internally
+// — a blanket mock without requireActual throws "... is not a function".
 jest.mock('../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 

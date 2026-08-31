@@ -128,7 +128,13 @@ jest.mock('../../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+// jest.requireActual is load-bearing (Task 8 Batch 3 note 5): getDerivedPermissionFlags
+// (called by the source under test) calls getPrioritizedEditPermission AND
+// getPrioritizedViewPermission from this same module internally — a blanket mock without
+// requireActual throws "getPrioritizedViewPermission is not a function" the moment
+// getDerivedPermissionFlags builds its returned flags object.
 jest.mock('../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../utils/PermissionsUtils'),
   getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
 }));
 
