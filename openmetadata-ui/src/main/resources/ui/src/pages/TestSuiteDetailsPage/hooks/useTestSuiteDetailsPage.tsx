@@ -36,10 +36,7 @@ import {
 } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   EntityTabs,
   EntityType,
@@ -52,6 +49,7 @@ import { EntityReference, TestSuite } from '../../../generated/tests/testSuite';
 import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useChangeSummary } from '../../../hooks/useChangeSummary';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -68,10 +66,7 @@ import {
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../../utils/PermissionsUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS } from '../TestSuiteDetailsPage.constants';
@@ -90,8 +85,7 @@ import {
 export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
-  const { getEntityPermissionByFqn, permissions: globalPermissions } =
-    usePermissionProvider();
+  const { permissions: globalPermissions } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const activeTestSuiteFQN = useRef(testSuiteFQN);
   const navigate = useNavigate();
@@ -117,9 +111,19 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     handlePagingChange,
     showPagination,
   } = usePaging();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [testSuitePermissions, setTestSuitePermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // The owning fetch for this page's permissions (Task 8 conversion): single resource, by
+  // FQN, no `deleted` gating — old code never ANDed any of the flags below with the suite's
+  // own `deleted` field. `isLoading`/`permissionsError` replace the old
+  // fetchTestSuitePermission's manual setIsLoading(true/false) + try/catch pair.
+  const {
+    permissions: testSuitePermissions,
+    isLoading,
+    error: permissionsError,
+    hasViewAccess,
+    canEditAll,
+    canEditOwners,
+    canEditDescription,
+  } = useEntityPermissions(ResourceEntity.TEST_SUITE, testSuiteFQN);
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
     useState<boolean>(false);
   const [sortOptions, setSortOptions] =
@@ -147,18 +151,24 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     };
   }, [testSuite]);
 
+  // Public shape kept identical (Task 8: the page consumer isn't in this same commit's
+  // scope for a prop-contract migration) — only the source of each value changes, from raw
+  // `.EditAll`/`.ViewAll`/`.ViewBasic` reads to the named flags useEntityPermissions derives.
   const permissions = useMemo(() => {
     return {
-      hasViewPermission:
-        testSuitePermissions?.ViewAll || testSuitePermissions?.ViewBasic,
-      hasEditPermission: testSuitePermissions?.EditAll,
-      hasEditOwnerPermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
-      hasEditDescriptionPermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
+      hasViewPermission: hasViewAccess,
+      hasEditPermission: canEditAll,
+      hasEditOwnerPermission: canEditOwners,
+      hasEditDescriptionPermission: canEditDescription,
       hasDeletePermission: testSuitePermissions?.Delete,
     };
-  }, [testSuitePermissions]);
+  }, [
+    hasViewAccess,
+    canEditAll,
+    canEditOwners,
+    canEditDescription,
+    testSuitePermissions?.Delete,
+  ]);
 
   const extraDropdownContent = useMemo(() => {
     const bulkImportExportTestCasePermission = {
@@ -208,21 +218,6 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     const jsonPatch = compare(testSuite as TestSuite, updatedData);
 
     return updateTestSuiteById(testSuiteId as string, jsonPatch);
-  };
-
-  const fetchTestSuitePermission = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.TEST_SUITE,
-        testSuiteFQN
-      );
-      setTestSuitePermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const fetchIngestionPipelineCount = useCallback(
@@ -624,14 +619,20 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   }, [testSuiteFQN]);
 
   useEffect(() => {
-    if (permissions.hasViewPermission) {
+    if (hasViewAccess) {
       fetchTestSuiteByName();
     }
-  }, [permissions, testSuiteFQN]);
+  }, [hasViewAccess, testSuiteFQN]);
 
+  // useEntityPermissions fetches reactively (React Query, keyed on resource+FQN) — no manual
+  // trigger effect needed. This replaces the old fetchTestSuitePermission's try/catch
+  // showErrorToast with the same user-facing behavior: a permission-fetch failure still
+  // surfaces a toast.
   useEffect(() => {
-    fetchTestSuitePermission();
-  }, [testSuiteFQN]);
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   useEffect(() => {
     if (testSuiteId) {

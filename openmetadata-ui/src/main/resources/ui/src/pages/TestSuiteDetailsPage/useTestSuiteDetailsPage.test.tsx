@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
@@ -19,6 +20,7 @@ import {
   getTestSuiteByName,
   updateTestSuiteById,
 } from '../../rest/testAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
 
@@ -45,9 +47,34 @@ const mockPermissions = {
   Delete: true,
 };
 
-const mockGetEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve(mockPermissions));
+// The hook now reads its own permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) drives its permission-derived behavior in these
+// tests — same approach as TableDetailsPageV1.test.tsx.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
 let mockTestSuiteFQN = 'bundle_suite_fqn';
 
 const runTimeoutsImmediately = () => {
@@ -71,7 +98,6 @@ jest.mock('../../rest/ingestionPipelineAPI');
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
     permissions: {},
   }),
 }));
@@ -125,6 +151,7 @@ describe('useTestSuiteDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockTestSuiteFQN = 'bundle_suite_fqn';
+    setMockPermissions(mockPermissions);
     (getTestSuiteByName as jest.Mock).mockResolvedValue(mockTestSuite);
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [{ id: 'tc-1', name: 'tc_1' }],
@@ -145,7 +172,7 @@ describe('useTestSuiteDetailsPage', () => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
     });
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       'testSuite',
       'bundle_suite_fqn'
     );
@@ -186,16 +213,38 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.canAddMultipleTeamOwner).toBe(false);
   });
 
-  it('should not fetch the suite without view permission', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({
-      ViewAll: false,
-      ViewBasic: false,
+  it('denies owner/description edit when explicitly false, even with EditAll true', async () => {
+    // Explicit-deny-wins: an explicit `false` on the field-level permission must win over
+    // a `true` EditAll, not be overridden by it (Task 6 Finding 1).
+    setMockPermissions({
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+      EditOwners: false,
+      EditDescription: false,
     });
+
+    const { result } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.permissions.hasViewPermission).toBe(true);
+    });
+
+    expect(result.current.permissions.hasEditOwnerPermission).toBe(false);
+    expect(result.current.permissions.hasEditDescriptionPermission).toBe(
+      false
+    );
+    // The bare-EditAll flag is unaffected by the field-specific denies.
+    expect(result.current.permissions.hasEditPermission).toBe(true);
+  });
+
+  it('should not fetch the suite without view permission', async () => {
+    setMockPermissions({ ViewAll: false, ViewBasic: false });
 
     renderHook(() => useTestSuiteDetailsPage());
 
     await waitFor(() => {
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+      expect(mockUseEntityPermissions).toHaveBeenCalled();
     });
 
     expect(getTestSuiteByName).not.toHaveBeenCalled();
