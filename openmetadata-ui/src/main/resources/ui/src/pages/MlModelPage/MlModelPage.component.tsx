@@ -61,9 +61,11 @@ const MlModelPage = () => {
   // calls useEntityPermissions itself (by id, for its own edit-tier flags) — this page's
   // view-tier flags gate the ml-model entity query below (canViewUsage decides whether
   // USAGE_SUMMARY is requested; hasViewAccess decides whether the query fires and drives
-  // the permission-denied placeholder), and the child only exists once mlModelId is known
-  // — a real ordering cycle, same shape as TableDetailsPageV1's documented two-call split.
-  // Noted as a double-fetch for a later consolidation pass (Task 8 Batch 10).
+  // the permission-denied placeholder), and the child only exists once mlModelId is known.
+  // NOTE: two network requests — this page fetches by fqn while MlModelDetailComponent
+  // fetches by id (different query keys, different REST calls — NOT the same shared-cache
+  // situation as TableDetailsPageV1's own two same-fqn calls). Consolidation candidate: pass
+  // one identifier form through or drop the page fetch if the child's data suffices.
   const {
     isLoading: permissionsLoading,
     error: permissionsError,
