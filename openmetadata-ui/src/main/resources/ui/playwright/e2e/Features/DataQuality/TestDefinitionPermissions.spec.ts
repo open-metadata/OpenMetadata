@@ -267,16 +267,44 @@ test.describe(
   'Test Definition Permissions - Data Steward',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
   () => {
+    // Target the definition this spec creates rather than whichever row sorts
+    // first. The Test Library is shared across the whole run, and specs seed
+    // definitions named to sort to the top (TestLibrary.spec.ts creates
+    // `AaaaExternalTest*`); an external definition's toggle is disabled by
+    // design, so a positional locator asserts on a row this spec never owned.
+    const stewardDefinitionName = `aaaColumnTestDefinition-${uuid()}`;
+    let stewardDefinitionId: string | undefined;
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
-        data: {
-          name: `aaaColumnTestDefinition-${uuid()}`,
-          description: `A Column test definition`,
-          entityType: 'COLUMN',
-          testPlatforms: ['OpenMetadata'],
-        },
-      });
+      const response = await apiContext.post(
+        '/api/v1/dataQuality/testDefinitions',
+        {
+          data: {
+            name: stewardDefinitionName,
+            description: `A Column test definition`,
+            entityType: 'COLUMN',
+            testPlatforms: ['OpenMetadata'],
+          },
+        }
+      );
+      stewardDefinitionId = (await response.json())?.id;
+      await afterAction();
+    });
+
+    // Without this the definition outlives the run. The Test Library is
+    // paginated with no search, and every worker adds another `aaa*` row that
+    // sorts alongside this one, so leaked definitions eventually push the row
+    // this spec targets off the first page.
+    test.afterAll(async ({ browser }) => {
+      if (!stewardDefinitionId) {
+        return;
+      }
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await apiContext.delete(
+        `/api/v1/dataQuality/testDefinitions/${stewardDefinitionId}?hardDelete=true`
+      );
       await afterAction();
     });
 
@@ -306,9 +334,11 @@ test.describe(
       await expect(addButton).not.toBeVisible();
 
       // Data Steward should be able to toggle enabled/disabled switches (EditAll permission)
-      const firstSwitch = dataStewardPage.getByRole('switch').first();
+      const stewardSwitch = dataStewardPage.getByTestId(
+        `enable-switch-${stewardDefinitionName}`
+      );
 
-      await expect(firstSwitch).toBeEnabled();
+      await expect(stewardSwitch).toBeEnabled();
 
       // Wait for API call
       const response = dataStewardPage.waitForResponse(
@@ -318,11 +348,11 @@ test.describe(
       );
 
       // Try to toggle the switch
-      await firstSwitch.click();
+      await stewardSwitch.click();
       await response;
 
       // Verify switch state changed
-      await expect(firstSwitch).toHaveAttribute(
+      await expect(stewardSwitch).toHaveAttribute(
         'aria-checked',
         String('false')
       );
@@ -333,16 +363,20 @@ test.describe(
           response.request().method() === 'PATCH'
       );
       // Toggle back to original state
-      await firstSwitch.click();
+      await stewardSwitch.click();
       await response2;
 
-      await expect(firstSwitch).toHaveAttribute('aria-checked', String('true'));
+      await expect(stewardSwitch).toHaveAttribute(
+        'aria-checked',
+        String('true')
+      );
 
       // Data Steward should NOT see delete buttons (no Delete permission)
-      const deleteButtons = dataStewardPage.getByTestId(
-        /delete-test-definition-/
-      );
-      await expect(deleteButtons.first()).toBeDisabled();
+      await expect(
+        dataStewardPage.getByTestId(
+          `delete-test-definition-${stewardDefinitionName}`
+        )
+      ).toBeDisabled();
     });
 
     test('should not be able to edit system test definitions', async ({
