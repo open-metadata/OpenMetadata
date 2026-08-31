@@ -21,7 +21,6 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
@@ -30,16 +29,12 @@ import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.Workflow;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.util.EntityUtil;
 
 /** Migration utilities for the 2.1.0 upgrade. */
 @Slf4j
@@ -195,31 +190,9 @@ public class MigrationUtil {
    * them firing — so an already-deployed workflow is left exactly as it is.
    */
   public static int deployMissingGovernanceWorkflows() {
-    int deployed = 0;
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    WorkflowHandler handler = WorkflowHandler.getInstance();
-    for (WorkflowDefinition definition :
-        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter())) {
-      deployed += deployIfMissing(handler, definition);
-    }
-    LOG.info("Deployed {} previously undeployed governance workflow definition(s)", deployed);
-    return deployed;
-  }
-
-  /** One failure must not stop the rest: a single bad definition should not block the upgrade. */
-  private static int deployIfMissing(WorkflowHandler handler, WorkflowDefinition definition) {
-    int deployed = 0;
-    try {
-      if (!handler.isDeployed(definition)) {
-        handler.deploy(new Workflow(definition));
-        LOG.info("Deployed missing workflow '{}'", definition.getName());
-        deployed = 1;
-      }
-    } catch (RuntimeException exception) {
-      LOG.warn("Failed to deploy workflow '{}': {}", definition.getName(), exception.getMessage());
-    }
-    return deployed;
+    return repository.deployMissingWorkflowDefinitions();
   }
 
   /**

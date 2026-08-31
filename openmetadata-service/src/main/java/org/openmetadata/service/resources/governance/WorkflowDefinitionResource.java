@@ -81,6 +81,7 @@ public class WorkflowDefinitionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     repository.initSeedDataFromResourcesOnStartup();
+    repository.deployMissingWorkflowDefinitions();
   }
 
   @GET

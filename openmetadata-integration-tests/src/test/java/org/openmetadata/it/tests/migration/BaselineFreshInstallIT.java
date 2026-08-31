@@ -38,7 +38,7 @@ import org.openmetadata.service.migration.utils.MigrationVersionUtil;
 class BaselineFreshInstallIT {
 
   private static final Set<String> EXPECTED_HISTORY =
-      new TreeSet<>(List.of(MigrationVersionUtil.BASELINE_VERSION, "2.0.0", "2.1.0"));
+      new TreeSet<>(List.of(MigrationVersionUtil.BASELINE_VERSION, "2.0.0", "2.0.1", "2.1.0"));
 
   @Test
   void freshInstallRecordsBaselineThenLiveVersionsOnly() {
@@ -55,6 +55,8 @@ class BaselineFreshInstallIT {
           "Fresh install should record exactly the baseline plus the live versions");
       assertEquals(MigrationType.BASELINE.name(), history.get("2.0.0-baseline")[0]);
       assertEquals(MigrationType.NATIVE.name(), history.get("2.0.0")[0]);
+      assertEquals(MigrationType.NATIVE.name(), history.get("2.0.1")[0]);
+      assertEquals(MigrationType.NATIVE.name(), history.get("2.1.0")[0]);
       history
           .values()
           .forEach(row -> assertEquals(MigrationStatus.COMPLETED.name(), row[1], "step status"));
