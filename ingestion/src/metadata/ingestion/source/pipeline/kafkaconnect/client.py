@@ -279,10 +279,8 @@ class KafkaConnectClient:
         if connector_details.config:
             connector_details.description = connector_details.config.get("description", None)
 
-            # For CDC connectors without explicit topics, try to infer from server name.
-            # Only while topics is None: an empty list is the runtime reporting no data
-            # topics, and inferring against that would contradict it.
-            if connector_details.topics is None and (connector_details.conn_type or "").lower() == "source":
+            # For CDC connectors without explicit topics, try to infer from server name
+            if not connector_details.topics and (connector_details.conn_type or "").lower() == "source":
                 database_server_name = connector_details.config.get(
                     "database.server.name"
                 ) or connector_details.config.get("topic.prefix")
@@ -511,14 +509,11 @@ class KafkaConnectClient:
         The topics the Connect runtime says this connector touched, minus its own
         bookkeeping topics.
 
-        Distinguishes two outcomes the caller must not conflate:
-
-        - ``None``: the runtime told us nothing, either because the endpoint is
-          unavailable or because the connector has not reported any active topic yet.
-          The caller may fall back.
-        - ``[]``: the runtime did report topics and every one was this connector's own
-          bookkeeping. That is an authoritative "no data topics", so inferring some from
-          the topic namespace would contradict what the runtime just said.
+        Returns None when that leaves nothing, so the caller falls back to the
+        config-declared names. Active-topic tracking records what a connector has
+        touched so far, so a connector that has produced nothing, or so far only its own
+        schema-change topic, is at a cold start rather than asserting it has no data
+        topics. Its declared names are still the better answer.
         """
         topics = self._list_topics_from_api(connector)
         if not topics:
@@ -532,7 +527,7 @@ class KafkaConnectClient:
                 f"Excluded {dropped} internal topic(s) from connector '{connector}': "
                 f"{sorted(excluded & {topic.name for topic in topics})}"
             )
-        return data_topics
+        return data_topics or None
 
     @staticmethod
     def _parse_topics_from_config(connector_config: Optional[dict]) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
@@ -566,23 +561,14 @@ class KafkaConnectClient:
                 holds it. Fetched on demand otherwise.
 
         Returns:
-            Optional[List[KafkaConnectTopics]]: The connector's data topics.
-
-            An empty list is returned only when the runtime listed topics and every one
-            was this connector's own bookkeeping, which is a positive "no data topics".
-
-            None means no source could name one. That includes a runtime that has not
-            reported any topic yet, since a connector that has produced nothing is at a
-            cold start rather than asserting it never will, and its config-declared
-            topics are still the correct answer.
+            Optional[List[KafkaConnectTopics]]: The connector's data topics, or None when
+                                            neither source names one.
         """
         try:
             config = connector_config if connector_config is not None else self.get_connector_config(connector)
 
             topics = self._list_data_topics_from_api(connector, config)
-            if topics is not None:
-                # Empty is the runtime stating this connector has no data topics. Falling
-                # through to config on that would contradict what it just told us.
+            if topics:
                 return topics
 
             topics = self._parse_topics_from_config(config)

@@ -375,15 +375,7 @@ class KafkaconnectSource(PipelineServiceSource):
             raw = pipeline_details.config.get("topics", "")
             if raw:
                 topics_to_process = [KafkaConnectTopics(name=t.strip()) for t in raw.split(",") if t.strip()]
-        # Inferring topics is only legitimate while the runtime has said nothing. If it
-        # answered with an empty list, this connector demonstrably has no data topics, and
-        # deriving some from its topic.prefix namespace would contradict that answer.
-        if (
-            not topics_to_process
-            and pipeline_details.topics is None
-            and database_server_name
-            and pipeline_details.conn_type == ConnectorType.SOURCE.value
-        ):
+        if not topics_to_process and database_server_name and pipeline_details.conn_type == ConnectorType.SOURCE.value:
             topics_to_process = self._resolve_source_topics(
                 pipeline_details=pipeline_details,
                 database_server_name=database_server_name,

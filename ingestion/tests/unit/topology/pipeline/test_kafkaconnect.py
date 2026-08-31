@@ -95,9 +95,7 @@ class TestKafkaConnectModels(TestCase):
         self.assertEqual(pipeline.status, "UNASSIGNED")
         self.assertEqual(pipeline.conn_type, "UNKNOWN")
         self.assertEqual(pipeline.tasks, [])
-        # None, not [], so that "the runtime was never asked" stays distinguishable from
-        # "the runtime answered, and there are no data topics".
-        self.assertIsNone(pipeline.topics)
+        self.assertEqual(pipeline.topics, [])
         self.assertEqual(pipeline.config, {})
         self.assertIsNone(pipeline.description)
         self.assertEqual(pipeline.datasets, [])
@@ -1403,12 +1401,7 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
             name="outbox-connector",
             type="source",
             config=config,
-            # None, not [], when the runtime supplied nothing: an empty list is the
-            # runtime authoritatively reporting no data topics, which suppresses inference.
-            # Keyed on `is not None` so a caller can pass [] to mean exactly that.
-            topics=(
-                [KafkaConnectTopics(name=name) for name in pipeline_topics] if pipeline_topics is not None else None
-            ),
+            topics=[KafkaConnectTopics(name=name) for name in (pipeline_topics or [])],
         )
 
         with patch(
@@ -2266,12 +2259,17 @@ class TestConnectorEnrichmentOrdering:
         assert details.description == "wallet outbox"
 
 
-class TestRuntimeAnswerIsNotConfusedWithSilence:
+class TestColdStartFallsBackToDeclaredTopics:
     """
-    "The runtime reported no data topics" and "the runtime told us nothing" are different
-    facts. Collapsing the first into the second sends a connector back to config and
-    namespace inference even though the runtime just said there is nothing to attribute,
-    which is the speculative lineage this connector is meant to stop producing.
+    Active-topic tracking records what a connector has touched so far, not what it will.
+    A connector that has produced nothing, or so far only its own schema-change topic, is
+    at a cold start rather than asserting it has no data topics, so its config-declared
+    names are still the better answer.
+
+    Falling back is safe because every remaining fallback is deterministic: a sink's
+    declared topics, or CDC names built from table.include.list. Routing patterns no
+    longer generate candidates, and the namespace scan is restricted to connectors with
+    no topic-rewriting SMT.
     """
 
     def _client(self):
@@ -2281,22 +2279,21 @@ class TestRuntimeAnswerIsNotConfusedWithSilence:
         client._topics_endpoint_supported = None
         return client
 
-    def test_runtime_reporting_only_internal_topics_is_an_answer(self):
+    def test_runtime_reporting_only_internal_topics_falls_back(self):
         """
         A connector that has emitted a schema change but no data rows reports only its
-        schema-change topic. After exclusion that is an authoritative empty, and must not
-        fall through to a topic name declared in config.
+        schema-change topic. That is a cold start, so its declared topic still resolves.
         """
         client = self._client()
-        client.client.list_connector_topics.return_value = {"plain-cdc": {"topics": ["rigA.plaincdc"]}}
-        config = {"topic.prefix": "rigA.plaincdc", "topics": "stale.config.topic"}
+        client.client.list_connector_topics.return_value = {"datagen": {"topics": ["rigA.plaincdc"]}}
+        config = {"topic.prefix": "rigA.plaincdc", "kafka.topic": "orders"}
 
-        topics = client.get_connector_topics("plain-cdc", connector_config=config)
+        topics = client.get_connector_topics("datagen", connector_config=config)
 
-        assert topics == [], "an authoritative empty must not fall back to config-declared topics"
+        assert [t.name for t in topics] == ["orders"]
 
     def test_silent_runtime_still_falls_back_to_config(self):
-        """The cold-start case: the runtime knows nothing yet, so a sink's declared topics still resolve."""
+        """A sink that has not consumed yet must still resolve its declared subscription."""
         client = self._client()
         client.client.list_connector_topics.return_value = {"jdbc-sink": {"topics": []}}
         config = {"topics": "orders,payments"}
@@ -2305,24 +2302,18 @@ class TestRuntimeAnswerIsNotConfusedWithSilence:
 
         assert [t.name for t in topics] == ["orders", "payments"]
 
-    def test_authoritative_empty_suppresses_source_inference(self):
+    def test_cold_start_cdc_still_resolves_constructed_names(self):
+        """
+        Regression for a gate that suppressed inference whenever the runtime reported no
+        data topics. A freshly started CDC connector resolved nothing, losing the
+        deterministically constructed names it should have had.
+        """
         source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
-        config = {"connector.class": "MySqlCdcSourceV2", "topic.prefix": "rigA.plaincdc"}
-        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config, topics=[])
-
-        result = source._parse_and_resolve_topics(
-            pipeline_details=details,
-            database_server_name="rigA.plaincdc",
-            effective_messaging_service="confluent-prod",
-            is_storage_sink=False,
-        )
-
-        assert result.topics == [], "the namespace scan must not run against an authoritative empty"
-
-    def test_unset_topics_still_allows_source_inference(self):
-        """Unset means unknown, so the existing config-derived resolution must still run."""
-        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
-        config = {"connector.class": "MySqlCdcSourceV2", "topic.prefix": "rigA.plaincdc"}
+        config = {
+            "connector.class": "MySqlCdcSourceV2",
+            "topic.prefix": "rigA.plaincdc",
+            "table.include.list": "walletdb.customers,walletdb.orders",
+        }
         details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
 
         result = source._parse_and_resolve_topics(
