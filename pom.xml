@@ -128,8 +128,14 @@
          JenaFusekiStorage to abstract over API differences between Jena 4 and
          Jena 5 with a CompletableFuture wrapper around every RDFConnection
          call. Jena 6 requires Java 21 — already our project minimum, so no
-         JDK bump needed. -->
-    <jena.version>5.6.0</jena.version>
+         JDK bump needed.
+
+         6.2.0 fixes CVE-2026-61372 (SPARQL Update LOAD accepted URLs pointing
+         at local resources, so an update could read data off the machine
+         running the engine; 6.2.0 restricts them to http/ftp). There is no
+         5.x line with the fix — 5.6.0 is the last 5.x release — so the only
+         way off the CVE is the major bump. Do not go back below 6.2.0. -->
+    <jena.version>6.2.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
