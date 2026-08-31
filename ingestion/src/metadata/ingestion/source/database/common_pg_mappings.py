@@ -22,7 +22,6 @@ RELKIND_MAP = {
     "p": TableType.Partitioned,
     "f": TableType.Foreign,
     "v": TableType.View,
-    "m": TableType.MaterializedView,
 }
 
 GEOMETRY = create_sqlalchemy_type("GEOMETRY")
