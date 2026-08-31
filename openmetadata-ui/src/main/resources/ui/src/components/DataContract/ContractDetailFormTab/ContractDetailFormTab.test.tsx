@@ -16,8 +16,8 @@ import {
   DataContract,
   EntityStatus,
 } from '../../../generated/entity/data/dataContract';
-import { FieldTypes } from '../../../interface/FormUtils.interface';
 import { EntityReference } from '../../../generated/entity/type';
+import { FieldTypes } from '../../../interface/FormUtils.interface';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
 jest.mock('../../../utils/formUtils', () => ({
@@ -52,6 +52,9 @@ jest.mock('react-i18next', () => ({
         'label.contract-title': 'Contract Title',
         'label.owner-plural': 'Owners',
         'label.status': 'Status',
+        'label.draft': 'Draft label',
+        'label.in-review': 'In Review label',
+        'label.approved': 'Approved label',
         'label.description': 'Description',
         'label.contract-detail-plural': 'Contract Details',
         'message.contract-detail-plural-description': 'Enter contract details',
@@ -276,9 +279,9 @@ describe('ContractDetailFormTab', () => {
             label: 'Status',
             props: expect.objectContaining({
               options: [
-                { label: EntityStatus.Draft, value: EntityStatus.Draft },
-                { label: EntityStatus.InReview, value: EntityStatus.InReview },
-                { label: EntityStatus.Approved, value: EntityStatus.Approved },
+                { label: 'Draft label', value: EntityStatus.Draft },
+                { label: 'In Review label', value: EntityStatus.InReview },
+                { label: 'Approved label', value: EntityStatus.Approved },
               ],
             }),
             type: FieldTypes.SELECT,

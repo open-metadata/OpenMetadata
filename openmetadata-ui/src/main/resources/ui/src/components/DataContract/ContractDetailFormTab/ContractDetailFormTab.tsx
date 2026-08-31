@@ -26,14 +26,20 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import './contract-detail-form-tab.less';
 
-const DATA_CONTRACT_STATUS_OPTIONS = [
-  EntityStatus.Draft,
-  EntityStatus.InReview,
-  EntityStatus.Approved,
-].map((status) => ({
-  label: status,
-  value: status,
-}));
+const DATA_CONTRACT_STATUS_OPTION_KEYS = [
+  {
+    labelKey: 'label.draft',
+    value: EntityStatus.Draft,
+  },
+  {
+    labelKey: 'label.in-review',
+    value: EntityStatus.InReview,
+  },
+  {
+    labelKey: 'label.approved',
+    value: EntityStatus.Approved,
+  },
+];
 
 export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
@@ -52,6 +58,12 @@ export const ContractDetailFormTab: React.FC<{
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { entityRules } = useEntityRules(EntityType.TABLE);
+  const dataContractStatusOptions = DATA_CONTRACT_STATUS_OPTION_KEYS.map(
+    ({ labelKey, value }) => ({
+      label: t(labelKey),
+      value,
+    })
+  );
 
   const fields: FieldProp[] = [
     {
@@ -76,7 +88,7 @@ export const ContractDetailFormTab: React.FC<{
       placeholder: t('label.select-field', { field: t('label.status') }),
       props: {
         'data-testid': 'contract-status',
-        options: DATA_CONTRACT_STATUS_OPTIONS,
+        options: dataContractStatusOptions,
       },
       formItemProps: {
         initialValue: initialValues?.entityStatus ?? EntityStatus.Draft,

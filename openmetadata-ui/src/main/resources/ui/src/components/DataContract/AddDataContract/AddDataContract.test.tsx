@@ -96,7 +96,8 @@ jest.mock('../ContractDetailFormTab/ContractDetailFormTab', () => ({
         <button onClick={() => onChange({ name: 'Test Contract Change' })}>
           Change
         </button>
-        <button onClick={() => onChange({ entityStatus: EntityStatus.InReview })}>
+        <button
+          onClick={() => onChange({ entityStatus: EntityStatus.InReview })}>
           Change Status
         </button>
         <button onClick={onNext}>Next</button>
