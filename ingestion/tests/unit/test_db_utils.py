@@ -672,3 +672,156 @@ class TestDbUtils(TestCase):
                 lineage_request.to_entity_fqn,
                 self.table_entity.fullyQualifiedName.root,
             )
+
+
+class TestClickhouseMaterializedViewLineage(TestCase):
+    """
+    A Clickhouse materialized view created with `TO <schema>.<table>` writes its rows
+    into that target table, so it needs a downstream edge on top of the upstream one.
+    """
+
+    MV_DEFINITION = (
+        "CREATE MATERIALIZED VIEW schema01.samples_mv TO schema02.samples_e "
+        "(`column_01` String) AS SELECT column_01 FROM schema01.samples"
+    )
+
+    def setUp(self):
+        """Set up test fixtures"""
+        search_cache.clear()
+
+        self.metadata = MagicMock()
+        self.service_name = "clickhouse_service"
+
+        self.mv_entity = self._table("samples_mv", "schema01")
+        self.source_entity = self._table("samples", "schema01")
+        self.target_entity = self._table("samples_e", "schema02")
+
+        self.metadata.es_search_from_fqn = self._es_search_from_fqn
+        self.metadata.get_by_name = self._get_by_name
+
+        self.table_view = TableView(
+            table_name="samples_mv",
+            schema_name="schema01",
+            db_name="default",
+            view_definition=self.MV_DEFINITION,
+        )
+
+    def _table(self, name: str, schema: str) -> Table:
+        return Table(
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root=name),
+            fullyQualifiedName=FullyQualifiedEntityName(root=f"{self.service_name}.default.{schema}.{name}"),
+            serviceType=DatabaseServiceType.Clickhouse,
+            columns=[],
+        )
+
+    def _es_search_from_fqn(self, entity_type, fqn_search_string, **kwargs):
+        for entity in (self.mv_entity, self.source_entity, self.target_entity):
+            if entity.name.root in fqn_search_string.split("."):
+                return [entity]
+        return []
+
+    def _get_by_name(self, entity, fqn=None, **kwargs):
+        for candidate in (self.mv_entity, self.source_entity, self.target_entity):
+            if fqn and candidate.fullyQualifiedName.root == fqn:
+                return candidate
+        return None
+
+    def _run(self) -> dict:
+        """Run the view lineage and return the produced {from_fqn: to_fqn} edges"""
+        results = list(
+            get_view_lineage(
+                view=self.table_view,
+                metadata=self.metadata,
+                service_names=self.service_name,
+                connection_type="Clickhouse",
+                timeout_seconds=30,
+                parser_type=QueryParserType.Auto,
+            )
+        )
+        self.assertTrue(all(result.left is None for result in results), [result.left for result in results])
+        return {result.right.from_entity_fqn: result.right.to_entity_fqn for result in results if result.right}
+
+    def test_materialized_view_to_clause_creates_downstream_lineage(self):
+        """Both the upstream and the `TO` target edges are created"""
+        edges = self._run()
+
+        self.assertEqual(
+            edges,
+            {
+                self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root,
+                self.mv_entity.fullyQualifiedName.root: self.target_entity.fullyQualifiedName.root,
+            },
+        )
+
+    def test_unqualified_target_resolves_against_the_view_schema(self):
+        """`TO <table>` without a schema belongs to the schema of the view"""
+        self.target_entity = self._table("samples_e", "schema01")
+        self.table_view.view_definition = (
+            "CREATE MATERIALIZED VIEW schema01.samples_mv TO samples_e AS SELECT column_01 FROM schema01.samples"
+        )
+
+        edges = self._run()
+
+        self.assertEqual(
+            edges.get(self.mv_entity.fullyQualifiedName.root),
+            self.target_entity.fullyQualifiedName.root,
+        )
+
+    def test_refresh_and_definer_variant(self):
+        """The `REFRESH EVERY ... DEFINER ...` variant is handled as well"""
+        self.table_view.view_definition = (
+            "CREATE MATERIALIZED VIEW schema01.samples_mv REFRESH EVERY 3 HOUR TO schema02.samples_e "
+            "(`column_01` String) DEFINER = default SQL SECURITY DEFINER "
+            "AS SELECT column_01 FROM schema01.samples"
+        )
+
+        edges = self._run()
+
+        self.assertEqual(
+            edges,
+            {
+                self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root,
+                self.mv_entity.fullyQualifiedName.root: self.target_entity.fullyQualifiedName.root,
+            },
+        )
+
+    def test_materialized_view_without_to_clause_is_untouched(self):
+        """A materialized view holding its own data only gets the upstream edge"""
+        self.table_view.view_definition = (
+            "CREATE MATERIALIZED VIEW schema01.samples_mv (`column_01` String) ENGINE = MergeTree "
+            "ORDER BY column_01 AS SELECT column_01 FROM schema01.samples"
+        )
+
+        edges = self._run()
+
+        self.assertEqual(
+            edges,
+            {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
+        )
+
+    def test_unknown_target_table_is_skipped(self):
+        """A target table that is not ingested does not produce a broken edge"""
+        self.table_view.view_definition = (
+            "CREATE MATERIALIZED VIEW schema01.samples_mv TO schema02.not_ingested "
+            "AS SELECT column_01 FROM schema01.samples"
+        )
+
+        edges = self._run()
+
+        self.assertEqual(
+            edges,
+            {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
+        )
+
+    def test_other_services_are_untouched(self):
+        """The `TO` clause handling is Clickhouse only"""
+        for entity in (self.mv_entity, self.source_entity, self.target_entity):
+            entity.serviceType = DatabaseServiceType.Mysql
+
+        edges = self._run()
+
+        self.assertEqual(
+            edges,
+            {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
+        )

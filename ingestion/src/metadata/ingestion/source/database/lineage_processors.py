@@ -41,6 +41,7 @@ from metadata.ingestion.models.ometa_lineage import (
     OMetaLineageRequest,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
@@ -345,6 +346,27 @@ def query_lineage_processor(
                     )
 
 
+def _writes_into_view(lineage_request: LineageRequest, view_fqn: str) -> bool:
+    """
+    Whether a view lineage edge points at the view being processed.
+
+    `overrideViewLineage` deletes the existing view lineage of the entity an edge points
+    at before writing it. That is only safe while the edge points at the view itself:
+    an edge into another table -- a Clickhouse materialized view writing into its
+    `TO` target, for instance -- would wipe the lineage that the sibling views writing
+    into that same table just created.
+
+    Edges whose target FQN is unknown keep the previous behaviour of honouring the flag.
+    """
+    if isinstance(lineage_request, OMetaFQNLineageRequest):
+        target_fqn = lineage_request.to_entity_fqn
+    else:
+        target_fqn = lineage_request.edge.toEntity.fullyQualifiedName
+    if not target_fqn:
+        return True
+    return model_str(target_fqn).lower() == view_fqn.lower()
+
+
 def view_lineage_processor(
     views: List[TableView],  # noqa: UP006
     queue: Queue,
@@ -389,7 +411,7 @@ def view_lineage_processor(
                         Either(
                             right=OMetaLineageRequest(
                                 lineage_request=lineage.right,
-                                override_lineage=overrideViewLineage,
+                                override_lineage=(overrideViewLineage and _writes_into_view(lineage.right, view_fqn)),
                                 entity_fqn=view_fqn,
                                 entity=Table,
                             )

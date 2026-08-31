@@ -29,13 +29,16 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
+    _build_table_lineage,
     get_lineage_by_query,
     get_lineage_via_table_entity,
+    get_table_entities_from_query,
 )
 from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.clickhouse_utils import get_materialized_view_target_table
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -49,6 +52,55 @@ def get_host_from_host_port(uri: str) -> str:
     then return the host "localhost"
     """
     return uri.split(":")[0]  # noqa: PLC0207
+
+
+def get_clickhouse_mv_target_lineage(
+    metadata: OpenMetadata,
+    view: TableView,
+    view_entity: Table,
+    service_names: List[str],  # noqa: UP006
+    masked_query: str,
+) -> Iterable[Either[LineageRequest]]:
+    """
+    Build the downstream edge of a Clickhouse materialized view created with a
+    `TO <schema>.<table>` clause.
+
+    Such a view does not hold any data: every row it computes is written into the target
+    table. The SQL parsers report the view itself as the only write target of a
+    `CREATE ... VIEW`, so the view -> target table edge is read off the DDL instead.
+
+    A Clickhouse database maps to an OpenMetadata schema, so an unqualified target
+    resolves against the schema of the view itself.
+    """
+    target = get_materialized_view_target_table(view.view_definition)
+    if target is None:
+        return
+
+    target_schema = target.schema_name or view.schema_name
+    target_entities = get_table_entities_from_query(
+        metadata=metadata,
+        service_names=service_names,
+        database_name=view.db_name,
+        database_schema=target_schema,
+        table_name=target.table_name,
+    )
+    if not target_entities:
+        logger.debug(
+            f"Target table [{target_schema}.{target.table_name}] of materialized view "
+            f"[{view.schema_name}.{view.table_name}] not found, skipping downstream lineage"
+        )
+        return
+
+    for target_entity in target_entities:
+        yield _build_table_lineage(
+            from_entity=view_entity,
+            to_entity=target_entity,
+            from_table_raw_name=f"{view.schema_name}.{view.table_name}",
+            to_table_raw_name=f"{target_schema}.{target.table_name}",
+            masked_query=masked_query,
+            column_lineage_map={},
+            lineage_source=LineageSource.ViewLineage,
+        )
 
 
 #  pylint: disable=too-many-locals
@@ -151,6 +203,15 @@ def get_view_lineage(
                     schema_fallback=schema_fallback,
                 )
                 or []
+            )
+
+        if table_entity.serviceType == DatabaseServiceType.Clickhouse:
+            yield from get_clickhouse_mv_target_lineage(
+                metadata=metadata,
+                view=view,
+                view_entity=table_entity,
+                service_names=service_names,
+                masked_query=lineage_parser.masked_query,
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
