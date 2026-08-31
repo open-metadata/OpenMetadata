@@ -70,6 +70,7 @@ import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import {
   escapeESReservedCharacters,
@@ -322,7 +323,16 @@ const PlatformLineage = () => {
   }, [selectedEntity, loading, permissions, entityType, header]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.lineage')}>
+    <PageLayoutV1
+      pageTitle={
+        // `/lineage` with no entity is the platform-wide view; the focused
+        // variant names the entity it is centred on.
+        decodedFqn
+          ? t('label.entity-lineage', {
+              entity: getEntityName(selectedEntity) || decodedFqn,
+            })
+          : t('label.lineage')
+      }>
       <Grid rowGap="2">
         {isFullScreen ? null : (
           <>

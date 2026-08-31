@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -50,6 +49,7 @@ import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -75,10 +75,12 @@ import org.openmetadata.service.governance.workflows.elements.nodes.userTask.hel
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -780,7 +782,29 @@ public class CreateTask implements TaskListener {
         && prior.getWorkflowInstanceId() != null
         && !isTerminalTaskStatus(prior.getStatus())
         && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
-        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+        && currentWorkflowDefinitionId.equals(resolvePriorWorkflowDefinitionId(prior));
+  }
+
+  /**
+   * Resolve the prior task's workflow definition id, falling back to its workflow instance when the
+   * task itself carries none. Tasks migrated from the pre-2.0 thread model were wired to a workflow
+   * instance but never stamped with a workflowDefinitionId, which would otherwise make the supersede
+   * comparison above fail against a null and leave duplicate approval tasks on re-edit. The lookup is
+   * a single indexed read of the instance record and only runs on the null-definition fallback path.
+   */
+  private static UUID resolvePriorWorkflowDefinitionId(Task prior) {
+    UUID definitionId = prior.getWorkflowDefinitionId();
+    if (definitionId == null && prior.getWorkflowInstanceId() != null) {
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      WorkflowInstance priorInstance =
+          workflowInstanceRepository.getById(prior.getWorkflowInstanceId());
+      if (priorInstance != null) {
+        definitionId = priorInstance.getWorkflowDefinitionId();
+      }
+    }
+    return definitionId;
   }
 
   private void cancelAndTerminatePriorApproval(
@@ -802,9 +826,14 @@ public class CreateTask implements TaskListener {
     // transaction before this dispatch. The worker reads the prior task straight from the database
     // (not the entity cache) to observe that committed status, and only terminates the process when
     // the task is actually terminal — so a still-live approval is never orphaned.
-    CompletableFuture.runAsync(
-            () -> terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId),
-            AsyncService.getInstance().getExecutorService())
+    AsyncService.getInstance()
+        .submitDatabaseTask(
+            DatabaseOperation.WORKFLOW_TASK,
+            priorInstanceId.toString(),
+            () -> {
+              terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId);
+              return null;
+            })
         .exceptionally(
             ex -> {
               LOG.error(

@@ -3,6 +3,7 @@ package org.openmetadata.service.search.elasticsearch.aggregations;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.TopHitsAggregation;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class ElasticTopHitsAggregations implements ElasticAggregations {
         SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(params.get("sort_field"));
     String sortOrderParam = params.get("sort_order");
     SortOrder sortOrder = sortOrderParam.equalsIgnoreCase("desc") ? SortOrder.Desc : SortOrder.Asc;
+    String sourceFields = params.get("source_fields");
 
     this.aggregation =
         Aggregation.of(
@@ -35,8 +37,20 @@ public class ElasticTopHitsAggregations implements ElasticAggregations {
                 a.topHits(
                     TopHitsAggregation.of(
                         th ->
-                            th.size(size)
-                                .sort(s -> s.field(f -> f.field(sortField).order(sortOrder))))));
+                            addSourceFilter(
+                                th.size(size)
+                                    .sort(s -> s.field(f -> f.field(sortField).order(sortOrder))),
+                                sourceFields))));
+  }
+
+  private static TopHitsAggregation.Builder addSourceFilter(
+      TopHitsAggregation.Builder builder, String sourceFields) {
+    if (sourceFields != null && !sourceFields.isBlank()) {
+      builder.source(
+          source ->
+              source.filter(filter -> filter.includes(Arrays.asList(sourceFields.split(",")))));
+    }
+    return builder;
   }
 
   @Override

@@ -190,7 +190,7 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     return QueryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
   }
 
-  private void getFieldNames(
+  static void getFieldNames(
       Map<String, Property> properties,
       String prefix,
       List<Map<String, String>> fieldList,
@@ -236,11 +236,12 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
         }
       }
 
-      // Recursively process nested or object fields
+      // Recurse into object fields only. A `nested` mapping stores its children as separate hidden
+      // Lucene documents, so neither a terms aggregation nor the root-level query_string a chart
+      // formula's q= compiles to can reach them: every descendant of a nested field is unusable in
+      // a custom chart and must not be advertised.
       if (property.isObject() && property.object().properties() != null) {
         getFieldNames(property.object().properties(), baseFieldName, fieldList, entityType);
-      } else if (property.isNested() && property.nested().properties() != null) {
-        getFieldNames(property.nested().properties(), baseFieldName, fieldList, entityType);
       }
     }
   }

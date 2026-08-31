@@ -17,6 +17,7 @@ import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -30,6 +31,7 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
   getAgentCard,
@@ -353,6 +355,7 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 

@@ -68,9 +68,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -409,16 +409,14 @@ public final class EntityUtil {
     }
 
     // Convert UUIDs to strings for the batch query
-    List<String> entityIdStrings =
-        entityIds.stream().map(UUID::toString).collect(java.util.stream.Collectors.toList());
+    List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
 
     // Use the new batch query method for efficient bulk fetching
-    List<org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId>
-        usageDetailsList = usageDAO.getLatestUsageBatch(entityIdStrings);
+    List<UsageDAO.UsageDetailsWithId> usageDetailsList =
+        usageDAO.getLatestUsageBatch(entityIdStrings);
 
     // Convert the list back to a map keyed by UUID
-    for (org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId usageWithId :
-        usageDetailsList) {
+    for (UsageDAO.UsageDetailsWithId usageWithId : usageDetailsList) {
       if (usageWithId != null && usageWithId.getEntityId() != null) {
         usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
       }

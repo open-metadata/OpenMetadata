@@ -12,7 +12,15 @@
  */
 
 import { useOktaAuth } from '@okta/okta-react';
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -38,7 +46,7 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const renewToken = async () => {
+    const renewToken = useCallback(async () => {
       try {
         const [existingIdToken, existingAccessToken] = await Promise.all([
           oktaAuth.tokenManager.get('idToken'),
@@ -67,13 +75,23 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
 
       return '';
-    };
+    }, [oktaAuth]);
 
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewToken,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Okta.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(renewToken);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [renewToken]);
 
     return <Fragment>{children}</Fragment>;
   }

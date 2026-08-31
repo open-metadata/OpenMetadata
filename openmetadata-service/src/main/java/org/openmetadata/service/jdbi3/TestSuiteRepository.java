@@ -83,6 +83,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -845,22 +846,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       SecurityContext securityContext, TestSuite testSuite, boolean hardDelete) {
     String jobId = UUID.randomUUID().toString();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            RestUtil.DeleteResponse<TestSuite> deleteResponse =
-                deleteLogicalTestSuite(
-                    securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-            deleteFromSearch(deleteResponse.entity(), hardDelete);
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            () -> {
+              try {
+                RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                    deleteLogicalTestSuite(
+                        securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
+                deleteFromSearch(deleteResponse.entity(), hardDelete);
 
-            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                jobId, securityContext, deleteResponse.entity());
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, testSuite, e.getMessage());
-          }
-        });
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, deleteResponse.entity());
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId, securityContext, testSuite, e.getMessage());
+              }
+            });
     return Response.accepted()
         .entity(
             new DeleteEntityResponse(

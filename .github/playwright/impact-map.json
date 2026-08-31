@@ -5,8 +5,7 @@
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
-    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
-    "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
     "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
@@ -146,7 +145,8 @@
         "playwright/e2e/Search/**/*.spec.ts",
         "playwright/e2e/Features/SearchSeparation/**/*.spec.ts",
         "playwright/e2e/**/*AfterReindex.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -186,6 +186,7 @@
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
@@ -215,6 +216,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/TestSuite*.spec.ts",
@@ -249,6 +251,21 @@
       ]
     },
     {
+      "_comment": "The agents tab has to keep listing agents, and keep its run history readable, while the pipeline-service status call is slow or failing — only the controls that reach that service may go down with it. These are the files that decide it. The spec stubs the status endpoint and carries no ingestion tag, so chromium alone is enough; it needs no Airflow fixture.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ServiceAgents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Ingestion/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AirflowMessageBanner/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/AirflowStatusProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/ingestionPipelineAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
@@ -276,7 +293,9 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DomainListing/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataProduct/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
@@ -324,7 +343,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
+      "projects": ["chromium", "Basic", "Ingestion", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",
@@ -448,7 +467,7 @@
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
       ],
       "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
+      "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"]
     },
     {
       "sources": [
@@ -576,6 +595,19 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "PersonaAIContextRules.spec.ts covers the AI Context rule builder on the Persona settings page. Without this entry, changes to the PersonaAIContext component tree or PersonaAPI are not caught before merge.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts"
       ]
     }
   ]

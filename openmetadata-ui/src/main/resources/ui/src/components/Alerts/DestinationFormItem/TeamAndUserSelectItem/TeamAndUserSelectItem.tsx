@@ -137,6 +137,7 @@ function TeamAndUserSelectItem({
           <Row gutter={[8, 8]}>
             <Col span={24}>
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- search box must focus when dropdown opens
                 autoFocus
                 data-testid="search-input"
                 placeholder={t('label.search-by-type', {

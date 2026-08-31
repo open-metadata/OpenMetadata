@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForIncidentToBeIndexed } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
@@ -640,11 +641,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await getApiContext(actorPage);
 
       try {
-        await actorApiContext.post('/api/v1/feed', {
+        await actorApiContext.post('/api/v1/conversations', {
           data: {
             message: 'Can you resolve this thread for me? <#E::user::admin>',
             about: `<#E::testCase::${get(testCase, 'fullyQualifiedName')}>`,
-            type: 'Conversation',
           },
         });
       } finally {
@@ -657,7 +657,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       const mentionResponse = adminPage.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.url().includes('filterType=MENTIONS') &&
           response.request().method() === 'GET'
       );
@@ -680,7 +680,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           .poll(
             async () => {
               const mentionsResponse = await adminApiContext.get(
-                '/api/v1/feed',
+                '/api/v1/conversations',
                 {
                   params: {
                     userId: loggedInUser.id,
@@ -1050,6 +1050,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
       userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
+      testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
@@ -1058,6 +1059,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
 
+    const assignmentStartedAt = Date.now();
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1067,6 +1069,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       },
       direct: true,
     });
+    // Browser API calls read the JWT from local storage, which page.request
+    // does not inherit. Poll with an authenticated context so a 401 cannot be
+    // mistaken for search-index lag.
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        assigneeTestCase.testCaseFqn,
+        assignmentStartedAt,
+        'Assigned',
+        assigneeTestCase.username
+      );
+    } finally {
+      await afterAction();
+    }
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeOption = page.locator(

@@ -37,6 +37,11 @@ export const getSidebarPathname = (
     return originUrl;
   }
 
+  // `/` renders the landing page in place, so the Home item owns it too.
+  if (pathname === ROUTES.HOME) {
+    return ROUTES.MY_DATA;
+  }
+
   if (pathname.startsWith(`${TEST_CASE_ROUTE_PREFIX}/`)) {
     return ROUTES.INCIDENT_MANAGER;
   }

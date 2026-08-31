@@ -54,6 +54,31 @@ public final class TaskWorkflowLifecycleResolver {
 
   private TaskWorkflowLifecycleResolver() {}
 
+  /**
+   * Fallback transitions returned when a {@code userApprovalTask} node's {@code transitionMetadata}
+   * is empty. The values (ids, labels, target stage ids, statuses) mirror the FE default in
+   * {@code UserApprovalForm} and the migration backfill so tasks resolved via this fallback and
+   * tasks resolved via backfilled metadata land on the same workflow stage ids.
+   */
+  private static final List<TaskAvailableTransition> DEFAULT_USER_APPROVAL_TRANSITIONS =
+      List.of(
+          new TaskAvailableTransition()
+              .withId("approve")
+              .withLabel("Approve")
+              .withTargetStageId("approved")
+              .withTargetTaskStatus(TaskEntityStatus.Approved)
+              .withResolutionType(TaskResolutionType.Approved)
+              .withRequiresComment(false),
+          new TaskAvailableTransition()
+              .withId("reject")
+              .withLabel("Reject")
+              .withTargetStageId("rejected")
+              .withTargetTaskStatus(TaskEntityStatus.Rejected)
+              .withResolutionType(TaskResolutionType.Rejected)
+              .withRequiresComment(false));
+
+  private static final String USER_APPROVAL_TASK_SUB_TYPE = "userApprovalTask";
+
   public static Optional<TaskFormSchema> resolveSchema(Task task) {
     if (task == null || task.getType() == null) {
       return Optional.empty();
@@ -351,15 +376,16 @@ public final class TaskWorkflowLifecycleResolver {
 
   public static List<TaskAvailableTransition> resolveTransitionsForStage(
       WorkflowDefinition workflowDefinition, String workflowStageId) {
+    List<TaskAvailableTransition> transitions = List.of();
     if (workflowDefinition == null
         || nullOrEmpty(workflowStageId)
         || nullOrEmpty(workflowDefinition.getNodes())) {
-      return List.of();
+      return transitions;
     }
 
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       if (node == null
-          || !"userApprovalTask".equals(node.getSubType())
+          || !USER_APPROVAL_TASK_SUB_TYPE.equals(node.getSubType())
           || node.getConfig() == null) {
         continue;
       }
@@ -374,21 +400,87 @@ public final class TaskWorkflowLifecycleResolver {
         continue;
       }
 
-      return parseTransitions(config.get("transitionMetadata"));
+      transitions = parseTransitions(config.get("transitionMetadata"));
+      if (transitions.isEmpty()) {
+        transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
+      }
+      break;
     }
 
-    return List.of();
+    return transitions;
   }
 
   public static TaskAvailableTransition findTransition(Task task, String transitionId) {
-    if (task == null || nullOrEmpty(transitionId) || nullOrEmpty(task.getAvailableTransitions())) {
-      return null;
+    TaskAvailableTransition match = null;
+    if (task == null || nullOrEmpty(transitionId)) {
+      return match;
     }
 
-    return task.getAvailableTransitions().stream()
-        .filter(transition -> transitionId.equals(transition.getId()))
-        .findFirst()
-        .orElse(null);
+    List<TaskAvailableTransition> transitions = task.getAvailableTransitions();
+    if (nullOrEmpty(transitions) && task.getWorkflowDefinitionId() != null) {
+      transitions = fallbackUserApprovalTransitions(task);
+    }
+    if (!nullOrEmpty(transitions)) {
+      match =
+          transitions.stream()
+              .filter(transition -> transitionId.equals(transition.getId()))
+              .findFirst()
+              .orElse(null);
+    }
+    return match;
+  }
+
+  /**
+   * Resolve fallback transitions for a workflow-managed task whose stored
+   * {@code availableTransitions} is empty. Prefer the stage-specific lookup so a partially
+   * configured workflow can override the defaults; fall back to
+   * {@link #DEFAULT_USER_APPROVAL_TRANSITIONS} when the task carries no {@code workflowStageId}
+   * or when the resolved stage node also declares an empty transition list. Loads the
+   * {@link WorkflowDefinition} once and shares it with both checks — this runs on every resolve
+   * of a legacy task with empty availableTransitions, and the load hits the repository plus JSON
+   * deserialization.
+   */
+  private static List<TaskAvailableTransition> fallbackUserApprovalTransitions(Task task) {
+    List<TaskAvailableTransition> transitions = List.of();
+    WorkflowDefinition workflowDefinition = loadWorkflowDefinition(task.getWorkflowDefinitionId());
+    if (workflowDefinition == null) {
+      return transitions;
+    }
+    if (!nullOrEmpty(task.getWorkflowStageId())) {
+      transitions = resolveTransitionsForStage(workflowDefinition, task.getWorkflowStageId());
+    }
+    if (transitions.isEmpty() && hasUserApprovalTaskNode(workflowDefinition)) {
+      transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
+    }
+    return transitions;
+  }
+
+  private static WorkflowDefinition loadWorkflowDefinition(UUID workflowDefinitionId) {
+    WorkflowDefinition workflowDefinition = null;
+    if (workflowDefinitionId != null) {
+      try {
+        workflowDefinition =
+            Entity.getEntity(
+                Entity.WORKFLOW_DEFINITION, workflowDefinitionId, "nodes", Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.debug(
+            "Failed to load workflow definition '{}': {}", workflowDefinitionId, e.getMessage());
+      }
+    }
+    return workflowDefinition;
+  }
+
+  private static boolean hasUserApprovalTaskNode(WorkflowDefinition workflowDefinition) {
+    boolean present = false;
+    if (workflowDefinition != null && !nullOrEmpty(workflowDefinition.getNodes())) {
+      for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+        if (node != null && USER_APPROVAL_TASK_SUB_TYPE.equals(node.getSubType())) {
+          present = true;
+          break;
+        }
+      }
+    }
+    return present;
   }
 
   public static String defaultTransitionId(Task task, TaskResolutionType resolutionType) {

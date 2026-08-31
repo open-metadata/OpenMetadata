@@ -239,9 +239,9 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
         {/* Details Section */}
         <div className="test-case-details">
-          {detailItems.map((item, index) => (
+          {detailItems.map((item) => (
             <DetailItem
-              key={`${item.label}-${index}`}
+              key={item.label}
               label={item.label}
               showDottedBorder={item.showDottedBorder}
               value={item.value}
