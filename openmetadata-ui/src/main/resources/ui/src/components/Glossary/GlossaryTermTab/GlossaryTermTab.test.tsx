@@ -1314,6 +1314,57 @@ describe('Test GlossaryTermTab component', () => {
       // we're just testing that the button exists and has proper text
       // The full integration test would require more complex setup
     });
+
+    it('resets expand-all mode when the status filter changes, so a stale accumulated tree cannot be merged in afterwards', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
+      });
+
+      const expandAllButton = screen.getByTestId('expand-collapse-all-button');
+      fireEvent.click(expandAllButton);
+
+      await waitFor(() => {
+        expect(expandAllButton.textContent).toBe('label.collapse-all');
+      });
+
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+      fireEvent.click(
+        screen.getByTestId(`glossary-status-option-${EntityStatus.Rejected}`)
+      );
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(expandAllButton.textContent).toBe('label.expand-all');
+      });
+    });
+
+    it('resets expand-all mode when the search term changes', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
+      });
+
+      const expandAllButton = screen.getByTestId('expand-collapse-all-button');
+      fireEvent.click(expandAllButton);
+
+      await waitFor(() => {
+        expect(expandAllButton.textContent).toBe('label.collapse-all');
+      });
+
+      const searchInput = screen.getByPlaceholderText('label.search-entity');
+      fireEvent.change(searchInput, { target: { value: 'bridge' } });
+
+      await waitFor(() => {
+        expect(expandAllButton.textContent).toBe('label.expand-all');
+      });
+    });
   });
 
   describe('Drag and Drop Modal', () => {

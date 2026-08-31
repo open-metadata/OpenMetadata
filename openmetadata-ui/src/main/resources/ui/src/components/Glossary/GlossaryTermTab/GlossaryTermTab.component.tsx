@@ -1711,6 +1711,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       previousGlossaryFQN === activeGlossary?.fullyQualifiedName
     ) {
       setCurrentPage(1);
+      setToggleExpandBtn(false);
+      setExpandTree({ loaded: 0, total: 0 });
+      expandedTreeFlatRef.current = [];
       handlePagingChange((prev) => ({
         ...prev,
         after: undefined,
