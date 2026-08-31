@@ -189,4 +189,60 @@ describe('useAgentPermissions', () => {
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
   });
+
+  // Regression guard for the SSE-tick shape the old FQN_KEY_SEPARATOR
+  // join/split machinery existed to handle: agent lists are re-mapped (a
+  // brand-new array, same content) on every SSE progress tick, and that must
+  // not cost a refetch. useBulkEntityPermissions keys its queries by
+  // resource+fqn (not array identity) and PERMISSION_STALE_TIME covers the
+  // rest, but nothing else in this suite pins that a NEW array with the SAME
+  // fqns is actually a no-op fetch-wise — only that call args/counts are
+  // correct for a single render.
+  it('does not refetch on a new array literal with the same fqns (SSE-tick shape), but does on genuinely new fqns', async () => {
+    const wrapper = createWrapper();
+    const { result, rerender } = renderHook(
+      ({ fqns }: { fqns: string[] }) => useAgentPermissions(fqns),
+      { initialProps: { fqns: ['agentA', 'agentB'] }, wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.agentPermissions).toEqual({
+        agentA: { trigger: true, edit: true, delete: true },
+        agentB: { trigger: true, edit: true, delete: true },
+      })
+    );
+
+    const callsAfterFirstResolve = mockGetEntityPermissionByFqn.mock.calls.length;
+
+    expect(callsAfterFirstResolve).toBe(2);
+
+    // A brand-new array literal, same fqn content — the SSE-progress-tick
+    // shape. Must not trigger any new fetch.
+    rerender({ fqns: ['agentA', 'agentB'] });
+
+    await waitFor(() =>
+      expect(result.current.agentPermissions).toEqual({
+        agentA: { trigger: true, edit: true, delete: true },
+        agentB: { trigger: true, edit: true, delete: true },
+      })
+    );
+
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(
+      callsAfterFirstResolve
+    );
+
+    // Genuinely different fqns must still fetch.
+    rerender({ fqns: ['agentA', 'agentC'] });
+
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        ResourceEntity.INGESTION_PIPELINE,
+        'agentC'
+      )
+    );
+
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(
+      callsAfterFirstResolve + 1
+    );
+  });
 });

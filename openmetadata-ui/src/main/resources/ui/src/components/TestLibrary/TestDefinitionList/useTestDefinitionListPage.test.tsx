@@ -420,7 +420,22 @@ describe('useTestDefinitionListPage', () => {
         // (PERMISSION_STALE_TIME), so refiltering to the SAME two definition
         // fqns is served from cache — a real dedup improvement, not a
         // regression (see useBulkEntityPermissions.ts's module doc).
+        //
+        // toHaveBeenCalledTimes(2) alone doesn't prove WHICH two calls
+        // happened — it would pass just as well for two calls against the
+        // wrong fqns that happened to sum to 2. Pin the actual arg sets too:
+        // exactly the original two rows' fqns, still each called only once,
+        // proves this is a genuine cache hit on the refetch (not a
+        // coincidental total).
         expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+          ResourceEntity.TEST_DEFINITION,
+          'columnValuesToBeUnique'
+        );
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+          ResourceEntity.TEST_DEFINITION,
+          'tableRowCountToEqual'
+        );
         expect(result.current.permissionLoading).toBe(false);
       });
     });

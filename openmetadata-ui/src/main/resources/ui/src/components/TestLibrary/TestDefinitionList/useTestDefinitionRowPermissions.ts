@@ -100,6 +100,22 @@ export const useTestDefinitionRowPermissions = () => {
 
   const permissionLoading = !hasFetched || isBulkLoading;
 
+  /**
+   * CONTRACT CHANGE from the pre-fold implementation: the returned promise
+   * now resolves once `definitions` have been STORED (synchronously, on the
+   * next tick), NOT once permissions have actually been fetched. The real
+   * fetch — and its resolution — is owned by {@link useBulkEntityPermissions}
+   * and happens asynchronously afterward, driven by the `fqns` derived from
+   * this stored state; `testDefinitionPermissions`/`permissionLoading` are
+   * what observe that fetch completing, not this promise. The pre-fold
+   * version awaited the actual Promise.allSettled fetch here, so a caller
+   * that `await`s this call expecting fresh `testDefinitionPermissions`
+   * immediately afterward will NOT get them — the current sole caller
+   * (`useTestDefinitionData.ts`'s `fetchTestDefinitions`) is fire-and-forget
+   * (`fetchTestDefinitionPermissions(data)`, not awaited) and is therefore
+   * unaffected, but a future caller that awaits this must not assume the
+   * fetch has completed when it resolves.
+   */
   const fetchTestDefinitionPermissions = useCallback(
     async (definitions: TestDefinition[]) => {
       setDefinitionsForPermissions(definitions);
