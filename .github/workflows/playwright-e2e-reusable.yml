@@ -64,6 +64,15 @@ on:
         required: false
         type: boolean
         default: true
+      retries:
+        description: >-
+          Per-test Playwright retry count for the sharded test job, exported to
+          playwright.config.ts as PLAYWRIGHT_RETRIES. Empty (default) keeps the
+          config's CI default of 1. Only the shard test step honours it — the
+          fixture populator and bundle-smoke keep their own behaviour.
+        required: false
+        type: string
+        default: ""
       send_slack_notification:
         description: Post a Slack summary once the run finishes.
         required: false
@@ -1482,6 +1491,7 @@ jobs:
           PW_SHARD_ID: ${{ matrix.shardId }}
           PW_SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
           PW_WORKERS: ${{ matrix.workers }}
+          PLAYWRIGHT_RETRIES: ${{ inputs.retries }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}

@@ -76,5 +76,8 @@ jobs:
       full_suite: ${{ inputs.full_suite }}
       protocol: ${{ inputs.protocol }}
       coarse_bundle: ${{ inputs.coarse_bundle }}
+      # Release branches accumulate flakes faster than main; give each test
+      # two retries instead of the config default of one.
+      retries: "2"
       send_slack_notification: ${{ inputs.send_slack_notification }}
       slack_run_title: "MySQL Playwright E2E on ${{ inputs.branch }}"
