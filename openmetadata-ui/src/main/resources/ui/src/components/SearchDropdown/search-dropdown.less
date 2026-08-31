@@ -113,62 +113,6 @@
     }
   }
 
-  // Each menu row renders a NATIVE <input type="checkbox|radio"> (see
-  // generateSearchDropdownLabel), not an antd Checkbox, so the .ant-checkbox
-  // rules above never reach the option rows — only the null-option Checkbox.
-  // Style the native control to match the compact design: an 18px rounded box
-  // that fills primary and shows a "+" when checked (radio → a filled dot).
-  // Scoped to menu items so antd's own hidden .ant-checkbox-input is untouched.
-  .ant-dropdown-menu-item {
-    input[type='checkbox'],
-    input[type='radio'] {
-      appearance: none;
-      flex: 0 0 18px;
-      width: 18px;
-      height: 18px;
-      margin: 0;
-      position: relative;
-      border: 1px solid @border-color-2;
-      border-radius: var(--om-radius-md);
-      background-color: var(--tw-color-bg-primary);
-      cursor: pointer;
-    }
-
-    input[type='radio'] {
-      border-radius: var(--om-radius-full);
-    }
-
-    input[type='checkbox']:checked,
-    input[type='radio']:checked {
-      background-color: @primary-color;
-      border-color: @primary-color;
-    }
-
-    input[type='checkbox']:checked::after {
-      content: '+';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -54%);
-      color: @white;
-      font-size: var(--om-font-size-sm);
-      font-weight: var(--om-font-weight-semibold);
-      line-height: 1;
-    }
-
-    input[type='radio']:checked::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 8px;
-      height: 8px;
-      border-radius: var(--om-radius-full);
-      background-color: @white;
-    }
-  }
-
   .global-border.rounded-4 {
     border: none;
     background: transparent;

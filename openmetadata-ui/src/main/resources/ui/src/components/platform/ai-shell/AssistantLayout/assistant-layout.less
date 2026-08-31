@@ -17,14 +17,7 @@
   // gaps around them read as a framed surface rather than bare white.
   background: var(--tw-color-utility-gray-blue-50);
 
-  // The app-mode shell has no navbar; its only vertical chrome is the content
-  // pane's `tw:my-1.5` margins (6px + 6px = 12px). PageLayoutV1 sizes every
-  // page as `calc(100vh - var(--ant-navbar-height))`, so this single variable
-  // is the one place the shell communicates its chrome to OSS pages — never add
-  // per-page height overrides. Without this the pages inherit the :root 80px
-  // navbar height (temp.css) and every AI page renders ~68px too short with a
-  // phantom gap at the bottom.
-  --ant-navbar-height: 12px;
+  --ant-navbar-height: 28px;
   // A nested var() in a custom property is substituted at the scope where the
   // custom property is declared, so `--om-page-height` MUST be re-declared here
   // (see the temp.css note) or pages keep the :root 80px-derived value.
