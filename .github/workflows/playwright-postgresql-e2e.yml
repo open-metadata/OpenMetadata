@@ -28,15 +28,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths-ignore:
-      - ".github/**"
-      - "openmetadata-dist/**"
-      - "docker/**"
-      - "!docker/development/docker-compose.yml"
-      - "!docker/development/docker-compose-postgres.yml"
-      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
-      - "openmetadata-ui/src/main/resources/ui/scripts/**"
   pull_request_target:
     types:
       - labeled
@@ -44,15 +35,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths-ignore:
-      - ".github/**"
-      - "openmetadata-dist/**"
-      - "docker/**"
-      - "!docker/development/docker-compose.yml"
-      - "!docker/development/docker-compose-postgres.yml"
-      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
-      - "openmetadata-ui/src/main/resources/ui/scripts/**"
 
 permissions:
   contents: read
@@ -65,13 +47,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # playwright-summary is a required check, so the workflow always triggers.
+  # This decides whether the expensive jobs below actually run — mirroring the
+  # paths-ignore this replaces.
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true' }}
+    steps:
+      # predicate-quantifier: every — a file must match ALL patterns, which is
+      # what makes the negations exclude. With the default (some) the leading
+      # '**' matches everything and nothing is ever excluded.
+      - uses: dorny/paths-filter@v3
+        id: outside
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!.github/**'
+              - '!openmetadata-dist/**'
+              - '!docker/**'
+              - '!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**'
+              - '!openmetadata-ui/src/main/resources/ui/playwright/docs/**'
+              - '!openmetadata-ui/src/main/resources/ui/scripts/**'
+
+      # Re-includes, kept separate: under `every` a file cannot match both
+      # filenames at once, so these need the default quantifier.
+      - uses: dorny/paths-filter@v3
+        id: compose
+        with:
+          filters: |
+            compose:
+              - 'docker/development/docker-compose.yml'
+              - 'docker/development/docker-compose-postgres.yml'
+
   build:
+    needs: check-changes
     runs-on: ubuntu-latest
     # Fork PRs stay on the pull_request_target route, where the default
     # branch's gate demands a "safe to test" label before handing over the
     # cloud-connector secrets a pull_request run on a fork cannot read.
     if: >-
-      ${{ !github.event.pull_request.draft &&
+      ${{ needs.check-changes.outputs.relevant == 'true' &&
+          !github.event.pull_request.draft &&
           (github.event_name != 'pull_request' ||
            github.event.pull_request.head.repo.full_name == github.repository) }}
     steps:
@@ -327,13 +346,17 @@ jobs:
     needs: playwright-ci-postgresql
     runs-on: ubuntu-latest
     steps:
+      # Skip when no tests ran: there are no artifacts to download, and the job
+      # still needs to report so the required check is satisfied.
       - name: Download all results JSON
+        if: ${{ needs.playwright-ci-postgresql.result == 'success' }}
         uses: actions/download-artifact@v4
         with:
           pattern: playwright-results-json-*
           path: results
 
       - name: Post consolidated PR comment
+        if: ${{ needs.playwright-ci-postgresql.result == 'success' }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
