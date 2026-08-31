@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -19,15 +21,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  pagingObject,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE,
+    pagingObject
 } from '../../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -48,14 +50,13 @@ import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringUtils';
 import {
-  dataProductTableObject,
-  descriptionTableObject,
-  domainTableObject,
-  ownerTableObject,
-  tagTableObject,
+    dataProductTableObject,
+    descriptionTableObject,
+    domainTableObject,
+    ownerTableObject,
+    tagTableObject
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -294,7 +295,26 @@ const DataModelTable = ({
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.data-model-plural'),
+                })}
+                variant="blank"
+              />
+            )}
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -18,7 +20,6 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TableAntd from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
@@ -26,11 +27,10 @@ import { useGenericContext } from '../../components/Customization/GenericProvide
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../constants/TableKeys.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -41,8 +41,8 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import {
-  getApiEndPoints,
-  GetApiEndPointsType,
+    getApiEndPoints,
+    GetApiEndPointsType
 } from '../../rest/apiEndpointsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
@@ -304,10 +304,24 @@ function APIEndpointsTab({
       loading={apiEndpointsLoading}
       locale={{
         emptyText: (
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-          />
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.api-endpoint-plural'),
+                })}
+                variant="blank"
+              />
+            )}
+          </div>
         ),
       }}
       pagination={false}

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets } from '@openmetadata/ui-core-components/icons';
 import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -21,12 +23,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { INITIAL_CHART_FILTERS } from '../../../constants/constants';
 import {
-  DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import type { TagLabel } from '../../../generated/entity/data/chart';
 import { TagSource } from '../../../generated/entity/data/chart';
@@ -45,7 +46,6 @@ import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -53,8 +53,8 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import {
-  ChartsPermissions,
-  ChartType,
+    ChartsPermissions,
+    ChartType
 } from '../DashboardDetails/DashboardDetails.interface';
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
@@ -455,10 +455,15 @@ export const DashboardChartTable = ({
         }
         locale={{
           emptyText: (
-            <ErrorPlaceHolder
-              className="border-none mt-0-important"
-              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-            />
+            <div className="tw:relative tw:min-h-70">
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.chart-plural'),
+                })}
+                variant="blank"
+              />
+            </div>
           ),
         }}
         pagination={false}
