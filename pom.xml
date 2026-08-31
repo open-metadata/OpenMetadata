@@ -832,12 +832,14 @@
         Keep this in step with the httpcore5 pin above - Apache releases the two together
         and mixing lines breaks search. httpclient5 5.5/5.5.2 are built against httpcore5
         5.3.x; on 5.4.x their I/O reactor dispatchers die silently, leaking connection-pool
-        leases until every request fails with DeadlineTimeoutException. 5.6.3 declares
-        httpcore5 5.4.3, so client and core match.
+        leases until every request fails with DeadlineTimeoutException. 5.6.4 declares
+        httpcore5 5.4.3 (identical to 5.6.3), so client and core match.
 
-        5.6.3 is also the first release outside the CVE-2026-64607 range (affects
+        5.6.3 was the first release outside the CVE-2026-64607 range (affects
         5.0-alpha1 through 5.6.2: the classic i/o client leaks a connection when a response
-        carries an invalid Content-Encoding).
+        carries an invalid Content-Encoding). 5.6.4 additionally closes CVE-2026-71290
+        (improper certificate validation: HostnameVerificationPolicy#BUILTIN had no effect on
+        the async TLS upgrade path, so SSL parameters were not applied).
 
         The 5.6 line enables automatic content decompression in the async client, which the
         search transports also do - see disableContentCompression() in OpenSearchClient and
@@ -846,7 +848,7 @@
       <dependency>
         <groupId>org.apache.httpcomponents.client5</groupId>
         <artifactId>httpclient5</artifactId>
-        <version>5.6.3</version>
+        <version>5.6.4</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
