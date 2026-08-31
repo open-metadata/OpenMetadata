@@ -51,6 +51,7 @@ import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintD
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
@@ -96,6 +97,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const { isAirflowAvailable } = useAirflowStatus();
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
+  // Resource-level permission (usePermissionProvider().permissions.ingestionPipeline) —
+  // itself OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly
+  // like an entity-level fetch (Task 8 Batch 3 DatabaseSchemaTable.tsx precedent).
+  const ingestionPipelineFlags = useMemo(
+    () => getDerivedPermissionFlags(ingestionPipeline),
+    [ingestionPipeline]
+  );
 
   const isEditMode = !!testCase;
 
@@ -186,11 +194,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       });
 
       const ingestion = await addIngestionPipeline(pipeline);
-      if (isAirflowAvailable && ingestionPipeline.EditAll) {
+      if (isAirflowAvailable && ingestionPipelineFlags.canEditAll) {
         await deployIngestionPipelineById(ingestion.id ?? '');
       }
     },
-    [formContext, testSuite, table, isAirflowAvailable, ingestionPipeline]
+    [formContext, testSuite, table, isAirflowAvailable, ingestionPipelineFlags]
   );
 
   const handleEditSubmit = useCallback(
