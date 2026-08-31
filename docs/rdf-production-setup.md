@@ -131,6 +131,31 @@ retry cost. If a larger batch approaches `RDF_REQUEST_TIMEOUT_MS`, either reduce
 the timeout. Wide tables can produce tens of megabytes of triples per 100-entity batch, so validate
 changes against representative catalogs.
 
+### Partition size decides read concurrency
+
+Measured end to end (`RdfIndexAppScaleIT`, 2,000 tables, Fuseki 6.2.0), the **read stage is about
+three quarters of a run** — 11.6 s of a 15.5 s job, against 3.1 s of RDF writes and 0.6 s of
+translation. Reading is not wasteful: the RDF mapper needs an entity's full field set, because a
+search-index-style subset silently drops triples. It is simply the largest stage.
+
+A partition is the unit of read concurrency — one worker reads one partition at a time — so the
+number of partitions caps how much of that stage runs in parallel:
+
+| `partitionSize` | Effective size | Partitions | App wall clock |
+| ---: | ---: | ---: | ---: |
+| `10000` (default) | 6,666 after the entity complexity factor | 1 | 15.5 s |
+| `1000` (the floor) | 1,000 | 2 | **12.0 s** |
+
+Going from one reader to two cut wall clock 23%, and the summed stage time (19.8 s) exceeding wall
+clock (12.0 s) is the proof that partitions really did run concurrently.
+
+The practical consequence: **with the default, any entity type holding fewer than ~6,700 rows gets a
+single partition and reindexes single-threaded**, however many servers or cores are available. If a
+catalog is small or mid-sized and a rebuild looks slower than these numbers suggest, lower
+`partitionSize` (1,000 is the floor) so the type spans several partitions. Large catalogs already
+produce plenty of partitions and need no change — and more partitions are not free, since each
+carries claim and heartbeat traffic.
+
 ### What not to tune
 
 - **Do not raise `consumerThreads` or `producerThreads` to fix slow indexing.** Writes are
