@@ -13,20 +13,11 @@
 
 package org.openmetadata.it.tests;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import org.flywaydb.core.api.configuration.ClassicConfiguration;
-import org.flywaydb.core.api.configuration.Configuration;
-import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
-import org.flywaydb.core.internal.parser.Parser;
-import org.flywaydb.core.internal.parser.ParsingContext;
-import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
-import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
-import org.flywaydb.database.mysql.MySQLParser;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.SqlStatementSplitter;
 
 final class MetricMigrationSqlFixture {
   private MetricMigrationSqlFixture() {}
@@ -35,29 +26,10 @@ final class MetricMigrationSqlFixture {
     String dialect = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
     Path migrationDirectory = migrationDirectory().resolve(dialect);
     return new MigrationScripts(
-        parseSql(migrationDirectory.resolve("schemaChanges.sql"), connectionType),
-        parseSql(migrationDirectory.resolve("postDataMigrationSQLScript.sql"), connectionType));
-  }
-
-  private static List<String> parseSql(Path path, ConnectionType connectionType) throws Exception {
-    Parser parser = sqlParser(connectionType);
-    List<String> statements = new ArrayList<>();
-    FileSystemResource resource =
-        new FileSystemResource(null, path.toString(), StandardCharsets.UTF_8, true);
-    try (SqlStatementIterator iterator = parser.parse(resource)) {
-      while (iterator.hasNext()) {
-        statements.add(iterator.next().getSql());
-      }
-    }
-    return List.copyOf(statements);
-  }
-
-  private static Parser sqlParser(ConnectionType connectionType) {
-    Configuration configuration = new ClassicConfiguration();
-    ParsingContext parsingContext = new ParsingContext();
-    return connectionType == ConnectionType.MYSQL
-        ? new MySQLParser(configuration, parsingContext)
-        : new PostgreSQLParser(configuration, parsingContext);
+        SqlStatementSplitter.splitFile(
+            migrationDirectory.resolve("schemaChanges.sql"), connectionType),
+        SqlStatementSplitter.splitFile(
+            migrationDirectory.resolve("postDataMigrationSQLScript.sql"), connectionType));
   }
 
   private static Path migrationDirectory() {
