@@ -17,8 +17,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Set
-
-from requests.utils import urlparse
+from urllib.parse import urlparse
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
