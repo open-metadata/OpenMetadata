@@ -39,6 +39,7 @@ public class RdfPropertyMapper {
 
   private static final int MAX_IDENTIFIER_CACHE_ENTRIES = 1_000;
   private static final int MAX_UNMAPPED_JSON_LITERAL_CHARS = 32_768;
+  private static final int MAX_MERGED_CONTEXT_ENTRIES = 50;
   private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
   private static final String CLASSIFICATION_SOURCE = "Classification";
   private static final String GLOSSARY_SOURCE = "Glossary";
@@ -121,6 +122,10 @@ public class RdfPropertyMapper {
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
+  // Contexts are static after startup, so each context array is flattened once per
+  // mapper rather than once per entity.
+  private final Cache<String, Map<String, Object>> mergedContextCache =
+      Caffeine.newBuilder().maximumSize(MAX_MERGED_CONTEXT_ENTRIES).build();
   private final Cache<String, Optional<UUID>> glossaryTermIdCache = identifierCache();
   private final Cache<String, Optional<UUID>> classificationTagIdCache = identifierCache();
 
@@ -144,11 +149,12 @@ public class RdfPropertyMapper {
     Model requiredModel = Objects.requireNonNull(model, "model");
     JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
     String entityType = requiredEntity.getEntityReference().getType();
-    Object context = contextCache.get(getContextName(entityType));
+    String contextName = getContextName(entityType);
+    Object context = contextCache.get(contextName);
 
     switch (context) {
       case List<?> contextArray -> processArrayContext(
-          contextArray, entityJson, requiredResource, requiredModel);
+          contextName, contextArray, entityJson, requiredResource, requiredModel);
       case Map<?, ?> contextMap -> processContextMappings(
           toStringObjectMap(contextMap), entityJson, requiredResource, requiredModel);
       case null -> throw new IllegalStateException(
@@ -180,7 +186,19 @@ public class RdfPropertyMapper {
   }
 
   private void processArrayContext(
-      List<?> contextArray, JsonNode entityJson, Resource entityResource, Model model) {
+      String contextName,
+      List<?> contextArray,
+      JsonNode entityJson,
+      Resource entityResource,
+      Model model) {
+    processContextMappings(
+        mergedContextCache.get(contextName, key -> flattenContext(contextArray)),
+        entityJson,
+        entityResource,
+        model);
+  }
+
+  private static Map<String, Object> flattenContext(List<?> contextArray) {
     // Flatten all context maps in the array into one combined map BEFORE iterating
     // entity fields, so each field gets resolved against the union of mappings
     // exactly once. Without this, processContextMappings runs per-context-map and
@@ -196,7 +214,7 @@ public class RdfPropertyMapper {
         mergedContext.putAll(toStringObjectMap(contextMap));
       }
     }
-    processContextMappings(mergedContext, entityJson, entityResource, model);
+    return mergedContext;
   }
 
   private static Map<String, Object> toStringObjectMap(Map<?, ?> source) {
