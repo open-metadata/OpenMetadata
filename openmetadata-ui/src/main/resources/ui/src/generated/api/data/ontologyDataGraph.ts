@@ -12,14 +12,14 @@
  */
 /**
  * A bounded page of term-to-asset clusters, connected semantic context, and observed
- * lineage for Ontology Studio data mode.
+ * lineage for ontology data mode.
  */
-export interface OntologyStudioDataGraph {
+export interface OntologyDataGraph {
     /**
      * Ranked term-to-asset clusters in this page followed by bounded connected context
      * clusters. Paging applies only to the ranked clusters.
      */
-    clusters: OntologyStudioAssetCluster[];
+    clusters: OntologyAssetCluster[];
     /**
      * Bounded semantic and hierarchy relations whose endpoints are present in the returned
      * clusters.
@@ -33,20 +33,24 @@ export interface OntologyStudioDataGraph {
      * Offset pagination for ranked seed clusters, excluding connected context clusters.
      */
     paging: Paging;
+    /**
+     * Ranked term identifiers represented by this page. Connected context clusters are excluded.
+     */
+    seedTermIds: string[];
 }
 
 /**
- * A glossary term and its bounded asset preview for Ontology Studio data mode.
+ * A glossary term and its bounded asset preview for an ontology data graph.
  */
-export interface OntologyStudioAssetCluster {
+export interface OntologyAssetCluster {
     /**
      * Total number of assets tagged with the term.
      */
     assetCount: number;
     /**
-     * Bounded first page of assets tagged with the term.
+     * Bounded first page of asset references tagged with the term.
      */
-    assets: OntologyStudioAsset[];
+    assets: EntityReference[];
     /**
      * Glossary term represented by the cluster.
      */
@@ -54,36 +58,10 @@ export interface OntologyStudioAssetCluster {
 }
 
 /**
- * A bounded asset preview displayed by Ontology Studio data mode.
- */
-export interface OntologyStudioAsset {
-    /**
-     * Number of columns exposed by a tabular asset.
-     */
-    columnCount?: number;
-    /**
-     * Asset reference.
-     */
-    entity: EntityReference;
-    /**
-     * Service that owns the asset when available from search.
-     */
-    service?: EntityReference;
-    /**
-     * Service implementation type when available from search.
-     */
-    serviceType?: string;
-}
-
-/**
- * Asset reference.
- *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Service that owns the asset when available from search.
  *
  * Resolved first-class relationship type.
  *

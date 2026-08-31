@@ -62,9 +62,8 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
-import org.openmetadata.schema.api.data.OntologyStudioAsset;
-import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
-import org.openmetadata.schema.api.data.OntologyStudioSummary;
+import org.openmetadata.schema.api.data.OntologyDataGraph;
+import org.openmetadata.schema.api.data.OntologySummary;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -449,51 +448,51 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @GET
-  @Path("/studio/summary")
+  @Path("/ontology/summary")
   @Operation(
-      operationId = "getOntologyStudioSummary",
-      summary = "Get the bounded Ontology Studio health summary",
+      operationId = "getOntologySummary",
+      summary = "Get the bounded ontology health summary",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Ontology Studio health summary",
+            description = "Ontology health summary",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = OntologyStudioSummary.class)))
+                    schema = @Schema(implementation = OntologySummary.class)))
       })
-  public OntologyStudioSummary getOntologyStudioSummary(
+  public OntologySummary getOntologySummary(
       @Context SecurityContext securityContext,
       @QueryParam("parent") String parent,
       @DefaultValue("5") @Min(1) @Max(20) @QueryParam("limit") int limit,
       @DefaultValue("0") @Min(0) @Max(10000) @QueryParam("offset") int offset) {
-    authorizeStudioView(securityContext);
-    return repository.getOntologyStudioSummary(parent, limit, offset);
+    authorizeOntologyView(securityContext);
+    return repository.getOntologySummary(parent, limit, offset);
   }
 
   @GET
-  @Path("/studio/data")
+  @Path("/ontology/data")
   @Operation(
-      operationId = "getOntologyStudioDataGraph",
-      summary = "Get a bounded page of Ontology Studio data clusters",
+      operationId = "getOntologyDataGraph",
+      summary = "Get a bounded page of ontology data clusters",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Ontology Studio data graph",
+            description = "Ontology data graph",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = OntologyStudioDataGraph.class)))
+                    schema = @Schema(implementation = OntologyDataGraph.class)))
       })
-  public OntologyStudioDataGraph getOntologyStudioDataGraph(
-      @Context SecurityContext securityContext, @BeanParam OntologyStudioDataQuery query) {
-    authorizeStudioView(securityContext);
-    GlossaryTermRepository.StudioDataGraphRequest request = query.toRequest();
-    return repository.getOntologyStudioDataGraph(
+  public OntologyDataGraph getOntologyDataGraph(
+      @Context SecurityContext securityContext, @BeanParam OntologyDataQuery query) {
+    authorizeOntologyView(securityContext);
+    GlossaryTermRepository.OntologyDataGraphRequest request = query.toRequest();
+    return repository.getOntologyDataGraph(
         request, DefaultAuthorizer.getSubjectContext(securityContext));
   }
 
-  public static final class OntologyStudioDataQuery {
+  public static final class OntologyDataQuery {
     @QueryParam("parent")
     private String parent;
 
@@ -536,43 +535,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     @QueryParam("lineageEdgeLimit")
     private int lineageEdgeLimit;
 
-    private GlossaryTermRepository.StudioDataGraphRequest toRequest() {
-      GlossaryTermRepository.StudioDataGraphLimits limits =
-          new GlossaryTermRepository.StudioDataGraphLimits(
+    private GlossaryTermRepository.OntologyDataGraphRequest toRequest() {
+      GlossaryTermRepository.OntologyDataGraphLimits limits =
+          new GlossaryTermRepository.OntologyDataGraphLimits(
               connectedTermLimit, edgeLimit, lineageEdgeLimit);
-      return new GlossaryTermRepository.StudioDataGraphRequest(
+      return new GlossaryTermRepository.OntologyDataGraphRequest(
           parent, limit, offset, assetPreviewSize, limits);
     }
   }
 
-  @GET
-  @Path("/{id}/studioAssets")
-  @Operation(
-      operationId = "listOntologyStudioAssets",
-      summary = "List a bounded page of detailed assets for an Ontology Studio term",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Ontology Studio asset page",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = OntologyStudioAsset.class)))
-      })
-  public ResultList<OntologyStudioAsset> listOntologyStudioAssets(
-      @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
-      @DefaultValue("6") @Min(1) @Max(100) @QueryParam("limit") int limit,
-      @DefaultValue("0") @Min(0) @Max(10000) @QueryParam("offset") int offset) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        getResourceContextById(id));
-    return repository.getOntologyStudioAssets(
-        id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext));
-  }
-
-  private void authorizeStudioView(SecurityContext securityContext) {
+  private void authorizeOntologyView(SecurityContext securityContext) {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),

@@ -177,7 +177,7 @@ function createExplorerState(
     setFilters: jest.fn(),
     setSelectedNode: jest.fn(),
     settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-    studioSummary: undefined,
+    ontologySummary: undefined,
     totalTermCount: 1,
     ...overrides,
   };
@@ -310,6 +310,13 @@ describe('OntologyExplorer Studio data controls', () => {
             relationType: 'lineage',
             to: secondaryAssetNode.id,
           },
+          {
+            edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
+            from: assetNode.id,
+            label: 'observed lineage',
+            relationType: 'lineage',
+            to: secondaryAssetNode.id,
+          },
         ],
         nodes: [termNode, secondaryTermNode, assetNode, secondaryAssetNode],
       },
@@ -318,9 +325,12 @@ describe('OntologyExplorer Studio data controls', () => {
 
     render(<OntologyExplorer scope="global" />);
 
-    expect(
-      screen.getByTestId('ontology-data-observed-lineage-edge')
-    ).not.toHaveAttribute('stroke-dasharray');
+    const observedEdges = screen.getAllByTestId(
+      'ontology-data-observed-lineage-edge'
+    );
+
+    expect(observedEdges).toHaveLength(1);
+    expect(observedEdges[0]).not.toHaveAttribute('stroke-dasharray');
     expect(
       screen.queryByTestId('ontology-data-semantic-edge-label')
     ).not.toBeInTheDocument();
@@ -558,8 +568,9 @@ describe('OntologyExplorer Studio data controls', () => {
   it('caps rendered Data clusters and shows a refine hint', () => {
     const manyTermNodes = Array.from({ length: 61 }, (_, index) => ({
       assetCount: 5,
-      fullyQualifiedName: `DataStudio.Cluster${index}`,
-      id: `DataStudio.Cluster${index}`,
+      fullyQualifiedName: `Ontology.Cluster${index}`,
+      id: `Ontology.Cluster${index}`,
+      isDataModeSeed: index === 60,
       label: `Cluster ${index}`,
       loadedAssetCount: 0,
       type: 'glossaryTerm',
@@ -573,6 +584,36 @@ describe('OntologyExplorer Studio data controls', () => {
     render(<OntologyExplorer scope="global" />);
 
     expect(screen.getAllByTestId(/^ontology-data-cluster-/)).toHaveLength(60);
+    expect(
+      screen.getByTestId('ontology-data-cluster-Ontology.Cluster60')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-data-cluster-Ontology.Cluster59')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-data-render-cap')).toBeInTheDocument();
+  });
+
+  it('keeps seed paging available while connected context exceeds the cap', () => {
+    const manyTermNodes = Array.from({ length: 61 }, (_, index) => ({
+      assetCount: 5,
+      id: `Ontology.Context${index}`,
+      label: `Context ${index}`,
+      type: 'glossaryTerm',
+    }));
+    const state = createExplorerState({
+      explorationMode: 'data',
+      graphDataToShow: { edges: [], nodes: manyTermNodes },
+      hasMoreDataTerms: true,
+    });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer scope="global" />);
+
+    expect(
+      screen.getByRole('button', { name: 'label.load-more' })
+    ).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-data-render-cap')
+    ).not.toBeInTheDocument();
   });
 });

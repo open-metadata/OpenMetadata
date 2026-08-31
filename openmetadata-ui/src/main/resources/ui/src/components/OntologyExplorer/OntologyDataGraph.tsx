@@ -192,10 +192,17 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
       [...assets.values()],
     ])
   );
-  const terms = [...termById.values()].filter(
-    (term) =>
-      (term.assetCount ?? 0) > 0 || (assetsByTerm.get(term.id)?.length ?? 0) > 0
-  );
+  const terms = [...termById.values()]
+    .filter(
+      (term) =>
+        (term.assetCount ?? 0) > 0 ||
+        (assetsByTerm.get(term.id)?.length ?? 0) > 0
+    )
+    .sort(
+      (left, right) =>
+        Number(Boolean(right.isDataModeSeed)) -
+        Number(Boolean(left.isDataModeSeed))
+    );
 
   return { assetsByTerm, termIdsByAsset, terms };
 }
@@ -242,7 +249,8 @@ function buildObservedLineageClusterEdges(
       termIdsByAsset
     )) {
       const key = `${projectedEdge.from}-${projectedEdge.to}`;
-      if (seen.add(key)) {
+      if (!seen.has(key)) {
+        seen.add(key);
         edges.push(projectedEdge);
       }
       if (edges.length >= MAX_OBSERVED_LINEAGE_CLUSTER_EDGES) {
@@ -884,7 +892,19 @@ const OntologyDataGraph = ({
           );
         })}
 
-        {isRenderCapped ? (
+        {hasMoreTerms ? (
+          <Button
+            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
+            color="secondary"
+            isDisabled={isLoadingMoreTerms}
+            size="sm"
+            style={{ top: START_Y + rows * ROW_STEP }}
+            onPress={onLoadMoreTerms}>
+            {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
+          </Button>
+        ) : null}
+
+        {!hasMoreTerms && isRenderCapped ? (
           <span
             className={classNames(
               'tw:absolute tw:left-1/2 tw:-translate-x-1/2 tw:rounded-full tw:border tw:border-secondary',
@@ -897,16 +917,6 @@ const OntologyDataGraph = ({
               count: DATA_MODE_MAX_RENDER_COUNT,
             })}
           </span>
-        ) : hasMoreTerms ? (
-          <Button
-            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
-            color="secondary"
-            isDisabled={isLoadingMoreTerms}
-            size="sm"
-            style={{ top: START_Y + rows * ROW_STEP }}
-            onPress={onLoadMoreTerms}>
-            {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
-          </Button>
         ) : null}
       </div>
 

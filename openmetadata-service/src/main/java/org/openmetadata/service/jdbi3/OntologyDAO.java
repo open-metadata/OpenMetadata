@@ -30,7 +30,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 
-public interface OntologyStudioDAO {
+public interface OntologyDAO {
   String SCOPE_TERM =
       "(:parentHash IS NULL OR term.fqnHash = :parentHash OR term.fqnHash LIKE :parentPattern)";
   String SCOPE_FROM =
@@ -43,6 +43,25 @@ public interface OntologyStudioDAO {
       "relation.deleted = FALSE AND relation.fromEntity = :entityType "
           + "AND relation.toEntity = :entityType "
           + "AND relation.relation IN (:containsRelation, :relatedRelation)";
+  String ACTIVE_CANDIDATE_TERM_RELATION =
+      "candidate.deleted = FALSE AND candidate.fromEntity = :entityType "
+          + "AND candidate.toEntity = :entityType "
+          + "AND candidate.relation IN (:containsRelation, :relatedRelation)";
+  String ONTOLOGY_RELATION_CONTEXT =
+      " JOIN glossary_term_entity sourceTerm ON sourceTerm.id = relation.fromId "
+          + "JOIN glossary_term_entity targetTerm ON targetTerm.id = relation.toId "
+          + "WHERE sourceTerm.deleted = FALSE AND targetTerm.deleted = FALSE AND "
+          + SCOPE_FROM
+          + " AND "
+          + SCOPE_TO
+          + " AND EXISTS (SELECT 1 FROM tag_usage sourceUsage "
+          + "WHERE sourceUsage.tagFQNHash = sourceTerm.fqnHash "
+          + "AND sourceUsage.source = :tagSource) "
+          + "AND EXISTS (SELECT 1 FROM tag_usage targetUsage "
+          + "WHERE targetUsage.tagFQNHash = targetTerm.fqnHash "
+          + "AND targetUsage.source = :tagSource) "
+          + "ORDER BY relation.fromId ASC, relation.toId ASC, relation.relation ASC "
+          + "LIMIT :relationLimit";
 
   @SqlQuery(
       "SELECT term.json AS termJson, COUNT(DISTINCT tagUsage.targetFQNHash) AS assetCount "
@@ -55,43 +74,48 @@ public interface OntologyStudioDAO {
           + "ORDER BY assetCount DESC, term.name ASC, term.id ASC "
           + "LIMIT :limit OFFSET :offset")
   @RegisterRowMapper(TermAssetCountRowMapper.class)
-  List<TermAssetCountRow> listAssetTerms(@BindBean OntologyStudioQueryParameters parameters);
+  List<TermAssetCountRow> listAssetTerms(@BindBean OntologyQueryParameters parameters);
 
   @SqlQuery(
-      "SELECT relation.fromId, relation.toId, relation.relation, relation.json "
-          + "FROM entity_relationship relation "
-          + "JOIN glossary_term_entity sourceTerm ON sourceTerm.id = relation.fromId "
-          + "JOIN glossary_term_entity targetTerm ON targetTerm.id = relation.toId "
-          + "WHERE sourceTerm.deleted = FALSE AND targetTerm.deleted = FALSE AND "
-          + ACTIVE_TERM_RELATION
-          + " AND "
-          + SCOPE_FROM
-          + " AND "
-          + SCOPE_TO
-          + " AND (relation.fromId IN (<termIds>) OR relation.toId IN (<termIds>)) "
-          + "AND EXISTS (SELECT 1 FROM tag_usage sourceUsage "
-          + "WHERE sourceUsage.tagFQNHash = sourceTerm.fqnHash "
-          + "AND sourceUsage.source = :tagSource) "
-          + "AND EXISTS (SELECT 1 FROM tag_usage targetUsage "
-          + "WHERE targetUsage.tagFQNHash = targetTerm.fqnHash "
-          + "AND targetUsage.source = :tagSource) "
-          + "ORDER BY sourceTerm.name ASC, targetTerm.name ASC, relation.relation ASC, "
-          + "relation.fromId ASC, relation.toId ASC LIMIT :relationLimit")
-  @RegisterRowMapper(StudioRelationRowMapper.class)
-  List<StudioRelationRow> listTermRelations(
+      "SELECT relation.fromId, relation.toId, relation.relation, relation.json FROM "
+          + "(SELECT candidate.fromId, candidate.toId, candidate.relation, candidate.json "
+          + "FROM entity_relationship candidate WHERE "
+          + ACTIVE_CANDIDATE_TERM_RELATION
+          + " AND candidate.fromId IN (<termIds>) LIMIT :candidateLimit) relation"
+          + ONTOLOGY_RELATION_CONTEXT)
+  @RegisterRowMapper(OntologyRelationRowMapper.class)
+  List<OntologyRelationRow> listOntologyRelationsFrom(
       @BindList("termIds") List<String> termIds,
-      @BindBean OntologyStudioQueryParameters parameters,
+      @BindBean OntologyQueryParameters parameters,
+      @Bind("candidateLimit") int candidateLimit,
       @Bind("relationLimit") int relationLimit);
 
   @SqlQuery(
-      "SELECT relation.fromId, relation.toId FROM entity_relationship relation "
-          + "WHERE relation.fromId IN (<assetIds>) AND relation.toId IN (<assetIds>) "
-          + "AND relation.relation = :lineageRelation AND relation.deleted = FALSE "
+      "SELECT relation.fromId, relation.toId, relation.relation, relation.json FROM "
+          + "(SELECT candidate.fromId, candidate.toId, candidate.relation, candidate.json "
+          + "FROM entity_relationship candidate WHERE "
+          + ACTIVE_CANDIDATE_TERM_RELATION
+          + " AND candidate.toId IN (<termIds>) LIMIT :candidateLimit) relation"
+          + ONTOLOGY_RELATION_CONTEXT)
+  @RegisterRowMapper(OntologyRelationRowMapper.class)
+  List<OntologyRelationRow> listOntologyRelationsTo(
+      @BindList("termIds") List<String> termIds,
+      @BindBean OntologyQueryParameters parameters,
+      @Bind("candidateLimit") int candidateLimit,
+      @Bind("relationLimit") int relationLimit);
+
+  @SqlQuery(
+      "SELECT relation.fromId, relation.toId FROM "
+          + "(SELECT candidate.fromId, candidate.toId FROM entity_relationship candidate "
+          + "WHERE candidate.fromId IN (<assetIds>) "
+          + "AND candidate.relation = :lineageRelation AND candidate.deleted = FALSE "
+          + "LIMIT :candidateLimit) relation WHERE relation.toId IN (<assetIds>) "
           + "ORDER BY relation.fromId ASC, relation.toId ASC LIMIT :lineageEdgeLimit")
-  @RegisterRowMapper(StudioLineageRowMapper.class)
-  List<StudioLineageRow> listLineageEdges(
+  @RegisterRowMapper(OntologyLineageRowMapper.class)
+  List<OntologyLineageRow> listLineageEdges(
       @BindList("assetIds") List<String> assetIds,
       @Bind("lineageRelation") int lineageRelation,
+      @Bind("candidateLimit") int candidateLimit,
       @Bind("lineageEdgeLimit") int lineageEdgeLimit);
 
   @SqlQuery(
@@ -100,13 +124,13 @@ public interface OntologyStudioDAO {
           + "AND tagUsage.source = :tagSource "
           + "WHERE term.deleted = FALSE AND "
           + SCOPE_TERM)
-  int countAssetTerms(@BindBean OntologyStudioQueryParameters parameters);
+  int countAssetTerms(@BindBean OntologyQueryParameters parameters);
 
   @SqlQuery(
       "SELECT COUNT(*) FROM glossary_term_entity term "
           + "WHERE term.deleted = FALSE AND "
           + SCOPE_TERM)
-  int countTerms(@BindBean OntologyStudioQueryParameters parameters);
+  int countTerms(@BindBean OntologyQueryParameters parameters);
 
   @SqlQuery(
       "SELECT COUNT(*) FROM entity_relationship relation "
@@ -118,7 +142,7 @@ public interface OntologyStudioDAO {
           + SCOPE_FROM
           + " AND "
           + SCOPE_TO)
-  int countRelations(@BindBean OntologyStudioQueryParameters parameters);
+  int countRelations(@BindBean OntologyQueryParameters parameters);
 
   @SqlQuery(
       "SELECT COUNT(*) FROM glossary_term_entity term "
@@ -128,7 +152,7 @@ public interface OntologyStudioDAO {
           + "WHERE "
           + ACTIVE_TERM_RELATION
           + " AND (relation.fromId = term.id OR relation.toId = term.id))")
-  int countIsolatedTerms(@BindBean OntologyStudioQueryParameters parameters);
+  int countIsolatedTerms(@BindBean OntologyQueryParameters parameters);
 
   @SqlQuery(
       "SELECT term.json FROM glossary_term_entity term "
@@ -139,13 +163,13 @@ public interface OntologyStudioDAO {
           + ACTIVE_TERM_RELATION
           + " AND (relation.fromId = term.id OR relation.toId = term.id)) "
           + "ORDER BY term.name ASC, term.id ASC LIMIT :limit OFFSET :offset")
-  List<String> listIsolatedTerms(@BindBean OntologyStudioQueryParameters parameters);
+  List<String> listIsolatedTerms(@BindBean OntologyQueryParameters parameters);
 
   record TermAssetCountRow(String termJson, int assetCount) {}
 
-  record StudioRelationRow(String fromId, String toId, int relation, String json) {}
+  record OntologyRelationRow(String fromId, String toId, int relation, String json) {}
 
-  record StudioLineageRow(String fromId, String toId) {}
+  record OntologyLineageRow(String fromId, String toId) {}
 
   final class TermAssetCountRowMapper implements RowMapper<TermAssetCountRow> {
     @Override
@@ -155,11 +179,11 @@ public interface OntologyStudioDAO {
     }
   }
 
-  final class StudioRelationRowMapper implements RowMapper<StudioRelationRow> {
+  final class OntologyRelationRowMapper implements RowMapper<OntologyRelationRow> {
     @Override
-    public StudioRelationRow map(ResultSet resultSet, StatementContext context)
+    public OntologyRelationRow map(ResultSet resultSet, StatementContext context)
         throws SQLException {
-      return new StudioRelationRow(
+      return new OntologyRelationRow(
           resultSet.getString("fromId"),
           resultSet.getString("toId"),
           resultSet.getInt("relation"),
@@ -167,15 +191,16 @@ public interface OntologyStudioDAO {
     }
   }
 
-  final class StudioLineageRowMapper implements RowMapper<StudioLineageRow> {
+  final class OntologyLineageRowMapper implements RowMapper<OntologyLineageRow> {
     @Override
-    public StudioLineageRow map(ResultSet resultSet, StatementContext context) throws SQLException {
-      return new StudioLineageRow(resultSet.getString("fromId"), resultSet.getString("toId"));
+    public OntologyLineageRow map(ResultSet resultSet, StatementContext context)
+        throws SQLException {
+      return new OntologyLineageRow(resultSet.getString("fromId"), resultSet.getString("toId"));
     }
   }
 
   @Getter
-  final class OntologyStudioQueryParameters {
+  final class OntologyQueryParameters {
     private final String parentHash;
     private final String parentPattern;
     private final String entityType = GLOSSARY_TERM;
@@ -185,8 +210,7 @@ public interface OntologyStudioDAO {
     private final int limit;
     private final int offset;
 
-    public OntologyStudioQueryParameters(
-        String parentHash, String parentPattern, int limit, int offset) {
+    public OntologyQueryParameters(String parentHash, String parentPattern, int limit, int offset) {
       this.parentHash = parentHash;
       this.parentPattern = parentPattern;
       this.limit = limit;

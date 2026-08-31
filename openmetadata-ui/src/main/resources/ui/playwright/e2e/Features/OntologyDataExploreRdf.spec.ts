@@ -53,10 +53,10 @@ let tables: Table[] = [];
 let lineageFromAssetId = '';
 let lineageToAssetId = '';
 
-interface StudioDataGraphBody {
+interface OntologyDataGraphBody {
   clusters: Array<{
     assetCount: number;
-    assets: Array<{ entity: { id: string } }>;
+    assets: Array<{ id: string }>;
     term: { id: string };
   }>;
   edges: Array<{
@@ -69,6 +69,7 @@ interface StudioDataGraphBody {
     toEntity: string;
   }>;
   paging: { total: number };
+  seedTermIds: string[];
 }
 
 const isTable = (value: unknown): value is Table =>
@@ -87,7 +88,7 @@ const isAssetCountResponse = (
   !Array.isArray(value) &&
   Object.values(value).every((count) => typeof count === 'number');
 
-const isStudioDataGraph = (value: unknown): value is StudioDataGraphBody =>
+const isOntologyDataGraph = (value: unknown): value is OntologyDataGraphBody =>
   typeof value === 'object' &&
   value !== null &&
   'clusters' in value &&
@@ -104,11 +105,8 @@ const isStudioDataGraph = (value: unknown): value is StudioDataGraphBody =>
         (asset: unknown) =>
           typeof asset === 'object' &&
           asset !== null &&
-          'entity' in asset &&
-          typeof asset.entity === 'object' &&
-          asset.entity !== null &&
-          'id' in asset.entity &&
-          typeof asset.entity.id === 'string'
+          'id' in asset &&
+          typeof asset.id === 'string'
       ) &&
       'term' in cluster &&
       typeof cluster.term === 'object' &&
@@ -144,9 +142,26 @@ const isStudioDataGraph = (value: unknown): value is StudioDataGraphBody =>
   typeof value.paging === 'object' &&
   value.paging !== null &&
   'total' in value.paging &&
-  typeof value.paging.total === 'number';
+  typeof value.paging.total === 'number' &&
+  'seedTermIds' in value &&
+  Array.isArray(value.seedTermIds) &&
+  value.seedTermIds.every((id) => typeof id === 'string');
 
-async function assertStudioDesignContract(
+function hasUndirectedRelation(
+  edges: OntologyDataGraphBody['edges'],
+  firstId: string,
+  secondId: string,
+  relationType: string
+): boolean {
+  return edges.some(
+    (edge) =>
+      edge.relationType === relationType &&
+      ((edge.from === firstId && edge.to === secondId) ||
+        (edge.from === secondId && edge.to === firstId))
+  );
+}
+
+async function assertOntologyDesignContract(
   page: Page,
   termId: string,
   assetId: string
@@ -198,7 +213,7 @@ async function createTable(
       },
     ],
     databaseSchema,
-    description: 'Ontology Studio data-mode pagination fixture.',
+    description: 'Ontology data-mode pagination fixture.',
     displayName: `Ontology data asset ${index}`,
     name: `pw_data_asset_${suffix}_${index}`,
     tableType: TableType.Regular,
@@ -288,12 +303,12 @@ async function getAssetCount(
     : 0;
 }
 
-async function getStudioAssetCount(
+async function getOntologyAssetCount(
   apiContext: APIRequestContext,
   term: GlossaryTerm,
   glossaryFqn: string
 ): Promise<number> {
-  const body = await getStudioDataGraph(apiContext, glossaryFqn);
+  const body = await getOntologyDataGraph(apiContext, glossaryFqn);
 
   return (
     body?.clusters.find((cluster) => cluster.term.id === term.responseData.id)
@@ -301,11 +316,11 @@ async function getStudioAssetCount(
   );
 }
 
-async function getStudioDataGraph(
+async function getOntologyDataGraph(
   apiContext: APIRequestContext,
   glossaryFqn: string
-): Promise<StudioDataGraphBody | undefined> {
-  const response = await apiContext.get('/api/v1/glossaryTerms/studio/data', {
+): Promise<OntologyDataGraphBody | undefined> {
+  const response = await apiContext.get('/api/v1/glossaryTerms/ontology/data', {
     params: {
       assetPreviewSize: 4,
       connectedTermLimit: 48,
@@ -318,7 +333,7 @@ async function getStudioDataGraph(
   });
   const body: unknown = response.ok() ? await response.json() : undefined;
 
-  return isStudioDataGraph(body) ? body : undefined;
+  return isOntologyDataGraph(body) ? body : undefined;
 }
 
 test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
@@ -415,12 +430,12 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
         .poll(
           () =>
             Promise.all([
-              getStudioAssetCount(
+              getOntologyAssetCount(
                 apiContext,
                 primaryTerm,
                 fixture.glossary.responseData.fullyQualifiedName
               ),
-              getStudioAssetCount(
+              getOntologyAssetCount(
                 apiContext,
                 foreignTerm,
                 foreignFixture.glossary.responseData.fullyQualifiedName
@@ -432,7 +447,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       await expect
         .poll(
           async () => {
-            const graph = await getStudioDataGraph(
+            const graph = await getOntologyDataGraph(
               apiContext,
               fixture.glossary.responseData.fullyQualifiedName
             );
@@ -452,13 +467,14 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
                     edge.relationType === 'parentOf'
                 ) ?? false,
               hasRelatedContext: clusterIds.has(secondaryTerm.responseData.id),
-              hasRelatedEdge:
-                graph?.edges.some(
-                  (edge) =>
-                    edge.from === primaryTerm.responseData.id &&
-                    edge.to === secondaryTerm.responseData.id &&
-                    edge.relationType === 'relatedTo'
-                ) ?? false,
+              hasRelatedEdge: graph
+                ? hasUndirectedRelation(
+                    graph.edges,
+                    primaryTerm.responseData.id,
+                    secondaryTerm.responseData.id,
+                    'relatedTo'
+                  )
+                : false,
               total: graph?.paging.total ?? 0,
             };
           },
@@ -471,7 +487,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
           hasRelatedEdge: true,
           total: SELECTED_GLOSSARY_TERM_COUNT,
         });
-      const connectedGraph = await getStudioDataGraph(
+      const connectedGraph = await getOntologyDataGraph(
         apiContext,
         fixture.glossary.responseData.fullyQualifiedName
       );
@@ -486,8 +502,8 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
           'Connected Data mode clusters did not return asset previews'
         );
       }
-      lineageFromAssetId = primaryPreview.entity.id;
-      lineageToAssetId = secondaryPreview.entity.id;
+      lineageFromAssetId = primaryPreview.id;
+      lineageToAssetId = secondaryPreview.id;
       const lineageResponse = await connectEdgeBetweenNodesViaAPI(
         apiContext,
         { id: lineageFromAssetId, type: 'table' },
@@ -497,7 +513,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       await expect
         .poll(
           async () => {
-            const graph = await getStudioDataGraph(
+            const graph = await getOntologyDataGraph(
               apiContext,
               fixture.glossary.responseData.fullyQualifiedName
             );
@@ -554,7 +570,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
         const url = new URL(response.url());
 
         return (
-          url.pathname === '/api/v1/glossaryTerms/studio/data' &&
+          url.pathname === '/api/v1/glossaryTerms/ontology/data' &&
           url.searchParams.get('limit') === '12' &&
           url.searchParams.get('offset') === '0' &&
           url.searchParams.get('assetPreviewSize') === '4' &&
@@ -572,22 +588,25 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       expect(initialDataResponse.ok(), await initialDataResponse.text()).toBe(
         true
       );
-      expect(isStudioDataGraph(initialDataBody)).toBe(true);
-      if (!isStudioDataGraph(initialDataBody)) {
-        throw new Error('Ontology Studio data response is invalid');
+      expect(isOntologyDataGraph(initialDataBody)).toBe(true);
+      if (!isOntologyDataGraph(initialDataBody)) {
+        throw new Error('Ontology data response is invalid');
       }
 
       expect(initialDataBody.paging.total).toBe(SELECTED_GLOSSARY_TERM_COUNT);
       expect(initialDataBody.clusters).toHaveLength(
         SELECTED_GLOSSARY_TERM_COUNT
       );
+      expect(
+        hasUndirectedRelation(
+          initialDataBody.edges,
+          primaryTerm.responseData.id,
+          secondaryTerm.responseData.id,
+          'relatedTo'
+        )
+      ).toBe(true);
       expect(initialDataBody.edges).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({
-            from: primaryTerm.responseData.id,
-            relationType: 'relatedTo',
-            to: secondaryTerm.responseData.id,
-          }),
           expect.objectContaining({
             from: primaryTerm.responseData.id,
             relationType: 'parentOf',
@@ -607,7 +626,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       const primaryCluster = initialDataBody.clusters.find(
         (cluster) => cluster.term.id === primaryTerm.responseData.id
       );
-      const previewAssetId = primaryCluster?.assets[0]?.entity.id;
+      const previewAssetId = primaryCluster?.assets[0]?.id;
 
       expect(previewAssetId).toBeTruthy();
       if (!previewAssetId) {
@@ -616,7 +635,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
 
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-data-edge-legend')).toBeVisible();
-      await assertStudioDesignContract(
+      await assertOntologyDesignContract(
         page,
         primaryTerm.responseData.id,
         previewAssetId
@@ -654,7 +673,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
 
         return (
           url.pathname ===
-            `/api/v1/glossaryTerms/${primaryTerm.responseData.id}/studioAssets` &&
+            `/api/v1/glossaryTerms/${primaryTerm.responseData.id}/assets` &&
           url.searchParams.get('limit') === '6' &&
           url.searchParams.get('offset') === '4'
         );
@@ -696,7 +715,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
 
         return (
           url.pathname ===
-            `/api/v1/glossaryTerms/${primaryTerm.responseData.id}/studioAssets` &&
+            `/api/v1/glossaryTerms/${primaryTerm.responseData.id}/assets` &&
           url.searchParams.get('limit') === '6' &&
           url.searchParams.get('offset') === '10'
         );
@@ -712,7 +731,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
         const url = new URL(response.url());
 
         return (
-          url.pathname === '/api/v1/glossaryTerms/studio/data' &&
+          url.pathname === '/api/v1/glossaryTerms/ontology/data' &&
           !url.searchParams.has('parent')
         );
       });

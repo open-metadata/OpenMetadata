@@ -13,9 +13,9 @@
 
 import { Provenance, Status } from '../generated/api/data/updateTermRelation';
 import {
-  getOntologyStudioAssets,
-  getOntologyStudioDataGraph,
-  getOntologyStudioSummary,
+  getGlossaryTermAssets,
+  getOntologyDataGraph,
+  getOntologySummary,
   removeTermRelationById,
   updateTermRelationById,
 } from './glossaryAPI';
@@ -70,18 +70,18 @@ describe('glossaryAPI stable relationship operations', () => {
     expect(result).toEqual(response.data);
   });
 
-  it('uses typed bounded Ontology Studio routes', async () => {
+  it('uses typed bounded ontology routes and glossary asset references', async () => {
     const controller = new AbortController();
     mockedApiClient.get
       .mockResolvedValueOnce({ data: { totalTerms: 3 } })
       .mockResolvedValueOnce({ data: { clusters: [] } })
       .mockResolvedValueOnce({ data: { data: [], paging: { total: 0 } } });
 
-    await getOntologyStudioSummary(
+    await getOntologySummary(
       { limit: 5, offset: 0, parent: 'Commerce' },
       controller.signal
     );
-    await getOntologyStudioDataGraph({
+    await getOntologyDataGraph({
       assetPreviewSize: 4,
       connectedTermLimit: 48,
       edgeLimit: 100,
@@ -90,11 +90,11 @@ describe('glossaryAPI stable relationship operations', () => {
       offset: 0,
       parent: 'Commerce',
     });
-    await getOntologyStudioAssets('term-id', 6, 4, controller.signal);
+    await getGlossaryTermAssets('term-id', 6, 4, controller.signal);
 
     expect(mockedApiClient.get).toHaveBeenNthCalledWith(
       1,
-      '/glossaryTerms/studio/summary',
+      '/glossaryTerms/ontology/summary',
       {
         params: { limit: 5, offset: 0, parent: 'Commerce' },
         signal: controller.signal,
@@ -102,7 +102,7 @@ describe('glossaryAPI stable relationship operations', () => {
     );
     expect(mockedApiClient.get).toHaveBeenNthCalledWith(
       2,
-      '/glossaryTerms/studio/data',
+      '/glossaryTerms/ontology/data',
       {
         params: {
           assetPreviewSize: 4,
@@ -118,7 +118,7 @@ describe('glossaryAPI stable relationship operations', () => {
     );
     expect(mockedApiClient.get).toHaveBeenNthCalledWith(
       3,
-      '/glossaryTerms/term-id/studioAssets',
+      '/glossaryTerms/term-id/assets',
       {
         params: { limit: 6, offset: 4 },
         signal: controller.signal,

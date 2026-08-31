@@ -24,9 +24,8 @@ import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssets
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { GlossaryTermRelationGraph } from '../generated/api/data/glossaryTermRelationGraph';
-import { OntologyStudioAsset } from '../generated/api/data/ontologyStudioAsset';
-import { OntologyStudioDataGraph } from '../generated/api/data/ontologyStudioDataGraph';
-import { OntologyStudioSummary } from '../generated/api/data/ontologyStudioSummary';
+import { OntologyDataGraph } from '../generated/api/data/ontologyDataGraph';
+import { OntologySummary } from '../generated/api/data/ontologySummary';
 import { UpdateTermRelation } from '../generated/api/data/updateTermRelation';
 import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
 import { GlossaryTermRelationType } from '../generated/configuration/glossaryTermRelationSettings';
@@ -351,11 +350,12 @@ export const removeAssetsFromGlossaryTerm = async (
 export const getGlossaryTermAssets = async (
   termId: string,
   limit = 100,
-  offset = 0
+  offset = 0,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<EntityReference[]>>(
     `/glossaryTerms/${termId}/assets`,
-    { params: { limit, offset } }
+    { params: { limit, offset }, signal }
   );
 
   return response.data;
@@ -372,55 +372,38 @@ export const getGlossaryTermsAssetCounts = async (
   return response.data;
 };
 
-export interface OntologyStudioPageParams {
+export interface OntologyPageParams {
   parent?: string;
   limit?: number;
   offset?: number;
 }
 
-export interface OntologyStudioDataParams extends OntologyStudioPageParams {
+export interface OntologyDataParams extends OntologyPageParams {
   assetPreviewSize?: number;
   connectedTermLimit?: number;
   edgeLimit?: number;
   lineageEdgeLimit?: number;
 }
 
-export const getOntologyStudioSummary = async (
-  params?: OntologyStudioPageParams,
+export const getOntologySummary = async (
+  params?: OntologyPageParams,
   signal?: AbortSignal
-): Promise<OntologyStudioSummary> => {
-  const response = await APIClient.get<OntologyStudioSummary>(
-    '/glossaryTerms/studio/summary',
+): Promise<OntologySummary> => {
+  const response = await APIClient.get<OntologySummary>(
+    '/glossaryTerms/ontology/summary',
     { params, signal }
   );
 
   return response.data;
 };
 
-export const getOntologyStudioDataGraph = async (
-  params?: OntologyStudioDataParams,
+export const getOntologyDataGraph = async (
+  params?: OntologyDataParams,
   signal?: AbortSignal
-): Promise<OntologyStudioDataGraph> => {
-  const response = await APIClient.get<OntologyStudioDataGraph>(
-    '/glossaryTerms/studio/data',
+): Promise<OntologyDataGraph> => {
+  const response = await APIClient.get<OntologyDataGraph>(
+    '/glossaryTerms/ontology/data',
     { params, signal }
-  );
-
-  return response.data;
-};
-
-export const getOntologyStudioAssets = async (
-  termId: string,
-  limit = 6,
-  offset = 0,
-  signal?: AbortSignal
-): Promise<PagingResponse<OntologyStudioAsset[]>> => {
-  const response = await APIClient.get<PagingResponse<OntologyStudioAsset[]>>(
-    `/glossaryTerms/${termId}/studioAssets`,
-    {
-      params: { limit, offset },
-      signal,
-    }
   );
 
   return response.data;

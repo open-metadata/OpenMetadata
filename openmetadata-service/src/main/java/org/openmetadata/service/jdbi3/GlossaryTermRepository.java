@@ -81,11 +81,10 @@ import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraphEdge;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraphNode;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
+import org.openmetadata.schema.api.data.OntologyAssetCluster;
+import org.openmetadata.schema.api.data.OntologyDataGraph;
 import org.openmetadata.schema.api.data.OntologyGraphTruncationReason;
-import org.openmetadata.schema.api.data.OntologyStudioAsset;
-import org.openmetadata.schema.api.data.OntologyStudioAssetCluster;
-import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
-import org.openmetadata.schema.api.data.OntologyStudioSummary;
+import org.openmetadata.schema.api.data.OntologySummary;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -128,10 +127,10 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.OntologyRelationshipRow;
-import org.openmetadata.service.jdbi3.OntologyStudioDAO.OntologyStudioQueryParameters;
-import org.openmetadata.service.jdbi3.OntologyStudioDAO.StudioLineageRow;
-import org.openmetadata.service.jdbi3.OntologyStudioDAO.StudioRelationRow;
-import org.openmetadata.service.jdbi3.OntologyStudioDAO.TermAssetCountRow;
+import org.openmetadata.service.jdbi3.OntologyDAO.OntologyLineageRow;
+import org.openmetadata.service.jdbi3.OntologyDAO.OntologyQueryParameters;
+import org.openmetadata.service.jdbi3.OntologyDAO.OntologyRelationRow;
+import org.openmetadata.service.jdbi3.OntologyDAO.TermAssetCountRow;
 import org.openmetadata.service.ontology.OntologyAttributeInheritance;
 import org.openmetadata.service.ontology.OntologyAttributeValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
@@ -140,10 +139,9 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAssetBucket;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
-import org.openmetadata.service.search.InheritedFieldEntitySearch.OntologyStudioAssetBucket;
-import org.openmetadata.service.search.InheritedFieldEntitySearch.OntologyStudioAssetResult;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -169,7 +167,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       "attributes,conceptMappings,conceptType,ontologySource,realizedIn,references,relatedTerms,"
           + "synonyms,style";
   private static final String PARENT_OF_RELATION_TYPE = "parentOf";
-  private static final String STUDIO_EDGE_ID_NAMESPACE = "ontology-studio:";
+  private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
+  private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
+  private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
 
   private final TermRelationMetadataCodec termRelationMetadataCodec =
       new TermRelationMetadataCodec();
@@ -279,98 +279,107 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return glossaryTermAssetCounts;
   }
 
-  public OntologyStudioDataGraph getOntologyStudioDataGraph(
-      StudioDataGraphRequest request, SubjectContext subjectContext) {
-    final OntologyStudioQueryParameters parameters =
-        studioParameters(request.parent(), request.limit(), request.offset());
+  public OntologyDataGraph getOntologyDataGraph(
+      OntologyDataGraphRequest request, SubjectContext subjectContext) {
+    final OntologyQueryParameters parameters =
+        ontologyParameters(request.parent(), request.limit(), request.offset());
     final List<GlossaryTerm> seedTerms =
-        studioTerms(daoCollection.ontologyStudioDAO().listAssetTerms(parameters));
-    return buildStudioDataGraph(request, subjectContext, parameters, seedTerms);
+        ontologyTerms(daoCollection.ontologyDAO().listAssetTerms(parameters));
+    return buildOntologyDataGraph(request, subjectContext, parameters, seedTerms);
   }
 
-  private OntologyStudioDataGraph buildStudioDataGraph(
-      StudioDataGraphRequest request,
+  private OntologyDataGraph buildOntologyDataGraph(
+      OntologyDataGraphRequest request,
       SubjectContext subjectContext,
-      OntologyStudioQueryParameters parameters,
+      OntologyQueryParameters parameters,
       List<GlossaryTerm> seedTerms) {
-    final List<StudioRelationRow> relations = studioRelations(seedTerms, parameters, request);
-    final List<GlossaryTerm> terms = studioTermsWithContext(seedTerms, relations, request);
-    final Map<String, OntologyStudioAssetBucket> assets =
-        studioAssetBuckets(terms, request.assetPreviewSize(), subjectContext);
-    final List<OntologyStudioAssetCluster> clusters = studioClusters(terms, assets);
-    final int total = daoCollection.ontologyStudioDAO().countAssetTerms(parameters);
-    return new OntologyStudioDataGraph()
+    final List<OntologyRelationRow> relations = ontologyRelations(seedTerms, parameters, request);
+    final List<GlossaryTerm> terms = ontologyTermsWithContext(seedTerms, relations, request);
+    final Map<String, GlossaryTermAssetBucket> assets =
+        ontologyAssetBuckets(terms, request.assetPreviewSize(), subjectContext);
+    final List<OntologyAssetCluster> clusters = ontologyClusters(terms, assets);
+    final int total = daoCollection.ontologyDAO().countAssetTerms(parameters);
+    return new OntologyDataGraph()
         .withClusters(clusters)
-        .withEdges(studioEdges(relations, visibleStudioTermIds(clusters)))
-        .withLineageEdges(studioLineageEdges(clusters, request.limits().lineageEdgeLimit()))
+        .withSeedTermIds(visibleOntologySeedTermIds(seedTerms, clusters))
+        .withEdges(ontologyEdges(relations, visibleOntologyTermIds(clusters)))
+        .withLineageEdges(ontologyLineageEdges(clusters, request.limits().lineageEdgeLimit()))
         .withPaging(offsetPaging(request.offset(), request.limit(), total));
   }
 
-  public ResultList<OntologyStudioAsset> getOntologyStudioAssets(
-      UUID glossaryTermId, int limit, int offset, SubjectContext subjectContext) {
-    final GlossaryTerm term = get(null, glossaryTermId, getFields("id,fullyQualifiedName"));
-    if (inheritedFieldEntitySearch == null) {
-      return new ResultList<>(List.of(), null, null, 0);
-    }
-    final InheritedFieldQuery query =
-        InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), offset, limit);
-    final OntologyStudioAssetResult result =
-        inheritedFieldEntitySearch.getAssetPreviewsForField(
-            query, subjectContext, () -> new OntologyStudioAssetResult(List.of(), 0));
-    return new ResultList<>(result.assets(), null, null, result.total());
-  }
-
-  public OntologyStudioSummary getOntologyStudioSummary(String parent, int limit, int offset) {
-    final OntologyStudioQueryParameters parameters = studioParameters(parent, limit, offset);
-    final OntologyStudioDAO studioDAO = daoCollection.ontologyStudioDAO();
-    final int totalTerms = studioDAO.countTerms(parameters);
-    final int isolatedTerms = studioDAO.countIsolatedTerms(parameters);
-    final List<GlossaryTermRelationGraphNode> preview = isolatedTermPreview(studioDAO, parameters);
-    return new OntologyStudioSummary()
+  public OntologySummary getOntologySummary(String parent, int limit, int offset) {
+    final OntologyQueryParameters parameters = ontologyParameters(parent, limit, offset);
+    final OntologyDAO ontologyDAO = daoCollection.ontologyDAO();
+    final int totalTerms = ontologyDAO.countTerms(parameters);
+    final int isolatedTerms = ontologyDAO.countIsolatedTerms(parameters);
+    final List<GlossaryTermRelationGraphNode> preview =
+        isolatedTermPreview(ontologyDAO, parameters);
+    return new OntologySummary()
         .withTotalTerms(totalTerms)
-        .withTotalRelations(studioDAO.countRelations(parameters))
+        .withTotalRelations(ontologyDAO.countRelations(parameters))
         .withIsolatedTerms(isolatedTerms)
         .withConnectedPercentage(connectedPercentage(totalTerms, isolatedTerms))
         .withIsolatedPreview(preview)
         .withPaging(offsetPaging(offset, limit, isolatedTerms));
   }
 
-  private static OntologyStudioQueryParameters studioParameters(
-      String parent, int limit, int offset) {
+  private static OntologyQueryParameters ontologyParameters(String parent, int limit, int offset) {
     final String parentHash = nullOrEmpty(parent) ? null : FullyQualifiedName.buildHash(parent);
     final String parentPattern = parentHash == null ? null : parentHash + ".%";
-    return new OntologyStudioQueryParameters(parentHash, parentPattern, limit, offset);
+    return new OntologyQueryParameters(parentHash, parentPattern, limit, offset);
   }
 
-  private static List<GlossaryTerm> studioTerms(List<TermAssetCountRow> rows) {
-    return rows.stream()
+  private static List<GlossaryTerm> ontologyTerms(List<TermAssetCountRow> rows) {
+    return listOrEmpty(rows).stream()
         .map(TermAssetCountRow::termJson)
         .map(json -> JsonUtils.readValue(json, GlossaryTerm.class))
         .toList();
   }
 
-  private List<StudioRelationRow> studioRelations(
+  private List<OntologyRelationRow> ontologyRelations(
       List<GlossaryTerm> seedTerms,
-      OntologyStudioQueryParameters parameters,
-      StudioDataGraphRequest request) {
-    if (seedTerms.isEmpty()) {
+      OntologyQueryParameters parameters,
+      OntologyDataGraphRequest request) {
+    if (nullOrEmpty(seedTerms)) {
       return List.of();
     }
     final List<String> seedIds =
         seedTerms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
-    return daoCollection
-        .ontologyStudioDAO()
-        .listTermRelations(seedIds, parameters, request.limits().edgeLimit());
+    final int resultLimit = request.limits().edgeLimit();
+    final int candidateLimit = ontologyRelationCandidateLimit(resultLimit);
+    final OntologyDAO ontologyDAO = daoCollection.ontologyDAO();
+    return boundedOntologyRelations(
+        ontologyDAO.listOntologyRelationsFrom(seedIds, parameters, candidateLimit, resultLimit),
+        ontologyDAO.listOntologyRelationsTo(seedIds, parameters, candidateLimit, resultLimit),
+        resultLimit);
   }
 
-  private List<GlossaryTerm> studioTermsWithContext(
+  static int ontologyRelationCandidateLimit(int resultLimit) {
+    return Math.min(
+        MAX_ONTOLOGY_RELATION_CANDIDATES,
+        Math.max(resultLimit, resultLimit * ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER));
+  }
+
+  static List<OntologyRelationRow> boundedOntologyRelations(
+      List<OntologyRelationRow> outgoing, List<OntologyRelationRow> incoming, int resultLimit) {
+    return Stream.concat(listOrEmpty(outgoing).stream(), listOrEmpty(incoming).stream())
+        .distinct()
+        .sorted(
+            Comparator.comparing(OntologyRelationRow::fromId)
+                .thenComparing(OntologyRelationRow::toId)
+                .thenComparingInt(OntologyRelationRow::relation))
+        .limit(resultLimit)
+        .toList();
+  }
+
+  private List<GlossaryTerm> ontologyTermsWithContext(
       List<GlossaryTerm> seedTerms,
-      List<StudioRelationRow> relations,
-      StudioDataGraphRequest request) {
+      List<OntologyRelationRow> relations,
+      OntologyDataGraphRequest request) {
     final List<UUID> contextIds =
-        connectedStudioTermIds(seedTerms, relations, request.limits().connectedTermLimit());
-    if (contextIds.isEmpty()) {
-      return List.copyOf(seedTerms);
+        connectedOntologyTermIds(seedTerms, relations, request.limits().connectedTermLimit());
+    if (nullOrEmpty(contextIds)) {
+      return List.copyOf(listOrEmpty(seedTerms));
     }
     final List<GlossaryTerm> contextTerms =
         get(
@@ -385,11 +394,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .toList();
   }
 
-  static List<UUID> connectedStudioTermIds(
-      List<GlossaryTerm> seedTerms, List<StudioRelationRow> relations, int limit) {
+  static List<UUID> connectedOntologyTermIds(
+      List<GlossaryTerm> seedTerms, List<OntologyRelationRow> relations, int limit) {
     final Set<UUID> seedIds =
-        seedTerms.stream().map(GlossaryTerm::getId).collect(Collectors.toSet());
-    return relations.stream()
+        listOrEmpty(seedTerms).stream().map(GlossaryTerm::getId).collect(Collectors.toSet());
+    return listOrEmpty(relations).stream()
         .flatMap(
             relation ->
                 Stream.of(UUID.fromString(relation.fromId()), UUID.fromString(relation.toId())))
@@ -399,7 +408,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .toList();
   }
 
-  private Map<String, OntologyStudioAssetBucket> studioAssetBuckets(
+  private Map<String, GlossaryTermAssetBucket> ontologyAssetBuckets(
       List<GlossaryTerm> terms, int previewSize, SubjectContext subjectContext) {
     if (inheritedFieldEntitySearch == null) {
       return Map.of();
@@ -411,81 +420,118 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             subjectContext)
         .stream()
         .collect(
-            Collectors.toMap(OntologyStudioAssetBucket::termFullyQualifiedName, bucket -> bucket));
+            Collectors.toMap(GlossaryTermAssetBucket::termFullyQualifiedName, bucket -> bucket));
   }
 
-  static List<OntologyStudioAssetCluster> studioClusters(
-      List<GlossaryTerm> terms, Map<String, OntologyStudioAssetBucket> assets) {
-    final List<OntologyStudioAssetCluster> clusters = new ArrayList<>();
+  static List<OntologyAssetCluster> ontologyClusters(
+      List<GlossaryTerm> terms, Map<String, GlossaryTermAssetBucket> assets) {
+    final List<OntologyAssetCluster> clusters = new ArrayList<>();
     for (GlossaryTerm term : terms) {
-      final OntologyStudioAssetBucket bucket = assets.get(term.getFullyQualifiedName());
+      final GlossaryTermAssetBucket bucket = assets.get(term.getFullyQualifiedName());
       if (bucket != null && bucket.assetCount() > 0) {
-        clusters.add(studioCluster(term, bucket));
+        clusters.add(ontologyCluster(term, bucket));
       }
     }
     return List.copyOf(clusters);
   }
 
-  private static OntologyStudioAssetCluster studioCluster(
-      GlossaryTerm term, OntologyStudioAssetBucket bucket) {
-    return new OntologyStudioAssetCluster()
-        .withTerm(toStudioGraphNode(term))
+  private static OntologyAssetCluster ontologyCluster(
+      GlossaryTerm term, GlossaryTermAssetBucket bucket) {
+    return new OntologyAssetCluster()
+        .withTerm(toOntologyGraphNode(term))
         .withAssetCount(bucket.assetCount())
         .withAssets(bucket.assets());
   }
 
-  static List<GlossaryTerm> visibleStudioTerms(
-      List<GlossaryTerm> terms, List<OntologyStudioAssetCluster> clusters) {
+  static List<GlossaryTerm> visibleOntologyTerms(
+      List<GlossaryTerm> terms, List<OntologyAssetCluster> clusters) {
     final Set<UUID> visibleIds =
         clusters.stream().map(cluster -> cluster.getTerm().getId()).collect(Collectors.toSet());
     return terms.stream().filter(term -> visibleIds.contains(term.getId())).toList();
   }
 
-  private static Set<UUID> visibleStudioTermIds(List<OntologyStudioAssetCluster> clusters) {
+  static List<UUID> visibleOntologySeedTermIds(
+      List<GlossaryTerm> seedTerms, List<OntologyAssetCluster> clusters) {
+    final Set<UUID> visibleIds = visibleOntologyTermIds(clusters);
+    return listOrEmpty(seedTerms).stream()
+        .map(GlossaryTerm::getId)
+        .filter(visibleIds::contains)
+        .toList();
+  }
+
+  private static Set<UUID> visibleOntologyTermIds(List<OntologyAssetCluster> clusters) {
     return clusters.stream()
-        .map(OntologyStudioAssetCluster::getTerm)
+        .map(OntologyAssetCluster::getTerm)
         .map(GlossaryTermRelationGraphNode::getId)
         .collect(Collectors.toSet());
   }
 
-  private List<GlossaryTermRelationGraphEdge> studioEdges(
-      List<StudioRelationRow> relations, Set<UUID> visibleIds) {
-    return relations.stream()
-        .filter(relation -> isVisibleStudioRelation(relation, visibleIds))
-        .map(this::toStudioEdge)
+  private List<GlossaryTermRelationGraphEdge> ontologyEdges(
+      List<OntologyRelationRow> relations, Set<UUID> visibleIds) {
+    final Map<String, RelationshipType> relationshipTypes =
+        relationshipTypeResolver.list().stream()
+            .collect(
+                Collectors.toMap(
+                    RelationshipType::getName,
+                    relationshipType -> relationshipType,
+                    (first, ignored) -> first));
+    return listOrEmpty(relations).stream()
+        .filter(relation -> isVisibleOntologyRelation(relation, visibleIds))
+        .map(relation -> toOntologyEdge(relation, relationshipTypes))
+        .flatMap(Optional::stream)
         .toList();
   }
 
-  private static boolean isVisibleStudioRelation(StudioRelationRow relation, Set<UUID> visibleIds) {
+  private static boolean isVisibleOntologyRelation(
+      OntologyRelationRow relation, Set<UUID> visibleIds) {
     return visibleIds.contains(UUID.fromString(relation.fromId()))
         && visibleIds.contains(UUID.fromString(relation.toId()));
   }
 
-  private GlossaryTermRelationGraphEdge toStudioEdge(StudioRelationRow relation) {
+  private Optional<GlossaryTermRelationGraphEdge> toOntologyEdge(
+      OntologyRelationRow relation, Map<String, RelationshipType> relationshipTypes) {
     return relation.relation() == Relationship.CONTAINS.ordinal()
-        ? toStudioParentEdge(relation)
-        : toStudioSemanticEdge(relation);
+        ? Optional.of(toOntologyParentEdge(relation))
+        : toOntologySemanticEdge(relation, relationshipTypes);
   }
 
-  private GlossaryTermRelationGraphEdge toStudioSemanticEdge(StudioRelationRow relation) {
+  private Optional<GlossaryTermRelationGraphEdge> toOntologySemanticEdge(
+      OntologyRelationRow relation, Map<String, RelationshipType> relationshipTypes) {
     final TermRelationMetadata metadata = termRelationMetadataCodec.decode(relation.json());
-    final RelationshipType relationshipType =
-        relationshipTypeResolver.require(metadata.getRelationType());
-    return new GlossaryTermRelationGraphEdge()
-        .withId(Objects.requireNonNullElseGet(metadata.getId(), () -> studioEdgeId(relation)))
-        .withFrom(UUID.fromString(relation.fromId()))
-        .withTo(UUID.fromString(relation.toId()))
-        .withRelationType(metadata.getRelationType())
-        .withRelationshipType(relationshipType.getEntityReference())
-        .withProvenance(metadata.getProvenance())
-        .withStatus(metadata.getStatus())
-        .withCreatedBy(metadata.getCreatedBy())
-        .withCreatedAt(metadata.getCreatedAt());
+    final RelationshipType relationshipType = relationshipTypes.get(metadata.getRelationType());
+    if (relationshipType == null) {
+      LOG.warn(
+          "Skipping ontology relation {} -> {} because type '{}' is not registered",
+          relation.fromId(),
+          relation.toId(),
+          metadata.getRelationType());
+    }
+    return toOntologySemanticEdge(relation, metadata, relationshipType);
   }
 
-  static GlossaryTermRelationGraphEdge toStudioParentEdge(StudioRelationRow relation) {
+  static Optional<GlossaryTermRelationGraphEdge> toOntologySemanticEdge(
+      OntologyRelationRow relation,
+      TermRelationMetadata metadata,
+      RelationshipType relationshipType) {
+    if (relationshipType == null) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new GlossaryTermRelationGraphEdge()
+            .withId(Objects.requireNonNullElseGet(metadata.getId(), () -> ontologyEdgeId(relation)))
+            .withFrom(UUID.fromString(relation.fromId()))
+            .withTo(UUID.fromString(relation.toId()))
+            .withRelationType(metadata.getRelationType())
+            .withRelationshipType(relationshipType.getEntityReference())
+            .withProvenance(metadata.getProvenance())
+            .withStatus(metadata.getStatus())
+            .withCreatedBy(metadata.getCreatedBy())
+            .withCreatedAt(metadata.getCreatedAt()));
+  }
+
+  static GlossaryTermRelationGraphEdge toOntologyParentEdge(OntologyRelationRow relation) {
     return new GlossaryTermRelationGraphEdge()
-        .withId(studioEdgeId(relation))
+        .withId(ontologyEdgeId(relation))
         .withFrom(UUID.fromString(relation.fromId()))
         .withTo(UUID.fromString(relation.toId()))
         .withRelationType(PARENT_OF_RELATION_TYPE)
@@ -493,9 +539,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .withStatus(EntityStatus.APPROVED);
   }
 
-  private static UUID studioEdgeId(StudioRelationRow relation) {
+  private static UUID ontologyEdgeId(OntologyRelationRow relation) {
     final String seed =
-        STUDIO_EDGE_ID_NAMESPACE
+        ONTOLOGY_EDGE_ID_NAMESPACE
             + relation.relation()
             + ':'
             + relation.fromId()
@@ -504,30 +550,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
   }
 
-  private List<Edge> studioLineageEdges(
-      List<OntologyStudioAssetCluster> clusters, int lineageEdgeLimit) {
-    final List<String> assetIds = studioAssetIds(clusters);
-    if (assetIds.isEmpty()) {
+  private List<Edge> ontologyLineageEdges(
+      List<OntologyAssetCluster> clusters, int lineageEdgeLimit) {
+    final List<String> assetIds = ontologyAssetIds(clusters);
+    if (nullOrEmpty(assetIds)) {
       return List.of();
     }
-    final List<StudioLineageRow> rows =
+    final int candidateLimit = ontologyRelationCandidateLimit(lineageEdgeLimit);
+    final List<OntologyLineageRow> rows =
         daoCollection
-            .ontologyStudioDAO()
-            .listLineageEdges(assetIds, Relationship.UPSTREAM.ordinal(), lineageEdgeLimit);
-    return toStudioLineageEdges(rows);
+            .ontologyDAO()
+            .listLineageEdges(
+                assetIds, Relationship.UPSTREAM.ordinal(), candidateLimit, lineageEdgeLimit);
+    return toOntologyLineageEdges(rows);
   }
 
-  static List<String> studioAssetIds(List<OntologyStudioAssetCluster> clusters) {
+  static List<String> ontologyAssetIds(List<OntologyAssetCluster> clusters) {
     return clusters.stream()
         .flatMap(cluster -> cluster.getAssets().stream())
-        .map(OntologyStudioAsset::getEntity)
         .map(EntityReference::getId)
         .map(UUID::toString)
         .distinct()
         .toList();
   }
 
-  static List<Edge> toStudioLineageEdges(List<StudioLineageRow> rows) {
+  static List<Edge> toOntologyLineageEdges(List<OntologyLineageRow> rows) {
     return rows.stream()
         .map(
             row ->
@@ -537,21 +584,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .toList();
   }
 
-  public record StudioDataGraphLimits(
+  public record OntologyDataGraphLimits(
       int connectedTermLimit, int edgeLimit, int lineageEdgeLimit) {}
 
-  public record StudioDataGraphRequest(
-      String parent, int limit, int offset, int assetPreviewSize, StudioDataGraphLimits limits) {}
+  public record OntologyDataGraphRequest(
+      String parent, int limit, int offset, int assetPreviewSize, OntologyDataGraphLimits limits) {}
 
   private static List<GlossaryTermRelationGraphNode> isolatedTermPreview(
-      OntologyStudioDAO studioDAO, OntologyStudioQueryParameters parameters) {
-    return studioDAO.listIsolatedTerms(parameters).stream()
+      OntologyDAO ontologyDAO, OntologyQueryParameters parameters) {
+    return ontologyDAO.listIsolatedTerms(parameters).stream()
         .map(json -> JsonUtils.readValue(json, GlossaryTerm.class))
-        .map(GlossaryTermRepository::toStudioGraphNode)
+        .map(GlossaryTermRepository::toOntologyGraphNode)
         .toList();
   }
 
-  private static GlossaryTermRelationGraphNode toStudioGraphNode(GlossaryTerm term) {
+  private static GlossaryTermRelationGraphNode toOntologyGraphNode(GlossaryTerm term) {
     return new GlossaryTermRelationGraphNode()
         .withId(term.getId())
         .withName(term.getName())

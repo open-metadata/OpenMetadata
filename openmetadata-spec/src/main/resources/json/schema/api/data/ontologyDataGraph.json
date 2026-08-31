@@ -1,16 +1,24 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/ontologyStudioDataGraph.json",
+  "$id": "https://open-metadata.org/schema/api/data/ontologyDataGraph.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OntologyStudioDataGraph",
-  "description": "A bounded page of term-to-asset clusters, connected semantic context, and observed lineage for Ontology Studio data mode.",
+  "title": "OntologyDataGraph",
+  "description": "A bounded page of term-to-asset clusters, connected semantic context, and observed lineage for ontology data mode.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.data.OntologyStudioDataGraph",
+  "javaType": "org.openmetadata.schema.api.data.OntologyDataGraph",
   "properties": {
     "clusters": {
       "description": "Ranked term-to-asset clusters in this page followed by bounded connected context clusters. Paging applies only to the ranked clusters.",
       "type": "array",
       "items": {
-        "$ref": "ontologyStudioAssetCluster.json"
+        "$ref": "ontologyAssetCluster.json"
+      },
+      "default": []
+    },
+    "seedTermIds": {
+      "description": "Ranked term identifiers represented by this page. Connected context clusters are excluded.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": []
     },
@@ -35,6 +43,6 @@
       "$ref": "../../type/paging.json"
     }
   },
-  "required": ["clusters", "edges", "lineageEdges", "paging"],
+  "required": ["clusters", "seedTermIds", "edges", "lineageEdges", "paging"],
   "additionalProperties": false
 }
