@@ -2089,6 +2089,27 @@
               "default": 10000,
               "minimum": 1000,
               "maximum": 50000
+            },
+            "blueGreenRebuild": {
+              "title": "Blue/Green Rebuild",
+              "description": "Build the rebuild into an idle dataset and switch to it only after the run succeeds, so queries keep seeing the previous graph instead of a partially-rebuilt one. Requires roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.",
+              "type": "boolean",
+              "default": false
+            },
+            "minSuccessRatio": {
+              "title": "Minimum Success Ratio",
+              "description": "Fraction of records that must index successfully before a blue/green rebuild is allowed to become the served dataset. Below this the previous dataset keeps serving and the run is marked failed.",
+              "type": "number",
+              "default": 0.95,
+              "minimum": 0,
+              "maximum": 1
+            },
+            "maxRetries": {
+              "title": "Max Retries",
+              "description": "Maximum number of failed write attempts tolerated per relationship source before that source is abandoned for the run.",
+              "type": "integer",
+              "default": 3,
+              "minimum": 0
             }
           },
           "additionalProperties": false

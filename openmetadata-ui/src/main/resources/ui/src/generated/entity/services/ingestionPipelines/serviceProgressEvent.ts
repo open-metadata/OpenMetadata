@@ -1916,6 +1916,9 @@ export interface CollateAIAppConfig {
     maxConcurrentRequests?: number;
     /**
      * Maximum number of retries for a failed request
+     *
+     * Maximum number of failed write attempts tolerated per relationship source before that
+     * source is abandoned for the run.
      */
     maxRetries?: number;
     /**
@@ -1980,6 +1983,18 @@ export interface CollateAIAppConfig {
      * warmup, so enable it only when first-read relationship latency matters.
      */
     warmRelationships?: boolean;
+    /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
     /**
      * Recreate the RDF store before indexing.
      */

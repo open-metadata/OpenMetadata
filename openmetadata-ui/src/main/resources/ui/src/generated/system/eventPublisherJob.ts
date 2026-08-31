@@ -13,7 +13,7 @@
 /**
  * This schema defines Event Publisher Job.
  */
-export interface EpjOut {
+export interface EventPublisherJob {
     /**
      * Provide After in case of failure to start reindexing after the issue is solved
      */
