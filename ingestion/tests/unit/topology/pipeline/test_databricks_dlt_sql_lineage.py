@@ -872,3 +872,51 @@ class TestLegacyAndModifierCreateForms:
     def test_the_legacy_forms_still_carry_the_live_prefix_rules(self):
         dependency = self._only("CREATE LIVE TABLE m AS SELECT id FROM LIVE.sibling")
         assert dependency.depends_on == ["sibling"]
+
+
+class TestNullLibrariesInSpec:
+    """
+    A spec may carry `libraries` as an explicit null. Reading the key rather than
+    testing for its presence keeps that from raising before the sources are collected.
+
+    The raise is swallowed by the surrounding handler, so asserting "no lineage" would
+    pass either way. What distinguishes them is how far the run gets: the `source_path`
+    fallback below the libraries block is only reached when the block does not raise.
+    """
+
+    @staticmethod
+    def _listed_paths(spec):
+        """The workspace paths the connector tried to read for this spec."""
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        client = MagicMock()
+        client.get_pipeline_details.return_value = {"pipeline_id": "p", "spec": spec}
+        client.list_workspace_objects.return_value = []
+        client.export_notebook_source.return_value = ""
+        client.get_table_lineage.return_value = []
+        client.get_column_lineage.return_value = []
+        source.client = client
+        source.metadata = MagicMock()
+        source._databricks_services_cached = True
+        source._databricks_services = [DB_SERVICE]
+        pipeline_entity = MagicMock()
+        pipeline_entity.id.root = uuid.uuid4()
+        list(
+            source._yield_kafka_lineage(
+                DataBrickPipelineDetails(pipeline_id="p", name="demo"),
+                pipeline_entity,
+            )
+        )
+        return [call.args[0] for call in client.list_workspace_objects.call_args_list]
+
+    def test_a_null_libraries_value_still_reaches_the_source_path_fallback(self):
+        spec = {"catalog": CATALOG, "schema": SCHEMA, "libraries": None, "configuration": {"source_path": "/src/"}}
+        assert self._listed_paths(spec) == ["/src/"]
+
+    def test_a_missing_libraries_key_still_reaches_the_source_path_fallback(self):
+        spec = {"catalog": CATALOG, "schema": SCHEMA, "configuration": {"source_path": "/src/"}}
+        assert self._listed_paths(spec) == ["/src/"]
+
+    def test_an_empty_libraries_list_still_reaches_the_source_path_fallback(self):
+        spec = {"catalog": CATALOG, "schema": SCHEMA, "libraries": [], "configuration": {"source_path": "/src/"}}
+        assert self._listed_paths(spec) == ["/src/"]

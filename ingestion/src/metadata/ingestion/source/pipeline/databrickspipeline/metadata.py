@@ -443,7 +443,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     continue
                 if obj_type in ("NOTEBOOK", "FILE"):
                     collected.append(obj_path)
-                    logger.info(f"   ✓ Found {obj_type.lower()}: {obj_path}")
+                    # per-path, so DEBUG. A deep tree would otherwise bury the run
+                    # summary under one line per file.
+                    logger.debug(f"   ✓ Found {obj_type.lower()}: {obj_path}")
                 elif obj_type == "DIRECTORY":
                     if max_depth <= 0:
                         logger.warning(f"   ⊗ Max depth reached, not descending into {obj_path}")
@@ -727,8 +729,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                 # Extract notebook/file paths from libraries in spec
                 notebook_paths = []
-                if spec and "libraries" in spec:
-                    libraries = spec["libraries"]
+                if spec:
+                    # the key can be present and null, so read it rather than test for it
+                    libraries = spec.get("libraries") or []
                     logger.info(f"⟳ Extracting notebook paths from {len(libraries)} libraries...")
                     notebook_paths = get_pipeline_libraries(spec)
 
