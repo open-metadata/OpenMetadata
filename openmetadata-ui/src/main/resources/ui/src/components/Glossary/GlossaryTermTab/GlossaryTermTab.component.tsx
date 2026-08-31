@@ -1818,7 +1818,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           style={{ position: 'relative' }}>
           {glossaryTerms.length > 0 ? (
             <TableCard.Root
-              className="tw:flex tw:min-h-0 tw:flex-initial tw:flex-col tw:border tw:border-secondary tw:outline-0"
+              className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border tw:border-secondary tw:outline-0"
               size="sm">
               <Table
                 cellClassName="tw:p-2 tw:align-middle"
