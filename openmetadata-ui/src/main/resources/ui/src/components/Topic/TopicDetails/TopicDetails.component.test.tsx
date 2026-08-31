@@ -13,8 +13,10 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import topicClassBase from '../../../utils/TopicClassBase';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import TopicDetails from './TopicDetails.component';
 import { TopicDetailsProps } from './TopicDetails.interface';
@@ -169,6 +171,10 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 }));
 
 describe('TopicDetails component', () => {
+  beforeEach(() => {
+    (topicClassBase.getTopicDetailPageTabs as jest.Mock).mockClear();
+  });
+
   it('should render successfully', () => {
     const { container } = render(<TopicDetails {...mockProps} />, {
       wrapper: MemoryRouter,
@@ -188,5 +194,63 @@ describe('TopicDetails component', () => {
       }),
       expect.anything()
     );
+  });
+
+  // Consumer via prop (Task 8 rule 2): `topicPermissions` stays raw (Task 7A
+  // precedent) — only the internal derivation, now a single `deleted`-gated
+  // getDerivedPermissionFlags(topicPermissions, deleted) call, converts. This
+  // covers the whole derivation swap (9 fields collapsed into 1 call, including
+  // the 2 flagged raw `EditAll`/`ViewAll` reads) via the fields that actually
+  // reach a consumer: `lineageTab`'s hasEditAccess (editLineagePermission) and
+  // `customPropertiesTab`'s hasEditAccess/hasPermission (editCustomAttribute/
+  // viewCustomPropertiesPermission) — asserted on the config object passed to
+  // the mocked topicClassBase.getTopicDetailPageTabs, since the actual tab
+  // content is never rendered (the mock returns `[]`).
+  it('derives edit/view flags correctly and passes them into the tabs config', () => {
+    const permissions: OperationPermission = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditLineage: true,
+      EditCustomFields: false,
+      EditAll: true,
+      ViewCustomFields: true,
+    } as OperationPermission;
+
+    render(
+      <TopicDetails {...mockProps} topicPermissions={permissions} />,
+      { wrapper: MemoryRouter }
+    );
+
+    const mockGetTabs = topicClassBase.getTopicDetailPageTabs as jest.Mock;
+    const config = mockGetTabs.mock.calls[0][0];
+
+    // EditLineage explicit true wins (prioritized over EditAll).
+    expect(config.lineageTab.props.hasEditAccess).toBe(true);
+    // EditCustomFields explicit false wins over a granted EditAll —
+    // explicit-deny-wins semantics preserved by getDerivedPermissionFlags.
+    expect(config.customPropertiesTab.props.hasEditAccess).toBe(false);
+    expect(config.customPropertiesTab.props.hasPermission).toBe(true);
+  });
+
+  it('gates edit flags on deleted while leaving view flags ungated', () => {
+    const permissions: OperationPermission = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditLineage: true,
+      ViewCustomFields: true,
+    } as OperationPermission;
+
+    render(
+      <TopicDetails
+        {...mockProps}
+        topicDetails={{ ...mockTopicDetails, deleted: true }}
+        topicPermissions={permissions}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const mockGetTabs = topicClassBase.getTopicDetailPageTabs as jest.Mock;
+    const config = mockGetTabs.mock.calls[0][0];
+
+    expect(config.lineageTab.props.hasEditAccess).toBe(false);
+    expect(config.customPropertiesTab.props.hasPermission).toBe(true);
   });
 });
