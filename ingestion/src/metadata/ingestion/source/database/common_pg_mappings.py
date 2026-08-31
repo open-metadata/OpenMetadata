@@ -3,7 +3,7 @@ Common Postgresql mappings
 """
 
 import traceback
-from typing import Iterable  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy.dialects.postgresql.base import ischema_names
@@ -17,6 +17,7 @@ from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
 
 INTERVAL_TYPE_MAP = {
     "list": PartitionIntervalTypes.COLUMN_VALUE,
@@ -40,19 +41,21 @@ class PgMatviewMixin:
     controls them correctly.
 
     Placing the logic here avoids duplicating an identical implementation in every
-    pg-compatible connector.  Subclasses must expose ``self.inspector`` (SQLAlchemy
-    ``Inspector``).
+    pg-compatible connector.  The host supplies ``self.inspector``; it is a property on
+    CommonDbSourceService, so it cannot be redeclared here without conflicting with it.
     """
 
-    def query_view_names_and_types(self, schema_name: str) -> Iterable:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         views = [
             TableNameAndType(name=view_name, type_=TableType.View)
-            for view_name in self.inspector.get_view_names(schema_name) or []
+            for view_name in self.inspector.get_view_names(schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+            or []
         ]
         try:
             matviews = [
                 TableNameAndType(name=matview_name, type_=TableType.MaterializedView)
-                for matview_name in self.inspector.get_materialized_view_names(schema_name) or []
+                for matview_name in self.inspector.get_materialized_view_names(schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+                or []
             ]
         except Exception as err:
             logger.debug(traceback.format_exc())
