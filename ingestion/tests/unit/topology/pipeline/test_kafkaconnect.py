@@ -95,7 +95,9 @@ class TestKafkaConnectModels(TestCase):
         self.assertEqual(pipeline.status, "UNASSIGNED")
         self.assertEqual(pipeline.conn_type, "UNKNOWN")
         self.assertEqual(pipeline.tasks, [])
-        self.assertEqual(pipeline.topics, [])
+        # None, not [], so that "the runtime was never asked" stays distinguishable from
+        # "the runtime answered, and there are no data topics".
+        self.assertIsNone(pipeline.topics)
         self.assertEqual(pipeline.config, {})
         self.assertIsNone(pipeline.description)
         self.assertEqual(pipeline.datasets, [])
@@ -1401,7 +1403,9 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
             name="outbox-connector",
             type="source",
             config=config,
-            topics=[KafkaConnectTopics(name=name) for name in (pipeline_topics or [])],
+            # None, not [], when the runtime supplied nothing: an empty list is the
+            # runtime authoritatively reporting no data topics, which suppresses inference.
+            topics=[KafkaConnectTopics(name=name) for name in pipeline_topics] if pipeline_topics else None,
         )
 
         with patch(
@@ -1969,22 +1973,6 @@ class TestConnectorTopicsFromRuntime:
         assert client.client.list_connector_topics.call_count == 3
         assert client._topics_endpoint_supported is True
 
-    def test_topic_tracking_disabled_latches_the_endpoint_off(self):
-        """
-        Connect answers 403 "Topic tracking is disabled." when topic.tracking.enable=false.
-        That is a property of the worker for the whole run, not a transient blip, so it must
-        latch the probe off rather than costing one doomed request per connector forever.
-        """
-        client = self._client()
-        client.client.list_connector_topics.side_effect = self._with_status(self._http_error(403), 403)
-        client.get_connector_config = MagicMock(return_value={"topics": "orders"})
-
-        for name in ("conn-a", "conn-b", "conn-c"):
-            client.get_connector_topics(name)
-
-        assert client.client.list_connector_topics.call_count == 1
-        assert client._topics_endpoint_supported is False
-
 
 class TestInternalTopicExclusion:
     """
@@ -2075,6 +2063,9 @@ def _source_with_topics(topic_names):
     source._messaging_services_cache = []
     source._topics_cache = {}
     source.metadata = MagicMock()
+    # These tests assert on which topic NAMES get resolved, not on entity lookup, and a
+    # bare MagicMock here fails TopicResolutionResult validation.
+    source.metadata.get_by_name.return_value = None
 
     def list_all_entities(entity, params=None, **kwargs):
         for name in topic_names:
@@ -2270,3 +2261,130 @@ class TestConnectorEnrichmentOrdering:
         assert client.get_connector_config.call_count == 1, "config must not be fetched twice"
         assert [t.name for t in details.topics] == ["prod.events.orderPlaced_v1"]
         assert details.description == "wallet outbox"
+
+
+class TestRuntimeAnswerIsNotConfusedWithSilence:
+    """
+    "The runtime reported no data topics" and "the runtime told us nothing" are different
+    facts. Collapsing the first into the second sends a connector back to config and
+    namespace inference even though the runtime just said there is nothing to attribute,
+    which is the speculative lineage this connector is meant to stop producing.
+    """
+
+    def _client(self):
+        client = object.__new__(KafkaConnectClient)
+        client.client = MagicMock()
+        client.is_confluent_cloud = False
+        client._topics_endpoint_supported = None
+        return client
+
+    def test_runtime_reporting_only_internal_topics_is_an_answer(self):
+        """
+        A connector that has emitted a schema change but no data rows reports only its
+        schema-change topic. After exclusion that is an authoritative empty, and must not
+        fall through to a topic name declared in config.
+        """
+        client = self._client()
+        client.client.list_connector_topics.return_value = {"plain-cdc": {"topics": ["rigA.plaincdc"]}}
+        config = {"topic.prefix": "rigA.plaincdc", "topics": "stale.config.topic"}
+
+        topics = client.get_connector_topics("plain-cdc", connector_config=config)
+
+        assert topics == [], "an authoritative empty must not fall back to config-declared topics"
+
+    def test_silent_runtime_still_falls_back_to_config(self):
+        """The cold-start case: the runtime knows nothing yet, so a sink's declared topics still resolve."""
+        client = self._client()
+        client.client.list_connector_topics.return_value = {"jdbc-sink": {"topics": []}}
+        config = {"topics": "orders,payments"}
+
+        topics = client.get_connector_topics("jdbc-sink", connector_config=config)
+
+        assert [t.name for t in topics] == ["orders", "payments"]
+
+    def test_authoritative_empty_suppresses_source_inference(self):
+        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
+        config = {"connector.class": "MySqlCdcSourceV2", "topic.prefix": "rigA.plaincdc"}
+        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config, topics=[])
+
+        result = source._parse_and_resolve_topics(
+            pipeline_details=details,
+            database_server_name="rigA.plaincdc",
+            effective_messaging_service="confluent-prod",
+            is_storage_sink=False,
+        )
+
+        assert result.topics == [], "the namespace scan must not run against an authoritative empty"
+
+    def test_unset_topics_still_allows_source_inference(self):
+        """Unset means unknown, so the existing config-derived resolution must still run."""
+        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
+        config = {"connector.class": "MySqlCdcSourceV2", "topic.prefix": "rigA.plaincdc"}
+        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+
+        result = source._parse_and_resolve_topics(
+            pipeline_details=details,
+            database_server_name="rigA.plaincdc",
+            effective_messaging_service="confluent-prod",
+            is_storage_sink=False,
+        )
+
+        assert sorted(t.name for t in result.topics) == [
+            "rigA.plaincdc.walletdb.customers",
+            "rigA.plaincdc.walletdb.orders",
+        ]
+
+
+class TestForbiddenIsNotAlwaysUnsupported:
+    """
+    Connect answers 403 "Topic tracking is disabled." when topic.tracking.enable=false,
+    which is a property of the whole worker. A proxy or per-route RBAC can also answer 403
+    while the endpoint exists, and latching on the status alone would silently disable
+    runtime topic discovery for every connector behind the first such response.
+    """
+
+    def _client(self):
+        client = object.__new__(KafkaConnectClient)
+        client.client = MagicMock()
+        client.is_confluent_cloud = False
+        client._topics_endpoint_supported = None
+        return client
+
+    @staticmethod
+    def _forbidden(body):
+        exc = Exception("403 Client Error: Forbidden")
+        exc.response = SimpleNamespace(status_code=403, text=body)
+        return exc
+
+    def test_topic_tracking_disabled_latches_off(self):
+        client = self._client()
+        client.client.list_connector_topics.side_effect = self._forbidden(
+            '{"error_code":403,"message":"Topic tracking is disabled."}'
+        )
+        client.get_connector_config = MagicMock(return_value={"topics": "orders"})
+
+        for name in ("conn-a", "conn-b", "conn-c"):
+            client.get_connector_topics(name)
+
+        assert client.client.list_connector_topics.call_count == 1
+        assert client._topics_endpoint_supported is False
+
+    def test_authorization_403_does_not_latch_off(self):
+        """
+        An RBAC or proxy 403 is request-specific. Latching would strip runtime truth from
+        every later connector, including ones whose topics are perfectly readable.
+        """
+        client = self._client()
+        client.client.list_connector_topics.side_effect = [
+            self._forbidden('{"error_code":403,"message":"Forbidden"}'),
+            {"outbox-b": {"topics": ["prod.events.orderPlaced_v1"]}},
+        ]
+        client.get_connector_config = MagicMock(return_value={})
+
+        assert client.get_connector_topics("outbox-a") is None
+        assert client._topics_endpoint_supported is None, "an auth 403 must not disable the endpoint"
+
+        topics = client.get_connector_topics("outbox-b")
+
+        assert [t.name for t in topics] == ["prod.events.orderPlaced_v1"]
+        assert client.client.list_connector_topics.call_count == 2

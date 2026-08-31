@@ -100,7 +100,10 @@ class KafkaConnectPipelineDetails(BaseModel):
         description="State of the connector (e.g., RUNNING, STOPPED)",
     )
     tasks: Optional[List[KafkaConnectTasks]] = Field(default_factory=list)  # noqa: UP006, UP045
-    topics: Optional[List[KafkaConnectTopics]] = Field(default_factory=list)  # noqa: UP006, UP045
+    # None means the runtime was never asked, or had nothing to say. An empty list means
+    # it was asked and authoritatively reported no data topics, which must not be read as
+    # licence to infer some from the topic namespace.
+    topics: Optional[List[KafkaConnectTopics]] = Field(default=None)  # noqa: UP006, UP045
     conn_type: Optional[str] = Field(default="UNKNOWN", alias="type")  # noqa: UP045
     description: Optional[str] = None  # noqa: UP045
     datasets: Optional[List[KafkaConnectDatasetDetails]] = Field(default_factory=list)  # noqa: UP006, UP045

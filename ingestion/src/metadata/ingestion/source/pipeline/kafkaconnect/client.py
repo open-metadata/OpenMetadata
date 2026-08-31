@@ -118,13 +118,17 @@ JAVA_NUMBERED_BACKREF_PATTERN = re.compile(r"\$(\d+)")
 JAVA_NAMED_GROUP_PATTERN = re.compile(r"\(\?<(?![=!])(\w+)>")
 
 
-# Statuses that mean the endpoint is unavailable for the whole run, as opposed to a
-# request that happened to fail. Confluent Cloud answers 404 "route_not_found" for
-# /connectors/{name}/topics, a proxy in front of Connect may answer 405 or 501, and a
-# worker started with topic.tracking.enable=false answers 403 "Topic tracking is
-# disabled.". All four are properties of the deployment, so re-asking per connector only
-# costs a doomed request each time.
-UNSUPPORTED_ROUTE_STATUS_CODES = frozenset({403, 404, 405, 501})
+# Statuses that mean the route itself is absent, as opposed to a request that failed.
+# Confluent Cloud answers 404 "route_not_found" for /connectors/{name}/topics, and a proxy
+# in front of Connect may answer 405 or 501. These are properties of the deployment, so
+# re-asking per connector only costs a doomed request each time.
+UNSUPPORTED_ROUTE_STATUS_CODES = frozenset({404, 405, 501})
+
+# A worker started with topic.tracking.enable=false answers 403 with this message. A 403
+# is only latched off when the body says so: a proxy or per-route RBAC can also answer 403
+# while the endpoint exists, and latching on the status alone would silently disable
+# runtime topic discovery for every connector behind the first such response.
+TOPIC_TRACKING_DISABLED_MARKER = "topic tracking is disabled"
 
 # Config keys naming a topic the connector creates for its own bookkeeping rather than
 # for data. Debezium's schema history and the Connect error-handling dead letter queue.
@@ -468,14 +472,18 @@ class KafkaConnectClient:
             if result:
                 return [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
         except Exception as exc:
-            status_code = getattr(getattr(exc, "response", None), "status_code", None)
-            if status_code in UNSUPPORTED_ROUTE_STATUS_CODES:
+            response = getattr(exc, "response", None)
+            status_code = getattr(response, "status_code", None)
+            tracking_disabled = status_code == 403 and TOPIC_TRACKING_DISABLED_MARKER in (
+                f"{getattr(response, 'text', '')} {exc}".lower()
+            )
+            if status_code in UNSUPPORTED_ROUTE_STATUS_CODES or tracking_disabled:
                 if self._topics_endpoint_supported is None:
                     self._topics_endpoint_supported = False
                     remedy = (
                         " The worker reports topic tracking as disabled: set "
                         "topic.tracking.enable=true on the Connect workers to restore it."
-                        if status_code == 403
+                        if tracking_disabled
                         else ""
                     )
                     logger.info(
@@ -501,8 +509,14 @@ class KafkaConnectClient:
         The topics the Connect runtime says this connector touched, minus its own
         bookkeeping topics.
 
-        Returns None when the runtime has nothing to say, which is what makes the caller
-        fall through to the config-declared names.
+        Distinguishes two outcomes the caller must not conflate:
+
+        - ``None``: the runtime told us nothing, either because the endpoint is
+          unavailable or because the connector has not reported any active topic yet.
+          The caller may fall back.
+        - ``[]``: the runtime did report topics and every one was this connector's own
+          bookkeeping. That is an authoritative "no data topics", so inferring some from
+          the topic namespace would contradict what the runtime just said.
         """
         topics = self._list_topics_from_api(connector)
         if not topics:
@@ -516,7 +530,7 @@ class KafkaConnectClient:
                 f"Excluded {dropped} internal topic(s) from connector '{connector}': "
                 f"{sorted(excluded & {topic.name for topic in topics})}"
             )
-        return data_topics or None
+        return data_topics
 
     @staticmethod
     def _parse_topics_from_config(connector_config: Optional[dict]) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
@@ -550,14 +564,17 @@ class KafkaConnectClient:
                 holds it. Fetched on demand otherwise.
 
         Returns:
-            Optional[List[KafkaConnectTopics]]: The connector's data topics, or None if
-                                            neither source yields any.
+            Optional[List[KafkaConnectTopics]]: The connector's data topics. An empty list
+                                            means the runtime reported none, which is an
+                                            answer. None means neither source could say.
         """
         try:
             config = connector_config if connector_config is not None else self.get_connector_config(connector)
 
             topics = self._list_data_topics_from_api(connector, config)
-            if topics:
+            if topics is not None:
+                # Empty is the runtime stating this connector has no data topics. Falling
+                # through to config on that would contradict what it just told us.
                 return topics
 
             topics = self._parse_topics_from_config(config)
