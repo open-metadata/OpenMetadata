@@ -2,6 +2,9 @@
 Common Postgresql mappings
 """
 
+import traceback
+from typing import Iterable  # noqa: UP035
+
 from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy.dialects.postgresql.base import ischema_names
 
@@ -10,6 +13,10 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 INTERVAL_TYPE_MAP = {
     "list": PartitionIntervalTypes.COLUMN_VALUE,
@@ -22,7 +29,37 @@ RELKIND_MAP = {
     "p": TableType.Partitioned,
     "f": TableType.Foreign,
     "v": TableType.View,
+    "m": TableType.MaterializedView,
 }
+
+
+class PgMatviewMixin:
+    """
+    Mixin for PostgreSQL-compatible connectors (Postgres, Greenplum) that exposes
+    materialized views through the view path so that the ``includeViews`` config flag
+    controls them correctly.
+
+    Placing the logic here avoids duplicating an identical implementation in every
+    pg-compatible connector.  Subclasses must expose ``self.inspector`` (SQLAlchemy
+    ``Inspector``).
+    """
+
+    def query_view_names_and_types(self, schema_name: str) -> Iterable:
+        views = [
+            TableNameAndType(name=view_name, type_=TableType.View)
+            for view_name in self.inspector.get_view_names(schema_name) or []
+        ]
+        try:
+            matviews = [
+                TableNameAndType(name=matview_name, type_=TableType.MaterializedView)
+                for matview_name in self.inspector.get_materialized_view_names(schema_name) or []
+            ]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning("Fetching materialized views failed for schema %s due to - %s", schema_name, err)
+            matviews = []
+        return views + matviews
+
 
 GEOMETRY = create_sqlalchemy_type("GEOMETRY")
 POINT = create_sqlalchemy_type("POINT")

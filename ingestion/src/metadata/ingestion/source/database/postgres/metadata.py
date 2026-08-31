@@ -57,6 +57,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
 from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
@@ -124,7 +125,7 @@ PGDialect.get_foreign_keys = get_foreign_keys
 PGDialect.get_schema_names = get_schema_names
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -164,28 +165,6 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         return [
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
-
-    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        """
-        Overwrite the base implementation to include materialized views.
-        Regular views are yielded as TableType.View; materialized views as
-        TableType.MaterializedView.  Both respect the includeViews config flag
-        because this method is only called when includeViews=True.
-        """
-        views = [
-            TableNameAndType(name=view_name, type_=TableType.View)
-            for view_name in self.inspector.get_view_names(schema_name) or []
-        ]
-        try:
-            matviews = [
-                TableNameAndType(name=matview_name, type_=TableType.MaterializedView)
-                for matview_name in self.inspector.get_materialized_view_names(schema_name) or []
-            ]
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning("Fetching materialized views failed for schema %s due to - %s", schema_name, err)
-            matviews = []
-        return views + matviews
 
     def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
