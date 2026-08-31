@@ -204,7 +204,7 @@
             right: 36px;
             bottom: 32px;
             z-index: var(--om-z-1);
-            display: block;
+            display: inline-flex;
             border-color: @primary-color;
             border-radius: var(--om-radius-sm);
           }
@@ -231,7 +231,6 @@
         .rule--header {
           .ant-btn-group {
             align-self: end;
-            margin-bottom: var(--om-space-14);
           }
         }
       }
@@ -326,4 +325,9 @@
       .selectTextOverflow();
     }
   }
+}
+.advanced-search-modal .query-builder-container .rule--header {
+  align-self: flex-start;
+  margin-top: var(--om-space-40);
+
 }

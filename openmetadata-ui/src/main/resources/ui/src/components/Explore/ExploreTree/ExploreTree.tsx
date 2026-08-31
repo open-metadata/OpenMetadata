@@ -105,6 +105,10 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   );
 };
 
+const renderExploreTreeTitle = (node: DataNode) => (
+  <ExploreTreeTitle node={node as ExploreTreeNode} />
+);
+
 const getServiceStyleIcon = (bucket: Bucket) => {
   const iconURL = get(
     bucket,
@@ -746,9 +750,7 @@ const ExploreTree = ({
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => (
-        <ExploreTreeTitle node={node as ExploreTreeNode} />
-      )}
+      titleRender={renderExploreTreeTitle}
       treeData={displayTreeData as DataNode[]}
       onExpand={(keys) => setExpandedKeys(keys)}
       onSelect={onNodeSelect}

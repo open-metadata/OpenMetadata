@@ -64,7 +64,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   onDataProductUpdate,
   viewCustomPropertiesPermission,
 }: EntityRightPanelProps<T>) => {
-  const { entityRules } = useEntityRules(entityType);
+  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();
@@ -88,6 +88,9 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
               multiple={entityRules.canAddMultipleDataProducts}
+              requireDomainForDataProduct={
+                !isRulesLoaded || entityRules.requireDomainForDataProduct
+              }
               onSave={onDataProductUpdate}
             />
           </div>

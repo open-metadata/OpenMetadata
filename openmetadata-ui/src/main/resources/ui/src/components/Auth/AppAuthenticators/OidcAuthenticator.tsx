@@ -198,19 +198,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     return (
       <>
         <Routes>
-          {/* render sign in page if user is not authenticated and not signing up
-           * else redirect to my data page as user is authenticated and not signing up
-           */}
-          <Route
-            element={
-              !isAuthenticated && !isSigningUp ? (
-                <Navigate to={ROUTES.SIGNIN} />
-              ) : (
-                <Navigate to={ROUTES.MY_DATA} />
-              )
-            }
-            path={ROUTES.HOME}
-          />
           {/* render the sign in route only if user is not signing up */}
           <Route
             element={isSigningUp ? <AppWithAuth /> : <SignInPage />}

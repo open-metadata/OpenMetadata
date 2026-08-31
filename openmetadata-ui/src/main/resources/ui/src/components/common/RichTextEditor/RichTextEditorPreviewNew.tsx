@@ -13,6 +13,7 @@
 import { Button } from 'antd';
 import classNames from 'classnames';
 import {
+  CSSProperties,
   FC,
   lazy,
   useEffect,
@@ -50,6 +51,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   isDescriptionExpanded = false,
   maxLineLength = '2',
   disableExpand = false,
+  clampByLines = false,
 }) => {
   const { t, i18n } = useTranslation();
   // formatClientContent is a pure, synchronous transform (DOMParser-based
@@ -116,25 +118,42 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
     };
   }, [fontsReady]);
 
-  const clampStyle: Record<string, string | number> | undefined =
-    useMemo(() => {
-      if (readMore) {
-        return undefined;
-      }
+  const clampStyle: CSSProperties | undefined = useMemo(() => {
+    if (readMore) {
+      return undefined;
+    }
 
+    // clampByLines clamps to an exact number of text lines (clean cut-off,
+    // no partial last line) via -webkit-line-clamp, instead of the
+    // height-based approximation below.
+    if (clampByLines) {
       return {
+        display: '-webkit-box',
+        WebkitBoxOrient: 'vertical',
+        WebkitLineClamp: Number(maxLineLength),
         overflow: 'hidden',
-        // Before the first real measurement lands, fall back to the
-        // DEFAULT_LINE_HEIGHT_PX estimate so content is never shown fully
-        // unclamped; checkOverflow (in a layout effect, so before paint in
-        // the common case) corrects it to the real per-instance value.
-        maxHeight:
-          clampHeightPx !== undefined
-            ? `${clampHeightPx}px`
-            : `${Number(maxLineLength) * DEFAULT_LINE_HEIGHT_PX}px`,
-        transition: isInstantTransition ? 'none' : 'max-height 0.3s ease',
       };
-    }, [readMore, maxLineLength, clampHeightPx, isInstantTransition]);
+    }
+
+    return {
+      overflow: 'hidden',
+      // Before the first real measurement lands, fall back to the
+      // DEFAULT_LINE_HEIGHT_PX estimate so content is never shown fully
+      // unclamped; checkOverflow (in a layout effect, so before paint in
+      // the common case) corrects it to the real per-instance value.
+      maxHeight:
+        clampHeightPx !== undefined
+          ? `${clampHeightPx}px`
+          : `${Number(maxLineLength) * DEFAULT_LINE_HEIGHT_PX}px`,
+      transition: isInstantTransition ? 'none' : 'max-height 0.3s ease',
+    };
+  }, [
+    readMore,
+    maxLineLength,
+    clampByLines,
+    clampHeightPx,
+    isInstantTransition,
+  ]);
 
   const handleReadMoreToggle = () => {
     // When disableExpand is set, the button stays a pure "View more" affordance
@@ -184,15 +203,35 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
 
         const originalMaxHeight = el.style.maxHeight;
         const originalOverflow = el.style.overflow;
+        const originalDisplay = el.style.display;
+        const originalLineClamp =
+          el.style.getPropertyValue('-webkit-line-clamp');
+        const originalBoxOrient =
+          el.style.getPropertyValue('-webkit-box-orient');
 
-        el.style.maxHeight = `${targetHeight}px`;
-        el.style.overflow = 'hidden';
+        // Measure overflow with the same clamp the view uses, so the
+        // view-more toggle appears exactly when content exceeds the clamp.
+        if (clampByLines) {
+          el.style.display = '-webkit-box';
+          el.style.setProperty('-webkit-box-orient', 'vertical');
+          el.style.setProperty(
+            '-webkit-line-clamp',
+            `${Number(maxLineLength)}`
+          );
+          el.style.overflow = 'hidden';
+        } else {
+          el.style.maxHeight = `${targetHeight}px`;
+          el.style.overflow = 'hidden';
+        }
 
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
 
         el.style.maxHeight = originalMaxHeight;
         el.style.overflow = originalOverflow;
+        el.style.display = originalDisplay;
+        el.style.setProperty('-webkit-line-clamp', originalLineClamp);
+        el.style.setProperty('-webkit-box-orient', originalBoxOrient);
 
         // Computed here, from the ref's value *before* this measurement
         // updates it below — this is "was a real measurement already taken
@@ -244,7 +283,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       resizeObserver.disconnect();
       mutationObserver.disconnect();
     };
-  }, [content, maxLineLength]);
+  }, [content, maxLineLength, clampByLines]);
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
@@ -259,7 +298,8 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       dir={i18n.dir()}>
       <div
         className={classNames('markdown-parser', textVariant, {
-          'is-clamped': !readMore && isOverflowing && enableSeeMoreVariant,
+          'is-clamped':
+            !readMore && isOverflowing && enableSeeMoreVariant && !clampByLines,
         })}
         data-testid="markdown-parser"
         ref={contentRef}

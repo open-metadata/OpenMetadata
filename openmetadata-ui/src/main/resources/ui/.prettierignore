@@ -48,12 +48,10 @@ src/antlr/generated
 # Generated TS
 src/generated/
 
-# Generated (dereferenced) JSON schemas - rebuilt by `yarn parse-schema` on postinstall
-src/jsons/connectionSchemas/
-src/jsons/ingestionSchemas/
-src/jsons/governanceSchemas/
-src/jsons/applicationSchemas/
-src/jsons/configuration/
+# Generated (dereferenced) JSON schemas - committed as written verbatim by
+# parseSchemas.js. Reformatting them here would drift the tree from what
+# `yarn parse-schema` regenerates.
+src/jsons/
 
 # Assets
 *.gif
@@ -75,3 +73,8 @@ playwright/output/
 
 # Playwright test fixtures (may contain intentionally malformed files)
 playwright/test-data/
+
+# ESLint suppressions ratchet: rewritten by ESLint itself on every
+# --suppress-all / --prune-suppressions run in ESLint's own format. Letting
+# Prettier reformat it would make the two tools fight and churn forever.
+eslint-suppressions.json
