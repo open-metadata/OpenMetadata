@@ -298,6 +298,24 @@ describe('TeamDetailsV1 ManageButton canEditAll wiring', () => {
       'true'
     );
   });
+
+  // Task 8 Batch 3 review round, Finding 1 (Critical): the ManageButton hosts the ONLY UI
+  // path to restore a soft-deleted team (`restore-team-dropdown`). Gating its render/canDelete
+  // on the deleted-gated `canEditAll` makes it disappear entirely for a deleted team, admins
+  // included, with no way back — old code read raw, ungated `entityPermissions.EditAll` here.
+  // Fixed via a second, ungated derivation (`ungatedFlags.canEditAll`) rather than a raw read.
+  it('keeps the ManageButton (and its restore option) reachable for a deleted team when EditAll is true', async () => {
+    renderComponent({
+      currentTeam: { ...NON_ORG_TEAM, deleted: true },
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('manage-button')).toHaveAttribute(
+      'data-can-delete',
+      'true'
+    );
+    expect(screen.getByTestId('restore-team-dropdown')).toBeInTheDocument();
+  });
 });
 
 // Task 8 Batch 3: editDescriptionPermission's raw
@@ -334,5 +352,48 @@ describe('TeamDetailsV1 description hasEditAccess wiring (explicit-deny-wins)', 
       'data-has-edit-access',
       'false'
     );
+  });
+});
+
+// Task 8 Batch 3 review round, Finding 2 (Important): AssignErrorPlaceHolder hard-branches
+// on its `permission` prop (`if (!permission) return <PermissionErrorPlaceholder />`),
+// replacing the whole assign-roles/policies UI (including the separately-disabled Add button)
+// with a misleading "no access" message. Old code passed raw, ungated `entityPermissions.EditAll`
+// here — a deleted team's admin saw a disabled Add button with a tooltip, not "no access".
+// Fixed via `ungatedFlags.canEditAll` instead of the deleted-gated `canEditAll`.
+describe('TeamDetailsV1 rolesTabRender/policiesTabRender permission gate (ungated for deleted teams)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockLocationSearch = '?activeTab=roles';
+    mockGetTabs.mockReturnValue([
+      { name: 'label.role-plural', key: TeamsPageTab.ROLES },
+    ]);
+  });
+
+  it('shows the assign-roles UI (not the no-access placeholder) for a deleted team when EditAll is true', async () => {
+    renderComponent({
+      currentTeam: { ...NON_ORG_TEAM, deleted: true },
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(
+      await screen.findByTestId('add-placeholder-button')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+    // The Add action itself stays disabled independently via its own isTeamDeleted check.
+    expect(screen.getByTestId('add-placeholder-button')).toBeDisabled();
+  });
+
+  it('shows the no-access placeholder for a non-deleted team when EditAll is false', async () => {
+    renderComponent({
+      currentTeam: NON_ORG_TEAM,
+      entityPermissions: { EditAll: false } as OperationPermission,
+    });
+
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 });

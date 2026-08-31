@@ -235,6 +235,24 @@ const TeamDetailsV1 = ({
     [entityPermissions, isTeamDeleted]
   );
 
+  // Sites that must ignore deleted-gating (Task 8 Batch 3 review round, Findings 1 & 2):
+  // - ManageButton hosts the ONLY UI path to restore a soft-deleted team
+  //   (extraDropdownContent's `restore-team-dropdown`); gating it on `canEditAll` (deleted-
+  //   gated) makes it disappear for a deleted team, admins included, with no way back.
+  // - AssignErrorPlaceHolder hard-branches on its `permission` prop
+  //   (`if (!permission) return <PermissionErrorPlaceholder />`), replacing the whole
+  //   assign-roles/policies UI (including the separately-disabled Add button) with a
+  //   misleading "you don't have permission" message, when the real state is "you have
+  //   permission, but this team is deleted" (already communicated via the Add button's own
+  //   `disabled={isTeamDeleted}` + tooltip).
+  // Old code read raw `entityPermissions.EditAll` (ungated) at both kinds of site — this
+  // reproduces that intentionally-ungated behavior via a second derivation instead of
+  // reintroducing a raw read.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions),
+    [entityPermissions]
+  );
+
   const teamCount = useMemo(
     () => (isTeamBasicDataLoading ? 0 : childTeamList.length),
     [childTeamList, isTeamBasicDataLoading]
@@ -796,7 +814,7 @@ const TeamDetailsV1 = ({
     () =>
       isEmpty(currentTeam.defaultRoles ?? []) ? (
         fetchErrorPlaceHolder({
-          permission: canEditAll,
+          permission: ungatedFlags.canEditAll,
           heading: t('label.role'),
           doc: ROLE_DOCS,
           children: t('message.assigning-team-entity-description', {
@@ -862,14 +880,14 @@ const TeamDetailsV1 = ({
           </Col>
         </Row>
       ),
-    [currentTeam, canEditAll, addRole, isTeamDeleted]
+    [currentTeam, canEditAll, ungatedFlags, addRole, isTeamDeleted]
   );
 
   const policiesTabRender = useMemo(
     () =>
       isEmpty(currentTeam.policies) ? (
         fetchErrorPlaceHolder({
-          permission: canEditAll,
+          permission: ungatedFlags.canEditAll,
           heading: t('label.policy'),
           children: t('message.assigning-team-entity-description', {
             entity: t('label.policy-lowercase-plural'),
@@ -935,7 +953,7 @@ const TeamDetailsV1 = ({
           </Col>
         </Row>
       ),
-    [currentTeam, canEditAll, addPolicy, isTeamDeleted]
+    [currentTeam, canEditAll, ungatedFlags, addPolicy, isTeamDeleted]
   );
 
   const teamActionButton = useMemo(
@@ -1007,12 +1025,12 @@ const TeamDetailsV1 = ({
             <Space align="center">
               {teamActionButton}
               {!isOrganization ? (
-                canEditAll && (
+                ungatedFlags.canEditAll && (
                   <ManageButton
                     isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
-                    canDelete={canEditAll}
+                    canDelete={ungatedFlags.canEditAll}
                     displayName={getEntityName(currentTeam)}
                     entityId={currentTeam.id}
                     entityName={
@@ -1077,7 +1095,7 @@ const TeamDetailsV1 = ({
       isOrganization,
       slashedTeamName,
       entityPermissions,
-      canEditAll,
+      ungatedFlags,
       teamActionButton,
       extraDropdownContent,
       updateTeamHandler,

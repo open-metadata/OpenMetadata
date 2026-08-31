@@ -124,6 +124,25 @@ export const UserTab = ({
     [can]
   );
 
+  // The one site that must ignore deleted-gating (Task 8 Batch 3 review round, Finding 3):
+  // the ASSIGN ErrorPlaceHolder's `permission` prop hard-branches
+  // (`if (!permission) return <PermissionErrorPlaceholder />`), replacing the whole
+  // assign-users UI (including the Add button, which is separately disabled via its own
+  // `disabled={!editUserPermission || isTeamDeleted}`) with a misleading "no access" message
+  // for a deleted team's admin. Old code read the raw, ungated `permission.EditAll ||
+  // permission.EditUsers` there. `ungatedFlags.can(Operation.EditUsers)` reproduces that —
+  // NOT byte-for-byte (it still applies the explicit-deny-wins fix: an explicit
+  // `EditUsers: false` denies even with `EditAll: true`, per Task 6 Finding 1, same as
+  // `editUserPermission` above) but WITHOUT the deleted gate. Truth table for the one case
+  // that differs from a naive `canEditAll || can(EditUsers)`: EditUsers absent, EditAll true —
+  // getPrioritizedEditPermission falls back to EditAll when the specific key is absent, so
+  // `can(Operation.EditUsers)` alone already covers the EditAll grant; no separate OR-term
+  // needed.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
+  );
+
   /**
    * Make API call to fetch current team user data
    */
@@ -375,7 +394,7 @@ export const UserTab = ({
         }
         className="mt-0-important border-none"
         heading={t('label.user')}
-        permission={editUserPermission}
+        permission={ungatedFlags.can(Operation.EditUsers)}
         permissionValue={t('label.edit-entity', {
           entity: t('label.user'),
         })}
