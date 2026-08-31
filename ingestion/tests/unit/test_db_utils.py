@@ -36,6 +36,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.source.models import TableView
 from metadata.utils.db_utils import get_host_from_host_port, get_view_lineage
 
@@ -674,154 +675,70 @@ class TestDbUtils(TestCase):
             )
 
 
-class TestClickhouseMaterializedViewLineage(TestCase):
+class TestViewLineageExtension(TestCase):
     """
-    A Clickhouse materialized view created with `TO <schema>.<table>` writes its rows
-    into that target table, so it needs a downstream edge on top of the upstream one.
+    A connector can contribute the edges its dialect expresses outside of the query the
+    parsers see, through `LineageSource.get_view_lineage_extension`.
     """
-
-    MV_DEFINITION = (
-        "CREATE MATERIALIZED VIEW schema01.samples_mv TO schema02.samples_e "
-        "(`column_01` String) AS SELECT column_01 FROM schema01.samples"
-    )
 
     def setUp(self):
         """Set up test fixtures"""
         search_cache.clear()
 
         self.metadata = MagicMock()
-        self.service_name = "clickhouse_service"
-
-        self.mv_entity = self._table("samples_mv", "schema01")
-        self.source_entity = self._table("samples", "schema01")
-        self.target_entity = self._table("samples_e", "schema02")
-
-        self.metadata.es_search_from_fqn = self._es_search_from_fqn
-        self.metadata.get_by_name = self._get_by_name
-
-        self.table_view = TableView(
-            table_name="samples_mv",
-            schema_name="schema01",
-            db_name="default",
-            view_definition=self.MV_DEFINITION,
-        )
-
-    def _table(self, name: str, schema: str) -> Table:
-        return Table(
+        self.view_entity = Table(
             id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root=name),
-            fullyQualifiedName=FullyQualifiedEntityName(root=f"{self.service_name}.default.{schema}.{name}"),
-            serviceType=DatabaseServiceType.Clickhouse,
+            name=EntityName(root="test_view"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="test_service.test_db.test_schema.test_view"),
+            serviceType=DatabaseServiceType.Mysql,
             columns=[],
         )
-
-    def _es_search_from_fqn(self, entity_type, fqn_search_string, **kwargs):
-        for entity in (self.mv_entity, self.source_entity, self.target_entity):
-            if entity.name.root in fqn_search_string.split("."):
-                return [entity]
-        return []
-
-    def _get_by_name(self, entity, fqn=None, **kwargs):
-        for candidate in (self.mv_entity, self.source_entity, self.target_entity):
-            if fqn and candidate.fullyQualifiedName.root == fqn:
-                return candidate
-        return None
-
-    def _run(self) -> dict:
-        """Run the view lineage and return the produced {from_fqn: to_fqn} edges"""
-        results = list(
-            get_view_lineage(
-                view=self.table_view,
-                metadata=self.metadata,
-                service_names=self.service_name,
-                connection_type="Clickhouse",
-                timeout_seconds=30,
-                parser_type=QueryParserType.Auto,
+        self.metadata.get_by_name = lambda *_, **__: self.view_entity
+        self.metadata.es_search_from_fqn = lambda *_, **__: []
+        self.view = TableView(
+            table_name="test_view",
+            schema_name="test_schema",
+            db_name="test_db",
+            view_definition="CREATE VIEW test_view AS SELECT * FROM source_table",
+        )
+        self.extra_edge = Either(
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn="test_service.test_db.test_schema.test_view",
+                from_entity_type="table",
+                to_entity_fqn="test_service.test_db.test_schema.target",
+                to_entity_type="table",
             )
         )
-        self.assertTrue(all(result.left is None for result in results), [result.left for result in results])
-        return {result.right.from_entity_fqn: result.right.to_entity_fqn for result in results if result.right}
 
-    def test_materialized_view_to_clause_creates_downstream_lineage(self):
-        """Both the upstream and the `TO` target edges are created"""
-        edges = self._run()
-
-        self.assertEqual(
-            edges,
-            {
-                self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root,
-                self.mv_entity.fullyQualifiedName.root: self.target_entity.fullyQualifiedName.root,
-            },
+    def _run(self, extension):
+        return list(
+            get_view_lineage(
+                view=self.view,
+                metadata=self.metadata,
+                service_names="test_service",
+                connection_type="mysql",
+                timeout_seconds=30,
+                parser_type=QueryParserType.Auto,
+                extension=extension,
+            )
         )
 
-    def test_unqualified_target_resolves_against_the_view_schema(self):
-        """`TO <table>` without a schema belongs to the schema of the view"""
-        self.target_entity = self._table("samples_e", "schema01")
-        self.table_view.view_definition = (
-            "CREATE MATERIALIZED VIEW schema01.samples_mv TO samples_e AS SELECT column_01 FROM schema01.samples"
-        )
+    def test_extension_edges_are_yielded(self):
+        """The extension is called with the view and its entity, and its edges come through"""
+        calls = []
 
-        edges = self._run()
+        def extension(**kwargs):
+            calls.append(kwargs)
+            yield self.extra_edge
 
-        self.assertEqual(
-            edges.get(self.mv_entity.fullyQualifiedName.root),
-            self.target_entity.fullyQualifiedName.root,
-        )
+        results = self._run(extension)
 
-    def test_refresh_and_definer_variant(self):
-        """The `REFRESH EVERY ... DEFINER ...` variant is handled as well"""
-        self.table_view.view_definition = (
-            "CREATE MATERIALIZED VIEW schema01.samples_mv REFRESH EVERY 3 HOUR TO schema02.samples_e "
-            "(`column_01` String) DEFINER = default SQL SECURITY DEFINER "
-            "AS SELECT column_01 FROM schema01.samples"
-        )
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["view"], self.view)
+        self.assertEqual(calls[0]["view_entity"], self.view_entity)
+        self.assertEqual(calls[0]["service_names"], ["test_service"])
+        self.assertIn(self.extra_edge, results)
 
-        edges = self._run()
-
-        self.assertEqual(
-            edges,
-            {
-                self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root,
-                self.mv_entity.fullyQualifiedName.root: self.target_entity.fullyQualifiedName.root,
-            },
-        )
-
-    def test_materialized_view_without_to_clause_is_untouched(self):
-        """A materialized view holding its own data only gets the upstream edge"""
-        self.table_view.view_definition = (
-            "CREATE MATERIALIZED VIEW schema01.samples_mv (`column_01` String) ENGINE = MergeTree "
-            "ORDER BY column_01 AS SELECT column_01 FROM schema01.samples"
-        )
-
-        edges = self._run()
-
-        self.assertEqual(
-            edges,
-            {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
-        )
-
-    def test_unknown_target_table_is_skipped(self):
-        """A target table that is not ingested does not produce a broken edge"""
-        self.table_view.view_definition = (
-            "CREATE MATERIALIZED VIEW schema01.samples_mv TO schema02.not_ingested "
-            "AS SELECT column_01 FROM schema01.samples"
-        )
-
-        edges = self._run()
-
-        self.assertEqual(
-            edges,
-            {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
-        )
-
-    def test_other_services_are_untouched(self):
-        """The `TO` clause handling is Clickhouse only"""
-        for entity in (self.mv_entity, self.source_entity, self.target_entity):
-            entity.serviceType = DatabaseServiceType.Mysql
-
-        edges = self._run()
-
-        self.assertEqual(
-            edges,
-            {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
-        )
+    def test_no_extension_yields_nothing_extra(self):
+        """Sources without an extension are unaffected"""
+        self.assertNotIn(self.extra_edge, self._run(None))

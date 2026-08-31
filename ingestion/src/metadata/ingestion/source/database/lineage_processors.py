@@ -44,7 +44,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
+from metadata.utils.db_utils import ViewLineageExtension, get_view_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -378,6 +378,7 @@ def view_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
+    extension: Optional[ViewLineageExtension] = None,  # noqa: UP045
 ) -> None:
     """
     Generate lineage for a list of views
@@ -396,6 +397,7 @@ def view_lineage_processor(
                 connection_type=connectionType,
                 timeout_seconds=parsingTimeoutLimit,
                 parser_type=parser_type,
+                extension=extension,
             ):
                 if lineage.right is not None:
                     view_fqn = fqn.build(
