@@ -27,12 +27,12 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.models.patch_request import (
     ARRAY_ENTITY_FIELDS,
     RESTRICT_UPDATE_LIST,
     _sort_array_entity_fields,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauDashboard,
@@ -1158,11 +1158,7 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-order-date",
                     name="Order Date",
-                    upstreamColumns=[
-                        UpstreamColumn(
-                            id="col-order-date", name="order_date", remoteType="DATE"
-                        )
-                    ],
+                    upstreamColumns=[UpstreamColumn(id="col-order-date", name="order_date", remoteType="DATE")],
                 ),
                 DatasourceField(
                     id="fld-order-amount",
@@ -1192,9 +1188,7 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-revenue-usd",
                     name="Revenue (USD)",
-                    upstreamColumns=[
-                        UpstreamColumn(id="col-revenue", name="revenue", remoteType="R8")
-                    ],
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="R8")],
                 ),
             ],
         )
@@ -1216,11 +1210,7 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-signup",
                     name="Signup Date",
-                    upstreamColumns=[
-                        UpstreamColumn(
-                            id="col-signup", name="SIGNUP_DATE", remoteType="DATE"
-                        )
-                    ],
+                    upstreamColumns=[UpstreamColumn(id="col-signup", name="SIGNUP_DATE", remoteType="DATE")],
                 ),
             ],
         )
@@ -1533,11 +1523,7 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="047ffe96",
                     name="revenue_provision",
-                    upstreamColumns=[
-                        UpstreamColumn(
-                            id="610f77a9", name="revenue_provision", remoteType="NUMERIC"
-                        )
-                    ],
+                    upstreamColumns=[UpstreamColumn(id="610f77a9", name="revenue_provision", remoteType="NUMERIC")],
                 ),
             ],
         )
@@ -1565,9 +1551,7 @@ class TableauUnitTest(TestCase):
                 )
             ],
         )
-        incoming_entity = stored_entity.model_copy(
-            update={"columns": self.tableau.get_column_info(data_source)}
-        )
+        incoming_entity = stored_entity.model_copy(update={"columns": self.tableau.get_column_info(data_source)})
 
         _sort_array_entity_fields(
             source=stored_entity,

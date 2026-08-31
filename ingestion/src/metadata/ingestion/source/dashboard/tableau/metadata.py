@@ -1094,9 +1094,7 @@ class TableauSource(DashboardServiceSource):
         if not field.formula and len(upstream_columns) == 1:
             upstream_column = upstream_columns[0]
             field_name = normalize_column_name(field.name or field.id)
-            upstream_column_name = normalize_column_name(
-                upstream_column.name or upstream_column.id
-            )
+            upstream_column_name = normalize_column_name(upstream_column.name or upstream_column.id)
             if field_name and field_name == upstream_column_name:
                 mirrored_column = upstream_column
         return mirrored_column
