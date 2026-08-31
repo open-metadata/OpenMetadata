@@ -157,7 +157,7 @@ public final class SecurityUtil {
       String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
       userName = jwtClaim.contains("@") ? jwtClaim.split("@")[0] : jwtClaim;
     }
-    return userName.toLowerCase();
+    return userName.toLowerCase(Locale.ROOT);
   }
 
   public static String findEmailFromClaims(
@@ -194,7 +194,7 @@ public final class SecurityUtil {
                 jwtClaim));
       }
     }
-    return email.toLowerCase();
+    return email.toLowerCase(Locale.ROOT);
   }
 
   public static String extractEmailFromClaim(Map<String, ?> claims, String emailClaim) {
@@ -210,7 +210,7 @@ public final class SecurityUtil {
           String.format("Authentication failed: email claim '%s' not found in token", emailClaim));
     }
 
-    String email = claimString.toLowerCase();
+    String email = claimString.toLowerCase(Locale.ROOT);
 
     if (!email.contains("@") || !isValidEmail(email)) {
       throw new AuthenticationException(
@@ -299,7 +299,9 @@ public final class SecurityUtil {
     }
 
     if (obj instanceof Claim c) {
-      return c.asString();
+      // asString() returns null for a non-string claim (boolean, number, array); callers treat
+      // the result as a plain string, so normalize that to empty rather than handing back null.
+      return c.asString() == null ? StringUtils.EMPTY : c.asString();
     } else if (obj instanceof String s) {
       return s;
     }
@@ -761,9 +763,9 @@ public final class SecurityUtil {
       return;
     }
 
-    requireEmailWithDomain(email);
+    String normalizedEmail = requireEmailWithDomain(email);
 
-    String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+    String domain = normalizedEmail.substring(normalizedEmail.indexOf("@") + 1);
 
     boolean allowed = allowedEmailDomains.stream().anyMatch(d -> d.equalsIgnoreCase(domain));
 

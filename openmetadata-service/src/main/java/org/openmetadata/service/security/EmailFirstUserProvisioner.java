@@ -1,6 +1,5 @@
 package org.openmetadata.service.security;
 
-import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -11,7 +10,6 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.UserUtil;
 
 /**
@@ -26,9 +24,6 @@ import org.openmetadata.service.util.UserUtil;
 public class EmailFirstUserProvisioner {
 
   private static final int MAX_CREATE_RETRIES = 3;
-
-  /** Relationship fields the flows need loaded on an existing user before they mutate it. */
-  private static final Set<String> LOOKUP_FIELDS = Set.of("id", "roles", "teams", "displayName");
 
   @FunctionalInterface
   public interface ExistingUserLookup {
@@ -71,7 +66,9 @@ public class EmailFirstUserProvisioner {
     return EmailFirstUserProvisioner.builder()
         .providerName(providerName)
         .existingUserLookup(
-            email -> userRepository.getActiveUserByEmailForAuth(email, new Fields(LOOKUP_FIELDS)))
+            email ->
+                userRepository.getActiveUserByEmailForAuth(
+                    email, userRepository.getAuthUpdateFields()))
         .usernameExistsChecker(userRepository::checkUserNameExists)
         .adminEvaluator(
             (email, username) -> UserUtil.isConfiguredAdmin(authorizerConfig, email, username))

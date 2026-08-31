@@ -13,6 +13,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
@@ -28,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -1157,5 +1160,51 @@ class SecurityUtilTest {
         SecurityUtil.findEmailFromClaims(Map.of(), List.of("email"), claims, "other.com");
 
     assertEquals("john.doe@company.com", email);
+  }
+
+  @Test
+  void testExtractEmailFromNonStringClaimFailsAuthenticationRatherThanCrashing() {
+    // A boolean/array claim makes Claim.asString() return null; treating that as a string used to
+    // throw NullPointerException, surfacing as a 500 instead of an authentication failure.
+    Map<String, Claim> booleanClaim = jwtClaims(Map.of("email", true));
+
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(booleanClaim, "email"));
+
+    assertTrue(
+        exception.getMessage().contains("not found"),
+        "Expected a clean authentication failure but got: " + exception.getMessage());
+  }
+
+  @Test
+  void testExtractEmailFromArrayClaimFailsAuthenticationRatherThanCrashing() {
+    Map<String, Claim> arrayClaim = jwtClaims(Map.of("email", List.of("a@b.com")));
+
+    assertThrows(
+        AuthenticationException.class,
+        () -> SecurityUtil.extractEmailFromClaim(arrayClaim, "email"));
+  }
+
+  @Test
+  void testEmailNormalizationIsLocaleIndependent() {
+    // Turkish maps 'I' to a dotless 'i' under the default locale, which would corrupt an address
+    // that is now the identity key.
+    Locale previous = Locale.getDefault();
+    try {
+      Locale.setDefault(new Locale("tr", "TR"));
+      assertEquals(
+          "istanbul@example.com",
+          SecurityUtil.extractEmailFromClaim(
+              jwtClaims(Map.of("email", "ISTANBUL@EXAMPLE.COM")), "email"));
+    } finally {
+      Locale.setDefault(previous);
+    }
+  }
+
+  private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
+    String token = JWT.create().withPayload(values).sign(Algorithm.none());
+    return JWT.decode(token).getClaims();
   }
 }

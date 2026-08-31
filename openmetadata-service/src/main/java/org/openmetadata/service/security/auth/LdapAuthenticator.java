@@ -13,7 +13,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
-import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,6 +38,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -311,7 +311,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       User dummy = getUserForLdap(ldapUserInfo.email);
       validatePassword(ldapUserInfo.userDn, pwd, dummy);
 
-      String normalizedEmail = ldapUserInfo.email.toLowerCase();
+      String normalizedEmail = ldapUserInfo.email.toLowerCase(Locale.ROOT);
       return getOrCreateLdapUser(ldapUserInfo.userDn, normalizedEmail, ldapUserInfo.displayName);
     }
 
@@ -424,8 +424,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private User getUserForLdap(String email) {
-    String userName =
-        generateUsernameFromEmail(email, Entity.getUserRepository()::checkUserNameExists);
+    // Placeholder for failed-login accounting only; it is never stored, so resolving a
+    // collision-free name would be a pointless query on the authentication path.
+    String userName = email.split("@")[0];
     return UserUtil.getUser(
             userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
         .withIsEmailVerified(false)

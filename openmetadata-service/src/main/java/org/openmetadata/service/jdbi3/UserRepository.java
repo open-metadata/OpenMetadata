@@ -634,7 +634,9 @@ public class UserRepository extends EntityRepository<User> {
       boolean existByName = checkUserNameExists(username);
       boolean existByEmail = checkEmailAlreadyExists(email);
       if (existByEmail) {
-        User userByEmail = getByEmail(uriInfo, email, fields);
+        // Same semantics as the login flows: a deactivated account and an ambiguous duplicate
+        // email must both fail authentication rather than resolve to an arbitrary account.
+        User userByEmail = getActiveUserByEmailForAuth(email, fields);
         if (!userByEmail.getName().equals(username)) {
           LOG.debug(
               "Username mismatch for email '{}': JWT-derived='{}', DB-actual='{}'. "
@@ -759,6 +761,20 @@ public class UserRepository extends EntityRepository<User> {
     invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     updateImpersonationRole(user, allowImpersonation, impersonationRole);
     SubjectCache.invalidateUser(user.getName());
+  }
+
+  /**
+   * Fields an authentication flow must load before it mutates a user and PUTs it back. {@code
+   * createOrUpdate} compares the whole entity against the stored one, so any field {@link
+   * #clearFields} nulls and the caller did not ask for is recorded as a deletion and erased --
+   * that is the user's profile, their authentication mechanism, personas and domains. The two
+   * login timestamps are added on top of the update fields because they live in the stored JSON
+   * but are not part of the PUT field set.
+   */
+  public Fields getAuthUpdateFields() {
+    Set<String> fields = new HashSet<>(putFields.getFieldList());
+    fields.addAll(Set.of("lastLoginTime", "lastActivityTime"));
+    return new Fields(fields);
   }
 
   /**

@@ -134,12 +134,23 @@ public final class UserUtil {
    * @return the stored username, or the local part when it is unclaimed
    * @throws AuthenticationException when the email is unknown and its local part is taken
    */
+  /**
+   * The username an email resolves to, and whether a stored account actually backs it. Callers
+   * must not cache a name that no account owns: it is a first-login bootstrap guess, and account
+   * creation does not invalidate identity caches.
+   */
+  public record ResolvedUserName(String userName, boolean backedByAccount) {}
+
   public static String resolveUserNameForEmail(String email) {
+    return resolveUserName(email).userName();
+  }
+
+  public static ResolvedUserName resolveUserName(String email) {
     UserRepository userRepository = Entity.getUserRepository();
     try {
-      return userRepository
-          .getActiveUserByEmailForAuth(email, new Fields(Set.of("name")))
-          .getName();
+      return new ResolvedUserName(
+          userRepository.getActiveUserByEmailForAuth(email, new Fields(Set.of("name"))).getName(),
+          true);
     } catch (EntityNotFoundException e) {
       String candidate = email.split("@")[0];
       if (userRepository.checkUserNameExists(candidate)) {
@@ -147,7 +158,7 @@ public final class UserUtil {
             String.format(
                 "User with email %s is not registered. Contact your administrator.", email));
       }
-      return candidate;
+      return new ResolvedUserName(candidate, false);
     }
   }
 

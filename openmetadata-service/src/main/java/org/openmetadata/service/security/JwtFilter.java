@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
 import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
@@ -66,7 +67,9 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -108,12 +111,36 @@ public class JwtFilter implements ContainerRequestFilter {
   private List<String> allowedEmailDomains;
 
   /**
-   * Email-to-username resolution cache for the email-first flow. Static so that repository-level
-   * user mutations can invalidate entries; the TTL bounds staleness for changes that bypass the
-   * invalidation hooks (e.g. direct DB edits or other replicas).
+   * Email-to-username resolution cache for the email-first flow. This mapping decides which
+   * principal a request runs as, so a stale entry is an authorization bug, not just a stale read:
+   * if an address is reassigned, a replica still holding the old mapping would run the new holder
+   * as the previous owner. Three things bound that. Entries are only written for an email a
+   * stored account actually owns. Local user writes invalidate through {@link
+   * #invalidateResolvedEmailIdentity}, and that fans out to other replicas over the cache
+   * invalidation channel when Redis is configured. The short TTL is the backstop for deployments
+   * with no shared cache, and for changes made outside a running server -- the {@code
+   * change-email} ops command runs in its own process and cannot reach any replica's memory.
    */
   private static final Cache<String, String> EMAIL_TO_USERNAME_CACHE =
-      CacheBuilder.newBuilder().maximumSize(10_000).expireAfterWrite(5, TimeUnit.MINUTES).build();
+      CacheBuilder.newBuilder().maximumSize(10_000).expireAfterWrite(60, TimeUnit.SECONDS).build();
+
+  /**
+   * Drops resolved-identity entries for a user when any replica reports a write to that user.
+   * Registered with {@link CacheBundle}, which fans both local mutations and remote pub/sub
+   * messages out to every registered layer.
+   */
+  private static final Invalidatable EMAIL_IDENTITY_INVALIDATOR =
+      (type, id, fqn) -> {
+        if (!USER.equals(type) || fqn == null) {
+          return;
+        }
+        String userName = EntityInterfaceUtil.unquoteName(fqn);
+        EMAIL_TO_USERNAME_CACHE.asMap().values().removeIf(userName::equals);
+      };
+
+  public static Invalidatable emailIdentityInvalidator() {
+    return EMAIL_IDENTITY_INVALIDATOR;
+  }
 
   public static void invalidateResolvedEmailIdentity(String email) {
     if (email != null) {
@@ -425,15 +452,20 @@ public class JwtFilter implements ContainerRequestFilter {
         resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
   }
 
-  /** Caching wrapper around {@link UserUtil#resolveUserNameForEmail}; this runs on every request. */
+  /** Caching wrapper around {@link UserUtil#resolveUserName}; this runs on every request. */
   private String resolveUserNameForEmail(String email) {
     String cached = EMAIL_TO_USERNAME_CACHE.getIfPresent(email);
     if (cached != null) {
       return cached;
     }
-    String username = UserUtil.resolveUserNameForEmail(email);
-    EMAIL_TO_USERNAME_CACHE.put(email, username);
-    return username;
+    UserUtil.ResolvedUserName resolved = UserUtil.resolveUserName(email);
+    // A name no account owns is a first-login bootstrap guess. Caching it would outlive the guess:
+    // creation does not invalidate this cache, so a later account taking that name -- for someone
+    // else's email -- would inherit the mapping and the requests authorized under it.
+    if (resolved.backedByAccount()) {
+      EMAIL_TO_USERNAME_CACHE.put(email, resolved.userName());
+    }
+    return resolved.userName();
   }
 
   private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {

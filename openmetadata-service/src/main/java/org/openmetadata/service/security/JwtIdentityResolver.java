@@ -66,6 +66,9 @@ public class JwtIdentityResolver {
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    // The legacy path resolves identity from the claims too, so it needs the same guard: a
+    // provider that says the address is unverified must not reach an account through it either.
+    validateEmailVerifiedClaim(claims, email);
     return new ResolvedIdentity(userName, email, false);
   }
 

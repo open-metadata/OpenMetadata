@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -21,7 +22,11 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -192,6 +197,34 @@ class EmailFirstIdentityIT {
             .getByEmail(null, parkedEmail, EMPTY_FIELDS)
             .getIdentityProviderSubject(),
         "Parked account's binding must have been cleared");
+  }
+
+  @Test
+  void testLoginDoesNotEraseStoredUserFields(TestNamespace ns) {
+    String localPart = ("keepprofile" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    String email = localPart + "@x.test.om.org";
+
+    User user = provision(email, "Profile User");
+
+    // Give the account a profile the way a user or admin would, then log in again. The second
+    // login mutates the account (it binds the identity-provider subject), so it takes the update
+    // path -- which compares and persists the whole entity.
+    UserRepository userRepository = Entity.getUserRepository();
+    User withProfile =
+        JsonUtils.deepCopy(
+            userRepository.getByEmail(null, email, userRepository.getAuthUpdateFields()),
+            User.class);
+    withProfile.setProfile(
+        new Profile().withImages(new ImageList().withImage(URI.create("http://x.test/a.png"))));
+    userRepository.createOrUpdate(null, withProfile, "admin");
+
+    provision(email, "Profile User", "idp-subject-" + localPart);
+
+    User after = userRepository.getByEmail(null, email, new EntityUtil.Fields(Set.of("profile")));
+    assertNotNull(
+        after.getProfile(),
+        "Logging in must not erase stored fields the authentication lookup did not request");
+    assertEquals(user.getId(), after.getId());
   }
 
   @Test

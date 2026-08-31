@@ -153,6 +153,62 @@ class JwtIdentityResolverTest {
             .userName());
   }
 
+  @Test
+  void testLegacyFlowRejectsUnverifiedEmail() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            "", Map.of(), List.of("preferred_username"), "openmetadata.org", email -> "john");
+
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class,
+            () ->
+                resolver.resolve(
+                    claims(
+                        Map.of(
+                            "preferred_username",
+                            "john",
+                            "email",
+                            "john@y.com",
+                            "email_verified",
+                            false)),
+                    false));
+
+    assertTrue(
+        exception.getMessage().contains("not verified"),
+        "Expected an unverified-email rejection but got: " + exception.getMessage());
+  }
+
+  @Test
+  void testLegacyFlowAllowsVerifiedEmail() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            "", Map.of(), List.of("preferred_username"), "openmetadata.org", email -> "john");
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(
+            claims(
+                Map.of(
+                    "preferred_username", "john", "email", "john@y.com", "email_verified", true)),
+            false);
+
+    assertEquals("john", identity.userName());
+    assertFalse(identity.emailFirstFlow());
+  }
+
+  @Test
+  void testBotTokensAreUnaffectedByTheVerifiedEmailGuard() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            "", Map.of(), List.of("preferred_username"), "openmetadata.org", email -> "ingestion");
+
+    // OpenMetadata-issued bot tokens carry no email_verified claim; the guard must stay inert.
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(claims(Map.of("preferred_username", "ingestion-bot")), true);
+
+    assertEquals("ingestion-bot", identity.userName());
+  }
+
   private static Map<String, Claim> claims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();
