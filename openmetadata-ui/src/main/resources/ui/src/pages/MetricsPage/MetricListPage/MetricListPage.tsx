@@ -96,6 +96,7 @@ import {
   getEntityBulkEditPath,
   getEntityImportPath,
 } from '../../../utils/EntityPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
@@ -210,7 +211,17 @@ const MetricListPage = () => {
     queryFn: () => getResourcePermission(ResourceEntity.METRIC),
   });
 
-  const hasViewPermission = permission.ViewAll || permission.ViewBasic;
+  // Resource-level permission (usePermissionProvider().getResourcePermission), not an
+  // entity-level fetch — but itself OperationPermission-shaped, so it runs through the same
+  // getDerivedPermissionFlags derivation as an entity-level fetch (Task 8 Batch 3
+  // DatabaseSchemaTable.tsx / Batch 5 ServiceMainTabContent.tsx precedent). No `deleted`
+  // argument: this is a list page with no single entity to gate on.
+  const permissionFlags = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
+  );
+
+  const hasViewPermission = permissionFlags.hasViewAccess;
 
   const {
     data: searchResponse,
@@ -682,7 +693,7 @@ const MetricListPage = () => {
           </Button>
         </LimitWrapper>
       )}
-      {permission.EditAll && (
+      {permissionFlags.canEditAll && (
         <Dropdown.Root
           isOpen={isMetricActionsOpen}
           onOpenChange={setIsMetricActionsOpen}>
@@ -852,7 +863,7 @@ const MetricListPage = () => {
                       </Button>
                     </div>
                     <div className="metric-list-selection-actions">
-                      {permission.EditAll && (
+                      {permissionFlags.canEditAll && (
                         <Button
                           className="metric-list-selection-action tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
                           color="link-color"
@@ -918,7 +929,7 @@ const MetricListPage = () => {
                           </Dropdown.Menu>
                         </Dropdown.Popover>
                       </Dropdown.Root>
-                      {permission.EditAll && (
+                      {permissionFlags.canEditAll && (
                         <Button
                           className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
