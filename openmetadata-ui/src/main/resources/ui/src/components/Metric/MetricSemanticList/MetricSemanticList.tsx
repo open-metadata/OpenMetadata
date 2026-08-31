@@ -21,6 +21,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
@@ -53,10 +54,13 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
     permissions,
   } = useGenericContext<Metric>();
 
+  // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
+  // MetricDetailsPage, Task 8 Batch 6). Explicit-deny-wins fix: the old raw
+  // `EditAll || EditDescription` OR let EditAll grant unconditionally even when
+  // EditDescription was explicitly denied; canEditDescription is prioritized (field-specific
+  // wins) and already applies the same `!deleted` gating the old expression ANDed manually.
   const hasEditPermission = useMemo(
-    () =>
-      (permissions.EditAll || permissions.EditDescription) &&
-      !metricDetails.deleted,
+    () => getDerivedPermissionFlags(permissions, metricDetails.deleted).canEditDescription,
     [permissions, metricDetails.deleted]
   );
 
