@@ -36,16 +36,18 @@ jest.mock('../../AppRouter/withSuspenseFallback', () =>
 );
 
 jest.mock('../../Database/TableDescription/TableDescription.component', () =>
-  jest.fn().mockImplementation(({ onClick, isReadOnly }) => (
-    <div data-testid="table-description">
-      Table Description
-      {!isReadOnly && (
-        <button data-testid="edit-button" onClick={onClick}>
-          Edit
-        </button>
-      )}
-    </div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(({ onClick, isReadOnly, hasEditPermission }) => (
+      <div data-testid="table-description">
+        Table Description
+        {!isReadOnly && hasEditPermission && (
+          <button data-testid="edit-button" onClick={onClick}>
+            Edit
+          </button>
+        )}
+      </div>
+    ))
 );
 
 jest.mock('../../../utils/TablePureUtils', () => {
@@ -158,19 +160,25 @@ const mockTopicDetails = {
   messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
 };
 
+const defaultGenericContext = () => ({
+  data: mockTopicDetails,
+  isVersionView: false,
+  permissions: {
+    EditAll: true,
+  },
+  onUpdate: mockOnUpdate,
+  type: 'topic',
+  currentVersionData: undefined,
+  openColumnDetailPanel: jest.fn(),
+  setDisplayedColumns: jest.fn(),
+});
+
+const mockUseGenericContext = jest
+  .fn()
+  .mockImplementation(defaultGenericContext);
+
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => ({
-    data: mockTopicDetails,
-    isVersionView: false,
-    permissions: {
-      EditAll: true,
-    },
-    onUpdate: mockOnUpdate,
-    type: 'topic',
-    currentVersionData: undefined,
-    openColumnDetailPanel: jest.fn(),
-    setDisplayedColumns: jest.fn(),
-  })),
+  useGenericContext: () => mockUseGenericContext(),
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -184,6 +192,10 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 describe('Topic Schema', () => {
+  afterEach(() => {
+    mockUseGenericContext.mockImplementation(defaultGenericContext);
+  });
+
   it('Should render a large skeleton while the schema editor loads', async () => {
     const { container } = render(
       <MemoryRouter>
@@ -332,5 +344,37 @@ describe('Topic Schema', () => {
     });
 
     expect(mockWriteText).toHaveBeenCalled();
+  });
+
+  // Explicit-deny-wins fix (Task 8): the old `permissions.EditAll ||
+  // permissions.EditDescription` raw OR would have returned true here (EditAll
+  // granted). getDerivedPermissionFlags prioritizes the field-specific key —
+  // EditDescription explicitly false wins over EditAll.
+  it('prioritizes an explicit field-level deny over a granted EditAll', async () => {
+    mockTopicDetails.deleted = false;
+    mockUseGenericContext.mockReturnValue({
+      data: mockTopicDetails,
+      isVersionView: false,
+      permissions: {
+        EditAll: true,
+        EditDescription: false,
+      },
+      onUpdate: mockOnUpdate,
+      type: 'topic',
+      currentVersionData: undefined,
+      openColumnDetailPanel: jest.fn(),
+      setDisplayedColumns: jest.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const rows = await screen.findAllByRole('row');
+    const row1 = rows[1];
+
+    expect(queryByTestId(row1, 'edit-button')).toBeNull();
   });
 });
