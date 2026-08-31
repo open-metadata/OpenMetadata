@@ -12,7 +12,10 @@ FUSEKI_URL="${FUSEKI_URL:-http://localhost:3030}"
 FUSEKI_DATASET="${FUSEKI_DATASET:-openmetadata}"
 FUSEKI_USER="${FUSEKI_USER:-admin}"
 FUSEKI_PASSWORD="${FUSEKI_PASSWORD:-admin}"
-FUSEKI_CONTAINER="${FUSEKI_CONTAINER:-openmetadata-fuseki}"
+# Quickstart compose names the container openmetadata_fuseki; the development compose
+# uses openmetadata-fuseki. Probe both so the non-root check does not silently skip.
+FUSEKI_CONTAINER="${FUSEKI_CONTAINER:-}"
+FUSEKI_CONTAINER_CANDIDATES="openmetadata_fuseki openmetadata-fuseki"
 OPENSEARCH_URL="${OPENSEARCH_URL:-http://localhost:9200}"
 # arq:updateTimeout in docker/rdf-store/config.ttl, in seconds, and the client-side
 # budget that must exceed it so curl never gives up before the server aborts.
@@ -49,8 +52,10 @@ if curl -sf "${FUSEKI_URL}/\$/ping" > /dev/null 2>&1; then
         fail "SPARQL query endpoint not responding correctly"
     fi
 
-    # Prometheus scrape target. shiro.ini marks it anon, matching /$/ping and /$/stats.
-    if curl -sf "${FUSEKI_URL}/\$/metrics" | grep -q "jvm_memory_max_bytes"; then
+    # Prometheus scrape target. It requires credentials by default, which is what a
+    # scrape config must supply; an anonymous 200 here would mean auth was dropped.
+    if curl -sf -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" "${FUSEKI_URL}/\$/metrics" \
+        | grep -q "jvm_memory_max_bytes"; then
         pass "/\$/metrics exposes JVM gauges (Prometheus scrape target)"
     else
         fail "/\$/metrics unreachable or missing JVM gauges"
@@ -66,15 +71,24 @@ if curl -sf "${FUSEKI_URL}/\$/ping" > /dev/null 2>&1; then
         fail "could not read server version from /\$/server"
     fi
 
-    if command -v docker > /dev/null 2>&1 && docker ps --format '{{.Names}}' | grep -q "^${FUSEKI_CONTAINER}$"; then
-        CONTAINER_UID=$(docker exec "${FUSEKI_CONTAINER}" id -u 2>/dev/null)
+    RUNNING_CONTAINER=""
+    if command -v docker > /dev/null 2>&1; then
+        for candidate in ${FUSEKI_CONTAINER:-${FUSEKI_CONTAINER_CANDIDATES}}; do
+            if docker ps --format '{{.Names}}' | grep -q "^${candidate}$"; then
+                RUNNING_CONTAINER="${candidate}"
+                break
+            fi
+        done
+    fi
+    if [ -n "${RUNNING_CONTAINER}" ]; then
+        CONTAINER_UID=$(docker exec "${RUNNING_CONTAINER}" id -u 2>/dev/null)
         if [ "${CONTAINER_UID}" = "1000" ]; then
             pass "container runs as non-root (uid ${CONTAINER_UID})"
         else
             fail "container runs as uid ${CONTAINER_UID:-unknown}, expected non-root 1000"
         fi
     else
-        skip "non-root check (container '${FUSEKI_CONTAINER}' not running locally)"
+        skip "non-root check (no Fuseki container from: ${FUSEKI_CONTAINER:-${FUSEKI_CONTAINER_CANDIDATES}})"
     fi
 
     # A client timeout does NOT stop Fuseki's server-side work, so a runaway UPDATE

@@ -37,6 +37,12 @@
 
 <#dataset> rdf:type tdb2:DatasetTDB2 ;
     tdb2:location "/fuseki-data/openmetadata" ;
+    # Required, not cosmetic: OpenMetadata writes every entity into a NAMED graph, so
+    # without this a plain `?s ?p ?o` against the default graph returns zero rows while
+    # the data sits in <https://open-metadata.org/graph/knowledge>. That is the shape the
+    # SPARQL playground and the MCP knowledge-graph tools generate, so turning this off
+    # yields silently empty results rather than an error. Queries that need to target one
+    # graph must say so with an explicit GRAPH clause.
     tdb2:unionDefaultGraph true ;
     # Server-side bound on UPDATE execution (milliseconds). Set above the
     # OpenMetadata client's request timeout (default 60s) so the normal path

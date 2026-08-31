@@ -88,8 +88,11 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # shiro.ini, then execs fuseki-server). The server is launched from an
 # assembler config rather than --loc so server-side settings that are
 # config-file-only — most importantly arq:updateTimeout — take effect; the
-# dataset location inside config.ttl matches the previous --loc=/fuseki-data
-# layout byte-for-byte, so existing data is served unchanged.
+# dataset location inside config.ttl is /fuseki-data/openmetadata, which is NOT
+# where the old --loc=/fuseki-data launch stored files (it wrote them directly into
+# /fuseki-data). Upgrading from that layout needs the migration step in
+# docs/rdf-production-setup.md - pointing at the wrong location starts an EMPTY
+# store silently rather than failing.
 ENTRYPOINT ["/entrypoint.sh"]
 # Boot from config.ttl, not --loc. With --loc Fuseki builds an ad-hoc dataset and never reads
 # /fuseki/config.ttl, so `tdb2:unionDefaultGraph true` and the Lucene text index silently do not

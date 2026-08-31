@@ -113,6 +113,35 @@ class RdfReindexResourceTest {
   }
 
   @Test
+  @DisplayName("a blank or padded entityType is not treated as a filter")
+  void blankEntityTypeIsNotAFilter() {
+    Fixture fixture = fixture();
+    when(fixture.failureDAO().countAll()).thenReturn(3);
+    when(fixture.failureDAO().findAll(50, 0)).thenReturn(List.of(failure("a", "table")));
+
+    // A whitespace-only value used to reach the DAO and return a confusingly empty page.
+    RdfReindexResource.RdfReindexFailuresResponse response =
+        fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "   ");
+
+    assertEquals(3, response.total());
+    verify(fixture.failureDAO(), never()).countByEntityType(any());
+  }
+
+  @Test
+  @DisplayName("a padded entityType still filters on the trimmed value")
+  void paddedEntityTypeFiltersOnTrimmedValue() {
+    Fixture fixture = fixture();
+    when(fixture.failureDAO().countByEntityType("table")).thenReturn(1);
+    when(fixture.failureDAO().findByEntityType("table", 50, 0))
+        .thenReturn(List.of(failure("a", "table")));
+
+    RdfReindexResource.RdfReindexFailuresResponse response =
+        fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "  table  ");
+
+    assertEquals(1, response.total());
+  }
+
+  @Test
   @DisplayName("a non-admin is rejected before any failure row is read")
   void nonAdminIsRejectedBeforeReading() {
     Fixture fixture = fixture();

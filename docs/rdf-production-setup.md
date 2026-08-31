@@ -17,8 +17,10 @@ memory starves the page cache and usually reduces throughput.
   server-side update timeout: `arq:updateTimeout` (set to 120 s, deliberately above the client's
   60 s request timeout) makes Fuseki itself abort a runaway UPDATE. This setting is
   config-file-only — `--timeout` on the command line applies to queries, never updates — which is
-  the reason the launch moved to `--config`. The `tdb2:location` in `config.ttl` points at the same
-  `/fuseki-data` directory the old `--loc` launch used, so existing data is picked up in place.
+  the reason the launch moved to `--config`. Note the dataset location: `config.ttl` uses
+  `/fuseki-data/openmetadata`, whereas the old `--loc=/fuseki-data` launch wrote TDB2 files directly
+  into `/fuseki-data`. Upgrading from that layout requires moving the files (below) — the locations
+  are deliberately not the same.
 - **`FUSEKI_BASE` lives on the data volume** (`/fuseki-data/fuseki-base`). Datasets created through
   the admin API — including the `_a`/`_b` datasets used by blue/green rebuilds — are registered
   under `FUSEKI_BASE`; with the old in-image default they silently vanished on container
@@ -38,7 +40,18 @@ curl -s -u admin:<password> --data-urlencode \
   http://localhost:3030/openmetadata/sparql
 ```
 
-Run it on the old image, swap the image on the same volume, run it again; the counts must match.
+Run it on the old image, then move the existing store into the location the assembler expects
+before starting the new one:
+
+```bash
+# With the container stopped, on the host path backing /fuseki-data:
+mkdir -p /fuseki-data/openmetadata
+mv /fuseki-data/Data-0001 /fuseki-data/openmetadata/    # plus any other TDB2 files/dirs
+```
+
+Then start the new image and run the count again; the two must match. If they do not, stop and
+restore rather than letting a rebuild repopulate — an empty store that looks healthy is the failure
+mode this check exists to catch.
 Blue/green `_a`/`_b` datasets created under the old in-image `FUSEKI_BASE` are lost by the upgrade;
 this is expected — the next rebuild recreates them on the volume.
 

@@ -90,9 +90,12 @@ public class RdfReindexResource {
     int totalCount;
     List<RdfIndexFailureRecord> failures;
 
-    if (entityType != null && !entityType.isEmpty()) {
-      totalCount = collectionDAO.rdfIndexFailureDAO().countByEntityType(entityType);
-      failures = collectionDAO.rdfIndexFailureDAO().findByEntityType(entityType, limit, offset);
+    // Trim before deciding: a blank or padded value is a client artifact, not a filter,
+    // and passing it through returns a confusingly empty page.
+    String filter = entityType == null ? null : entityType.trim();
+    if (filter != null && !filter.isEmpty()) {
+      totalCount = collectionDAO.rdfIndexFailureDAO().countByEntityType(filter);
+      failures = collectionDAO.rdfIndexFailureDAO().findByEntityType(filter, limit, offset);
     } else {
       totalCount = collectionDAO.rdfIndexFailureDAO().countAll();
       failures = collectionDAO.rdfIndexFailureDAO().findAll(limit, offset);
