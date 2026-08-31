@@ -12,7 +12,11 @@
 """
 Module to define overriden dialect methods
 """
+
+import sys
 from enum import Enum
+from threading import Lock
+from types import SimpleNamespace
 
 from sqlalchemy import and_, join, select, sql, text
 from sqlalchemy.engine import reflection
@@ -25,6 +29,9 @@ logger = ingestion_logger()
 BASE_CLIDRIVER_URL = (
     "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli"
 )
+
+_CLIDRIVER_INSTALL_LOCK = Lock()
+_CLIDRIVER_INSTALL_STATE = SimpleNamespace(version=None)
 
 
 class DB2CLIDriverVersions(Enum):
@@ -159,16 +166,25 @@ def check_clidriver_version(clidriver_version: str):
     return DB2CLIDriverVersions(clidriver_version)
 
 
-# pylint: disable=too-many-statements,too-many-branches
 def install_clidriver(clidriver_version: str) -> None:
-    """
-    Install the CLI Driver for DB2
-    """
+    """Install a DB2 CLI driver version once per process."""
+    with _CLIDRIVER_INSTALL_LOCK:
+        if _CLIDRIVER_INSTALL_STATE.version == clidriver_version:
+            return
+
+        _CLIDRIVER_INSTALL_STATE.version = None
+        if _install_clidriver(clidriver_version):
+            sys.modules.pop("clidriver", None)
+            _CLIDRIVER_INSTALL_STATE.version = clidriver_version
+
+
+# pylint: disable=too-many-statements,too-many-branches
+def _install_clidriver(clidriver_version: str) -> bool:
+    """Install the requested DB2 CLI driver version."""
     # pylint: disable=import-outside-toplevel
     import os
     import platform
     import subprocess
-    import sys
     from importlib.metadata import PackageNotFoundError, distribution
     from urllib.request import URLError, urlopen
 
@@ -216,9 +232,9 @@ def install_clidriver(clidriver_version: str) -> None:
             )
     else:
         logger.error(
-            f"Unsupported operating system for db2 driver installation: {system}"
+            "Unsupported operating system for db2 driver installation: %s", system
         )
-        return None
+        return False
 
     # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
     os.environ["CLIDRIVER_VERSION"] = clidriver_version
@@ -226,8 +242,8 @@ def install_clidriver(clidriver_version: str) -> None:
         os.environ["IBM_DB_INSTALLER_URL"] = clidriver_url
     else:
         os.environ["IBM_DB_INSTALLER_URL"] = default_clidriver_url
-    logger.info(f"Set IBM_DB_INSTALLER_URL to {os.environ['IBM_DB_INSTALLER_URL']}")
-    logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")
+    logger.info("Set IBM_DB_INSTALLER_URL to %s", os.environ["IBM_DB_INSTALLER_URL"])
+    logger.info("Set CLIDRIVER_VERSION to %s", os.environ["CLIDRIVER_VERSION"])
     # Uninstall ibm_db if it is already installed
     try:
         distribution("ibm_db")
@@ -251,7 +267,7 @@ def install_clidriver(clidriver_version: str) -> None:
             "--no-cache-dir",
         ]
     )
-    return None
+    return True
 
 
 _IBMI_PATCHED = False
