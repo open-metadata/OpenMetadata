@@ -15,10 +15,11 @@ This module contains comprehensive tests for lineage processing functions
 including query, view, and stored procedure processors.
 """
 
+import inspect
 import unittest
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import networkx as nx
 
@@ -47,6 +48,9 @@ from metadata.ingestion.source.database.lineage_processors import (
     process_chunk_in_subprocess,
     query_lineage_processor,
     view_lineage_processor,
+)
+from metadata.ingestion.source.database.lineage_source import (
+    LineageSource as LineageSourceBase,
 )
 from metadata.ingestion.source.models import TableView
 
@@ -317,6 +321,33 @@ class TestViewLineageProcessor(unittest.TestCase):
                 results = list(self.mock_queue.process())
                 self.assertGreater(len(results), 0)
                 # The OMetaLineageRequest should have override_lineage=True
+
+
+class TestViewLineageProcessorArgs(unittest.TestCase):
+    """
+    `yield_view_lineage` hands the processor a positional args tuple. Nothing else binds
+    the two together, so pin the contract: the tuple has to keep matching the processor
+    signature, extension included.
+    """
+
+    def test_args_bind_to_the_processor_signature(self):
+        source = MagicMock()
+        extension = Mock(name="view_lineage_extension")
+        source.get_view_lineage_extension.return_value = extension
+        source.generate_lineage_with_processes.return_value = []
+
+        list(LineageSourceBase.yield_view_lineage(source))
+
+        # generate_lineage_with_processes(producer_fn, processor_fn, args, ...)
+        _, processor_fn, args = source.generate_lineage_with_processes.call_args.args
+        self.assertIs(processor_fn, view_lineage_processor)
+
+        # the framework calls processor_fn(chunk, queue, *args)
+        bound = inspect.signature(view_lineage_processor).bind([], None, *args)
+        self.assertIs(bound.arguments["extension"], extension)
+
+    def test_sources_without_an_extension_pass_none(self):
+        self.assertIsNone(LineageSourceBase.get_view_lineage_extension(object()))
 
 
 class TestViewLineageOverrideScope(unittest.TestCase):
