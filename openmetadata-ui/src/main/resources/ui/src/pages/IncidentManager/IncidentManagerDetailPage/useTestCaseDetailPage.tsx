@@ -22,7 +22,6 @@ import { ManageButtonItemLabel } from '../../../components/common/ManageButtonCo
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
@@ -35,6 +34,7 @@ import {
 } from '../../../generated/tests/testCase';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -131,8 +131,6 @@ export const useTestCaseDetailPage = ({
     setTestCase,
     testCase,
     reset,
-    isPermissionLoading,
-    testCasePermission,
     setTestCasePermission,
     setIsPermissionLoading,
     isTabExpanded,
@@ -147,22 +145,43 @@ export const useTestCaseDetailPage = ({
   });
   const [isDimensionEdit, setIsDimensionEdit] = useState<boolean>(false);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  // Fetch-owner: this hook is the sole writer of the store's testCasePermission/
+  // isPermissionLoading (see the sync effects below) — useTestCaseResultTab.tsx and
+  // useTestCaseIncidentHeader.ts (Task 8 Batch 6) read testCasePermission back off the
+  // store as a raw OperationPermission and derive their own flags, so the store must keep
+  // receiving the raw object, not just the named flags this hook consumes locally.
   const {
-    hasViewPermission,
-    editDisplayNamePermission,
-    hasDeletePermission,
-    hasEditPermission,
-  } = useMemo(() => {
-    return {
-      hasViewPermission:
-        testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
-      editDisplayNamePermission:
-        testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
-      hasDeletePermission: testCasePermission?.Delete,
-      hasEditPermission: testCasePermission?.EditAll,
-    };
-  }, [testCasePermission]);
+    permissions: testCasePermission,
+    isLoading: isPermissionLoading,
+    error: permissionsError,
+    hasViewAccess: hasViewPermission,
+    canEditAll: hasEditPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canDelete: hasDeletePermission,
+  } = useEntityPermissions(ResourceEntity.TEST_CASE, testCaseFQN, {
+    enabled: Boolean(testCaseFQN),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Mirror into the Zustand store — the pre-existing single source of truth for the
+  // other IncidentManager hooks/components that read testCasePermission directly off
+  // {@code useTestCaseStore()} rather than from this hook's return value. Gated on
+  // `!isPermissionLoading` so the store keeps its old "undefined until populated"
+  // contract instead of eagerly writing the hook's DEFAULT_ENTITY_PERMISSION placeholder.
+  useEffect(() => {
+    setIsPermissionLoading(isPermissionLoading);
+  }, [isPermissionLoading, setIsPermissionLoading]);
+
+  useEffect(() => {
+    if (!isPermissionLoading) {
+      setTestCasePermission(testCasePermission);
+    }
+  }, [testCasePermission, isPermissionLoading, setTestCasePermission]);
 
   const testCaseFields = useMemo(() => testCaseClassBase.getFields(), []);
 
@@ -252,22 +271,6 @@ export const useTestCaseDetailPage = ({
     testCase?.dimensionColumns,
     isVersionPage,
   ]);
-
-  const fetchTestCasePermission = async () => {
-    setIsPermissionLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.TEST_CASE,
-        testCaseFQN
-      );
-
-      setTestCasePermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionLoading(false);
-    }
-  };
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -402,12 +405,6 @@ export const useTestCaseDetailPage = ({
         )
       : testCase?.displayName;
   }, [testCase?.changeDescription, testCase?.displayName, isVersionPage]);
-
-  useEffect(() => {
-    if (testCaseFQN) {
-      fetchTestCasePermission();
-    }
-  }, [testCaseFQN]);
 
   useEffect(() => {
     if (hasViewPermission && testCaseFQN) {
