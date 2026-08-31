@@ -132,7 +132,7 @@ public final class RdfRoundTripScorecard {
   private Model canonicalize(final Model source) {
     final String canonicalNTriples = canonicalizer.canonicalize(source);
     final Model canonical = ModelFactory.createDefaultModel();
-    RDFParser.fromString(canonicalNTriples).lang(Lang.NTRIPLES).parse(canonical);
+    RDFParser.fromString(canonicalNTriples, Lang.NTRIPLES).parse(canonical);
     return canonical;
   }
 
@@ -147,7 +147,7 @@ public final class RdfRoundTripScorecard {
   private void addAnnexGraphs(final Model annex, final String annexNQuads) {
     final Dataset dataset = DatasetFactory.createTxnMem();
     try {
-      RDFParser.fromString(annexNQuads).lang(Lang.NQUADS).parse(dataset.asDatasetGraph());
+      RDFParser.fromString(annexNQuads, Lang.NQUADS).parse(dataset.asDatasetGraph());
       annex.add(dataset.getDefaultModel());
       dataset.listNames().forEachRemaining(name -> annex.add(dataset.getNamedModel(name)));
     } finally {
