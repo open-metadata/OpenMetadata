@@ -54,8 +54,6 @@ public final class CsvAsyncJobManager {
   // The TTL and the row prune bound it further in time.
   public static final int RETAINED_EXPORTS_PER_USER = 5;
   public static final Duration RESULT_TTL = Duration.ofHours(24);
-  // A job whose worker has not heartbeated within this window has no live owner.
-  public static final Duration RUNNING_JOB_STALE_AFTER = Duration.ofMinutes(5);
   private static final int CLEANUP_BATCH_SIZE = 500;
 
   private static final CsvAsyncJobManager INSTANCE = new CsvAsyncJobManager();
@@ -369,7 +367,6 @@ public final class CsvAsyncJobManager {
       return;
     }
     long now = now();
-    dao.markStaleRunningCsvJobsFailed(now, now - RUNNING_JOB_STALE_AFTER.toMillis());
     releaseExpiredResults(now);
     // Ages out files left by jobs that completed before results moved into the
     // job row. Once those have expired this call, and the spool, can go.

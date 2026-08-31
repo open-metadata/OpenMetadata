@@ -326,10 +326,11 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Search for a tag
       await page.getByTestId('tag-selector').click();
+      const tagSearchResponse = page.waitForResponse('/api/v1/search/query*');
       await page.keyboard.type('Personal');
 
       // Wait for search results
-      await page.waitForResponse('/api/v1/search/query*');
+      await tagSearchResponse;
 
       // Select the tag (use first() to handle duplicates)
       await page.getByTestId('tag-PersonalData.Personal').first().click();
@@ -854,9 +855,12 @@ test.describe('Data Product Search and Filter', () => {
       const searchBox = page
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
+      const dataProductSearchResponse = page.waitForResponse(
+        '/api/v1/search/query*'
+      );
       await searchBox.fill(uniqueName);
 
-      await page.waitForResponse('/api/v1/search/query*');
+      await dataProductSearchResponse;
 
       // Verify the data product appears in results
       await expect(page.getByTestId(dataProduct.data.name)).toBeVisible();
