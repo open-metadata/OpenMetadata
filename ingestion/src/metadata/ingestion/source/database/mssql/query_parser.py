@@ -12,6 +12,7 @@
 MSSQL usage module
 """
 
+import traceback
 from abc import ABC
 from copy import deepcopy
 from typing import Iterator, Optional  # noqa: UP035
@@ -111,14 +112,38 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
             yield self.engine
 
     def _per_database_engines(self) -> Iterator[Engine]:
-        databases = list(self._databases_to_scan())
+        try:
+            databases = list(self._databases_to_scan())
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not enumerate MSSQL databases for query history, falling back to the "
+                f"single instance-wide connection: {exc}"
+            )
+            databases = []
         if not databases:
             self._active_query_store = None
             yield self.engine
             return
         for database in databases:
-            engine = self._engine_for_database(database)
+            try:
+                engine = self._engine_for_database(database)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Skipping MSSQL database {database} for query history: {exc}")
+                continue
             self._active_query_store = is_query_store_enabled(engine)
+            if self._active_query_store:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is enabled.",
+                    database,
+                )
+            else:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is not enabled or not accessible, "
+                    "using plan-cache DMVs.",
+                    database,
+                )
             try:
                 yield engine
             finally:

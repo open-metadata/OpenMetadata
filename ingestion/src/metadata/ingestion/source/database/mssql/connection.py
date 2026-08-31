@@ -116,6 +116,26 @@ SQLSERVER_ERRORS = ErrorPack(
         "Insufficient privileges",
         fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
     ),
+    # Azure SQL DTU/vCore resource-governance throttling - not an auth or permission
+    # error. Verified against Microsoft's own error catalog (Azure SQL troubleshooting
+    # docs + a live `sys.messages` lookup): 10928 = per-database worker/request limit
+    # reached, 10936 = the same for an elastic pool, 10929 = server too busy to admit
+    # new requests for this database. pyodbc never exposes a number (see _mssql_number),
+    # so it needs the text fallback like every other pyodbc-reachable rule here. The
+    # reference URL in these messages has changed across SQL Server versions, so match
+    # on the stable message body instead.
+    when(
+        Matchers.any_of(
+            _sqlserver_errno(10928, 10929, 10936),
+            Matchers.contains("limit for the database is"),
+            Matchers.contains("limit for the elastic pool is"),
+            Matchers.contains("is currently too busy to support requests"),
+        )
+    ).diagnose(
+        "Azure SQL resource limit reached (throttled)",
+        fix="The database's DTU/vCore limit was reached. Reduce concurrent load or scale up the "
+        "Azure SQL database, then retry.",
+    ),
 )
 
 MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)

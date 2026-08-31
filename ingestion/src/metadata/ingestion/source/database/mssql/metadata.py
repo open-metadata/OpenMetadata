@@ -210,14 +210,25 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 load_description_map()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
+                logger.warning(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
-            self._load_description_maps()
-            self.set_inspector(database_name=configured_db)
-            yield configured_db
+            try:
+                self._load_description_maps()
+                self.set_inspector(database_name=configured_db)  # pyright: ignore[reportArgumentType]
+                yield configured_db  # pyright: ignore[reportReturnType]
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Error trying to connect to database {configured_db}: {exc}")
+                self.status.failed(
+                    error=StackTraceError(
+                        name=configured_db,  # pyright: ignore[reportArgumentType]
+                        error=f"Error trying to connect to database {configured_db}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
         else:
             for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
@@ -252,15 +263,25 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            with self.engine.connect() as conn:
-                results = conn.execute(
-                    text(
-                        MSSQL_GET_STORED_PROCEDURES.format(
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
+            schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(
+                        text(
+                            MSSQL_GET_STORED_PROCEDURES.format(
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=schema_name,
+                            )
                         )
-                    )
-                ).all()
+                    ).all()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error listing stored procedures for schema {schema_name}: {exc}")
+                self.status.warning(
+                    schema_name,
+                    f"Error listing stored procedures for schema {schema_name}: {exc}",
+                )
+                return
             for row in results:
                 try:
                     stored_procedure = MssqlStoredProcedure.model_validate(row._asdict())

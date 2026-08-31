@@ -12,11 +12,11 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
-from typing import Optional  # noqa: I001
+import traceback
+from typing import Optional
 
-from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
 from sqlalchemy.dialects.mssql.base import (
     MSBinary,
@@ -478,15 +478,23 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
 
 def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
     """
-    returns sqlaclhemdy engine date format by running config query
+    returns sqlaclhemdy engine date format by running config query.
+    Returns None (falling back to the caller's default format) if the
+    probe itself fails, e.g. a transient connection issue - the caller
+    already has a documented default for this case.
     """
-    with engine.connect() as conn:
-        result = conn.execute(text(GET_DB_CONFIGS)).all()
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(GET_DB_CONFIGS)).all()
+    except Exception as exc:
+        logger.warning(f"Could not determine MSSQL dateformat, falling back to the default: {exc}")
+        logger.debug(traceback.format_exc())
+        return None
     for row in result:
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return  # noqa: RET502
+    return None
 
 
 def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045

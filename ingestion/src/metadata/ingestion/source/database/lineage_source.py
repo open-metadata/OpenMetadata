@@ -311,31 +311,35 @@ class LineageSource(QueryParserSource, ABC):
         yield a TableQuery with query parsing info
         """
         for engine in self.get_engine():
-            with engine.connect() as conn:
-                sql_statement = self.get_sql_statement(
-                    start_time=self.start,
-                    end_time=self.end,
-                )
-                logger.debug(f"Executing lineage query: {sql_statement}")
-                rows = conn.execute(text(sql_statement))
-                row_count = 0
-                for row in rows:
-                    row_count += 1
-                    query_dict = row._asdict() if hasattr(row, "_asdict") else row
-                    try:
-                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
-                        yield TableQuery(
-                            dialect=self.dialect.value,
-                            query=query_dict["query_text"],
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
-                        )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")
-                logger.info(f"Processed {row_count} query log entries for lineage")
-                self.warn_if_query_log_truncated(row_count, "lineage")
+            try:
+                with engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
+                    sql_statement = self.get_sql_statement(
+                        start_time=self.start,
+                        end_time=self.end,
+                    )
+                    logger.debug(f"Executing lineage query: {sql_statement}")
+                    rows = conn.execute(text(sql_statement))
+                    row_count = 0
+                    for row in rows:
+                        row_count += 1
+                        query_dict = row._asdict() if hasattr(row, "_asdict") else row
+                        try:
+                            query_dict.update({k.lower(): v for k, v in query_dict.items()})
+                            yield TableQuery(
+                                dialect=self.dialect.value,
+                                query=query_dict["query_text"],
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,  # pyright: ignore[reportArgumentType]
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                    logger.info(f"Processed {row_count} query log entries for lineage")
+                    self.warn_if_query_log_truncated(row_count, "lineage")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed to fetch lineage query log from a connection, skipping it: {exc}")
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """
