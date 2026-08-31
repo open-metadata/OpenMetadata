@@ -16,7 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +51,7 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableJoins;
@@ -61,6 +68,10 @@ import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 /**
  * Unit tests for the pure structural transforms of {@link AIContextBuilder}. These verify that the
@@ -173,6 +184,58 @@ class AIContextBuilderTest {
     // Limit exactly at the outline's length: the lead's excerpt allowance drops to 0.
     String preview = AIContextBuilder.structuralPreview(body, 40);
     assertTrue(preview.contains("Sections:"), "outline still renders when the lead is elided");
+  }
+
+  @Test
+  void structuralPreview_neverExceedsTheLimit() {
+    String body =
+        "Lead paragraph about revenue recognition.\n\n"
+            + "## Recognition timing\n\n## Refund exclusions\n\n"
+            + "## Territory rules\n\n## Reseller margins";
+    for (int limit : new int[] {20, 40, 120, 800}) {
+      String preview = AIContextBuilder.structuralPreview(body, limit);
+      assertTrue(
+          preview.length() <= limit,
+          "preview must respect the limit (" + limit + "), was " + preview.length());
+    }
+    String bounded = AIContextBuilder.structuralPreview(body, 20);
+    assertTrue(bounded.contains("Sections:"), "bounded outline still names the section list");
+  }
+
+  @Test
+  void canViewKnowledge_failsClosedAndAllowsInternalCallers() {
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(eq(securityContext), any(OperationContext.class), any());
+    assertFalse(
+        AIContextBuilder.canViewKnowledge(
+            authorizer,
+            securityContext,
+            Entity.TABLE,
+            "svc.db.sch.upstream",
+            MetadataOperation.VIEW_TESTS),
+        "authorization denial hides the upstream");
+
+    reset(authorizer);
+    doThrow(new IllegalStateException("policy store hiccup"))
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    assertFalse(
+        AIContextBuilder.canViewKnowledge(
+            authorizer,
+            securityContext,
+            Entity.TABLE,
+            "svc.db.sch.upstream",
+            MetadataOperation.VIEW_TESTS),
+        "non-authorization errors fail closed");
+
+    assertTrue(
+        AIContextBuilder.canViewKnowledge(
+            authorizer, null, Entity.TABLE, "svc.db.sch.upstream", MetadataOperation.VIEW_TESTS),
+        "server-internal callers (no security context) are not filtered");
   }
 
   @Test

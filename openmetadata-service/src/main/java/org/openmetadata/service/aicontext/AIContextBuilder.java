@@ -330,19 +330,27 @@ public class AIContextBuilder {
 
   /**
    * A relevance-judgeable preview of long content: the lead paragraph plus a {@code Sections:}
-   * outline of the body's markdown headings, so an agent sees what the document covers (not just its
-   * opening) before deciding to fetch the full body.
+   * outline of the body's markdown headings, so an agent sees what the document covers (not just
+   * its opening) before deciding to fetch the full body. The result never exceeds {@code limit}:
+   * when the outline alone fills the share, it is rendered bounded and the lead is elided, so the
+   * item's exact-length budget charge in {@link #fitItem} can never go negative.
    */
   static String structuralPreview(String content, int limit) {
+    if (nullOrEmpty(content)) {
+      return "";
+    }
     List<String> headings = extractHeadings(content);
     String outline =
         headings.size() >= 2
             ? "\n\nSections: " + String.join(" · ", capList(headings, MAX_OUTLINE_HEADINGS))
             : "";
-    // Reserve room for the outline so lead + Sections together stay within limit and the item
-    // never overruns its share of the knowledge budget.
-    String lead = excerpt(leadParagraph(content), Math.max(0, limit - outline.length()));
-    return lead + outline;
+    String result;
+    if (outline.length() >= limit) {
+      result = excerpt(outline.strip(), limit);
+    } else {
+      result = excerpt(leadParagraph(content), limit - outline.length()) + outline;
+    }
+    return result;
   }
 
   private static List<String> extractHeadings(String content) {
@@ -532,9 +540,13 @@ public class AIContextBuilder {
       if (ref == null || !Entity.TABLE.equals(ref.getType())) {
         continue;
       }
-      // Being allowed to view this asset does not imply access to its upstreams: skip any upstream
-      // the caller cannot view, so its DQ standing is never leaked through the stale flag.
-      if (!canViewKnowledge(Entity.TABLE, ref.getFullyQualifiedName())) {
+      // Being allowed to view this asset does not imply access to its upstreams. The only datum
+      // read from the upstream is its test-suite summary, which the platform field-gates behind
+      // VIEW_TESTS (TableResource), so VIEW_BASIC is not sufficient. The asset's own DQ needs no
+      // check here: the AI-context endpoints already require VIEW_ALL on the requested asset,
+      // which subsumes every View* operation including VIEW_TESTS.
+      if (!canViewKnowledge(
+          Entity.TABLE, ref.getFullyQualifiedName(), MetadataOperation.VIEW_TESTS)) {
         continue;
       }
       checked++;
@@ -742,12 +754,35 @@ public class AIContextBuilder {
    * callers (no security context) are not filtered.
    */
   private boolean canViewKnowledge(String knowledgeType, String knowledgeFqn) {
+    return canViewKnowledge(
+        authorizer, securityContext, knowledgeType, knowledgeFqn, MetadataOperation.VIEW_BASIC);
+  }
+
+  private boolean canViewKnowledge(
+      String knowledgeType, String knowledgeFqn, MetadataOperation operation) {
+    return canViewKnowledge(authorizer, securityContext, knowledgeType, knowledgeFqn, operation);
+  }
+
+  /**
+   * Per-item PBAC, parameterized by the operation the datum requires: glossary/metric/page
+   * knowledge needs VIEW_BASIC, while a table's test-suite summary is a VIEW_TESTS-protected field
+   * (TableResource maps {@code testSuite} to VIEW_TESTS), so upstream data-quality stamping checks
+   * that operation instead. Server-internal callers (authorizer == null, e.g. persona
+   * materialization over the pre-filtered persona cache) are not filtered — the same fail-open
+   * convention as every other per-item check in this builder.
+   */
+  static boolean canViewKnowledge(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      String knowledgeType,
+      String knowledgeFqn,
+      MetadataOperation operation) {
     boolean visible = true;
     if (authorizer != null && securityContext != null) {
       try {
         authorizer.authorize(
             securityContext,
-            new OperationContext(knowledgeType, MetadataOperation.VIEW_BASIC),
+            new OperationContext(knowledgeType, operation),
             new ResourceContext<>(knowledgeType, null, knowledgeFqn));
       } catch (AuthorizationException e) {
         LOG.debug(
