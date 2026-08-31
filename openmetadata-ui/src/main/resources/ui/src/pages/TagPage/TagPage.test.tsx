@@ -11,17 +11,49 @@
  *  limitations under the License.
  */
 
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import tagClassBase from '../../utils/TagClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
 
 const render = renderWithQueryClient;
+
+// TagPage now fetches the tag's own permission via useEntityPermissions rather than the raw
+// PermissionProvider.getEntityPermission REST boundary — mock the hook directly
+// (TagsPage.test.tsx / TableDetailsPageV1.test.tsx pattern).
+const mockUseEntityPermissions = jest.fn();
+
+const setMockTagPermissions = (
+  overrides: Partial<Record<string, boolean>> = {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
@@ -145,15 +177,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
+    permissions: {},
   }),
 }));
 
@@ -256,6 +280,7 @@ describe('TagPage', () => {
       []
     );
     (useRequiredParams as jest.Mock).mockReturnValue({});
+    setMockTagPermissions();
   });
 
   it('should call getAdditionalTagDetailPageTabs with the fetched tag', async () => {
@@ -365,6 +390,37 @@ describe('TagPage', () => {
           })
         );
       });
+    });
+  });
+
+  describe('entity permission wiring (useEntityPermissions)', () => {
+    beforeEach(() => {
+      (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+      (useRequiredParams as jest.Mock).mockReturnValue({});
+    });
+
+    it('shows the add-assets button when the tag permission grants EditAll', async () => {
+      setMockTagPermissions({ EditAll: true });
+
+      const { findByTestId } = render(<TagPage />);
+
+      expect(
+        await findByTestId('data-classification-add-button')
+      ).toBeInTheDocument();
+    });
+
+    it('hides the add-assets button when the tag permission denies EditAll', async () => {
+      setMockTagPermissions({ EditAll: false });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(getTagByFqn).toHaveBeenCalled();
+      });
+
+      expect(
+        screen.queryByTestId('data-classification-add-button')
+      ).not.toBeInTheDocument();
     });
   });
 });
