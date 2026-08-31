@@ -66,6 +66,7 @@ import {
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -213,8 +214,10 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  // Consumer via useGenericContext() (Task 8 rule 2). `hasViewAccess` is a
+  // byte-for-byte match of the old `ViewAll || ViewBasic` bare OR — pure rename.
   const hasViewPermission = useMemo(
-    () => permissions?.ViewAll || permissions?.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 
