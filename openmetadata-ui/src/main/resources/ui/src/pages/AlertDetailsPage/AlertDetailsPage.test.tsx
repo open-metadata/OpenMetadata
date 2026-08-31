@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -17,18 +18,48 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { ReactNode } from 'react';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { Access } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useFqn } from '../../hooks/useFqn';
 import {
   mockAlertDetails,
   mockAlertEventDiagnosticCounts,
 } from '../../mocks/Alerts.mock';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
+import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
 import AlertDetailsPage from './AlertDetailsPage';
+
+// AlertDetailsPage renders the real (unmocked) useAlertDetailsPermissions,
+// now folded onto useEntityPermissions (Task 9) — the fetch moved from
+// usePermissionProvider().getEntityPermissionByFqn to rest/permissionAPI's
+// getEntityPermissionByFqn (react-query owned), so the mock target moves
+// with it, and every render() call needs a QueryClientProvider wrapper.
+const mockGetEntityPermissionByFqn = getEntityPermissionByFqn as jest.Mock;
+
+const toApiResponse = (flags: Record<string, boolean>) => ({
+  resource: 'eventsubscription',
+  permissions: Object.entries(flags).map(([operation, allow]) => ({
+    operation,
+    access: allow ? Access.Allow : Access.Deny,
+  })),
+});
+
+// NOTE: react-router-dom is fully mocked below (only useNavigate/useParams),
+// so MemoryRouter is not actually the real component in this file — the
+// pre-fold tests' `wrapper: createWrapper()` was already a no-op for the same
+// reason. Only QueryClientProvider needs to be real here.
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
 
 const mockNavigate = jest.fn();
 const mockUpdateNotificationAlert = jest.fn();
@@ -63,12 +94,22 @@ jest.mock('../../rest/alertsAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockAlertDetails)),
 }));
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-  }),
+jest.mock('../../rest/permissionAPI', () => ({
+  getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
+    // ENTITY_PERMISSIONS and Access are both imports (not test-file-local
+    // consts), so referencing them here is safe — babel-plugin-jest-hoist
+    // only risks a TDZ ReferenceError for locally-declared consts the
+    // component-under-test's own import graph also pulls in.
+    Promise.resolve({
+      resource: 'eventsubscription',
+      permissions: Object.entries(ENTITY_PERMISSIONS).map(
+        ([operation, allow]) => ({
+          operation,
+          access: allow ? Access.Allow : Access.Deny,
+        })
+      ),
+    })
+  ),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -159,7 +200,7 @@ describe('AlertDetailsPage', () => {
 
     await act(async () => {
       render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
+        wrapper: createWrapper(),
       });
     });
 
@@ -167,13 +208,16 @@ describe('AlertDetailsPage', () => {
   });
 
   it('should render alert details page properly if fqn is present', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
     });
 
-    expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
+    // useAlertDetailsPermissions' fetch is now react-query owned
+    // (useEntityPermissions) — an extra async hop past a single
+    // act(async(){render()}) flush before viewPermission gates
+    // fetchAlertDetails/fetchAlertEventDiagnosticCounts, so wait for the
+    // first settled element instead of asserting synchronously.
+    expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('EntityHeaderTitle')).toBeInTheDocument();
     expect(screen.getByText('OwnerLabel')).toBeInTheDocument();
     expect(screen.getAllByText('ExtraInfoLabel')).toHaveLength(3);
@@ -185,18 +229,18 @@ describe('AlertDetailsPage', () => {
   });
 
   it('should render the description if alert description is present', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
     });
 
-    expect(screen.getByText('RichTextEditorPreviewer')).toBeInTheDocument();
+    expect(
+      await screen.findByText('RichTextEditorPreviewer')
+    ).toBeInTheDocument();
   });
 
   it('should redirect to notification alert edit path on click of edit button if isNotificationAlert is true', async () => {
     render(<AlertDetailsPage isNotificationAlert />, {
-      wrapper: MemoryRouter,
+      wrapper: createWrapper(),
     });
 
     const editButton = await screen.findByTestId('edit-button');
@@ -207,7 +251,7 @@ describe('AlertDetailsPage', () => {
 
   it('should redirect to observability alert edit path on click of edit button if isNotificationAlert is false', async () => {
     render(<AlertDetailsPage isNotificationAlert={false} />, {
-      wrapper: MemoryRouter,
+      wrapper: createWrapper(),
     });
 
     const editButton = await screen.findByTestId('edit-button');
@@ -223,7 +267,7 @@ describe('AlertDetailsPage', () => {
       .mockImplementation(mockUpdateNotificationAlert);
 
     render(<AlertDetailsPage isNotificationAlert />, {
-      wrapper: MemoryRouter,
+      wrapper: createWrapper(),
     });
 
     const ownerLabel = await screen.findByText('OwnerLabel');
@@ -239,7 +283,7 @@ describe('AlertDetailsPage', () => {
       .mockImplementation(mockUpdateObservabilityAlert);
 
     render(<AlertDetailsPage isNotificationAlert={false} />, {
-      wrapper: MemoryRouter,
+      wrapper: createWrapper(),
     });
 
     const ownerLabel = await screen.findByText('OwnerLabel');
@@ -250,18 +294,18 @@ describe('AlertDetailsPage', () => {
   });
 
   it('should not render the edit and delete button if no edit and delete permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
+    mockGetEntityPermissionByFqn.mockImplementation(() =>
+      Promise.resolve(
+        toApiResponse({
           ...ENTITY_PERMISSIONS,
           EditAll: false,
           Delete: false,
         })
-      ),
-    }));
+      )
+    );
 
     render(<AlertDetailsPage isNotificationAlert />, {
-      wrapper: MemoryRouter,
+      wrapper: createWrapper(),
     });
 
     expect(screen.queryByTestId('edit-button')).toBeNull();
@@ -269,18 +313,18 @@ describe('AlertDetailsPage', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
     });
 
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: mockAlertDetails.name,
-      }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: mockAlertDetails.name,
+        }),
+        expect.anything()
+      );
+    });
   });
 
   it('should refetch alert details when fqn prop changes', async () => {
@@ -296,7 +340,7 @@ describe('AlertDetailsPage', () => {
     const { rerender } = render(
       <AlertDetailsPage fqn="firstAlert" isNotificationAlert={false} />,
       {
-        wrapper: MemoryRouter,
+        wrapper: createWrapper(),
       }
     );
 
