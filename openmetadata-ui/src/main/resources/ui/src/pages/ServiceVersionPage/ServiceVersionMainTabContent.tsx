@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Space } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import Description from '../../components/common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -27,6 +29,7 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
+import { getCountLabel } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
@@ -42,6 +45,8 @@ function ServiceVersionMainTabContent({
   entityType,
   changeDescription,
 }: ServiceVersionMainTabContentProps) {
+  const { t } = useTranslation();
+
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceTypes;
   }>();
@@ -72,7 +77,10 @@ function ServiceVersionMainTabContent({
           </Col>
 
           <Col data-testid="table-container" span={24}>
-            <Space className="w-full m-b-md" direction="vertical" size="middle">
+            <Space
+              className="w-full m-b-md"
+              direction="vertical"
+              size="middle">
               <Table
                 columns={tableColumn}
                 customPaginationProps={{
@@ -90,7 +98,17 @@ function ServiceVersionMainTabContent({
                 entityType={entityType}
                 loading={isServiceLoading}
                 locale={{
-                  emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                  emptyText: (
+                    <div className='tw:relative tw:min-h-42'>
+                    <EmptyPlaceholder
+                      icon={<Assets className="tw:text-utility-gray-600" />}
+                      title={t('message.no-entity-data-available', {
+                        entity: getCountLabel(serviceCategory),
+                      })}
+                      variant="blank"
+                    />
+                    </div>
+                  ),
                 }}
                 pagination={false}
                 rowKey="name"

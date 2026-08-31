@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -23,12 +25,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Description from '../../components/common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import Table from '../../components/common/Table/Table';
@@ -42,7 +43,7 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.co
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
+  DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
 } from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -58,16 +59,16 @@ import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtil
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
 import {
   getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
+  getPrioritizedViewPermission
 } from '../../utils/PermissionsUtils';
 import {
   callServicePatchAPI,
-  getServiceMainTabColumns,
+  getServiceMainTabColumns
 } from '../../utils/ServiceMainTabContentUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
-  getSearchIndexForService,
+  getSearchIndexForService
 } from '../../utils/ServicePureUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { createTagObject } from '../../utils/TagsPureUtils';
@@ -439,7 +440,24 @@ function ServiceMainTabContent({
                       }
                       loading={isServiceLoading}
                       locale={{
-                        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                        emptyText: <div className='tw:relative tw:min-h-42'>{searchValue ? (
+                          <EmptyPlaceholder
+                            description={t(
+                              'message.check-spelling-or-try-shorter-term'
+                            )}
+                            icon={<NoSearch className="tw:text-secondary" />}
+                            title={t('label.no-matching-result-plural')}
+                            variant="blank"
+                          />
+                        ) : (
+                          <EmptyPlaceholder
+                            icon={<Assets className="tw:text-utility-gray-600" />}
+                            title={t('message.no-entity-data-available', {
+                              entity: getCountLabel(serviceCategory),
+                            })}
+                            variant="blank"
+                          />
+                        )}</div>
                       }}
                       pagination={false}
                       rowKey="id"
