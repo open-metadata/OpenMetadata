@@ -23,6 +23,10 @@ import {
   OntologyGraphHandle,
   OntologyNode,
 } from './OntologyExplorer.interface';
+import {
+  ASSET_BINDING_EDGE_KIND,
+  OBSERVED_LINEAGE_EDGE_KIND,
+} from './utils/graphBuilders';
 
 interface OntologyGraphMockProps {
   nodes: OntologyNode[];
@@ -273,6 +277,53 @@ describe('OntologyExplorer Studio data controls', () => {
       'stroke',
       '#7a5af8'
     );
+  });
+
+  it('renders observed asset lineage as a solid edge between term clusters', () => {
+    const secondaryAssetNode: OntologyNode = {
+      id: 'asset-customers',
+      label: 'customers',
+      type: 'dataAsset',
+    };
+    const state = createExplorerState({
+      explorationMode: 'data',
+      graphDataToShow: {
+        edges: [
+          {
+            edgeKind: ASSET_BINDING_EDGE_KIND,
+            from: assetNode.id,
+            label: 'tagged with',
+            relationType: 'hasGlossaryTerm',
+            to: termNode.id,
+          },
+          {
+            edgeKind: ASSET_BINDING_EDGE_KIND,
+            from: secondaryAssetNode.id,
+            label: 'tagged with',
+            relationType: 'hasGlossaryTerm',
+            to: secondaryTermNode.id,
+          },
+          {
+            edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
+            from: assetNode.id,
+            label: 'observed lineage',
+            relationType: 'lineage',
+            to: secondaryAssetNode.id,
+          },
+        ],
+        nodes: [termNode, secondaryTermNode, assetNode, secondaryAssetNode],
+      },
+    });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer scope="global" />);
+
+    expect(
+      screen.getByTestId('ontology-data-observed-lineage-edge')
+    ).not.toHaveAttribute('stroke-dasharray');
+    expect(
+      screen.queryByTestId('ontology-data-semantic-edge-label')
+    ).not.toBeInTheDocument();
   });
 
   it('expands the semantic edge layer when a term card is moved', () => {

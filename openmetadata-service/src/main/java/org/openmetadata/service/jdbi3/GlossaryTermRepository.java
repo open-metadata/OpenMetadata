@@ -48,6 +48,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -64,6 +65,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -98,6 +100,7 @@ import org.openmetadata.schema.type.AssetRealizationRole;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
@@ -105,6 +108,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipCardinality;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
@@ -125,6 +129,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.OntologyRelationshipRow;
 import org.openmetadata.service.jdbi3.OntologyStudioDAO.OntologyStudioQueryParameters;
+import org.openmetadata.service.jdbi3.OntologyStudioDAO.StudioLineageRow;
+import org.openmetadata.service.jdbi3.OntologyStudioDAO.StudioRelationRow;
 import org.openmetadata.service.jdbi3.OntologyStudioDAO.TermAssetCountRow;
 import org.openmetadata.service.ontology.OntologyAttributeInheritance;
 import org.openmetadata.service.ontology.OntologyAttributeValidator;
@@ -162,6 +168,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String PATCH_FIELDS =
       "attributes,conceptMappings,conceptType,ontologySource,realizedIn,references,relatedTerms,"
           + "synonyms,style";
+  private static final String PARENT_OF_RELATION_TYPE = "parentOf";
+  private static final String STUDIO_EDGE_ID_NAMESPACE = "ontology-studio:";
 
   private final TermRelationMetadataCodec termRelationMetadataCodec =
       new TermRelationMetadataCodec();
@@ -272,19 +280,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public OntologyStudioDataGraph getOntologyStudioDataGraph(
-      String parent, int limit, int offset, int assetPreviewSize, SubjectContext subjectContext) {
-    final OntologyStudioQueryParameters parameters = studioParameters(parent, limit, offset);
-    final List<TermAssetCountRow> rows =
-        daoCollection.ontologyStudioDAO().listAssetTerms(parameters);
-    final List<GlossaryTerm> terms = studioTerms(rows);
+      StudioDataGraphRequest request, SubjectContext subjectContext) {
+    final OntologyStudioQueryParameters parameters =
+        studioParameters(request.parent(), request.limit(), request.offset());
+    final List<GlossaryTerm> seedTerms =
+        studioTerms(daoCollection.ontologyStudioDAO().listAssetTerms(parameters));
+    return buildStudioDataGraph(request, subjectContext, parameters, seedTerms);
+  }
+
+  private OntologyStudioDataGraph buildStudioDataGraph(
+      StudioDataGraphRequest request,
+      SubjectContext subjectContext,
+      OntologyStudioQueryParameters parameters,
+      List<GlossaryTerm> seedTerms) {
+    final List<StudioRelationRow> relations = studioRelations(seedTerms, parameters, request);
+    final List<GlossaryTerm> terms = studioTermsWithContext(seedTerms, relations, request);
     final Map<String, OntologyStudioAssetBucket> assets =
-        studioAssetBuckets(terms, assetPreviewSize, subjectContext);
+        studioAssetBuckets(terms, request.assetPreviewSize(), subjectContext);
     final List<OntologyStudioAssetCluster> clusters = studioClusters(terms, assets);
     final int total = daoCollection.ontologyStudioDAO().countAssetTerms(parameters);
     return new OntologyStudioDataGraph()
         .withClusters(clusters)
-        .withEdges(studioEdges(visibleStudioTerms(terms, clusters)))
-        .withPaging(offsetPaging(offset, limit, total));
+        .withEdges(studioEdges(relations, visibleStudioTermIds(clusters)))
+        .withLineageEdges(studioLineageEdges(clusters, request.limits().lineageEdgeLimit()))
+        .withPaging(offsetPaging(request.offset(), request.limit(), total));
   }
 
   public ResultList<OntologyStudioAsset> getOntologyStudioAssets(
@@ -330,6 +349,56 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .toList();
   }
 
+  private List<StudioRelationRow> studioRelations(
+      List<GlossaryTerm> seedTerms,
+      OntologyStudioQueryParameters parameters,
+      StudioDataGraphRequest request) {
+    if (seedTerms.isEmpty()) {
+      return List.of();
+    }
+    final List<String> seedIds =
+        seedTerms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
+    return daoCollection
+        .ontologyStudioDAO()
+        .listTermRelations(seedIds, parameters, request.limits().edgeLimit());
+  }
+
+  private List<GlossaryTerm> studioTermsWithContext(
+      List<GlossaryTerm> seedTerms,
+      List<StudioRelationRow> relations,
+      StudioDataGraphRequest request) {
+    final List<UUID> contextIds =
+        connectedStudioTermIds(seedTerms, relations, request.limits().connectedTermLimit());
+    if (contextIds.isEmpty()) {
+      return List.copyOf(seedTerms);
+    }
+    final List<GlossaryTerm> contextTerms =
+        get(
+            null,
+            contextIds,
+            getFields("id,name,displayName,fullyQualifiedName"),
+            Include.NON_DELETED);
+    final Map<UUID, GlossaryTerm> contextById =
+        contextTerms.stream().collect(Collectors.toMap(GlossaryTerm::getId, term -> term));
+    return Stream.concat(
+            seedTerms.stream(), contextIds.stream().map(contextById::get).filter(Objects::nonNull))
+        .toList();
+  }
+
+  static List<UUID> connectedStudioTermIds(
+      List<GlossaryTerm> seedTerms, List<StudioRelationRow> relations, int limit) {
+    final Set<UUID> seedIds =
+        seedTerms.stream().map(GlossaryTerm::getId).collect(Collectors.toSet());
+    return relations.stream()
+        .flatMap(
+            relation ->
+                Stream.of(UUID.fromString(relation.fromId()), UUID.fromString(relation.toId())))
+        .filter(id -> !seedIds.contains(id))
+        .distinct()
+        .limit(limit)
+        .toList();
+  }
+
   private Map<String, OntologyStudioAssetBucket> studioAssetBuckets(
       List<GlossaryTerm> terms, int previewSize, SubjectContext subjectContext) {
     if (inheritedFieldEntitySearch == null) {
@@ -372,50 +441,107 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return terms.stream().filter(term -> visibleIds.contains(term.getId())).toList();
   }
 
-  private List<GlossaryTermRelationGraphEdge> studioEdges(List<GlossaryTerm> terms) {
-    if (terms.isEmpty()) {
+  private static Set<UUID> visibleStudioTermIds(List<OntologyStudioAssetCluster> clusters) {
+    return clusters.stream()
+        .map(OntologyStudioAssetCluster::getTerm)
+        .map(GlossaryTermRelationGraphNode::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private List<GlossaryTermRelationGraphEdge> studioEdges(
+      List<StudioRelationRow> relations, Set<UUID> visibleIds) {
+    return relations.stream()
+        .filter(relation -> isVisibleStudioRelation(relation, visibleIds))
+        .map(this::toStudioEdge)
+        .toList();
+  }
+
+  private static boolean isVisibleStudioRelation(StudioRelationRow relation, Set<UUID> visibleIds) {
+    return visibleIds.contains(UUID.fromString(relation.fromId()))
+        && visibleIds.contains(UUID.fromString(relation.toId()));
+  }
+
+  private GlossaryTermRelationGraphEdge toStudioEdge(StudioRelationRow relation) {
+    return relation.relation() == Relationship.CONTAINS.ordinal()
+        ? toStudioParentEdge(relation)
+        : toStudioSemanticEdge(relation);
+  }
+
+  private GlossaryTermRelationGraphEdge toStudioSemanticEdge(StudioRelationRow relation) {
+    final TermRelationMetadata metadata = termRelationMetadataCodec.decode(relation.json());
+    final RelationshipType relationshipType =
+        relationshipTypeResolver.require(metadata.getRelationType());
+    return new GlossaryTermRelationGraphEdge()
+        .withId(Objects.requireNonNullElseGet(metadata.getId(), () -> studioEdgeId(relation)))
+        .withFrom(UUID.fromString(relation.fromId()))
+        .withTo(UUID.fromString(relation.toId()))
+        .withRelationType(metadata.getRelationType())
+        .withRelationshipType(relationshipType.getEntityReference())
+        .withProvenance(metadata.getProvenance())
+        .withStatus(metadata.getStatus())
+        .withCreatedBy(metadata.getCreatedBy())
+        .withCreatedAt(metadata.getCreatedAt());
+  }
+
+  static GlossaryTermRelationGraphEdge toStudioParentEdge(StudioRelationRow relation) {
+    return new GlossaryTermRelationGraphEdge()
+        .withId(studioEdgeId(relation))
+        .withFrom(UUID.fromString(relation.fromId()))
+        .withTo(UUID.fromString(relation.toId()))
+        .withRelationType(PARENT_OF_RELATION_TYPE)
+        .withProvenance(RelationProvenance.MANUAL)
+        .withStatus(EntityStatus.APPROVED);
+  }
+
+  private static UUID studioEdgeId(StudioRelationRow relation) {
+    final String seed =
+        STUDIO_EDGE_ID_NAMESPACE
+            + relation.relation()
+            + ':'
+            + relation.fromId()
+            + ':'
+            + relation.toId();
+    return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private List<Edge> studioLineageEdges(
+      List<OntologyStudioAssetCluster> clusters, int lineageEdgeLimit) {
+    final List<String> assetIds = studioAssetIds(clusters);
+    if (assetIds.isEmpty()) {
       return List.of();
     }
-    final List<UUID> ids = terms.stream().map(GlossaryTerm::getId).toList();
-    final List<GlossaryTerm> relatedTerms =
-        get(null, ids, getFields("relatedTerms"), Include.NON_DELETED);
-    return collectStudioEdges(relatedTerms, Set.copyOf(ids));
+    final List<StudioLineageRow> rows =
+        daoCollection
+            .ontologyStudioDAO()
+            .listLineageEdges(assetIds, Relationship.UPSTREAM.ordinal(), lineageEdgeLimit);
+    return toStudioLineageEdges(rows);
   }
 
-  private List<GlossaryTermRelationGraphEdge> collectStudioEdges(
-      List<GlossaryTerm> terms, Set<UUID> scopedIds) {
-    final Set<UUID> seen = new HashSet<>();
-    final List<GlossaryTermRelationGraphEdge> edges = new ArrayList<>();
-    for (GlossaryTerm term : terms) {
-      listOrEmpty(term.getRelatedTerms()).stream()
-          .filter(relation -> isStudioEdge(relation, scopedIds, seen))
-          .map(relation -> toStudioEdge(term.getId(), relation))
-          .forEach(edges::add);
-    }
-    return List.copyOf(edges);
+  static List<String> studioAssetIds(List<OntologyStudioAssetCluster> clusters) {
+    return clusters.stream()
+        .flatMap(cluster -> cluster.getAssets().stream())
+        .map(OntologyStudioAsset::getEntity)
+        .map(EntityReference::getId)
+        .map(UUID::toString)
+        .distinct()
+        .toList();
   }
 
-  private static boolean isStudioEdge(TermRelation relation, Set<UUID> scopedIds, Set<UUID> seen) {
-    final UUID targetId = relatedTermId(relation);
-    return relation != null
-        && relation.getId() != null
-        && targetId != null
-        && scopedIds.contains(targetId)
-        && seen.add(relation.getId());
+  static List<Edge> toStudioLineageEdges(List<StudioLineageRow> rows) {
+    return rows.stream()
+        .map(
+            row ->
+                new Edge()
+                    .withFromEntity(UUID.fromString(row.fromId()))
+                    .withToEntity(UUID.fromString(row.toId())))
+        .toList();
   }
 
-  private GlossaryTermRelationGraphEdge toStudioEdge(UUID from, TermRelation relation) {
-    return new GlossaryTermRelationGraphEdge()
-        .withId(relation.getId())
-        .withFrom(from)
-        .withTo(relation.getTerm().getId())
-        .withRelationType(relationTypeOrDefault(relation))
-        .withRelationshipType(relation.getRelationshipType())
-        .withProvenance(relation.getProvenance())
-        .withStatus(relation.getStatus())
-        .withCreatedBy(relation.getCreatedBy())
-        .withCreatedAt(relation.getCreatedAt());
-  }
+  public record StudioDataGraphLimits(
+      int connectedTermLimit, int edgeLimit, int lineageEdgeLimit) {}
+
+  public record StudioDataGraphRequest(
+      String parent, int limit, int offset, int assetPreviewSize, StudioDataGraphLimits limits) {}
 
   private static List<GlossaryTermRelationGraphNode> isolatedTermPreview(
       OntologyStudioDAO studioDAO, OntologyStudioQueryParameters parameters) {

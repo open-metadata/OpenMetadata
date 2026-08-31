@@ -139,6 +139,7 @@ describe('useOntologyExplorer', () => {
     mockGetOntologyStudioDataGraph.mockResolvedValue({
       clusters: [],
       edges: [],
+      lineageEdges: [],
       paging: { limit: 12, offset: 0, total: 0 },
     });
     mockGetOntologyStudioSummary.mockResolvedValue({
@@ -236,7 +237,10 @@ describe('useOntologyExplorer', () => {
     await waitFor(() =>
       expect(mockGetOntologyStudioDataGraph).toHaveBeenCalledWith({
         assetPreviewSize: 4,
+        connectedTermLimit: 48,
+        edgeLimit: 100,
         limit: 12,
+        lineageEdgeLimit: 100,
         offset: 0,
         parent: undefined,
       })
@@ -245,6 +249,47 @@ describe('useOntologyExplorer', () => {
 
     expect(mockGetOntologyStudioAssets).not.toHaveBeenCalled();
     expect(mockGetGlossaryTermsAssetCounts).not.toHaveBeenCalled();
+  });
+
+  it('advances Data pagination by ranked seeds instead of connected context clusters', async () => {
+    const clusters = Array.from({ length: 13 }, (_, index) => ({
+      assetCount: 1,
+      assets: [],
+      term: {
+        fullyQualifiedName: `LoadedGlossary.Context${index}`,
+        id: `context-${index}`,
+        name: `Context${index}`,
+      },
+    }));
+    mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
+    mockGetOntologyStudioDataGraph
+      .mockResolvedValueOnce({
+        clusters,
+        edges: [],
+        lineageEdges: [],
+        paging: { limit: 12, offset: 0, total: 24 },
+      })
+      .mockResolvedValueOnce({
+        clusters: [],
+        edges: [],
+        lineageEdges: [],
+        paging: { limit: 12, offset: 12, total: 24 },
+      });
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.handleModeChange('data'));
+    await waitFor(() => expect(result.current.hasMoreDataTerms).toBe(true));
+    act(() => result.current.handleLoadMore());
+
+    await waitFor(() =>
+      expect(mockGetOntologyStudioDataGraph).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 12 })
+      )
+    );
+    await waitFor(() => expect(result.current.isLoadingMore).toBe(false));
   });
 
   it('loads one bounded asset page when a data cluster requests more', async () => {
@@ -269,6 +314,7 @@ describe('useOntologyExplorer', () => {
         },
       ],
       edges: [],
+      lineageEdges: [],
       paging: { limit: 12, offset: 0, total: 1 },
     });
     mockGetOntologyStudioAssets.mockResolvedValue({
@@ -333,6 +379,7 @@ describe('useOntologyExplorer', () => {
         },
       ],
       edges: [],
+      lineageEdges: [],
       paging: { limit: 12, offset: 0, total: 1 },
     });
     mockGetOntologyStudioAssets.mockImplementation(

@@ -22,6 +22,8 @@ import {
   buildGraphFromAllTerms,
   buildGraphFromStudioData,
   convertRdfGraphToOntologyGraph,
+  OBSERVED_LINEAGE_EDGE_KIND,
+  OBSERVED_LINEAGE_RELATION_TYPE,
   projectOntologyRelationsToAssets,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from './graphBuilders';
@@ -48,7 +50,7 @@ const glossaries: Glossary[] = [
 ];
 
 describe('buildGraphFromStudioData', () => {
-  it('maps bounded clusters into terms, detailed assets, and binding edges', () => {
+  it('maps bounded clusters, observed lineage, and asset binding edges', () => {
     const result = buildGraphFromStudioData(
       {
         clusters: [
@@ -75,6 +77,12 @@ describe('buildGraphFromStudioData', () => {
           },
         ],
         edges: [],
+        lineageEdges: [
+          {
+            fromEntity: 'asset-1',
+            toEntity: 'asset-2',
+          },
+        ],
         paging: { total: 1 },
       } as OntologyStudioDataGraph,
       glossaries,
@@ -103,6 +111,13 @@ describe('buildGraphFromStudioData', () => {
       label: 'label.tagged-with',
       relationType: ASSET_RELATION_TYPE,
       to: 'term-1',
+    });
+    expect(result.edges).toContainEqual({
+      edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
+      from: 'asset-1',
+      label: 'label.observed-lineage',
+      relationType: OBSERVED_LINEAGE_RELATION_TYPE,
+      to: 'asset-2',
     });
   });
 });

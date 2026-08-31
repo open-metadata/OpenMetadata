@@ -24,7 +24,9 @@ import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
+import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 
@@ -54,6 +56,43 @@ public interface OntologyStudioDAO {
           + "LIMIT :limit OFFSET :offset")
   @RegisterRowMapper(TermAssetCountRowMapper.class)
   List<TermAssetCountRow> listAssetTerms(@BindBean OntologyStudioQueryParameters parameters);
+
+  @SqlQuery(
+      "SELECT relation.fromId, relation.toId, relation.relation, relation.json "
+          + "FROM entity_relationship relation "
+          + "JOIN glossary_term_entity sourceTerm ON sourceTerm.id = relation.fromId "
+          + "JOIN glossary_term_entity targetTerm ON targetTerm.id = relation.toId "
+          + "WHERE sourceTerm.deleted = FALSE AND targetTerm.deleted = FALSE AND "
+          + ACTIVE_TERM_RELATION
+          + " AND "
+          + SCOPE_FROM
+          + " AND "
+          + SCOPE_TO
+          + " AND (relation.fromId IN (<termIds>) OR relation.toId IN (<termIds>)) "
+          + "AND EXISTS (SELECT 1 FROM tag_usage sourceUsage "
+          + "WHERE sourceUsage.tagFQNHash = sourceTerm.fqnHash "
+          + "AND sourceUsage.source = :tagSource) "
+          + "AND EXISTS (SELECT 1 FROM tag_usage targetUsage "
+          + "WHERE targetUsage.tagFQNHash = targetTerm.fqnHash "
+          + "AND targetUsage.source = :tagSource) "
+          + "ORDER BY sourceTerm.name ASC, targetTerm.name ASC, relation.relation ASC, "
+          + "relation.fromId ASC, relation.toId ASC LIMIT :relationLimit")
+  @RegisterRowMapper(StudioRelationRowMapper.class)
+  List<StudioRelationRow> listTermRelations(
+      @BindList("termIds") List<String> termIds,
+      @BindBean OntologyStudioQueryParameters parameters,
+      @Bind("relationLimit") int relationLimit);
+
+  @SqlQuery(
+      "SELECT relation.fromId, relation.toId FROM entity_relationship relation "
+          + "WHERE relation.fromId IN (<assetIds>) AND relation.toId IN (<assetIds>) "
+          + "AND relation.relation = :lineageRelation AND relation.deleted = FALSE "
+          + "ORDER BY relation.fromId ASC, relation.toId ASC LIMIT :lineageEdgeLimit")
+  @RegisterRowMapper(StudioLineageRowMapper.class)
+  List<StudioLineageRow> listLineageEdges(
+      @BindList("assetIds") List<String> assetIds,
+      @Bind("lineageRelation") int lineageRelation,
+      @Bind("lineageEdgeLimit") int lineageEdgeLimit);
 
   @SqlQuery(
       "SELECT COUNT(DISTINCT term.id) FROM glossary_term_entity term "
@@ -104,11 +143,34 @@ public interface OntologyStudioDAO {
 
   record TermAssetCountRow(String termJson, int assetCount) {}
 
+  record StudioRelationRow(String fromId, String toId, int relation, String json) {}
+
+  record StudioLineageRow(String fromId, String toId) {}
+
   final class TermAssetCountRowMapper implements RowMapper<TermAssetCountRow> {
     @Override
     public TermAssetCountRow map(ResultSet resultSet, StatementContext context)
         throws SQLException {
       return new TermAssetCountRow(resultSet.getString("termJson"), resultSet.getInt("assetCount"));
+    }
+  }
+
+  final class StudioRelationRowMapper implements RowMapper<StudioRelationRow> {
+    @Override
+    public StudioRelationRow map(ResultSet resultSet, StatementContext context)
+        throws SQLException {
+      return new StudioRelationRow(
+          resultSet.getString("fromId"),
+          resultSet.getString("toId"),
+          resultSet.getInt("relation"),
+          resultSet.getString("json"));
+    }
+  }
+
+  final class StudioLineageRowMapper implements RowMapper<StudioLineageRow> {
+    @Override
+    public StudioLineageRow map(ResultSet resultSet, StatementContext context) throws SQLException {
+      return new StudioLineageRow(resultSet.getString("fromId"), resultSet.getString("toId"));
     }
   }
 

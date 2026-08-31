@@ -83,7 +83,10 @@ describe('glossaryAPI stable relationship operations', () => {
     );
     await getOntologyStudioDataGraph({
       assetPreviewSize: 4,
+      connectedTermLimit: 48,
+      edgeLimit: 100,
       limit: 12,
+      lineageEdgeLimit: 100,
       offset: 0,
       parent: 'Commerce',
     });
@@ -103,7 +106,10 @@ describe('glossaryAPI stable relationship operations', () => {
       {
         params: {
           assetPreviewSize: 4,
+          connectedTermLimit: 48,
+          edgeLimit: 100,
           limit: 12,
+          lineageEdgeLimit: 100,
           offset: 0,
           parent: 'Commerce',
         },

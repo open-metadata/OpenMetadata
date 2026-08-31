@@ -2,12 +2,12 @@
   "$id": "https://open-metadata.org/schema/api/data/ontologyStudioDataGraph.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OntologyStudioDataGraph",
-  "description": "A bounded page of term-to-asset clusters and semantic relations for Ontology Studio data mode.",
+  "description": "A bounded page of term-to-asset clusters, connected semantic context, and observed lineage for Ontology Studio data mode.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.OntologyStudioDataGraph",
   "properties": {
     "clusters": {
-      "description": "Term-to-asset clusters in this page.",
+      "description": "Ranked term-to-asset clusters in this page followed by bounded connected context clusters. Paging applies only to the ranked clusters.",
       "type": "array",
       "items": {
         "$ref": "ontologyStudioAssetCluster.json"
@@ -15,18 +15,26 @@
       "default": []
     },
     "edges": {
-      "description": "Semantic relations whose endpoints are both present in this page.",
+      "description": "Bounded semantic and hierarchy relations whose endpoints are present in the returned clusters.",
       "type": "array",
       "items": {
         "$ref": "glossaryTermRelationGraphEdge.json"
       },
       "default": []
     },
+    "lineageEdges": {
+      "description": "Bounded observed lineage whose endpoints are assets in the returned cluster previews.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityLineage.json#/definitions/edge"
+      },
+      "default": []
+    },
     "paging": {
-      "description": "Offset pagination for clusters.",
+      "description": "Offset pagination for ranked seed clusters, excluding connected context clusters.",
       "$ref": "../../type/paging.json"
     }
   },
-  "required": ["clusters", "edges", "paging"],
+  "required": ["clusters", "edges", "lineageEdges", "paging"],
   "additionalProperties": false
 }

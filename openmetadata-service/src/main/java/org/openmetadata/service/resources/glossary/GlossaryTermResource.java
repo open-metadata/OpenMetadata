@@ -486,18 +486,63 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                     schema = @Schema(implementation = OntologyStudioDataGraph.class)))
       })
   public OntologyStudioDataGraph getOntologyStudioDataGraph(
-      @Context SecurityContext securityContext,
-      @QueryParam("parent") String parent,
-      @DefaultValue("12") @Min(1) @Max(12) @QueryParam("limit") int limit,
-      @DefaultValue("0") @Min(0) @Max(48) @QueryParam("offset") int offset,
-      @DefaultValue("4") @Min(1) @Max(4) @QueryParam("assetPreviewSize") int assetPreviewSize) {
+      @Context SecurityContext securityContext, @BeanParam OntologyStudioDataQuery query) {
     authorizeStudioView(securityContext);
+    GlossaryTermRepository.StudioDataGraphRequest request = query.toRequest();
     return repository.getOntologyStudioDataGraph(
-        parent,
-        limit,
-        offset,
-        assetPreviewSize,
-        DefaultAuthorizer.getSubjectContext(securityContext));
+        request, DefaultAuthorizer.getSubjectContext(securityContext));
+  }
+
+  public static final class OntologyStudioDataQuery {
+    @QueryParam("parent")
+    private String parent;
+
+    @DefaultValue("12")
+    @Min(1)
+    @Max(12)
+    @QueryParam("limit")
+    private int limit;
+
+    @DefaultValue("0")
+    @Min(0)
+    @Max(48)
+    @QueryParam("offset")
+    private int offset;
+
+    @DefaultValue("4")
+    @Min(1)
+    @Max(4)
+    @QueryParam("assetPreviewSize")
+    private int assetPreviewSize;
+
+    @Parameter(description = "Maximum connected context clusters to include")
+    @DefaultValue("48")
+    @Min(0)
+    @Max(48)
+    @QueryParam("connectedTermLimit")
+    private int connectedTermLimit;
+
+    @Parameter(description = "Maximum semantic and hierarchy edges to inspect")
+    @DefaultValue("100")
+    @Min(1)
+    @Max(500)
+    @QueryParam("edgeLimit")
+    private int edgeLimit;
+
+    @Parameter(description = "Maximum observed lineage edges to return")
+    @DefaultValue("100")
+    @Min(1)
+    @Max(500)
+    @QueryParam("lineageEdgeLimit")
+    private int lineageEdgeLimit;
+
+    private GlossaryTermRepository.StudioDataGraphRequest toRequest() {
+      GlossaryTermRepository.StudioDataGraphLimits limits =
+          new GlossaryTermRepository.StudioDataGraphLimits(
+              connectedTermLimit, edgeLimit, lineageEdgeLimit);
+      return new GlossaryTermRepository.StudioDataGraphRequest(
+          parent, limit, offset, assetPreviewSize, limits);
+    }
   }
 
   @GET

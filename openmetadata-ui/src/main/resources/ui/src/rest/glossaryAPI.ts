@@ -380,6 +380,9 @@ export interface OntologyStudioPageParams {
 
 export interface OntologyStudioDataParams extends OntologyStudioPageParams {
   assetPreviewSize?: number;
+  connectedTermLimit?: number;
+  edgeLimit?: number;
+  lineageEdgeLimit?: number;
 }
 
 export const getOntologyStudioSummary = async (
