@@ -566,9 +566,15 @@ class KafkaConnectClient:
                 holds it. Fetched on demand otherwise.
 
         Returns:
-            Optional[List[KafkaConnectTopics]]: The connector's data topics. An empty list
-                                            means the runtime reported none, which is an
-                                            answer. None means neither source could say.
+            Optional[List[KafkaConnectTopics]]: The connector's data topics.
+
+            An empty list is returned only when the runtime listed topics and every one
+            was this connector's own bookkeeping, which is a positive "no data topics".
+
+            None means no source could name one. That includes a runtime that has not
+            reported any topic yet, since a connector that has produced nothing is at a
+            cold start rather than asserting it never will, and its config-declared
+            topics are still the correct answer.
         """
         try:
             config = connector_config if connector_config is not None else self.get_connector_config(connector)
