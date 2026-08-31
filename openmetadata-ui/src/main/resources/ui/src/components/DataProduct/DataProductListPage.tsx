@@ -293,7 +293,7 @@ const DataProductListPage = ({
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <div className="tw:relative tw:min-h-70">
+          <div className="tw:relative tw:min-h-70 tw:h-full">
             <EmptyPlaceholder
               actions={[{
                 color: 'primary',

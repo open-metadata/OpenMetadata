@@ -13,12 +13,12 @@
 
 import type { Key, Selection } from '@openmetadata/ui-core-components';
 import {
-    Avatar,
-    Badge,
-    Box,
-    EmptyPlaceholder,
-    Tree,
-    Typography
+  Avatar,
+  Badge,
+  Box,
+  EmptyPlaceholder,
+  Tree,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { Domain as DomainIcon, Expand, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -35,12 +35,12 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
-    addFollower,
-    getDomainByName,
-    getDomainChildrenPaginated,
-    patchDomains,
-    removeFollower,
-    searchDomains
+  addFollower,
+  getDomainByName,
+  getDomainChildrenPaginated,
+  patchDomains,
+  removeFollower,
+  searchDomains
 } from '../../../rest/domainAPI';
 import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
@@ -48,9 +48,9 @@ import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
-    escapeESReservedCharacters,
-    getDecodedFqn,
-    getEncodedFqn
+  escapeESReservedCharacters,
+  getDecodedFqn,
+  getEncodedFqn
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -991,7 +991,7 @@ const DomainTreeView = ({
               : []
           }
           description={t('message.no-data-message', { entity: t('label.domain-lowercase-plural') })}
-          icon={<DomainIcon className="tw:text-secondary" />}
+          icon={<DomainIcon className="tw:text-fg-brand-primary" />}
           title={t('label.no-entity', { entity: t('label.domain-plural') })}
         />
       </div>

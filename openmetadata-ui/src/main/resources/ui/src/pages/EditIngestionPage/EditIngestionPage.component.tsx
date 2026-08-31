@@ -12,7 +12,7 @@
  */
 
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Pipeline } from '@openmetadata/ui-core-components/icons';
+import { OpenIncident } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -359,7 +359,7 @@ const EditIngestionPage = () => {
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
           description={errorMsg}
-          icon={<Pipeline className="tw:text-secondary" />}
+          icon={<OpenIncident className="tw:text-secondary" />}
           title={t('message.something-went-wrong')}
         />
       </div>
