@@ -50,7 +50,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. This is also how you answer 'show me everything tagged X': a 'term' clause on 'tags.tagFQN' in 'queryFilter' matches every asset carrying that classification tag OR glossary term, since both land in the 'tags' array. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -469,17 +469,17 @@
       "title": "Create Entity",
       "annotations": {
         "readOnlyHint": false,
-        "destructiveHint": true,
+        "destructiveHint": false,
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Create an entity through the repository registered for its entityType. Fields every type shares are top-level parameters; fields specific to the entity go in 'attributes'. Call describe_entity_type first when the requirements are not known. Reference-valued attributes use EntityReference objects containing the target type and id; find those entities first rather than guessing ids. Unknown entity types and attributes are rejected before anything is written. Entity types whose resource endpoint performs required authentication, scheduling, specialized authorization, or secret-handling work are rejected with the dedicated API to use. Creating with a name that is already taken UPDATES that entity in place and needs edit rights as well as create rights. To create a test case use create_test_case; for lineage use create_lineage. Writes take effect immediately - confirm the target with the user before calling.",
+      "description": "Create a new entity through the repository registered for its entityType. This tool never modifies an existing entity; a name that is already taken fails. Use patch_entity for every edit. Fields every type shares are top-level parameters; fields specific to the entity go in 'attributes'. Call describe_entity_type first when the requirements are not known. Reference-valued attributes take EntityReference objects naming the target, such as {'type': 'glossary', 'fullyQualifiedName': 'Finance'}; an id may be given instead of the name. Unknown entity types and attributes are rejected before anything is written. Entity types whose resource endpoint performs required authentication, scheduling, specialized authorization, or secret-handling work are rejected with the dedicated API to use. To create a test case use create_test_case; for lineage use create_lineage. A Knowledge Center article is entityType 'page' with attributes {\"pageType\": \"Article\", \"page\": {}}, its markdown body in 'description', the assets it documents in 'relatedEntities' and an optional 'parent' page to nest it under. Writes take effect immediately - confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team' or 'chart'. Types requiring a dedicated create lifecycle, including users, bots, apps, event subscriptions, ingestion pipelines, test cases, services and automation workflows, are rejected."
+            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team', 'chart' or 'page' for a Knowledge Center article. Types requiring a dedicated create lifecycle, including users, bots, apps, event subscriptions, ingestion pipelines, test cases, services and automation workflows, are rejected."
           },
           "name": {
             "type": "string",
@@ -527,7 +527,7 @@
           },
           "attributes": {
             "type": "object",
-            "description": "Fields specific to this entityType. Values match the entity schema returned by describe_entity_type. EntityReference fields use objects such as {'type': 'glossary', 'id': '<uuid>'}; arrays of references use arrays of those objects."
+            "description": "Fields specific to this entityType. Values match the entity schema returned by describe_entity_type. EntityReference fields use objects such as {'type': 'glossary', 'fullyQualifiedName': 'Finance'} or {'type': 'glossary', 'id': '<uuid>'}; arrays of references use arrays of those objects."
           }
         },
         "required": [
@@ -568,7 +568,7 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Update an existing entity. Two ways to say what changes, and you must use exactly one. (1) TYPED FIELDS - pass 'description', 'displayName', 'owners' or 'tags' directly and the server reads the entity, applies them and computes the patch itself. Prefer this: it needs no read first, so a one-field edit is one call rather than two, and array fields take an explicit mode. (2) 'patch' - a JSONPatch document you write yourself, for any field the typed form does not expose. Both take the same permission check and the same write path. NOT for creating entities — use create_entity for that (create_test_case for test cases, create_lineage for lineage), including Context Center memories, which are create_entity with entityType='contextMemory'. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Update an existing entity using an RFC 6902 JSON Patch document. This tool never creates entities; use create_entity for creation (create_test_case for test cases and create_lineage for lineage). Call get_entity_details on the target first and use field names present in that response. Array fields use plural paths such as /domains, /owners, /tags and /reviewers. Reference values must contain the referenced entity id and type. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -582,63 +582,13 @@
           },
           "patch": {
             "type": "string",
-            "description": "A JSONPatch document, as a JSON array string. Only for fields the typed form does not expose - for description, displayName, owners or tags use those parameters instead and skip the read. JSONPatch operations as a JSON array string. Each operation has 'op' — use 'replace' to change a field that already has a value, 'add' only for a field that is absent or to append to an array, 'remove' to clear one, 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
-          },
-          "description": {
-            "type": "string",
-            "description": "New description in Markdown."
-          },
-          "descriptionMode": {
-            "type": "string",
-            "enum": [
-              "set",
-              "append"
-            ],
-            "default": "set",
-            "description": "'set' (default) replaces the description; 'append' adds to the existing text after a blank line. Use 'append' when adding a note to curated text you do not want to lose. Note 'append' is not idempotent - retrying the same call appends the text twice."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name."
-          },
-          "owners": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "User or team names. Unresolvable names fail the call rather than being dropped."
-          },
-          "ownersMode": {
-            "type": "string",
-            "enum": [
-              "set",
-              "add",
-              "remove"
-            ],
-            "default": "add",
-            "description": "'add' (default) merges into the owner list, 'set' replaces it entirely, 'remove' subtracts."
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Tag FQNs such as 'PII.Sensitive' or 'Tier.Tier1'. Setting a tier means passing its tag here. Glossary terms cannot be set through this tool; with tagsMode 'add' (the default) any already on the entity are preserved."
-          },
-          "tagsMode": {
-            "type": "string",
-            "enum": [
-              "set",
-              "add",
-              "remove"
-            ],
-            "default": "add",
-            "description": "'add' (default) merges into the tag list, 'set' replaces it entirely, 'remove' subtracts. Prefer 'add': the tags array also carries the entity's tier and glossary terms, and 'set' removes any you do not restate."
+            "description": "RFC 6902 operations as a JSON array string. Each operation has 'op', a JSON Pointer 'path' starting with '/', and 'value' when required. Use 'replace' for a field that exists, 'add' for an absent field or array entry, and 'remove' to clear one. Example: [{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new description\"}]."
           }
         },
         "required": [
           "entityType",
-          "fqn"
+          "fqn",
+          "patch"
         ]
       }
     },
@@ -913,6 +863,187 @@
           "fqn",
           "entityType"
         ]
+      }
+    },
+    {
+      "name": "sparql_query",
+      "title": "Run SPARQL Query",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist, which is empty and disabled by default - so in a default deployment this tool never reaches outside the local graph. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default and maximum 80000 bytes, matching the MCP response budget); when it does not fit you get a prefix plus 'truncated': true and the full 'byteCount'. Narrow the query with LIMIT rather than raising maxBytes. A 'warning' field appears when the requested inferenceLevel could not be applied because the graph was too large - results are then NOT inferred. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SPARQL query string. Use https://open-metadata.org/ontology/ as the om: prefix."
+          },
+          "format": {
+            "type": "string",
+            "description": "Result format. SELECT/ASK: json (default), xml, csv, tsv. CONSTRUCT/DESCRIBE: turtle, jsonld, ntriples, rdfxml.",
+            "default": "json"
+          },
+          "inferenceLevel": {
+            "type": "string",
+            "description": "Optional. Reasoning level applied at query time: none (default), rdfs, owl, custom.",
+            "default": "none"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the response body size in bytes. Default 80000, which is also the maximum; min 1024. Values above the maximum are clamped, because a larger body is discarded wholesale by the response budget.",
+            "default": 80000
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "entity_neighborhood",
+      "title": "Get Entity Neighborhood",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Return the n-hop instance-data neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. Ontology and SHACL definition graphs are excluded so schema triples do not consume result slots. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. Each traversal branch gets its own share of 'limit', so deeper hops are always represented rather than being crowded out by a high-degree start node. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "UUID of the entity (the 'id' field on the entity)."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Entity type singular (table, dashboard, pipeline, glossaryTerm, ...)."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Hop depth, 1-3. Default 2.",
+            "default": 2
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum solution rows per traversal branch share, not a triple count. Each solution can contribute up to 'depth' triples, so the returned triple count may be a small multiple of this. Default 200, max 2000.",
+            "default": 200
+          }
+        },
+        "required": [
+          "entityId",
+          "entityType"
+        ]
+      }
+    },
+    {
+      "name": "find_by_tag",
+      "title": "Find by Tag",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Find all entities tagged with a given classification tag or glossary term FQN. Walks om:hasTag and om:hasGlossaryTerm. Use this for 'show me everything classified PII.Sensitive' or 'all assets associated with the BusinessTerms.Customer glossary term'. Optionally filter by entity type. Paginated. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tagFqn": {
+            "type": "string",
+            "description": "FQN of the tag or glossary term (e.g. 'PII.Sensitive', 'BusinessTerms.Customer')."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Optional. Restrict results to a single entity type (e.g. 'table')."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results. Default 50, max 500.",
+            "default": 50
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Page offset. Default 0.",
+            "default": 0
+          }
+        },
+        "required": [
+          "tagFqn"
+        ]
+      }
+    },
+    {
+      "name": "shacl_validate",
+      "title": "Validate with SHACL",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Run SHACL validation against either a single entity's subgraph (scoped via entityId+entityType or entityUri) or the entire dataset. Returns conforms (boolean), violationCount, and the SHACL ValidationReport in the requested RDF format. Read-only; never blocks writes. Use this to debug data-quality issues before mutating the graph. The report body is capped at maxBytes; 'conforms' and 'violationCount' are always returned in full even when the report itself is truncated. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "Optional. UUID of the entity to scope validation to."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Optional. Entity type singular. Required if entityId is provided."
+          },
+          "entityUri": {
+            "type": "string",
+            "description": "Optional alternative to entityId+entityType: full URI of the entity."
+          },
+          "fullGraph": {
+            "type": "boolean",
+            "description": "Must be set to true to validate the entire dataset when no entity scope (entityId+entityType or entityUri) is given. Whole-graph validation can be expensive, so it is opt-in.",
+            "default": false
+          },
+          "format": {
+            "type": "string",
+            "description": "Report format: turtle (default) or jsonld.",
+            "default": "turtle"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the report body size in bytes. Default 80000, which is also the maximum; min 1024.",
+            "default": 80000
+          }
+        }
+      }
+    },
+    {
+      "name": "ontology_describe",
+      "title": "Describe Ontology",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. The full ontology is roughly 65 KB, so prefer passing 'resource' for a focused DESCRIBE; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "description": "Optional. Full URI of the class or property to DESCRIBE (e.g. 'https://open-metadata.org/ontology/Column'). Omit to return the full ontology."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format. Default 'turtle'.",
+            "default": "turtle"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the body size in bytes. Default 80000, which is also the maximum; min 1024.",
+            "default": 80000
+          }
+        }
       }
     }
   ]

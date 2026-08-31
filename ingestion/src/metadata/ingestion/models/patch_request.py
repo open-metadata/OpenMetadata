@@ -18,7 +18,7 @@ import traceback
 from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 import jsonpatch
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
@@ -592,6 +592,12 @@ def _sort_array_entity_fields(
             destination_attributes = getattr(destination, field)
             source_attributes = getattr(source, field)
 
+            dest_is_root_model = isinstance(destination_attributes, RootModel)
+            if dest_is_root_model:
+                destination_attributes = destination_attributes.root
+            if isinstance(source_attributes, RootModel):
+                source_attributes = source_attributes.root
+
             source_dict = {_get_attribute_name(attr): attr for attr in (source_attributes or [])}
 
             updated_attributes = []
@@ -615,7 +621,10 @@ def _sort_array_entity_fields(
                 if hasattr(attr, "ordinalPosition"):
                     attr.ordinalPosition = idx + 1
 
-            setattr(destination, field, updated_attributes)
+            if dest_is_root_model:
+                setattr(destination, field, getattr(destination, field).model_copy(update={"root": updated_attributes}))
+            else:
+                setattr(destination, field, updated_attributes)
 
 
 def _remove_change_description(entity: T) -> T:

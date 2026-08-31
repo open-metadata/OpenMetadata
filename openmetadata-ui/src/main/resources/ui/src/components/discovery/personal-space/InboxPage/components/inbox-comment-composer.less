@@ -1,0 +1,133 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// Figma restyle of the OSS ActivityFeedEditorNew, scoped to the Inbox composer
+// only (this class is never on the chat editor, so chat is unaffected). The
+// editor behaviour is untouched — these are purely visual overrides.
+.inbox-comment-composer__editor {
+  // Quill renders `.ql-toolbar` before `.ql-container` inside `.editor-container`.
+  // Reverse the column so the toolbar sits at the bottom (figma), and wrap the
+  // whole thing in a single light gray rounded box.
+  .editor-container {
+    display: flex;
+    flex-direction: column-reverse;
+    // Literal gray-blue-200. The `--color-*` theme vars don't resolve in this
+    // plain-CSS/Quill context (the utility aliases are self-referential and the
+    // theme block isn't in this stylesheet's cascade), so a `var()` border
+    // collapses and only appears on focus when Quill paints its own. Use the
+    // literal so the box border is always visible, matching the figma.
+    border: 1px solid rgb(213 217 235);
+    border-radius: 10px;
+  }
+
+  // Drop Quill's own borders/background; only a hairline separates the bottom
+  // toolbar from the typing area.
+  .ql-container.ql-snow {
+    border: none;
+    background: transparent;
+  }
+
+  .ql-toolbar.ql-snow {
+    border: none;
+    // Literal gray-blue-50 — the token var resolves to `unset` here (see
+    // `.editor-container` note), which would leave the toolbar transparent.
+    background-color: rgb(248 249 252);
+    // Bottom of the box (column-reverse puts the toolbar last) — round its
+    // corners since the container no longer clips via overflow.
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    // Reserve room on the right so the absolute send button (bottom-right, over
+    // this toolbar band) doesn't overlap the last format icons.
+    padding-right: 48px;
+
+    // Literal gray (== gray-700) — the token aliases are self-referential and
+    // resolve to `unset` in this plain-CSS context, dropping the icon strokes.
+    @toolbar-icon-color: #414651;
+
+    button,
+    .ql-picker-label {
+      color: @toolbar-icon-color;
+      font-weight: 400;
+    }
+    .ql-stroke {
+      stroke: @toolbar-icon-color;
+      stroke-width: 1.5;
+    }
+    .ql-fill {
+      fill: @toolbar-icon-color;
+    }
+  }
+
+  .ql-editor {
+    min-height: 48px;
+  }
+  .ql-editor.ql-blank,
+  .ql-editor {
+    background-color: rgb(248 249 252);
+    padding-bottom: 0px;
+    // Top of the box (the typing area sits above the toolbar) — round its
+    // corners to match the container now that overflow no longer clips.
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+  }
+  // FeedEditor hard-codes the "Use @mention…" placeholder; swap in the figma
+  // copy (passed as a CSS variable from the component, so it stays i18n-aware).
+  .ql-editor.ql-blank::before {
+    content: var(--inbox-composer-placeholder, 'Add Comment');
+    font-style: normal;
+  }
+
+  // Keep the explicit send button — users expect a clear affordance to post a
+  // comment (Enter also sends). Only the redundant "Shift+Enter" keyboard hint
+  // is dropped in this compact layout.
+  [data-testid='key-help'] {
+    display: none;
+  }
+
+  // The OSS link bubble is a fixed 300px with nowrap content, so its
+  // Save/Edit/Remove chips overflow here — re-lay it out as a flex row bounded
+  // by the editor width. `:not(.ql-hidden)` keeps Quill's hide rule winning.
+  .ql-snow .ql-tooltip:not(.ql-hidden) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: min(420px, calc(100% - 16px));
+
+    &::before {
+      flex-shrink: 0;
+    }
+
+    input[type='text'] {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
+    }
+
+    a.ql-preview {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
+    }
+
+    a.ql-action,
+    a.ql-remove {
+      flex-shrink: 0;
+    }
+
+    // Quill's editing-mode rule zeroes the Save chip's right padding, leaving
+    // the label flush with the chip's rounded edge — restore it.
+    &.ql-editing a.ql-action::after {
+      padding-right: 8px;
+    }
+  }
+}
