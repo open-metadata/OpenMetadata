@@ -17,17 +17,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
@@ -43,11 +41,6 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -89,9 +82,6 @@ const DashboardDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [dashboardPermissions, setDashboardPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const {
     owners,
@@ -111,29 +101,32 @@ const DashboardDetails = ({
     };
   }, [followers, currentUser]);
 
-  const { getEntityPermission } = usePermissionProvider();
+  // Owning fetch (Task 8 conversion): single resource, by id — DashboardDetailsProps carries
+  // no permissions prop, so this component fetches its own, independent of whichever page
+  // renders it. `deleted` passed through: editCustomAttributePermission/editLineagePermission
+  // were already ANDed with `!deleted` in the old code.
+  const {
+    permissions: dashboardPermissions,
+    error: permissionsError,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.DASHBOARD,
+    { id: dashboardDetails.id },
+    { deleted: Boolean(deleted) }
+  );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.DASHBOARD,
-        dashboardDetails.id
-      );
-      setDashboardPermissions(entityPermission);
-    } catch {
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.dashboard'),
         })
       );
     }
-  }, [dashboardDetails.id, getEntityPermission, setDashboardPermissions]);
-
-  useEffect(() => {
-    if (dashboardDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [dashboardDetails.id]);
+  }, [permissionsError]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -244,34 +237,6 @@ const DashboardDetails = ({
     [navigate]
   );
 
-  const {
-    editCustomAttributePermission,
-    editAllPermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          dashboardPermissions,
-          PermissionOperation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: PermissionOperation.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          dashboardPermissions,
-          PermissionOperation.EditLineage
-        ) && !deleted,
-      viewAllPermission: dashboardPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        dashboardPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [dashboardPermissions, deleted]
-  );
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -303,7 +268,6 @@ const DashboardDetails = ({
     handleFeedCount,
     editLineagePermission,
     editCustomAttributePermission,
-    editAllPermission,
     viewAllPermission,
     onExtensionUpdate,
   ]);
