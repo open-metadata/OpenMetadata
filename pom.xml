@@ -855,6 +855,17 @@
         <artifactId>commons-compress</artifactId>
         <version>1.26.0</version>
       </dependency>
+      <!-- CVE-2026-75140: quadratic memory in XmlTreeBuilder namespace-map copying lets a
+           deeply nested, uniquely-namespaced XML document exhaust the heap. Vulnerable through
+           1.23.1; the fix (jsoup PR #2556) ships in 1.23.2. jsoup is not declared by any module -
+           it arrives only as a transitive of flexmark-html2md-converter, which declares 1.15.4.
+           That is a soft requirement, so managing it here overrides it. Remove this pin only if
+           flexmark ever ships a release declaring 1.23.2 or newer itself (0.64.8 is its latest). -->
+      <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>1.23.2</version>
+      </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
