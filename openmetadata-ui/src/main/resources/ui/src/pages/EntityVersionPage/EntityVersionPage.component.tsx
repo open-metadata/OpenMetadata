@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { AxiosError } from 'axios';
 import {
   Suspense,
   useCallback,
@@ -25,11 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import type {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import type { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
@@ -51,6 +47,7 @@ import type { Worksheet } from '../../generated/entity/data/worksheet';
 import type { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import type { TagLabel } from '../../generated/type/tagLabel';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApiEndPointByFQN,
@@ -121,9 +118,9 @@ import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import entityVersionClassBase from '../../utils/EntityVersionClassBase';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TablePureUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './EntityVersionPage.less';
 
@@ -161,10 +158,8 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const { fqn: decodedEntityFQN } = useFqn();
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isEntityVersionsLoading, setIsEntityVersionsLoading] =
+    useState<boolean>(true);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
@@ -186,44 +181,44 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityType, decodedEntityFQN, tab]
   );
 
-  const fetchResourcePermission = useCallback(
-    async (resourceEntity: ResourceEntity) => {
-      if (!isEmpty(decodedEntityFQN)) {
-        try {
-          const permission = await getEntityPermissionByFqn(
-            resourceEntity,
-            decodedEntityFQN
-          );
-
-          setEntityPermissions(permission);
-        } catch {
-          //
-        }
-      }
-    },
-    [decodedEntityFQN, getEntityPermissionByFqn, setEntityPermissions]
+  // Fetch-owner, by fqn — reads-only conversion, mechanism preserved
+  // (APICollectionVersionPage.tsx / ServiceVersionPage.tsx precedent). `resourceEntity`
+  // varies per entityType (computed synchronously from the URL's entityType param, known at
+  // mount — no ordering cycle). `hasViewAccess` is a byte-for-byte match of the old bare
+  // `entityPermissions.ViewAll || entityPermissions.ViewBasic` OR.
+  const resourceEntity = useMemo(
+    () =>
+      entityUtilClassBase.getResourceEntityFromEntityType(
+        entityType
+      ) as ResourceEntity,
+    [entityType]
   );
 
-  const fetchEntityPermissions = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await fetchResourcePermission(
-        entityUtilClassBase.getResourceEntityFromEntityType(
-          entityType
-        ) as ResourceEntity
-      );
-    } finally {
-      setIsLoading(false);
+  const {
+    permissions: entityPermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+  } = useEntityPermissions(resourceEntity, decodedEntityFQN, {
+    enabled: Boolean(decodedEntityFQN),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
     }
-  }, [entityType, fetchResourcePermission]);
+  }, [permissionsError]);
 
-  const viewVersionPermission = useMemo(
-    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
-    [entityPermissions]
-  );
+  // Combined loading flag: the old `isLoading` state doubled as both the permission-fetch
+  // loading flag AND the version-list-fetch loading flag (fetchEntityVersions only ever runs
+  // when view access is granted, per the effect below) — same shape as ServiceVersionPage.tsx's
+  // fix (Task 8 Batch 10). Gated on `viewVersionPermission` so `isEntityVersionsLoading`'s
+  // initial `true` isn't counted while denied.
+  const isLoading =
+    isPermissionsLoading || (viewVersionPermission && isEntityVersionsLoading);
 
   const fetchEntityVersions = useCallback(async () => {
-    setIsLoading(true);
+    setIsEntityVersionsLoading(true);
     try {
       switch (entityType) {
         case EntityType.TABLE: {
@@ -408,7 +403,7 @@ const EntityVersionPage: FunctionComponent = () => {
           break;
       }
     } finally {
-      setIsLoading(false);
+      setIsEntityVersionsLoading(false);
     }
   }, [entityType, decodedEntityFQN, viewVersionPermission]);
 
@@ -1030,10 +1025,6 @@ const EntityVersionPage: FunctionComponent = () => {
       }
     }
   };
-
-  useEffect(() => {
-    fetchEntityPermissions();
-  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
