@@ -61,7 +61,7 @@ fuseki_triples() {
 
 # Prometheus counter for a Fuseki endpoint; used as a before/after delta.
 fuseki_metric() {
-    curl -sf "${FUSEKI_URL}/\$/metrics" 2>/dev/null \
+    curl -sf -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" "${FUSEKI_URL}/\$/metrics" 2>/dev/null \
         | grep -E "^$1" | awk '{ sum += $NF } END { printf "%.0f", sum + 0 }' || echo 0
 }
 

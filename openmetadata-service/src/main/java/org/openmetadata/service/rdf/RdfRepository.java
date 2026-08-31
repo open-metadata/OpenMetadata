@@ -607,10 +607,22 @@ public class RdfRepository {
     List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
     if (isEnabled()) {
       for (EntityInterface entity : entities) {
-        String entityType = entity.getEntityReference().getType();
-        Model rdfModel = translator.toRdf(entity);
-        requests.add(
-            new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
+        // Per-entity isolation: mapEntityToRdf propagates mapping failures, and the sink
+        // translates a whole batch in one task, so an unguarded throw here would record
+        // every entity in the batch as failed instead of the one that is actually bad.
+        // A skipped entity is reported as a single failure by the caller.
+        try {
+          String entityType = entity.getEntityReference().getType();
+          Model rdfModel = translator.toRdf(entity);
+          requests.add(
+              new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
+        } catch (RuntimeException translationFailure) {
+          LOG.warn(
+              "Skipping entity {} - RDF translation failed: {}",
+              entity.getId(),
+              translationFailure.getMessage(),
+              translationFailure);
+        }
       }
     }
     return requests;

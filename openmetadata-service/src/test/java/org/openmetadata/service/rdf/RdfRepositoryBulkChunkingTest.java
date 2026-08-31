@@ -19,9 +19,11 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.util.LinkedHashSet;
@@ -34,8 +36,10 @@ import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
 @DisplayName("RdfRepository bulk chunking")
 class RdfRepositoryBulkChunkingTest {
@@ -335,5 +339,35 @@ class RdfRepositoryBulkChunkingTest {
 
   private static String entityUri(String entityType, String entityId) {
     return BASE_URI + "entity/" + entityType + "/" + entityId;
+  }
+
+  @Test
+  @DisplayName("one entity that cannot be translated does not take its batch down")
+  void untranslatableEntityIsIsolatedFromItsBatch() {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    JsonLdTranslator translator = mock(JsonLdTranslator.class);
+    RdfRepository repository = new RdfRepository(config(), storage, translator);
+
+    EntityInterface good = entityWithId(UUID.randomUUID());
+    EntityInterface bad = entityWithId(UUID.randomUUID());
+    when(translator.toRdf(good)).thenReturn(ModelFactory.createDefaultModel());
+    when(translator.toRdf(bad)).thenThrow(new IllegalStateException("tagLabel missing tagFQN"));
+
+    List<RdfStorageInterface.EntityWriteRequest> requests =
+        repository.translateEntities(List.of(good, bad));
+
+    // The batch still carries the healthy entity; the bad one is dropped for the caller
+    // to record as a single failure rather than failing all of its neighbours.
+    assertEquals(1, requests.size());
+    assertEquals(good.getId(), requests.getFirst().entityId());
+  }
+
+  private static EntityInterface entityWithId(UUID id) {
+    EntityInterface entity = mock(EntityInterface.class);
+    lenient().when(entity.getId()).thenReturn(id);
+    lenient()
+        .when(entity.getEntityReference())
+        .thenReturn(new org.openmetadata.schema.type.EntityReference().withType("table"));
+    return entity;
   }
 }

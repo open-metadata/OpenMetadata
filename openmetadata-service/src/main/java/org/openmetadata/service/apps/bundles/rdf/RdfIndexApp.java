@@ -812,10 +812,12 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // sink's translate pool), but storage writes are serialized so this process
       // never queues two requests on Fuseki's writer lock. When no sink exists
       // (defensive), fall back to the inline path.
+      long sinkStartNanos = System.nanoTime();
       RdfBatchProcessor.BatchProcessingResult result =
           legacySink != null
               ? legacySink.submit(entityType, entities).join()
               : batchProcessor.processEntities(entityType, entities, () -> stopped);
+      long sinkTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - sinkStartNanos);
 
       // failedRecords stays an entity-level stat (relationship failures are
       // per-edge, not per-record). But for surfacing failures on the run
@@ -823,7 +825,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
       StepStats currentStats =
           new StepStats()
               .withSuccessRecords(result.successCount())
-              .withFailedRecords(result.failedCount());
+              .withFailedRecords(result.failedCount())
+              .withSinkTimeMs(sinkTimeMs);
       updateEntityStats(entityType, currentStats);
       if (result.hasAnyFailure() && result.lastError() != null) {
         recordIndexingFailure(
@@ -1044,6 +1047,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
+  private static long nullSafe(Long value) {
+    return value == null ? 0L : value;
+  }
+
   private synchronized void updateEntityStats(String entityType, StepStats currentEntityStats) {
     Stats stats = rdfIndexStats.get();
     if (stats == null) {
@@ -1056,6 +1063,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
           entityStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
       entityStats.withFailedRecords(
           entityStats.getFailedRecords() + currentEntityStats.getFailedRecords());
+      // Without this the non-distributed path reports 0ms for every stage, which reads
+      // as "instantaneous" on the run record rather than "never measured".
+      entityStats.withSinkTimeMs(
+          nullSafe(entityStats.getSinkTimeMs()) + nullSafe(currentEntityStats.getSinkTimeMs()));
+      entityStats.withTotalTimeMs(nullSafe(entityStats.getSinkTimeMs()));
     }
 
     StepStats jobStats = stats.getJobStats();
@@ -1068,7 +1080,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
             .mapToInt(StepStats::getFailedRecords)
             .sum();
 
-    jobStats.withSuccessRecords(totalSuccess).withFailedRecords(totalFailed);
+    long totalSinkTimeMs =
+        stats.getEntityStats().getAdditionalProperties().values().stream()
+            .mapToLong(stat -> nullSafe(stat.getSinkTimeMs()))
+            .sum();
+
+    jobStats
+        .withSuccessRecords(totalSuccess)
+        .withFailedRecords(totalFailed)
+        .withSinkTimeMs(totalSinkTimeMs)
+        .withTotalTimeMs(totalSinkTimeMs);
 
     rdfIndexStats.set(stats);
     jobData.setStats(stats);

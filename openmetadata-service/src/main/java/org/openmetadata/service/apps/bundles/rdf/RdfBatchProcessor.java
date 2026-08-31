@@ -107,6 +107,29 @@ public class RdfBatchProcessor {
     String lastError = null;
     List<EntityInterface> indexedEntities = new ArrayList<>();
 
+    // An entity whose translation failed has no write request. Count it here so a
+    // skipped record surfaces as one failure rather than vanishing from the totals.
+    List<? extends EntityInterface> writableEntities = entities;
+    if (preTranslated != null && preTranslated.size() != entities.size()) {
+      Set<UUID> translatedIds =
+          preTranslated.stream()
+              .map(RdfStorageInterface.EntityWriteRequest::entityId)
+              .collect(Collectors.toSet());
+      List<EntityInterface> untranslated =
+          entities.stream()
+              .filter(entity -> !translatedIds.contains(entity.getId()))
+              .collect(Collectors.toList());
+      if (!untranslated.isEmpty()) {
+        failedCount += untranslated.size();
+        lastError = "RDF translation failed for " + untranslated.size() + " entity(ies)";
+        recordEntityWriteFailures(entityType, untranslated, lastError);
+        writableEntities =
+            entities.stream()
+                .filter(entity -> translatedIds.contains(entity.getId()))
+                .collect(Collectors.toList());
+      }
+    }
+
     // Fast path: combined SPARQL UPDATE requests for the batch. Batching
     // collapses per-entity update requests and Fuseki transactions into a
     // smaller number of storage-level chunks.
@@ -147,7 +170,11 @@ public class RdfBatchProcessor {
       BisectResult bisect =
           preTranslated != null
               ? writePreTranslatedWithBisectFallback(
-                  entityType, entities, preTranslated, effectiveStopRequested, indexedEntities)
+                  entityType,
+                  writableEntities,
+                  preTranslated,
+                  effectiveStopRequested,
+                  indexedEntities)
               : writeWithBisect(
                   entityType,
                   entities,

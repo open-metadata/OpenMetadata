@@ -168,7 +168,7 @@ thrashes the database. Two mechanisms keep them apart:
   the default catch-up behavior.)
 - **Cross-app admission guard.** A cron-triggered RDF reindex checks for an active search reindex
   (reindex lock, active `search_index_job` rows with a fresh heartbeat, or a live search app run)
-  and defers, re-checking every 60 s for up to 3 hours. If the search run still hasn't finished,
+  and defers, re-checking every 60 s for up to 30 minutes. If the search run still hasn't finished,
   the RDF run ends `STOPPED` with an explanatory message and waits for its next scheduled slot.
   **On-demand runs bypass the guard** (operator intent wins) with a warning in the logs.
 

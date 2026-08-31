@@ -69,8 +69,21 @@ public class RdfBulkSink implements AutoCloseable {
           60L,
           TimeUnit.SECONDS,
           new LinkedBlockingQueue<>(TRANSLATE_QUEUE_CAPACITY),
-          Thread.ofVirtual().name("rdf-translate-", 0).factory(),
+          // Platform threads, not virtual: translation is CPU-bound JSON-to-RDF mapping, so a
+          // fixed pool is the point. Pooling virtual threads would park TRANSLATE_POOL_SIZE of
+          // them forever and give none of their benefit, since they never block on IO here.
+          platformThreadFactory("rdf-translate-"),
           new ThreadPoolExecutor.CallerRunsPolicy());
+
+  private static java.util.concurrent.ThreadFactory platformThreadFactory(String prefix) {
+    java.util.concurrent.atomic.AtomicInteger counter =
+        new java.util.concurrent.atomic.AtomicInteger();
+    return runnable -> {
+      Thread thread = new Thread(runnable, prefix + counter.getAndIncrement());
+      thread.setDaemon(true);
+      return thread;
+    };
+  }
 
   /**
    * Small on purpose: each queued batch pins its translated models in memory, and queue depth

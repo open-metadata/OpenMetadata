@@ -48,6 +48,26 @@ if [ ! -w "$FUSEKI_BASE" ] || [ ! -w /fuseki-data ]; then
     exit 1
 fi
 
+# The assembler opens /fuseki-data/openmetadata. The original --loc=/fuseki-data launch
+# wrote TDB2 files directly into /fuseki-data, and pointing Fuseki at the wrong directory
+# does not fail - it starts an EMPTY store that looks healthy while the real data sits
+# unopened. Refuse to start instead, and name the migration.
+LEGACY_TDB2_DIR="${FUSEKI_DATA_DIR:-/fuseki-data}"
+DATASET_TDB2_DIR="${LEGACY_TDB2_DIR}/openmetadata"
+if [ -d "${LEGACY_TDB2_DIR}/Data-0001" ] && [ ! -d "${DATASET_TDB2_DIR}" ]; then
+  echo "ERROR: found a legacy TDB2 store directly in ${LEGACY_TDB2_DIR} (Data-0001), but this"
+  echo "image serves ${DATASET_TDB2_DIR}. Starting now would open an EMPTY store and leave the"
+  echo "existing graph unread."
+  echo "Migrate with the container stopped, then restart:"
+  echo "  mkdir -p ${DATASET_TDB2_DIR}"
+  echo "  mv ${LEGACY_TDB2_DIR}/Data-* ${LEGACY_TDB2_DIR}/*.lock ${DATASET_TDB2_DIR}/ 2>/dev/null || true"
+  echo "Set FUSEKI_ALLOW_LEGACY_LAYOUT=true to start anyway (the legacy data stays unopened)."
+  if [ "${FUSEKI_ALLOW_LEGACY_LAYOUT:-false}" != "true" ]; then
+    exit 1
+  fi
+  echo "FUSEKI_ALLOW_LEGACY_LAYOUT=true - continuing with an empty store."
+fi
+
 if [ "$FUSEKI_RENDER_SHIRO" = "true" ] && [ -f /fuseki/shiro.ini.template ]; then
     # Restrict envsubst to the two variables we expect. Without an explicit
     # list, envsubst would interpret any `${...}` in the template — including

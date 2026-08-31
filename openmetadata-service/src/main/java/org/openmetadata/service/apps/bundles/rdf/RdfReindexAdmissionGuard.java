@@ -57,7 +57,12 @@ public class RdfReindexAdmissionGuard {
   static final String SEARCH_REINDEX_LOCK_KEY = "SEARCH_REINDEX_LOCK";
   static final String SEARCH_INDEX_APP_NAME = "SearchIndexingApplication";
   static final long DEFAULT_POLL_INTERVAL_MS = TimeUnit.SECONDS.toMillis(60);
-  static final long DEFAULT_MAX_DEFERRAL_MS = TimeUnit.HOURS.toMillis(3);
+  // Deferral happens on the app's Quartz worker, and that pool is 10 threads for every
+  // native app on the server. Holding one for hours to catch a window is a poor trade when
+  // the run is weekly and the next scheduled slot will retry, so the wait is deliberately
+  // short: long enough to outlast a search reindex finishing up, not long enough to matter
+  // to the scheduler.
+  static final long DEFAULT_MAX_DEFERRAL_MS = TimeUnit.MINUTES.toMillis(30);
   static final long ACTIVITY_FRESHNESS_MS = TimeUnit.MINUTES.toMillis(10);
 
   private static final List<String> ACTIVE_SEARCH_JOB_STATUSES =

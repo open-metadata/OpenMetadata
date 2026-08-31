@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -1273,6 +1274,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           // understands (502/503/504 count as availability failures).
           throw new HttpException(response.statusCode(), "GSP append failed", response.body());
         }
+        // A 2xx alone is not proof the whole graph arrived: if serialization died partway
+        // the stream still ends cleanly and Fuseki may accept what it got. Observe the
+        // producer so a partial body becomes a write failure instead of silent data loss.
+        awaitBodyProducer(bodyProducer);
       } finally {
         // If the HTTP side failed before consuming the body, the producer is
         // parked writing into the pipe; cancelling + closing unblocks it.
@@ -1287,7 +1292,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  /** Runs on a producer task; feeds the HTTP request body through the pipe. */
+  /**
+   * Runs on a producer task; feeds the HTTP request body through the pipe. Returns normally only
+   * when the whole graph was serialized — a partial body must never be reported as a success,
+   * because Fuseki can accept a truncated-but-well-formed stream with 2xx and silently drop the
+   * remaining triples.
+   */
   private void writeThriftBody(List<EntityWriteRequest> requests, PipedOutputStream rawOut) {
     try (OutputStream out =
         gzipRequests ? new GZIPOutputStream(rawOut, STREAM_PIPE_BUFFER_BYTES) : rawOut) {
@@ -1298,8 +1308,22 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       }
       writer.finish();
     } catch (IOException e) {
-      // Expected teardown when the HTTP side closed the pipe after an early failure.
-      LOG.debug("RDF streaming body producer terminated early: {}", e.getMessage());
+      // The HTTP side closing the pipe first is normal teardown after its own failure; the
+      // caller decides which error to surface.
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  /** Surfaces a body-producer failure; the request is only complete if it finished cleanly. */
+  private static void awaitBodyProducer(Future<?> bodyProducer) {
+    try {
+      bodyProducer.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while completing the RDF request body", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(
+          "RDF request body was truncated before the graph was fully serialized", e.getCause());
     }
   }
 

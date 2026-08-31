@@ -477,6 +477,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         cacheConfig.redis.keyspace);
   }
 
+  private static String fusekiTmpfsSize() {
+    return System.getProperty("rdfContainerTmpfsSize", "256m");
+  }
+
   private void startFuseki() {
     String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
@@ -501,10 +505,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             // by default — mounting tmpfs there keeps writes off-disk entirely.
             // mode=1777 matters: the OpenMetadata image runs as non-root uid 1000, and a
             // default tmpfs mount is root-owned, which its startup writability guard rejects.
+            // 256m suits functional ITs; a scale run writes far more than that and the
+            // server dies with a disk-full store rather than a clear error, so allow
+            // raising it with -DrdfContainerTmpfsSize=2g.
             .withTmpFs(
                 java.util.Map.of(
-                    "/fuseki/databases", "rw,size=256m,mode=1777",
-                    "/fuseki-data", "rw,size=256m,mode=1777"))
+                    "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+                    "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
