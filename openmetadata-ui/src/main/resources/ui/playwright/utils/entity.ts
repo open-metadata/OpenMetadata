@@ -1180,9 +1180,16 @@ export const openColumnDetailPanel = async ({
 };
 
 export const closeColumnDetailPanel = async (page: Page) => {
+  // Snapshot the column URL. If the panel reopens (bug), it navigates back to this URL.
+  const columnUrl = page.url();
   const panelContainer = page.locator('.column-detail-panel');
   await panelContainer.getByTestId('close-button').click();
 
+  // 1. Immediate visibility check.
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+  // 2. Verify the URL did not bounce back (a reopen re-navigates to the column URL).
+  await expect(page).not.toHaveURL(columnUrl);
+  // 3. After URL has settled, verify the panel is still not visible.
   await expect(page.locator('.column-detail-panel')).not.toBeVisible();
 };
 
