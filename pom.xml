@@ -225,7 +225,7 @@
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
         <artifactId>logging-interceptor</artifactId>
-        <version>4.12.0</version>
+        <version>5.5.0</version>
       </dependency>
       <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
            azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7
