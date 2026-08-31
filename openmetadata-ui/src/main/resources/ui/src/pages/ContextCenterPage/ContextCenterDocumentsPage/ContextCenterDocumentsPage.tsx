@@ -63,6 +63,7 @@ import {
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
 } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -172,14 +173,26 @@ const ContextCenterDocumentsPage: FC = () => {
     }?${params.toString()}`;
   }, [previewFile, searchParams]);
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(
+  // KNOWLEDGE_PAGE), itself OperationPermission-shaped) run through
+  // getDerivedPermissionFlags per the Batch 3 DatabaseSchemaTable.tsx / Batch 6
+  // MetricListPage.tsx precedent. `Create`/`Delete` are untouched raw reads (not
+  // flagged by the rule — only EditAll/ViewAll/ViewBasic are). Pure rename: no
+  // field-specific EditX key exists on this resource-level permission object, so
+  // canEditAll matches the old raw `permissions.EditAll` exactly.
+  const canEditAll = useMemo(
+    () => getDerivedPermissionFlags(permissions).canEditAll,
+    [permissions]
+  );
+
   const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
     useMemo(
       () => ({
         hasCreatePermission: permissions.Create,
         hasDeletePermission: permissions.Delete,
-        hasEditPermission: permissions.EditAll,
+        hasEditPermission: canEditAll,
       }),
-      [permissions.Create, permissions.Delete, permissions.EditAll]
+      [permissions.Create, permissions.Delete, canEditAll]
     );
 
   const selectedFolder = useMemo(
