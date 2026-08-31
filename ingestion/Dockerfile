@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.0-python3.12
+FROM apache/airflow:3.3.1-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -47,12 +47,20 @@ RUN apt-get -qq update \
   # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
+  # linux-libc-dev (source pkg "linux") -> kernel headers that libc6-dev pulls in for
+  # build-essential. A container runs the host kernel, so the headers are a build
+  # artifact and the kernel CVEs scanners report against them are not reachable at
+  # runtime. Tracked here so the image takes bookworm-security's kernel headers
+  # rather than whatever the base image froze. This does NOT clear CVE-2026-68082:
+  # that fix exists only in trixie-security (6.12.105-1, DSA-6466-1), and bookworm
+  # and bookworm-security are both still "vulnerable" on the 6.1 line. The image
+  # that reports it is trixie-based -- see ingestion/operators/docker/Dockerfile.
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
   # docker-ce-cli comes from the airflow base and nothing in this image runs it:
   # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
   # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
@@ -122,7 +130,7 @@ ARG RI_VERSION="1.13.5.0"
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.0/constraints-3.12.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
@@ -138,8 +146,10 @@ RUN pip install "py-spy>=0.3.14"
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
-# remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# Keep providers required by Airflow core and OpenMetadata's supported runtime.
+# The removed Elasticsearch provider's canonical client is unused; ingestion uses elasticsearch8.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|smtp|standard" | xargs pip uninstall -y \
+  && pip uninstall elasticsearch -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
