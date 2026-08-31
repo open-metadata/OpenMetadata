@@ -13,12 +13,24 @@
 import DOMPurify from 'dompurify';
 
 export const getSanitizeContent = (html: string): string => {
-  // First, temporarily replace entity links to protect them from encoding
+  // Protect math equations from DOMPurify's unknown-tag stripping
+  const mathEquationRegex =
+    /<block-math-equation[^>]*>[\s\S]*?<\/block-math-equation>/g;
+  const mathEquations: string[] = [];
+  let mathEquationIndex = 0;
+
+  const mathProtected = html.replaceAll(mathEquationRegex, (match) => {
+    mathEquations.push(match);
+
+    return `__MATH_EQUATION_${mathEquationIndex++}__`;
+  });
+
+  // Protect entity links from DOMPurify encoding
   const entityLinkRegex = /<#E::[^>]+>/g;
   const entityLinks: string[] = [];
   let entityLinkIndex = 0;
 
-  const protectedHtml = html.replaceAll(entityLinkRegex, (match) => {
+  const protectedHtml = mathProtected.replaceAll(entityLinkRegex, (match) => {
     entityLinks.push(match);
 
     return `__ENTITY_LINK_${entityLinkIndex++}__`;
@@ -31,6 +43,11 @@ export const getSanitizeContent = (html: string): string => {
   let restoredContent = sanitizedContent;
   entityLinks.forEach((link, index) => {
     restoredContent = restoredContent.replace(`__ENTITY_LINK_${index}__`, link);
+  });
+
+  // Restore math equations
+  mathEquations.forEach((eq, index) => {
+    restoredContent = restoredContent.replace(`__MATH_EQUATION_${index}__`, eq);
   });
 
   return restoredContent;
