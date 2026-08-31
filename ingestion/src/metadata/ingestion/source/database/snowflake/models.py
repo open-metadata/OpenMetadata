@@ -14,9 +14,9 @@ Snowflake models
 import urllib
 from datetime import datetime
 from typing import Any, List, Optional  # noqa: UP035
+from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
-from requests.utils import quote  # pyright: ignore[reportPrivateImportUsage]
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
