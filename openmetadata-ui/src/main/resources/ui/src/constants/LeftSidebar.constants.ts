@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
+import { Cube01, LayersThree01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
@@ -26,7 +26,6 @@ import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketp
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
@@ -52,6 +51,13 @@ type UntitledIconType = React.ComponentType<{
 }>;
 
 const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
+
+// Same glyph the Ontology Studio page header uses, restroked to 1.2 to match
+// the sidebar's other icons.
+const OntologyStudioIcon = createIconWithStroke(
+  LayersThree01 as UntitledIconType,
+  1.2
+);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
@@ -186,7 +192,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.ONTOLOGY_EXPLORER,
         title: 'label.ontology-studio',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
-        icon: LineageIcon,
+        icon: OntologyStudioIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
