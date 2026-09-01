@@ -369,8 +369,9 @@ class TestViewLineageOverrideScope(unittest.TestCase):
             view_definition="CREATE MATERIALIZED VIEW schema1.view1 TO schema1.target AS SELECT * FROM schema1.table1",
         )
 
-    def _process(self, to_entity_fqn: str, override_view_lineage: bool = True) -> bool:
+    def _process(self, to_entity_fqn: str, override_view_lineage: bool = True, view_fqn: str = "") -> bool:
         """Run the processor on a single edge and return the resulting override flag"""
+        view_fqn = self.VIEW_FQN if view_fqn == "" else view_fqn
         lineage = Either(
             right=OMetaFQNLineageRequest(
                 from_entity_fqn="test_service.db1.schema1.table1",
@@ -385,7 +386,7 @@ class TestViewLineageOverrideScope(unittest.TestCase):
             "metadata.ingestion.source.database.lineage_processors.get_view_lineage",
             return_value=[lineage],
         ):
-            with patch("metadata.utils.fqn.build", return_value=self.VIEW_FQN):
+            with patch("metadata.utils.fqn.build", return_value=view_fqn):
                 view_lineage_processor(
                     views=[self.view],
                     queue=self.mock_queue,
@@ -421,6 +422,10 @@ class TestViewLineageOverrideScope(unittest.TestCase):
     def test_override_disabled_stays_disabled(self):
         """The flag is never turned on by the edge itself"""
         self.assertFalse(self._process(to_entity_fqn=self.VIEW_FQN, override_view_lineage=False))
+
+    def test_a_view_without_an_fqn_keeps_the_flag(self):
+        """`fqn.build` is optional-typed: an unknown view FQN decides nothing"""
+        self.assertTrue(self._process(to_entity_fqn="test_service.db1.schema1.target", view_fqn=None))
 
 
 class TestProcedureLineageProcessor(unittest.TestCase):

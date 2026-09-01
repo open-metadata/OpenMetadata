@@ -346,7 +346,7 @@ def query_lineage_processor(
                     )
 
 
-def _writes_into_view(lineage_request: LineageRequest, view_fqn: str) -> bool:
+def _writes_into_view(lineage_request: LineageRequest, view_fqn: Optional[str]) -> bool:  # noqa: UP045
     """
     Whether a view lineage edge points at the view being processed.
 
@@ -356,8 +356,11 @@ def _writes_into_view(lineage_request: LineageRequest, view_fqn: str) -> bool:
     `TO` target, for instance -- would wipe the lineage that the sibling views writing
     into that same table just created.
 
-    Edges whose target FQN is unknown keep the previous behaviour of honouring the flag.
+    Edges whose target FQN is unknown -- and views whose own FQN could not be built --
+    keep the previous behaviour of honouring the flag.
     """
+    if not view_fqn:
+        return True
     if isinstance(lineage_request, OMetaFQNLineageRequest):
         target_fqn = lineage_request.to_entity_fqn
     else:
