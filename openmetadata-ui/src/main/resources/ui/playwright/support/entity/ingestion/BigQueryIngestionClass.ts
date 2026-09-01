@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
 
 import {
@@ -19,6 +19,30 @@ import {
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
+
+const selectReactAriaOption = async (
+  page: Page,
+  trigger: Locator,
+  optionName: string
+) => {
+  await expect(trigger).toBeVisible();
+
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click({ timeout: 2_000 });
+    }
+
+    const listboxId = await trigger.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Select popup did not open');
+    }
+
+    await page
+      .locator(`[role="listbox"][id="${listboxId}"]`)
+      .getByRole('option', { name: optionName, exact: true })
+      .click({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+};
 
 class BigQueryIngestionClass extends ServiceBaseClass {
   name = '';
@@ -72,15 +96,17 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     const projectIdTaxonomy =
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
-    await page
-      .getByRole('button', { name: 'GCP Credentials Values GCP' })
-      .click();
-    await page.getByRole('option', { name: 'GCP Credentials Values' }).click();
+    await selectReactAriaOption(
+      page,
+      page.getByRole('button', { name: 'GCP Credentials Values GCP' }),
+      'GCP Credentials Values'
+    );
 
-    await page
-      .getByRole('button', { name: 'Single Project ID Project ID' })
-      .click();
-    await page.getByRole('option', { name: 'Multiple Project ID' }).click();
+    await selectReactAriaOption(
+      page,
+      page.getByRole('button', { name: 'Single Project ID Project ID' }),
+      'Multiple Project ID'
+    );
 
     const projectIds = projectId.split(',');
     for (const id of projectIds) {
