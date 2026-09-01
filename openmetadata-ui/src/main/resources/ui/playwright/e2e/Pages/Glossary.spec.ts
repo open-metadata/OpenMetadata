@@ -482,21 +482,11 @@ test.describe('Glossary tests', () => {
         page1.locator('.ant-popover:not(.ant-popover-hidden)')
       ).toHaveCount(0);
 
+      const taskResolve2 = page1.waitForResponse('/api/v1/tasks/*/resolve');
       await page1
         .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
         .click();
-      await page1
-        .getByTestId('glossary-term-reject-comment')
-        .getByRole('textbox')
-        .fill('Rejected by glossary reviewer');
-      const taskResolve2 = page1.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/tasks/') &&
-          response.url().endsWith('/resolve') &&
-          response.request().method() === 'POST'
-      );
-      await page1.getByTestId('confirm-reject-glossary-term').click();
-      expect((await taskResolve2).ok()).toBe(true);
+      await taskResolve2;
 
       await expect(
         page1.getByTestId(`${glossary1.data.terms[1].data.name}`)

@@ -266,7 +266,6 @@ export enum EntityTabs {
   RELATIONS_GRAPH = 'relations_graph',
   DATA_OBSERVABILITY = 'data_observability',
   RECOGNIZER = 'recognizer',
-  APPROVAL = 'approval',
 }
 
 export enum EntityAction {

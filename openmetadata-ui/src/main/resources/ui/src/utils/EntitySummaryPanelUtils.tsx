@@ -486,7 +486,7 @@ export const getEntityChildDetails = (
           permissions={{} as OperationPermission}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
-          <MetricExpression metric={entityInfo as Metric} />
+          <MetricExpression />
         </GenericProvider>
       );
 
