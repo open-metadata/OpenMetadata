@@ -29,6 +29,13 @@ interface PasswordStrengthMeterProps {
   password: string;
 }
 
+/**
+ * Width of the form's field column. The strength bar matches it so it lines up
+ * under the new-password input, while the rule checklist below is free to use
+ * the full card width and stay on one line.
+ */
+export const PASSWORD_FIELD_WIDTH_CLASS = 'tw:w-full tw:max-w-[360px]';
+
 const STRENGTH_LABEL: Record<StrengthLevel, string> = {
   [StrengthLevel.Weak]: 'label.weak',
   [StrengthLevel.Medium]: 'label.medium',
@@ -74,7 +81,7 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
       <Box align="center" gap={3}>
         <div
           aria-hidden
-          className="tw:h-[5px] tw:flex-1 tw:overflow-hidden tw:rounded-[10px] tw:bg-quaternary">
+          className={`tw:h-[5px] tw:shrink-0 tw:overflow-hidden tw:rounded-[10px] tw:bg-quaternary ${PASSWORD_FIELD_WIDTH_CLASS}`}>
           <div
             className={`tw:h-full tw:rounded-[10px] tw:transition-[width] ${STRENGTH_BAR_CLASS[strength]}`}
             style={{ width: `${filledPercent}%` }}
@@ -95,7 +102,9 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
           const isSatisfied = satisfiedIds.has(rule.id);
 
           return (
-            <li className="tw:flex tw:items-center tw:gap-2" key={rule.id}>
+            <li
+              className="tw:flex tw:items-center tw:gap-2 tw:whitespace-nowrap"
+              key={rule.id}>
               <CheckboxBase isSelected={isSatisfied} size="sm" />
               <Typography
                 className="tw:text-tertiary"

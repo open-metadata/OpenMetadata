@@ -23,7 +23,9 @@ import {
 } from '../../../../../utils/ToastUtils';
 import FieldRow from './FieldRow';
 import { isPasswordValid } from './PasswordStrength.utils';
-import PasswordStrengthMeter from './PasswordStrengthMeter';
+import PasswordStrengthMeter, {
+  PASSWORD_FIELD_WIDTH_CLASS,
+} from './PasswordStrengthMeter';
 
 interface ChangePasswordRowProps {
   /** `User.name` of the signed-in user whose password is being changed. */
@@ -118,38 +120,49 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({ username }) => {
 
       {isEditing && (
         <form noValidate onSubmit={handleSubmit}>
-          <Box className="tw:w-full tw:max-w-[360px]" direction="col" gap={5}>
-            <PasswordInput
-              isRequired
-              autoComplete="current-password"
-              data-testid="current-password-input"
-              label={t('label.current-password')}
-              value={form.oldPassword}
-              onChange={setField('oldPassword')}
-            />
-            <Box direction="col" gap={2}>
+          {/*
+            The column is full width so the strength meter's rule checklist can
+            use the whole card and stay on one line; every field is capped at
+            the narrower field width instead.
+          */}
+          <Box className="tw:w-full" direction="col" gap={5}>
+            <div className={PASSWORD_FIELD_WIDTH_CLASS}>
               <PasswordInput
                 isRequired
-                autoComplete="new-password"
-                data-testid="new-password-input"
-                label={t('label.new-password')}
-                value={form.newPassword}
-                onChange={setField('newPassword')}
+                autoComplete="current-password"
+                data-testid="current-password-input"
+                label={t('label.current-password')}
+                value={form.oldPassword}
+                onChange={setField('oldPassword')}
               />
+            </div>
+            <Box className="tw:w-full" direction="col" gap={2}>
+              <div className={PASSWORD_FIELD_WIDTH_CLASS}>
+                <PasswordInput
+                  isRequired
+                  autoComplete="new-password"
+                  data-testid="new-password-input"
+                  label={t('label.new-password')}
+                  value={form.newPassword}
+                  onChange={setField('newPassword')}
+                />
+              </div>
               {Boolean(form.newPassword) && (
                 <PasswordStrengthMeter password={form.newPassword} />
               )}
             </Box>
-            <PasswordInput
-              isRequired
-              autoComplete="new-password"
-              data-testid="confirm-password-input"
-              hint={isMismatch ? t('label.password-not-match') : undefined}
-              isInvalid={isMismatch}
-              label={t('label.confirm-new-password')}
-              value={form.confirmPassword}
-              onChange={setField('confirmPassword')}
-            />
+            <div className={PASSWORD_FIELD_WIDTH_CLASS}>
+              <PasswordInput
+                isRequired
+                autoComplete="new-password"
+                data-testid="confirm-password-input"
+                hint={isMismatch ? t('label.password-not-match') : undefined}
+                isInvalid={isMismatch}
+                label={t('label.confirm-new-password')}
+                value={form.confirmPassword}
+                onChange={setField('confirmPassword')}
+              />
+            </div>
             <Box gap={3}>
               <Button
                 color="primary"
