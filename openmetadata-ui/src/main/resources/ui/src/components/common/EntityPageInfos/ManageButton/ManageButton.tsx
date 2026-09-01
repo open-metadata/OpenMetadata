@@ -81,6 +81,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   const [isEntityRestoring, setIsEntityRestoring] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
+  const canRestoreEntity = Boolean(canRestore && onRestoreEntity);
 
   const isProfilerSupported = useMemo(
     () =>
@@ -131,9 +132,17 @@ const ManageButton: FC<ManageButtonProps> = ({
   ]);
 
   const handleRestore = async () => {
+    // A parent can remove the handler while confirmation is open. Close the
+    // now-unusable modal instead of leaving the user in a dead end.
+    if (!onRestoreEntity) {
+      setShowReactiveModal(false);
+
+      return;
+    }
+
     try {
       setIsEntityRestoring(true);
-      const isRestoreSuccessful = await onRestoreEntity?.();
+      const isRestoreSuccessful = await onRestoreEntity();
       if (isRestoreSuccessful === true) {
         setShowReactiveModal(false);
       }
@@ -178,7 +187,8 @@ const ManageButton: FC<ManageButtonProps> = ({
       ? ([
           {
             label: (
-              <Tooltip title={canRestore ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+              <Tooltip
+                title={canRestoreEntity ? '' : t(NO_PERMISSION_FOR_ACTION)}>
                 <ManageButtonItemLabel
                   description={t('message.restore-action-description', {
                     entityType,
@@ -190,7 +200,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               </Tooltip>
             ),
             onClick: (e) => {
-              if (canRestore) {
+              if (canRestoreEntity) {
                 e.domEvent.stopPropagation();
                 setIsDropdownOpen(false);
                 setShowReactiveModal(true);

@@ -243,4 +243,47 @@ describe('Test manage button component', () => {
     expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument();
     expect(mockOnRestoreEntity).not.toHaveBeenCalled();
   });
+
+  it('should not open the restore modal without a restore handler', async () => {
+    render(
+      <ManageButton
+        {...mockProps}
+        canRestore
+        deleted
+        onRestoreEntity={undefined}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument();
+  });
+
+  it('should close an open restore modal if its handler is removed', async () => {
+    const { rerender } = render(
+      <ManageButton {...mockProps} canRestore deleted />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(await screen.findByTestId('restore-modal-body')).toBeInTheDocument();
+
+    rerender(
+      <ManageButton
+        {...mockProps}
+        canRestore
+        deleted
+        onRestoreEntity={undefined}
+      />
+    );
+
+    const modalRestoreButton = await screen.findAllByText('label.restore');
+    fireEvent.click(modalRestoreButton[1]);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument()
+    );
+  });
 });
