@@ -51,8 +51,8 @@ import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintD
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';

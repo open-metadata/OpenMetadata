@@ -334,8 +334,7 @@ export const DataAssetSummaryPanelV1 = ({
         flags.canEditAll &&
         panelPath !== ENTITY_PATH.dataProductsTab,
       editDescriptionPermission: canEditSummary && flags.canEditDescription,
-      editGlossaryTermsPermission:
-        canEditSummary && flags.canEditGlossaryTerms,
+      editGlossaryTermsPermission: canEditSummary && flags.canEditGlossaryTerms,
       // Columns inherit owners from table - not editable
       editOwnerPermission:
         canEditSummary && !isColumnEntity && flags.canEditOwners,

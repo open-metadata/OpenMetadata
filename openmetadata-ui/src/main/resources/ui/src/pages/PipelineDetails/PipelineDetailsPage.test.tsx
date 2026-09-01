@@ -16,8 +16,8 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import PipelineDetailsPage from './PipelineDetailsPage.component';
 
 jest.mock('react-router-dom', () => ({

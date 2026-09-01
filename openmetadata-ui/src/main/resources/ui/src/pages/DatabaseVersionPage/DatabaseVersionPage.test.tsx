@@ -104,7 +104,10 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 const mockUseEntityPermissions = jest.fn();
 
 const setMockPermissions = (
-  overrides: Partial<OperationPermission> = { ViewAll: true, ViewCustomFields: true }
+  overrides: Partial<OperationPermission> = {
+    ViewAll: true,
+    ViewCustomFields: true,
+  }
 ) => {
   const permissions = overrides as OperationPermission;
   mockUseEntityPermissions.mockReturnValue({

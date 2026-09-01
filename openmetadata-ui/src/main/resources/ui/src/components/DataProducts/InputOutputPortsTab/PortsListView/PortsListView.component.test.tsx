@@ -33,13 +33,14 @@ jest.mock('../../../../rest/dataProductAPI', () => ({
 // directly on the `actionPopoverContent` prop the component computes, rather than
 // driving the real card's DOM.
 jest.mock('../../../ExploreV1/ExploreSearchCard/ExploreSearchCard', () =>
-  jest.fn().mockImplementation(({ actionPopoverContent, id }) => (
-    <div data-testid={`explore-card-${id}`}>{actionPopoverContent}</div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(({ actionPopoverContent, id }) => (
+      <div data-testid={`explore-card-${id}`}>{actionPopoverContent}</div>
+    ))
 );
 
-const mockGetDataProductInputPorts =
-  getDataProductInputPorts as jest.Mock;
+const mockGetDataProductInputPorts = getDataProductInputPorts as jest.Mock;
 
 const defaultProps: PortsListViewProps = {
   dataProductFqn: 'test.dataproduct',
@@ -85,8 +86,7 @@ describe('PortsListView — permissions', () => {
     await waitFor(() => {
       expect(screen.getByTestId('explore-card-port-1')).toBeInTheDocument();
     });
-    expect(
-      screen.queryByTestId('port-actions-port-1')
-    ).not.toBeInTheDocument();
+
+    expect(screen.queryByTestId('port-actions-port-1')).not.toBeInTheDocument();
   });
 });

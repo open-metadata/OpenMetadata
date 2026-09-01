@@ -193,13 +193,11 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(
-        ({ onViewAll }: { onViewAll?: () => void }) => (
-          <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
-            AnnouncementsWidgetV3Body.component
-          </button>
-        )
-      )
+      .mockImplementation(({ onViewAll }: { onViewAll?: () => void }) => (
+        <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+          AnnouncementsWidgetV3Body.component
+        </button>
+      ))
 );
 jest.mock('../../../rest/announcementsAPI', () => ({
   getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),

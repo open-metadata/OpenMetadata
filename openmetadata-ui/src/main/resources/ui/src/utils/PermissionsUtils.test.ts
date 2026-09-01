@@ -22,7 +22,10 @@ const resourcePermission = (access: Access) => ({
 
 describe('conditionalAllow translation (#31783)', () => {
   it('entity-level (default) keeps conditionalAllow as false', () => {
-    const op = getOperationPermissions(resourcePermission(Access.ConditionalAllow));
+    const op = getOperationPermissions(
+      resourcePermission(Access.ConditionalAllow)
+    );
+
     expect(op[Operation.ViewAll]).toBe(false);
   });
 
@@ -31,18 +34,33 @@ describe('conditionalAllow translation (#31783)', () => {
       resourcePermission(Access.ConditionalAllow),
       true
     );
+
     expect(op[Operation.ViewAll]).toBe(true);
   });
 
   it('deny and conditionalDeny stay false in both modes', () => {
-    for (const access of [Access.Deny, Access.ConditionalDeny, Access.NotAllow]) {
-      expect(getOperationPermissions(resourcePermission(access))[Operation.ViewAll]).toBe(false);
-      expect(getOperationPermissions(resourcePermission(access), true)[Operation.ViewAll]).toBe(false);
+    for (const access of [
+      Access.Deny,
+      Access.ConditionalDeny,
+      Access.NotAllow,
+    ]) {
+      expect(
+        getOperationPermissions(resourcePermission(access))[Operation.ViewAll]
+      ).toBe(false);
+      expect(
+        getOperationPermissions(resourcePermission(access), true)[
+          Operation.ViewAll
+        ]
+      ).toBe(false);
     }
   });
 
   it('getUIPermission forwards allowConditional', () => {
-    const ui = getUIPermission([resourcePermission(Access.ConditionalAllow)], true);
+    const ui = getUIPermission(
+      [resourcePermission(Access.ConditionalAllow)],
+      true
+    );
+
     expect(ui.databaseService[Operation.ViewAll]).toBe(true);
   });
 });

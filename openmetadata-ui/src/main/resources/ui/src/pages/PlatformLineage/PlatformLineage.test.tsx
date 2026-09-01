@@ -749,7 +749,9 @@ describe('PlatformLineage Component Logic', () => {
           })
       );
 
-      const { container } = render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.querySelector('[data-testid="loader"]')).toBeTruthy();
     });
@@ -762,7 +764,9 @@ describe('PlatformLineage Component Logic', () => {
           })
       );
 
-      const { container } = render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.querySelector('[data-testid="loader"]')).toBeTruthy();
 
@@ -791,7 +795,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should not render breadcrumb in fullscreen mode', async () => {
       mockLocationSearch = '?fullscreen=true';
 
-      const { container } = render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.textContent).not.toContain('Breadcrumb');
     });
@@ -799,7 +805,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should render breadcrumb when not in fullscreen', async () => {
       mockLocationSearch = '';
 
-      const { container } = render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       await waitFor(() => {
         expect(container.textContent).toContain('Breadcrumb');
@@ -809,7 +817,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should not render page header in fullscreen mode', async () => {
       mockLocationSearch = '?fullscreen=true';
 
-      const { container } = render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.textContent).not.toContain('PageHeader');
     });
@@ -817,7 +827,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should render page header when not in fullscreen', async () => {
       mockLocationSearch = '';
 
-      const { container } = render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       await waitFor(() => {
         expect(container.textContent).toContain('PageHeader');

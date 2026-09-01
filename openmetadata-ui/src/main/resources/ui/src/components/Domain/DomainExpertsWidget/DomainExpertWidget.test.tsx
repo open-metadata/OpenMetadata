@@ -52,7 +52,8 @@ jest.mock(
 
 const mockGetOwnerVersionLabel = jest.fn().mockReturnValue(null);
 jest.mock('../../../utils/EntityVersionUtils', () => ({
-  getOwnerVersionLabel: (...args: unknown[]) => mockGetOwnerVersionLabel(...args),
+  getOwnerVersionLabel: (...args: unknown[]) =>
+    mockGetOwnerVersionLabel(...args),
 }));
 
 const setMockContext = (

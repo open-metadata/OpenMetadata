@@ -336,9 +336,8 @@ describe('FileColumnsTable', () => {
   // renders dataSource directly, bypassing antd-style column render callbacks).
   const MockedTable = jest.requireMock('../../../common/Table/Table');
   const getRenderedProps = (columnKey: string, columnData: Column) => {
-    const { columns } = MockedTable.mock.calls[
-      MockedTable.mock.calls.length - 1
-    ][0];
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
     const column = columns.find((c: { key: string }) => c.key === columnKey);
 
     return column.render(columnData.tags, columnData, 0).props;
@@ -363,9 +362,9 @@ describe('FileColumnsTable', () => {
   it('denies glossary term edit when EditGlossaryTerms is explicitly false, even with EditAll true', () => {
     renderFileColumnsTable({}, { EditAll: true, EditGlossaryTerms: false });
 
-    expect(
-      getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess
-    ).toBe(false);
+    expect(getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 
   it('grants description/tags/glossary edit when only EditAll is true', () => {
@@ -377,9 +376,9 @@ describe('FileColumnsTable', () => {
     expect(getRenderedProps('tags', mockColumns[0]).hasTagEditAccess).toBe(
       true
     );
-    expect(
-      getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess
-    ).toBe(true);
+    expect(getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess).toBe(
+      true
+    );
   });
 
   it('denies edit for all three fields when the file is deleted, even with EditAll true', () => {
@@ -391,8 +390,8 @@ describe('FileColumnsTable', () => {
     expect(getRenderedProps('tags', mockColumns[0]).hasTagEditAccess).toBe(
       false
     );
-    expect(
-      getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess
-    ).toBe(false);
+    expect(getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 });

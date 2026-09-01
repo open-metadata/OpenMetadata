@@ -27,9 +27,9 @@ import {
   mockAlertEventDiagnosticCounts,
 } from '../../mocks/Alerts.mock';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
-import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
+import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import AlertDetailsPage from './AlertDetailsPage';
 
 // AlertDetailsPage renders the real (unmocked) useAlertDetailsPermissions,

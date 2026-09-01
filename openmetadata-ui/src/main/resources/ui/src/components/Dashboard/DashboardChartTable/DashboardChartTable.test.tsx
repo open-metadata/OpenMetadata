@@ -14,8 +14,8 @@ import { act, render, waitFor } from '@testing-library/react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ChartType } from '../DashboardDetails/DashboardDetails.interface';
 import { DashboardChartTable } from './DashboardChartTable';
 

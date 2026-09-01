@@ -44,17 +44,21 @@ describe('useBulkEntityPermissions', () => {
         ? Promise.reject(new Error('403'))
         : Promise.resolve({
             resource: 'testCase',
-            permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
+            permissions: [
+              { operation: Operation.EditAll, access: Access.Allow },
+            ],
           })
     );
   });
 
   it('resolves a flags entry per fqn; failures degrade to no-permission', async () => {
     const { result } = renderHook(
-      () => useBulkEntityPermissions(ResourceEntity.TEST_CASE, ['a', 'bad', 'c']),
+      () =>
+        useBulkEntityPermissions(ResourceEntity.TEST_CASE, ['a', 'bad', 'c']),
       { wrapper: createWrapper() }
     );
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(result.current.flagsByFqn['a'].canEditAll).toBe(true);
     expect(result.current.flagsByFqn['bad'].canEditAll).toBe(false);
     expect(result.current.flagsByFqn['c'].canEditAll).toBe(true);
@@ -69,6 +73,7 @@ describe('useBulkEntityPermissions', () => {
     const calls = mockApi.mock.calls.length;
     rerender({ fqns: ['a', 'c'] }); // new array, same content → same queryKeys → cache
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(mockApi.mock.calls.length).toBe(calls);
   });
 
@@ -77,6 +82,7 @@ describe('useBulkEntityPermissions', () => {
       () => useBulkEntityPermissions(ResourceEntity.TEST_CASE, []),
       { wrapper: createWrapper() }
     );
+
     expect(result.current.isLoading).toBe(false);
     expect(result.current.flagsByFqn).toEqual({});
     expect(mockApi).not.toHaveBeenCalled();
@@ -89,13 +95,16 @@ describe('useBulkEntityPermissions', () => {
       { wrapper }
     );
     await waitFor(() => expect(bulk.result.current.isLoading).toBe(false));
+
     expect(mockApi).toHaveBeenCalledTimes(1);
+
     // A second bulk hook over the same fqn hits the warm cache.
     const again = renderHook(
       () => useBulkEntityPermissions(ResourceEntity.TEST_CASE, ['a']),
       { wrapper }
     );
     await waitFor(() => expect(again.result.current.isLoading).toBe(false));
+
     expect(mockApi).toHaveBeenCalledTimes(1);
   });
 });

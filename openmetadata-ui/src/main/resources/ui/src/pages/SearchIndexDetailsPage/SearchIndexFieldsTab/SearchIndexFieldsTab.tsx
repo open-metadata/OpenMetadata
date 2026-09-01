@@ -39,7 +39,10 @@ function SearchIndexFieldsTab() {
   // the old code — same isReadOnly-vs-deleted separation as the sibling SchemaTable
   // family. All 3 raw `EditAll || EditField` OR-expressions are explicit-deny-wins
   // fixes: getDerivedPermissionFlags prioritizes the field-specific key over EditAll.
-  const flags = useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const {
     hasDescriptionEditAccess,

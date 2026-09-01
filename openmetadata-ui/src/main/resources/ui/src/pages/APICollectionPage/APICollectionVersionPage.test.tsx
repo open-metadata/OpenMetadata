@@ -90,9 +90,7 @@ jest.mock('../../hooks/paging/usePaging', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
-  useParams: jest
-    .fn()
-    .mockReturnValue({ version: '0.2', tab: 'apiEndpoint' }),
+  useParams: jest.fn().mockReturnValue({ version: '0.2', tab: 'apiEndpoint' }),
 }));
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -137,7 +135,9 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
 );
 
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
-  jest.fn().mockImplementation(({ name }: { name: string }) => <div>{name}</div>)
+  jest
+    .fn()
+    .mockImplementation(({ name }: { name: string }) => <div>{name}</div>)
 );
 
 jest.mock('../../components/common/EntityDescription/Description', () =>
@@ -145,13 +145,16 @@ jest.mock('../../components/common/EntityDescription/Description', () =>
 );
 
 const mockCustomPropertyTable = jest.fn();
-jest.mock('../../components/common/CustomPropertyTable/CustomPropertyTable', () => ({
-  CustomPropertyTable: (props: { hasPermission: boolean }) => {
-    mockCustomPropertyTable(props);
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: (props: { hasPermission: boolean }) => {
+      mockCustomPropertyTable(props);
 
-    return <div>{CUSTOM_PROPERTY_TABLE}</div>;
-  },
-}));
+      return <div>{CUSTOM_PROPERTY_TABLE}</div>;
+    },
+  })
+);
 
 jest.mock('./APIEndpointsTab', () =>
   jest.fn().mockImplementation(() => <div>{API_ENDPOINTS_TAB}</div>)

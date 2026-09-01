@@ -57,9 +57,8 @@ jest.mock('../KnowledgeCard/KnowledgeCard', () =>
   jest.fn().mockReturnValue(null)
 );
 
-jest.mock(
-  '../KnowledgePageListRightPanel/KnowledgePageListRightPanel',
-  () => jest.fn().mockReturnValue(null)
+jest.mock('../KnowledgePageListRightPanel/KnowledgePageListRightPanel', () =>
+  jest.fn().mockReturnValue(null)
 );
 
 jest.mock('../QuickLinkFormModal/QuickLinkFormModal', () => ({
@@ -99,9 +98,7 @@ describe('KnowledgePageListComponent permissions', () => {
     renderComponent({ ViewAll: true, Create: true });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('add-knowledge-page-btn')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('add-knowledge-page-btn')).toBeInTheDocument();
     });
   });
 

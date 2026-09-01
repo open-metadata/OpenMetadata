@@ -338,22 +338,25 @@ const DataProductsDetailsPage = ({
   // site below, which only ever treat these as booleans in `? [] : []` / prop-boolean
   // position). editDescriptionPermission/editOwnerPermission from the old memo were computed
   // but never destructured/consumed anywhere — confirmed dead, dropped (Task 7C precedent).
-  const { editDisplayNamePermission, editAllPermission, deleteDataProductPermission } =
-    useMemo(() => {
-      if (isVersionsView) {
-        return {
-          editDisplayNamePermission: false,
-          editAllPermission: false,
-          deleteDataProductPermission: false,
-        };
-      }
-
+  const {
+    editDisplayNamePermission,
+    editAllPermission,
+    deleteDataProductPermission,
+  } = useMemo(() => {
+    if (isVersionsView) {
       return {
-        editDisplayNamePermission: canEditDisplayName,
-        editAllPermission: canEditAll,
-        deleteDataProductPermission: canDelete,
+        editDisplayNamePermission: false,
+        editAllPermission: false,
+        deleteDataProductPermission: false,
       };
-    }, [isVersionsView, canEditDisplayName, canEditAll, canDelete]);
+    }
+
+    return {
+      editDisplayNamePermission: canEditDisplayName,
+      editAllPermission: canEditAll,
+      deleteDataProductPermission: canDelete,
+    };
+  }, [isVersionsView, canEditDisplayName, canEditAll, canDelete]);
 
   const { currentUser } = useApplicationStore();
 

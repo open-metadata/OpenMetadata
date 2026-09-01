@@ -38,13 +38,13 @@ import {
 } from '../../../../../rest/dataModelsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../../../utils/TablePureUtils';
-import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getAllTags } from '../../../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';

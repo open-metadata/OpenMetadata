@@ -55,8 +55,8 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
-import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,

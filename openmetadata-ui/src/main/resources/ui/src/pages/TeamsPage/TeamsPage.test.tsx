@@ -118,7 +118,9 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 // QueryClientProvider.
 const mockUseEntityPermissions = jest.fn();
 
-const setMockPermissions = (overrides: Partial<Record<string, boolean>> = {}) => {
+const setMockPermissions = (
+  overrides: Partial<Record<string, boolean>> = {}
+) => {
   const permissions = overrides as never;
   mockUseEntityPermissions.mockReturnValue({
     permissions,

@@ -43,13 +43,18 @@ describe('useEntityPermissions', () => {
       () => useEntityPermissions(ResourceEntity.TABLE, 'svc.db.schema.tbl'),
       { wrapper: createWrapper() }
     );
+
     expect(result.current.isLoading).toBe(true);
     expect(result.current.canEditTags).toBe(false);
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(result.current.canEditTags).toBe(true); // EditAll fallback
     expect(result.current.canDelete).toBe(true);
-    expect(mockApi).toHaveBeenCalledWith(ResourceEntity.TABLE, 'svc.db.schema.tbl');
+    expect(mockApi).toHaveBeenCalledWith(
+      ResourceEntity.TABLE,
+      'svc.db.schema.tbl'
+    );
   });
 
   it('entity-level conditionalAllow stays false (strict translation)', async () => {
@@ -64,24 +69,29 @@ describe('useEntityPermissions', () => {
       { wrapper: createWrapper() }
     );
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(result.current.canEditAll).toBe(false);
   });
 
   it('deleted option gates edit flags', async () => {
     const { result } = renderHook(
-      () => useEntityPermissions(ResourceEntity.TABLE, 'fqn', { deleted: true }),
+      () =>
+        useEntityPermissions(ResourceEntity.TABLE, 'fqn', { deleted: true }),
       { wrapper: createWrapper() }
     );
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(result.current.canEditTags).toBe(false);
     expect(result.current.canDelete).toBe(true);
   });
 
   it('enabled=false performs no fetch and stays non-loading', () => {
     const { result } = renderHook(
-      () => useEntityPermissions(ResourceEntity.TABLE, 'fqn', { enabled: false }),
+      () =>
+        useEntityPermissions(ResourceEntity.TABLE, 'fqn', { enabled: false }),
       { wrapper: createWrapper() }
     );
+
     expect(mockApi).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
@@ -90,6 +100,7 @@ describe('useEntityPermissions', () => {
     renderHook(() => useEntityPermissions(ResourceEntity.TABLE, ''), {
       wrapper: createWrapper(),
     });
+
     expect(mockApi).not.toHaveBeenCalled();
   });
 
@@ -100,16 +111,24 @@ describe('useEntityPermissions', () => {
       { wrapper: createWrapper() }
     );
     await waitFor(() => expect(result.current.error).toBeTruthy());
+
     expect(result.current.isLoading).toBe(false);
     expect(result.current.canEditTags).toBe(false);
   });
 
   it('two hook instances for the same entity share one request (dedup)', async () => {
     const wrapper = createWrapper();
-    const a = renderHook(() => useEntityPermissions(ResourceEntity.TABLE, 'fqn'), { wrapper });
-    const b = renderHook(() => useEntityPermissions(ResourceEntity.TABLE, 'fqn'), { wrapper });
+    const a = renderHook(
+      () => useEntityPermissions(ResourceEntity.TABLE, 'fqn'),
+      { wrapper }
+    );
+    const b = renderHook(
+      () => useEntityPermissions(ResourceEntity.TABLE, 'fqn'),
+      { wrapper }
+    );
     await waitFor(() => expect(a.result.current.isLoading).toBe(false));
     await waitFor(() => expect(b.result.current.isLoading).toBe(false));
+
     expect(mockApi).toHaveBeenCalledTimes(1);
   });
 
@@ -121,18 +140,25 @@ describe('useEntityPermissions', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     const before = result.current.can;
     rerender();
+
     expect(result.current.can).toBe(before);
   });
 
   it('fetches by id when passed { id }, under a distinct cache key', async () => {
-    const { getEntityPermissionById } = jest.requireMock('../../rest/permissionAPI');
+    const { getEntityPermissionById } = jest.requireMock(
+      '../../rest/permissionAPI'
+    );
     (getEntityPermissionById as jest.Mock).mockResolvedValue(apiResponse);
     const { result } = renderHook(
       () => useEntityPermissions(ResourceEntity.TABLE, { id: 'uuid-1' }),
       { wrapper: createWrapper() }
     );
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(getEntityPermissionById).toHaveBeenCalledWith(ResourceEntity.TABLE, 'uuid-1');
+
+    expect(getEntityPermissionById).toHaveBeenCalledWith(
+      ResourceEntity.TABLE,
+      'uuid-1'
+    );
     expect(mockApi).not.toHaveBeenCalled();
     expect(result.current.canEditTags).toBe(true);
   });
@@ -144,6 +170,7 @@ describe('useEntityPermissions', () => {
     );
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     await act(() => result.current.refresh());
+
     expect(mockApi).toHaveBeenCalledTimes(2);
   });
 });

@@ -212,7 +212,8 @@ describe('useAgentPermissions', () => {
       })
     );
 
-    const callsAfterFirstResolve = mockGetEntityPermissionByFqn.mock.calls.length;
+    const callsAfterFirstResolve =
+      mockGetEntityPermissionByFqn.mock.calls.length;
 
     expect(callsAfterFirstResolve).toBe(2);
 

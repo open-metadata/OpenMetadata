@@ -137,22 +137,24 @@ jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
   __esModule: true,
   default: jest
     .fn()
-    .mockImplementation(({ onDescriptionUpdate, description, hasPermission }) => (
-      <div
-        data-has-permission={String(hasPermission)}
-        data-testid="description-section">
-        <span>Description: {description || 'No description'}</span>
-        {onDescriptionUpdate && (
-          <button
-            data-testid="update-description"
-            onClick={async () => {
-              await onDescriptionUpdate('Updated description');
-            }}>
-            Update Description
-          </button>
-        )}
-      </div>
-    )),
+    .mockImplementation(
+      ({ onDescriptionUpdate, description, hasPermission }) => (
+        <div
+          data-has-permission={String(hasPermission)}
+          data-testid="description-section">
+          <span>Description: {description || 'No description'}</span>
+          {onDescriptionUpdate && (
+            <button
+              data-testid="update-description"
+              onClick={async () => {
+                await onDescriptionUpdate('Updated description');
+              }}>
+              Update Description
+            </button>
+          )}
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../common/TagsSection/TagsSection', () => ({

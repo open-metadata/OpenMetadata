@@ -86,8 +86,7 @@ jest.mock(
 const mockManageButton = jest.fn().mockReturnValue(<div>ManageButton</div>);
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
-  () =>
-    jest.fn().mockImplementation((props) => mockManageButton(props))
+  () => jest.fn().mockImplementation((props) => mockManageButton(props))
 );
 
 jest.mock('../../../constants/constants', () => ({
@@ -219,7 +218,10 @@ describe('Test Roles Details Page', () => {
     // key would make getPrioritizedEditPermission's "key present" check see EditDisplayName
     // as an explicit deny rather than truly absent, masking the EditAll fallback this test
     // exists to cover (SchemaTable.test.tsx precedent).
-    setMockPermissions({ ViewBasic: true, EditAll: true } as OperationPermission);
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+    } as OperationPermission);
 
     await act(async () => {
       render(<RolesDetailPage />);

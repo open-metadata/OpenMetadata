@@ -30,8 +30,8 @@ import {
   getOperationPermissions,
 } from '../../utils/PermissionsUtils';
 import {
-  PERMISSION_STALE_TIME,
   permissionQueryKeys,
+  PERMISSION_STALE_TIME,
 } from './permissionQueryKeys';
 
 /** FQN as a plain string (primary); `{ id }` for call sites that only hold an entity id. */

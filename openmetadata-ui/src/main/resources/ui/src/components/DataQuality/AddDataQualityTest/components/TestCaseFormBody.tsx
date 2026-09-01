@@ -70,9 +70,9 @@ import {
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';

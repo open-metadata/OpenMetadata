@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
@@ -20,7 +21,6 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../rest/tableAPI';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import SchemaTable from './SchemaTable.component';

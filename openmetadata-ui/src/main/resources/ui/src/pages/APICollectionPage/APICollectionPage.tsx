@@ -164,9 +164,13 @@ const APICollectionPage: FunctionComponent = () => {
   // the view-tier call above, it was captured before `deleted` existed and would silently
   // return an ungated edit permission.
   const { canEditCustomFields: editCustomAttributePermission } =
-    useEntityPermissions(ResourceEntity.API_COLLECTION, decodedAPICollectionFQN, {
-      deleted: Boolean(apiCollection?.deleted),
-    });
+    useEntityPermissions(
+      ResourceEntity.API_COLLECTION,
+      decodedAPICollectionFQN,
+      {
+        deleted: Boolean(apiCollection?.deleted),
+      }
+    );
 
   const isError = useMemo(
     () =>

@@ -124,8 +124,10 @@ function SchemaTablesTab({
   // expression explicitly ANDed `!databaseSchemaDetails.deleted`.
   const canBulkEditTables = useMemo(
     () =>
-      getDerivedPermissionFlags(permissions.table, databaseSchemaDetails.deleted)
-        .canEditAll,
+      getDerivedPermissionFlags(
+        permissions.table,
+        databaseSchemaDetails.deleted
+      ).canEditAll,
     [permissions.table, databaseSchemaDetails.deleted]
   );
 

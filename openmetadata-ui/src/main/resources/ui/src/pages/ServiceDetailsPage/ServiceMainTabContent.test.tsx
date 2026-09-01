@@ -149,15 +149,13 @@ jest.mock('../../components/Entity/EntityRightPanel/EntityRightPanel', () =>
 jest.mock('../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
-    .mockImplementation(
-      ({ hasEditAccess }: { hasEditAccess?: boolean }) => (
-        <div data-testid="description">
-          <span data-testid="has-edit-access">
-            {String(Boolean(hasEditAccess))}
-          </span>
-        </div>
-      )
-    )
+    .mockImplementation(({ hasEditAccess }: { hasEditAccess?: boolean }) => (
+      <div data-testid="description">
+        <span data-testid="has-edit-access">
+          {String(Boolean(hasEditAccess))}
+        </span>
+      </div>
+    ))
 );
 
 const mockServiceDetails = {
@@ -239,9 +237,7 @@ describe('ServiceMainTabContent permission wiring', () => {
 
     expect(screen.getByTestId('has-edit-access')).toHaveTextContent('true');
     expect(screen.getByTestId('edit-data-product')).toHaveTextContent('true');
-    expect(screen.getByTestId('edit-glossary-terms')).toHaveTextContent(
-      'true'
-    );
+    expect(screen.getByTestId('edit-glossary-terms')).toHaveTextContent('true');
     expect(screen.getByTestId('edit-tags')).toHaveTextContent('true');
     expect(screen.getByTestId('view-custom-properties')).toHaveTextContent(
       'true'
@@ -270,9 +266,7 @@ describe('ServiceMainTabContent permission wiring', () => {
     });
 
     expect(screen.getByTestId('has-edit-access')).toHaveTextContent('false');
-    expect(screen.getByTestId('edit-data-product')).toHaveTextContent(
-      'false'
-    );
+    expect(screen.getByTestId('edit-data-product')).toHaveTextContent('false');
     expect(screen.getByTestId('edit-glossary-terms')).toHaveTextContent(
       'false'
     );

@@ -21,9 +21,11 @@ import SchemaTablesTab from './SchemaTablesTab';
 // bulk-edit-table button (getBulkEditButton). No prior test coverage existed for this file.
 
 jest.mock('../../components/common/Table/Table', () =>
-  jest.fn().mockImplementation(({ extraTableFilters }) => (
-    <div data-testid="schema-tables-table">{extraTableFilters}</div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(({ extraTableFilters }) => (
+      <div data-testid="schema-tables-table">{extraTableFilters}</div>
+    ))
 );
 
 jest.mock('../../components/common/DisplayName/DisplayName', () =>
@@ -59,9 +61,7 @@ jest.mock('../../hooks/useTableFilters', () => ({
 }));
 
 jest.mock('../../rest/tableAPI', () => ({
-  getTableList: jest
-    .fn()
-    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+  getTableList: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
   patchTableDetails: jest.fn(),
 }));
 
@@ -127,9 +127,7 @@ describe('SchemaTablesTab — permissions', () => {
   it('shows the bulk-edit-table button when EditAll is granted and the schema is not deleted', async () => {
     renderTab();
 
-    expect(
-      await screen.findByTestId('bulk-edit-table')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('bulk-edit-table')).toBeInTheDocument();
   });
 
   it('hides the bulk-edit-table button when EditAll is not granted', async () => {
@@ -137,7 +135,9 @@ describe('SchemaTablesTab — permissions', () => {
 
     renderTab();
 
-    expect(await screen.findByTestId('schema-tables-table')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('schema-tables-table')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('bulk-edit-table')).not.toBeInTheDocument();
   });
 
@@ -146,7 +146,9 @@ describe('SchemaTablesTab — permissions', () => {
 
     renderTab();
 
-    expect(await screen.findByTestId('schema-tables-table')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('schema-tables-table')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('bulk-edit-table')).not.toBeInTheDocument();
   });
 });

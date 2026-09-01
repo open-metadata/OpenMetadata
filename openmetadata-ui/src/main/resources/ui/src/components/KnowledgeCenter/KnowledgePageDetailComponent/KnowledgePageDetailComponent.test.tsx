@@ -96,9 +96,9 @@ jest.mock('../../../hooks/currentUserStore/useCurrentUserStore', () => ({
 // runs before this file's own top-level `const` statements — a lazy closure avoids the TDZ
 // crash (same gotcha noted in task-8B1-report.md).
 jest.mock('../../../rest/knowledgeCenterAPI', () => ({
-  getKnowledgePageByFqn: jest.fn().mockImplementation(() =>
-    Promise.resolve(MOCK_KNOWLEDGE_PAGE)
-  ),
+  getKnowledgePageByFqn: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_KNOWLEDGE_PAGE)),
   patchKnowledgePage: jest.fn(),
   followKnowledgePage: jest.fn(),
   unFollowKnowledgePage: jest.fn(),
@@ -139,9 +139,8 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
-  () => jest.fn().mockReturnValue(null)
+jest.mock('../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () =>
+  jest.fn().mockReturnValue(null)
 );
 
 jest.mock(
@@ -176,10 +175,9 @@ jest.mock('../../BlockEditor/BlockEditor', () => ({
 }));
 
 const renderComponent = () =>
-  render(
-    <KnowledgePageDetailComponent onPageChange={jest.fn()} />,
-    { wrapper: MemoryRouter }
-  );
+  render(<KnowledgePageDetailComponent onPageChange={jest.fn()} />, {
+    wrapper: MemoryRouter,
+  });
 
 describe('KnowledgePageDetailComponent permissions', () => {
   beforeEach(() => {

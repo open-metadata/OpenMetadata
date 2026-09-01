@@ -162,7 +162,9 @@ const mockUseGenericContextResult = {
 };
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => mockUseGenericContextResult),
+  useGenericContext: jest
+    .fn()
+    .mockImplementation(() => mockUseGenericContextResult),
 }));
 
 describe('Test MlModel feature list', () => {

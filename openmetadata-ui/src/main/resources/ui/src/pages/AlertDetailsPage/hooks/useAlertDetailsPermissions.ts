@@ -16,10 +16,16 @@ import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEnt
 import { AlertDetailsPermissions } from '../AlertDetailsPage.interface';
 
 export function useAlertDetailsPermissions(fqn: string) {
-  const { hasViewAccess, canEditAll, canEditOwners, canEditDescription, canDelete, isLoading } =
-    useEntityPermissions(ResourceEntity.EVENT_SUBSCRIPTION, fqn, {
-      enabled: Boolean(fqn),
-    });
+  const {
+    hasViewAccess,
+    canEditAll,
+    canEditOwners,
+    canEditDescription,
+    canDelete,
+    isLoading,
+  } = useEntityPermissions(ResourceEntity.EVENT_SUBSCRIPTION, fqn, {
+    enabled: Boolean(fqn),
+  });
 
   const permissions: AlertDetailsPermissions = {
     // Bare OR (ViewBasic || ViewAll) — unchanged from the old derivation,

@@ -162,9 +162,7 @@ describe('CustomPropertiesPageV1 component', () => {
 
     render(<CustomEntityDetailV1 />);
 
-    expect(
-      await screen.findByTestId('add-field-button')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('add-field-button')).toBeInTheDocument();
   });
 
   it('hides the add-property button when EditAll is denied', async () => {

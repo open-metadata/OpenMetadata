@@ -95,7 +95,9 @@ jest.mock('../../../common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockImplementation(({ hasEditAccess }: { hasEditAccess?: boolean }) => (
-      <div data-has-edit-access={String(hasEditAccess)} data-testid="description">
+      <div
+        data-has-edit-access={String(hasEditAccess)}
+        data-testid="description">
         Description
       </div>
     ))

@@ -41,7 +41,11 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn(() => ({ entityFqn: 'svc.pipeline', columnFqn: '', fqn: '' })),
+  useFqn: jest.fn(() => ({
+    entityFqn: 'svc.pipeline',
+    columnFqn: '',
+    fqn: '',
+  })),
 }));
 jest.mock('../../../hooks/useFqnDeepLink', () => ({
   useFqnDeepLink: jest.fn(),
@@ -167,9 +171,8 @@ describe('PipelineTaskTab', () => {
   // precedent).
   const MockedTable = jest.requireMock('../../common/Table/Table');
   const getRenderedProps = (columnKey: string, task: Task) => {
-    const { columns } = MockedTable.mock.calls[
-      MockedTable.mock.calls.length - 1
-    ][0];
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
     const column = columns.find((c: { key: string }) => c.key === columnKey);
 
     return column.render(task.tags, task, 0).props;
@@ -204,9 +207,7 @@ describe('PipelineTaskTab', () => {
   it('denies tags edit when EditTags is explicitly false, even with EditAll true', () => {
     renderPipelineTaskTab({}, { EditAll: true, EditTags: false });
 
-    expect(getRenderedProps('tags', mockTasks[0]).hasTagEditAccess).toBe(
-      false
-    );
+    expect(getRenderedProps('tags', mockTasks[0]).hasTagEditAccess).toBe(false);
   });
 
   it('denies glossary term edit when EditGlossaryTerms is explicitly false, even with EditAll true', () => {

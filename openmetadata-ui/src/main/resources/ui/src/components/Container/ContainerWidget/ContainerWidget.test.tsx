@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { Container } from '../../../generated/entity/data/container';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Container } from '../../../generated/entity/data/container';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { ContainerWidget } from './ContainerWidget';
 
@@ -50,7 +50,9 @@ const mockUseGenericContextResult = {
 };
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => mockUseGenericContextResult),
+  useGenericContext: jest
+    .fn()
+    .mockImplementation(() => mockUseGenericContextResult),
 }));
 
 const mockContainerWithDataModel: Container = {
@@ -117,9 +119,9 @@ describe('ContainerWidget', () => {
 
     render(<ContainerWidget />);
 
-    expect(
-      await screen.findByTestId('glossary-edit-access')
-    ).toHaveTextContent('false');
+    expect(await screen.findByTestId('glossary-edit-access')).toHaveTextContent(
+      'false'
+    );
   });
 
   it('denies tag edit when EditTags is explicitly false, even with EditAll true', async () => {
@@ -143,12 +145,10 @@ describe('ContainerWidget', () => {
 
     render(<ContainerWidget />);
 
-    expect(await screen.findByTestId('is-read-only')).toHaveTextContent(
-      'true'
+    expect(await screen.findByTestId('is-read-only')).toHaveTextContent('true');
+    expect(screen.getByTestId('description-edit-access')).toHaveTextContent(
+      'false'
     );
-    expect(
-      screen.getByTestId('description-edit-access')
-    ).toHaveTextContent('false');
     expect(screen.getByTestId('glossary-edit-access')).toHaveTextContent(
       'false'
     );

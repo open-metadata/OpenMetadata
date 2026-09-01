@@ -582,9 +582,8 @@ describe('WorksheetColumnsTable', () => {
   // to inspect the permission prop it wires into TableDescription/TableTags.
   const MockedTable = jest.requireMock('../../../common/Table/Table');
   const getRenderedProps = (columnKey: string, columnData: Column) => {
-    const { columns } = MockedTable.mock.calls[
-      MockedTable.mock.calls.length - 1
-    ][0];
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
     const column = columns.find((c: { key: string }) => c.key === columnKey);
 
     return column.render(columnData.tags, columnData, 0).props;
@@ -601,9 +600,9 @@ describe('WorksheetColumnsTable', () => {
   it('denies tags edit when EditTags is explicitly false, even with EditAll true', () => {
     renderWorksheetColumnsTable({}, { EditAll: true, EditTags: false });
 
-    expect(
-      getRenderedProps('tags', mockColumns[0]).hasTagEditAccess
-    ).toBe(false);
+    expect(getRenderedProps('tags', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 
   it('denies glossary term edit when EditGlossaryTerms is explicitly false, even with EditAll true', () => {
@@ -612,8 +611,8 @@ describe('WorksheetColumnsTable', () => {
       { EditAll: true, EditGlossaryTerms: false }
     );
 
-    expect(
-      getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess
-    ).toBe(false);
+    expect(getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 });

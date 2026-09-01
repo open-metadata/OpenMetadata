@@ -928,7 +928,9 @@ const TeamDetailsV1 = ({
             <Col className="d-flex justify-end" span={24}>
               <Button
                 data-testid="add-policy"
-                title={canEditAll ? addPolicy : t('message.no-permission-for-action')}
+                title={
+                  canEditAll ? addPolicy : t('message.no-permission-for-action')
+                }
                 type="primary"
                 onClick={() =>
                   setAddAttribute({

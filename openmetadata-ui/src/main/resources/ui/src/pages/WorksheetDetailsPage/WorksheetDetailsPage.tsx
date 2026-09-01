@@ -220,7 +220,12 @@ const WorksheetDetailsPage = () => {
       t('server.fetch-entity-permissions-error', { entity: resolvedEntityFqn })
     );
     setIsError(true);
-  }, [permissionsError, activeColumnFqn, resolvedEntityFqn, decodedWorksheetFQN]);
+  }, [
+    permissionsError,
+    activeColumnFqn,
+    resolvedEntityFqn,
+    decodedWorksheetFQN,
+  ]);
 
   // Entity-fetch trigger — the counterpart to fetchWorksheetDetails above. Only fetches once
   // view permission for resolvedEntityFqn is confirmed granted; see

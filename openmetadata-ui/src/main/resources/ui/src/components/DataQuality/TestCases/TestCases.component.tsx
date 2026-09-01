@@ -82,7 +82,9 @@ export const TestCases = () => {
   // reproduce the old `?.` optional-chaining undefined-is-falsy behavior.
   const testCaseFlags = useMemo(
     () =>
-      getDerivedPermissionFlags(testCasePermission ?? DEFAULT_ENTITY_PERMISSION),
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
     [testCasePermission]
   );
 

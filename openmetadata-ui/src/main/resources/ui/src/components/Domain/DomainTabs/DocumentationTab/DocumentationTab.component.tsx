@@ -63,7 +63,10 @@ const DocumentationTab = ({
   // (getPrioritizedEditPermission/getPrioritizedViewPermission → the named flag that encodes
   // the identical computation) — not a raw-to-prioritized semantic change, so none of these
   // need the canViewTests-style citation.
-  const flags = useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const {
     editDescriptionPermission,

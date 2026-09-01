@@ -51,7 +51,10 @@ export const ReviewerLabelV2 = <
   // (explicit-deny-wins fix, same precedent as canViewBasic, Task 6 Finding 1). No `deleted`
   // argument: the generic `T` constraint here has no `deleted` field, and the old expression
   // never referenced one either.
-  const { can } = useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
+  const { can } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const hasEditReviewerAccess = useMemo(
     () => can(Operation.EditReviewers),
     [can]

@@ -102,8 +102,7 @@ const APICollectionVersionPage = () => {
     }
   }, [permissionsError]);
 
-  const [isCollectionLoading, setIsCollectionLoading] =
-    useState<boolean>(true);
+  const [isCollectionLoading, setIsCollectionLoading] = useState<boolean>(true);
   const isLoading = isPermissionsLoading || isCollectionLoading;
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
@@ -154,12 +153,9 @@ const APICollectionVersionPage = () => {
     }
     try {
       setIsCollectionLoading(true);
-      const collectionResponse = await getApiCollectionByFQN(
-        decodedEntityFQN,
-        {
-          include: Include.All,
-        }
-      );
+      const collectionResponse = await getApiCollectionByFQN(decodedEntityFQN, {
+        include: Include.All,
+      });
       setCollection(collectionResponse);
 
       const versions = await getApiCollectionVersions(

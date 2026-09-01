@@ -231,9 +231,7 @@ describe('useTestSuiteDetailsPage', () => {
     });
 
     expect(result.current.permissions.hasEditOwnerPermission).toBe(false);
-    expect(result.current.permissions.hasEditDescriptionPermission).toBe(
-      false
-    );
+    expect(result.current.permissions.hasEditDescriptionPermission).toBe(false);
     // The bare-EditAll flag is unaffected by the field-specific denies.
     expect(result.current.permissions.hasEditPermission).toBe(true);
   });

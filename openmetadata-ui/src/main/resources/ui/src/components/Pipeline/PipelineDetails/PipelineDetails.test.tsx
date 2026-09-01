@@ -58,13 +58,10 @@ const setMockPermissions = (
   });
 };
 
-jest.mock(
-  '../../../hooks/useEntityPermissions/useEntityPermissions',
-  () => ({
-    useEntityPermissions: (...args: unknown[]) =>
-      mockUseEntityPermissions(...args),
-  })
-);
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockTasks = [
   {
@@ -348,10 +345,9 @@ describe('Test PipelineDetails component', () => {
   });
 
   it('shows the permission-fetch error toast when the hook reports an error', () => {
-    setMockPermissions(
-      DEFAULT_ENTITY_PERMISSION,
-      { error: new Error('permission fetch failed') }
-    );
+    setMockPermissions(DEFAULT_ENTITY_PERMISSION, {
+      error: new Error('permission fetch failed'),
+    });
 
     render(<PipelineDetails {...PipelineDetailsProps} />, {
       wrapper: MemoryRouter,

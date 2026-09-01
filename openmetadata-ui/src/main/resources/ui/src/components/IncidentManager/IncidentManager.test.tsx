@@ -1241,7 +1241,9 @@ describe('IncidentManagerPage', () => {
     // FIRST call and silently falls back to the granted default for the rest — use a
     // persistent override for the duration of this test, restored afterward so later tests
     // (and other describe blocks, if this file's order ever changes) keep the granted default.
-    const grantedReturnValue = (usePermissionProvider as jest.Mock).getMockImplementation?.();
+    const grantedReturnValue = (
+      usePermissionProvider as jest.Mock
+    ).getMockImplementation?.();
 
     afterEach(() => {
       if (grantedReturnValue) {
@@ -1272,7 +1274,9 @@ describe('IncidentManagerPage', () => {
       expect(
         screen.queryByTestId('test-case-incident-manager-table')
       ).not.toBeInTheDocument();
-      expect(screen.queryByTestId('incident-filter-bar')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('incident-filter-bar')
+      ).not.toBeInTheDocument();
     });
   });
 });

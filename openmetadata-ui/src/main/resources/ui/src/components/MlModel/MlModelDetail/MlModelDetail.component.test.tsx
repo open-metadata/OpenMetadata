@@ -277,7 +277,9 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 // above is (and was already, before this conversion) `describe.skip`'d and never renders the
 // component for real, so it never needed these; the two new, non-skipped tests do.
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ entityFqn: 'mlflow_svc.eta_predictions' }),
+  useFqn: jest
+    .fn()
+    .mockReturnValue({ entityFqn: 'mlflow_svc.eta_predictions' }),
 }));
 
 jest.mock('../../../hooks/useCustomPages', () => ({
@@ -296,11 +298,14 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockReturnValue({ tab: EntityTabs.FEATURES }),
 }));
 
-jest.mock('../../DataAssets/DataAssetsHeader/DataAssetsHeader.component', () => ({
-  DataAssetsHeader: jest
-    .fn()
-    .mockImplementation(() => <p>DataAssetsHeader</p>),
-}));
+jest.mock(
+  '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  () => ({
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(() => <p>DataAssetsHeader</p>),
+  })
+);
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
@@ -394,10 +399,9 @@ describe('MlModelDetail permissions', () => {
   });
 
   it('shows the permission-fetch error toast when the hook reports an error', async () => {
-    setMockPermissions(
-      ENTITY_PERMISSIONS,
-      { error: new Error('permission fetch failed') }
-    );
+    setMockPermissions(ENTITY_PERMISSIONS, {
+      error: new Error('permission fetch failed'),
+    });
 
     render(<MlModelDetailComponent {...mockProp} />, {
       wrapper: MemoryRouter,

@@ -97,7 +97,10 @@ jest.mock(
     default: jest
       .fn()
       .mockImplementation(({ canEdit }) => (
-        <div data-can-edit={String(Boolean(canEdit))} data-testid="create-memory-modal" />
+        <div
+          data-can-edit={String(Boolean(canEdit))}
+          data-testid="create-memory-modal"
+        />
       )),
   })
 );
@@ -137,6 +140,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
         'true'
       );
     });
+
     expect(screen.getByTestId('create-memory-modal')).toHaveAttribute(
       'data-can-edit',
       'true'
@@ -155,6 +159,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(mockGetResourcePermission).toHaveBeenCalled();
     });
+
     expect(screen.getByTestId('memories-view')).toHaveAttribute(
       'data-can-edit',
       'false'

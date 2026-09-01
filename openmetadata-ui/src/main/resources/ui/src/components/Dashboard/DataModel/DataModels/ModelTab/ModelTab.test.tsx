@@ -22,12 +22,9 @@ import ModelTab from './ModelTab.component';
 // read the `columns` prop actually passed to it and invoke each column's `render` function
 // directly to inspect the wired permission prop.
 
-jest.mock(
-  '../../../../Customization/GenericProvider/GenericContext',
-  () => ({
-    useGenericContext: jest.fn(),
-  })
-);
+jest.mock('../../../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest.fn(),
+}));
 
 jest.mock('../../../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
@@ -132,11 +129,7 @@ describe('ModelTab permission wiring', () => {
       mockRecord,
       0
     ) as React.ReactElement;
-    const tagsEl = tagsCol?.render?.(
-      [],
-      mockRecord,
-      0
-    ) as React.ReactElement;
+    const tagsEl = tagsCol?.render?.([], mockRecord, 0) as React.ReactElement;
     const glossaryEl = glossaryCol?.render?.(
       [],
       mockRecord,

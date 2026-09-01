@@ -25,11 +25,11 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
-import {
-  PERMISSION_STALE_TIME,
-  permissionQueryKeys,
-} from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import {
+  permissionQueryKeys,
+  PERMISSION_STALE_TIME,
+} from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { queryClient } from '../../queryClient';
 import {
   getEntityPermissionByFqn,

@@ -157,7 +157,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   // flags in the old code — same isReadOnly-vs-deleted separation as the sibling
   // SearchIndexFieldsTab/SchemaTable family. All 3 raw `EditAll || EditField`
   // OR-expressions are explicit-deny-wins fixes.
-  const flags = useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const {
     hasDescriptionEditAccess,

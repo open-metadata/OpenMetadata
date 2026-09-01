@@ -152,6 +152,7 @@ describe('ContextCenterDocumentsPage — permissions', () => {
     await waitFor(() => {
       expect(mockGetResourcePermission).toHaveBeenCalled();
     });
+
     expect(screen.getByTestId('documents-view')).toHaveAttribute(
       'data-can-edit',
       'false'

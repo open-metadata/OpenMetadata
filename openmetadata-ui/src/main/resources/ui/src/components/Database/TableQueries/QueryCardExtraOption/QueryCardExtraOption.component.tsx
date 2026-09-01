@@ -87,11 +87,7 @@ const QueryCardExtraOption = ({
         key: 'edit-query',
         label: t('label.edit'),
         icon: (
-          <EditIcon
-            height={16}
-            opacity={canEditQuery ? 1 : 0.5}
-            width={16}
-          />
+          <EditIcon height={16} opacity={canEditQuery ? 1 : 0.5} width={16} />
         ),
         disabled: !canEditQuery,
         onClick: () => onEditClick(true),

@@ -119,10 +119,7 @@ export const UserTab = ({
     () => getDerivedPermissionFlags(permission, isTeamDeleted),
     [permission, isTeamDeleted]
   );
-  const editUserPermission = useMemo(
-    () => can(Operation.EditUsers),
-    [can]
-  );
+  const editUserPermission = useMemo(() => can(Operation.EditUsers), [can]);
 
   // The one site that must ignore deleted-gating (Task 8 Batch 3 review round, Finding 3):
   // the ASSIGN ErrorPlaceHolder's `permission` prop hard-branches

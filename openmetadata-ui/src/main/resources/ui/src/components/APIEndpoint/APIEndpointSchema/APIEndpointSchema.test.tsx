@@ -207,9 +207,8 @@ describe('APIEndpointSchema', () => {
   // wires into TableDescription/TableTags (WorksheetColumnsTable.test.tsx precedent).
   const MockedTable = jest.requireMock('../../common/Table/Table');
   const getRenderedProps = (columnKey: string, field: Field) => {
-    const { columns } = MockedTable.mock.calls[
-      MockedTable.mock.calls.length - 1
-    ][0];
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
     const column = columns.find((c: { key: string }) => c.key === columnKey);
 
     return column.render(field.tags, field, 0).props;
@@ -244,19 +243,16 @@ describe('APIEndpointSchema', () => {
   it('denies tags edit when EditTags is explicitly false, even with EditAll true', () => {
     renderApiEndpointSchema({}, { EditAll: true, EditTags: false });
 
-    expect(
-      getRenderedProps('tags', mockFields[0]).hasTagEditAccess
-    ).toBe(false);
+    expect(getRenderedProps('tags', mockFields[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 
   it('denies glossary term edit when EditGlossaryTerms is explicitly false, even with EditAll true', () => {
-    renderApiEndpointSchema(
-      {},
-      { EditAll: true, EditGlossaryTerms: false }
-    );
+    renderApiEndpointSchema({}, { EditAll: true, EditGlossaryTerms: false });
 
-    expect(
-      getRenderedProps('glossary', mockFields[0]).hasTagEditAccess
-    ).toBe(false);
+    expect(getRenderedProps('glossary', mockFields[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 });

@@ -63,9 +63,12 @@ jest.mock('../AttachmentWidget/AttachmentWidget', () =>
   jest.fn().mockReturnValue(null)
 );
 
-jest.mock('../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2', () => ({
-  ReviewerLabelV2: jest.fn().mockReturnValue(null),
-}));
+jest.mock(
+  '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2',
+  () => ({
+    ReviewerLabelV2: jest.fn().mockReturnValue(null),
+  })
+);
 
 const mockUseGenericContext = useGenericContext as jest.Mock;
 
@@ -117,9 +120,10 @@ describe('KnowledgePageDetailRightPanel permissions', () => {
       'data-has-permission',
       'true'
     );
-    expect(
-      screen.getByTestId('tags-container-Classification')
-    ).toHaveAttribute('data-permission', 'true');
+    expect(screen.getByTestId('tags-container-Classification')).toHaveAttribute(
+      'data-permission',
+      'true'
+    );
     expect(screen.getByTestId('tags-container-Glossary')).toHaveAttribute(
       'data-permission',
       'true'
@@ -133,9 +137,10 @@ describe('KnowledgePageDetailRightPanel permissions', () => {
   it('denies tags edit when EditTags is explicitly false even though EditAll is true (explicit-deny-wins, prioritized over the old raw OR)', () => {
     renderComponent({ EditAll: true, EditTags: false });
 
-    expect(
-      screen.getByTestId('tags-container-Classification')
-    ).toHaveAttribute('data-permission', 'false');
+    expect(screen.getByTestId('tags-container-Classification')).toHaveAttribute(
+      'data-permission',
+      'false'
+    );
     expect(screen.getByTestId('tags-container-Glossary')).toHaveAttribute(
       'data-permission',
       'false'
@@ -149,9 +154,10 @@ describe('KnowledgePageDetailRightPanel permissions', () => {
       'data-has-permission',
       'false'
     );
-    expect(
-      screen.getByTestId('tags-container-Classification')
-    ).toHaveAttribute('data-permission', 'false');
+    expect(screen.getByTestId('tags-container-Classification')).toHaveAttribute(
+      'data-permission',
+      'false'
+    );
     expect(screen.getByTestId('related-data-assets')).toHaveAttribute(
       'data-has-permission',
       'false'

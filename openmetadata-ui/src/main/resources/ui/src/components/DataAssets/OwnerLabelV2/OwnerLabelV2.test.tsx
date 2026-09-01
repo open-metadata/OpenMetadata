@@ -26,7 +26,10 @@ let mockContext: {
   onUpdate: jest.Mock;
   permissions: OperationPermission;
   isVersionView: boolean;
-  entityRules: { canAddMultipleUserOwners: boolean; canAddMultipleTeamOwner: boolean };
+  entityRules: {
+    canAddMultipleUserOwners: boolean;
+    canAddMultipleTeamOwner: boolean;
+  };
 };
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
@@ -97,7 +100,11 @@ describe('OwnerLabelV2 permissions', () => {
   });
 
   it('the explicit hasPermission prop overrides the context-derived flag', async () => {
-    setMockContext({ ...ENTITY_PERMISSIONS, EditOwners: false, EditAll: false });
+    setMockContext({
+      ...ENTITY_PERMISSIONS,
+      EditOwners: false,
+      EditAll: false,
+    });
 
     render(<OwnerLabelV2 hasPermission />);
 

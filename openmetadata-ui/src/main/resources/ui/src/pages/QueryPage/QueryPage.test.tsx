@@ -70,14 +70,12 @@ jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock('../../components/Database/TableQueries/QueryCard', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ permission }) => (
-      <div>
-        QueryCard
-        <span data-testid="query-edit-all">{String(permission?.EditAll)}</span>
-      </div>
-    ));
+  return jest.fn().mockImplementation(({ permission }) => (
+    <div>
+      QueryCard
+      <span data-testid="query-edit-all">{String(permission?.EditAll)}</span>
+    </div>
+  ));
 });
 jest.mock('../../rest/queryAPI', () => ({
   ...jest.requireActual('../../rest/queryAPI'),

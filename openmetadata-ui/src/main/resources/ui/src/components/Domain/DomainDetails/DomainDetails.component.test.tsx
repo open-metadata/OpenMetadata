@@ -114,9 +114,7 @@ jest.mock('../../../rest/announcementsAPI', () => ({
   getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
 }));
 jest.mock('../../../rest/searchAPI', () => ({
-  searchQuery: jest
-    .fn()
-    .mockResolvedValue({ hits: { total: { value: 0 } } }),
+  searchQuery: jest.fn().mockResolvedValue({ hits: { total: { value: 0 } } }),
 }));
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityTaskCountsInto: jest.fn(),
@@ -138,9 +136,12 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../../components/Entity/EntityHeader/EntityHeader.component', () => ({
-  EntityHeader: jest.fn().mockReturnValue(<div>EntityHeader</div>),
-}));
+jest.mock(
+  '../../../components/Entity/EntityHeader/EntityHeader.component',
+  () => ({
+    EntityHeader: jest.fn().mockReturnValue(<div>EntityHeader</div>),
+  })
+);
 
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () => {
   return jest.fn().mockReturnValue(<div>HeaderBreadcrumb</div>);

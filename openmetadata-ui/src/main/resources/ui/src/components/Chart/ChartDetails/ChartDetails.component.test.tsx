@@ -246,10 +246,7 @@ describe('ChartDetails component', () => {
   });
 
   it('gates edit flags on deleted but leaves view flags ungated', () => {
-    setMockPermissions(
-      { EditAll: true, ViewAll: true },
-      { deleted: true }
-    );
+    setMockPermissions({ EditAll: true, ViewAll: true }, { deleted: true });
 
     render(<ChartDetails {...mockProps} />, { wrapper: MemoryRouter });
 

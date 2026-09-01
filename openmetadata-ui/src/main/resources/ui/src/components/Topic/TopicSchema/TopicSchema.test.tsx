@@ -36,18 +36,16 @@ jest.mock('../../AppRouter/withSuspenseFallback', () =>
 );
 
 jest.mock('../../Database/TableDescription/TableDescription.component', () =>
-  jest
-    .fn()
-    .mockImplementation(({ onClick, isReadOnly, hasEditPermission }) => (
-      <div data-testid="table-description">
-        Table Description
-        {!isReadOnly && hasEditPermission && (
-          <button data-testid="edit-button" onClick={onClick}>
-            Edit
-          </button>
-        )}
-      </div>
-    ))
+  jest.fn().mockImplementation(({ onClick, isReadOnly, hasEditPermission }) => (
+    <div data-testid="table-description">
+      Table Description
+      {!isReadOnly && hasEditPermission && (
+        <button data-testid="edit-button" onClick={onClick}>
+          Edit
+        </button>
+      )}
+    </div>
+  ))
 );
 
 jest.mock('../../../utils/TablePureUtils', () => {

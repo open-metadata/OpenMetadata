@@ -124,6 +124,7 @@ describe('ContextCenterArchivePage — permissions', () => {
     await waitFor(() => {
       expect(mockGetResourcePermission).toHaveBeenCalled();
     });
+
     expect(screen.getByTestId('archive-view')).toHaveAttribute(
       'data-can-restore',
       'false'

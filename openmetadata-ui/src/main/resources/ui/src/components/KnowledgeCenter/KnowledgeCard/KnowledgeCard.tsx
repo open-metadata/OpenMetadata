@@ -216,7 +216,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
       </Box>
     );
-  }, [canEditAll, canEditDisplayName, canEditDescription, canEditTags, canDelete]);
+  }, [
+    canEditAll,
+    canEditDisplayName,
+    canEditDescription,
+    canEditTags,
+    canDelete,
+  ]);
 
   const handleQuickLinkRecentView = useCallback(() => {
     if (isQuickLink) {

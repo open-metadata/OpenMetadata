@@ -122,9 +122,8 @@ export const TableProfilerProvider = ({
   // already makes the whole expression true whenever canViewTests' own ViewAll fallback would
   // have mattered.
   const viewTest = useMemo(() => {
-    const { hasViewAccess, canViewTests } = getDerivedPermissionFlags(
-      permissions
-    );
+    const { hasViewAccess, canViewTests } =
+      getDerivedPermissionFlags(permissions);
 
     return hasViewAccess || canViewTests;
   }, [permissions]);

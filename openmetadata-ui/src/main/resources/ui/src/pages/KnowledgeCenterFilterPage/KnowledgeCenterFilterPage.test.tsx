@@ -85,6 +85,7 @@ describe('KnowledgeCenterFilterPage — permissions', () => {
     await waitFor(() => {
       expect(mockGetResourcePermission).toHaveBeenCalled();
     });
+
     expect(
       await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();

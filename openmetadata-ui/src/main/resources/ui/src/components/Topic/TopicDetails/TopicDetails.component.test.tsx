@@ -215,10 +215,9 @@ describe('TopicDetails component', () => {
       ViewCustomFields: true,
     } as OperationPermission;
 
-    render(
-      <TopicDetails {...mockProps} topicPermissions={permissions} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<TopicDetails {...mockProps} topicPermissions={permissions} />, {
+      wrapper: MemoryRouter,
+    });
 
     const mockGetTabs = topicClassBase.getTopicDetailPageTabs as jest.Mock;
     const config = mockGetTabs.mock.calls[0][0];

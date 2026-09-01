@@ -57,8 +57,7 @@ const defaultProps: InputOutputPortsTabProps = {
   onPortsUpdate: jest.fn(),
 };
 
-const mockGetDataProductPortsView =
-  getDataProductPortsView as jest.Mock;
+const mockGetDataProductPortsView = getDataProductPortsView as jest.Mock;
 
 const setPortCounts = (inputTotal: number, outputTotal: number) => {
   mockGetDataProductPortsView.mockResolvedValue({
@@ -77,13 +76,18 @@ describe('InputOutputPortsTab — permissions', () => {
     render(
       <InputOutputPortsTab
         {...defaultProps}
-        permissions={{ ...basePermissions, EditAll: true } as OperationPermission}
+        permissions={
+          { ...basePermissions, EditAll: true } as OperationPermission
+        }
       />
     );
 
     await waitFor(() => {
-      expect(screen.getAllByTestId('add-input-port-button')[0]).toBeInTheDocument();
+      expect(
+        screen.getAllByTestId('add-input-port-button')[0]
+      ).toBeInTheDocument();
     });
+
     expect(
       screen.getAllByTestId('add-output-port-button')[0]
     ).toBeInTheDocument();
@@ -94,13 +98,16 @@ describe('InputOutputPortsTab — permissions', () => {
     render(
       <InputOutputPortsTab
         {...defaultProps}
-        permissions={{ ...basePermissions, EditAll: false } as OperationPermission}
+        permissions={
+          { ...basePermissions, EditAll: false } as OperationPermission
+        }
       />
     );
 
     await waitFor(() => {
       expect(mockGetDataProductPortsView).toHaveBeenCalled();
     });
+
     expect(
       screen.queryByTestId('add-input-port-button')
     ).not.toBeInTheDocument();
@@ -114,13 +121,16 @@ describe('InputOutputPortsTab — permissions', () => {
     render(
       <InputOutputPortsTab
         {...defaultProps}
-        permissions={{ ...basePermissions, EditAll: true } as OperationPermission}
+        permissions={
+          { ...basePermissions, EditAll: true } as OperationPermission
+        }
       />
     );
 
     await waitFor(() => {
       expect(screen.getByTestId('add-input-port-button')).toBeInTheDocument();
     });
+
     expect(screen.getByTestId('add-output-port-button')).toBeInTheDocument();
   });
 
@@ -129,13 +139,16 @@ describe('InputOutputPortsTab — permissions', () => {
     render(
       <InputOutputPortsTab
         {...defaultProps}
-        permissions={{ ...basePermissions, EditAll: false } as OperationPermission}
+        permissions={
+          { ...basePermissions, EditAll: false } as OperationPermission
+        }
       />
     );
 
     await waitFor(() => {
       expect(mockGetDataProductPortsView).toHaveBeenCalled();
     });
+
     expect(
       screen.queryByTestId('add-input-port-button')
     ).not.toBeInTheDocument();

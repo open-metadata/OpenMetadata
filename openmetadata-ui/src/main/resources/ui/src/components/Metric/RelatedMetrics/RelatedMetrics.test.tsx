@@ -16,17 +16,14 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { Metric } from '../../../generated/entity/data/metric';
 import RelatedMetrics from './RelatedMetrics';
 
-jest.mock(
-  '../../common/WidgetActionButton/WidgetActionButton',
-  () => ({
-    WidgetPlusButton: (props: { 'data-testid'?: string }) => (
-      <button data-testid={props['data-testid']}>plus</button>
-    ),
-    WidgetEditButton: (props: { 'data-testid'?: string }) => (
-      <button data-testid={props['data-testid']}>edit</button>
-    ),
-  })
-);
+jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
+  WidgetPlusButton: (props: { 'data-testid'?: string }) => (
+    <button data-testid={props['data-testid']}>plus</button>
+  ),
+  WidgetEditButton: (props: { 'data-testid'?: string }) => (
+    <button data-testid={props['data-testid']}>edit</button>
+  ),
+}));
 
 jest.mock('../../common/WidgetCard/WidgetCard', () =>
   jest.fn().mockImplementation(({ headerExtra, children }) => (
@@ -38,9 +35,9 @@ jest.mock('../../common/WidgetCard/WidgetCard', () =>
 );
 
 jest.mock('./RelatedMetricsForm', () => ({
-  RelatedMetricsForm: jest.fn().mockImplementation(() => (
-    <div data-testid="related-metrics-form" />
-  )),
+  RelatedMetricsForm: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="related-metrics-form" />),
 }));
 
 const mockMetricDetails: Partial<Metric> = {
@@ -112,7 +109,11 @@ describe('RelatedMetrics', () => {
     renderRelatedMetrics(
       {
         relatedMetrics: [
-          { id: 'related-1', type: 'metric', fullyQualifiedName: 'other.metric' },
+          {
+            id: 'related-1',
+            type: 'metric',
+            fullyQualifiedName: 'other.metric',
+          },
         ],
       },
       { EditAll: true }

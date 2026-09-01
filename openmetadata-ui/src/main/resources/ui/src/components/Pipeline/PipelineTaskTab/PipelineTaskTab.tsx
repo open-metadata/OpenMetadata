@@ -48,11 +48,11 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   columnFilterIcon,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
-import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

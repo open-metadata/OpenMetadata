@@ -18,9 +18,9 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
+import { getPopupContainer } from '../../../../utils/formPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { getPopupContainer } from '../../../../utils/formPureUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
@@ -64,7 +64,9 @@ export const TestSuites = () => {
   // undefined-is-falsy behavior.
   const testSuiteFlags = useMemo(
     () =>
-      getDerivedPermissionFlags(testSuitePermission ?? DEFAULT_ENTITY_PERMISSION),
+      getDerivedPermissionFlags(
+        testSuitePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
     [testSuitePermission]
   );
 

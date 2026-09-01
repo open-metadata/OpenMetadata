@@ -437,9 +437,7 @@ describe('Container Page Component', () => {
 
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    await waitFor(() =>
-      expect(mockUseEntityPermissions).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(
@@ -475,9 +473,7 @@ describe('Container Page Component', () => {
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    await waitFor(() =>
-      expect(mockUseEntityPermissions).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
@@ -495,9 +491,7 @@ describe('Container Page Component', () => {
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    await waitFor(() =>
-      expect(mockUseEntityPermissions).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(

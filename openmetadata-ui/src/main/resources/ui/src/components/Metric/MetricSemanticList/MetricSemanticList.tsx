@@ -60,7 +60,9 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
   // EditDescription was explicitly denied; canEditDescription is prioritized (field-specific
   // wins) and already applies the same `!deleted` gating the old expression ANDed manually.
   const hasEditPermission = useMemo(
-    () => getDerivedPermissionFlags(permissions, metricDetails.deleted).canEditDescription,
+    () =>
+      getDerivedPermissionFlags(permissions, metricDetails.deleted)
+        .canEditDescription,
     [permissions, metricDetails.deleted]
   );
 

@@ -27,8 +27,8 @@ import {
   getOperationPermissions,
 } from '../../utils/PermissionsUtils';
 import {
-  PERMISSION_STALE_TIME,
   permissionQueryKeys,
+  PERMISSION_STALE_TIME,
 } from './permissionQueryKeys';
 
 export interface UseBulkEntityPermissionsResult {

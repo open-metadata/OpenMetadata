@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Operation } from '../generated/entity/policies/policy';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from './PermissionDerivation';
 
 const perms = (

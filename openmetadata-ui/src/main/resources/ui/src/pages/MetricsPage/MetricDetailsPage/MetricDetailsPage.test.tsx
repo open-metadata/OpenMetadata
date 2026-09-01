@@ -97,14 +97,12 @@ jest.mock('../../../utils/ToastUtils', () => ({
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () =>
-    jest
-      .fn()
-      .mockImplementation(({ type, permissionValue, children }) => (
-        <div data-testid="error-placeholder" data-type={type}>
-          {permissionValue}
-          {children}
-        </div>
-      ))
+    jest.fn().mockImplementation(({ type, permissionValue, children }) => (
+      <div data-testid="error-placeholder" data-type={type}>
+        {permissionValue}
+        {children}
+      </div>
+    ))
 );
 
 jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
@@ -181,7 +179,11 @@ describe('MetricDetailsPage', () => {
   });
 
   it('passes the raw permissions object through to MetricDetails unchanged', async () => {
-    setMockPermissions({ ViewBasic: true, EditAll: true, EditDescription: false });
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+      EditDescription: false,
+    });
 
     renderPage();
 

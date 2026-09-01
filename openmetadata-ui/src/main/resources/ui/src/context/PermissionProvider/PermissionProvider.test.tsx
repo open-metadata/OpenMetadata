@@ -19,7 +19,9 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import PermissionProvider, { usePermissionProvider } from './PermissionProvider';
+import PermissionProvider, {
+  usePermissionProvider,
+} from './PermissionProvider';
 import { ResourceEntity } from './PermissionProvider.interface';
 
 jest.mock('react-router-dom', () => ({
