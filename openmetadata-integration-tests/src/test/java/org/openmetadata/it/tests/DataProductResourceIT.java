@@ -65,6 +65,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for DataProduct entity operations.
@@ -228,6 +229,55 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     assertEquals(403, exception.getStatusCode());
     assertFalse(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  @Test
+  void put_deleteFollowerForSelf_200(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    OpenMetadataClient client = SdkClients.user2Client();
+    UUID userId = testUser2().getId();
+
+    addFollower(client, dataProduct.getId(), userId);
+    assertTrue(hasFollower(dataProduct.getId(), userId));
+
+    deleteFollower(client, dataProduct.getId(), userId);
+    assertFalse(hasFollower(dataProduct.getId(), userId));
+  }
+
+  @Test
+  void put_deleteFollowerForAnotherUserAsAdmin_200(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID userId = testUser3().getId();
+
+    addFollower(client, dataProduct.getId(), userId);
+    assertTrue(hasFollower(dataProduct.getId(), userId));
+
+    deleteFollower(client, dataProduct.getId(), userId);
+    assertFalse(hasFollower(dataProduct.getId(), userId));
+  }
+
+  @Test
+  void put_addFollowerWithNullUserId_400(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.user2Client()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/dataProducts/" + dataProduct.getId() + "/followers",
+                        "null",
+                        ChangeEvent.class,
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json")
+                            .build()));
+
+    assertEquals(400, exception.getStatusCode());
+    assertEquals("userId is required", exception.getMessage());
   }
 
   @Test
