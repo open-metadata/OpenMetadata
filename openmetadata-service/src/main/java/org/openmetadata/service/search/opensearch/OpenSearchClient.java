@@ -218,9 +218,14 @@ public class OpenSearchClient implements SearchClient {
     return (T) newClient;
   }
 
+  /**
+   * Callers reach for this to touch engine-specific internals the typed client does not expose, so
+   * it hands back the real transport rather than the metering wrapper. Requests issued directly on
+   * it are not counted in the search request metrics.
+   */
   @Override
   public Object getLowLevelClient() {
-    return transport;
+    return MeteredOpenSearchTransport.unwrap(transport);
   }
 
   @Override
