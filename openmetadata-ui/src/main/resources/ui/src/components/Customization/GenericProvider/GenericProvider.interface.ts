@@ -55,6 +55,7 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   updateActiveTagDropdownKey: (key: string | null) => void;
   muiTags: boolean;
   entityRules: DataAssetRuleValidation;
+  isRulesLoaded: boolean;
   selectedColumn: ColumnOrTask | null;
   isColumnDetailOpen: boolean;
   openColumnDetailPanel: (column: ColumnOrTask) => void;
