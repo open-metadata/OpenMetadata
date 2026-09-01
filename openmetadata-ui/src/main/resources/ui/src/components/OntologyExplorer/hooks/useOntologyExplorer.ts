@@ -16,21 +16,21 @@ import { isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
-import { OntologyStudioAsset } from '../../../generated/api/data/ontologyStudioAsset';
-import { OntologyStudioSummary as OntologyStudioSummaryResponse } from '../../../generated/api/data/ontologyStudioSummary';
+import { OntologySummary as OntologySummaryResponse } from '../../../generated/api/data/ontologySummary';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { RelationshipType } from '../../../generated/entity/data/relationshipType';
+import { EntityReference } from '../../../generated/entity/type';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getGlossariesList,
+  getGlossaryTermAssets,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
   getGlossaryTermsByIds,
-  getOntologyStudioAssets,
-  getOntologyStudioDataGraph,
-  getOntologyStudioSummary,
+  getOntologyDataGraph,
+  getOntologySummary,
 } from '../../../rest/glossaryAPI';
 import { getMetrics } from '../../../rest/metricsAPI';
 import { listRelationshipTypes } from '../../../rest/ontologyAPI';
@@ -46,6 +46,12 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DATA_MODE_ASSET_LOAD_PAGE_SIZE,
   DATA_MODE_ASSET_MAX_LOAD,
+  DATA_MODE_ASSET_PREVIEW_SIZE,
+  DATA_MODE_CONNECTED_TERM_LIMIT,
+  DATA_MODE_EDGE_LIMIT,
+  DATA_MODE_LINEAGE_EDGE_LIMIT,
+  DATA_MODE_MAX_RENDER_COUNT,
+  DATA_MODE_SEED_PAGE_SIZE,
   DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK,
   GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
   LayoutType,
@@ -68,7 +74,7 @@ import {
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
   buildGraphFromAllTerms,
-  buildGraphFromStudioData,
+  buildGraphFromOntologyData,
   getScopedTermNodes,
   isTermNode,
   mergeMetricsIntoGraph,
@@ -111,6 +117,13 @@ interface OntologyModelLoadResult {
   graphData: OntologyGraphData | null;
   glossaries: Glossary[];
   isGlossaryListComplete: boolean;
+}
+
+interface DataModeLoadResult {
+  graphData: OntologyGraphData;
+  nextOffset: number;
+  termCounts: Record<string, number>;
+  total: number;
 }
 
 async function fetchAllTermsForGlossary(
@@ -185,23 +198,18 @@ function collectMissingRelatedTermIds(
   return missingIds;
 }
 
-function studioAssetNode(asset: OntologyStudioAsset): OntologyNode {
+function ontologyAssetNode(asset: EntityReference): OntologyNode {
   const label =
-    asset.entity.displayName ??
-    asset.entity.name ??
-    asset.entity.fullyQualifiedName ??
-    asset.entity.id;
+    asset.displayName ?? asset.name ?? asset.fullyQualifiedName ?? asset.id;
 
   return {
-    id: asset.entity.id,
-    columnCount: asset.columnCount,
-    description: asset.entity.description,
-    entityRef: asset.entity,
-    fullyQualifiedName: asset.entity.fullyQualifiedName,
+    id: asset.id,
+    description: asset.description,
+    entityRef: asset,
+    fullyQualifiedName: asset.fullyQualifiedName,
     label,
     originalLabel: label,
-    serviceLabel:
-      asset.serviceType ?? asset.service?.displayName ?? asset.service?.name,
+    serviceLabel: asset.type,
     type: ASSET_NODE_TYPE,
   };
 }
@@ -295,9 +303,10 @@ export function useOntologyExplorer({
   const [hasMoreTerms, setHasMoreTerms] = useState(false);
   const [glossaryListComplete, setGlossaryListComplete] = useState(false);
   const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
+  const [dataModeNextOffset, setDataModeNextOffset] = useState(0);
   const [dataModeTotalTermCount, setDataModeTotalTermCount] = useState(0);
-  const [studioSummary, setStudioSummary] =
-    useState<OntologyStudioSummaryResponse>();
+  const [ontologySummary, setOntologySummary] =
+    useState<OntologySummaryResponse>();
 
   // --- Refs ---
 
@@ -368,8 +377,13 @@ export function useOntologyExplorer({
   });
 
   const loadedTermCount = useMemo(
-    () => (graphData?.nodes ?? []).filter(isTermNode).length,
-    [graphData]
+    () =>
+      (graphData?.nodes ?? []).filter(
+        (node) =>
+          isTermNode(node) &&
+          (explorationMode !== 'data' || node.isDataModeSeed)
+      ).length,
+    [explorationMode, graphData]
   );
 
   const totalTermCount = useMemo(
@@ -381,7 +395,9 @@ export function useOntologyExplorer({
   );
   const hasMoreDataTerms =
     explorationMode === 'data' &&
-    loadedTermCount < Math.min(dataModeTotalTermCount, 60);
+    dataModeNextOffset <
+      Math.min(dataModeTotalTermCount, DATA_MODE_MAX_RENDER_COUNT) &&
+    loadedTermCount < DATA_MODE_MAX_RENDER_COUNT;
 
   // --- Data fetching callbacks ---
 
@@ -483,7 +499,7 @@ export function useOntologyExplorer({
       const size = Math.min(DATA_MODE_ASSET_MAX_LOAD, Math.max(1, pageSize));
 
       try {
-        const response = await getOntologyStudioAssets(
+        const response = await getGlossaryTermAssets(
           termNode.id,
           size,
           fromOffset,
@@ -494,7 +510,7 @@ export function useOntologyExplorer({
           return;
         }
 
-        const newAssetNodes = response.data.map(studioAssetNode);
+        const newAssetNodes = response.data.map(ontologyAssetNode);
         const newEdges: OntologyEdge[] = newAssetNodes.map((assetNode) => ({
           from: assetNode.id,
           to: termNode.id,
@@ -656,17 +672,16 @@ export function useOntologyExplorer({
     async (
       glossaryFilterIds: string[],
       offset = 0
-    ): Promise<{
-      graphData: OntologyGraphData;
-      termCounts: Record<string, number>;
-      total: number;
-    }> => {
+    ): Promise<DataModeLoadResult> => {
       const selectedGlossary = glossaries.find((glossary) =>
         glossaryFilterIds.includes(glossary.id)
       );
-      const response = await getOntologyStudioDataGraph({
-        assetPreviewSize: 4,
-        limit: 12,
+      const response = await getOntologyDataGraph({
+        assetPreviewSize: DATA_MODE_ASSET_PREVIEW_SIZE,
+        connectedTermLimit: DATA_MODE_CONNECTED_TERM_LIMIT,
+        edgeLimit: DATA_MODE_EDGE_LIMIT,
+        limit: DATA_MODE_SEED_PAGE_SIZE,
+        lineageEdgeLimit: DATA_MODE_LINEAGE_EDGE_LIMIT,
         offset,
         parent: selectedGlossary?.fullyQualifiedName,
       });
@@ -678,7 +693,10 @@ export function useOntologyExplorer({
       );
 
       return {
-        graphData: buildGraphFromStudioData(response, glossaries, t),
+        graphData: buildGraphFromOntologyData(response, glossaries, t),
+        nextOffset:
+          (response.paging.offset ?? offset) +
+          (response.paging.limit ?? DATA_MODE_SEED_PAGE_SIZE),
         termCounts,
         total: response.paging.total,
       };
@@ -825,22 +843,36 @@ export function useOntologyExplorer({
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
     setGraphData((prev) => {
       const base = prev ?? { nodes: [], edges: [] };
-      const existingNodeIds = new Set(base.nodes.map((n) => n.id));
       const existingEdgeKeys = new Set(
-        base.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
+        base.edges.map(
+          (e) => `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`
+        )
       );
       const newNodes = [...base.nodes];
       const newEdges = [...base.edges];
+      const nodeIndexes = new Map(
+        newNodes.map((node, index) => [node.id, index])
+      );
 
       results.forEach((result) => {
-        result.nodes.forEach((n) => {
-          if (!existingNodeIds.has(n.id)) {
-            newNodes.push(n);
-            existingNodeIds.add(n.id);
+        result.nodes.forEach((node) => {
+          const existingIndex = nodeIndexes.get(node.id);
+          if (existingIndex === undefined) {
+            nodeIndexes.set(node.id, newNodes.length);
+            newNodes.push(node);
+          } else if (
+            node.isDataModeSeed &&
+            !newNodes[existingIndex].isDataModeSeed
+          ) {
+            newNodes[existingIndex] = {
+              ...newNodes[existingIndex],
+              ...node,
+              isDataModeSeed: true,
+            };
           }
         });
         result.edges.forEach((e) => {
-          const key = `${e.from}-${e.to}-${e.relationType}`;
+          const key = `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
           if (!existingEdgeKeys.has(key)) {
             newEdges.push(e);
             existingEdgeKeys.add(key);
@@ -924,6 +956,7 @@ export function useOntologyExplorer({
   useEffect(() => {
     if (explorationMode !== 'data') {
       dataModeAbortGenRef.current++;
+      setDataModeNextOffset(0);
       setDataModeTotalTermCount(0);
       if (hasEnteredDataModeRef.current) {
         setLoading(false);
@@ -959,23 +992,19 @@ export function useOntologyExplorer({
     const gen = ++dataModeAbortGenRef.current;
     setLoading(true);
     setGraphData(null);
+    setDataModeNextOffset(0);
     setTermAssetCounts({});
     loadDataModeTerms(glossaryFilterIds)
-      .then(
-        (result: {
-          graphData: OntologyGraphData;
-          termCounts: Record<string, number>;
-          total: number;
-        }) => {
-          if (dataModeAbortGenRef.current !== gen) {
-            return;
-          }
-          setGraphData(result.graphData);
-          setDataModeTotalTermCount(result.total);
-          setTermAssetCounts(result.termCounts);
-          setAssetGraphData(null);
+      .then((result) => {
+        if (dataModeAbortGenRef.current !== gen) {
+          return;
         }
-      )
+        setGraphData(result.graphData);
+        setDataModeNextOffset(result.nextOffset);
+        setDataModeTotalTermCount(result.total);
+        setTermAssetCounts(result.termCounts);
+        setAssetGraphData(null);
+      })
       .catch(() => {})
       .finally(() => {
         if (dataModeAbortGenRef.current === gen) {
@@ -1021,23 +1050,23 @@ export function useOntologyExplorer({
     const parent = glossaries.find((glossary) =>
       selectedIds.includes(glossary.id)
     )?.fullyQualifiedName;
-    getOntologyStudioSummary({ limit: 5, offset: 0, parent }, controller.signal)
-      .then(setStudioSummary)
-      .catch(() => setStudioSummary(undefined));
+    getOntologySummary({ limit: 5, offset: 0, parent }, controller.signal)
+      .then(setOntologySummary)
+      .catch(() => setOntologySummary(undefined));
 
     return () => controller.abort();
   }, [filters.glossaryIds, glossaries, scope]);
 
   const resolvedStatsItems = useMemo(
     () =>
-      studioSummary
+      ontologySummary
         ? [
-            `${studioSummary.totalTerms} ${t('label.term-plural')}`,
-            `${studioSummary.totalRelations} ${t('label.relation-plural')}`,
-            `${studioSummary.isolatedTerms} ${t('label.isolated')}`,
+            `${ontologySummary.totalTerms} ${t('label.term-plural')}`,
+            `${ontologySummary.totalRelations} ${t('label.relation-plural')}`,
+            `${ontologySummary.isolatedTerms} ${t('label.isolated')}`,
           ]
         : statsItems,
-    [statsItems, studioSummary, t]
+    [statsItems, ontologySummary, t]
   );
 
   useEffect(() => {
@@ -1227,12 +1256,10 @@ export function useOntologyExplorer({
   ]);
 
   const performDataModeLoadMore = useCallback(() => {
-    const loadedTerms =
-      graphDataRef.current?.nodes.filter(isTermNode).length ?? 0;
-    const boundedTotal = Math.min(dataModeTotalTermCount, 60);
     if (
       scope !== 'global' ||
-      loadedTerms >= boundedTotal ||
+      dataModeNextOffset >=
+        Math.min(dataModeTotalTermCount, DATA_MODE_MAX_RENDER_COUNT) ||
       isLoadingMoreRef.current
     ) {
       return;
@@ -1243,9 +1270,10 @@ export function useOntologyExplorer({
     const glossaryFilterIds = withoutOntologyAutocompleteAll(
       filters.glossaryIds
     );
-    loadDataModeTerms(glossaryFilterIds, loadedTerms)
+    loadDataModeTerms(glossaryFilterIds, dataModeNextOffset)
       .then((result) => {
         mergeGraphResults([result.graphData]);
+        setDataModeNextOffset(result.nextOffset);
         setTermAssetCounts((previous) => ({
           ...previous,
           ...result.termCounts,
@@ -1258,6 +1286,7 @@ export function useOntologyExplorer({
         setIsLoadingMore(false);
       });
   }, [
+    dataModeNextOffset,
     dataModeTotalTermCount,
     filters.glossaryIds,
     loadDataModeTerms,
@@ -1489,7 +1518,7 @@ export function useOntologyExplorer({
     isHierarchyView,
     exportableGlossaryId,
     hasMoreDataTerms,
-    studioSummary,
+    ontologySummary,
     hasMoreTerms,
     loadedTermCount,
     totalTermCount,
