@@ -13,8 +13,6 @@
 
 import {
   Autocomplete,
-  BadgeWithButton,
-  Dot,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
@@ -37,6 +35,7 @@ import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
+import TagChip from '../atoms/TagChip/TagChip';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 
@@ -252,23 +251,18 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
           t('label.select-field', { field: t('label.tag-plural') })
         }
         renderTag={(item, onRemove) => {
-          const tagColor = tagDataMap.current.get(String(item.id))?.style
-            ?.color;
+          const tagData = tagDataMap.current.get(String(item.id));
 
           return (
-            <BadgeWithButton
+            <TagChip
+              icon={tagData?.style?.iconURL}
               key={item.id}
-              size="sm"
-              type="color"
-              onButtonClick={onRemove}>
-              {tagColor && (
-                <Dot
-                  size="sm"
-                  style={{ color: tagColor, marginRight: '2px' }}
-                />
-              )}
-              {item.label ?? item.id}
-            </BadgeWithButton>
+              label={String(item.label ?? item.id)}
+              size="small"
+              tagColor={tagData?.style?.color}
+              variant="blueGray"
+              onDelete={onRemove}
+            />
           );
         }}
         selectedItems={selectedItems}

@@ -13,13 +13,11 @@
 import {
   Alert,
   Badge,
-  BadgeWithButton,
   Box,
   Button,
   ButtonUtility,
   Card,
   Dialog,
-  Dot,
   FieldProp,
   FieldTypes,
   FormField,
@@ -64,6 +62,7 @@ import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -992,61 +991,22 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               {isViewOnly && selectedTags.length === 0 && (
                                 <EmptyTags />
                               )}
-                              {selectedTags.map((tag) =>
-                                isViewOnly ? (
-                                  <Badge
-                                    className="tw:max-w-40 tw:min-w-0"
-                                    key={String(tag.tagFQN ?? '')}
-                                    size="sm"
-                                    type="modern">
-                                    {tag.style?.color && (
-                                      <div className="tw:shrink-0">
-                                        <Dot
-                                          size="sm"
-                                          style={{
-                                            color: tag.style?.color,
-                                            marginRight: '6px',
-                                          }}
-                                        />
-                                      </div>
-                                    )}
-                                    <Typography
-                                      ellipsis
-                                      className="tw:text-secondary"
-                                      size="text-xs">
-                                      {tag.tagFQN}
-                                    </Typography>
-                                  </Badge>
-                                ) : (
-                                  <BadgeWithButton
-                                    color="gray"
-                                    key={tag.tagFQN}
-                                    type="modern"
-                                    onButtonClick={() =>
-                                      handleRemoveTag(tag.tagFQN)
-                                    }>
-                                    <div className="tw:max-w-40 tw:flex tw:items-center">
-                                      {tag.style?.color && (
-                                        <div className="tw:shrink-0">
-                                          <Dot
-                                            size="sm"
-                                            style={{
-                                              color: tag.style?.color,
-                                              marginRight: '6px',
-                                            }}
-                                          />
-                                        </div>
-                                      )}
-                                      <Typography
-                                        ellipsis
-                                        className="tw:text-secondary"
-                                        size="text-xs">
-                                        {tag.tagFQN}
-                                      </Typography>
-                                    </div>
-                                  </BadgeWithButton>
-                                )
-                              )}
+                              {selectedTags.map((tag) => (
+                                <TagChip
+                                  icon={tag.style?.iconURL}
+                                  key={String(tag.tagFQN ?? '')}
+                                  label={tag.tagFQN}
+                                  maxWidth={160}
+                                  size="small"
+                                  tagColor={tag.style?.color}
+                                  variant="blueGray"
+                                  onDelete={
+                                    isViewOnly
+                                      ? undefined
+                                      : () => handleRemoveTag(tag.tagFQN)
+                                  }
+                                />
+                              ))}
                               {!isViewOnly && (
                                 <Button
                                   color="link-color"

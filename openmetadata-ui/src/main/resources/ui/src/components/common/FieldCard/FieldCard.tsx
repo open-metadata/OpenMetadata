@@ -10,21 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BadgeWithIcon,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataTypeString } from '../../../utils/TablePureUtils';
 import { prepareConstraintIcon } from '../../../utils/TableUtils';
+import TagChip from '../atoms/TagChip/TagChip';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
 
@@ -377,13 +372,13 @@ const FieldCard: React.FC<FieldCardProps> = ({
                       className="tag-item"
                       data-testid={`tag-${tag.tagFQN}`}
                       key={tag.tagFQN}>
-                      <BadgeWithIcon
-                        color="gray"
-                        iconLeading={ClassificationIcon}
-                        size="xs"
-                        type="color">
-                        {getEntityName(tag)}
-                      </BadgeWithIcon>
+                      <TagChip
+                        icon={tag.style?.iconURL}
+                        label={getEntityName(tag)}
+                        size="small"
+                        tagColor={tag.style?.color}
+                        variant="blueGray"
+                      />
                     </span>
                   ))}
                   {visibleTagsCount !== null &&
@@ -432,13 +427,13 @@ const FieldCard: React.FC<FieldCardProps> = ({
                       className="glossary-term-item"
                       data-testid={`term-${glossaryTerm.tagFQN}`}
                       key={glossaryTerm.tagFQN}>
-                      <BadgeWithIcon
-                        color="gray"
-                        iconLeading={GlossaryIcon}
-                        size="xs"
-                        type="color">
-                        {getEntityName(glossaryTerm)}
-                      </BadgeWithIcon>
+                      <TagChip
+                        icon={glossaryTerm.style?.iconURL}
+                        label={getEntityName(glossaryTerm)}
+                        size="small"
+                        tagColor={glossaryTerm.style?.color}
+                        variant="blueGray"
+                      />
                     </span>
                   ))}
                   {visibleTermsCount !== null &&
