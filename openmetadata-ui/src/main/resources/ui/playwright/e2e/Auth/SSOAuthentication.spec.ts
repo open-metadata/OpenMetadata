@@ -424,18 +424,30 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate to a page that makes multiple parallel API calls
       await page.goto('/');
-      // Wait for the renewal to actually land, then assert it did not repeat.
+      // Wait for the renewal to actually land...
       await expect
         .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
           timeout: 30_000,
         })
         .toBeGreaterThanOrEqual(1);
 
-      const metricsAfter = await getMetrics(request);
+      // ...then let any duplicate in-flight renewals settle before judging the
+      // count: asserting at the instant the FIRST refresh lands would miss a
+      // duplicate arriving milliseconds later. Stable across two consecutive
+      // reads 2s apart = settled (bounded at 5 rounds).
+      let refreshAttempts = (await getMetrics(request)).refreshAttempts;
+      for (let round = 0; round < 5; round++) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const next = (await getMetrics(request)).refreshAttempts;
+        if (next === refreshAttempts) {
+          break;
+        }
+        refreshAttempts = next;
+      }
 
       // Token endpoint should have been called (for refresh), but not N times
       // Allow 1-2 since the initial auth code exchange also counts
-      expect(metricsAfter.refreshAttempts).toBeLessThanOrEqual(2);
+      expect(refreshAttempts).toBeLessThanOrEqual(2);
     });
 
     test('should logout when token renewal fails', async ({
