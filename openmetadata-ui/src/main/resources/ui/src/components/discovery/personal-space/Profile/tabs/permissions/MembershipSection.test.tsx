@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import type { User } from '../../../../../../generated/entity/teams/user';
 import { ReactNode } from 'react';
+import type { User } from '../../../../../../generated/entity/teams/user';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

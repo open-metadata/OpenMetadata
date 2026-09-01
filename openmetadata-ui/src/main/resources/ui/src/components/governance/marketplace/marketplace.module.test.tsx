@@ -12,11 +12,11 @@
  */
 
 import { act, render, screen, waitFor, within } from '@testing-library/react';
-import { PluginRouteProps } from '../../Settings/Applications/plugins/AppPlugin';
-import { AI_APP_MODE } from '../../../constants/appMode.constants';
-import { useAppModeStore } from '../../../hooks/useAppMode';
 import { ReactNode, Suspense } from 'react';
+import { AI_APP_MODE } from '../../../constants/appMode.constants';
 import { ROUTES } from '../../../constants/constants';
+import { useAppModeStore } from '../../../hooks/useAppMode';
+import { PluginRouteProps } from '../../Settings/Applications/plugins/AppPlugin';
 import { marketplaceModule } from './marketplace.module';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

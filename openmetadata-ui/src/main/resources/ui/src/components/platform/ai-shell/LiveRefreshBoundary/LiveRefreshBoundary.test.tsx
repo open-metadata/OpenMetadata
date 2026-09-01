@@ -13,12 +13,12 @@
 
 import { act, render } from '@testing-library/react';
 import { useEffect } from 'react';
-import { LiveRefreshBoundary } from './LiveRefreshBoundary';
 import {
   createRouteActivationStore,
   RouteActivationProvider,
   RouteActivationStore,
 } from '../context/RouteActivationContext';
+import { LiveRefreshBoundary } from './LiveRefreshBoundary';
 
 const ROUTE = '/domain';
 

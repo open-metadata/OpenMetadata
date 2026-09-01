@@ -12,9 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import type { TeamPermission } from '../../../../../../rest/permissionAPI';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import type { TeamPermission } from '../../../../../../rest/permissionAPI';
 
 jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: (ref: { name?: string }) => ref?.name ?? '',

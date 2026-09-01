@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { PersonalSpacePanel } from '../../../../hooks/usePersonalSpaceStore';
 import React, { ReactNode } from 'react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { PersonalSpacePanel } from '../../../../hooks/usePersonalSpaceStore';
 
 const mockClose = jest.fn();
 let mockActivePanel: PersonalSpacePanel | null;

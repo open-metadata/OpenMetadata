@@ -12,10 +12,10 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import type { PolicyInfo } from '../../../../../../rest/permissionAPI';
-import type { EntityReference } from '../../../../../../generated/entity/type';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import type { EntityReference } from '../../../../../../generated/entity/type';
+import type { PolicyInfo } from '../../../../../../rest/permissionAPI';
 
 jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: (ref: { name?: string }) => ref?.name ?? '',

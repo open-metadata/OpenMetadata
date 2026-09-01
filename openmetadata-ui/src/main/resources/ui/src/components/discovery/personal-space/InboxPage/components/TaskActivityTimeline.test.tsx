@@ -40,8 +40,8 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import TaskActivityTimeline from './TaskActivityTimeline';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import TaskActivityTimeline from './TaskActivityTimeline';
 
 const task = {
   comments: [

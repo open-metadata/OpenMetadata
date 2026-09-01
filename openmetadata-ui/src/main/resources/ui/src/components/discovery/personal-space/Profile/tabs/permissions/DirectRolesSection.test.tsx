@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import type { DirectRolePermission } from '../../../../../../rest/permissionAPI';
 import { ReactNode } from 'react';
+import type { DirectRolePermission } from '../../../../../../rest/permissionAPI';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

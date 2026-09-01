@@ -12,10 +12,10 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
-import type { User } from '../../../../../generated/entity/teams/user';
 import { ReactNode } from 'react';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { MemoryRouter } from 'react-router-dom';
+import type { User } from '../../../../../generated/entity/teams/user';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 
 const mockGetMyPermissionDebugInfo = jest.fn();
 const mockGetPermissionDebugInfo = jest.fn();

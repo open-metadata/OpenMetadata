@@ -12,9 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import type { InheritedPermission } from '../../../../../../rest/permissionAPI';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import type { InheritedPermission } from '../../../../../../rest/permissionAPI';
 
 jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: (ref: { name?: string }) => ref?.name ?? '',

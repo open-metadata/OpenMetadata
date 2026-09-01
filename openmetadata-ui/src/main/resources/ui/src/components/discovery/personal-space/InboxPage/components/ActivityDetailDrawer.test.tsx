@@ -12,7 +12,6 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ComponentProps, ReactNode } from 'react';
 import {
   act,
   fireEvent,
@@ -21,6 +20,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { ComponentProps, ReactNode } from 'react';
 
 const mockListReplies = jest.fn();
 const mockCreateReply = jest.fn();

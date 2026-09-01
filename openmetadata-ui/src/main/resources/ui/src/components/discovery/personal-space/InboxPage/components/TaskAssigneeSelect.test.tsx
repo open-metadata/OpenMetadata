@@ -18,8 +18,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { searchData } from '../../../../../rest/miscAPI';
 import React from 'react';
+import { searchData } from '../../../../../rest/miscAPI';
 import TaskAssigneeSelect from './TaskAssigneeSelect';
 
 const mockSearchData = searchData as jest.MockedFunction<typeof searchData>;
