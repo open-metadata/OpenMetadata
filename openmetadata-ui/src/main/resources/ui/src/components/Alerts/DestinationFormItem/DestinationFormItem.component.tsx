@@ -261,7 +261,10 @@ function DestinationFormItem({
 
           {destinationListError && (
             <Grid.Item span={24}>
-              <Typography as="p" size="text-sm">
+              <Typography
+                as="p"
+                className="tw:text-error-primary"
+                size="text-sm">
                 {destinationListError}
               </Typography>
             </Grid.Item>

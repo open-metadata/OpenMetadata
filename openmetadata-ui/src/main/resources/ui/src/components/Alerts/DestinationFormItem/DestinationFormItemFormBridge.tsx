@@ -61,7 +61,7 @@ function DestinationFormItemFormBridge({
   const methods = useForm<DestinationFormFields>({
     defaultValues: getDestinationFormFields(values),
   });
-  const { getValues, reset, trigger, watch } = methods;
+  const { getValues, reset, setError, trigger, watch } = methods;
   const { destinations, readTimeout, resources, timeout } = values;
   const normalizedValues = useMemo(
     () =>
@@ -102,20 +102,28 @@ function DestinationFormItemFormBridge({
 
   const validate = useCallback(async () => {
     const coreFormIsValid = await trigger();
-    if (
-      (!isRequired || !isEmpty(getValues('destinations'))) &&
-      coreFormIsValid
-    ) {
+    const isDestinationMissing =
+      isRequired && isEmpty(getValues('destinations'));
+    const minimumDestinationError = t('message.minimum-count-error', {
+      field: t('label.destination'),
+      count: 1,
+    });
+
+    if (!isDestinationMissing && coreFormIsValid) {
       return;
     }
 
-    throw new Error(
-      t('message.minimum-count-error', {
-        field: t('label.destination'),
-        count: 1,
-      })
-    );
-  }, [getValues, isRequired, t, trigger]);
+    if (isDestinationMissing) {
+      // Controlled bridge resets can clear child errors before the parent
+      // validates, so the submit boundary owns the final visible error.
+      setError('destinations', {
+        message: minimumDestinationError,
+        type: 'manual',
+      });
+    }
+
+    throw new Error(minimumDestinationError);
+  }, [getValues, isRequired, setError, t, trigger]);
 
   return (
     <>
