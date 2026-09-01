@@ -499,10 +499,8 @@ export const assignDataProduct = async (
     );
 
     await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
+      const searchDataProduct = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
       await page.locator('[data-testid="data-product-selector"] input').clear();
       await page

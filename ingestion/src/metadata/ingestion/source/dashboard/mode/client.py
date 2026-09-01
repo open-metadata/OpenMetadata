@@ -15,8 +15,6 @@ import traceback
 from base64 import b64encode
 from typing import Optional
 
-from requests._internal_utils import to_native_string
-
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.utils.helpers import clean_uri
@@ -51,21 +49,18 @@ class ModeApiClient:
 
     def __init__(self, config):
         self.config = config
+        credentials = b":".join(
+            (
+                config.accessToken.encode(),
+                config.accessTokenPassword.get_secret_value().encode(),
+            )
+        )
         client_config = ClientConfig(
             base_url=clean_uri(config.hostPort),
             api_version="api",
             auth_header="Authorization",
             auth_token_mode="Basic",
-            access_token=to_native_string(
-                b64encode(
-                    b":".join(
-                        (
-                            config.accessToken.encode(),
-                            config.accessTokenPassword.get_secret_value().encode(),
-                        )
-                    )
-                ).strip()
-            ),
+            access_token=b64encode(credentials).strip().decode("ascii"),
         )
         self.client = TrackedREST(client_config, source_name="mode")
 
