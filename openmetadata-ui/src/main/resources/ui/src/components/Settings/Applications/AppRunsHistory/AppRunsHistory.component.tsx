@@ -71,6 +71,13 @@ import {
   AppRunsHistoryProps,
 } from './AppRunsHistory.interface';
 
+const renderAppLogsRow = (record: AppRunRecordWithId, maxRecords?: number) => (
+  <AppLogsViewer
+    data={record}
+    scrollHeight={maxRecords !== 1 ? 200 : undefined}
+  />
+);
+
 const AppRunsHistory = forwardRef(
   (
     {
@@ -470,12 +477,7 @@ const AppRunsHistory = forwardRef(
           data-testid="app-run-history-table"
           dataSource={tableData}
           expandable={{
-            expandedRowRender: (record) => (
-              <AppLogsViewer
-                data={record}
-                scrollHeight={maxRecords !== 1 ? 200 : undefined}
-              />
-            ),
+            expandedRowRender: (record) => renderAppLogsRow(record, maxRecords),
             showExpandColumn: false,
             rowExpandable: (record) =>
               !showLogAction(record) && hasAppRunStats(record),

@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyStudioAsset.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyStudioAsset",
+  "description": "A bounded asset preview displayed by Ontology Studio data mode.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyStudioAsset",
+  "properties": {
+    "entity": {
+      "description": "Asset reference.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Service that owns the asset when available from search.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service implementation type when available from search.",
+      "type": "string"
+    },
+    "columnCount": {
+      "description": "Number of columns exposed by a tabular asset.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["entity"],
+  "additionalProperties": false
+}

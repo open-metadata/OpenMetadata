@@ -24,11 +24,11 @@ import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
-const URL = '/dashboard/datamodels';
+const DATA_MODELS_PATH = '/dashboard/datamodels';
 
 export const getDataModelByFqn = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<DashboardDataModel>(
-    `${URL}/name/${getEncodedFqn(fqn)}`,
+    `${DATA_MODELS_PATH}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
         ...params,
@@ -44,7 +44,7 @@ export const patchDataModelDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DashboardDataModel>
-  >(`${URL}/${id}`, data);
+  >(`${DATA_MODELS_PATH}/${id}`, data);
 
   return response.data;
 };
@@ -55,7 +55,11 @@ export const addDataModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+  >(
+    `${DATA_MODELS_PATH}/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -66,13 +70,16 @@ export const removeDataModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+  >(
+    `${DATA_MODELS_PATH}/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const getDataModelVersionsList = async (id: string) => {
-  const url = `${URL}/${id}/versions`;
+  const url = `${DATA_MODELS_PATH}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -80,7 +87,7 @@ export const getDataModelVersionsList = async (id: string) => {
 };
 
 export const getDataModelVersion = async (id: string, version?: string) => {
-  const url = `${URL}/${id}/versions/${version}`;
+  const url = `${DATA_MODELS_PATH}/${id}/versions/${version}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);
 
@@ -91,7 +98,7 @@ export const restoreDataModel = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<DashboardDataModel>
-  >(`${URL}/restore`, { id });
+  >(`${DATA_MODELS_PATH}/restore`, { id });
 
   return response.data;
 };
@@ -100,7 +107,7 @@ export const updateDataModelVotes = async (id: string, data: QueryVote) => {
   const response = await APIClient.put<
     QueryVote,
     AxiosResponse<DashboardDataModel>
-  >(`${URL}/${id}/vote`, data);
+  >(`${DATA_MODELS_PATH}/${id}/vote`, data);
 
   return response.data;
 };
@@ -121,7 +128,7 @@ export const getDataModelColumnsByFQN = async (
   params?: DataModelColumnParams
 ) => {
   const response = await APIClient.get<PagingResponse<Column[]>>(
-    `${URL}/name/${getEncodedFqn(fqn)}/columns`,
+    `${DATA_MODELS_PATH}/name/${getEncodedFqn(fqn)}/columns`,
     {
       params: {
         ...params,
@@ -140,7 +147,7 @@ export const searchDataModelColumnsByFQN = async (
   params?: SearchDataModelColumnsParams
 ) => {
   const response = await APIClient.get<PagingResponse<Column[]>>(
-    `${URL}/name/${getEncodedFqn(fqn)}/columns/search`,
+    `${DATA_MODELS_PATH}/name/${getEncodedFqn(fqn)}/columns/search`,
     {
       params: {
         ...params,

@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -96,7 +97,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -383,7 +384,7 @@ public class SystemRepository {
 
   public Response patchSetting(String settingName, JsonPatch patch) {
     if (SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName)) {
-      return patchGlossaryTermRelationSettings(patch);
+      return patchGlossaryTermRelationSettings(patch, UnaryOperator.identity());
     }
 
     String expectedJson = dao.getConfigJsonWithKey(settingName);
@@ -429,7 +430,8 @@ public class SystemRepository {
         && updated.getConfigValue() != null;
   }
 
-  private Response patchGlossaryTermRelationSettings(JsonPatch patch) {
+  public Response patchGlossaryTermRelationSettings(
+      JsonPatch patch, UnaryOperator<GlossaryTermRelationSettings> prepareUpdate) {
     String expectedJson = dao.getGlossaryTermRelationSettingsJson();
     if (expectedJson == null) {
       throw EntityNotFoundException.byName(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
@@ -445,6 +447,7 @@ public class SystemRepository {
     }
     GlossaryTermRelationSettings updated =
         JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
+    updated = prepareUpdate.apply(updated);
     GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
     GlossaryTermRelationSettingsUtil.normalize(updated);
     GlossaryTermRelationSettingsUtil.validateUniqueNames(updated);

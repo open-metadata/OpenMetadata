@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
-import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
+import { Button } from '@openmetadata/ui-core-components';
+import { XCircle } from '@untitledui/icons';
+import { useTranslation } from 'react-i18next';
 
 interface LineageNodeRemoveButtonProps {
   onRemove: () => void;
@@ -21,20 +21,17 @@ interface LineageNodeRemoveButtonProps {
 const LineageNodeRemoveButton = ({
   onRemove,
 }: LineageNodeRemoveButtonProps) => {
+  const { t } = useTranslation();
+
   return (
     <Button
-      className="lineage-node-remove-btn bg-body-hover"
+      aria-label={t('label.remove')}
+      className="lineage-node-remove-btn tw:absolute tw:-top-5 tw:-right-5"
+      color="tertiary"
       data-testid="lineage-node-remove-btn"
-      icon={
-        <Icon
-          alt="times-circle"
-          className="align-middle"
-          component={IconTimesCircle}
-          style={{ fontSize: '16px' }}
-        />
-      }
-      type="link"
-      onClick={onRemove}
+      iconLeading={XCircle}
+      size="xs"
+      onPress={onRemove}
     />
   );
 };
