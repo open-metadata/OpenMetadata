@@ -60,6 +60,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 @ExtendWith(TestNamespaceExtension.class)
 public class IngestionPipelineOwnerInheritanceIT {
 
+  private static final String BULK_DEPLOY_PATH = "/v1/services/ingestionPipelines/bulk/deploy";
   private static final Date START_DATE = Date.from(Instant.parse("2022-06-10T15:06:47Z"));
 
   @Test
@@ -222,10 +223,10 @@ public class IngestionPipelineOwnerInheritanceIT {
               String deployPath = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
               ownerClient.getHttpClient().execute(HttpMethod.POST, deployPath, null, Void.class);
 
-              String bulkDeployPath = "/v1/services/ingestionPipelines/bulk/deploy";
               ownerClient
                   .getHttpClient()
-                  .execute(HttpMethod.POST, bulkDeployPath, List.of(pipeline.getId()), Void.class);
+                  .execute(
+                      HttpMethod.POST, BULK_DEPLOY_PATH, List.of(pipeline.getId()), Void.class);
 
               String togglePath =
                   "/v1/services/ingestionPipelines/toggleIngestion/" + pipeline.getId();
@@ -255,7 +256,7 @@ public class IngestionPipelineOwnerInheritanceIT {
                           .getHttpClient()
                           .execute(
                               HttpMethod.POST,
-                              bulkDeployPath,
+                              BULK_DEPLOY_PATH,
                               List.of(pipeline.getId()),
                               Void.class),
                   "Non-owner bulk deploy should be forbidden");
@@ -321,12 +322,57 @@ public class IngestionPipelineOwnerInheritanceIT {
                 adminClient
                     .getHttpClient()
                     .execute(
-                        HttpMethod.POST,
-                        "/v1/services/ingestionPipelines/bulk/deploy",
-                        JsonUtils.readTree("null"),
-                        Void.class));
+                        HttpMethod.POST, BULK_DEPLOY_PATH, JsonUtils.readTree("null"), Void.class));
 
     assertTrue(exception.getMessage().contains("must not be null"));
+  }
+
+  @Test
+  void test_bulkDeployRejectsEmptyPipelineIds() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.POST, BULK_DEPLOY_PATH, List.of(), Void.class));
+
+    assertTrue(exception.getMessage().contains("pipeline IDs must not be empty"));
+  }
+
+  @Test
+  void test_bulkDeployRejectsNullPipelineId() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST,
+                        BULK_DEPLOY_PATH,
+                        JsonUtils.readTree("[null]"),
+                        Void.class));
+
+    assertTrue(exception.getMessage().contains("pipeline IDs must not contain null values"));
+  }
+
+  @Test
+  void test_bulkDeployRejectsDuplicatePipelineIds() {
+    UUID pipelineId = UUID.randomUUID();
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST,
+                        BULK_DEPLOY_PATH,
+                        List.of(pipelineId, pipelineId),
+                        Void.class));
+
+    assertTrue(exception.getMessage().contains("pipeline IDs must not contain duplicates"));
   }
 
   @Test

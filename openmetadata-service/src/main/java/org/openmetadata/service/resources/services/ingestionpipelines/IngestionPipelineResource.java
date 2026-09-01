@@ -59,9 +59,12 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -786,6 +789,7 @@ public class IngestionPipelineResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @NotNull @Valid List<UUID> pipelineIdList) {
+    validateBulkDeployPipelineIds(pipelineIdList);
     pipelineIdList.forEach(
         id -> authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY));
 
@@ -804,6 +808,19 @@ public class IngestionPipelineResource
               }
             })
         .collect(Collectors.toList());
+  }
+
+  private static void validateBulkDeployPipelineIds(List<UUID> pipelineIds) {
+    if (nullOrEmpty(pipelineIds)) {
+      throw new BadRequestException("pipeline IDs must not be empty");
+    }
+    if (pipelineIds.stream().anyMatch(Objects::isNull)) {
+      throw new BadRequestException("pipeline IDs must not contain null values");
+    }
+    Set<UUID> uniquePipelineIds = new HashSet<>(pipelineIds);
+    if (uniquePipelineIds.size() != pipelineIds.size()) {
+      throw new BadRequestException("pipeline IDs must not contain duplicates");
+    }
   }
 
   @POST
