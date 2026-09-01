@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1862 endpoints** across 75 resource packages · 1852 carry a summary.
+**1881 endpoints** across 75 resource packages · 1871 carry a summary.
 
 ## (root)
 
@@ -1072,11 +1072,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/glossaryTerms/name/{fqn}/exportAsync` | Export glossary term in CSV format asynchronously |
 | `PUT` | `/v1/glossaryTerms/name/{fqn}/import` | Import glossary terms from CSV |
 | `PUT` | `/v1/glossaryTerms/name/{fqn}/importAsync` | Import glossary term from CSV asynchronously |
+| `GET` | `/v1/glossaryTerms/ontology/data` | Get a bounded page of ontology data clusters |
+| `GET` | `/v1/glossaryTerms/ontology/summary` | Get the bounded ontology health summary |
 | `GET` | `/v1/glossaryTerms/relationTypes/usage` | Get usage counts for all relation types |
 | `PUT` | `/v1/glossaryTerms/restore` | Restore a soft deleted glossary term |
 | `GET` | `/v1/glossaryTerms/search` | Search glossary terms with pagination |
-| `GET` | `/v1/glossaryTerms/studio/data` | Get a bounded page of Ontology Studio data clusters |
-| `GET` | `/v1/glossaryTerms/studio/summary` | Get the bounded Ontology Studio health summary |
 | `DELETE` | `/v1/glossaryTerms/{id}` | Delete a glossary term by Id |
 | `GET` | `/v1/glossaryTerms/{id}` | Get a glossary term by Id |
 | `PATCH` | `/v1/glossaryTerms/{id}` | Update a glossary term |
@@ -1090,7 +1090,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/glossaryTerms/{id}/relations/{toTermId}` | Remove a relation to another glossary term |
 | `PUT` | `/v1/glossaryTerms/{id}/relations/{toTermId}` | Change the type or metadata of an existing typed relation |
 | `GET` | `/v1/glossaryTerms/{id}/relationsGraph` | Get the relation graph for a glossary term |
-| `GET` | `/v1/glossaryTerms/{id}/studioAssets` | List a bounded page of detailed assets for an Ontology Studio term |
 | `PUT` | `/v1/glossaryTerms/{id}/tags/validate` | Validate Tags Addition to Glossary Term |
 | `GET` | `/v1/glossaryTerms/{id}/versions` | List glossary term versions |
 | `GET` | `/v1/glossaryTerms/{id}/versions/{version}` | Get a version of the glossary term |
