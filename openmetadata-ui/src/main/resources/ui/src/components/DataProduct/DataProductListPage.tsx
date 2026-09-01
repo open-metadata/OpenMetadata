@@ -23,14 +23,7 @@ import {
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import {
-  FC,
-  MouseEvent,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, MouseEvent, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -65,30 +58,20 @@ import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.inter
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
-import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import ViewToggle, {
+  usePersistedViewMode,
+  ViewMode,
+} from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
 // Fixes #31776 -- remembers the user's last-chosen view (table or grid) as
-// their default for next time, mirroring MetricListPage's identical
-// localStorage pattern for the same concern.
+// their default for next time, via the shared usePersistedViewMode hook
+// (see its JSDoc in ViewToggle.tsx for the general contract).
 const DATA_PRODUCT_VIEW_STORAGE_KEY = 'dataProductList.viewMode.v1';
-
-const getInitialViewMode = (): ViewMode => {
-  try {
-    const storedMode = localStorage.getItem(DATA_PRODUCT_VIEW_STORAGE_KEY);
-    if (storedMode === ViewMode.Table || storedMode === ViewMode.Card) {
-      return storedMode;
-    }
-  } catch {
-    // localStorage may be unavailable (private browsing, quota) -- fall
-    // through to the default below.
-  }
-
-  return ViewMode.Table;
-};
+const DATA_PRODUCT_VIEWS = [ViewMode.Table, ViewMode.Card];
 
 const DataProductListPage = ({
   renderPageHeader,
@@ -169,16 +152,10 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(getInitialViewMode);
-  const handleViewChange = useCallback((nextView: ViewMode) => {
-    setView(nextView);
-    try {
-      localStorage.setItem(DATA_PRODUCT_VIEW_STORAGE_KEY, nextView);
-    } catch {
-      // localStorage may be unavailable (private browsing, quota) -- the
-      // toggle still works for this session, it just won't persist.
-    }
-  }, []);
+  const [view, handleViewChange] = usePersistedViewMode(
+    DATA_PRODUCT_VIEW_STORAGE_KEY,
+    DATA_PRODUCT_VIEWS
+  );
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(

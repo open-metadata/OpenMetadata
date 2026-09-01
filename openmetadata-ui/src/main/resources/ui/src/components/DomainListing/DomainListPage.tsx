@@ -41,7 +41,10 @@ import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredR
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import ViewToggle, {
+  usePersistedViewMode,
+  ViewMode,
+} from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
@@ -49,27 +52,10 @@ import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 // Fixes #31776 -- remembers the user's last-chosen view (table, grid, or
-// tree) as their default for next time, mirroring MetricListPage's
-// identical localStorage pattern for the same concern.
+// tree) as their default for next time, via the shared usePersistedViewMode
+// hook (see its JSDoc in ViewToggle.tsx for the general contract).
 const DOMAIN_VIEW_STORAGE_KEY = 'domainList.viewMode.v1';
-
-const getInitialViewMode = (): ViewMode => {
-  try {
-    const storedMode = localStorage.getItem(DOMAIN_VIEW_STORAGE_KEY);
-    if (
-      storedMode === ViewMode.Table ||
-      storedMode === ViewMode.Card ||
-      storedMode === ViewMode.Tree
-    ) {
-      return storedMode;
-    }
-  } catch {
-    // localStorage may be unavailable (private browsing, quota) -- fall
-    // through to the default below.
-  }
-
-  return ViewMode.Table;
-};
+const DOMAIN_VIEWS = [ViewMode.Table, ViewMode.Card, ViewMode.Tree];
 
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
@@ -150,16 +136,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(getInitialViewMode);
-  const handleViewChange = useCallback((nextView: ViewMode) => {
-    setView(nextView);
-    try {
-      localStorage.setItem(DOMAIN_VIEW_STORAGE_KEY, nextView);
-    } catch {
-      // localStorage may be unavailable (private browsing, quota) -- the
-      // toggle still works for this session, it just won't persist.
-    }
-  }, []);
+  const [view, handleViewChange] = usePersistedViewMode(
+    DOMAIN_VIEW_STORAGE_KEY,
+    DOMAIN_VIEWS
+  );
   const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
@@ -346,7 +326,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
-              views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
+              views={DOMAIN_VIEWS}
               onChange={handleViewChange}
             />
             {deleteIconButton}
