@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
+import { RJSFSchema } from '@rjsf/utils';
+import { AxiosError } from 'axios';
 import { ComponentType, FC, lazy } from 'react';
 import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
 import { AppType } from '../../../../generated/entity/applications/app';
+import { getSearchEntityTypes } from '../../../../rest/searchAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
@@ -24,6 +28,37 @@ const ApplicationConfiguration =
     lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
   );
 
+const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
+
+/**
+ * Which entity types can be reindexed depends on the indexes the server has registered, and that
+ * differs per distribution — Collate ships indexes OSS does not. So the list is fetched instead of
+ * being an enum in the schema JSON, where every deployment shared one hardcoded copy that silently
+ * went stale as entities were added.
+ */
+const withSearchEntityTypes = async (
+  schema: RJSFSchema
+): Promise<RJSFSchema> => {
+  let entityTypes: string[] = [];
+  try {
+    entityTypes = await getSearchEntityTypes();
+  } catch (error) {
+    // Leaves the picker with only "All" selectable rather than failing the whole form.
+    showErrorToast(error as AxiosError);
+  }
+
+  return {
+    ...schema,
+    properties: {
+      ...schema.properties,
+      entities: {
+        ...(schema.properties?.entities as RJSFSchema),
+        items: { type: 'string', enum: entityTypes },
+      },
+    },
+  };
+};
+
 class ApplicationsClassBase {
   public async importSchema(fqn: string) {
     const module = await import(
@@ -31,7 +66,9 @@ class ApplicationsClassBase {
     );
     const schema = module.default || module;
 
-    return schema;
+    return fqn === SEARCH_INDEXING_APPLICATION
+      ? withSearchEntityTypes(schema)
+      : schema;
   }
   public getJSONUISchema() {
     return {

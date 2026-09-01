@@ -985,6 +985,20 @@ public class SearchRepository {
   }
 
   /**
+   * Entity types that have a search index registered for this deployment, sorted. The registry is
+   * merged from the classpath at startup ({@code elasticsearch/indexMapping.json} plus
+   * {@code elasticsearch/collate/indexMapping.json} when present), so Collate-only indexes are
+   * included without the caller knowing which distribution it runs on.
+   *
+   * <p>This is the authoritative reindexing target list: {@code SearchIndexingApplication} expands
+   * {@code "all"} from it and {@code GET /v1/search/entityTypes} serves it to the entity picker, so
+   * the two cannot drift.
+   */
+  public Set<String> getIndexedEntityTypes() {
+    return Collections.unmodifiableSet(new TreeSet<>(entityIndexMap.keySet()));
+  }
+
+  /**
    * Register a staged index as the live-write target for {@code entityType} while a reindex
    * populates it. Must be paired with {@link #unregisterStagedIndex(String, String)} once the
    * alias swap is complete so writes go back through the canonical alias.

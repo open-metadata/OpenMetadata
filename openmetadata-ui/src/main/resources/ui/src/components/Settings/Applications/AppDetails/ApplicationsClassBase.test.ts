@@ -13,10 +13,67 @@
 
 import { AppType } from '../../../../generated/entity/applications/app';
 import rdfIndexAppSchema from '../../../../jsons/applicationSchemas/RdfIndexApp.json';
+import searchIndexingAppSchema from '../../../../jsons/applicationSchemas/SearchIndexingApplication.json';
+import { getSearchEntityTypes } from '../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import applicationsClassBase from './ApplicationsClassBase';
 
+jest.mock('../../../../rest/searchAPI', () => ({
+  getSearchEntityTypes: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const mockGetSearchEntityTypes = getSearchEntityTypes as jest.Mock;
+
 describe('ApplicationsClassBase', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetSearchEntityTypes.mockResolvedValue([]);
+  });
+
   describe('importSchema', () => {
+    it('should fill the SearchIndexingApplication entity list from the server', async () => {
+      mockGetSearchEntityTypes.mockResolvedValue(['dynamicAgent', 'table']);
+
+      const schema = await applicationsClassBase.importSchema(
+        'SearchIndexingApplication'
+      );
+
+      expect(schema.properties.entities.items.enum).toEqual([
+        'dynamicAgent',
+        'table',
+      ]);
+    });
+
+    it('should not hardcode the entity list in the schema json', () => {
+      const { items } = searchIndexingAppSchema.properties.entities;
+
+      // A shipped enum is the bug this endpoint replaced: one list for every deployment,
+      // stale every time an entity type was added and blind to Collate-only indexes.
+      expect(items).not.toHaveProperty('enum');
+    });
+
+    it('should toast and leave the entity list empty when the server call fails', async () => {
+      const error = new Error('boom');
+      mockGetSearchEntityTypes.mockRejectedValue(error);
+
+      const schema = await applicationsClassBase.importSchema(
+        'SearchIndexingApplication'
+      );
+
+      expect(schema.properties.entities.items.enum).toEqual([]);
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+    });
+
+    it('should not fetch entity types for other applications', async () => {
+      await applicationsClassBase.importSchema('RdfIndexApp');
+
+      expect(mockGetSearchEntityTypes).not.toHaveBeenCalled();
+    });
+
     it('should import pre-parsed schema', async () => {
       // Mock the dynamic import
       jest.doMock(

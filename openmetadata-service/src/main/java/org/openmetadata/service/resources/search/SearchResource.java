@@ -20,6 +20,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -832,6 +833,33 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     return searchRepository.aggregate(aggregationRequest);
+  }
+
+  @GET
+  @Path("/entityTypes")
+  @Operation(
+      operationId = "getIndexedEntityTypes",
+      summary = "List the entity types that have a search index",
+      description =
+          "Entity types registered in the index mapping for this deployment, sorted. Includes "
+              + "distribution-specific indexes (e.g. Collate-only entity types) because the "
+              + "registry is merged from the classpath at startup. This is the same set that "
+              + "reindexing expands \"all\" into, so clients can offer an entity picker without "
+              + "hardcoding a list that goes stale.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public List<String> getIndexedEntityTypes(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
+
+    return List.copyOf(searchRepository.getIndexedEntityTypes());
   }
 
   @GET
