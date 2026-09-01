@@ -15,8 +15,12 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -39,9 +43,13 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.RestUtil;
 
 /**
  * Unit tests for the iterative bulk restore + bulk soft-delete + bulk hard-delete paths
@@ -92,6 +100,7 @@ class EntityRepositoryRestoreTest {
     final Set<UUID> bulkRestoreInvokedWith = new HashSet<>();
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
+    UUID unresolvableHistoryId;
 
     CountingPipelineRepo(CollectionDAO.PipelineDAO dao) {
       super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
@@ -111,6 +120,17 @@ class EntityRepositoryRestoreTest {
 
     @Override
     protected void storeRelationships(Pipeline entity) {}
+
+    @Override
+    public void setFieldsInBulk(Fields fields, List<Pipeline> entities) {
+      if (unresolvableHistoryId != null) {
+        if (entities.stream().anyMatch(entity -> unresolvableHistoryId.equals(entity.getId()))) {
+          throw new EntityRelationshipNotFoundException("parent was deleted concurrently");
+        }
+        return;
+      }
+      super.setFieldsInBulk(fields, entities);
+    }
 
     @Override
     protected void restoreAdditionalChildren(UUID id, String updatedBy) {
@@ -242,6 +262,129 @@ class EntityRepositoryRestoreTest {
 
     verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
+  }
+
+  @Test
+  void invalidate_advancesLoaderEpochBeforeEvictingCachedEntity() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+    long epochBefore = EntityRepository.readEpochById(Entity.PIPELINE, pipeline.getId());
+
+    repo.invalidate(pipeline);
+
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, pipeline.getId()) > epochBefore,
+        "Invalidation must advance the epoch seen by in-flight cache loaders");
+  }
+
+  @Test
+  void listEntityHistoryByTimestamp_retainsSnapshotWhoseParentWasDeletedConcurrently() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
+
+    long startTs = 1_000_000L + System.nanoTime();
+    long endTs = startTs + 10;
+    Pipeline live =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("live")
+            .withFullyQualifiedName("service.live")
+            .withUpdatedAt(endTs - 1);
+    Pipeline dangling =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("dangling")
+            .withFullyQualifiedName("service.dangling")
+            .withUpdatedAt(endTs - 2);
+    repo.unresolvableHistoryId = dangling.getId();
+    List<String> historyJson = List.of(JsonUtils.pojoToJson(live), JsonUtils.pojoToJson(dangling));
+    assertEquals(2, JsonUtils.readObjects(historyJson, Pipeline.class).size());
+
+    when(extensionDAO.getEntityHistoryByTimestampRange(
+            isNull(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyString(),
+            eq(Entity.PIPELINE),
+            isNull(),
+            isNull(),
+            anyInt()))
+        .thenReturn(historyJson);
+    when(extensionDAO.getEntityHistoryByTimestampRangeCount(null, startTs, endTs, Entity.PIPELINE))
+        .thenReturn(2);
+
+    ResultList<Pipeline> result = repo.listEntityHistoryByTimestamp(startTs, endTs, null, null, 10);
+
+    verify(extensionDAO)
+        .getEntityHistoryByTimestampRange(
+            isNull(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyString(),
+            eq(Entity.PIPELINE),
+            isNull(),
+            isNull(),
+            anyInt());
+    assertEquals(
+        List.of(live.getId(), dangling.getId()),
+        result.getData().stream().map(Pipeline::getId).toList());
+  }
+
+  @Test
+  void listEntityHistoryByTimestamp_fallbackRetainsBackwardPageLimitAndOrder() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
+
+    long startTs = 2_000_000L + System.nanoTime();
+    long endTs = startTs + 10;
+    Pipeline oldest = historyPipeline("oldest", startTs + 1);
+    Pipeline middle = historyPipeline("middle", startTs + 2);
+    Pipeline lookahead = historyPipeline("lookahead", startTs + 3);
+    repo.unresolvableHistoryId = oldest.getId();
+    List<String> historyJson =
+        List.of(
+            JsonUtils.pojoToJson(oldest),
+            JsonUtils.pojoToJson(middle),
+            JsonUtils.pojoToJson(lookahead));
+
+    when(extensionDAO.getEntityHistoryByTimestampRange(
+            isNull(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyString(),
+            eq(Entity.PIPELINE),
+            anyLong(),
+            anyString(),
+            anyInt()))
+        .thenReturn(historyJson);
+    when(extensionDAO.getEntityHistoryByTimestampRangeCount(null, startTs, endTs, Entity.PIPELINE))
+        .thenReturn(3);
+    String beforeCursor = RestUtil.encodeCursor((endTs + 1) + ":" + UUID.randomUUID());
+
+    ResultList<Pipeline> result =
+        repo.listEntityHistoryByTimestamp(startTs, endTs, null, beforeCursor, 2);
+
+    assertEquals(
+        List.of(middle.getId(), oldest.getId()),
+        result.getData().stream().map(Pipeline::getId).toList(),
+        "Fallback hydration must not re-add the lookahead row and must preserve newest-first order");
+  }
+
+  private Pipeline historyPipeline(String name, long updatedAt) {
+    return new Pipeline()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("service." + name)
+        .withUpdatedAt(updatedAt);
   }
 
   @Test

@@ -93,6 +93,7 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -145,6 +146,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -347,6 +349,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
       buildEntityIdCache(
           CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
+
+  // A Guava load can finish after a writer invalidates the same key and reinstall the stale
+  // pre-write value. Writers advance this bounded epoch before eviction; ID loaders compare the
+  // value at the start and end of each load and reject any value that crossed a write.
+  private static final Cache<Pair<String, UUID>, AtomicLong> WRITE_EPOCH_BY_ID =
+      CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
+
+  private static long readEpochById(Pair<String, UUID> key) {
+    AtomicLong epoch = WRITE_EPOCH_BY_ID.getIfPresent(key);
+    return epoch == null ? 0L : epoch.get();
+  }
+
+  @VisibleForTesting
+  static long readEpochById(String entityType, UUID id) {
+    return readEpochById(new ImmutablePair<>(entityType, id));
+  }
+
+  private static void bumpWriteEpoch(String entityType, UUID id) {
+    if (entityType == null || id == null) {
+      return;
+    }
+    try {
+      WRITE_EPOCH_BY_ID.get(new ImmutablePair<>(entityType, id), AtomicLong::new).incrementAndGet();
+    } catch (ExecutionException e) {
+      LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
+    }
+  }
+
+  static final class LoaderRaceException extends RuntimeException {
+    LoaderRaceException(String message) {
+      super(message);
+    }
+  }
 
   // Fields whose change rewrites a glossary term's FQN during move operations.
   private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
@@ -1569,6 +1604,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
+      if (e.getCause() instanceof LoaderRaceException) {
+        return find(id, include, false);
+      }
       throw new EntityNotFoundException(entityNotFound(entityType, id));
     }
   }
@@ -2607,19 +2645,58 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 page.cursorId(),
                 fetchLimit);
 
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
-    boolean hasMoreInCurrentDirection = entities.size() > limit;
-    if (hasMoreInCurrentDirection) {
-      entities = new ArrayList<>(entities.subList(0, limit));
-    }
+    boolean hasMoreInCurrentDirection = jsons.size() > limit;
+    List<String> pageJsons =
+        hasMoreInCurrentDirection
+            ? new ArrayList<>(jsons.subList(0, limit))
+            : new ArrayList<>(jsons);
     if (page.isBackward()) {
-      Collections.reverse(entities);
+      Collections.reverse(pageJsons);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
+    List<T> entities = new ArrayList<>(JsonUtils.readObjects(pageJsons, getEntityClass()));
+    hydrateHistoryPage(pageJsons, entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
     return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+  }
+
+  /**
+   * Hydrate a history page in bulk, falling back to one snapshot at a time when a concurrent hard
+   * delete removes a current relationship needed by another row in the page. Version JSON stores
+   * the historical references, so retaining that snapshot is safer than failing the entire page.
+   */
+  private void hydrateHistoryPage(List<String> jsons, List<T> entities) {
+    try {
+      setFieldsInBulk(putFields, entities);
+      hydrateHistoryEntities(entities);
+    } catch (EntityNotFoundException | EntityRelationshipNotFoundException bulkFailure) {
+      LOG.debug(
+          "Bulk history hydration for {} encountered a concurrently deleted reference; "
+              + "retrying snapshots individually",
+          entityType,
+          bulkFailure);
+      entities.clear();
+      for (String json : jsons) {
+        T snapshot = JsonUtils.readValue(json, entityClass);
+        List<T> singleSnapshot = new ArrayList<>(List.of(snapshot));
+        try {
+          setFieldsInBulk(putFields, singleSnapshot);
+          hydrateHistoryEntities(singleSnapshot);
+          snapshot = singleSnapshot.getFirst();
+        } catch (EntityNotFoundException | EntityRelationshipNotFoundException rowFailure) {
+          // A field hydrator may have mutated the object before discovering the missing relation.
+          // Re-read the stored version so fallback returns the exact historical snapshot.
+          snapshot = JsonUtils.readValue(json, entityClass);
+          LOG.debug(
+              "Retaining stored {} history snapshot {} because its current relationship "
+                  + "was deleted concurrently",
+              entityType,
+              snapshot.getId(),
+              rowFailure);
+        }
+        entities.add(snapshot);
+      }
+    }
   }
 
   private ResultList<T> historyPageResult(
@@ -3266,6 +3343,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     if (id != null) {
+      bumpWriteEpoch(entityType, id);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
     if (fqn != null) {
@@ -4672,6 +4750,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   void invalidate(T entity) {
+    bumpWriteEpoch(entityType, entity.getId());
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -10061,6 +10140,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, UUID> idPair) {
+      long startEpoch = readEpochById(idPair);
+      String json = loadInternal(idPair);
+      if (readEpochById(idPair) != startEpoch) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          cachedEntityDao.deleteBase(idPair.getLeft(), idPair.getRight());
+        }
+        throw new LoaderRaceException("Concurrent write during loadById: " + idPair);
+      }
+      return json;
+    }
+
+    @NonNull
+    private String loadInternal(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =

@@ -974,10 +974,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityListWithPagination_200(TestNamespace ns) {
     // Create a few entities
-    for (int i = 0; i < 3; i++) {
+    T firstEntity = createEntity(createRequest(ns.prefix("list0"), ns));
+    for (int i = 1; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("list" + i), ns);
       createEntity(createRequest);
     }
+    String scopeService = getEntityServiceFqn(firstEntity);
 
     Awaitility.await("Wait for entities to be listable")
         .pollDelay(Duration.ofMillis(500))
@@ -988,6 +990,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               org.openmetadata.sdk.models.ListParams params =
                   new org.openmetadata.sdk.models.ListParams();
               params.setLimit(10);
+              if (scopeService != null) {
+                params.setService(scopeService);
+              }
               org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
               assertNotNull(response, "List response should not be null");
@@ -4823,7 +4828,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_sdkOnlyListEntities(TestNamespace ns) {
     // Create a few entities
-    for (int i = 0; i < 3; i++) {
+    T firstEntity = createEntity(createRequest(ns.prefix("sdk_list_0"), ns));
+    for (int i = 1; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("sdk_list_" + i), ns);
       createEntity(createRequest);
     }
@@ -4831,6 +4837,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Basic list test
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
+    String scopeService = getEntityServiceFqn(firstEntity);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
     assertNotNull(response, "List response should not be null");
