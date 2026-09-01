@@ -14,6 +14,7 @@
 package org.openmetadata.service.governance.workflows.elements;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.flowable.bpmn.model.BpmnModel;
@@ -40,27 +41,27 @@ class EdgeTest {
   }
 
   @Test
-  void rejectsConditionThatBreaksOutOfStringLiteral() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> buildConditionExpression("CheckApproval", "Owned", "' || ''=='"));
+  void emptyConditionProducesUnconditionalEdge() {
+    assertNull(buildConditionExpression("CheckApproval", "Approved", ""));
   }
 
   @Test
-  void rejectsConditionWithJuelExpressionSyntax() {
+  void rejectsConditionWithDisallowedCharacters() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            buildConditionExpression(
-                "CheckApproval",
-                "Owned",
-                "true'} ${T(java.lang.Runtime).getRuntime().exec('id')} ${'"));
+        () -> buildConditionExpression("CheckApproval", "Owned", "a' b"));
   }
 
   @Test
-  void rejectsUnsafeSourceNodeReference() {
+  void rejectsConditionWithExpressionCharacters() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> buildConditionExpression("a' == 'a", "Owned", "approve"));
+        () -> buildConditionExpression("CheckApproval", "Owned", "true ${x}"));
+  }
+
+  @Test
+  void rejectsSourceNodeWithDisallowedCharacters() {
+    assertThrows(
+        IllegalArgumentException.class, () -> buildConditionExpression("a' b", "Owned", "approve"));
   }
 }

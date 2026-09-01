@@ -1,5 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,28 +189,44 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
-    // 6. Reject edge conditions that could inject into the generated JUEL expression
+    // 6. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
   }
 
-  /**
-   * Rejects edge conditions containing characters that could break out of the quoted JUEL string
-   * literal the condition is embedded into (${var == 'condition'}) and inject arbitrary expression
-   * syntax (GHSA-cq2r-82mr-xv2h). Node references are guarded separately in {@link #validateNodeIds}.
-   */
   private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
     if (workflowDefinition.getEdges() == null) {
       return;
     }
     String workflowName = workflowDefinition.getName();
     for (EdgeDefinition edge : workflowDefinition.getEdges()) {
-      String condition = edge.getCondition();
-      if (condition != null && !WorkflowExpressionValidator.isSafeCondition(condition)) {
-        throw BadRequestException.of(
-            String.format(
-                "Workflow '%s' has an edge with an unsafe condition: '%s'",
-                workflowName, condition));
-      }
+      checkEdgeExpressionSafety(workflowName, edge);
+    }
+  }
+
+  /**
+   * A conditional edge builds the Flowable expression {@code ${from_result == 'condition'}}, so both
+   * the condition value and the source node ('from') are interpolated into it. Restrict them to a
+   * well-formed character set. Unconditional edges (null/empty condition) are left untouched, so node
+   * names keep the broader entityName contract.
+   */
+  static void checkEdgeExpressionSafety(String workflowName, EdgeDefinition edge) {
+    String condition = edge.getCondition();
+    if (nullOrEmpty(condition)) {
+      return;
+    }
+    if (!WorkflowExpressionValidator.isSafeCondition(condition)) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' edge '%s' -> '%s' has an invalid condition '%s'; "
+                  + "allowed characters: letters, digits, space, '.', '_', '-'",
+              workflowName, edge.getFrom(), edge.getTo(), condition));
+    }
+    if (!WorkflowExpressionValidator.isSafeNodeReference(edge.getFrom())) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' conditional edge '%s' -> '%s' has an invalid source node reference; "
+                  + "allowed characters: letters, digits, '_'",
+              workflowName, edge.getFrom(), edge.getTo()));
     }
   }
 
@@ -461,14 +479,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       if (!nodeIds.add(nodeId)) {
         throw BadRequestException.of(
             String.format("Workflow '%s' has duplicate node ID: '%s'", workflowName, nodeId));
-      }
-
-      // Node names become JUEL variable-name prefixes on conditional edges; reject any that could
-      // break out of the generated expression (GHSA-cq2r-82mr-xv2h).
-      if (!WorkflowExpressionValidator.isSafeNodeReference(nodeId)) {
-        throw BadRequestException.of(
-            String.format(
-                "Workflow '%s' has a node with an unsafe name: '%s'", workflowName, nodeId));
       }
 
       // Check if node ID clashes with workflow name

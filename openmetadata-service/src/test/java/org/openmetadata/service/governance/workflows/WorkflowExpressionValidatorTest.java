@@ -35,16 +35,8 @@ class WorkflowExpressionValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "' || ''=='",
-        "true'} ${T(java.lang.Runtime).getRuntime().exec('id')} ${'",
-        "x' == 'x",
-        "${payload}",
-        "a\\b",
-        "\"quoted\""
-      })
-  void rejectsJuelInjectionConditions(String condition) {
+  @ValueSource(strings = {"a' b", "x'=='x", "${x}", "a\\b", "\"quoted\"", "a(b)", "a=b"})
+  void rejectsConditionsWithDisallowedCharacters(String condition) {
     assertFalse(WorkflowExpressionValidator.isSafeCondition(condition));
   }
 
@@ -60,8 +52,8 @@ class WorkflowExpressionValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"a' == 'a", "foo.class.classLoader", "node-1", "has space", "${x}"})
-  void rejectsUnsafeNodeReferences(String reference) {
+  @ValueSource(strings = {"a' b", "foo.bar", "node-1", "has space", "${x}"})
+  void rejectsNodeReferencesWithDisallowedCharacters(String reference) {
     assertFalse(WorkflowExpressionValidator.isSafeNodeReference(reference));
   }
 
