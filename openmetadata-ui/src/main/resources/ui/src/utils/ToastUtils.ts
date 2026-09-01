@@ -98,11 +98,12 @@ export const showErrorToast = (
     errorMessage = getErrorText(error, fallback);
     isRuleViolation =
       get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
+    const isUnauthorizedOrForbiddenGet =
+      error.response?.status === ClientErrors.UNAUTHORIZED ||
+      (error.response?.status === ClientErrors.FORBIDDEN && method === 'GET');
     if (
       error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
-          method === 'GET')) &&
+      isUnauthorizedOrForbiddenGet &&
       !errorMessage.includes('principal domain')
     ) {
       return;
