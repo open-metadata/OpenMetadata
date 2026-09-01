@@ -48,6 +48,13 @@ interface StrengthStyle {
   checkbox: string;
 }
 
+/**
+ * `CheckboxBase` is a plain div — no role, no tab stop, no handler — so it is
+ * safe to use as a status glyph, but it sets `cursor-pointer` unconditionally.
+ * Reset it so a read-only indicator does not advertise itself as clickable.
+ */
+const STATIC_CHECKBOX_CLASS = 'tw:cursor-default!';
+
 const STRENGTH_STYLE: Record<StrengthLevel, StrengthStyle> = {
   [StrengthLevel.Weak]: {
     labelKey: 'label.weak',
@@ -123,11 +130,17 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
             <li
               className="tw:flex tw:items-center tw:gap-2 tw:whitespace-nowrap"
               key={rule.id}>
-              <CheckboxBase
-                className={isSatisfied ? style.checkbox : undefined}
-                isSelected={isSatisfied}
-                size="sm"
-              />
+              <span aria-hidden className="tw:flex">
+                <CheckboxBase
+                  className={
+                    isSatisfied
+                      ? `${style.checkbox} ${STATIC_CHECKBOX_CLASS}`
+                      : STATIC_CHECKBOX_CLASS
+                  }
+                  isSelected={isSatisfied}
+                  size="sm"
+                />
+              </span>
               <Typography
                 className="tw:text-tertiary"
                 data-testid={`password-rule-${rule.id}`}
