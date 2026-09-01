@@ -47,3 +47,20 @@ UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracledb"')
 WHERE serviceType = 'Oracle'
   AND json #>> '{connection,config,scheme}' = 'oracle+cx_oracle';
+
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+CREATE TABLE IF NOT EXISTS data_quality_dimension (
+    id character varying(36) NOT NULL,
+    json jsonb NOT NULL,
+    fqnHash character varying(768) NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    provider character varying(32) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_data_quality_dimension_fqn_hash UNIQUE (fqnhash)
+);
+CREATE INDEX IF NOT EXISTS idx_data_quality_dimension_name ON data_quality_dimension (name);

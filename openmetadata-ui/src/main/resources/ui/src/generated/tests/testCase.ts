@@ -38,10 +38,10 @@ export interface TestCase {
     dataProducts?: EntityReference[];
     /**
      * Data quality dimension this test case belongs to. When not set at creation time, it
-     * defaults to the dimension of the test definition. Any custom dimension can be used, on
-     * top of the ones shipped with OpenMetadata.
+     * defaults to the dimension of the test definition. Any dimension registered in Settings >
+     * Preferences > Data Quality can be used, system and custom alike.
      */
-    dataQualityDimension?: string;
+    dataQualityDimension?: EntityReference;
     /**
      * When `true` indicates the entity has been soft deleted.
      */

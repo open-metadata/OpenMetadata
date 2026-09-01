@@ -96,7 +96,7 @@ $$section
 
 The data quality dimension this test case is categorized under. Test cases are grouped and reported by dimension in the data quality dashboard.
 
-It defaults to the dimension of the selected test type, and you can either pick another one from the list or type in your own custom dimension — for example `Timeliness`, `Traceability` or `Availability`.
+It defaults to the dimension of the selected test type, and you can pick another one from the list. Dimensions are managed in **Settings > Preferences > Data Quality**, where you can add custom ones — for example `Timeliness`, `Traceability` or `Availability` — on top of the ones shipped with OpenMetadata.
 $$
 
 $$section
@@ -226,7 +226,7 @@ Tests are categorized into seven data quality dimensions:
 - **Integrity**: Tests for referential integrity and structural consistency
 - **SQL**: Custom SQL-based validation tests
 
-Each test case inherits the dimension of its test definition and can override it with any other dimension, including custom ones you define yourself.
+Dimensions are entities in their own right. Each test case inherits the dimension of its test definition and can point at any other dimension instead, including the custom ones created in **Settings > Preferences > Data Quality**.
 
 ## Test Platforms
 

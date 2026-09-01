@@ -164,6 +164,7 @@ import org.openmetadata.schema.service.configuration.teamsApp.TeamsAppConfigurat
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.DataQualityDimension;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
@@ -439,6 +440,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestDefinitionDAO testDefinitionDAO();
+
+  @CreateSqlObject
+  DataQualityDimensionDAO dataQualityDimensionDAO();
 
   @CreateSqlObject
   TestConnectionDefinitionDAO testConnectionDefinitionDAO();
@@ -9019,6 +9023,23 @@ public interface CollectionDAO {
     @Override
     default boolean supportsSoftDelete() {
       return false;
+    }
+  }
+
+  interface DataQualityDimensionDAO extends EntityDAO<DataQualityDimension> {
+    @Override
+    default String getTableName() {
+      return "data_quality_dimension";
+    }
+
+    @Override
+    default Class<DataQualityDimension> getEntityClass() {
+      return DataQualityDimension.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 

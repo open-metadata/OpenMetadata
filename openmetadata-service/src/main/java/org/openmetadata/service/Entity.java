@@ -227,6 +227,7 @@ public final class Entity {
   public static final String MCP_SERVER = "mcpServer";
   public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";
+  public static final String DATA_QUALITY_DIMENSION = "dataQualityDimension";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";

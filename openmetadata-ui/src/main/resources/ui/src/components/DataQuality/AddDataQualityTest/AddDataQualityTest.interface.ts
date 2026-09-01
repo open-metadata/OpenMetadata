@@ -88,5 +88,6 @@ export type TestCaseFormType = {
   glossaryTerms?: TagLabel[];
   dimensionColumns?: string[];
   topDimensions?: number;
+  /** Name of the data quality dimension entity selected for this test case. */
   dataQualityDimension?: string;
 };

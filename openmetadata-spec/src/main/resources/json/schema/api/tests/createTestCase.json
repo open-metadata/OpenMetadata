@@ -33,8 +33,8 @@
       }
     },
     "dataQualityDimension": {
-      "description": "Data quality dimension this test case belongs to. When not set, it defaults to the dimension of the test definition. Any custom dimension can be used, on top of the ones shipped with OpenMetadata.",
-      "type": "string"
+      "description": "Name of the data quality dimension this test case belongs to. When not set, it defaults to the dimension of the test definition. Any dimension registered in Settings > Preferences > Data Quality can be used, system and custom alike.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "owners": {
       "description": "Owners of this test",

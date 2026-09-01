@@ -49,3 +49,20 @@ UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
 WHERE serviceType = 'Oracle'
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';
+
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+CREATE TABLE IF NOT EXISTS data_quality_dimension (
+    id varchar(36) NOT NULL,
+    json json NOT NULL,
+    fqnHash varchar(768) NOT NULL,
+    name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.name'))) STORED NOT NULL,
+    provider varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.provider'))) STORED,
+    updatedAt bigint GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedAt'))) STORED,
+    deleted tinyint(1) GENERATED ALWAYS AS (json_extract(`json`,_utf8mb4'$.deleted')) STORED,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_data_quality_dimension_fqn_hash (fqnHash),
+    KEY idx_data_quality_dimension_name (name)
+);

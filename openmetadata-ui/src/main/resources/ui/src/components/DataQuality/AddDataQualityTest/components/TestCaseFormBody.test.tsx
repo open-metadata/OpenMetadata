@@ -56,6 +56,16 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
 }));
 
+jest.mock('../../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({
+    data: [
+      { id: 'dim-1', name: 'Accuracy', displayName: 'Accuracy' },
+      { id: 'dim-2', name: 'Timeliness', displayName: 'Timeliness' },
+    ],
+    paging: { total: 2 },
+  }),
+}));
+
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn(),
 }));

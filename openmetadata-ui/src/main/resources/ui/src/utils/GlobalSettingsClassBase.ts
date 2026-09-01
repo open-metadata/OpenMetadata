@@ -434,6 +434,13 @@ class GlobalSettingsClassBase {
             icon: ProfilerConfigIcon,
           },
           {
+            label: t('label.data-quality'),
+            description: t('message.page-sub-header-for-data-quality-settings'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_QUALITY}`,
+            icon: ProfilerConfigIcon,
+          },
+          {
             label: t('label.search'),
             description: t('message.page-sub-header-for-search-setting'),
             isProtected: Boolean(isAdminUser),

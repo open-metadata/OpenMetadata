@@ -115,7 +115,13 @@ class TestCaseIndexTest {
         .withFullyQualifiedName("svc.db.schema.table.columnValuesToBeBetween")
         .withEntityLink("<#E::table::svc.db.schema.table>")
         .withTestDefinition(testDefRef)
-        .withDataQualityDimension(testCaseDimension);
+        .withDataQualityDimension(
+            testCaseDimension == null
+                ? null
+                : new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.DATA_QUALITY_DIMENSION)
+                    .withName(testCaseDimension));
   }
 
   @Test
@@ -128,7 +134,7 @@ class TestCaseIndexTest {
   }
 
   @Test
-  void testCustomDataQualityDimensionOverridesTestDefinition() {
+  void testTestCaseDataQualityDimensionOverridesTestDefinition() {
     TestCase tc = createTestCaseWithDimensions(DataQualityDimensions.ACCURACY, "Timeliness");
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());

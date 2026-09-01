@@ -44,6 +44,7 @@ import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import type {
+  EntityReference,
   TestCase,
   TestCaseParameterValue,
 } from '../../generated/tests/testCase';
@@ -118,6 +119,30 @@ export const createTestCaseParameters = (
     : params;
 };
 
+/**
+ * The form holds the dimension by name; the test case holds a reference to the dimension
+ * entity. An unchanged name keeps the existing reference so no patch operation is emitted,
+ * and a new one is sent without an id — the server resolves the dimension by name and fails
+ * the request if it does not exist.
+ */
+const toDimensionReference = (
+  dimensionName: string | undefined,
+  testCase: TestCase
+): EntityReference | undefined => {
+  if (!dimensionName) {
+    return undefined;
+  }
+  if (testCase.dataQualityDimension?.name === dimensionName) {
+    return testCase.dataQualityDimension;
+  }
+
+  return {
+    type: 'dataQualityDimension',
+    name: dimensionName,
+    fullyQualifiedName: dimensionName,
+  } as EntityReference;
+};
+
 export interface CreateUpdatedTestCasePatchArgs {
   testCase: TestCase;
   value: TestCaseFormType;
@@ -167,7 +192,7 @@ export const createUpdatedTestCasePatch = ({
     dataQualityDimension:
       showOnlyParameter || !has(value, 'dataQualityDimension')
         ? testCase.dataQualityDimension
-        : value.dataQualityDimension || undefined,
+        : toDimensionReference(value.dataQualityDimension, testCase),
   };
 
   return compare(testCase, updatedTestCase);

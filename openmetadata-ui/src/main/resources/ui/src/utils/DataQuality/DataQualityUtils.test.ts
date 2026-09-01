@@ -1370,24 +1370,43 @@ describe('DataQualityUtils', () => {
       expect(hasTagsOp(patch)).toBe(false);
     });
 
-    it('should emit a dataQualityDimension op when a custom dimension is set', () => {
+    it('should emit a dataQualityDimension op when another dimension is picked', () => {
       const patch = createUpdatedTestCasePatch({
-        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+          id: 'dim-1',
+          type: 'dataQualityDimension',
+          name: 'Accuracy',
+        },
+        },
         value: { ...baseValue, dataQualityDimension: 'Timeliness' },
         createTestCaseObject: {},
         isComputeRowCountFieldVisible: false,
       });
 
+      // Sent without an id: the server resolves the dimension entity by name.
       expect(patch).toContainEqual({
         op: 'replace',
         path: '/dataQualityDimension',
-        value: 'Timeliness',
+        value: {
+          type: 'dataQualityDimension',
+          name: 'Timeliness',
+          fullyQualifiedName: 'Timeliness',
+        },
       });
     });
 
     it('should emit a dataQualityDimension op when the dimension is cleared', () => {
       const patch = createUpdatedTestCasePatch({
-        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+          id: 'dim-1',
+          type: 'dataQualityDimension',
+          name: 'Accuracy',
+        },
+        },
         // The normalizer always emits the key; an empty value means cleared.
         value: { ...baseValue, dataQualityDimension: undefined },
         createTestCaseObject: {},
@@ -1402,7 +1421,14 @@ describe('DataQualityUtils', () => {
 
     it('should keep the existing dataQualityDimension when the form omits the field', () => {
       const patch = createUpdatedTestCasePatch({
-        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+          id: 'dim-1',
+          type: 'dataQualityDimension',
+          name: 'Accuracy',
+        },
+        },
         value: baseValue,
         createTestCaseObject: {},
         isComputeRowCountFieldVisible: false,
@@ -1415,7 +1441,14 @@ describe('DataQualityUtils', () => {
 
     it('should keep the existing dataQualityDimension when only parameters are edited', () => {
       const patch = createUpdatedTestCasePatch({
-        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+          id: 'dim-1',
+          type: 'dataQualityDimension',
+          name: 'Accuracy',
+        },
+        },
         value: { ...baseValue, dataQualityDimension: 'Timeliness' },
         createTestCaseObject: {},
         showOnlyParameter: true,

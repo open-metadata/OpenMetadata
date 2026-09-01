@@ -47,15 +47,16 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
+import { DataQualityDimension } from '../../../../generated/tests/dataQualityDimension';
 import { Table } from '../../../../generated/entity/data/table';
 import {
-  DataQualityDimensions,
   EntityType,
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
+import { getDataQualityDimensions } from '../../../../rest/dataQualityDimensionAPI';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
@@ -161,6 +162,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     useState(false);
   const [isDimensionManuallyEdited, setIsDimensionManuallyEdited] =
     useState(false);
+  const [dataQualityDimensions, setDataQualityDimensions] = useState<
+    DataQualityDimension[]
+  >([]);
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -350,27 +354,38 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     return result;
   }, [columnOptions, selectedColumn, dimensionColumnsValue]);
 
-  // The dimensions shipped with OpenMetadata are only suggestions here: the
-  // field is creatable, so any custom dimension a user types in is kept as an
-  // option (as is the one already set on the test case in edit mode).
+  // Dimensions are entities managed in Settings > Preferences > Data Quality, so the picker
+  // lists what exists there. The dimension already set on the test case is kept as an option
+  // even if it has since been removed, so opening the form does not silently clear it.
   const dataQualityDimensionOptions: FormSelectItem[] = useMemo(() => {
-    const dimensions = new Set<string>(Object.values(DataQualityDimensions));
+    const options = new Map<string, FormSelectItem>();
+    dataQualityDimensions.forEach((dimension) => {
+      options.set(dimension.name, {
+        id: dimension.name,
+        label: dimension.displayName ?? dimension.name,
+      });
+    });
     [
       selectedTestDefinition?.dataQualityDimension,
       fqnFromSelectItem(
         dataQualityDimensionValue as FormSelectItem | string | null
       ),
     ].forEach((dimension) => {
-      if (dimension) {
-        dimensions.add(dimension);
+      if (dimension && !options.has(dimension)) {
+        options.set(dimension, { id: dimension, label: dimension });
       }
     });
 
-    return Array.from(dimensions).map((dimension) => ({
-      id: dimension,
-      label: dimension,
-    }));
-  }, [selectedTestDefinition, dataQualityDimensionValue]);
+    return Array.from(options.values());
+  }, [dataQualityDimensions, selectedTestDefinition, dataQualityDimensionValue]);
+
+  useEffect(() => {
+    getDataQualityDimensions({ limit: 1000 })
+      .then(({ data }) => setDataQualityDimensions(data))
+      // The field falls back to the test definition's dimension, so a failure here degrades
+      // the picker rather than blocking test case creation.
+      .catch(() => setDataQualityDimensions([]));
+  }, []);
 
   const fetchTables = useCallback(
     async (searchValue = '') => {
@@ -924,8 +939,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const dataQualityDimensionField: FieldProp = {
     name: 'dataQualityDimension',
     label: t('label.data-quality-dimension'),
-    // Creatable AUTOCOMPLETE: custom dimensions are typed in, not picked.
-    type: FieldTypes.AUTOCOMPLETE,
+    type: FieldTypes.SELECT,
     required: false,
     id: 'root/dataQualityDimension',
     doc:
@@ -936,7 +950,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'data-quality-dimension',
-      allowsCreation: true,
       options: dataQualityDimensionOptions,
       onItemInserted: () => setIsDimensionManuallyEdited(true),
       onItemCleared: () => setIsDimensionManuallyEdited(true),

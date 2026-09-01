@@ -188,7 +188,7 @@ describe('transformTestCaseFormData', () => {
     expect(result.testDefinition).toBe('tableCustomSQLQuery');
   });
 
-  it('unwraps the dataQualityDimension FormSelectItem, custom values included', () => {
+  it('unwraps the dataQualityDimension FormSelectItem into the dimension name', () => {
     const result = transformTestCaseFormData(
       {
         testLevel: TestLevel.TABLE,
@@ -330,7 +330,7 @@ describe('buildEditDefaults', () => {
     expect(result.glossaryTerms).toEqual([]);
   });
 
-  it('prefills the custom dimension set on the test case', () => {
+  it('prefills the dimension set on the test case', () => {
     const testCase = {
       name: 'my_test',
       entityLink: '<#E::table::svc.db.sch.t>',
@@ -339,7 +339,12 @@ describe('buildEditDefaults', () => {
         fullyQualifiedName: 'tableRowCountToEqual',
       },
       parameterValues: [],
-      dataQualityDimension: 'Timeliness',
+      dataQualityDimension: {
+        id: 'dim-1',
+        type: 'dataQualityDimension',
+        name: 'Timeliness',
+        displayName: 'Timeliness',
+      },
       tags: [],
     } as unknown as TestCase;
 

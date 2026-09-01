@@ -284,14 +284,14 @@ const toColumnFormSelectItems = (
   columnNames?.map((columnName) => toColumnFormSelectItem(columnName));
 
 /**
- * The data quality dimension field is a creatable autocomplete (custom
- * dimensions are typed in), so its RHF value is a `FormSelectItem` keyed by the
- * dimension itself — built-in or custom alike.
+ * The data quality dimension field is a dropdown over the dimension entities, so its RHF value
+ * is a `FormSelectItem` keyed by the dimension name — the identifier the API expects.
  */
 export const toDataQualityDimensionItem = (
-  dimension: string | undefined
+  dimension: string | undefined,
+  label?: string
 ): FormSelectItem | undefined =>
-  dimension ? { id: dimension, label: dimension } : undefined;
+  dimension ? { id: dimension, label: label ?? dimension } : undefined;
 
 /**
  * Builds the RHF value for a single Array-typed param from its JSON-array
@@ -470,7 +470,8 @@ export const buildEditDefaults = (
     // Test cases created before dimensions could be set on them carry none, so
     // fall back to the dimension of their test definition — the effective one.
     dataQualityDimension: toDataQualityDimensionItem(
-      testCase.dataQualityDimension ?? definition.dataQualityDimension
+      testCase.dataQualityDimension?.name ?? definition.dataQualityDimension,
+      testCase.dataQualityDimension?.displayName
     ),
     testTypeId: {
       id: testCase.testDefinition?.fullyQualifiedName ?? '',

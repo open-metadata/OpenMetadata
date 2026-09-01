@@ -182,6 +182,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENT_STATUS_FIELD)
             ? getIncidentStatus(test)
             : test.getIncidentStatus());
+    // Always resolved rather than gated on `fields`: the dimension is not stored on the test case
+    // and every consumer (search indexing, the UI, the DQ dashboards) expects it to be there.
+    test.setDataQualityDimension(
+        getFromEntityRef(
+            test.getId(), Relationship.RELATED_TO, Entity.DATA_QUALITY_DIMENSION, false));
   }
 
   private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
@@ -195,6 +200,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (fields.contains(TEST_DEFINITION)) {
       fetchAndSetTestDefinitions(testCases);
     }
+
+    // Not gated on `fields`, mirroring setFields: the dimension lives only in the relationship
+    // table, so it would otherwise come back null on every list response.
+    fetchAndSetDataQualityDimensions(testCases);
 
     if (fields.contains(TEST_SUITE_FIELD) || fields.contains(Entity.FIELD_TEST_SUITES)) {
       fetchAndSetTestSuitesData(
@@ -354,6 +363,41 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     for (TestCase testCase : testCases) {
       testCase.setTestDefinition(testDefinitionMap.get(testCase.getId()));
+    }
+  }
+
+  private void fetchAndSetDataQualityDimensions(List<TestCase> testCases) {
+    List<String> testCaseIds =
+        testCases.stream().map(TestCase::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> dimensionRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                testCaseIds,
+                Relationship.RELATED_TO.ordinal(),
+                Entity.DATA_QUALITY_DIMENSION,
+                TEST_CASE);
+    if (dimensionRecords.isEmpty()) {
+      return;
+    }
+
+    List<UUID> dimensionIds =
+        dimensionRecords.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+    Map<UUID, EntityReference> refMap =
+        Entity.getEntityReferencesByIds(Entity.DATA_QUALITY_DIMENSION, dimensionIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    Map<UUID, EntityReference> byTestCase = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject relation : dimensionRecords) {
+      EntityReference ref = refMap.get(UUID.fromString(relation.getFromId()));
+      if (ref != null) {
+        byTestCase.put(UUID.fromString(relation.getToId()), ref);
+      }
+    }
+
+    for (TestCase testCase : testCases) {
+      testCase.setDataQualityDimension(byTestCase.get(testCase.getId()));
     }
   }
 
@@ -1021,25 +1065,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   /**
-   * A test case can carry any dimension the user wants — including custom ones that are not part of
-   * the dimensions shipped with OpenMetadata. When none is given, the test case inherits the
-   * dimension of its test definition, so that clearing the field resets it to that default.
+   * A test case points at a dimension entity — a system one or a custom one created in Settings >
+   * Preferences > Data Quality. When none is given, the test case inherits the dimension of its
+   * test definition, so that clearing the field resets it to that default.
    */
   static void setDataQualityDimension(TestCase test, TestDefinition testDefinition) {
-    String dimension = test.getDataQualityDimension();
-    dimension = dimension == null ? null : dimension.trim();
-    if (!nullOrEmpty(dimension)) {
-      test.setDataQualityDimension(dimension);
-    } else if (testDefinition.getDataQualityDimension() != null) {
-      test.setDataQualityDimension(testDefinition.getDataQualityDimension().value());
-    } else {
-      test.setDataQualityDimension(null);
+    EntityReference dimension = test.getDataQualityDimension();
+    if (dimension == null && testDefinition.getDataQualityDimension() != null) {
+      dimension =
+          EntityUtil.getEntityReference(
+              Entity.DATA_QUALITY_DIMENSION, testDefinition.getDataQualityDimension().value());
     }
+    // Resolves the name/FQN the caller (or the test definition default) supplied into a full
+    // reference, and rejects a dimension that does not exist.
+    test.setDataQualityDimension(
+        dimension == null
+            ? null
+            : Entity.getEntityReference(
+                dimension.withType(Entity.DATA_QUALITY_DIMENSION), NON_DELETED));
   }
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult", INCIDENTS_FIELD);
+    // The dimension is stored as a relationship only, so renaming, recolouring or deleting a
+    // dimension is reflected on every test case that uses it without rewriting them.
+    return List.of(
+        "testSuite",
+        "testSuites",
+        "testDefinition",
+        "testCaseResult",
+        "dataQualityDimension",
+        INCIDENTS_FIELD);
   }
 
   @Override
@@ -1058,6 +1114,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<UUID> ids = entities.stream().map(TestCase::getId).toList();
     deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_SUITE);
     deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_DEFINITION);
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.RELATED_TO, Entity.DATA_QUALITY_DIMENSION);
   }
 
   @Override
@@ -1074,6 +1131,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TEST_DEFINITION,
         TEST_CASE,
         Relationship.CONTAINS);
+    // RELATED_TO rather than CONTAINS: a dimension does not own its test cases, so deleting one
+    // must not be blocked by (or cascade into) the test cases that reference it.
+    if (test.getDataQualityDimension() != null) {
+      addRelationship(
+          test.getDataQualityDimension().getId(),
+          test.getId(),
+          Entity.DATA_QUALITY_DIMENSION,
+          TEST_CASE,
+          Relationship.RELATED_TO);
+    }
   }
 
   @Override
@@ -1827,10 +1894,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       compareAndUpdate(
           "dataQualityDimension",
           () ->
-              recordChange(
+              updateFromRelationship(
                   "dataQualityDimension",
+                  Entity.DATA_QUALITY_DIMENSION,
                   original.getDataQualityDimension(),
-                  updated.getDataQualityDimension()));
+                  updated.getDataQualityDimension(),
+                  Relationship.RELATED_TO,
+                  TEST_CASE,
+                  original.getId()));
       compareAndUpdate(
           "testCaseStatus",
           () ->
