@@ -19,6 +19,7 @@ The fixtures below model that sink semantics directly: ``_build_data_model`` ret
 ``None`` until a ``Barrier`` has travelled down the stream.
 """
 
+import sys
 import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -46,6 +47,7 @@ from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.dashboard.looker.metadata import (
     DATAMODEL_LINEAGE_SENTINEL,
+    ExploreRef,
     LookerSource,
 )
 from metadata.ingestion.source.dashboard.looker.models import LookMlView
@@ -279,6 +281,32 @@ class TestLookerLineageBarrier:
             if r.edge.fromEntity.id.root == parent.id.root and r.edge.toEntity.id.root == child.id.root
         ]
         assert extends_edges, "standalone view -> extends parent lineage should be produced"
+
+    def test_deferred_lineage_does_not_pin_the_explore_sdk_object(self, looker, bulk_stage):
+        """Deferring lineage must not retain LookmlModelExplore for the whole stage.
+
+        The SDK object carries the full fieldset — measured at ~250 KB per explore, so a
+        1,000-explore instance would hold ~250 MB it never reads. Only model_name and name
+        are used, so the pending entry keeps an ExploreRef instead.
+        """
+        # The lineage loop clears the list, so snapshot it at the flush while it is populated.
+        captured = []
+        original = LookerSource._resolve_pending_datamodels
+
+        def snapshot(self):
+            captured.extend(self._pending_view_lineage)
+            return original(self)
+
+        with patch.object(LookerSource, "_resolve_pending_datamodels", autospec=True, side_effect=snapshot):
+            bulk_stage()
+
+        assert captured, "the stage should defer at least one view -> explore lineage"
+        for _, held, _ in captured:
+            assert not isinstance(held, LookmlModelExplore), (
+                f"pending lineage pins the SDK explore ({sys.getsizeof(held)} B shallow); use ExploreRef"
+            )
+            assert isinstance(held, ExploreRef)
+            assert (held.model_name, held.name) == ("my_model", "my_explore")
 
     def test_barrier_is_not_counted_as_a_scanned_record(self):
         """A flush is a control record, not an ingested asset."""
