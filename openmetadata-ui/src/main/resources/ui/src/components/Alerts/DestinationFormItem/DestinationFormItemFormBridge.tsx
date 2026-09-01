@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isEqual } from 'lodash';
+import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -73,18 +73,34 @@ function DestinationFormItemFormBridge({
       }),
     [destinations, readTimeout, resources, timeout]
   );
-  const latestValues = useRef(normalizedValues);
+  // RHF mutates nested field-array objects, so synchronization snapshots must
+  // not retain references to its live form state.
+  const latestValues = useRef(cloneDeep(normalizedValues));
   const latestOnChange = useRef(onChange);
 
-  // Legacy form boundaries create adapter props inline. Keeping their latest
-  // values in refs prevents unrelated parent renders from replacing the RHF
-  // subscription or re-running its reset guard.
-  latestValues.current = normalizedValues;
+  // Legacy form boundaries create adapter callbacks inline. Keeping the latest
+  // callback in a ref preserves one RHF subscription across parent renders.
   latestOnChange.current = onChange;
 
   useEffect(() => {
-    if (!isEqual(getDestinationFormFields(getValues()), normalizedValues)) {
-      reset(normalizedValues);
+    // Ant Form does not expose programmatically managed timeout fields through
+    // useWatch. Preserve the live RHF values when those legacy props are absent
+    // so destination edits are not mistaken for external form resets.
+    const synchronizedValues = {
+      ...normalizedValues,
+      readTimeout:
+        normalizedValues.readTimeout ?? latestValues.current.readTimeout,
+      timeout: normalizedValues.timeout ?? latestValues.current.timeout,
+    };
+
+    if (isEqual(latestValues.current, synchronizedValues)) {
+      return;
+    }
+
+    latestValues.current = cloneDeep(synchronizedValues);
+
+    if (!isEqual(getDestinationFormFields(getValues()), synchronizedValues)) {
+      reset(synchronizedValues);
     }
   }, [getValues, normalizedValues, reset]);
 
@@ -93,6 +109,9 @@ function DestinationFormItemFormBridge({
       const nextValues = getDestinationFormFields(getValues());
 
       if (!isEqual(latestValues.current, nextValues)) {
+        // Advance the synchronized snapshot before notifying the legacy form
+        // so its prop echo is not mistaken for an external reset.
+        latestValues.current = cloneDeep(nextValues);
         latestOnChange.current(nextValues);
       }
     });

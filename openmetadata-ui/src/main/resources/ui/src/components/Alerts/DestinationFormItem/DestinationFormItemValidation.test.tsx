@@ -12,10 +12,38 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { Form } from 'antd';
+import { useRef, useState } from 'react';
+import {
+  HTTPMethod,
+  SubscriptionCategory,
+  SubscriptionType,
+  Type,
+} from '../../../generated/events/eventSubscription';
 import DestinationFormItemFormBridge, {
+  DestinationFormFieldRegistrar,
   DestinationFormFields,
 } from './DestinationFormItemFormBridge';
+
+const OAUTH_DESTINATION_VALUES: Partial<DestinationFormFields> = {
+  destinations: [
+    {
+      category: SubscriptionCategory.External,
+      config: {
+        authType: {
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          type: Type.Oauth2,
+        },
+        endpoint: 'https://hooks.slack.com/services/test',
+        httpMethod: HTTPMethod.Post,
+      },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    },
+  ],
+};
 
 interface ValidationHarnessProps {
   isRequired?: boolean;
@@ -52,6 +80,47 @@ function ValidationHarness({ isRequired, onFinish }: ValidationHarnessProps) {
   );
 }
 
+function AntFormFocusHarness() {
+  const [form] = Form.useForm<DestinationFormFields>();
+  const destinations = Form.useWatch('destinations', form);
+  const readTimeout = Form.useWatch('readTimeout', form);
+  const resources = Form.useWatch('resources', form);
+  const timeout = Form.useWatch('timeout', form);
+  const didEchoFocusChange = useRef(false);
+
+  return (
+    <Form<DestinationFormFields>
+      form={form}
+      initialValues={OAUTH_DESTINATION_VALUES}>
+      <output data-testid="parent-token-url">
+        {destinations?.[0]?.config?.authType?.tokenUrl}
+      </output>
+      <DestinationFormItemFormBridge
+        renderValidationField={(validate) => (
+          <Form.Item
+            hidden
+            name="destinations"
+            rules={[{ validator: validate }]}>
+            <DestinationFormFieldRegistrar />
+          </Form.Item>
+        )}
+        values={{ destinations, readTimeout, resources, timeout }}
+        onChange={(values) => {
+          const tokenUrl = values.destinations?.[0]?.config?.authType?.tokenUrl;
+
+          if (
+            tokenUrl === 'https://auth.example.com/oauth/token/v2' &&
+            !didEchoFocusChange.current
+          ) {
+            didEchoFocusChange.current = true;
+            form.setFieldsValue(values);
+          }
+        }}
+      />
+    </Form>
+  );
+}
+
 describe('DestinationFormItem validation', () => {
   it('shows the minimum destination error when required submission is blocked', async () => {
     const onFinish = jest.fn();
@@ -78,5 +147,31 @@ describe('DestinationFormItem validation', () => {
     expect(
       screen.queryByText('message.minimum-count-error')
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps a destination input focused when the parent form echoes its value', async () => {
+    render(<AntFormFocusHarness />);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'label.advanced-configuration',
+      })
+    );
+
+    const tokenUrlInput = screen.getByPlaceholderText(
+      'https://auth.example.com/oauth/token'
+    );
+    tokenUrlInput.focus();
+    fireEvent.change(tokenUrlInput, {
+      target: { value: 'https://auth.example.com/oauth/token/v2' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('parent-token-url')).toHaveTextContent(
+        'https://auth.example.com/oauth/token/v2'
+      )
+    );
+
+    expect(document.activeElement).toBe(tokenUrlInput);
   });
 });
