@@ -239,6 +239,7 @@ describe('AIUserMenu', () => {
       renderMenu();
 
       expect(mockGetVersion).toHaveBeenCalledTimes(1);
+
       await waitFor(() =>
         expect(mockSetAppVersion).toHaveBeenCalledWith('2.0.0')
       );
@@ -255,7 +256,13 @@ describe('AIUserMenu', () => {
     it('renders the version number in the Help submenu when appVersion is set', () => {
       mockAppVersion = '2.0.0';
       mockGetHelpItems.mockReturnValue([
-        { key: 'version', label: 'label.version', icon: null, isExternal: false, link: '' },
+        {
+          key: 'version',
+          label: 'label.version',
+          icon: null,
+          isExternal: false,
+          link: '',
+        },
       ]);
 
       renderMenu();
