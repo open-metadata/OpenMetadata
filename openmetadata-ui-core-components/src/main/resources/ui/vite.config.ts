@@ -98,6 +98,7 @@ export default defineConfig({
         'react-aria-components',
         'react-stately',
         'react-hook-form',
+        'react-helmet-async',
         'tailwind-merge',
         'input-otp',
         '@react-aria/utils',

@@ -262,7 +262,7 @@ def get_table_options(
     connection: "Connection",  # noqa: F821
     table_name: str,
     schema: str | None = None,
-    **kw,  # noqa: F821, RUF100
+    **kw,
 ):
     metadata = self._get_table(connection, table_name, schema=schema, **kw)
     return {

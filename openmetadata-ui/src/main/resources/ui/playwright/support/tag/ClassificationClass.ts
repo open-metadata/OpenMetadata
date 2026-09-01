@@ -12,6 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 type ClassificationData = {
@@ -53,26 +58,26 @@ export class ClassificationClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/classifications', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'ClassificationClass.create',
+      createPath: '/api/v1/classifications',
+      fqnSegments: [this.data.name],
       data: this.data,
     });
-
-    this.responseData = await response.json();
 
     return this.responseData;
   }
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const response = await apiContext.patch(
-      `/api/v1/classifications/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/classifications/${this.responseData.id}`, {
         data: payload,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'ClassificationClass.patch');
 
     return this.responseData;
   }

@@ -308,8 +308,6 @@ export function useGridEditController({
           ?.removeEventListener('scroll', highlightSelectedRange);
       };
     }
-
-    return;
   }, [highlightSelectedRange]);
 
   // Helper to get cell indices from event target
@@ -683,8 +681,6 @@ export function useGridEditController({
 
         e.preventDefault();
         e.stopImmediatePropagation();
-
-        return;
       } else if (
         !e.shiftKey &&
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)

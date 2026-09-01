@@ -59,14 +59,17 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
-import { tableQueryFn, tableQueryKey } from '../../rest/queries/tableQuery';
-import { getQueriesList } from '../../rest/queryAPI';
+import {
+  tableQueryCountFn,
+  tableQueryCountKey,
+  tableQueryFn,
+  tableQueryKey,
+} from '../../rest/queries/tableQuery';
 import {
   addFollower,
   patchTableDetails,
@@ -136,8 +139,6 @@ const TableDetailsPageV1: React.FC = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
-  const [queryCount, setQueryCount] = useState(0);
 
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -247,6 +248,14 @@ const TableDetailsPageV1: React.FC = () => {
     enabled: Boolean(
       tableFqn && canViewTableInQuery && !isTourOpen && !isTourPage
     ),
+  });
+
+  // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+  // the render that starts the request, so the badge never flashes a placeholder 0.
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
+    queryKey: tableQueryCountKey(tableDetails?.id ?? ''),
+    queryFn: tableQueryCountFn(tableDetails?.id ?? ''),
+    enabled: Boolean(tableDetails?.id),
   });
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
@@ -381,21 +390,6 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  const fetchQueryCount = async () => {
-    if (!tableDetails?.id) {
-      return;
-    }
-    try {
-      const response = await getQueriesList({
-        limit: 0,
-        entityId: tableDetails.id,
-      });
-      setQueryCount(response.paging.total);
-    } catch {
-      setQueryCount(0);
-    }
-  };
-
   const {
     tableTags,
     deleted,
@@ -486,13 +480,11 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab) {
-      if (!isTourOpen) {
-        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
-          replace: true,
-          state: location.state,
-        });
-      }
+    if (activeKey !== activeTab && !isTourOpen) {
+      navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+        replace: true,
+        state: location.state,
+      });
     }
   };
 
@@ -637,6 +629,7 @@ const TableDetailsPageV1: React.FC = () => {
 
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
+      isQueryCountLoading,
       isTourOpen,
       tablePermissions,
       activeTab,
@@ -668,6 +661,7 @@ const TableDetailsPageV1: React.FC = () => {
     return updatedTabs;
   }, [
     queryCount,
+    isQueryCountLoading,
     isTourOpen,
     tablePermissions,
     activeTab,
@@ -956,24 +950,6 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableDetails?.fullyQualifiedName]);
 
-  // P1.2: queryCount only drives the "Queries (N)" tab badge — most users never click that
-  // tab, so eagerly fetching it on every page load wasted a server round-trip per view.
-  // Defer until the user actually activates the Queries tab (or any of its column-scoped
-  // sub-tabs); the badge then populates on first activation. {@link useDeferredTabData}
-  // also re-fires on FQN change if the user is already on the Queries tab, so badge counts
-  // never show stale data from a previous entity.
-  useDeferredTabData(EntityTabs.TABLE_QUERIES, activeTab, fetchQueryCount, [
-    tableDetails?.fullyQualifiedName,
-  ]);
-
-  // Reset the badge count to 0 when navigating to a different entity. Without this the
-  // badge would show the previous table's queryCount until the deferred fetch resolves,
-  // which is briefly misleading when navigating between tables that have differing query
-  // counts.
-  useEffect(() => {
-    setQueryCount(0);
-  }, [tableDetails?.fullyQualifiedName]);
-
   useSub(
     'updateDetails',
     (suggestion: Suggestion) => {
@@ -1034,7 +1010,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={entityName} title="Table details">
+    <PageLayoutV1 pageTitle={entityName}>
       <GenericProvider<Table>
         columnFqn={columnFqn}
         customizedPage={customizedPage}

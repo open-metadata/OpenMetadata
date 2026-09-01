@@ -121,6 +121,12 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_TABLE_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
+                    # A table never derives from itself. The system tables record
+                    # access rather than derivation, so a streaming or CDC write
+                    # legitimately names its target as its own source. Kept as
+                    # lineage it renders as a loop on the node and says nothing.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     self.table_lineage_map[row.target_table_full_name].add(row.source_table_full_name)
             logger.info(
                 f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "  # noqa: G004
@@ -134,6 +140,10 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_COLUMN_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
+                    # The table pair this belongs to is dropped above, so caching the
+                    # columns only grows the map with entries nothing can read.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     table_key = (
                         row.source_table_full_name,
                         row.target_table_full_name,

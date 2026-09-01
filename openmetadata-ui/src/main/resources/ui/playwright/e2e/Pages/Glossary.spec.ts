@@ -44,6 +44,7 @@ import {
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -1194,7 +1195,19 @@ test.describe('Glossary tests', () => {
       );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      await page.getByTestId('assets').click();
+      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await expect
+        .poll(async () =>
+          Number(
+            await page
+              .getByTestId('assets')
+              .getByTestId('filter-count')
+              .textContent()
+          )
+        )
+        .toBeGreaterThanOrEqual(1);
       const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
@@ -1329,9 +1342,11 @@ test.describe('Glossary tests', () => {
   test('Delete Glossary and Glossary Term using Delete Modal', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     glossary1.data.terms = [glossaryTerm1];
@@ -1350,9 +1365,11 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - single delete success', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossary1 = new Glossary();
 
     try {
@@ -1416,9 +1433,11 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - multiple deletes all succeed', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossaryA = new Glossary();
     const glossaryB = new Glossary();
     const glossaryC = new Glossary();
@@ -2176,10 +2195,12 @@ test.describe('Glossary tests', () => {
           .filter({ hasText: 'EN' })
           .first();
         await languageDropdown.click();
+        await waitForAntdPopupToSettle(page);
 
         const germanOption = page.getByRole('menuitem', {
           name: 'Deutsch - DE',
         });
+        await expect(germanOption).toBeVisible();
         await germanOption.click();
 
         await waitForAllLoadersToDisappear(page);
@@ -2212,10 +2233,12 @@ test.describe('Glossary tests', () => {
           .filter({ hasText: 'DE' })
           .first();
         await languageDropdown.click();
+        await waitForAntdPopupToSettle(page);
 
         const englishOption = page.getByRole('menuitem', {
           name: 'English - EN',
         });
+        await expect(englishOption).toBeVisible();
         await englishOption.click();
       });
     } finally {

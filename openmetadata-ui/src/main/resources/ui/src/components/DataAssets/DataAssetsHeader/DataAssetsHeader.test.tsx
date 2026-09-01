@@ -147,13 +147,13 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn().mockImplementation(({ items }) => (
     <div data-testid="breadcrumb">
-      {items.map((item: { href?: string; label: string }, index: number) =>
+      {items.map((item: { href?: string; label: string }) =>
         item.href ? (
-          <a href={item.href} key={index}>
+          <a href={item.href} key={item.label}>
             {item.label}
           </a>
         ) : (
-          <span key={index}>{item.label}</span>
+          <span key={item.label}>{item.label}</span>
         )
       )}
     </div>

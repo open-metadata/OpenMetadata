@@ -142,7 +142,7 @@ class Median(StaticMetric, PercentilMixin):
         if is_quantifiable(column.type):
             try:
                 arr = series.to_numpy(dtype=float, copy=False)
-            except Exception:  # noqa: BLE001, RUF100
+            except Exception:
                 arr = series.astype(float).to_numpy(copy=False)
         else:
             logger.debug(f"Don't know how to process type {column.type} when computing Median")  # noqa: G004

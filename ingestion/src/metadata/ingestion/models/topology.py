@@ -145,7 +145,7 @@ class TopologyContext(BaseModel):
         :return: TopologyContext
         """
         nodes = get_topology_nodes(topology)
-        ctx_fields = {
+        ctx_fields: dict[str, Any] = {
             stage.context: (stage.type_ | None, None) for node in nodes for stage in node.stages if stage.context
         }
         return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()

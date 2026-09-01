@@ -267,7 +267,7 @@ class DataFrameColumnParser:
     def _get_data_frame(
         data_frame: Union[list["DataFrame"], "DataFrame"],  # noqa: F821
         sample: bool,
-        shuffle: bool,  # noqa: F821, RUF100
+        shuffle: bool,
     ):
         """Return the dataframe to use for parsing"""
 

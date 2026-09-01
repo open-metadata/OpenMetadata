@@ -362,7 +362,7 @@ def _(xlet: str) -> dict[str, list[OMEntity]] | None:
 
 def get_xlets_from_operator(
     operator: "BaseOperator",  # noqa: F821
-    xlet_mode: XLetsMode,  # noqa: F821, RUF100
+    xlet_mode: XLetsMode,
 ) -> dict[str, list[OMEntity]] | None:
     """
     Given an Airflow DAG Task, obtain the tables

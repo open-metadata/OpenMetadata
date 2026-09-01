@@ -40,7 +40,7 @@ class _Stub:
     def __init__(self, keys: list[tuple[str, int]]):
         self._keys = keys
 
-    def list_keys(self, bucket, prefix):  # noqa: ARG002, RUF100
+    def list_keys(self, bucket, prefix):
         for key, size in self._keys:
             if key.startswith(prefix):
                 yield key, size

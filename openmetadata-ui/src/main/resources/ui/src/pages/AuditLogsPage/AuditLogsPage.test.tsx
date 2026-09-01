@@ -75,6 +75,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .fn()
     .mockImplementation(({ value, onChange, inputDataTestId, placeholder }) => (
       <input
+        aria-label="Search"
         data-testid={inputDataTestId}
         placeholder={placeholder}
         value={value}
@@ -194,6 +195,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
           {onShowSizeChange && (
             <div
               data-testid="page-size-selection-dropdown"
+              role="presentation"
               onClick={() => {
                 // Simulate opening dropdown and selecting 50
                 // In a real Antd dropdown, this would be a separate click

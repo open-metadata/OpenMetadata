@@ -18,7 +18,7 @@ No sample data is required beforehand
 
 import json
 import time
-from unittest import TestCase, TestLoader
+from unittest import TestCase
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.configuration.profilerConfiguration import (
@@ -38,8 +38,6 @@ from ..integration_base import (  # noqa: TID252
     METADATA_INGESTION_CONFIG_TEMPLATE,
     PROFILER_INGESTION_CONFIG_TEMPLATE,
 )
-
-TestLoader.sortTestMethodsUsing = None  # type: ignore
 
 
 class TestSQAProfiler(TestCase):
@@ -66,9 +64,42 @@ class TestSQAProfiler(TestCase):
                 ingestion_workflow.execute()
                 ingestion_workflow.raise_from_status()
                 ingestion_workflow.stop()
+
+            # Profile here rather than inside a test method. pytest orders TestCase
+            # methods alphabetically, so test_list_entity_profiles runs *before*
+            # test_profiler_workflow and would otherwise assert on profiles that do
+            # not exist yet. It only ever passed because hard-deleted tables used to
+            # leak their profiler rows into the window it queries (issue #27041, fixed
+            # in #31556). Profiles are class fixture data, so they belong here.
+            cls.run_profiler_workflows()
         except Exception as e:
             cls.container_builder.stop_all_containers()
             raise e  # noqa: TRY201
+
+    @classmethod
+    def run_profiler_workflows(cls):
+        """Run the profiler over every container, using the active profiler settings."""
+        for container in cls.container_builder.containers:
+            config = PROFILER_INGESTION_CONFIG_TEMPLATE.format(
+                type=container.connector_type,
+                service_config=container.get_config(),
+                service_name=type(container).__name__,
+            )
+            profiler_workflow = ProfilerWorkflow.create(json.loads(config))
+            profiler_workflow.execute()
+            profiler_workflow.print_status()
+            profiler_workflow.raise_from_status()
+            profiler_workflow.stop()
+
+    def list_profiled_tables(self):
+        """The tables the fixture ingested, across every container."""
+        tables: list[Table] = []
+        for container in self.container_builder.containers:
+            service_name = type(container).__name__
+            cfg = json.loads(container.get_config())
+            db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
+            tables.extend(self.metadata.list_all_entities(Table, params={"database": f"{service_name}.{db_name}"}))
+        return tables
 
     @classmethod
     def tearDownClass(cls):
@@ -92,31 +123,8 @@ class TestSQAProfiler(TestCase):
         cls.metadata.create_or_update_settings(settings)
 
     def test_profiler_workflow(self):
-        """test a simple profiler workflow on a table in each service and validate the profile is created"""
-        for container in self.container_builder.containers:
-            try:
-                config = PROFILER_INGESTION_CONFIG_TEMPLATE.format(
-                    type=container.connector_type,
-                    service_config=container.get_config(),
-                    service_name=type(container).__name__,
-                )
-                profiler_workflow = ProfilerWorkflow.create(
-                    json.loads(config),
-                )
-                profiler_workflow.execute()
-                profiler_workflow.print_status()
-                profiler_workflow.raise_from_status()
-                profiler_workflow.stop()
-            except Exception as e:
-                self.fail(f"Profiler workflow failed for {type(container).__name__} with error {e}")
-
-        tables: list[Table] = []
-        for container in self.container_builder.containers:
-            service_name = type(container).__name__
-            cfg = json.loads(container.get_config())
-            db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
-            tables.extend(self.metadata.list_all_entities(Table, params={"database": f"{service_name}.{db_name}"}))
-        for table in tables:
+        """validate the profile the fixture's profiler run created for a table in each service"""
+        for table in self.list_profiled_tables():
             if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)  # noqa: PLW2901
@@ -145,34 +153,10 @@ class TestSQAProfiler(TestCase):
         )
         self.metadata.create_or_update_settings(settings)
 
-        service_names = []
+        # Re-profile so the metric-level settings above take effect.
+        self.run_profiler_workflows()
 
-        for container in self.container_builder.containers:
-            try:
-                service_name = type(container).__name__
-                service_names.append(service_name)
-                config = PROFILER_INGESTION_CONFIG_TEMPLATE.format(
-                    type=container.connector_type,
-                    service_config=container.get_config(),
-                    service_name=service_name,
-                )
-                profiler_workflow = ProfilerWorkflow.create(
-                    json.loads(config),
-                )
-                profiler_workflow.execute()
-                profiler_workflow.print_status()
-                profiler_workflow.raise_from_status()
-                profiler_workflow.stop()
-            except Exception as e:
-                self.fail(f"Profiler workflow failed for {service_name} with error {e}")
-
-        tables: list[Table] = []
-        for container in self.container_builder.containers:
-            sn = type(container).__name__
-            cfg = json.loads(container.get_config())
-            db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
-            tables.extend(self.metadata.list_all_entities(Table, params={"database": f"{sn}.{db_name}"}))
-        for table in tables:
+        for table in self.list_profiled_tables():
             if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)  # noqa: PLW2901
@@ -200,13 +184,17 @@ class TestSQAProfiler(TestCase):
         self.assertTrue(hasattr(profiles_all, "total"))
         self.assertTrue(hasattr(profiles_all, "entities"))
 
-        if profiles_all.entities:
-            first = profiles_all.entities[0]
-            self.assertIsInstance(first, EntityProfile)
-            self.assertIsNotNone(first.id)
-            self.assertIsNotNone(first.entityReference)
-            self.assertIsNotNone(first.timestamp)
-            self.assertIsNotNone(first.profileData)
+        # Assert rather than guard: setUpClass profiles every container, so an empty
+        # window is a real failure. Skipping it here only pushed the failure two lines
+        # down, hiding whether the unfiltered listing was empty too.
+        self.assertGreater(len(profiles_all.entities), 0)
+
+        first = profiles_all.entities[0]
+        self.assertIsInstance(first, EntityProfile)
+        self.assertIsNotNone(first.id)
+        self.assertIsNotNone(first.entityReference)
+        self.assertIsNotNone(first.timestamp)
+        self.assertIsNotNone(first.profileData)
 
         profiles_table = get_profiles(Table, start_ts, end_ts, ProfileTypeEnum.table)
         self.assertGreater(len(profiles_table.entities), 0)

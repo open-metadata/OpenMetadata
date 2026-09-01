@@ -271,11 +271,13 @@ describe('CsvJobsTray', () => {
     });
 
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveFast([createJob({ jobId: 'job-1', status: 'COMPLETED' })]);
     });
 
     // Older fetch resolves later with the stale RUNNING snapshot — ignored.
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveSlow([
         createJob({
           jobId: 'job-1',
@@ -620,6 +622,7 @@ describe('CsvJobsTray', () => {
     expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
 
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveSlowFetch([createJob({ jobId: 'slow-job', status: 'COMPLETED' })]);
     });
   });

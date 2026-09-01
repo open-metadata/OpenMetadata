@@ -20,6 +20,10 @@ from metadata.generated.schema.type.classificationLanguages import (
 )
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms.feature_extraction import split_column_name
+from metadata.pii.algorithms.presidio_patches import (
+    PresidioRecognizerResultPatcher,
+    date_time_patcher,
+)
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
 )
@@ -162,6 +166,7 @@ class TagAnalyzer:
         text_or_values: str | Sequence[str],
         recognizers: list[EntityRecognizer],
         context: list[str] | None = None,
+        result_patcher: PresidioRecognizerResultPatcher | None = None,
     ) -> list[RecognizerResult]:
         values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []
@@ -169,14 +174,13 @@ class TagAnalyzer:
         if self._language is not ClassificationLanguage.any:
             analyzer = self.build_analyzer_with(recognizers)
             for value in values:
-                results.extend(
-                    analyzer.analyze(
-                        value,
-                        language=self._language.value,
-                        context=context,
-                        return_decision_process=True,
-                    )
+                value_results = analyzer.analyze(
+                    value,
+                    language=self._language.value,
+                    context=context,
+                    return_decision_process=True,
                 )
+                results.extend(result_patcher(value_results, value) if result_patcher else value_results)
             return results
 
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
@@ -195,14 +199,13 @@ class TagAnalyzer:
                 effective_language=effective_lang,
             )
             for value in values:
-                results.extend(
-                    analyzer.analyze(
-                        value,
-                        language=effective_lang,
-                        context=context,
-                        return_decision_process=True,
-                    )
+                value_results = analyzer.analyze(
+                    value,
+                    language=effective_lang,
+                    context=context,
+                    return_decision_process=True,
                 )
+                results.extend(result_patcher(value_results, value) if result_patcher else value_results)
         return results
 
     def analyze(
@@ -216,7 +219,12 @@ class TagAnalyzer:
             content_recognizers = self.content_recognizers
             if content_recognizers:
                 context = split_column_name(self._column_name)
-                content_results = self._analyze_with(str_values, content_recognizers, context=context)
+                content_results = self._analyze_with(
+                    str_values,
+                    content_recognizers,
+                    context=context,
+                    result_patcher=date_time_patcher,
+                )
                 content_score = min(sum(r.score for r in content_results) / len(str_values), 1.0)
 
         column_results: list[RecognizerResult] = []

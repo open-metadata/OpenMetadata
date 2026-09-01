@@ -68,6 +68,23 @@ public interface AggregationManagementClient {
       throws IOException;
 
   /**
+   * Same as {@link #aggregate(String, String, SearchAggregation, String)} but evaluates the caller's
+   * policies against the aggregation query, so an aggregation cannot surface documents the caller may
+   * not read. Defaults to the subject-less overload, which applies no policy filtering.
+   *
+   * @param subjectContext the caller, used to build the RBAC query
+   */
+  default JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregate(query, index, searchAggregation, filter);
+  }
+
+  /**
    * Get entity type counts with aggregation.
    * Returns count of entities grouped by entity type.
    *

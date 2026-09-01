@@ -245,6 +245,10 @@ const emptyAgentProgressFields = (): Pick<
   eta: null,
 });
 
+// Runs render chronologically, oldest on the left. The window has to be taken newest-first and only
+// then reversed — capping an already-ascending list would keep the five *oldest* runs. `filter` runs
+// before `sort` so the sort works on its copy: `statuses` is `pipeline.pipelineStatuses`, whose `[0]`
+// every other consumer reads as the latest run.
 const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
   statuses
     .filter(
@@ -252,7 +256,9 @@ const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
         status.pipelineState &&
         COMPLETED_PIPELINE_STATES.has(status.pipelineState)
     )
+    .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
     .slice(0, RECENT_RUNS_LIMIT)
+    .reverse()
     .map((status) => ({
       id: status.runId ?? String(status.timestamp),
       status: toRunStatus(status.pipelineState),

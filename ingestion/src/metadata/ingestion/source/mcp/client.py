@@ -122,7 +122,7 @@ class StdioTransport:
             full_env.update(self.env)
 
         try:
-            self.process = subprocess.Popen(  # noqa: RUF100, S603
+            self.process = subprocess.Popen(
                 [resolved_command] + self.args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,

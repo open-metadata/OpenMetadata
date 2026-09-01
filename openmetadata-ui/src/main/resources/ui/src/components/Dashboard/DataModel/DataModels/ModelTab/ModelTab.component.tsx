@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -53,6 +52,7 @@ import { EntityAttachmentProvider } from '../../../../common/EntityDescription/E
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';

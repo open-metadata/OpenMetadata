@@ -128,7 +128,7 @@ def _sanitize_sample_data_value(value):  # noqa: C901
 
         # --- Tier 4: Universal catch-all ---
         # Any remaining driver-specific object (psycopg2.extras.Inet,
-        # psycopg2.extras.Range, cx_Oracle.LOB, spatial objects, numpy scalars,
+        # psycopg2.extras.Range, oracledb.LOB, spatial objects, numpy scalars,
         # etc.) is converted to its string representation rather than crashing.
         try:
             return str(value)

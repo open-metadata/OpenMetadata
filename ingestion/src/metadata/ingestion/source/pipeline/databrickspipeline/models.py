@@ -13,6 +13,7 @@
 Databricks pipeline Source Model module
 """
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -86,3 +87,62 @@ class DBRun(BaseModel):
     start_time: int | None = 0
     end_time: int | None = 0
     run_page_url: str | None = None
+
+
+@dataclass
+class KafkaSourceConfig:
+    """Kafka source configuration read out of a DLT pipeline's source code"""
+
+    bootstrap_servers: str | None = None
+    topics: list[str] = field(default_factory=list)
+    group_id_prefix: str | None = None
+
+
+@dataclass
+class DLTLibrarySource:
+    """
+    One source location a DLT pipeline declares in `spec.libraries`.
+
+    A library is either a concrete file or a directory to expand. The pipelines
+    API accepts nothing else, so there is no pattern to carry and a directory is
+    always taken in full.
+    """
+
+    path: str
+    # True and False come from the spec. None means it did not say, which happens
+    # for an include carrying neither a `**` nor a trailing slash, and is settled
+    # by listing the path rather than by guessing from its shape.
+    is_directory: bool | None = False
+
+
+@dataclass
+class DLTTableReference:
+    """
+    Where a DLT dataset reference points, once resolved.
+
+    A reference is written either bare (`orders`, a sibling dataset in the same
+    pipeline) or qualified (`catalog.schema.orders`). Both forms resolve into
+    these three named parts, so callers never index into a positional tuple.
+    """
+
+    catalog: str | None
+    schema: str | None
+    table: str
+
+
+@dataclass
+class DLTTableDependency:
+    """
+    One dataset declared by a DLT pipeline, plus what it reads from.
+
+    `depends_on` entries are returned exactly as the pipeline source spells them.
+    A bare name is a sibling dataset in the same pipeline and gets resolved against
+    the pipeline's target catalog and schema. A qualified name already says where
+    the table lives and is resolved as written.
+    """
+
+    table_name: str
+    depends_on: list[str] = field(default_factory=list)
+    reads_from_kafka: bool = False
+    reads_from_s3: bool = False
+    s3_locations: list[str] = field(default_factory=list)
