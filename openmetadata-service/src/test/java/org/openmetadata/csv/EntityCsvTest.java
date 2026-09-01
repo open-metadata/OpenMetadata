@@ -1942,7 +1942,7 @@ public class EntityCsvTest {
         .getEntityWithDependencyResolution(
             Entity.TABLE,
             tableFqn,
-            "owners,tags,domains,extension",
+            "owners,tags,domains,extension,tableConstraints,tablePartition",
             org.openmetadata.schema.type.Include.NON_DELETED);
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
@@ -3074,6 +3074,15 @@ public class EntityCsvTest {
               relationshipRepository.getEntityReferences(
                   Mockito.anyList(), Mockito.eq(Include.NON_DELETED)))
           .thenReturn(dataProduct.getDomains());
+      // On 1.13 the validateDataProductDomainMatch operator resolves a data product's domains via
+      // Entity.getEntities(...) (main resolves them through EntityRelationshipRepository instead).
+      // Stub that path so the rule sees the data product's real domains under the mocked Entity.
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntities(
+                      Mockito.anyList(), Mockito.eq("domains"), Mockito.eq(Include.NON_DELETED)))
+          .thenReturn(List.of(dataProduct));
       settingsCache
           .when(
               () ->
