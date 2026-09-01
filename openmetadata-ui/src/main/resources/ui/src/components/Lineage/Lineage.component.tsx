@@ -15,7 +15,7 @@ import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import { LineageProps } from './Lineage.interface';
+import type { LineageProps } from './Lineage.interface';
 import LineageMap from './LineageMap/LineageMap.component';
 
 const Lineage = ({

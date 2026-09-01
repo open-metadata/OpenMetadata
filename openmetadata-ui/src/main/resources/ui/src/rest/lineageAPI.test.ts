@@ -20,6 +20,7 @@ import { LineageDirection } from '../generated/api/lineage/searchLineageRequest'
 import { PipelineViewMode } from '../generated/configuration/lineageSettings';
 import APIClient from './index';
 import {
+  deleteLineageEdge,
   exportLineageByEntityCountAsync,
   getLineageByEntityCount,
   getLineageDataByFQN,
@@ -29,14 +30,26 @@ import {
 } from './lineageAPI';
 
 jest.mock('./index', () => ({
+  delete: jest.fn().mockResolvedValue({ data: {} }),
   get: jest.fn().mockResolvedValue({ data: {} }),
 }));
 
+const mockDelete = APIClient.delete as jest.MockedFunction<
+  typeof APIClient.delete
+>;
 const mockGet = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
 
 describe('lineageAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('deleteLineageEdge deletes the typed relationship', async () => {
+    await deleteLineageEdge('table', 'upstream-id', 'metric', 'metric-id');
+
+    expect(mockDelete).toHaveBeenCalledWith(
+      '/lineage/table/upstream-id/metric/metric-id'
+    );
   });
 
   it('getLineageByEntityCount sends entityType and maxDepth params', async () => {

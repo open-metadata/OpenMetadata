@@ -262,7 +262,7 @@
   },
   "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts": {
@@ -949,11 +949,6 @@
     }
   },
   "playwright/e2e/Pages/Roles.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Pages/SearchIndexApplication.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
     }
