@@ -22,14 +22,14 @@ describe('canUserChangePassword', () => {
     }
   );
 
-  it.each([
-    AuthProvider.Google,
-    AuthProvider.Okta,
-    AuthProvider.Auth0,
-    AuthProvider.Azure,
-    AuthProvider.CustomOidc,
-    AuthProvider.Saml,
-  ])('should not allow an externally managed credential (%s)', (provider) => {
+  // Derived from the enum rather than hand-listed, so a provider added to
+  // AuthProvider later is asserted against instead of silently untested.
+  it.each(
+    Object.values(AuthProvider).filter(
+      (provider) =>
+        provider !== AuthProvider.Basic && provider !== AuthProvider.LDAP
+    )
+  )('should not allow an externally managed credential (%s)', (provider) => {
     expect(canUserChangePassword({ provider, isSelf: true })).toBe(false);
   });
 
