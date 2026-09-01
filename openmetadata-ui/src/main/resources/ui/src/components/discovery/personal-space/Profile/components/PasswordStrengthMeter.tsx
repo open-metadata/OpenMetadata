@@ -16,6 +16,7 @@ import {
   CheckboxBase,
   Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -132,11 +133,10 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
               key={rule.id}>
               <span aria-hidden className="tw:flex">
                 <CheckboxBase
-                  className={
-                    isSatisfied
-                      ? `${style.checkbox} ${STATIC_CHECKBOX_CLASS}`
-                      : STATIC_CHECKBOX_CLASS
-                  }
+                  className={classNames(
+                    STATIC_CHECKBOX_CLASS,
+                    isSatisfied && style.checkbox
+                  )}
                   isSelected={isSatisfied}
                   size="sm"
                 />
