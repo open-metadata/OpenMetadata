@@ -1302,7 +1302,9 @@ const TableV2 = <T extends object>(
                       allowsSorting={!!colType.sorter}
                       className={classNames(
                         toCellPaddingClass(rest.size),
-                        'tw:text-sm tw:text-tertiary',
+                        // The same rule covers `th`: a header sits on the first
+                        // line of a row its own cells may wrap past.
+                        'tw:align-top tw:text-sm tw:text-tertiary',
                         getAlignClass(colType.align),
                         getHeaderAlignClass(colType.align)
                       )}
@@ -1500,13 +1502,16 @@ const TableV2 = <T extends object>(
                               // whatever is there and swallowing clicks on it.
                               'tw:break-words',
                               rest.cellClassName ??
-                                // AntD sets no vertical-align, so its cells
-                                // take the browser default and sit centred.
-                                // Topping them leaves short values riding above
-                                // a header that is centred in its own row.
+                                // `.ant-table-cell { vertical-align: top }` in
+                                // the app's own stylesheet, so every legacy
+                                // table tops its cells — stock AntD sets none,
+                                // which is what made this look like the browser
+                                // default. A row whose tallest cell wraps has
+                                // the rest of its values sitting on the first
+                                // line, not floating in the middle.
                                 classNames(
                                   toCellPaddingClass(rest.size),
-                                  'tw:align-middle'
+                                  'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
                               'tw:group-data-[dragging]:opacity-40',
