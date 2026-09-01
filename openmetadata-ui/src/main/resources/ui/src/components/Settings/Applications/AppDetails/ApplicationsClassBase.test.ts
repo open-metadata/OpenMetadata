@@ -42,7 +42,10 @@ describe('ApplicationsClassBase', () => {
         'SearchIndexingApplication'
       );
 
+      // 'all' is the backend sentinel for "every registered index"; it is not an index, so the
+      // endpoint does not return it, but the ["all"] default has to validate against the enum.
       expect(schema.properties.entities.items.enum).toEqual([
+        'all',
         'dynamicAgent',
         'table',
       ]);
@@ -56,7 +59,7 @@ describe('ApplicationsClassBase', () => {
       expect(items).not.toHaveProperty('enum');
     });
 
-    it('should toast and leave the entity list empty when the server call fails', async () => {
+    it('should toast and keep only the all option when the server call fails', async () => {
       const error = new Error('boom');
       mockGetSearchEntityTypes.mockRejectedValue(error);
 
@@ -64,7 +67,7 @@ describe('ApplicationsClassBase', () => {
         'SearchIndexingApplication'
       );
 
-      expect(schema.properties.entities.items.enum).toEqual([]);
+      expect(schema.properties.entities.items.enum).toEqual(['all']);
       expect(showErrorToast).toHaveBeenCalledWith(error);
     });
 

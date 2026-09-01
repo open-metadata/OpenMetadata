@@ -327,7 +327,13 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .getByRole('combobox')
         .fill('Table');
 
-      const tableTitle = page.getByRole('tree').getByTitle('Table');
+      // Exact: the entity list is server-driven now, and rc-tree-select filters on the node value
+      // (treeNodeFilterProp defaults to 'value'), so typing "Table" also leaves `tableColumn` —
+      // rendered as "Table Column" — visible. A substring getByTitle would match both and break
+      // strict mode.
+      const tableTitle = page
+        .getByRole('tree')
+        .getByTitle('Table', { exact: true });
 
       // Wait for the filtered tree result to render
       await tableTitle.waitFor({ state: 'visible' });

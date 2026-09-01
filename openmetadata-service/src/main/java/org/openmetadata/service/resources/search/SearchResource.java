@@ -63,6 +63,7 @@ import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -83,6 +84,8 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -854,10 +857,17 @@ public class SearchResource {
                 @Content(
                     mediaType = "application/json",
                     array = @ArraySchema(schema = @Schema(type = "string")))),
-        @ApiResponse(responseCode = "403", description = "Admin only")
+        @ApiResponse(responseCode = "403", description = "No view permission on Application")
       })
   public List<String> getIndexedEntityTypes(@Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    // Gate on Application view, not admin: SettingsRouter renders the app details page for
+    // `isAdminUser || hasViewPermissions(APPLICATION)` and that page fetches the config schema on
+    // every mount, so an admin-only check here would 403 a legitimate viewer on a request they
+    // never triggered.
+    OperationContext operationContext =
+        new OperationContext(Entity.APPLICATION, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(
+        securityContext, operationContext, new ResourceContext<>(Entity.APPLICATION));
 
     return List.copyOf(searchRepository.getIndexedEntityTypes());
   }

@@ -15,6 +15,7 @@ import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { ComponentType, FC, lazy } from 'react';
 import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
+import { SEARCH_INDEXING_APPLICATION } from '../../../../constants/explore.constants';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getSearchEntityTypes } from '../../../../rest/searchAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
@@ -28,7 +29,10 @@ const ApplicationConfiguration =
     lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
   );
 
-const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
+// The sentinel the backend expands to every registered index. It is not an index itself, so the
+// endpoint does not return it, but it has to be in the enum for the `["all"]` default to validate.
+// TreeSelectWidget filters it out of the child nodes and renders it as the synthetic "All" parent.
+const ALL_ENTITY_TYPES = 'all';
 
 /**
  * Which entity types can be reindexed depends on the indexes the server has registered, and that
@@ -53,7 +57,7 @@ const withSearchEntityTypes = async (
       ...schema.properties,
       entities: {
         ...(schema.properties?.entities as RJSFSchema),
-        items: { type: 'string', enum: entityTypes },
+        items: { type: 'string', enum: [ALL_ENTITY_TYPES, ...entityTypes] },
       },
     },
   };

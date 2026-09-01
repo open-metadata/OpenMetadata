@@ -20,11 +20,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -2010,8 +2012,19 @@ public class SearchResourceIT {
         entityTypes.stream().sorted().toList(), entityTypes, "Entity types should be sorted");
   }
 
+  /**
+   * A dataConsumer JWT hits SubjectCache.getUserContext during authorization; if that user has not
+   * been created in this JVM session the lookup throws EntityNotFoundException (→404) and
+   * short-circuits the authorizer before it can reach the permission check. Pin the user up front so
+   * the result is deterministic regardless of suite ordering.
+   */
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
+
   @Test
-  void testEntityTypesIsAdminOnly(TestNamespace ns) throws Exception {
+  void testEntityTypesIsReadableByApplicationViewer(TestNamespace ns) throws Exception {
     String consumerToken =
         JwtAuthProvider.tokenFor(
             "data-consumer@open-metadata.org",
@@ -2021,7 +2034,13 @@ public class SearchResourceIT {
 
     HttpResponse<String> response = httpGetJson("/v1/search/entityTypes", consumerToken);
 
-    assertEquals(403, response.statusCode(), "Non-admin should not be able to list entity types");
+    // The app details page renders for anyone with Application view permission and fetches the
+    // config schema on mount, so a non-admin viewer must not get a 403 here.
+    assertEquals(
+        200, response.statusCode(), "Application viewer should be able to list entity types");
+    assertFalse(
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {}).isEmpty(),
+        "Entity types should not be empty for an Application viewer");
   }
 
   private HttpResponse<String> httpGetJson(String path) throws Exception {
