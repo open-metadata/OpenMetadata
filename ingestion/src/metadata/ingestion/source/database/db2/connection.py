@@ -12,8 +12,7 @@
 """
 Source connection handler
 """
-import importlib
-import sys
+
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import quote_plus
@@ -105,17 +104,11 @@ def get_connection(connection: Db2Connection) -> Engine:
         clidriver_version = check_clidriver_version(clidriver_version)
         if clidriver_version:
             install_clidriver(clidriver_version.value)
-            # Invalidate cached clidriver module so the next import
-            # picks up the freshly installed path
-            sys.modules.pop("clidriver", None)
 
     # prepare license
     # pylint: disable=import-outside-toplevel
     if connection.license and connection.licenseFileName:
         import clidriver
-
-        if clidriver_version:
-            importlib.reload(clidriver)
 
         license_dir = Path(clidriver.__path__[0], "license")
         license_dir.mkdir(parents=True, exist_ok=True)

@@ -115,7 +115,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [selectedColumn]
   );
 
-  const { entityRules } = useEntityRules(type);
+  const { entityRules, isRulesLoaded } = useEntityRules(type);
 
   // limit=1000 is the backend max. Entities with more tracked field changes
   // will have entries beyond this limit silently omitted. Use fieldPrefix
@@ -422,6 +422,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     () => ({
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,
@@ -444,6 +445,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,

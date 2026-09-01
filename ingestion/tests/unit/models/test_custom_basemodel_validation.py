@@ -58,6 +58,20 @@ from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.entity_link import CustomColumnName
 
 
+def test_generated_model_transforms_name():
+    """Validate automatic name transformation on generated models."""
+    request = CreateTableRequest(
+        name=EntityName('my::table>with"special_chars'),
+        columns=[Column(name=ColumnName("column"), dataType=DataType.STRING)],
+        databaseSchema=FullyQualifiedEntityName("database.schema"),
+    )
+
+    assert (
+        request.name.root
+        == "my__reserved__colon__table__reserved__arrow__with__reserved__quote__special_chars"
+    )
+
+
 class TestCustomBasemodelValidation(TestCase):
     """Comprehensive test suite for custom basemodel validation functionality."""
 
@@ -463,6 +477,7 @@ class TestCustomBasemodelValidation(TestCase):
 
     def test_transform_entity_names_with_root_attributes(self):
         """Test transformation of entities with root attributes (like FullyQualifiedEntityName)."""
+
         # Create a mock entity with root attribute
         class MockEntityWithRoot:
             def __init__(self, root_value):
@@ -551,6 +566,7 @@ class TestCustomBasemodelValidation(TestCase):
 
     def test_error_handling_and_logging(self):
         """Test error handling and logging in transformation functions."""
+
         # Test with mock entity that might cause errors
         class ProblematicEntity:
             def __init__(self):
