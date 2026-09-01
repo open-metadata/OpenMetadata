@@ -60,7 +60,6 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -1010,15 +1009,13 @@ const DataProductsDetailsPage = ({
         })}
         entityFqn={dataProductFqn}
         open={isAssetDrawerOpen}
-        queryFilter={
-          getQueryFilterToIncludeDomain(
-            dataProduct.domains
-              ?.map((domain) => domain.fullyQualifiedName)
-              .join(', ') ?? '',
-            dataProduct.fullyQualifiedName ?? '',
-            requireDomainForDataProduct
-          ) as QueryFilterInterface
-        }
+        queryFilter={getQueryFilterToIncludeDomain(
+          dataProduct.domains
+            ?.map((domain) => domain.fullyQualifiedName ?? '')
+            .filter(Boolean) ?? [],
+          dataProduct.fullyQualifiedName ?? '',
+          requireDomainForDataProduct
+        )}
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={closeAssetDrawer}
         onSave={() => {

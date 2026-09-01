@@ -451,7 +451,9 @@ test.describe(
 
       // Positive control: an asset in the Data Product's domain is offered.
       const sameDomainSearch = page.waitForResponse(
-        `/api/v1/search/query?q=${sameDomainName}&index=all&from=0&size=25&*`
+        `/api/v1/search/query?q=${encodeURIComponent(
+          sameDomainName
+        )}&index=all&from=0&size=25&*`
       );
       await page.getByTestId('searchbar').fill(sameDomainName);
       await sameDomainSearch;
@@ -463,7 +465,9 @@ test.describe(
       // Scoped to the Data Product's domain, so a cross-domain asset is not
       // offered.
       const otherDomainSearch = page.waitForResponse(
-        `/api/v1/search/query?q=${otherDomainName}&index=all&from=0&size=25&*`
+        `/api/v1/search/query?q=${encodeURIComponent(
+          otherDomainName
+        )}&index=all&from=0&size=25&*`
       );
       await page.getByTestId('searchbar').fill(otherDomainName);
       await otherDomainSearch;

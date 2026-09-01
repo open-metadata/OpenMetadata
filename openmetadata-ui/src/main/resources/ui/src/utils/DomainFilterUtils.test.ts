@@ -46,6 +46,34 @@ describe('getQueryFilterToIncludeDomain', () => {
     });
   });
 
+  it('should use a single term when a one-element domain array is given', () => {
+    const must = getMustClauses([domainFqn], dataProductFqn, true);
+
+    expect(must).toContainEqual({
+      term: { 'domains.fullyQualifiedName': domainFqn },
+    });
+  });
+
+  it('should use a terms query when the Data Product spans multiple domains', () => {
+    const domains = ['Domain.A', 'Domain.B'];
+    const must = getMustClauses(domains, dataProductFqn, true);
+
+    expect(must).toContainEqual({
+      terms: { 'domains.fullyQualifiedName': domains },
+    });
+    expect(must).not.toContainEqual({
+      term: { 'domains.fullyQualifiedName': 'Domain.A, Domain.B' },
+    });
+  });
+
+  it('should not add a domain clause when the domain list is empty', () => {
+    const must = getMustClauses([], dataProductFqn, true);
+
+    expect(must.some((clause) => 'term' in clause || 'terms' in clause)).toBe(
+      false
+    );
+  });
+
   it('should always exclude the already assigned data product and non-assignable entity types', () => {
     [true, false].forEach((requireDomain) => {
       const must = getMustClauses(domainFqn, dataProductFqn, requireDomain);

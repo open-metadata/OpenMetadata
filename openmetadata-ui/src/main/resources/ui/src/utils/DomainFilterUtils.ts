@@ -21,21 +21,36 @@ import type {
 import { getEntityReferenceFromEntity } from './EntityReferenceUtils';
 
 export const getQueryFilterToIncludeDomain = (
-  domainFqn: string,
+  domainFqn: string | string[],
   dataProductFqn: string,
   requireDomain = true
-) => {
+): QueryFilterInterface => {
   const must: QueryFieldInterface[] = [];
 
   // When the "Data Product Domain Validation" rule is disabled the backend
   // permits assigning assets from any domain, so the picker must not scope
   // results to the Data Product's own domain.
   if (requireDomain) {
-    must.push({
-      term: {
-        'domains.fullyQualifiedName': domainFqn,
-      },
-    });
+    // A Data Product can belong to multiple domains; scope to any of them with
+    // a `terms` query instead of forcing a single-value `term` match (which
+    // never matches a comma-joined FQN and would return zero assets).
+    const domainFQNs = (Array.isArray(domainFqn) ? domainFqn : [domainFqn])
+      .map((fqn) => fqn?.trim())
+      .filter((fqn): fqn is string => Boolean(fqn));
+
+    if (domainFQNs.length === 1) {
+      must.push({
+        term: {
+          'domains.fullyQualifiedName': domainFQNs[0],
+        },
+      });
+    } else if (domainFQNs.length > 1) {
+      must.push({
+        terms: {
+          'domains.fullyQualifiedName': domainFQNs,
+        },
+      });
+    }
   }
 
   must.push(
