@@ -29,9 +29,16 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.builders import get_connection_url_common
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.filters import filter_by_schema
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
@@ -49,6 +56,21 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         self._on_close(client.close)
         return client
 
+    def _get_databases_in_scope(self, client: MongoClient) -> list[str]:
+        """Databases the ingestion would actually read.
+
+        MongoDB databases are ingested as OpenMetadata schemas, so `databaseSchema`
+        and `schemaFilterPattern` are what narrow them down.
+        """
+        connection = self.service_connection
+        if connection.databaseSchema:
+            return [connection.databaseSchema]
+        return [
+            database
+            for database in client.list_database_names()
+            if not filter_by_schema(connection.schemaFilterPattern, database)
+        ]
+
     def test_connection(
         self,
         metadata: OpenMetadata,
@@ -62,27 +84,47 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         client = self.client
         service_connection = self.service_connection
 
-        class SchemaHolder(BaseModel):
-            database: str | None = None
+        class DatabaseHolder(BaseModel):
+            """Databases resolved by GetDatabases for GetCollections to probe"""
 
-        holder = SchemaHolder()
+            databases: list[str] = []
+            listed: bool = False
 
-        def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: str | None = None):
-            # If database name is provided, use it directly instead of listing all databases
-            if database_name:
-                holder_.database = database_name
-            else:
-                for database in client_.list_database_names():
-                    holder_.database = database
-                    break
+        holder = DatabaseHolder()
 
-        def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
-            database = client_.get_database(holder_.database)
-            database.list_collection_names()
+        def test_get_databases(client_: MongoClient, holder_: DatabaseHolder):
+            holder_.databases = self._get_databases_in_scope(client_)
+            holder_.listed = True
+            if not holder_.databases:
+                logger.warning("No database is in scope: check `Database Schema` and `Schema Filter Pattern`.")
+
+        def test_get_collections(client_: MongoClient, holder_: DatabaseHolder):
+            """Probe `listCollections` on the databases in scope, passing on the first success.
+
+            Restricted users often hold `listCollections` only on the databases they
+            ingest, so probing one arbitrary database fails the whole test connection
+            for a configuration that would ingest fine.
+            """
+            if not holder_.listed:
+                raise SourceConnectionException(
+                    "The databases to probe could not be listed, see the GetDatabases step."
+                )
+
+            error: Exception | None = None
+            for database in holder_.databases:
+                try:
+                    client_.get_database(database).list_collection_names()
+                except Exception as exc:
+                    error = exc
+                    logger.debug("Failed to list collections of database [%s]: %s", database, exc)
+                else:
+                    return
+            if error is not None:
+                raise error
 
         test_fn = {
             "CheckAccess": client.server_info,
-            "GetDatabases": partial(test_get_databases, client, holder, service_connection.databaseSchema),
+            "GetDatabases": partial(test_get_databases, client, holder),
             "GetCollections": partial(test_get_collections, client, holder),
         }
 

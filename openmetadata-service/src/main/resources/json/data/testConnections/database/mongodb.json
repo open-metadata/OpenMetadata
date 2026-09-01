@@ -19,8 +19,8 @@
       },
       {
         "name": "GetCollections",
-        "description": "List all the collection available within a randomly chosen database available to the user.",
-        "errorMessage": "Failed to fetch collection, please validate if the user has `listCollection` privilege on available databases",
+        "description": "List the collections of the databases in scope, as narrowed by `Database Schema` and `Schema Filter Pattern`. Passes as soon as the collections of one of them can be listed.",
+        "errorMessage": "Failed to fetch collection, please validate if the user has `listCollection` privilege on the databases in scope",
         "mandatory": true
       }
     ]
