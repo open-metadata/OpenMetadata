@@ -98,7 +98,6 @@ ENTITY_TYPE
     | 'webAnalyticEvent'
     | 'llmService'
     | 'metric'
-    | 'metricGroup'
     | 'report'
     | 'query'
     | 'directory'
