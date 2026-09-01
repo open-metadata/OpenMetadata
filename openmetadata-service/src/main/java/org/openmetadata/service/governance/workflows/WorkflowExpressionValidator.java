@@ -9,9 +9,11 @@ import java.util.regex.Pattern;
  */
 public final class WorkflowExpressionValidator {
   // Edge conditions are embedded inside a quoted JUEL string literal (${var == 'condition'}) as an
-  // inert comparison value. Allow the punctuation legitimate conditions use (e.g. "Tier.Gold") and
-  // exclude characters that are not part of a well-formed literal value.
-  private static final Pattern SAFE_EDGE_CONDITION = Pattern.compile("^[A-Za-z0-9 ._-]+$");
+  // inert comparison value. Require at least one alphanumeric character (a value of only spaces or
+  // punctuation is a meaningless condition) and allow the separators legitimate conditions use
+  // (e.g. "Tier.Gold").
+  private static final Pattern SAFE_EDGE_CONDITION =
+      Pattern.compile("^(?=.*[A-Za-z0-9])[A-Za-z0-9 ._-]+$");
 
   // A conditional edge's source ('from') lands in code position as the JUEL variable-name prefix
   // (${from_result == ...}); a valid variable reference is limited to identifier characters.

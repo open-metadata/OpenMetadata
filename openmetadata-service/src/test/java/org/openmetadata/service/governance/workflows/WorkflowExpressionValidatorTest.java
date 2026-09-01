@@ -40,6 +40,12 @@ class WorkflowExpressionValidatorTest {
     assertFalse(WorkflowExpressionValidator.isSafeCondition(condition));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {" ", "   ", "...", "-.-"})
+  void rejectsConditionsWithoutAlphanumeric(String condition) {
+    assertFalse(WorkflowExpressionValidator.isSafeCondition(condition));
+  }
+
   @Test
   void rejectsNullCondition() {
     assertFalse(WorkflowExpressionValidator.isSafeCondition(null));
