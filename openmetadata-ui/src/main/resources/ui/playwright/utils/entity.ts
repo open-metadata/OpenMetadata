@@ -1179,10 +1179,25 @@ export const openColumnDetailPanel = async ({
   return panelContainer;
 };
 
-export const closeColumnDetailPanel = async (page: Page) => {
+export const closeColumnDetailPanel = async (
+  page: Page,
+  entityUrl?: string
+) => {
+  // Snapshot the column URL. If the panel reopens (bug), it navigates back to this URL.
+  const columnUrl = page.url();
   const panelContainer = page.locator('.column-detail-panel');
   await panelContainer.getByTestId('close-button').click();
 
+  // 1. Immediate visibility check.
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+  // 2. Positive URL check: assert the URL has settled at the entity path, not bounced back.
+  //    Callers should pass entityUrl (the FQN-less entity path) for the strongest guard.
+  if (entityUrl) {
+    await expect(page).toHaveURL(entityUrl);
+  } else {
+    await expect(page).not.toHaveURL(columnUrl);
+  }
+  // 3. After URL has settled, verify the panel is still not visible.
   await expect(page.locator('.column-detail-panel')).not.toBeVisible();
 };
 
@@ -1983,25 +1998,6 @@ export const checkForEditActions = async ({
   entityType: string;
   deleted?: boolean;
 }) => {
-  if (entityType === EntityTypeEndpoint.METRIC) {
-    await expect(page.getByTestId('manage-button')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Share' })).toBeVisible();
-
-    if (deleted) {
-      await expect(
-        page.getByRole('button', { name: /Follow(?:ing)?/ })
-      ).not.toBeVisible();
-      await expect(page.getByTestId('edit-metric-metadata')).not.toBeVisible();
-    } else {
-      await expect(
-        page.getByRole('button', { name: /Follow(?:ing)?/ })
-      ).toBeEnabled();
-      await expect(page.getByTestId('edit-metric-metadata')).toBeVisible();
-    }
-
-    return;
-  }
-
   for (const {
     containerSelector,
     elementSelector,
@@ -2148,20 +2144,6 @@ export const deletedEntityCommonChecks = async ({
   }
 
   await page.click('[data-testid="manage-button"]');
-
-  if (endPoint === EntityTypeEndpoint.METRIC) {
-    await expect(page.getByTestId('delete-button')).toBeVisible();
-    if (deleted) {
-      await expect(page.getByTestId('restore-button')).toBeVisible();
-      await expect(page.getByTestId('version-button')).not.toBeVisible();
-    } else {
-      await expect(page.getByTestId('restore-button')).not.toBeVisible();
-      await expect(page.getByTestId('version-button')).toBeVisible();
-    }
-    await clickOutside(page);
-
-    return;
-  }
 
   if (deleted) {
     // only two menu options (restore and delete) should be present
