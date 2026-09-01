@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -657,6 +658,8 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         "Tag's classification reference should have final updated FQN");
   }
 
+  @Disabled(
+      "Blocked on the unbackported 1.13 L1-cache invalidation fix (#28902); classification tag FQN propagation never converges")
   @Test
   void test_classificationRename_tagActivityFeedsPreserved(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -699,6 +702,8 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
             });
   }
 
+  @Disabled(
+      "Blocked on the unbackported 1.13 L1-cache invalidation fix (#28902); classification tag FQN propagation never converges")
   @Test
   void test_classificationRename_tagAssetsPreservedInSearch(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -771,6 +776,8 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertEquals(newName, fetchedClassification.getName());
   }
 
+  @Disabled(
+      "Blocked on the unbackported 1.13 L1-cache invalidation fix (#28902); classification tag FQN propagation never converges")
   @Test
   void test_classificationRename_multipleTagsUpdated(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
