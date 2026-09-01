@@ -8738,6 +8738,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     private boolean entityStored = false;
+
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private final ChangeSource changeSource;
     @Setter private boolean useOptimisticLocking;
@@ -9103,12 +9104,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>Skips consolidateChanges/revert — those are for interactive user sessions where the same
      * user edits the same entity multiple times within a session window. Bulk API is used by
      * ingestion connectors where each run is a distinct update.
+     *
+     * <p>Still captures the incremental change description: skipping consolidation does not mean
+     * skipping the per-request diff, which is what the caller classifies the change event from.
+     * Omitting it made every bulk update look like ENTITY_NO_CHANGE (see #32092).
      */
     @Transaction
     public final void updateWithDeferredStore() {
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
+      }
+      try (var ignored = phase("entityUpdateIncrementalChangeDeferred")) {
+        captureIncrementalFromCurrentChange();
       }
 
       versionChanged = updateVersion(original.getVersion());
