@@ -1426,7 +1426,11 @@ const TableV2 = <T extends object>(
                               // whatever is there and swallowing clicks on it.
                               'tw:break-words',
                               rest.cellClassName ??
-                                'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top',
+                                // AntD sets no vertical-align, so its cells
+                                // take the browser default and sit centred.
+                                // Topping them leaves short values riding above
+                                // a header that is centred in its own row.
+                                'tw:py-2 tw:pl-4 tw:pr-2 tw:align-middle',
                               getAlignClass(colType.align),
                               'tw:group-data-[dragging]:opacity-40',
                               'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',

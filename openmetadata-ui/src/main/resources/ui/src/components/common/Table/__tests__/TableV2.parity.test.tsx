@@ -648,3 +648,43 @@ describe('TableV2 — column width floors', () => {
     expect(renderWith('32%').style.minWidth).toBe('');
   });
 });
+
+/**
+ * TableV2-only: AntD sets no vertical-align at all, so its cells take the
+ * browser default for a `td`, which centres them. jsdom does not apply that UA
+ * rule, so there is nothing to read off the legacy side — the contract is that
+ * TableV2 does not override it in the other direction.
+ */
+describe('TableV2 — cells centre their content vertically', () => {
+  it('does not top-align by default', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const cell = screen.getAllByRole('row')[1].querySelector('td, th');
+
+    expect((cell as HTMLElement).className).toContain('tw:align-middle');
+    expect((cell as HTMLElement).className).not.toContain('tw:align-top');
+  });
+
+  it('still lets a call site choose its own alignment', () => {
+    render(
+      <TableV2
+        cellClassName="tw:p-2 tw:align-top"
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const cell = screen.getAllByRole('row')[1].querySelector('td, th');
+
+    expect((cell as HTMLElement).className).toContain('tw:align-top');
+  });
+});
