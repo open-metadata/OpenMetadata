@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { BadgeWithButton, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithButton,
+  Box,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button, Col, Row, Space } from 'antd';
 import { FC, useState } from 'react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -110,12 +114,13 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             queryFilter={knowledgeCenterQueryFilter}
             renderTrigger={({ open }) => (
               <Box
-              align="center"
-              className="tw:relative tw:w-full tw:bg-primary tw:px-3 tw:py-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
-              gap={2}
+                align="center"
+                className="tw:relative tw:w-full tw:bg-primary tw:px-3 tw:py-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+                gap={2}
                 wrap="wrap"
                 onClick={open}>
-                {chipItems.length > 0 ? chipItems.map((item) => (
+                {chipItems.length > 0 ? (
+                  chipItems.map((item) => (
                     <BadgeWithButton
                       buttonLabel={t('label.remove')}
                       color="gray"
@@ -126,18 +131,21 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
                         e.stopPropagation();
                         handleRemoveChip(item.id);
                       }}>
-                        <div className="tw:max-w-28">
-                          <Typography
-                            className="tw:whitespace-nowrap"
-                            ellipsis={{ tooltip : item.label }}
-                            size="text-xs">
-                            {item.label}
-                          </Typography>
-                        </div>
+                      <div className="tw:max-w-28">
+                        <Typography
+                          className="tw:whitespace-nowrap"
+                          ellipsis={{ tooltip: item.label }}
+                          size="text-xs">
+                          {item.label}
+                        </Typography>
+                      </div>
                     </BadgeWithButton>
-                )): <Typography className="tw:text-tertiary">
-                  {t('label.data-asset-plural')}
-                </Typography>}
+                  ))
+                ) : (
+                  <Typography className="tw:text-tertiary">
+                    {t('label.data-asset-plural')}
+                  </Typography>
+                )}
               </Box>
             )}
             selectionMode="multiple"
