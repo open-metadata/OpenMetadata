@@ -798,9 +798,9 @@ public class SearchRepository {
 
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
-    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.4;
+    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
     double semanticWeight =
-        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.6;
+        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
 
     try {
       SearchSettings ss =

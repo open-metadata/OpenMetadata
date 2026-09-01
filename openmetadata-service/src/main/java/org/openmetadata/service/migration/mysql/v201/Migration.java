@@ -27,5 +27,6 @@ public class Migration extends MigrationProcessImpl {
               + "AutoPilot BPMN may still reference stale delegate fields until server restart.",
           e);
     }
+    MigrationUtil.alignHybridSearchWeightsWithDefaults();
   }
 }
