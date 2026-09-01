@@ -36,6 +36,11 @@ import {
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 import {
+  ensureAccordionExpanded,
+  selectComboBoxOption,
+  selectDropdownOption,
+} from './destination';
+import {
   addMultiOwner,
   updateDescription,
   waitForAllLoadersToDisappear,
@@ -99,16 +104,11 @@ export const addExternalDestination = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  await page.click(
-    `[data-testid="destination-category-select-${destinationNumber}"]`
-  );
-
-  const categoryOption = page.getByRole('option', {
-    exact: true,
-    name: category,
+  await selectComboBoxOption({
+    page,
+    testId: `destination-category-select-${destinationNumber}`,
+    optionName: category,
   });
-  await expect(categoryOption).toBeVisible();
-  await categoryOption.click();
 
   if (category === 'Email') {
     await page
@@ -122,45 +122,36 @@ export const addExternalDestination = async ({
   }
 
   if (category === 'Webhook' && secretKey) {
-    await page
-      .getByTestId(`destination-${destinationNumber}`)
-      .getByText('Advanced Configuration')
-      .click();
-
-    const authTypeSelect = page.getByTestId(
-      `auth-type-select-${destinationNumber}`
+    await ensureAccordionExpanded(
+      page.getByTestId(`destination-${destinationNumber}`),
+      'Advanced Configuration'
     );
-    await expect(authTypeSelect).toBeVisible();
-    await authTypeSelect.click();
-    await page
-      .getByRole('option', { exact: true, name: 'Bearer (HMAC Signature)' })
-      .click();
 
-    await expect(
-      page.getByTestId(`secret-key-input-${destinationNumber}`)
-    ).toBeVisible();
+    await selectDropdownOption({
+      page,
+      testId: `auth-type-select-${destinationNumber}`,
+      optionName: 'Bearer (HMAC Signature)',
+    });
 
-    await page.fill(
-      `[data-testid="secret-key-input-${destinationNumber}"]`,
-      secretKey
-    );
+    const secretKeyInput = page
+      .getByTestId(`secret-key-input-${destinationNumber}`)
+      .locator('input');
+    await expect(secretKeyInput).toBeVisible();
+    await secretKeyInput.fill(secretKey);
   }
 
   if (advancedConfig) {
-    await page
-      .getByTestId(`destination-${destinationNumber}`)
-      .getByText('Advanced Configuration')
-      .click();
+    await ensureAccordionExpanded(
+      page.getByTestId(`destination-${destinationNumber}`),
+      'Advanced Configuration'
+    );
 
     if (advancedConfig.secretKey) {
-      await expect(
-        page.getByTestId(`secret-key-input-${destinationNumber}`)
-      ).toBeVisible();
-
-      await page.fill(
-        `[data-testid="secret-key-input-${destinationNumber}"]`,
-        advancedConfig.secretKey
-      );
+      const secretKeyInput = page
+        .getByTestId(`secret-key-input-${destinationNumber}`)
+        .locator('input');
+      await expect(secretKeyInput).toBeVisible();
+      await secretKeyInput.fill(advancedConfig.secretKey);
     }
 
     if (advancedConfig.headers) {
@@ -755,11 +746,9 @@ export const checkAlertConfigDetails = async ({
   ).toBeAttached();
 
   await expect(
-    page
-      .getByTestId('destination-category-select-0')
-      .getByTestId('Slack-external-option')
-  ).toBeAttached();
-  await expect(page.getByTestId('endpoint-input-0')).toHaveValue(
+    page.getByTestId('destination-category-select-0').getByRole('combobox')
+  ).toHaveValue('Slack');
+  await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
     'https://slack.com'
   );
 };

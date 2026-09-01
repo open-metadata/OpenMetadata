@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Controller,
@@ -31,10 +31,7 @@ import {
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import {
-  DEFAULT_READ_TIMEOUT,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../../constants/Alerts.constants';
+import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
@@ -43,6 +40,10 @@ import {
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
+import {
+  getTestableExternalDestinations,
+  hasExternalDestination,
+} from './DestinationFormItem.utils';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
 function DestinationFormItem({
@@ -61,6 +62,11 @@ function DestinationFormItem({
     useState<ModifiedDestination[]>();
   const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
     useState(false);
+  // Nested header/query-param arrays can remount a destination row. Keeping
+  // expansion here preserves the user's open panel across those updates.
+  const [expandedDestinationConfigs, setExpandedDestinationConfigs] = useState<
+    Set<number>
+  >(new Set());
 
   const selectedResources: string[] =
     useWatch({ name: 'resources', control }) ?? [];
@@ -85,17 +91,7 @@ function DestinationFormItem({
   }, [fields.length, setError, clearErrors, t, isRequired]);
 
   const isExternalDestinationSelected = useMemo(
-    () =>
-      destinations.some((destination) => {
-        const externalDestinationTypes = EXTERNAL_CATEGORY_OPTIONS.map(
-          (o) => o.value
-        );
-
-        return (
-          destination.category === 'External' &&
-          externalDestinationTypes.includes(destination.type ?? '')
-        );
-      }),
+    () => hasExternalDestination(destinations),
     [destinations]
   );
 
@@ -107,13 +103,39 @@ function DestinationFormItem({
     [selectedSource, isExternalDestinationSelected]
   );
 
+  const handleDestinationConfigExpandedChange = useCallback(
+    (index: number, isExpanded: boolean) => {
+      setExpandedDestinationConfigs((current) => {
+        const updated = new Set(current);
+        if (isExpanded) {
+          updated.add(index);
+        } else {
+          updated.delete(index);
+        }
+
+        return updated;
+      });
+    },
+    []
+  );
+
+  const handleRemoveDestination = useCallback(
+    (index: number) => {
+      remove(index);
+      // Destination indexes shift after removal, so stale UI-only expansion
+      // state must not be applied to a different destination.
+      setExpandedDestinationConfigs(new Set());
+    },
+    [remove]
+  );
+
   const handleTestDestinationClick = useCallback(async () => {
     try {
       setIsDestinationStatusLoading(true);
       const formattedDestinations = getFormattedDestinations(destinations);
-      if (!isUndefined(formattedDestinations)) {
-        const externalDestinations = formattedDestinations.filter(
-          (d) => d.category === 'External' && !isEmpty(d?.config)
+      if (formattedDestinations) {
+        const externalDestinations = getTestableExternalDestinations(
+          formattedDestinations
         );
         const results = await testAlertDestination({
           destinations: externalDestinations,
@@ -223,10 +245,14 @@ function DestinationFormItem({
                 <DestinationSelectItem
                   destinationsWithStatus={destinationsWithStatus}
                   id={index}
+                  isConfigExpanded={expandedDestinationConfigs.has(index)}
                   isDestinationStatusLoading={isDestinationStatusLoading}
                   isViewMode={isViewMode}
-                  remove={remove}
+                  remove={handleRemoveDestination}
                   selectorKey={index}
+                  onConfigExpandedChange={(isExpanded) =>
+                    handleDestinationConfigExpandedChange(index, isExpanded)
+                  }
                 />
                 {index < fields.length - 1 && <Divider />}
               </Fragment>

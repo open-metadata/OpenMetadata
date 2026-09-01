@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 
-export const isValidEmailAddress = (email: string) => EMAIL_REG_EX.test(email);
-
-export const getExpandedConfigKeys = (
-  isExpanded: boolean,
-  advancedConfigId: string
-) => (isExpanded ? new Set([advancedConfigId]) : new Set<string>());
+export const EXTERNAL_DESTINATION_TYPES = EXTERNAL_CATEGORY_OPTIONS.map(
+  ({ value }) => value
+);

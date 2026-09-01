@@ -49,12 +49,17 @@ import {
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import TeamAndUserSelectItem from '../../TeamAndUserSelectItem/TeamAndUserSelectItem';
-import { isValidEmailAddress } from './DestinationConfigField.utils';
+import {
+  getExpandedConfigKeys,
+  isValidEmailAddress,
+} from './DestinationConfigField.utils';
 
 interface DestinationConfigFieldProps {
   type: SubscriptionType | SubscriptionCategory;
   fieldName: number;
+  isConfigExpanded?: boolean;
   isViewMode?: boolean;
+  onConfigExpandedChange?: (isExpanded: boolean) => void;
 }
 
 const getUserOptions = async (searchText: string) =>
@@ -292,7 +297,9 @@ function KeyValueList({
 function DestinationConfigField({
   type,
   fieldName,
+  isConfigExpanded = false,
   isViewMode = false,
+  onConfigExpandedChange,
 }: Readonly<DestinationConfigFieldProps>) {
   const { t } = useTranslation();
   const { control } = useFormContext();
@@ -309,6 +316,8 @@ function DestinationConfigField({
     type === SubscriptionType.Webhook;
 
   if (isWebhookType) {
+    const advancedConfigId = `advanced-config-${fieldName}`;
+
     return (
       <>
         <Grid.Item span={12}>
@@ -339,8 +348,15 @@ function DestinationConfigField({
         </Grid.Item>
 
         <Grid.Item span={24}>
-          <Accordion>
-            <AccordionItem id={`advanced-config-${fieldName}`}>
+          <Accordion
+            expandedKeys={getExpandedConfigKeys(
+              isConfigExpanded,
+              advancedConfigId
+            )}
+            onExpandedChange={(keys) =>
+              onConfigExpandedChange?.(keys.has(advancedConfigId))
+            }>
+            <AccordionItem id={advancedConfigId}>
               <AccordionHeader>
                 <span className="tw:flex tw:items-center tw:gap-2">
                   <ConfigIcon className="tw:size-4" />

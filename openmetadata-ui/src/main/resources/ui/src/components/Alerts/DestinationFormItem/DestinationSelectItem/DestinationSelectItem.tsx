@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { SelectItemType } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -26,7 +25,6 @@ import { useCallback, useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { DESTINATION_DROPDOWN_TABS } from '../../../../constants/Alerts.constants';
 import {
   Status,
   SubscriptionCategory,
@@ -34,55 +32,26 @@ import {
 } from '../../../../generated/events/eventSubscription';
 import { getDestinationStatusAlertData } from '../../../../utils/Alerts/AlertsUtil';
 import {
-  getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtilPure';
 import {
   checkIfDestinationIsInternal,
-  getAlertDestinationCategoryIcons,
   getConfigFieldFromDestinationType,
 } from '../../../../utils/ObservabilityUtils';
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
-
-function buildGroupedOptions(
-  internalLabel: string,
-  externalLabel: string,
-  selectedSource: string
-): SelectItemType[] {
-  const internalOptions = getFilteredDestinationOptions(
-    DESTINATION_DROPDOWN_TABS.internal,
-    selectedSource
-  );
-  const externalOptions = getFilteredDestinationOptions(
-    DESTINATION_DROPDOWN_TABS.external,
-    selectedSource
-  );
-
-  return [
-    { id: 'header-internal', label: internalLabel, isDisabled: true },
-    ...internalOptions.map((o) => ({
-      id: o.value,
-      label: o.value,
-      icon: getAlertDestinationCategoryIcons(o.value),
-    })),
-    { id: 'header-external', label: externalLabel, isDisabled: true },
-    ...externalOptions.map((o) => ({
-      id: o.value,
-      label: o.value,
-      icon: getAlertDestinationCategoryIcons(o.value),
-    })),
-  ];
-}
+import { buildGroupedOptions } from './DestinationSelectItem.utils';
 
 function DestinationSelectItem({
   selectorKey,
   id,
   remove,
   destinationsWithStatus,
+  isConfigExpanded,
   isDestinationStatusLoading,
   isViewMode = false,
+  onConfigExpandedChange,
 }: Readonly<DestinationSelectItemProps>) {
   const { t } = useTranslation();
   const { control, setValue } = useFormContext();
@@ -193,11 +162,11 @@ function DestinationSelectItem({
                     placeholder={t('label.select-field', {
                       field: t('label.destination'),
                     })}
+                    selectedKey={destinationType ?? null}
                     shortcut={false}
                     showSearchIcon={false}
                     size="sm"
-                    value={destinationType ?? null}
-                    onChange={(key) =>
+                    onSelectionChange={(key) =>
                       handleDestinationTypeSelect(key as string)
                     }>
                     {(item) => (
@@ -232,8 +201,10 @@ function DestinationSelectItem({
           {destinationType && !isInternalDestinationSelected && (
             <DestinationConfigField
               fieldName={id}
+              isConfigExpanded={isConfigExpanded}
               isViewMode={isViewMode}
               type={destinationType as SubscriptionType}
+              onConfigExpandedChange={onConfigExpandedChange}
             />
           )}
 
@@ -243,8 +214,10 @@ function DestinationSelectItem({
                 destinationType === SubscriptionCategory.Users) && (
                 <DestinationConfigField
                   fieldName={id}
+                  isConfigExpanded={isConfigExpanded}
                   isViewMode={isViewMode}
                   type={destinationType as SubscriptionCategory}
+                  onConfigExpandedChange={onConfigExpandedChange}
                 />
               )}
 
@@ -261,8 +234,8 @@ function DestinationSelectItem({
                         placeholder={t('label.select-field', {
                           field: t('label.destination'),
                         })}
-                        value={field.value ?? null}
-                        onChange={(key) => field.onChange(key)}>
+                        selectedKey={field.value ?? null}
+                        onSelectionChange={(key) => field.onChange(key)}>
                         {getSubscriptionTypeOptions(destinationType).map(
                           (option) => (
                             <Select.Item

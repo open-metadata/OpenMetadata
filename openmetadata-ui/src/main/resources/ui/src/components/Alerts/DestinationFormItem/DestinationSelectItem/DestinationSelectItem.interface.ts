@@ -18,6 +18,8 @@ export interface DestinationSelectItemProps {
   id: number;
   remove: (index: number) => void;
   destinationsWithStatus?: Destination[];
+  isConfigExpanded?: boolean;
   isDestinationStatusLoading: boolean;
   isViewMode?: boolean;
+  onConfigExpandedChange?: (isExpanded: boolean) => void;
 }

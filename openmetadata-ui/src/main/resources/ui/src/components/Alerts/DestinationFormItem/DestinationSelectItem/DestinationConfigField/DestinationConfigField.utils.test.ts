@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { isValidEmailAddress } from './DestinationConfigField.utils';
+import {
+  getExpandedConfigKeys,
+  isValidEmailAddress,
+} from './DestinationConfigField.utils';
 
 describe('DestinationConfigField utils', () => {
   it.each(['alerts@example.com', 'data.quality+prod@example.co.uk'])(
@@ -27,4 +30,13 @@ describe('DestinationConfigField utils', () => {
       expect(isValidEmailAddress(email)).toBe(false);
     }
   );
+
+  it('returns the advanced configuration key only when expanded', () => {
+    expect(getExpandedConfigKeys(true, 'advanced-config-1')).toEqual(
+      new Set(['advanced-config-1'])
+    );
+    expect(getExpandedConfigKeys(false, 'advanced-config-1')).toEqual(
+      new Set()
+    );
+  });
 });

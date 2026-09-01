@@ -32,6 +32,7 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import { selectComboBoxOption, selectDropdownOption } from './destination';
 import {
   addMultiOwner,
   updateDescription,
@@ -144,20 +145,11 @@ export const addInternalDestination = async ({
   type?: string;
   searchText?: string;
 }) => {
-  const categorySelect = page.getByTestId(
-    `destination-category-select-${destinationNumber}`
-  );
-  await expect(categorySelect).toBeVisible();
-  await categorySelect.click();
-
-  const categoryOption = page.getByRole('option', {
-    exact: true,
-    name: category,
+  await selectComboBoxOption({
+    page,
+    testId: `destination-category-select-${destinationNumber}`,
+    optionName: category,
   });
-  await expect(categoryOption).toBeVisible();
-  await categoryOption.click();
-
-  await expect(categoryOption).not.toBeVisible();
 
   if (typeId) {
     if (category === 'Teams' || category === 'Users') {
@@ -204,17 +196,11 @@ export const addInternalDestination = async ({
     await clickOutside(page);
   }
 
-  const typeSelect = page.getByTestId(
-    `destination-type-select-${destinationNumber}`
-  );
-  await expect(typeSelect).toBeVisible();
-  await typeSelect.click();
-
-  const typeOption = page.getByRole('option', { exact: true, name: type });
-  await expect(typeOption).toBeVisible();
-  await typeOption.click();
-
-  await expect(typeSelect).toContainText(type);
+  await selectDropdownOption({
+    page,
+    testId: `destination-type-select-${destinationNumber}`,
+    optionName: type,
+  });
 };
 
 export const editSingleFilterAlert = async ({
@@ -465,12 +451,12 @@ export const checkAlertConfigDetails = async ({
 
   await expect(page.getByTestId('filter-select-1')).toHaveText('Entity FQN');
 
-  await expect(page.getByTestId('destination-category-select-0')).toHaveText(
-    'Owners'
-  );
-  await expect(page.getByTestId('destination-type-select-0')).toHaveText(
-    'Email'
-  );
+  await expect(
+    page.getByTestId('destination-category-select-0').getByRole('combobox')
+  ).toHaveValue('Owners');
+  await expect(
+    page.getByTestId('destination-type-select-0').getByRole('button')
+  ).toContainText('Email');
 };
 
 export const checkAlertDetailsForWithPermissionUser = async ({
