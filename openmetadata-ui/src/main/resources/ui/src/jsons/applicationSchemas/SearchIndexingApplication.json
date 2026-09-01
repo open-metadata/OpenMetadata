@@ -12,7 +12,7 @@
     },
     "payLoadSize": {
       "title": "Payload Size",
-      "description": "Maximum number of events entities in a batch (Default 100).",
+      "description": "Payload size in bytes (Default 104857600).",
       "type": "integer",
       "default": 104857600,
       "minimum": 1
