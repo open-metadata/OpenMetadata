@@ -59,15 +59,22 @@ const STREAM_CURSOR = '20';
 
 /**
  * Enough lines to overflow the log body at any viewport the suite runs at, so
- * the scroll-driven follow behaviour has something to scroll.
+ * the scroll-driven follow behaviour has something to scroll. Kept well below
+ * the virtualiser's overscan (100 rows each side of the viewport): past that,
+ * a wrap toggle re-measures enough mounted rows in one go that the resulting
+ * burst of offset corrections can itself look like a manual scrollbar drag —
+ * the very thing `dragLogViewerUpWithoutGesture` deliberately provokes later
+ * in this test.
  */
-const SCROLLABLE_LOG_LINE_COUNT = 400;
+const SCROLLABLE_LOG_LINE_COUNT = 60;
 
 /**
- * Wide enough that every line wraps in the viewer, which is what makes the wrap
- * toggle re-measure rows and move the scroll position.
+ * Wide enough that every line still wraps to more than one visual row in the
+ * viewer — which is what makes the wrap toggle re-measure rows and move the
+ * scroll position — without making each row's height correction so large that
+ * settling the relayout takes an unrealistic number of frames.
  */
-const WRAPPABLE_LOG_LINE_LENGTH = 400;
+const WRAPPABLE_LOG_LINE_LENGTH = 120;
 
 /**
  * What each reconnect appends after the first. Small on purpose: a run that adds
@@ -327,6 +334,11 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
   test('Scrolling a live log pauses auto-follow and the toolbar toggle resumes it', async ({
     page,
   }) => {
+    // Every step below waits for the stream to append again, and a reconnect can
+    // take seconds on a loaded runner. The default budget is one such wait, not
+    // the four this test needs, so it timed out on retry rather than failing.
+    test.slow();
+
     await openAgentLogs(page, {
       terminal: false,
       lineCount: SCROLLABLE_LOG_LINE_COUNT,

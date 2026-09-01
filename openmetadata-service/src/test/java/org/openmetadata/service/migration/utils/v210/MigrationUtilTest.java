@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package org.openmetadata.service.migration.utils.v210;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,8 +23,67 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.type.SemanticsRule;
 
 class MigrationUtilTest {
+
+  private SemanticsRule rule(String name, String... ignored) {
+    return new SemanticsRule()
+        .withName(name)
+        .withIgnoredEntities(new ArrayList<>(List.of(ignored)));
+  }
+
+  private long queryCount(SemanticsRule rule) {
+    return rule.getIgnoredEntities().stream().filter("query"::equals).count();
+  }
+
+  @Test
+  void addsQueryToBothDomainRulesOnly() {
+    SemanticsRule multiDomain = rule("Multiple Domains are not allowed", "user", "team");
+    SemanticsRule dpDomain = rule("Data Product Domain Validation", "user", "team");
+    SemanticsRule unrelated = rule("Tables can only have a single Glossary Term", "user");
+    EntityRulesSettings settings =
+        new EntityRulesSettings()
+            .withEntitySemantics(new ArrayList<>(List.of(multiDomain, dpDomain, unrelated)));
+
+    assertTrue(MigrationUtil.addQueryDomainRuleExemption(settings));
+
+    assertTrue(multiDomain.getIgnoredEntities().contains("query"));
+    assertTrue(dpDomain.getIgnoredEntities().contains("query"));
+    // Unrelated rule must be left untouched.
+    assertFalse(unrelated.getIgnoredEntities().contains("query"));
+    // Existing exemptions preserved.
+    assertTrue(multiDomain.getIgnoredEntities().contains("user"));
+  }
+
+  @Test
+  void isIdempotent() {
+    SemanticsRule multiDomain = rule("Multiple Domains are not allowed", "user", "team", "query");
+    EntityRulesSettings settings =
+        new EntityRulesSettings().withEntitySemantics(new ArrayList<>(List.of(multiDomain)));
+
+    // Already exempt -> no change, and no duplicate entry.
+    assertFalse(MigrationUtil.addQueryDomainRuleExemption(settings));
+    assertEquals(1, queryCount(multiDomain));
+  }
+
+  @Test
+  void handlesMissingOrNullSemantics() {
+    assertFalse(MigrationUtil.addQueryDomainRuleExemption(null));
+    assertFalse(MigrationUtil.addQueryDomainRuleExemption(new EntityRulesSettings()));
+  }
+
+  @Test
+  void initializesNullIgnoredEntities() {
+    SemanticsRule multiDomain = new SemanticsRule().withName("Multiple Domains are not allowed");
+    multiDomain.setIgnoredEntities(null);
+    EntityRulesSettings settings =
+        new EntityRulesSettings().withEntitySemantics(new ArrayList<>(List.of(multiDomain)));
+
+    assertTrue(MigrationUtil.addQueryDomainRuleExemption(settings));
+    assertEquals(1, queryCount(multiDomain));
+  }
 
   private FieldBoost fieldBoost(String field, double boost, FieldBoost.MatchType matchType) {
     FieldBoost fieldBoost = new FieldBoost();
@@ -77,7 +138,7 @@ class MigrationUtilTest {
   }
 
   @Test
-  void isIdempotentWhenAliasesAlreadyPresent() {
+  void aliasesMergeIsIdempotentWhenAlreadyPresent() {
     List<FieldBoost> fields =
         List.of(
             fieldBoost("name", 10.0, FieldBoost.MatchType.PHRASE),

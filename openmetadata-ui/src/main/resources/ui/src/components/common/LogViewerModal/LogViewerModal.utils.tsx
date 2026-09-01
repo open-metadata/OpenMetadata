@@ -99,6 +99,12 @@ export const SCROLL_MOVED_THRESHOLD_PX = 4;
  * view also leaving the tail — a relayout emits long runs of offset corrections
  * (12 in a row on one measured wrap toggle) that track the tail as the content
  * shrinks, and those are the viewer keeping up, not the user leaving.
+ *
+ * `movedTowardsTail` is its mirror: the offset travelled in the direction of the
+ * tail and still stopped short of it, which is what the library's own scroll on
+ * an append looks like when the content grew again on the way. Positive evidence
+ * of the direction, so a first report — which has no previous offset to compare
+ * against — is neither.
  */
 export const readScrollFacts = (
   { scrollTop, scrollHeight, clientHeight }: LogViewerScrollValues,
@@ -117,5 +123,7 @@ export const readScrollFacts = (
       isFirstReport || Math.abs(movedBy) > SCROLL_MOVED_THRESHOLD_PX,
     movedAwayFromTail:
       !isBottom && !isFirstReport && movedBy > SCROLL_MOVED_THRESHOLD_PX,
+    movedTowardsTail:
+      !isBottom && !isFirstReport && movedBy < -SCROLL_MOVED_THRESHOLD_PX,
   };
 };

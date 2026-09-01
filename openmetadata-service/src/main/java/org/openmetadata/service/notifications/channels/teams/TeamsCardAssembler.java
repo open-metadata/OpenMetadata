@@ -1,6 +1,11 @@
 package org.openmetadata.service.notifications.channels.teams;
 
-import java.net.URI;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.escapeMdLabel;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.escapeMdUrl;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.isAllowedLinkUrl;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.isBareUrl;
+import static org.openmetadata.service.notifications.channels.teams.TeamsMarkdownLinks.markdownLink;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -165,7 +170,13 @@ final class TeamsCardAssembler extends AbstractVisitor {
 
   @Override
   public void visit(Code code) {
-    currentText.append("`").append(code.getLiteral()).append("`");
+    String literal = code.getLiteral() == null ? "" : code.getLiteral();
+    if (isBareUrl(literal)) {
+      String url = escapeMdUrl(literal);
+      currentText.append(markdownLink(url, url));
+    } else {
+      currentText.append("`").append(literal).append("`");
+    }
   }
 
   @Override
@@ -186,7 +197,7 @@ final class TeamsCardAssembler extends AbstractVisitor {
       if (!label.isEmpty()) currentText.append(escapeMdLabel(label));
     } else {
       String safeLabel = label.isEmpty() ? escapeMdUrl(url) : escapeMdLabel(label);
-      currentText.append("[").append(safeLabel).append("](").append(escapeMdUrl(url)).append(")");
+      currentText.append(markdownLink(safeLabel, escapeMdUrl(url)));
     }
   }
 
@@ -460,31 +471,6 @@ final class TeamsCardAssembler extends AbstractVisitor {
       if (clazz.isInstance(c)) return Optional.of(clazz.cast(c));
     }
     return Optional.empty();
-  }
-
-  // --- Helpers: Formatting ---
-
-  private static boolean isAllowedLinkUrl(String url) {
-    if (url == null) return false;
-    try {
-      String s = URI.create(escapeMdUrl(url)).getScheme();
-      return s != null
-          && (s.equalsIgnoreCase("http")
-              || s.equalsIgnoreCase("https")
-              || s.equalsIgnoreCase("mailto"));
-    } catch (Exception e) {
-      return false;
-    }
-  }
-
-  private static String escapeMdLabel(String s) {
-    return s == null
-        ? ""
-        : s.replace("[", "\\[").replace("]", "\\]").replace("(", "\\(").replace(")", "\\)");
-  }
-
-  private static String escapeMdUrl(String s) {
-    return s == null ? "" : s.trim().replace(" ", "%20").replace(")", "%29").replace("(", "%28");
   }
 
   private record TableData(List<String> headers, List<List<String>> rows) {

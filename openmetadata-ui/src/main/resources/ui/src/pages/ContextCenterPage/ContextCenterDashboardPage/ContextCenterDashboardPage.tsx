@@ -29,6 +29,7 @@ import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg'
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
 import ContextSimplePillarCard from '../../../components/ContextCenter/ContextSimplePillarCard/ContextSimplePillarCard.component';
@@ -409,6 +410,7 @@ const ContextCenterDashboardPage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
+      <DocumentTitle title={t('label.context-center')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           actionsSlot={
@@ -450,12 +452,12 @@ const ContextCenterDashboardPage: FC = () => {
           }
           breadcrumbs={[
             {
-              label: t('label.dashboard'),
+              label: t('label.overview'),
             },
           ]}
           hasPermission={hasCreatePermission}
           subtitle={t('message.context-center-dashboard-subtitle')}
-          title={t('label.dashboard')}
+          title={t('label.overview')}
         />
       </div>
       <Box

@@ -13,6 +13,7 @@
 import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../assets/svg/no-access-placeholder.svg';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 
@@ -30,6 +31,7 @@ const AccessNotAllowedPage = () => {
       }
       size={SIZE.LARGE}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <DocumentTitle title={t('label.access-denied')} />
       <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
         {t('message.error-self-signup-disabled')}
       </Typography.Paragraph>

@@ -42,7 +42,7 @@ permissions:
 
 concurrency:
   group: integration-tests-pg-os-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified
   # the downstream job is skipped via its `if` condition.
@@ -122,7 +122,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -184,7 +184,7 @@ jobs:
           du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Integration Test Runtime
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-build-postgres-opensearch-${{ github.run_id }}
           overwrite: true
@@ -227,7 +227,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -383,7 +383,7 @@ jobs:
       - name: Upload Integration Test Diagnostics
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-postgres-opensearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -396,7 +396,7 @@ jobs:
       - name: Upload Integration Test Reports
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-reports-postgres-opensearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml
@@ -423,7 +423,7 @@ jobs:
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
   integration-tests-postgres-opensearch:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'integration-tests-postgres-opensearch (ignored label)' || 'integration-tests-postgres-opensearch' }}
+    name: integration-tests-postgres-opensearch
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5

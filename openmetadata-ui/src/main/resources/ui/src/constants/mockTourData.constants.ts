@@ -18,7 +18,7 @@ import { SearchIndex } from '../enums/search.enum';
 export const mockFeedData = [
   {
     id: '52d52eb1-b990-497f-bf80-47e52c106f85',
-    href: 'http://localhost:8585/api/v1/feed/52d52eb1-b990-497f-bf80-47e52c106f85',
+    href: 'http://localhost:8585/api/v1/conversations/52d52eb1-b990-497f-bf80-47e52c106f85',
     threadTs: 1646631348958,
     about:
       '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
@@ -34,7 +34,7 @@ export const mockFeedData = [
   },
   {
     id: '60df2514-3bea-4337-a5a2-f0fe5c65237f',
-    href: 'http://localhost:8585/api/v1/feed/60df2514-3bea-4337-a5a2-f0fe5c65237f',
+    href: 'http://localhost:8585/api/v1/conversations/60df2514-3bea-4337-a5a2-f0fe5c65237f',
     threadTs: 1646631340215,
     about:
       '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',

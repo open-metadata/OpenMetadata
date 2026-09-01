@@ -118,7 +118,7 @@ This skill guides you through validating UI changes and ensuring comprehensive P
    ```bash
    yarn lint:playwright
    ```
-   Error-level rules (`no-networkidle`, `no-page-pause`, `no-focused-test`) will block CI. See the handbook's **ESLint Enforcement** section for the full rule reference.
+   Every `playwright/*` and `om-playwright/*` guardrail rule is `error` severity. Repo-wide `openmetadata-playwright/*` rules set their own, and may sit at `warn` while their call sites migrate — read the severity column in the handbook's **ESLint Enforcement** table rather than assuming.
 
 ## Common Test Utilities
 

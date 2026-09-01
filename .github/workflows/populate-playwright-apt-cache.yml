@@ -101,7 +101,7 @@ jobs:
 
       - name: Restore yarn package cache
         id: yarn-restore
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -130,14 +130,14 @@ jobs:
       # would be permanent for this lockfile.
       - name: Save yarn package cache (main-scoped writer)
         if: steps.warm-yarn.outcome == 'success' && steps.yarn-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
       - name: Restore Playwright browser cache
         id: browser-restore
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -153,7 +153,7 @@ jobs:
 
       - name: Save Playwright browser cache (main-scoped writer)
         if: steps.warm-browser.outcome == 'success' && steps.browser-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}

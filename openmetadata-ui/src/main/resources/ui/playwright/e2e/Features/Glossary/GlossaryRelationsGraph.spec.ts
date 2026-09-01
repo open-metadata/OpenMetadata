@@ -23,7 +23,7 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../../utils/ontologyExplorer';
+} from '../../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

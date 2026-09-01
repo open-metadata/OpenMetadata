@@ -23,7 +23,7 @@ import {
   TEST_CASE_FILTERS,
   TEST_CASE_FILTERS_LABELS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -46,12 +46,13 @@ const DEFAULT_SELECTED_FILTERS = [
 const STATIC_OPTIONS: Record<string, DefaultOptionType[]> = {
   [TEST_CASE_FILTERS.platform]: TEST_CASE_PLATFORM_OPTION,
   [TEST_CASE_FILTERS.type]: TEST_CASE_TYPE_OPTION,
-  [TEST_CASE_FILTERS.status]: TEST_CASE_STATUS_OPTION,
+  [TEST_CASE_FILTERS.status]: TEST_CASE_STATUS_FILTER_OPTIONS,
   [TEST_CASE_FILTERS.dimension]: TEST_CASE_DIMENSIONS_OPTION,
 };
 
 const MULTI_SELECT_FILTERS = new Set<string>([
   TEST_CASE_FILTERS.platform,
+  TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.tags,
 ]);
 

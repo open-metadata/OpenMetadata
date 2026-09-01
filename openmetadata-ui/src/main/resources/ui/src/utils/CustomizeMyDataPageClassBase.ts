@@ -107,8 +107,8 @@ class CustomizeMyDataPageClassBase {
     return getMyDataWidgetFromKey(widgetKey);
   }
 
-  public getWidgetImageFromKey(widgetKey: string, size?: number): string {
-    return getMyDataWidgetImageFromKey(widgetKey, size);
+  public getWidgetImageFromKey(widgetKey: string): string {
+    return getMyDataWidgetImageFromKey(widgetKey);
   }
 
   public getWidgetHeight(widgetName: string) {

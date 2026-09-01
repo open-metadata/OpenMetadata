@@ -137,6 +137,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
       return (
         <div
+          role="presentation"
           onDragLeave={(e) => e.preventDefault()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}>
@@ -144,6 +145,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           <span>{orDragAndDropLabel}</span>
           {hint && <span>{hint}</span>}
           <input
+            aria-label={inputTestId ?? 'file-upload-input'}
             data-testid={inputTestId ?? 'file-upload-input'}
             type="file"
             onChange={(e) => e.target.files && onDropFiles?.(e.target.files)}
@@ -201,6 +203,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange?: React.ChangeEventHandler<HTMLInputElement>;
     }) => (
       <input
+        aria-label={value}
         checked={checked}
         className={className}
         type="radio"
