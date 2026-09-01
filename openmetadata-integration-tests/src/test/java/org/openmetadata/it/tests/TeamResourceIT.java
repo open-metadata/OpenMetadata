@@ -270,6 +270,27 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_putCreateDepartmentRejectsDirectUsers(TestNamespace ns) {
+    User user = createTestUser(ns, "departmentPutCreateUser");
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("departmentPutWithUsers"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withUsers(List.of(user.getId()))
+            .withDescription("Department cannot have direct users");
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.PUT, "/v1/teams", create, Team.class));
+
+    assertTrue(exception.getMessage().contains("Department"));
+  }
+
+  @Test
   void test_departmentRejectsDirectUsersOnPatch(TestNamespace ns) {
     Team department =
         createEntity(
