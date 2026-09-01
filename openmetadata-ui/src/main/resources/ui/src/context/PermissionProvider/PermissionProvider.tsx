@@ -38,6 +38,7 @@ import {
   getResourcePermission,
 } from '../../rest/permissionAPI';
 import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
+import { PERMISSION_POLICY } from '../../utils/permissionPolicy';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -57,6 +58,14 @@ import {
 export const PermissionContext = createContext<PermissionContextType>(
   {} as PermissionContextType
 );
+
+// Single seam for the resource-level conditionalAllow policy (see
+// permissionPolicy.ts for the full rationale and blast radius). Reads as
+// `false` while the policy stays 'strict', which is byte-for-byte the
+// pre-refactor (base commit 9cf866cd23) behavior — resource-level
+// conditionalAllow counts as denied, matching entity-level gating.
+const RESOURCE_ALLOW_CONDITIONAL =
+  PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
 
 /**
  *
@@ -90,7 +99,14 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
       const response = await getLoggedInUserPermissions();
-      setPermissions(getUIPermission(response.data || [], true));
+      // Behavior parity with base (9cf866cd23): strict translation by
+      // default (RESOURCE_ALLOW_CONDITIONAL is false while the policy stays
+      // 'strict'). Flipping PERMISSION_POLICY.resourceLevelConditionalAllow
+      // to 'attempt' is the fix for OpenMetadata#31783 and ships as its own
+      // PR — see permissionPolicy.ts.
+      setPermissions(
+        getUIPermission(response.data || [], RESOURCE_ALLOW_CONDITIONAL)
+      );
       redirectToStoredPath();
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -140,9 +156,14 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       queryClient.fetchQuery({
         queryKey: permissionQueryKeys.resource(resource),
         queryFn: async () =>
-          // Resource-level: conditions can't be evaluated without an entity —
-          // conditionalAllow counts as "can attempt" (Task 2, #31783).
-          getOperationPermissions(await getResourcePermission(resource), true),
+          // Behavior parity with base (9cf866cd23): strict translation by
+          // default. Flipping PERMISSION_POLICY.resourceLevelConditionalAllow
+          // to 'attempt' is the fix for OpenMetadata#31783 and ships as its
+          // own PR — see permissionPolicy.ts.
+          getOperationPermissions(
+            await getResourcePermission(resource),
+            RESOURCE_ALLOW_CONDITIONAL
+          ),
         staleTime: PERMISSION_STALE_TIME,
       }),
     []
