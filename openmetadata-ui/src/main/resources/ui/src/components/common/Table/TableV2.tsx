@@ -1626,6 +1626,20 @@ const TableV2 = <T extends object>(
                                     actualIndex
                                   )}
                                 </div>
+                              ) : showExpandInCell ? (
+                                // Same shrink permission without imposing
+                                // `truncate`: a flex item's min-width is `auto`,
+                                // so a nowrap value the call site ellipsizes
+                                // itself (an AntD Typography link, say) could
+                                // never shrink to the cell and painted across
+                                // the neighbouring columns instead.
+                                <div className="tw:min-w-0 tw:flex-1">
+                                  {resolveCellValue(
+                                    colType,
+                                    record,
+                                    actualIndex
+                                  )}
+                                </div>
                               ) : (
                                 resolveCellValue(colType, record, actualIndex)
                               )}
