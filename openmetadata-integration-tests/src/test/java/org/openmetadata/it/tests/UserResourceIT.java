@@ -36,16 +36,22 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -2463,6 +2469,100 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .getHttpClient()
                     .executeForString(HttpMethod.GET, "/v1/users/name/" + userName, null));
     assertEquals(404, notCreated.getStatusCode(), "The rejected user should not exist");
+  }
+
+  @Test
+  void test_updateUser_crossUserRoleElevation_forbidden(TestNamespace ns) throws Exception {
+    // A principal holding EDIT on users may update somebody else, but granting them a role stays
+    // admin only - the same rule PATCH /v1/users/{id} enforces on the /roles path.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.prefix("userEditor");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_policy")
+                    .withDescription("Grants cross user edit for the role elevation IT")
+                    .withRules(
+                        List.of(
+                            userRule(prefix + "_view", MetadataOperation.VIEW_ALL),
+                            userRule(prefix + "_edit", MetadataOperation.EDIT_ALL))));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withDescription("Cross user edit role for the role elevation IT")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(prefix + "_team");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    createTeam.setDefaultRoles(List.of(role.getId()));
+    Team team = admin.teams().create(createTeam);
+
+    // The name must equal the email local part: JwtFilter resolves the caller's username from the
+    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
+    String editorName = "usereditor" + ns.shortPrefix();
+    User editor =
+        createEntity(
+            new CreateUser()
+                .withName(editorName)
+                .withEmail(editorName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    OpenMetadataClient editorClient =
+        SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {});
+
+    String targetName = ns.prefix("elevationTarget");
+    User target =
+        createEntity(new CreateUser().withName(targetName).withEmail(toValidEmail(targetName)));
+    String elevateBody =
+        "{\"name\":\""
+            + target.getName()
+            + "\",\"email\":\""
+            + target.getEmail()
+            + "\",\"roles\":[\""
+            + getRoleId("DataSteward")
+            + "\"]}";
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                editorClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", elevateBody));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Granting a role to another user is admin only: " + exception.getMessage());
+
+    List<EntityReference> roles = Users.get(target.getId().toString(), "roles").getRoles();
+    assertTrue(roles == null || roles.isEmpty(), "The rejected role must not have been assigned");
+
+    // The same principal can still update the target as long as no role is granted, which shows the
+    // rejection above comes from the role gate and not from a missing EDIT permission.
+    String description = "edited by a non admin holding user EDIT";
+    String updateBody =
+        "{\"name\":\""
+            + target.getName()
+            + "\",\"email\":\""
+            + target.getEmail()
+            + "\",\"description\":\""
+            + description
+            + "\"}";
+    String response =
+        editorClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", updateBody);
+    assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
+  }
+
+  private Rule userRule(String name, MetadataOperation operation) {
+    return new Rule()
+        .withName(name)
+        .withResources(List.of("user"))
+        .withOperations(List.of(operation))
+        .withEffect(Rule.Effect.ALLOW);
   }
 
   private String getRoleId(String roleName) throws Exception {

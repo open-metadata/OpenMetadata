@@ -811,7 +811,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
           new OperationContext(entityType, MetadataOperation.CREATE));
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
-    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
+    // Privileged fields are admin only whoever the target is. This has to be checked before the
+    // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
+    // roles to somebody else through PUT while PATCH refuses the same change.
+    if (Boolean.TRUE.equals(create.getIsAdmin())
+        || Boolean.TRUE.equals(create.getIsBot())
+        || hasRoleElevation(existingUser, user)) {
       authorizeAdminForPrivilegedFields(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
@@ -821,8 +826,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
-    } else if (hasRoleElevation(existingUser, user)) {
-      authorizeAdminForPrivilegedFields(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
