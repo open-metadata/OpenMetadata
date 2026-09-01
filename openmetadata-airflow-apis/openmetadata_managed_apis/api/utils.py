@@ -120,18 +120,35 @@ def get_request_conf() -> Optional[dict]:  # noqa: UP045
 
 def get_dagbag():
     """
-    Load the dagbag from Airflow settings
+    Build a DagBag for the deploy path.
+
+    The only caller is `DagDeployer.refresh_session_dag`, which immediately calls
+    `process_file` on the DAG file it has just written and then asks for that single
+    `dag_id`. `process_file` bags the DAG itself, so the bag never needs to be
+    populated from anywhere else.
+
+    On Airflow < 3.0 the bag is built with `read_dags_from_db=True`, which makes both
+    the constructor's collect and `collect_dags` early return. That path never walked
+    the DAG folder, so it is left exactly as it was -- including on the 2.2 to 2.4
+    range, where DagBag has no `collect_dags` keyword at all.
+
+    On Airflow >= 3.0 that keyword is not passed, so `collect_dags` re-parsed every
+    DAG in the deployment on every single deploy: one deploy costing O(total DAGs)
+    and a bulk deploy O(total DAGs^2). `collect_dags=False` removes that walk. It
+    also un-masks `process_file`, since `collect_dags` stamps `file_last_changed` for
+    every file it walks -- including the one just written -- so the following
+    `process_file` hit its `only_if_updated` early return and the DAG was bagged by
+    the folder walk as a side effect rather than on purpose.
     """
     airflow_server = version.parse(airflow_version)
 
-    dagbag_kwargs = {"dag_folder": settings.DAGS_FOLDER}
-    if airflow_server < version.parse("3.0.0"):
-        dagbag_kwargs["read_dags_from_db"] = True
+    if airflow_server >= version.parse("3.0.0"):
+        return DagBag(dag_folder=settings.DAGS_FOLDER, collect_dags=False)
 
-    dagbag = DagBag(**dagbag_kwargs)
+    dagbag = DagBag(dag_folder=settings.DAGS_FOLDER, read_dags_from_db=True)
     dagbag.collect_dags()
 
-    if airflow_server < version.parse("3.0.0") and hasattr(dagbag, "collect_dags_from_db"):
+    if hasattr(dagbag, "collect_dags_from_db"):
         dagbag.collect_dags_from_db()
 
     return dagbag
