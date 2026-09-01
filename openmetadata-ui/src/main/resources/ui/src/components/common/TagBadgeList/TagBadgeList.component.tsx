@@ -46,7 +46,7 @@ const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
         arrow
         delay={500}
         placement="top"
-        title={getTagTooltip(firstTag.tagFQN, firstTag.description) ?? ''}>
+        title={getTagTooltip(firstTag.tagFQN, firstTag.description)}>
         <Focusable>
           <Link
             className="tw:w-max"

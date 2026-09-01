@@ -995,7 +995,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                 <TagChip
                                   icon={tag.style?.iconURL}
                                   key={String(tag.tagFQN ?? '')}
-                                  label={tag.tagFQN}
+                                  label={tag.tagFQN ?? ''}
                                   maxWidth={160}
                                   size="small"
                                   tagColor={tag.style?.color}
