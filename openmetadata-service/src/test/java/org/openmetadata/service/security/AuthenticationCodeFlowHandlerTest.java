@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,7 +58,6 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
-import org.pac4j.oidc.credentials.OidcCredentials;
 import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
@@ -711,16 +709,6 @@ class AuthenticationCodeFlowHandlerTest {
     assertEquals(metadata, result);
     verify(oidcConfiguration).ensuresMetadataResolverInitialized();
     verify(resolver).load();
-  }
-
-  @Test
-  void getIdTokenExpirationTime_returnsNullWhenIdTokenIsMissing() throws Exception {
-    Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
-            "getIdTokenExpirationTime", OidcCredentials.class);
-    method.setAccessible(true);
-
-    assertNull(method.invoke(null, new OidcCredentials()));
   }
 
   private void stubOidcConfigForLogin() {

@@ -520,6 +520,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new TechnicalException("ID token not returned by OIDC provider");
       }
       JWTClaimsSet idTokenClaims = idToken.getJWTClaimsSet();
+      Date expirationTime = idTokenClaims.getExpirationTime();
+      if (expirationTime != null
+          && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+        LOG.warn(
+            "OIDC provider returned an expired ID token for session {}. Proceeding with claim extraction.",
+            pendingSession.getId());
+      }
 
       validateNonceIfRequired(pendingSession, idTokenClaims);
 
@@ -1026,20 +1033,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     HTTPResponse httpResponse = executeTokenHttpRequest(request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
-
-    Date expirationTime = getIdTokenExpirationTime(credentials);
-    if (expirationTime != null
-        && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-      LOG.warn(
-          "OIDC provider returned an expired ID token for session {}. Proceeding with claim extraction.",
-          session.getId());
-    }
-  }
-
-  @SneakyThrows
-  private static Date getIdTokenExpirationTime(OidcCredentials credentials) {
-    JWT idToken = credentials.toIdToken();
-    return idToken == null ? null : idToken.getJWTClaimsSet().getExpirationTime();
   }
 
   public static boolean isJWT(String token) {
