@@ -41,10 +41,8 @@ import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredR
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import ViewToggle, {
-  usePersistedViewMode,
-  ViewMode,
-} from '../common/ViewToggle/ViewToggle';
+import { usePersistedViewMode } from '../common/ViewToggle/usePersistedViewMode';
+import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
@@ -53,7 +51,7 @@ import { useDomainListingData } from './hooks/useDomainListingData';
 
 // Fixes #31776 -- remembers the user's last-chosen view (table, grid, or
 // tree) as their default for next time, via the shared usePersistedViewMode
-// hook (see its JSDoc in ViewToggle.tsx for the general contract).
+// hook (see its JSDoc for the general contract).
 const DOMAIN_VIEW_STORAGE_KEY = 'domainList.viewMode.v1';
 const DOMAIN_VIEWS = [ViewMode.Table, ViewMode.Card, ViewMode.Tree];
 

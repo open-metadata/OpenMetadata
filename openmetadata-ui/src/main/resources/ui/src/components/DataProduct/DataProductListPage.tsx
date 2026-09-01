@@ -58,10 +58,8 @@ import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.inter
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
-import ViewToggle, {
-  usePersistedViewMode,
-  ViewMode,
-} from '../common/ViewToggle/ViewToggle';
+import { usePersistedViewMode } from '../common/ViewToggle/usePersistedViewMode';
+import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
@@ -69,7 +67,7 @@ import { useDataProductListingData } from './hooks/useDataProductListingData';
 
 // Fixes #31776 -- remembers the user's last-chosen view (table or grid) as
 // their default for next time, via the shared usePersistedViewMode hook
-// (see its JSDoc in ViewToggle.tsx for the general contract).
+// (see its JSDoc for the general contract).
 const DATA_PRODUCT_VIEW_STORAGE_KEY = 'dataProductList.viewMode.v1';
 const DATA_PRODUCT_VIEWS = [ViewMode.Table, ViewMode.Card];
 
