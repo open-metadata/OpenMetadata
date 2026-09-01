@@ -683,10 +683,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertEquals(newName, renamedClassification.getName());
 
     Awaitility.await("Wait for tag FQN to be updated after classification rename")
-        // 1.13 pg-es-redis: 30 s equals the L1 cache TTL and leaves no headroom for a loader
-        // race that re-poisons the entry (see yan-3005 #28902 for the write-epoch fix; not
-        // backported to 1.13 yet — depends on NotFoundCache from #28012).
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -734,10 +731,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         patchEntity(classification.getId().toString(), classification);
 
     Awaitility.await("Wait for tag FQN to be updated after classification rename")
-        // 1.13 pg-es-redis: 30 s equals the L1 cache TTL and leaves no headroom for a loader
-        // race that re-poisons the entry (see yan-3005 #28902 for the write-epoch fix; not
-        // backported to 1.13 yet — depends on NotFoundCache from #28012).
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -800,8 +794,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         patchEntity(classification.getId().toString(), classification);
 
     Awaitility.await("Wait for both tag FQNs to be updated after classification rename")
-        // 1.13 pg-es-redis: same L1 cache TTL race — bump 30 s → 60 s.
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()

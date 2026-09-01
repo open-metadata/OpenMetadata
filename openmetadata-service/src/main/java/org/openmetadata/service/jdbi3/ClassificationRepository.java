@@ -339,8 +339,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
-      // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
-      invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+      // Capture the descendants so their caches can be evicted again after the FQN rewrite.
+      List<EntityDAO.EntityIdFqnPair> renamedTags =
+          invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with any tag under this
       // classification. Tags live in the TAG entity table with FQNs starting with the
       // classification FQN, so the descendant helper finds them correctly.
@@ -352,7 +353,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
 
       updateEntityLinks(oldFqn, newFqn, updated);
-      updateAssetIndexes(oldFqn, newFqn);
+      // The index rewrite reads the renamed rows, so schedule it after this transaction commits.
+      deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
 
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
@@ -360,6 +362,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       invalidateClassification(updated.getId());
+      finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {

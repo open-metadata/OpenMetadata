@@ -709,11 +709,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-      // Cascade rename into the search index — child term FQNs and the embedded glossary denorm
-      // (glossary.name / glossary.fullyQualifiedName) must reflect the new name. This used to be
-      // driven by entityRelationshipReindex, which has no caller since PR #19550, so the call has
-      // to happen inline here (mirroring Domain / Classification / GlossaryTerm renames).
-      updateAssetIndexes(original, updated);
+      // Cascade search writes must run after this transaction commits. Rebuilding child term
+      // documents here would re-read the old committed rows and leave their glossary denorm stale.
+      deferReactOperation(() -> updateAssetIndexes(original, updated));
     }
 
     public void invalidateGlossary(UUID classificationId) {
