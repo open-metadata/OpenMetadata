@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ROUTES } from '../constants/constants';
 import { SIDEBAR_NESTED_KEYS } from '../constants/LeftSidebar.constants';
-import { getSidebarActiveKeys } from './LeftSidebarUtils';
+import { getSidebarActiveKeys, getSidebarPathname } from './LeftSidebarUtils';
 
 describe('getSidebarActiveKeys', () => {
   it('should return the two-segment path for a list page', () => {
@@ -111,5 +112,25 @@ describe('getSidebarActiveKeys', () => {
     expect(getSidebarActiveKeys(CUSTOM_DEEP_PATH, nestedKeys)).toEqual([
       CUSTOM_DEEP_PATH,
     ]);
+  });
+});
+
+describe('getSidebarPathname', () => {
+  it('should map the in-place landing route `/` to the Home sidebar key', () => {
+    expect(getSidebarPathname(ROUTES.HOME, undefined)).toEqual(ROUTES.MY_DATA);
+  });
+
+  it('should leave `/my-data` untouched', () => {
+    expect(getSidebarPathname(ROUTES.MY_DATA, undefined)).toEqual(
+      ROUTES.MY_DATA
+    );
+  });
+
+  it('should prefer the breadcrumb origin url over the landing route', () => {
+    expect(
+      getSidebarPathname(ROUTES.HOME, {
+        breadcrumbData: [{ url: ROUTES.EXPLORE }],
+      })
+    ).toEqual(ROUTES.EXPLORE);
   });
 });
