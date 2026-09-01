@@ -13,6 +13,44 @@
 
 import { expect, Locator, Page } from '@playwright/test';
 
+type SelectOwnedOptionArgs = {
+  control: Locator;
+  open: () => Promise<void>;
+  optionName: string;
+  page: Page;
+};
+
+const selectOwnedOption = async ({
+  control,
+  open,
+  optionName,
+  page,
+}: SelectOwnedOptionArgs) => {
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await open();
+    }
+
+    const listboxId = await control.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Destination popup did not expose aria-controls');
+    }
+
+    // Destination selection replaces its RHF object, which can remount the
+    // React Aria popup during a click. Re-resolving the popup on each retry
+    // also prevents options from another open destination being selected.
+    await page
+      .locator(`[role="listbox"][id="${listboxId}"]`)
+      .getByRole('option', { exact: true, name: optionName })
+      .click({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+
+  // A remounted control can leave its previous portal open even after the
+  // selection lands. Moving focus out prevents that popup polluting the next
+  // destination interaction without sending Escape to the surrounding form.
+  await control.blur().catch(() => undefined);
+};
+
 export const selectComboBoxOption = async ({
   page,
   testId,
@@ -24,14 +62,15 @@ export const selectComboBoxOption = async ({
 }) => {
   const input = page.getByTestId(testId).getByRole('combobox');
   await expect(input).toBeVisible();
-  await input.click();
-
-  const option = page.getByRole('option', {
-    exact: true,
-    name: optionName,
+  await selectOwnedOption({
+    control: input,
+    open: async () => {
+      await input.fill('');
+      await input.press('ArrowDown');
+    },
+    optionName,
+    page,
   });
-  await expect(option).toBeVisible();
-  await option.click();
   await expect(input).toHaveValue(optionName);
 };
 
@@ -46,14 +85,12 @@ export const selectDropdownOption = async ({
 }) => {
   const trigger = page.getByTestId(testId).getByRole('button');
   await expect(trigger).toBeVisible();
-  await trigger.click();
-
-  const option = page.getByRole('option', {
-    exact: true,
-    name: optionName,
+  await selectOwnedOption({
+    control: trigger,
+    open: () => trigger.click(),
+    optionName,
+    page,
   });
-  await expect(option).toBeVisible();
-  await option.click();
   await expect(trigger).toContainText(optionName);
 };
 

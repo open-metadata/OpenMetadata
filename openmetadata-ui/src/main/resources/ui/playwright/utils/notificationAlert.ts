@@ -157,26 +157,39 @@ export const addInternalDestination = async ({
         `[data-testid="destination-${destinationNumber}"] [data-testid="team-user-select-trigger-${destinationNumber}"]`
       );
       await expect(dropdownTrigger).toBeVisible();
-      await dropdownTrigger.click();
-
-      const searchInput = page.locator(
-        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input-field"]`
-      );
-      await expect(searchInput).toBeVisible();
-
-      const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-      await searchInput.fill(searchText);
-      await getSearchResult;
 
       const resultsDropdown = page.getByTestId(
         `team-user-select-dropdown-${destinationNumber}`
       );
-
       const option = resultsDropdown.locator(
         `[data-testid="${searchText}-option-label"]`
       );
-      await expect(option).toBeVisible();
-      await option.click();
+
+      await expect(async () => {
+        if (!(await resultsDropdown.isVisible())) {
+          await dropdownTrigger.click();
+        }
+
+        const searchInput = resultsDropdown.getByTestId('search-input-field');
+        await expect(searchInput).toBeVisible();
+
+        // The controlled portal clears its search when React Aria closes it.
+        // Repeat the query after reopening so a late close cannot strand this
+        // helper waiting on an option from an already unmounted popup.
+        if ((await searchInput.inputValue()) !== searchText) {
+          const getSearchResult = page.waitForResponse(
+            '/api/v1/search/query?q=*'
+          );
+          await searchInput.fill(searchText);
+          await getSearchResult;
+        }
+
+        await option.click({ timeout: 3_000 });
+      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+
+      await expect(
+        dropdownTrigger.getByTestId('placeholder-text')
+      ).not.toBeAttached();
     } else {
       const input = page.getByTestId(typeId);
       await expect(input).toBeVisible();
