@@ -327,8 +327,6 @@ interface TableRowProps<T extends object>
       'children' | 'className' | 'onClick' | 'slot' | 'style' | 'id'
     > {
   highlightSelectedRow?: boolean;
-  /** Omits the selection cell when a synthetic row spans the full table. */
-  hideSelectionCell?: boolean;
 }
 
 const TableRow = <T extends object>({
@@ -336,7 +334,6 @@ const TableRow = <T extends object>({
   children,
   className,
   highlightSelectedRow = true,
-  hideSelectionCell = false,
   ...props
 }: TableRowProps<T>) => {
   const { size } = useContext(TableContext);
@@ -357,7 +354,7 @@ const TableRow = <T extends object>({
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {selectionBehavior === 'toggle' && !hideSelectionCell && (
+      {selectionBehavior === 'toggle' && (
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',

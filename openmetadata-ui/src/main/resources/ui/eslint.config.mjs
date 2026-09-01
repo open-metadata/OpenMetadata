@@ -399,57 +399,6 @@ export default [
     },
   },
 
-  {
-    files: [
-      'src/components/Metric/**/*.{js,jsx,ts,tsx}',
-      'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
-      'src/components/DataAssets/DataAssetsHeader/StatItem.component.tsx',
-      'src/components/common/Table/TableV2.tsx',
-      'src/components/common/Table/TableV2Utils.ts',
-      'src/context/LimitsProvider/useLimitsStore.ts',
-      'src/pages/MetricsPage/**/*.{js,jsx,ts,tsx}',
-      'src/hooks/useMetric*.{js,jsx,ts,tsx}',
-      'src/hoc/LimitWrapper.tsx',
-      'src/rest/metricGroupsAPI.ts',
-      'src/rest/metricsAPI.ts',
-      'src/utils/ToastUtils.ts',
-      'src/utils/MetricEntityUtils/**/*.{js,jsx,ts,tsx}',
-    ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: 'antd',
-              allowTypeImports: true,
-              message:
-                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
-            },
-            {
-              name: '@ant-design/icons',
-              allowTypeImports: true,
-              message: 'Metric workflows use icons from @untitledui/icons.',
-            },
-          ],
-          patterns: [
-            {
-              group: ['antd/*'],
-              allowTypeImports: true,
-              message:
-                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
-            },
-            {
-              group: ['@ant-design/icons/*'],
-              allowTypeImports: true,
-              message: 'Metric workflows use icons from @untitledui/icons.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-
   // Route modules must preserve page-level code splitting. Type-only imports
   // remain allowed because they do not create a runtime bundle edge.
   {
