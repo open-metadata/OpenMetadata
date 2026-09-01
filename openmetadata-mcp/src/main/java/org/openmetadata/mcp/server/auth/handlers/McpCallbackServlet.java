@@ -217,8 +217,17 @@ public class McpCallbackServlet extends HttpServlet {
 
     String expectedIssuer;
     try {
+      // pac4j 6 removed getProviderMetadata(); metadata now loads lazily via the resolver, which
+      // must be initialized first because OM builds the OidcClient without calling client.init().
+      ssoHandler.getClient().getConfiguration().ensuresMetadataResolverInitialized();
       expectedIssuer =
-          ssoHandler.getClient().getConfiguration().getProviderMetadata().getIssuer().getValue();
+          ssoHandler
+              .getClient()
+              .getConfiguration()
+              .getOpMetadataResolver()
+              .load()
+              .getIssuer()
+              .getValue();
     } catch (Exception e) {
       LOG.warn(
           "Could not extract issuer from OIDC provider metadata, will use default: {}",
@@ -462,7 +471,8 @@ public class McpCallbackServlet extends HttpServlet {
         throw new IllegalStateException("No OIDC credentials found in session after SSO callback");
       }
 
-      JWT idToken = credentials.getIdToken();
+      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
+      JWT idToken = credentials.toIdToken();
 
       JWTClaimsSet claimsSet;
       try {
