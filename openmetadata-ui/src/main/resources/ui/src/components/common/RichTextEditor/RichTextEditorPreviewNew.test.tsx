@@ -31,6 +31,9 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
 jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   formatClientContent: jest.fn((content) => content),
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
+  getTextFromHtmlString: jest.fn((content) =>
+    (content ?? '').replace(/<[^>]{1,1000}>/g, '').trim()
+  ),
 }));
 
 const mockLongMarkdown = `
@@ -820,6 +823,48 @@ describe('RichTextEditorPreviewNew', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    });
+  });
+
+  describe('clampByLines mode', () => {
+    it('renders plain text (not the rich BlockEditor) while clamped and collapsed, so -webkit-line-clamp truncates over inline text instead of a block-level child', () => {
+      render(<RichTextEditorPreviewNew {...mockProp} clampByLines />);
+
+      const parser = screen.getByTestId('markdown-parser');
+
+      expect(screen.queryByTestId('block-editor')).not.toBeInTheDocument();
+      expect(parser.style.display).toBe('-webkit-box');
+      expect(parser.style.WebkitBoxOrient).toBe('vertical');
+      expect(parser.style.WebkitLineClamp).toBe('2');
+    });
+
+    it('swaps back to the real rich BlockEditor once expanded via View more', async () => {
+      render(<RichTextEditorPreviewNew {...mockProp} clampByLines />);
+
+      const contentElement = screen.getByTestId('markdown-parser');
+
+      Object.defineProperty(contentElement, 'scrollHeight', {
+        configurable: true,
+        value: 200,
+      });
+      Object.defineProperty(contentElement, 'clientHeight', {
+        configurable: true,
+        value: 100,
+      });
+
+      act(() => {
+        resizeCallback([], mockResizeObserver.mock.results[0].value);
+      });
+
+      const readMoreButton = await screen.findByTestId('read-more-button');
+
+      expect(screen.queryByTestId('block-editor')).not.toBeInTheDocument();
+
+      act(() => {
+        fireEvent.click(readMoreButton);
+      });
+
+      expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
     });
   });
 

@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   formatClientContent,
+  getTextFromHtmlString,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -61,6 +62,16 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   // and clamp the real content on the very first commit instead of a
   // follow-up one.
   const content = useMemo(() => formatClientContent(markdown), [markdown]);
+  // clampByLines applies -webkit-line-clamp to contentRef, which only
+  // reliably truncates over inline/text content -- BlockEditor's rendered
+  // root is a block-level wrapper (see BlockEditor.tsx), so clamping across
+  // browsers is inconsistent when it sits directly inside the clamped box.
+  // Render plain text instead while collapsed so the clamped box's direct
+  // child is text, and swap back to the real rich BlockEditor once expanded.
+  const plainTextContent = useMemo(
+    () => (clampByLines ? getTextFromHtmlString(content) : ''),
+    [clampByLines, content]
+  );
   const [readMore, setReadMore] = useState<boolean>(isDescriptionExpanded);
   const [isOverflowing, setIsOverflowing] = useState<boolean>(false);
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
@@ -304,12 +315,16 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         data-testid="markdown-parser"
         ref={contentRef}
         style={clampStyle}>
-        <BlockEditor
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabling editor autofocus
-          autoFocus={false}
-          content={content}
-          editable={false}
-        />
+        {clampByLines && !readMore ? (
+          plainTextContent
+        ) : (
+          <BlockEditor
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabling editor autofocus
+            autoFocus={false}
+            content={content}
+            editable={false}
+          />
+        )}
       </div>
       {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
         <Button
