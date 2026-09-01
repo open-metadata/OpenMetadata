@@ -217,9 +217,12 @@ class PatchEntityToolTest {
   @ValueSource(
       strings = {
         "app",
+        "document",
         "eventsubscription",
         "ingestionPipeline",
         "intakeForm",
+        "metric",
+        "metricGroup",
         "notificationTemplate",
         "persona",
         "testCase",

@@ -46,14 +46,35 @@ public class PatchEntityTool implements McpTool {
   private static final String VALUE_KEY = "value";
   private static final String FROM_KEY = "from";
 
-  // These resources perform lifecycle work outside EntityRepository.patch(). Any resource that
-  // adds custom PATCH behavior must be assessed here before patch_entity can support it safely.
+  // These resources perform lifecycle work outside EntityRepository.patch(), so a direct repository
+  // patch would skip it. Derived by auditing every @PATCH endpoint under
+  // openmetadata-service/.../resources for a body that is not a bare patchInternal() delegation; an
+  // endpoint that grows custom PATCH behavior must be assessed here before patch_entity keeps
+  // supporting its entity type. What each entry protects:
+  //   app                  system-app guard, scheduler teardown/reinstall, runtime-property unset
+  //   document             PrivateDocumentType.requirePublic - private doc types are not editable
+  //   eventsubscription    EventSubscriptionScheduler re-registration
+  //   ingestionPipeline    decryptOrNullify of the pipeline's secrets on the response
+  //   intakeForm           authorizeAdmin
+  //   metric               read-only attribute rejection, parent/metricGroup hierarchy
+  // authorization
+  //   metricGroup          per-member EDIT_ALL authorization for membership mutations
+  //   notificationTemplate provider-aware EDIT_ALL / EDIT_USER_NOTIFICATION_TEMPLATE authorization
+  //   persona              authorizeAdmin
+  //   testCase             table-or-testCase authorization, failed-rows sample cleanup
+  //   testSuite            getAuthRequestsForUpdate authorization
+  //   task                 restricted-field diff validation
+  //   user                 isAdmin / isBot / roles / teams / personaPreferences authorization
+  //   workflow             decryptOrNullify of the automations workflow connection secrets
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
           Entity.APPLICATION,
+          Entity.DOCUMENT,
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
           Entity.INTAKE_FORM,
+          Entity.METRIC,
+          Entity.METRIC_GROUP,
           Entity.NOTIFICATION_TEMPLATE,
           Entity.PERSONA,
           Entity.TEST_CASE,
