@@ -241,11 +241,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void initializeFields() {
     this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
-    // Create the OIDC metadata resolver here, during single-threaded startup, so concurrent logins
-    // never race to lazily initialize it. pac4j 6 normally does this in client.init() (which OM
-    // does
-    // not call); resolveProviderMetadata() then only reads the already-initialized, cached
-    // resolver.
+    // Create the OIDC metadata resolver during single-threaded startup so concurrent logins never
+    // race to lazily initialize it. pac4j 6 normally does this in client.init(), but OM does not
+    // call it. resolveProviderMetadata() then reads the initialized, cached resolver.
     client.getConfiguration().ensuresMetadataResolverInitialized();
 
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
@@ -752,11 +750,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  // pac4j 6 removed OidcConfiguration#getProviderMetadata()/findProviderMetadata(); provider
-  // metadata now loads through an IOidcOpMetadataResolver. OM builds the OidcClient without calling
-  // client.init(), so the resolver is not created for us - ensuresMetadataResolverInitialized()
-  // creates it on first use (idempotent null-check) and load() then lazily fetches and caches the
-  // discovery document, matching the old findProviderMetadata() laziness.
+  // pac4j 6 replaces provider-metadata accessors with a lazy IOidcOpMetadataResolver. OM does not
+  // call client.init(), so ensure the resolver exists before loading its cached discovery document.
   private static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
     configuration.ensuresMetadataResolverInitialized();
     return configuration.getOpMetadataResolver().load();
@@ -1032,13 +1027,19 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
 
-    Date expirationTime = credentials.toIdToken().getJWTClaimsSet().getExpirationTime();
+    Date expirationTime = getIdTokenExpirationTime(credentials);
     if (expirationTime != null
         && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       LOG.warn(
           "OIDC provider returned an expired ID token for session {}. Proceeding with claim extraction.",
           session.getId());
     }
+  }
+
+  @SneakyThrows
+  private static Date getIdTokenExpirationTime(OidcCredentials credentials) {
+    JWT idToken = credentials.toIdToken();
+    return idToken == null ? null : idToken.getJWTClaimsSet().getExpirationTime();
   }
 
   public static boolean isJWT(String token) {
