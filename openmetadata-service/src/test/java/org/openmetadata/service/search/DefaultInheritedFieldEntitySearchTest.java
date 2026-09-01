@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.OntologyStudioAssetResult;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @ExtendWith(MockitoExtension.class)
@@ -345,17 +346,17 @@ class DefaultInheritedFieldEntitySearchTest {
   }
 
   @Test
-  void shouldReturnBoundedOntologyAssetBuckets() throws IOException {
+  void shouldReturnBoundedOntologyStudioAssetBuckets() throws IOException {
     SubjectContext subjectContext = mock(SubjectContext.class);
     JsonObject response =
         jsonObject(
             """
             {
-              "sterms#ontology_terms": {
+              "sterms#studio_terms": {
                 "buckets": [{
                   "key": "commerce.customer",
                   "doc_count": 7,
-                  "top_hits#ontology_assets": {
+                  "top_hits#studio_assets": {
                     "hits": {
                       "hits": [{
                         "_source": {
@@ -388,8 +389,8 @@ class DefaultInheritedFieldEntitySearchTest {
     assertEquals(1, result.size());
     assertEquals("Commerce.Customer", result.getFirst().termFullyQualifiedName());
     assertEquals(7, result.getFirst().assetCount());
-    assertEquals("customers", result.getFirst().assets().getFirst().getName());
-    assertEquals("table", result.getFirst().assets().getFirst().getType());
+    assertEquals("Snowflake", result.getFirst().assets().getFirst().getServiceType());
+    assertEquals(2, result.getFirst().assets().getFirst().getColumnCount());
     verify(searchRepository)
         .aggregate(
             any(),
@@ -413,6 +414,48 @@ class DefaultInheritedFieldEntitySearchTest {
                                 .getValue()
                                 .get("sort_order"))),
             any(),
+            same(subjectContext));
+  }
+
+  @Test
+  @SuppressWarnings("resource")
+  void shouldPageDetailedOntologyStudioAssets() throws IOException {
+    SubjectContext subjectContext = mock(SubjectContext.class);
+    String responseBody =
+        """
+        {
+          "hits": {
+            "total": {"value": 9},
+            "hits": [{
+              "_source": {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "entityType": "dashboard",
+                "name": "sales",
+                "fullyQualifiedName": "bi.sales",
+                "serviceType": "Looker"
+              }
+            }]
+          }
+        }
+        """;
+    when(searchRepository.search(any(), same(subjectContext)))
+        .thenReturn(Response.ok(responseBody).build());
+    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm("Commerce.Customer", 6, 6);
+
+    OntologyStudioAssetResult result =
+        inheritedFieldSearch.getAssetPreviewsForField(
+            query, subjectContext, () -> new OntologyStudioAssetResult(List.of(), 0));
+
+    assertEquals(9, result.total());
+    assertEquals("Looker", result.assets().getFirst().getServiceType());
+    verify(searchRepository)
+        .search(
+            org.mockito.ArgumentMatchers.argThat(
+                request ->
+                    request.getFrom() == 6
+                        && request.getSize() == 6
+                        && GLOSSARY_ASSET_SORT_FIELD.equals(request.getSortFieldParam())
+                        && GLOSSARY_ASSET_SORT_ORDER.equals(request.getSortOrder())),
             same(subjectContext));
   }
 

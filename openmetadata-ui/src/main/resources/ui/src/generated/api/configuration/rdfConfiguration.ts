@@ -15,8 +15,8 @@
  */
 export interface RDFConfiguration {
     /**
-     * Expose optional AI-assisted Ontology flows. Manual authoring remains available when
-     * disabled.
+     * Expose optional AI-assisted Ontology Studio flows. Manual authoring remains available
+     * when disabled.
      */
     askCollateEnabled?: boolean;
     /**

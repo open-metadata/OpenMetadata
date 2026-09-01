@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * An admin-governed semantic relationship definition used by Ontology.
+ * An admin-governed semantic relationship definition used by Ontology Studio.
  */
 export interface RelationshipType {
     cardinality?:         Cardinality;

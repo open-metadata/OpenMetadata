@@ -11,46 +11,36 @@
  *  limitations under the License.
  */
 /**
- * A bounded page of term-to-asset clusters, connected semantic context, and observed
- * lineage for ontology data mode.
+ * A bounded page of term-to-asset clusters and semantic relations for Ontology Studio data
+ * mode.
  */
-export interface OntologyDataGraph {
+export interface OntologyStudioDataGraph {
     /**
-     * Ranked term-to-asset clusters in this page followed by bounded connected context
-     * clusters. Paging applies only to the ranked clusters.
+     * Term-to-asset clusters in this page.
      */
-    clusters: OntologyAssetCluster[];
+    clusters: OntologyStudioAssetCluster[];
     /**
-     * Bounded semantic and hierarchy relations whose endpoints are present in the returned
-     * clusters.
+     * Semantic relations whose endpoints are both present in this page.
      */
     edges: GlossaryTermRelationGraphEdge[];
     /**
-     * Bounded observed lineage whose endpoints are assets in the returned cluster previews.
-     */
-    lineageEdges: Edge[];
-    /**
-     * Offset pagination for ranked seed clusters, excluding connected context clusters.
+     * Offset pagination for clusters.
      */
     paging: Paging;
-    /**
-     * Ranked term identifiers represented by this page. Connected context clusters are excluded.
-     */
-    seedTermIds: string[];
 }
 
 /**
- * A glossary term and its bounded asset preview for an ontology data graph.
+ * A glossary term and its bounded asset preview for Ontology Studio data mode.
  */
-export interface OntologyAssetCluster {
+export interface OntologyStudioAssetCluster {
     /**
      * Total number of assets tagged with the term.
      */
     assetCount: number;
     /**
-     * Bounded first page of asset references tagged with the term.
+     * Bounded first page of assets tagged with the term.
      */
-    assets: EntityReference[];
+    assets: OntologyStudioAsset[];
     /**
      * Glossary term represented by the cluster.
      */
@@ -58,14 +48,38 @@ export interface OntologyAssetCluster {
 }
 
 /**
+ * A bounded asset preview displayed by Ontology Studio data mode.
+ */
+export interface OntologyStudioAsset {
+    /**
+     * Number of columns exposed by a tabular asset.
+     */
+    columnCount?: number;
+    /**
+     * Asset reference.
+     */
+    entity: EntityReference;
+    /**
+     * Service that owns the asset when available from search.
+     */
+    service?: EntityReference;
+    /**
+     * Service implementation type when available from search.
+     */
+    serviceType?: string;
+}
+
+/**
+ * Asset reference.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Resolved first-class relationship type.
+ * Service that owns the asset when available from search.
  *
- * Pipeline where the sqlQuery is periodically run.
+ * Resolved first-class relationship type.
  */
 export interface EntityReference {
     /**
@@ -189,133 +203,7 @@ export enum EntityStatus {
 }
 
 /**
- * Edge in the lineage graph from one entity to another by entity IDs.
- */
-export interface Edge {
-    description?: string;
-    /**
-     * From entity that is upstream of lineage edge.
-     */
-    fromEntity: string;
-    /**
-     * Optional lineageDetails provided only for table to table lineage edge.
-     */
-    lineageDetails?: LineageDetails;
-    /**
-     * To entity that is downstream of lineage edge.
-     */
-    toEntity: string;
-}
-
-/**
- * Optional lineageDetails provided only for table to table lineage edge.
- *
- * Lineage details including sqlQuery + pipeline + columnLineage.
- */
-export interface LineageDetails {
-    /**
-     * Asset count in case of child assets lineage.
-     */
-    assetEdges?: number;
-    /**
-     * Lineage information of how upstream columns were combined to get downstream column.
-     */
-    columnsLineage?: ColumnLineage[];
-    /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds.
-     */
-    createdAt?: number;
-    /**
-     * User who created the node.
-     */
-    createdBy?: string;
-    /**
-     * description of lineage
-     */
-    description?: string;
-    /**
-     * Pipeline where the sqlQuery is periodically run.
-     */
-    pipeline?: EntityReference;
-    /**
-     * Lineage type describes how a lineage was created.
-     */
-    source?: Source;
-    /**
-     * SQL used for transformation.
-     */
-    sqlQuery?: string;
-    /**
-     * Lineage path through temporary/intermediate tables. Each element represents a hop with
-     * fromEntity and toEntity fields.
-     */
-    tempLineageTables?: TempLineageTable[];
-    /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds.
-     */
-    updatedAt?: number;
-    /**
-     * User who made the update.
-     */
-    updatedBy?: string;
-    [property: string]: any;
-}
-
-export interface ColumnLineage {
-    /**
-     * One or more source columns identified by fully qualified column name used by
-     * transformation function to create destination column.
-     */
-    fromColumns?: string[];
-    /**
-     * Transformation function applied to source columns to create destination column. That is
-     * `function(fromColumns) -> toColumn`.
-     */
-    function?: string;
-    /**
-     * Destination column identified by fully qualified column name created by the
-     * transformation of source columns.
-     */
-    toColumn?: string;
-    [property: string]: any;
-}
-
-/**
- * Lineage type describes how a lineage was created.
- */
-export enum Source {
-    ChildAssets = "ChildAssets",
-    CrossDatabaseLineage = "CrossDatabaseLineage",
-    DashboardLineage = "DashboardLineage",
-    DbtLineage = "DbtLineage",
-    ExternalTableLineage = "ExternalTableLineage",
-    Manual = "Manual",
-    OpenLineage = "OpenLineage",
-    PipelineLineage = "PipelineLineage",
-    QueryLineage = "QueryLineage",
-    SparkLineage = "SparkLineage",
-    ViewLineage = "ViewLineage",
-}
-
-/**
- * A single hop in a temporary table lineage path.
- */
-export interface TempLineageTable {
-    /**
-     * Source entity or table name for this hop.
-     */
-    fromEntity: string;
-    /**
-     * Target entity or table name for this hop.
-     */
-    toEntity: string;
-    [property: string]: any;
-}
-
-/**
- * Offset pagination for ranked seed clusters, excluding connected context clusters.
+ * Offset pagination for clusters.
  *
  * Type used for cursor based pagination information in GET list responses.
  */

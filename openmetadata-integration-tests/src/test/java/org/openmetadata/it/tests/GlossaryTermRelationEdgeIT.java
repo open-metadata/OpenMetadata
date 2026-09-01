@@ -54,7 +54,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
  * Integration tests for the first-class single-edge relation endpoints introduced in Ontology
- * Ontology Phase 2: POST create with provenance/status metadata, PUT change-type, and DELETE. Each
+ * Studio Phase 2: POST create with provenance/status metadata, PUT change-type, and DELETE. Each
  * test creates its own pair of terms so they are independent and can run concurrently.
  */
 @Execution(ExecutionMode.CONCURRENT)

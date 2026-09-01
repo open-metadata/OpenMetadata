@@ -11,28 +11,36 @@
  *  limitations under the License.
  */
 /**
- * A glossary term and its bounded asset preview for an ontology data graph.
+ * A bounded asset preview displayed by Ontology Studio data mode.
  */
-export interface OntologyAssetCluster {
+export interface OntologyStudioAsset {
     /**
-     * Total number of assets tagged with the term.
+     * Number of columns exposed by a tabular asset.
      */
-    assetCount: number;
+    columnCount?: number;
     /**
-     * Bounded first page of asset references tagged with the term.
+     * Asset reference.
      */
-    assets: EntityReference[];
+    entity: EntityReference;
     /**
-     * Glossary term represented by the cluster.
+     * Service that owns the asset when available from search.
      */
-    term: GlossaryTermRelationGraphNode;
+    service?: EntityReference;
+    /**
+     * Service implementation type when available from search.
+     */
+    serviceType?: string;
 }
 
 /**
+ * Asset reference.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Service that owns the asset when available from search.
  */
 export interface EntityReference {
     /**
@@ -75,28 +83,4 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Glossary term represented by the cluster.
- *
- * A glossary term represented as a node in the relation graph.
- */
-export interface GlossaryTermRelationGraphNode {
-    /**
-     * Optional display name of the glossary term.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the glossary term.
-     */
-    fullyQualifiedName: string;
-    /**
-     * Identifier of the glossary term.
-     */
-    id: string;
-    /**
-     * Name of the glossary term.
-     */
-    name: string;
 }

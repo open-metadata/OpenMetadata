@@ -25,7 +25,7 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 
-/** Typed SDK client for optional, review-gated Ontology AI proposals. */
+/** Typed SDK client for optional, review-gated Ontology Studio AI proposals. */
 public final class OntologyAiService {
   private static final String BASE_PATH = "/v1/ontology/ai";
   private final HttpClient httpClient;

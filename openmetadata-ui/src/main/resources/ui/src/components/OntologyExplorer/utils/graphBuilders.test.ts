@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { TFunction } from 'i18next';
-import { OntologyDataGraph } from '../../../generated/api/data/ontologyDataGraph';
+import { OntologyStudioDataGraph } from '../../../generated/api/data/ontologyStudioDataGraph';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityStatus, Provenance } from '../../../generated/type/termRelation';
@@ -20,10 +20,8 @@ import {
   ASSET_BINDING_EDGE_KIND,
   ASSET_RELATION_TYPE,
   buildGraphFromAllTerms,
-  buildGraphFromOntologyData,
+  buildGraphFromStudioData,
   convertRdfGraphToOntologyGraph,
-  OBSERVED_LINEAGE_EDGE_KIND,
-  OBSERVED_LINEAGE_RELATION_TYPE,
   projectOntologyRelationsToAssets,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from './graphBuilders';
@@ -49,19 +47,23 @@ const glossaries: Glossary[] = [
   } as Glossary,
 ];
 
-describe('buildGraphFromOntologyData', () => {
-  it('maps bounded clusters, observed lineage, and asset binding edges', () => {
-    const result = buildGraphFromOntologyData(
+describe('buildGraphFromStudioData', () => {
+  it('maps bounded clusters into terms, detailed assets, and binding edges', () => {
+    const result = buildGraphFromStudioData(
       {
         clusters: [
           {
             assetCount: 11,
             assets: [
               {
-                displayName: 'Transactions',
-                fullyQualifiedName: 'warehouse.finance.transactions',
-                id: 'asset-1',
-                type: 'table',
+                columnCount: 7,
+                entity: {
+                  displayName: 'Transactions',
+                  fullyQualifiedName: 'warehouse.finance.transactions',
+                  id: 'asset-1',
+                  type: 'table',
+                },
+                serviceType: 'Snowflake',
               },
             ],
             term: {
@@ -73,15 +75,8 @@ describe('buildGraphFromOntologyData', () => {
           },
         ],
         edges: [],
-        seedTermIds: ['term-1'],
-        lineageEdges: [
-          {
-            fromEntity: 'asset-1',
-            toEntity: 'asset-2',
-          },
-        ],
         paging: { total: 1 },
-      } as OntologyDataGraph,
+      } as OntologyStudioDataGraph,
       glossaries,
       tStub
     );
@@ -92,12 +87,12 @@ describe('buildGraphFromOntologyData', () => {
           assetCount: 11,
           glossaryId: 'gloss-finance-id',
           id: 'term-1',
-          isDataModeSeed: true,
           loadedAssetCount: 1,
         }),
         expect.objectContaining({
+          columnCount: 7,
           id: 'asset-1',
-          serviceLabel: 'table',
+          serviceLabel: 'Snowflake',
           type: 'dataAsset',
         }),
       ])
@@ -108,13 +103,6 @@ describe('buildGraphFromOntologyData', () => {
       label: 'label.tagged-with',
       relationType: ASSET_RELATION_TYPE,
       to: 'term-1',
-    });
-    expect(result.edges).toContainEqual({
-      edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
-      from: 'asset-1',
-      label: 'label.observed-lineage',
-      relationType: OBSERVED_LINEAGE_RELATION_TYPE,
-      to: 'asset-2',
     });
   });
 });

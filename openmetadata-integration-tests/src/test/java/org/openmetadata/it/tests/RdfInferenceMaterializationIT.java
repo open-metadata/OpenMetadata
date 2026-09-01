@@ -62,7 +62,7 @@ public class RdfInferenceMaterializationIT {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String BELONGS_TO_GLOSSARY =
       "https://open-metadata.org/ontology/belongsToGlossary";
-  private static final String TEST_RESOURCE_BASE = "urn:ontology-test:";
+  private static final String TEST_RESOURCE_BASE = "urn:ontology-studio-test:";
   private static final String SOURCE_PREDICATE = TEST_RESOURCE_BASE + "source";
   private static final String INVALIDATION_PREDICATE = TEST_RESOURCE_BASE + "source-2";
   private static final String INFERRED_PREDICATE = TEST_RESOURCE_BASE + "inferred";

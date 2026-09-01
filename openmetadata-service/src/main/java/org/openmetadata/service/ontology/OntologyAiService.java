@@ -44,7 +44,7 @@ import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.OntologySparqlQueryValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard.FederationDisallowedException;
 
-/** Converts optional AI completions into reviewable, typed Ontology proposals. */
+/** Converts optional AI completions into reviewable, typed Ontology Studio proposals. */
 public final class OntologyAiService {
   private final boolean enabled;
   private final OntologyAiCompletionGateway gateway;

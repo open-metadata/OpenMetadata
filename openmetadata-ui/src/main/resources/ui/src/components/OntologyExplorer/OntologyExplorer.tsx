@@ -235,7 +235,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     isHierarchyView,
     exportableGlossaryId,
     hasMoreDataTerms,
-    ontologySummary,
+    studioSummary,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -451,23 +451,23 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const healthSummary = useMemo(() => {
     const derived = getOntologyHealthSummary(combinedGraphData, filters);
-    if (!ontologySummary) {
+    if (!studioSummary) {
       return derived;
     }
 
     return {
-      connectedPercent: ontologySummary.connectedPercentage,
+      connectedPercent: studioSummary.connectedPercentage,
       connectedTermCount:
-        ontologySummary.totalTerms - ontologySummary.isolatedTerms,
-      isolatedTerms: ontologySummary.isolatedPreview.map((term) => ({
+        studioSummary.totalTerms - studioSummary.isolatedTerms,
+      isolatedTerms: studioSummary.isolatedPreview.map((term) => ({
         id: term.id,
         fullyQualifiedName: term.fullyQualifiedName,
         label: term.displayName ?? term.name,
         type: 'glossaryTermIsolated',
       })),
-      totalTermCount: ontologySummary.totalTerms,
+      totalTermCount: studioSummary.totalTerms,
     };
-  }, [combinedGraphData, filters, ontologySummary]);
+  }, [combinedGraphData, filters, studioSummary]);
   const treeGroups = useMemo(
     () =>
       buildOntologyTreeGroups(
@@ -1235,7 +1235,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         {showHealth && !showConceptInspector && !selectedEdge ? (
           <OntologyHealthPanel
             health={healthSummary}
-            isolatedTermCount={ontologySummary?.isolatedTerms}
+            isolatedTermCount={studioSummary?.isolatedTerms}
             onConnect={(node) => {
               setSelectedNode(node);
               onRequestEdit?.();

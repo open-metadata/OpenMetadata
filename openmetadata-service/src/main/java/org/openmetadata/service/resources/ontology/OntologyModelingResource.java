@@ -37,7 +37,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontology/modeling")
-@Tag(name = "Ontology Modeling", description = "Governed Ontology modeling utilities.")
+@Tag(name = "Ontology Modeling", description = "Governed Ontology Studio modeling utilities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyModeling", order = 8)

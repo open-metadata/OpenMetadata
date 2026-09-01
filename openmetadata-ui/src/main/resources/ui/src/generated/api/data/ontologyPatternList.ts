@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 /**
- * The complete catalog of supported Ontology modeling patterns.
+ * The complete catalog of supported Ontology Studio modeling patterns.
  */
 export interface OntologyPatternList {
     data: OntologyPatternTemplate[];
 }
 
 /**
- * A governed ontology modeling pattern available to Ontology.
+ * A governed ontology modeling pattern available to Ontology Studio.
  */
 export interface OntologyPatternTemplate {
     description:       string;

@@ -15,7 +15,7 @@ package org.openmetadata.service.exception;
 
 import jakarta.ws.rs.core.Response;
 
-/** Reports structurally invalid or unsafe output from an Ontology AI provider. */
+/** Reports structurally invalid or unsafe output from an Ontology Studio AI provider. */
 public final class OntologyAiProviderException extends WebServiceException {
   public OntologyAiProviderException(final String message) {
     super(Response.Status.BAD_GATEWAY, message);

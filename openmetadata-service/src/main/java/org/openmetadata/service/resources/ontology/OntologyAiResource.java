@@ -52,7 +52,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontology/ai")
-@Tag(name = "Ontology AI", description = "Optional, review-gated AI proposals for Ontology.")
+@Tag(name = "Ontology AI", description = "Optional, review-gated AI proposals for Ontology Studio.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyAi", order = 7)

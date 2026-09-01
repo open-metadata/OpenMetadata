@@ -67,7 +67,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Path("/v1/ontologyChangeSets")
 @Tag(
     name = "Ontology Change Sets",
-    description = "Durable, reversible Ontology authoring sessions.")
+    description = "Durable, reversible Ontology Studio authoring sessions.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyChangeSets", order = 4)

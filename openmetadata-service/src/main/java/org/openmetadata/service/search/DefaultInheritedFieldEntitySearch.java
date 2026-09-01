@@ -42,6 +42,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.OntologyStudioAsset;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -51,8 +52,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySearch {
 
   private static final int MAX_PAGE_SIZE = 1000;
-  private static final int MAX_ONTOLOGY_ASSET_PREVIEW_SIZE = 4;
-  private static final int MAX_ONTOLOGY_TERM_BUCKETS = 60;
+  private static final int MAX_STUDIO_ASSET_PREVIEW_SIZE = 4;
+  private static final int MAX_STUDIO_TERM_BUCKETS = 60;
   private static final String EMPTY_QUERY = "";
   private static final String EMPTY_JSON = "{}";
 
@@ -63,17 +64,22 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   private static final String VALUE_KEY = "value";
   private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String TYPE_KEY = "type";
-  private static final String ONTOLOGY_ASSETS_AGGREGATION = "ontology_assets";
-  private static final String ONTOLOGY_TERMS_AGGREGATION = "ontology_terms";
+  private static final String STUDIO_ASSETS_AGGREGATION = "studio_assets";
+  private static final String STUDIO_TERMS_AGGREGATION = "studio_terms";
 
   private static final List<String> ENTITY_REFERENCE_FIELDS;
+  private static final List<String> STUDIO_ASSET_FIELDS;
   private static final ObjectMapper ENTITY_REF_MAPPER;
 
   static {
     ENTITY_REF_MAPPER = JsonUtils.getObjectMapper().copy();
     ENTITY_REF_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
+    // Extract field names to limit ES response payload - only fetch required fields from ES_source
     ENTITY_REFERENCE_FIELDS = extractEntityReferenceFieldNames();
+    List<String> studioAssetFields = new ArrayList<>(ENTITY_REFERENCE_FIELDS);
+    studioAssetFields.addAll(List.of("service", "serviceType", "columnNames"));
+    STUDIO_ASSET_FIELDS = List.copyOf(studioAssetFields);
   }
 
   private static List<String> extractEntityReferenceFieldNames() {
@@ -306,63 +312,107 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   @Override
-  public List<GlossaryTermAssetBucket> getAssetBucketsForTerms(
+  public List<OntologyStudioAssetBucket> getAssetBucketsForTerms(
       List<String> termFullyQualifiedNames, int assetPreviewSize, SubjectContext subjectContext) {
     if (isSearchUnavailable() || termFullyQualifiedNames.isEmpty()) {
       return List.of();
     }
 
     List<String> boundedTerms =
-        termFullyQualifiedNames.stream().distinct().limit(MAX_ONTOLOGY_TERM_BUCKETS).toList();
-    int boundedPreviewSize = Math.clamp(assetPreviewSize, 1, MAX_ONTOLOGY_ASSET_PREVIEW_SIZE);
+        termFullyQualifiedNames.stream().distinct().limit(MAX_STUDIO_TERM_BUCKETS).toList();
+    int boundedPreviewSize = Math.clamp(assetPreviewSize, 1, MAX_STUDIO_ASSET_PREVIEW_SIZE);
 
     try {
       JsonObject response =
-          executeOntologyAssetAggregation(boundedTerms, boundedPreviewSize, subjectContext);
-      return parseOntologyAssetBuckets(response, boundedTerms);
+          executeStudioAssetAggregation(boundedTerms, boundedPreviewSize, subjectContext);
+      return parseStudioAssetBuckets(response, boundedTerms);
     } catch (IOException | RuntimeException exception) {
-      LOG.warn("Failed to fetch ontology asset previews", exception);
+      LOG.warn("Failed to fetch Ontology Studio asset previews", exception);
       return List.of();
     }
   }
 
-  private JsonObject executeOntologyAssetAggregation(
+  @Override
+  public OntologyStudioAssetResult getAssetPreviewsForField(
+      InheritedFieldQuery query,
+      SubjectContext subjectContext,
+      Supplier<OntologyStudioAssetResult> fallback) {
+    if (isSearchUnavailable()) {
+      return fallback.get();
+    }
+
+    try {
+      SearchRequest request = buildStudioAssetSearchRequest(query);
+      Response response = searchRepository.search(request, subjectContext);
+      JsonNode searchResponse = JsonUtils.readTree(extractResponseBody(response));
+      return new OntologyStudioAssetResult(
+          extractStudioAssets(searchResponse), extractTotalCountFromSearchResponse(searchResponse));
+    } catch (IOException | RuntimeException exception) {
+      LOG.warn("Failed to fetch Ontology Studio assets", exception);
+      return fallback.get();
+    }
+  }
+
+  private SearchRequest buildStudioAssetSearchRequest(InheritedFieldQuery query) {
+    return buildSearchRequest(
+        query.getFrom(),
+        Math.min(query.getSize(), MAX_PAGE_SIZE),
+        getQueryFilter(query),
+        true,
+        STUDIO_ASSET_FIELDS,
+        query.getSortField(),
+        query.getSortOrder());
+  }
+
+  private List<OntologyStudioAsset> extractStudioAssets(JsonNode searchResponse) {
+    List<OntologyStudioAsset> assets = new ArrayList<>();
+    for (JsonNode hit : searchResponse.path(HITS_KEY).path(HITS_KEY)) {
+      try {
+        assets.add(toStudioAsset(hit.path(SOURCE_KEY)));
+      } catch (JsonProcessingException | IllegalArgumentException exception) {
+        LOG.warn("Skipping malformed Ontology Studio asset", exception);
+      }
+    }
+    return List.copyOf(assets);
+  }
+
+  private JsonObject executeStudioAssetAggregation(
       List<String> termFqns, int assetPreviewSize, SubjectContext subjectContext)
       throws IOException {
     SearchAggregationNode terms =
         SearchAggregation.terms(
-            ONTOLOGY_TERMS_AGGREGATION,
+            STUDIO_TERMS_AGGREGATION,
             TAGS_FQN,
             termFqns.size(),
             termFqns.stream().map(DefaultInheritedFieldEntitySearch::normalizeTermFqn).toList());
     terms.addChild(
         SearchAggregation.topHits(
-            ONTOLOGY_ASSETS_AGGREGATION,
+            STUDIO_ASSETS_AGGREGATION,
             assetPreviewSize,
             GLOSSARY_ASSET_SORT_FIELD,
             GLOSSARY_ASSET_SORT_ORDER,
-            ENTITY_REFERENCE_FIELDS));
+            STUDIO_ASSET_FIELDS));
     SearchAggregation aggregation = SearchAggregation.fromTree(terms);
     String filter = QueryFilterBuilder.buildGenericAssetsCountFilter(TAGS_FQN, false);
     return searchRepository.aggregate(
         filter, GLOBAL_SEARCH_ALIAS, aggregation, new SearchListFilter(), subjectContext);
   }
 
-  private List<GlossaryTermAssetBucket> parseOntologyAssetBuckets(
+  private List<OntologyStudioAssetBucket> parseStudioAssetBuckets(
       JsonObject response, List<String> requestedTermFqns) {
-    JsonObject termsAggregation = findObject(response, ONTOLOGY_TERMS_AGGREGATION);
+    JsonObject termsAggregation = findObject(response, STUDIO_TERMS_AGGREGATION);
     if (termsAggregation == null || !termsAggregation.containsKey("buckets")) {
       return List.of();
     }
 
-    List<GlossaryTermAssetBucket> buckets = new ArrayList<>();
+    List<OntologyStudioAssetBucket> buckets = new ArrayList<>();
     for (JsonValue bucketValue : termsAggregation.getJsonArray("buckets")) {
       JsonObject bucket = bucketValue.asJsonObject();
       buckets.add(
-          new GlossaryTermAssetBucket(
+          new OntologyStudioAssetBucket(
               requestedTermFqn(bucket.getString("key"), requestedTermFqns),
               bucket.getInt("doc_count"),
-              parseAssetReferences(findObject(bucket, ONTOLOGY_ASSETS_AGGREGATION))));
+              parseStudioAssets(findObject(bucket, STUDIO_ASSETS_AGGREGATION))));
     }
     return List.copyOf(buckets);
   }
@@ -379,22 +429,51 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     return termFqn.toLowerCase(Locale.ROOT);
   }
 
-  private List<EntityReference> parseAssetReferences(JsonObject topHits) {
+  private List<OntologyStudioAsset> parseStudioAssets(JsonObject topHits) {
     if (topHits == null) {
       return List.of();
     }
 
     JsonArray hits = topHits.getJsonObject(HITS_KEY).getJsonArray(HITS_KEY);
-    List<EntityReference> assets = new ArrayList<>();
+    List<OntologyStudioAsset> assets = new ArrayList<>();
     for (JsonValue hitValue : hits) {
       JsonObject source = hitValue.asJsonObject().getJsonObject(SOURCE_KEY);
       try {
-        assets.add(extractEntityReferenceFromDocument(JsonUtils.readTree(source.toString())));
+        assets.add(toStudioAsset(JsonUtils.readTree(source.toString())));
       } catch (JsonProcessingException | IllegalArgumentException exception) {
-        LOG.warn("Skipping malformed ontology asset preview", exception);
+        LOG.warn("Skipping malformed Ontology Studio asset preview", exception);
       }
     }
     return List.copyOf(assets);
+  }
+
+  private OntologyStudioAsset toStudioAsset(JsonNode document) throws JsonProcessingException {
+    EntityReference entity = extractEntityReferenceFromDocument(document.deepCopy());
+    EntityReference service = extractOptionalReference(document.path("service"));
+    String serviceType = optionalText(document.path("serviceType"));
+    Integer columnCount = assetColumnCount(document);
+    return new OntologyStudioAsset()
+        .withEntity(entity)
+        .withService(service)
+        .withServiceType(serviceType)
+        .withColumnCount(columnCount);
+  }
+
+  private EntityReference extractOptionalReference(JsonNode node) throws JsonProcessingException {
+    return node.isObject() ? ENTITY_REF_MAPPER.treeToValue(node, EntityReference.class) : null;
+  }
+
+  private static String optionalText(JsonNode node) {
+    return node.isTextual() && !node.textValue().isBlank() ? node.textValue() : null;
+  }
+
+  private static Integer assetColumnCount(JsonNode document) {
+    JsonNode columnNames = document.path("columnNames");
+    JsonNode columns = document.path("columns");
+    if (columnNames.isArray()) {
+      return columnNames.size();
+    }
+    return columns.isArray() ? columns.size() : null;
   }
 
   private static JsonObject findObject(JsonObject parent, String name) {

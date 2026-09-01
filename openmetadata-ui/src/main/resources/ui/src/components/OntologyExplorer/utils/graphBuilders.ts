@@ -13,7 +13,7 @@
 
 import type { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
-import { OntologyDataGraph } from '../../../generated/api/data/ontologyDataGraph';
+import { OntologyStudioDataGraph } from '../../../generated/api/data/ontologyStudioDataGraph';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -48,7 +48,6 @@ export const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 export const ASSET_BINDING_EDGE_KIND = 'assetBinding';
 export const SEMANTIC_PROJECTION_EDGE_KIND = 'semanticProjection';
 export const OBSERVED_LINEAGE_EDGE_KIND = 'observedLineage';
-export const OBSERVED_LINEAGE_RELATION_TYPE = 'lineage';
 export const DATA_MODE_MAX_PROJECTED_EDGES = 1000;
 
 export function isValidUUID(str: string): boolean {
@@ -433,13 +432,12 @@ function glossaryForTerm(
   });
 }
 
-export function buildGraphFromOntologyData(
-  data: OntologyDataGraph,
+export function buildGraphFromStudioData(
+  data: OntologyStudioDataGraph,
   glossaries: Glossary[],
   t: TFunction
 ): OntologyGraphData {
   const nodes = new Map<string, OntologyNode>();
-  const seedTermIds = new Set(data.seedTermIds);
   const edges: OntologyEdge[] = data.edges.map((edge) => ({
     id: edge.id,
     from: edge.from,
@@ -448,15 +446,6 @@ export function buildGraphFromOntologyData(
     relationType: edge.relationType,
     relationshipType: edge.relationshipType,
   }));
-  edges.push(
-    ...(data.lineageEdges ?? []).map<OntologyEdge>((edge) => ({
-      edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
-      from: edge.fromEntity,
-      label: t('label.observed-lineage'),
-      relationType: OBSERVED_LINEAGE_RELATION_TYPE,
-      to: edge.toEntity,
-    }))
-  );
 
   data.clusters.forEach((cluster) => {
     const glossary = glossaryForTerm(
@@ -470,7 +459,6 @@ export function buildGraphFromOntologyData(
       fullyQualifiedName: cluster.term.fullyQualifiedName,
       glossaryId: glossary?.id,
       group: glossary?.displayName ?? glossary?.name,
-      isDataModeSeed: seedTermIds.has(cluster.term.id),
       label: cluster.term.displayName ?? cluster.term.name,
       originalLabel: cluster.term.displayName ?? cluster.term.name,
       type: 'glossaryTerm',
@@ -478,19 +466,26 @@ export function buildGraphFromOntologyData(
 
     cluster.assets.forEach((asset) => {
       const label =
-        asset.displayName ?? asset.name ?? asset.fullyQualifiedName ?? asset.id;
-      nodes.set(asset.id, {
-        id: asset.id,
-        entityRef: asset,
-        fullyQualifiedName: asset.fullyQualifiedName,
+        asset.entity.displayName ??
+        asset.entity.name ??
+        asset.entity.fullyQualifiedName ??
+        asset.entity.id;
+      nodes.set(asset.entity.id, {
+        id: asset.entity.id,
+        columnCount: asset.columnCount,
+        entityRef: asset.entity,
+        fullyQualifiedName: asset.entity.fullyQualifiedName,
         label,
         originalLabel: label,
-        serviceLabel: asset.type,
+        serviceLabel:
+          asset.serviceType ??
+          asset.service?.displayName ??
+          asset.service?.name,
         type: ASSET_NODE_TYPE,
       });
       edges.push({
         edgeKind: ASSET_BINDING_EDGE_KIND,
-        from: asset.id,
+        from: asset.entity.id,
         label: t('label.tagged-with'),
         relationType: ASSET_RELATION_TYPE,
         to: cluster.term.id,

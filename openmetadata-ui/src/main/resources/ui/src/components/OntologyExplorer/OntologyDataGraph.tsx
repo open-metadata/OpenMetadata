@@ -41,7 +41,6 @@ import {
   isDataAssetLikeNode,
   isTermNode,
   METRIC_RELATION_TYPE,
-  OBSERVED_LINEAGE_EDGE_KIND,
 } from './utils/graphBuilders';
 import {
   formatRelationLabel,
@@ -68,11 +67,10 @@ interface CardPosition {
 
 interface DataClusterModel {
   assetsByTerm: Map<string, OntologyNode[]>;
-  termIdsByAsset: Map<string, Set<string>>;
   terms: OntologyNode[];
 }
 
-interface DataEdgeLayout {
+interface SemanticEdgeLayout {
   edge: OntologyEdge;
   labelLeft: number;
   labelTop: number;
@@ -96,7 +94,6 @@ const WHEEL_ZOOM_STEP = 0.12;
 const TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 const CANVAS_BOTTOM_PADDING = 24;
-const MAX_OBSERVED_LINEAGE_CLUSTER_EDGES = 500;
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
@@ -162,7 +159,6 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
     data.nodes.filter(isDataAssetLikeNode).map((node) => [node.id, node])
   );
   const assetMapsByTerm = new Map<string, Map<string, OntologyNode>>();
-  const termIdsByAsset = new Map<string, Set<string>>();
 
   data.edges.forEach((edge) => {
     if (
@@ -181,9 +177,6 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
     const assets = assetMapsByTerm.get(term.id) ?? new Map();
     assets.set(asset.id, asset);
     assetMapsByTerm.set(term.id, assets);
-    const termIds = termIdsByAsset.get(asset.id) ?? new Set<string>();
-    termIds.add(term.id);
-    termIdsByAsset.set(asset.id, termIds);
   });
 
   const assetsByTerm = new Map(
@@ -192,19 +185,12 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
       [...assets.values()],
     ])
   );
-  const terms = [...termById.values()]
-    .filter(
-      (term) =>
-        (term.assetCount ?? 0) > 0 ||
-        (assetsByTerm.get(term.id)?.length ?? 0) > 0
-    )
-    .sort(
-      (left, right) =>
-        Number(Boolean(right.isDataModeSeed)) -
-        Number(Boolean(left.isDataModeSeed))
-    );
+  const terms = [...termById.values()].filter(
+    (term) =>
+      (term.assetCount ?? 0) > 0 || (assetsByTerm.get(term.id)?.length ?? 0) > 0
+  );
 
-  return { assetsByTerm, termIdsByAsset, terms };
+  return { assetsByTerm, terms };
 }
 
 function getCardPosition(index: number): CardPosition {
@@ -217,71 +203,15 @@ function getCardPosition(index: number): CardPosition {
   };
 }
 
-function* projectObservedLineageEdge(
-  edge: OntologyEdge,
-  termIdsByAsset: Map<string, Set<string>>
-): Generator<OntologyEdge> {
-  const fromTermIds = termIdsByAsset.get(edge.from);
-  const toTermIds = termIdsByAsset.get(edge.to);
-
-  if (!fromTermIds || !toTermIds) {
-    return;
-  }
-
-  for (const fromTermId of fromTermIds) {
-    for (const toTermId of toTermIds) {
-      if (fromTermId !== toTermId) {
-        yield { ...edge, from: fromTermId, to: toTermId };
-      }
-    }
-  }
-}
-
-function buildObservedLineageClusterEdges(
+function buildSemanticEdgeLayout(
   data: OntologyGraphData,
-  termIdsByAsset: Map<string, Set<string>>
-): OntologyEdge[] {
-  const edges: OntologyEdge[] = [];
-  const seen = new Set<string>();
-  const lineageEdges = data.edges.filter(
-    (edge) => edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND
-  );
-
-  for (const edge of lineageEdges) {
-    for (const projectedEdge of projectObservedLineageEdge(
-      edge,
-      termIdsByAsset
-    )) {
-      const key = `${projectedEdge.from}-${projectedEdge.to}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        edges.push(projectedEdge);
-      }
-      if (edges.length >= MAX_OBSERVED_LINEAGE_CLUSTER_EDGES) {
-        return edges;
-      }
-    }
-  }
-
-  return edges;
-}
-
-function buildDataEdgeLayout(
-  data: OntologyGraphData,
-  termIdsByAsset: Map<string, Set<string>>,
   positions: Map<string, CardPosition>
-): DataEdgeLayout[] {
-  const semanticEdges = data.edges.filter(
-    (edge) =>
-      edge.edgeKind !== OBSERVED_LINEAGE_EDGE_KIND &&
-      positions.has(edge.from) &&
-      positions.has(edge.to)
+): SemanticEdgeLayout[] {
+  const relevantEdges = data.edges.filter(
+    (edge) => positions.has(edge.from) && positions.has(edge.to)
   );
-  const lineageEdges = buildObservedLineageClusterEdges(data, termIdsByAsset);
-  const relevantEdges = [...semanticEdges, ...lineageEdges];
   const edgeId = (edge: OntologyEdge) =>
-    edge.id ??
-    `${edge.from}-${edge.to}-${edge.relationType}-${edge.edgeKind ?? ''}`;
+    edge.id ?? `${edge.from}-${edge.to}-${edge.relationType}`;
   const edgeOccurrences = new Map<string, number>();
   const keyedEdges = relevantEdges.map((edge) => {
     const id = edgeId(edge);
@@ -358,7 +288,7 @@ const OntologyDataGraph = ({
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
   const { t } = useTranslation();
-  const { assetsByTerm, termIdsByAsset, terms } = useMemo(
+  const { assetsByTerm, terms } = useMemo(
     () => buildDataClusterModel(data),
     [data]
   );
@@ -378,23 +308,9 @@ const OntologyDataGraph = ({
 
     return map;
   }, [visibleTerms, cardPositions]);
-  const dataEdges = useMemo(
-    () => buildDataEdgeLayout(data, termIdsByAsset, positionByTermId),
-    [data, positionByTermId, termIdsByAsset]
-  );
   const semanticEdges = useMemo(
-    () =>
-      dataEdges.filter(
-        ({ edge }) => edge.edgeKind !== OBSERVED_LINEAGE_EDGE_KIND
-      ),
-    [dataEdges]
-  );
-  const observedLineageEdges = useMemo(
-    () =>
-      dataEdges.filter(
-        ({ edge }) => edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND
-      ),
-    [dataEdges]
+    () => buildSemanticEdgeLayout(data, positionByTermId),
+    [data, positionByTermId]
   );
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
@@ -711,17 +627,6 @@ const OntologyDataGraph = ({
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"
           height={canvasHeight}
           width={canvasWidth}>
-          {observedLineageEdges.map(({ path, renderKey }) => (
-            <path
-              d={path}
-              data-testid="ontology-data-observed-lineage-edge"
-              fill="none"
-              key={`${renderKey}-path`}
-              opacity="0.75"
-              stroke={EDGE_STROKE_COLOR}
-              strokeWidth="1.8"
-            />
-          ))}
           {renderedSemanticEdges.map(({ color, path, renderKey }) => (
             <path
               d={path}
@@ -896,19 +801,7 @@ const OntologyDataGraph = ({
           );
         })}
 
-        {hasMoreTerms ? (
-          <Button
-            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
-            color="secondary"
-            isDisabled={isLoadingMoreTerms}
-            size="sm"
-            style={{ top: START_Y + rows * ROW_STEP }}
-            onPress={onLoadMoreTerms}>
-            {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
-          </Button>
-        ) : null}
-
-        {!hasMoreTerms && isRenderCapped ? (
+        {isRenderCapped ? (
           <span
             className={classNames(
               'tw:absolute tw:left-1/2 tw:-translate-x-1/2 tw:rounded-full tw:border tw:border-secondary',
@@ -921,6 +814,16 @@ const OntologyDataGraph = ({
               count: DATA_MODE_MAX_RENDER_COUNT,
             })}
           </span>
+        ) : hasMoreTerms ? (
+          <Button
+            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
+            color="secondary"
+            isDisabled={isLoadingMoreTerms}
+            size="sm"
+            style={{ top: START_Y + rows * ROW_STEP }}
+            onPress={onLoadMoreTerms}>
+            {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
+          </Button>
         ) : null}
       </div>
 

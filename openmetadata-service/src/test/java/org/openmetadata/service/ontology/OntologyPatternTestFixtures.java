@@ -77,7 +77,7 @@ final class OntologyPatternTestFixtures {
             new ProductHierarchyPatternInput()
                 .withPortfolio(term("DataPortfolio"))
                 .withProduct(term("MetadataProduct"))
-                .withFeature(term("Ontology")));
+                .withFeature(term("OntologyStudio")));
   }
 
   static OntologyPatternDraftFactory factory() {

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.openmetadata.schema.api.data.OntologyStudioAsset;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -36,12 +37,23 @@ public interface InheritedFieldEntitySearch {
 
   Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter, int size);
 
-  List<GlossaryTermAssetBucket> getAssetBucketsForTerms(
+  List<OntologyStudioAssetBucket> getAssetBucketsForTerms(
       List<String> termFullyQualifiedNames, int assetPreviewSize, SubjectContext subjectContext);
 
-  record GlossaryTermAssetBucket(
-      String termFullyQualifiedName, int assetCount, List<EntityReference> assets) {
-    public GlossaryTermAssetBucket {
+  OntologyStudioAssetResult getAssetPreviewsForField(
+      InheritedFieldQuery query,
+      SubjectContext subjectContext,
+      Supplier<OntologyStudioAssetResult> fallback);
+
+  record OntologyStudioAssetBucket(
+      String termFullyQualifiedName, int assetCount, List<OntologyStudioAsset> assets) {
+    public OntologyStudioAssetBucket {
+      assets = List.copyOf(assets);
+    }
+  }
+
+  record OntologyStudioAssetResult(List<OntologyStudioAsset> assets, int total) {
+    public OntologyStudioAssetResult {
       assets = List.copyOf(assets);
     }
   }

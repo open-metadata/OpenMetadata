@@ -24,7 +24,7 @@ import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
-/** Typed SDK client for durable Ontology authoring sessions. */
+/** Typed SDK client for durable Ontology Studio authoring sessions. */
 public final class OntologyChangeSetService extends EntityServiceBase<OntologyChangeSet> {
   public OntologyChangeSetService(final HttpClient httpClient) {
     super(httpClient, "/v1/ontologyChangeSets");

@@ -55,7 +55,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Path("/v1/ontologyAxioms")
-@Tag(name = "Ontology Axioms", description = "Governed OWL axioms authored in Ontology.")
+@Tag(name = "Ontology Axioms", description = "Governed OWL axioms authored in Ontology Studio.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyAxioms", order = 3)

@@ -66,7 +66,7 @@ class SearchAggregationTest {
   @Test
   void testTermsIncludesExactValues() {
     SearchAggregationNode node =
-        SearchAggregation.terms("ontology_terms", "tags.tagFQN", 2, List.of("A.One", "B,Two"));
+        SearchAggregation.terms("studio_terms", "tags.tagFQN", 2, List.of("A.One", "B,Two"));
 
     assertEquals(List.of("A.One", "B,Two"), SearchAggregation.includedValues(node.getValue()));
     assertEquals("2", node.getValue().get("size"));
