@@ -36,15 +36,26 @@
       and re-painting once React reads localStorage. Mirrors Linear's inline
       splash trick (see linear.app/changelog): pre-paint reads of stable
       localStorage keys avoid a visible re-theme on cold load. The bundle's
-      ThemeProvider re-reads the same `ui-theme` key on mount and stays in
-      sync with the class we set here. `appStart` mark gives the bundle a
+      ThemeProvider uses the same saved-theme then OS-theme order on mount and
+      stays in sync with the class we set here. `appStart` mark gives the bundle a
       RUM anchor to measure HTML-parse → first paint vs. JS-ready.
     -->
-    <script nonce="${cspNonce}">
+    <script id="theme-restore" nonce="${cspNonce}">
       try {
-        if (localStorage.getItem('ui-theme') === 'dark') {
-          document.documentElement.classList.add('dark-mode');
-        }
+        const savedTheme = localStorage.getItem('ui-theme');
+        const followsDarkSystemTheme =
+          savedTheme !== 'light' &&
+          savedTheme !== 'dark' &&
+          typeof window.matchMedia === 'function' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const restoredTheme =
+          savedTheme === 'dark' || followsDarkSystemTheme ? 'dark' : 'light';
+
+        document.documentElement.classList.toggle(
+          'dark-mode',
+          restoredTheme === 'dark'
+        );
+        document.documentElement.style.colorScheme = restoredTheme;
       } catch (e) {}
       try {
         performance.mark('appStart');
@@ -253,8 +264,8 @@
       }
 
       /*
-        Dark variant — applied by the pre-paint script above when
-        localStorage.ui-theme is "dark". Matches the dark-mode CSS variables
+        Dark variant — applied by the pre-paint script above for a saved dark
+        preference or a dark OS preference. Matches the dark-mode CSS variables
         the bundle eventually sets via ThemeProvider, so the visual transition
         from shell to React UI is seamless instead of a light→dark flash.
       */
