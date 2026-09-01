@@ -239,25 +239,25 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
     await disposeApiContext(page, apiContext);
   });
 
-  test('data mode renders tagged assets from the Studio data response', async ({
+  test('data mode renders tagged assets from the ontology data response', async ({
     page,
   }) => {
     test.slow();
 
     await navigateAndFilterByGlossary(page, spiralGlossary.responseData.id);
 
-    const studioDataResponse = page.waitForResponse((response) => {
+    const ontologyDataResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
 
       return (
-        url.pathname === '/api/v1/glossaryTerms/studio/data' &&
+        url.pathname === '/api/v1/glossaryTerms/ontology/data' &&
         url.searchParams.get('limit') === '12' &&
         url.searchParams.get('offset') === '0' &&
         url.searchParams.get('assetPreviewSize') === '4'
       );
     });
     await page.getByRole('tab', { name: 'Data' }).click();
-    expect((await studioDataResponse).ok()).toBe(true);
+    expect((await ontologyDataResponse).ok()).toBe(true);
     await waitForGraphLoaded(page);
 
     const cluster = page.getByTestId(

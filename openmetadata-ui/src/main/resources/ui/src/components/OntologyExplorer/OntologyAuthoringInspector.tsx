@@ -18,14 +18,14 @@ import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OntologyStudioAsset } from '../../generated/api/data/ontologyStudioAsset';
 import {
   ConceptMapping,
   ConceptMappingType,
 } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { EntityReference } from '../../generated/entity/type';
 import {
-  getOntologyStudioAssets,
+  getGlossaryTermAssets,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -145,7 +145,7 @@ const OntologyAuthoringInspector = ({
   const { t } = useTranslation();
   const termId = node.termId ?? node.id;
   const { setTermDetails, termDetails } = useOntologyTermDetails(termId);
-  const [assets, setAssets] = useState<OntologyStudioAsset[]>([]);
+  const [assets, setAssets] = useState<EntityReference[]>([]);
   const [assetTotal, setAssetTotal] = useState(node.assetCount ?? 0);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [selectedRelationType, setSelectedRelationType] = useState('');
@@ -167,7 +167,7 @@ const OntologyAuthoringInspector = ({
       return () => controller.abort();
     }
 
-    getOntologyStudioAssets(termId, ASSET_PREVIEW_LIMIT, 0, controller.signal)
+    getGlossaryTermAssets(termId, ASSET_PREVIEW_LIMIT, 0, controller.signal)
       .then((response) => {
         setAssets(response.data);
         setAssetTotal(response.paging.total);
@@ -683,27 +683,22 @@ const OntologyAuthoringInspector = ({
         <div className="tw:flex tw:flex-col tw:gap-[7px]">
           {assets.map((asset) => {
             const assetName =
-              asset.entity.displayName ??
-              asset.entity.name ??
-              asset.entity.fullyQualifiedName ??
-              asset.entity.id;
-            const serviceName =
-              asset.service?.displayName ??
-              asset.service?.name ??
-              asset.serviceType;
+              asset.displayName ??
+              asset.name ??
+              asset.fullyQualifiedName ??
+              asset.id;
 
             return (
               <div
                 className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-                data-testid={`authoring-asset-${asset.entity.id}`}
-                key={asset.entity.id}>
+                data-testid={`authoring-asset-${asset.id}`}
+                key={asset.id}>
                 <img
-                  alt={serviceName ?? t('label.service')}
+                  alt={asset.type}
                   className="tw:size-3.5 tw:shrink-0 tw:object-contain"
                   height={14}
                   src={serviceUtilClassBase.getServiceTypeLogo({
-                    entityType: asset.entity.type,
-                    serviceType: asset.serviceType,
+                    entityType: asset.type,
                   })}
                   width={14}
                 />
@@ -712,13 +707,7 @@ const OntologyAuthoringInspector = ({
                     {assetName}
                   </div>
                   <div className="tw:truncate tw:font-body tw:text-[10px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                    {serviceName}
-                    {asset.columnCount !== undefined ? (
-                      <>
-                        {' · '}
-                        {asset.columnCount} {t('label.column-lowercase-plural')}
-                      </>
-                    ) : null}
+                    {asset.type}
                   </div>
                 </div>
               </div>
