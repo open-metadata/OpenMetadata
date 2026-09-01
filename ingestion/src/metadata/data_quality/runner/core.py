@@ -29,7 +29,7 @@ class DataTestsRunner:
     def run_and_handle(self, test_case: TestCase):
         """run and handle test case validation"""
         logger.info(
-            f"Executing test case {test_case.name.root} "  # noqa: G004
+            f"Executing test case {test_case.name.root} "
             f"for entity {self.test_runner_interface.table_entity.fullyQualifiedName.root}"
         )
         result = self.test_runner_interface.run_test_case(

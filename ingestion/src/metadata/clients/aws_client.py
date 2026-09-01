@@ -209,13 +209,13 @@ class AWSClient:
     def get_client(self, service_name: str) -> Any:
         # initialize the client depending on the AWSCredentials passed
         if self.config is not None:
-            logger.debug(f"Getting AWS client for service [{service_name}]")  # noqa: G004
+            logger.debug(f"Getting AWS client for service [{service_name}]")
             session = self.create_session()
             if self.config.endPointURL is not None:
                 return session.client(service_name=service_name, endpoint_url=str(self.config.endPointURL))
             return session.client(service_name=service_name)
 
-        logger.debug(f"Getting AWS default client for service [{service_name}]")  # noqa: G004
+        logger.debug(f"Getting AWS default client for service [{service_name}]")
         # initialized with the credentials loaded from running machine
         return boto3.client(service_name=service_name)
 
@@ -323,7 +323,7 @@ class RdsIamAuthTokenManager:
         return needs_refresh
 
     def _refresh_token(self) -> None:
-        logger.debug(f"Generating RDS IAM auth token for {self.username}@{self.host}")  # noqa: G004
+        logger.debug(f"Generating RDS IAM auth token for {self.username}@{self.host}")
         rds_client = AWSClient(config=self.aws_config).get_rds_client()
         token = rds_client.generate_db_auth_token(
             DBHostname=self.host,
@@ -349,5 +349,5 @@ class RdsIamAuthTokenManager:
             issued_at = datetime.datetime.strptime(amz_date, "%Y%m%dT%H%M%SZ").replace(tzinfo=datetime.timezone.utc)
             expires_at = issued_at + datetime.timedelta(seconds=amz_expires)
         except (KeyError, ValueError, IndexError) as exc:
-            logger.warning(f"Could not parse RDS IAM token expiry, using default TTL: {exc}")  # noqa: G004
+            logger.warning(f"Could not parse RDS IAM token expiry, using default TTL: {exc}")
         return expires_at

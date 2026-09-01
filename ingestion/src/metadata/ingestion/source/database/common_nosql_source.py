@@ -239,7 +239,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                         continue
                     yield table_name, table_type
         except Exception as err:
-            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")  # noqa: G004
+            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
 
     def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict] | dict:

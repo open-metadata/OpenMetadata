@@ -93,7 +93,7 @@ class Median(StaticMetric, PercentilMixin):
                 dimension_col,
             )
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing Median")  # noqa: G004
+        logger.debug(f"Don't know how to process type {self.col.type} when computing Median")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -107,17 +107,17 @@ class Median(StaticMetric, PercentilMixin):
                 accumulator = computation.update_accumulator(accumulator, df)
             except MemoryError:
                 logger.error(
-                    f"Unable to compute Median for {self.col.name} due to memory constraints."  # noqa: G004
+                    f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitioning."
                 )
                 return None
             except Exception as err:
-                logger.debug(f"Error while computing Median for column {self.col.name}: {err}")  # noqa: G004
+                logger.debug(f"Error while computing Median for column {self.col.name}: {err}")
                 return None
         median = computation.aggregate_accumulator(accumulator)
 
         if median is None:
-            logger.warning(f"Don't know how to process type {self.col.type} when computing MEDIAN")  # noqa: G004
+            logger.warning(f"Don't know how to process type {self.col.type} when computing MEDIAN")
             return None
         return median
 
@@ -145,7 +145,7 @@ class Median(StaticMetric, PercentilMixin):
             except Exception:
                 arr = series.astype(float).to_numpy(copy=False)
         else:
-            logger.debug(f"Don't know how to process type {column.type} when computing Median")  # noqa: G004
+            logger.debug(f"Don't know how to process type {column.type} when computing Median")
 
         if arr is None or arr.size == 0:
             return acc

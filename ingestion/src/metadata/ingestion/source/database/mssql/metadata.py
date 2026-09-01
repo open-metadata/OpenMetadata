@@ -171,7 +171,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Could not detect encrypted stored procedures for {database_name}.{schema_name}; "  # noqa: G004
+                    f"Could not detect encrypted stored procedures for {database_name}.{schema_name}; "
                     f"any encrypted procedures may be treated as non-encrypted: {exc}"
                 )
                 self.encrypted_procedures_cache[cache_key] = set()
@@ -210,7 +210,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 load_description_map()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")  # noqa: G004
+                logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
@@ -240,7 +240,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")  # noqa: G004
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
                     self.status.failed(
                         error=StackTraceError(
                             name=new_database,
@@ -268,7 +268,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                         continue
                     yield stored_procedure
                 except Exception as exc:
-                    logger.error(f"Error parsing Stored Procedure row: {row}")  # noqa: G004
+                    logger.error(f"Error parsing Stored Procedure row: {row}")
                     self.status.failed(
                         error=StackTraceError(
                             name=row._asdict().get("name", "UNKNOWN"),

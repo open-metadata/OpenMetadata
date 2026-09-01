@@ -61,7 +61,7 @@ class MaxLength(StaticMetric):
         if self._is_concatenable():
             return func.max(LenFn(column(self.col.name, self.col.type)))
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing MAX_LENGTH")  # noqa: G004
+        logger.debug(f"Don't know how to process type {self.col.type} when computing MAX_LENGTH")
         return None
 
     # pylint: disable=import-outside-toplevel
@@ -76,7 +76,7 @@ class MaxLength(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:  # noqa: F841
-                logger.debug(f"Don't know how to process type {self.col.type} when computing MAX_LENGTH")  # noqa: G004
+                logger.debug(f"Don't know how to process type {self.col.type} when computing MAX_LENGTH")
                 return None
         return computation.aggregate_accumulator(accumulator)
 

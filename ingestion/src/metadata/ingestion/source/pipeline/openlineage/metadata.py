@@ -424,7 +424,7 @@ class OpenlineageSource(PipelineServiceSource):
     def _log_unresolvable_dataset(data: dict, ol_name: str) -> None:
         symlinks = OpenlineageSource._symlink_identifiers(data)
         logger.warning(
-            f"OpenLineage dataset '{ol_name}' has no resolvable table identity "  # noqa: G004
+            f"OpenLineage dataset '{ol_name}' has no resolvable table identity "
             f"(namespace='{data.get('namespace', '')}', name='{data.get('name', '')}', "
             f"symlinks={symlinks}). Object-store/LOCATION-only datasets are not "
             "supported for table lineage by the OpenLineage connector."
@@ -433,7 +433,7 @@ class OpenlineageSource(PipelineServiceSource):
     @staticmethod
     def _log_unmatched_dataset(ol_name: str, attempts: list[str]) -> None:
         logger.warning(
-            f"OpenLineage dataset '{ol_name}' matched no table in configured services. "  # noqa: G004
+            f"OpenLineage dataset '{ol_name}' matched no table in configured services. "
             f"Tried {len(attempts)} candidate(s): {'; '.join(attempts)}. Ensure the "
             "source is ingested and 'dbServiceNames'/'namespaceToServiceMapping' are "
             "configured so the table can be located."
@@ -541,7 +541,7 @@ class OpenlineageSource(PipelineServiceSource):
                 if svc_type_str:
                     type_map[service_name] = DatabaseServiceType(svc_type_str)
             except Exception:
-                logger.debug(f"Could not fetch DB service: {service_name}")  # noqa: G004
+                logger.debug(f"Could not fetch DB service: {service_name}")
         return type_map
 
     def _resolve_db_services_for_namespace(self, namespace: str) -> list[str] | None:
@@ -569,7 +569,7 @@ class OpenlineageSource(PipelineServiceSource):
             result = [mapped_service]
         elif mapped_service:
             logger.warning(
-                f"Namespace mapping resolved '{namespace}' to service "  # noqa: G004
+                f"Namespace mapping resolved '{namespace}' to service "
                 f"'{mapped_service}', but it is not in the configured "
                 f"dbServiceNames. Falling back to scheme-based resolution."
             )
@@ -602,7 +602,7 @@ class OpenlineageSource(PipelineServiceSource):
                 return self._get_table_fqn_from_om(table_details, services=resolved_services)
             except FQNNotFoundException:
                 logger.debug(
-                    f"Table '{table_details.name}' in schema '{table_details.schema}' "  # noqa: G004
+                    f"Table '{table_details.name}' in schema '{table_details.schema}' "
                     f"not found in services {resolved_services or self.get_db_service_names()}. "
                     "Skipping lineage edge."
                 )
@@ -614,7 +614,7 @@ class OpenlineageSource(PipelineServiceSource):
                 logger.warning(str(exc))
                 return None
         except Exception:
-            logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")  # noqa: G004
+            logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")
             return None
 
     def _get_table_fqn_from_om(self, table_details: TableDetails, services: list[str] | None = None) -> str:
@@ -671,11 +671,11 @@ class OpenlineageSource(PipelineServiceSource):
                             if broker:
                                 self._broker_to_service[broker] = svc_fqn
                     except Exception:
-                        logger.debug(f"Could not extract bootstrapServers from service {svc.name}")  # noqa: G004
+                        logger.debug(f"Could not extract bootstrapServers from service {svc.name}")
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error building broker-to-service map: {exc}")  # noqa: G004
+                logger.warning(f"Error building broker-to-service map: {exc}")
 
         return self._broker_to_service
 
@@ -700,20 +700,20 @@ class OpenlineageSource(PipelineServiceSource):
         try:
             service_fqn = self._find_service_fqn_by_broker(topic_details.broker_hostname)
             if not service_fqn:
-                logger.warning(f"No messaging service found for broker: {topic_details.broker_hostname}")  # noqa: G004
+                logger.warning(f"No messaging service found for broker: {topic_details.broker_hostname}")
                 return None
 
             topic_fqn = f"{service_fqn}.{fqn.quote_name(topic_details.name)}"
             topic = self.metadata.get_by_name(Topic, topic_fqn)
 
             if not topic:
-                logger.warning(f"Topic not found in OpenMetadata: {topic_fqn}")  # noqa: G004
+                logger.warning(f"Topic not found in OpenMetadata: {topic_fqn}")
 
             return topic  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error finding topic for {topic_details.name}: {exc}")  # noqa: G004
+            logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
             return None
 
     @classmethod
@@ -1011,7 +1011,7 @@ class OpenlineageSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"  # noqa: G004
+                f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"
             )
 
     def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
@@ -1042,7 +1042,7 @@ class OpenlineageSource(PipelineServiceSource):
                                 )
                             )
                         else:
-                            logger.warning(f"Table entity not found for: {resolved.fqn}")  # noqa: G004
+                            logger.warning(f"Table entity not found for: {resolved.fqn}")
 
                 elif entity_details.entity_type == "topic":
                     topic_entity = self._get_topic_entity(entity_details.topic_details)
@@ -1057,7 +1057,7 @@ class OpenlineageSource(PipelineServiceSource):
                         )
                     else:
                         logger.warning(
-                            f"Topic entity not found for topic: {entity_details.topic_details.name} "  # noqa: G004
+                            f"Topic entity not found for topic: {entity_details.topic_details.name} "
                             f"with broker: {entity_details.topic_details.broker_hostname}. "
                             f"Ensure the topic exists in OpenMetadata and the messaging service "
                             f"has matching bootstrapServers."
@@ -1078,7 +1078,7 @@ class OpenlineageSource(PipelineServiceSource):
 
         if not pipeline_fqn:
             logger.warning(
-                f"Could not build pipeline FQN for service '{service_name}' and "  # noqa: G004
+                f"Could not build pipeline FQN for service '{service_name}' and "
                 f"pipeline '{pipeline_name}', skipping lineage."
             )
             return
@@ -1086,7 +1086,7 @@ class OpenlineageSource(PipelineServiceSource):
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
         if not pipeline_entity:
-            logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")  # noqa: G004
+            logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
             return
 
         event_has_no_outputs = not output_edges
@@ -1113,7 +1113,7 @@ class OpenlineageSource(PipelineServiceSource):
                         else (pipeline_fqn, dataset_node.fqn.value)
                     )
                     logger.info(
-                        f"Skipping pipeline-as-node edge {from_fqn} -> {to_fqn}: "  # noqa: G004
+                        f"Skipping pipeline-as-node edge {from_fqn} -> {to_fqn}: "
                         f"annotated edge already exists with this pipeline on {dataset_node.fqn.value}"
                     )
                     self.status.filter(
@@ -1184,12 +1184,12 @@ class OpenlineageSource(PipelineServiceSource):
                     if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
                         session_active = False
                 elif message.error():
-                    logger.warning(f"Kafka consumer error: {message.error()}")  # noqa: G004
+                    logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
                     if empty_msg_cnt * pool_timeout > self.service_connection.sessionTimeout:
                         session_active = False
                 else:
-                    logger.debug(f"new message {message.value()}")  # noqa: G004
+                    logger.debug(f"new message {message.value()}")
                     empty_msg_cnt = 0
                     try:
                         _result = message_to_open_lineage_event(json.loads(message.value()))
@@ -1200,7 +1200,7 @@ class OpenlineageSource(PipelineServiceSource):
                         if result:
                             yield result
                     except Exception as e:
-                        logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")  # noqa: G004
+                        logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
                         logger.debug(traceback.format_exc())
 
         except Exception as e:
@@ -1255,7 +1255,7 @@ class OpenlineageSource(PipelineServiceSource):
                         try:
                             payloads = deaggregate_kinesis_record(record["Data"])
                         except Exception as e:
-                            logger.warning(f"Failed to de-aggregate Kinesis record: {e}")  # noqa: G004
+                            logger.warning(f"Failed to de-aggregate Kinesis record: {e}")
                             logger.debug(traceback.format_exc())
                             continue
                         for payload in payloads:
@@ -1273,7 +1273,7 @@ class OpenlineageSource(PipelineServiceSource):
                                 if result:
                                     yield result
                             except Exception as e:
-                                logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")  # noqa: G004
+                                logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")
                                 logger.debug(traceback.format_exc())
 
                     time.sleep(pool_timeout)

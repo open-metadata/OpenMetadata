@@ -100,7 +100,7 @@ class MetabaseSource(DashboardServiceSource):
     def prepare(self):
         self.collections = self.client.get_collections_list()
         self.charts_dict = self.client.get_charts_dict()
-        logger.debug(f"Total chart IDs fetched: {list(self.charts_dict.keys())}")  # noqa: G004
+        logger.debug(f"Total chart IDs fetched: {list(self.charts_dict.keys())}")
         return super().prepare()
 
     def get_dashboards_list(self) -> list[MetabaseDashboard] | None:
@@ -159,7 +159,7 @@ class MetabaseSource(DashboardServiceSource):
                 return collection_name  # noqa: RET504
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching the collection details for [{dashboard_details.collection_id}]: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching the collection details for [{dashboard_details.collection_id}]: {exc}")
         return None
 
     def get_owner_ref(self, dashboard_details: MetabaseDashboardDetails) -> EntityReferenceList | None:
@@ -175,7 +175,7 @@ class MetabaseSource(DashboardServiceSource):
                     return self.metadata.get_reference_by_email(owner_details.email)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_dashboard(self, dashboard_details: MetabaseDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
@@ -294,7 +294,7 @@ class MetabaseSource(DashboardServiceSource):
 
                 if chart_details.dataset_query is None or chart_details.dataset_query.type is None:
                     logger.debug(
-                        f"Skipping lineage for Chart(name={chart_details.name}, id={chart_details.id}) "  # noqa: G004
+                        f"Skipping lineage for Chart(name={chart_details.name}, id={chart_details.id}) "
                         f"because dataset_query or dataset_query.type is None. "
                         f"dataset_query = {chart_details.dataset_query}"
                     )
@@ -390,7 +390,7 @@ class MetabaseSource(DashboardServiceSource):
         query_hash = lineage_parser.query_hash
 
         if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-            logger.debug(f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+            logger.debug(f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}")
             return
 
         to_fqn = fqn.build(
@@ -414,7 +414,7 @@ class MetabaseSource(DashboardServiceSource):
             database_schema_name = self.check_database_schema_name(database_schema_name)
 
             if prefix_table_name and table and prefix_table_name.lower() != table.lower():
-                logger.debug(f"Table {table} does not match prefix {prefix_table_name}")  # noqa: G004
+                logger.debug(f"Table {table} does not match prefix {prefix_table_name}")
                 continue
 
             if (
@@ -422,7 +422,7 @@ class MetabaseSource(DashboardServiceSource):
                 and database_schema_name
                 and prefix_schema_name.lower() != database_schema_name.lower()
             ):
-                logger.debug(f"Schema {database_schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
+                logger.debug(f"Schema {database_schema_name} does not match prefix {prefix_schema_name}")
                 continue
 
             fqn_search_string = build_es_fqn_search_string(
@@ -473,15 +473,15 @@ class MetabaseSource(DashboardServiceSource):
         database_name = table.db.details.db if table.db and table.db.details else None
 
         if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-            logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")  # noqa: G004
+            logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
             return
 
         if prefix_schema_name and table.table_schema and prefix_schema_name.lower() != table.table_schema.lower():
-            logger.debug(f"Schema {table.table_schema} does not match prefix {prefix_schema_name}")  # noqa: G004
+            logger.debug(f"Schema {table.table_schema} does not match prefix {prefix_schema_name}")
             return
 
         if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-            logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+            logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
             return
 
         fqn_search_string = build_es_fqn_search_string(

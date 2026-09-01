@@ -186,7 +186,7 @@ def _fetch_nested_descriptions_via_describe_json(
             return {}
         payload = json.loads(result[0])
     except Exception as err:  # pylint: disable=broad-except
-        logger.debug(f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}")  # noqa: G004
+        logger.debug(f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}")
         return {}
 
     return _build_column_descriptions_map(payload)
@@ -346,7 +346,7 @@ def _fetch_table_describe_json(
         result = connection.execute(text(query)).fetchone()
     except Exception as err:  # pylint: disable=broad-except
         # The query itself erroring is the "older runtime / unsupported" signal.
-        logger.debug(f"DESCRIBE AS JSON unsupported for {db_name}.{schema}.{table_name}: {err}")  # noqa: G004
+        logger.debug(f"DESCRIBE AS JSON unsupported for {db_name}.{schema}.{table_name}: {err}")
         info[_DESCRIBE_JSON_SUPPORTED_KEY] = False
         return None
     info[_DESCRIBE_JSON_SUPPORTED_KEY] = True
@@ -357,7 +357,7 @@ def _fetch_table_describe_json(
     except Exception as err:  # pylint: disable=broad-except
         # Supported runtime, but this table's payload is unusable — fall back
         # for this table only without disabling AS JSON for the whole run.
-        logger.debug(f"DESCRIBE AS JSON unparseable for {db_name}.{schema}.{table_name}: {err}")  # noqa: G004
+        logger.debug(f"DESCRIBE AS JSON unparseable for {db_name}.{schema}.{table_name}: {err}")
     # Size-1: replace, don't accumulate — the previous table's payload is dead.
     info[_DESCRIBE_JSON_CACHE_KEY] = {cache_key: payload}
     return payload
@@ -421,7 +421,7 @@ def _columns_from_describe_json(payload: DescribeJsonPayload):
         raw_col_type = _json_type_to_sql_string(col.type)
         type_match = re.search(r"^\w+", raw_col_type)
         if type_match is None:
-            logger.warning(f"Skipping column '{col.name}': unparseable type '{raw_col_type}'")  # noqa: G004
+            logger.warning(f"Skipping column '{col.name}': unparseable type '{raw_col_type}'")
             continue
         col_type = type_match.group(0)
         try:
@@ -478,7 +478,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # ('# col_name' sub-header is filtered upstream in _get_column_rows.)
         if not isinstance(col_name, str) or col_name.startswith("#") or not col_type:
             logger.debug(
-                f"End of columns for {schema}.{table_name}. Found end-of-columns marker: {col_name}. Stopping column extraction."  # noqa: G004
+                f"End of columns for {schema}.{table_name}. Found end-of-columns marker: {col_name}. Stopping column extraction."
             )
             break
         try:
@@ -488,7 +488,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             type_match = re.search(r"^\w+", col_type)
             if type_match is None:
                 logger.warning(
-                    f"Skipping column '{col_name}' in {schema}.{table_name}: unparseable col_type '{col_type}'"  # noqa: G004
+                    f"Skipping column '{col_name}' in {schema}.{table_name}: unparseable col_type '{col_type}'"
                 )
                 continue
             col_type = type_match.group(0)  # noqa: PLW2901
@@ -541,12 +541,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                             col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
                     logger.error(
-                        f"Failed to fetch complex-type details for column {col_name} in table {table_name}: {err}"  # noqa: G004
+                        f"Failed to fetch complex-type details for column {col_name} in table {table_name}: {err}"
                     )
                     logger.debug(traceback.format_exc())
             result.append(col_info)
         except Exception as err:  # pylint: disable=broad-except
-            logger.warning(f"Skipping column '{col_name}' in {schema}.{table_name} due to unexpected error: {err}")  # noqa: G004
+            logger.warning(f"Skipping column '{col_name}' in {schema}.{table_name} due to unexpected error: {err}")
             logger.debug(traceback.format_exc())
     return result
 
@@ -750,7 +750,7 @@ def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unu
             table_type = get_table_type(self, connection, database, schema, table_name)
             if not table_type or table_type == "FOREIGN":
                 # skip the table if it's foreign table / error in fetching table_type
-                logger.debug(f"Skipping metadata ingestion for unsupported foreign table {table_name}")  # noqa: G004
+                logger.debug(f"Skipping metadata ingestion for unsupported foreign table {table_name}")
                 continue
         tables.append(table_name)
 
@@ -787,7 +787,7 @@ def _get_schema_table_types(
             table_types = {row[0]: row[1] for row in rows}
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(
-                f"Bulk table-type fetch failed for {database}.{schema}, falling back to per-table DESCRIBE: {err}"  # noqa: G004
+                f"Bulk table-type fetch failed for {database}.{schema}, falling back to per-table DESCRIBE: {err}"
             )
     # Size-1: replace, don't accumulate — the previous schema's map is dead.
     connection.info[_TABLE_TYPES_CACHE_KEY] = {cache_key: table_types}
@@ -817,7 +817,7 @@ def get_table_type(self, connection, database, schema, table):
             if row_dict.get("col_name") == "Type":
                 return row_dict.get("data_type")
     except DatabaseError as err:
-        logger.error(f"Failed to fetch table type for table {table} due to: {err}")  # noqa: G004
+        logger.error(f"Failed to fetch table type for table {table} due to: {err}")
     return  # noqa: RET502
 
 
@@ -866,7 +866,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             self.connection.execute(text(DATABRICKS_GET_CATALOGS)).fetchone()
             self.is_older_version = False
         except DatabaseError as soe:
-            logger.debug(f"Failed to fetch catalogs due to: {soe}")  # noqa: G004
+            logger.debug(f"Failed to fetch catalogs due to: {soe}")
             self.is_older_version = True
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
@@ -891,7 +891,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         :param database_name: new database to set
         """
         self._release_engine()
-        logger.info(f"Ingesting from catalog: {database_name}")  # noqa: G004
+        logger.info(f"Ingesting from catalog: {database_name}")
         self.external_location_map.clear()
 
         new_service_connection = deepcopy(self.service_connection)
@@ -1012,7 +1012,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
-            logger.debug(f"Failed to fetch catalog tags due to - {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch catalog tags due to - {exc}")
 
         try:
             tags = self.connection.execute(text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)))
@@ -1023,7 +1023,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
-            logger.debug(f"Failed to fetch schema tags due to - {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch schema tags due to - {exc}")
 
         try:
             tags = self.connection.execute(text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)))
@@ -1034,7 +1034,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
-            logger.debug(f"Failed to fetch table tags due to - {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch table tags due to - {exc}")
 
         try:
             tags = self.connection.execute(text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)))
@@ -1049,7 +1049,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 else:
                     self.column_tags[tag_table_id] = {tag.column_name: [(tag.tag_name, tag.tag_value)]}
         except Exception as exc:
-            logger.debug(f"Failed to fetch column tags due to - {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch column tags due to - {exc}")
 
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
@@ -1077,7 +1077,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     yield new_catalog
                 except Exception as exc:
                     logger.error(traceback.format_exc())
-                    logger.warning(f"Error trying to process database {new_catalog}: {exc}")  # noqa: G004
+                    logger.warning(f"Error trying to process database {new_catalog}: {exc}")
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -1239,7 +1239,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         # Catch any exception without breaking the ingestion
         except Exception as exep:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Schema description error for schema [{schema_name}]: {exep}")  # noqa: G004
+            logger.warning(f"Schema description error for schema [{schema_name}]: {exep}")
         return description
 
     def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
@@ -1279,7 +1279,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         return description
 
     def get_location_path(self, table_name: str, schema_name: str) -> str | None:
@@ -1333,7 +1333,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return  # noqa: RET502
 
     def _filtered_database_names_for_totals(self) -> list[str]:

@@ -69,11 +69,11 @@ def _get_project_id(connection: PubSubConnectionConfig) -> str | None:
             if project_id and hasattr(project_id, "root"):
                 if isinstance(project_id.root, list):
                     if not project_id.root:
-                        logger.debug(f"No project ids found: {str(project_id)}")  # noqa: G004, RUF010
+                        logger.debug(f"No project ids found: {str(project_id)}")  # noqa: RUF010
                         return None
                     if len(project_id.root) > 1:
                         logger.debug(
-                            f"Multiple GCP project IDs found in credentials {str(project_id.root)} "  # noqa: G004, RUF010
+                            f"Multiple GCP project IDs found in credentials {str(project_id.root)} "  # noqa: RUF010
                             f"Using the first project ID {str(project_id.root[0])}",  # noqa: RUF010
                         )
                     return project_id.root[0]

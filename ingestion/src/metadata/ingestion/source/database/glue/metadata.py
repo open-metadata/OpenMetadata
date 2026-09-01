@@ -410,7 +410,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             column_name = model_str(column.name)
             if column_name in seen_column_names:
                 logger.debug(
-                    f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "  # noqa: G004
+                    f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "
                     f"partition key is also in StorageDescriptor.Columns, or when lower casing merges two names."
                 )
                 continue
@@ -482,7 +482,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             except Exception as e:
                 # If we can't get Glue metadata, fall back to the original method
                 # This ensures backward compatibility
-                logger.warning(f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}")  # noqa: G004
+                logger.warning(f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}")
 
         # For non-Iceberg tables or if Glue access fails, use the original method
         # process table regular columns info
@@ -545,5 +545,5 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 return table_url  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.error(f"Unable to get source url: {exc}")
         return None

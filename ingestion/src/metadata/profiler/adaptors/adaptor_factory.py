@@ -28,11 +28,11 @@ logger = profiler_logger()
 
 class NoSQLAdaptorFactory(Factory):
     def create(self, interface_type: str, *args, **kwargs) -> any:
-        logger.debug(f"Creating NoSQL client for {interface_type}")  # noqa: G004
+        logger.debug(f"Creating NoSQL client for {interface_type}")
         client_class = self._interface_type.get(interface_type)
         if not client_class:
             raise ValueError(f"Unknown NoSQL source: {interface_type}")
-        logger.debug(f"Using NoSQL client constructor: {client_class.__name__}")  # noqa: G004
+        logger.debug(f"Using NoSQL client constructor: {client_class.__name__}")
         return client_class(*args, **kwargs)
 
 

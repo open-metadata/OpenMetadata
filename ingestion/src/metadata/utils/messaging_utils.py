@@ -36,5 +36,5 @@ def merge_and_clean_protobuf_schema(schema_text: str | None) -> str | None:
         return "\n".join(new_lines)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Failed to merge and clean protobuf schema: {exc}")  # noqa: G004
+        logger.warning(f"Failed to merge and clean protobuf schema: {exc}")
     return None

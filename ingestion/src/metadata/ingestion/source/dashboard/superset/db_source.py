@@ -95,7 +95,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 self.all_charts[chart_detail.id] = chart_detail
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch chart list due to - {err}]")  # noqa: G004
+            logger.error(f"Failed to fetch chart list due to - {err}]")
 
     def get_column_list(self, table_id: int | None) -> Iterable[FetchChart]:
         try:
@@ -105,7 +105,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 return [FetchColumn(**dict(col._mapping)) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch column name list for table: [{table_id} due to - {err}]")  # noqa: G004
+            logger.warning(f"Failed to fetch column name list for table: [{table_id} due to - {err}]")
         return []
 
     def get_dashboards_list(self) -> Iterable[FetchDashboard]:
@@ -168,7 +168,7 @@ class SupersetDBSource(SupersetSourceMixin):
             try:
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json:
-                    logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
 
                     continue
                 chart_request = CreateChartRequest(
@@ -215,7 +215,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 database_name = self._get_database_name(chart_json.sqlalchemy_uri, db_service_entity)
 
             if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                 return None
 
             if (
@@ -223,7 +223,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 and chart_json.table_schema
                 and prefix_schema_name.lower() != chart_json.table_schema.lower()
             ):
-                logger.debug(f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}")  # noqa: G004
+                logger.debug(f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}")
                 return None
 
             if (
@@ -231,7 +231,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 and chart_json.table_name
                 and prefix_table_name.lower() != chart_json.table_name.lower()
             ):
-                logger.debug(f"Table {chart_json.table_name} does not match prefix {prefix_table_name}")  # noqa: G004
+                logger.debug(f"Table {chart_json.table_name} does not match prefix {prefix_table_name}")
                 return None
 
             return build_es_fqn_search_string(
@@ -242,7 +242,7 @@ class SupersetDBSource(SupersetSourceMixin):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch Datasource with id [{chart_json.table_name}]: {err}")  # noqa: G004
+            logger.warning(f"Failed to fetch Datasource with id [{chart_json.table_name}]: {err}")
         return None
 
     def yield_datamodel(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -250,7 +250,7 @@ class SupersetDBSource(SupersetSourceMixin):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json or not chart_json.datasource_id:
-                    logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
                     continue
                 if filter_by_datamodel(self.source_config.dataModelFilterPattern, chart_json.table_name):
                     self.status.filter(chart_json.table_name, "Data model filtered out.")

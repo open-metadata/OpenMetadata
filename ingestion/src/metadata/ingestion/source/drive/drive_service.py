@@ -495,7 +495,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 pass
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for entity {entity_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing owner for entity {entity_name}: {exc}")
         return None
 
     # Deletion marking methods
@@ -506,7 +506,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         """
         if self.source_config.markDeletedDirectories:
             logger.info(
-                f"Mark Deleted Directories set to True. Processing service [{self.context.get().drive_service}]"  # noqa: G004
+                f"Mark Deleted Directories set to True. Processing service [{self.context.get().drive_service}]"
             )
             yield from delete_entity_from_source(
                 metadata=self.metadata,
@@ -521,7 +521,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         Mark files as deleted if they are no longer present in the source
         """
         if self.source_config.markDeletedFiles:
-            logger.info(f"Mark Deleted Files set to True. Processing service [{self.context.get().drive_service}]")  # noqa: G004
+            logger.info(f"Mark Deleted Files set to True. Processing service [{self.context.get().drive_service}]")
 
             # Get directory context if available
             params = {"service": self.context.get().drive_service}
@@ -542,7 +542,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         """
         if self.source_config.markDeletedSpreadsheets:
             logger.info(
-                f"Mark Deleted Spreadsheets set to True. Processing service [{self.context.get().drive_service}]"  # noqa: G004
+                f"Mark Deleted Spreadsheets set to True. Processing service [{self.context.get().drive_service}]"
             )
             yield from delete_entity_from_source(
                 metadata=self.metadata,
@@ -562,7 +562,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
         if self.source_config.markDeletedWorksheets:
             logger.info(
-                f"Mark Deleted Worksheets set to True. Processing spreadsheet [{self.context.get().spreadsheet}]"  # noqa: G004
+                f"Mark Deleted Worksheets set to True. Processing spreadsheet [{self.context.get().spreadsheet}]"
             )
 
             # Build the spreadsheet FQN to use as parameter

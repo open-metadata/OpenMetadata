@@ -472,7 +472,7 @@ def build_patch(  # noqa: C901
             except Exception:
                 pass
 
-            logger.warning(f"Failed to build patch{entity_info}. The patch generation was skipped. Reason: {exc}")  # noqa: G004
+            logger.warning(f"Failed to build patch{entity_info}. The patch generation was skipped. Reason: {exc}")
             return None
         else:  # noqa: RET505
             entity_info = ""

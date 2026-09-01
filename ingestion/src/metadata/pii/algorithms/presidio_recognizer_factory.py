@@ -70,7 +70,7 @@ class PresidioRecognizerFactory:
         elif isinstance(config, PredefinedRecognizer):  # pyright: ignore[reportUnnecessaryIsInstance]
             recognizer = PresidioRecognizerFactory._create_predefined_recognizer(config, recognizer_config)
         else:
-            logger.warning(f"Unknown recognizer type for {recognizer_config.name}")  # noqa: G004
+            logger.warning(f"Unknown recognizer type for {recognizer_config.name}")
             return None
 
         decorators: list[Callable[[EntityRecognizer], EntityRecognizer]] = [
@@ -202,7 +202,7 @@ class PresidioRecognizerFactory:
         try:
             predefined_class = getattr(predefined_recognizers, config.name.value)
         except AttributeError:
-            logger.error(f"Recognizer {config.name} not found")  # noqa: G004
+            logger.error(f"Recognizer {config.name} not found")
             return None
 
         args = {}
@@ -246,7 +246,7 @@ class PresidioRecognizerFactory:
             recognizer = PresidioRecognizerFactory.create_recognizer(recognizer_config, tag_fqn)
             if recognizer:
                 recognizers.append(recognizer)
-                logger.info(f"Created recognizer {recognizer_config.name} for tag {tag.name}")  # noqa: G004
+                logger.info(f"Created recognizer {recognizer_config.name} for tag {tag.name}")
 
         return recognizers
 

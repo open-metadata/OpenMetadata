@@ -180,7 +180,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             if owner_details.email:
                 return self.metadata.get_reference_by_email(owner_details.email)
         except Exception as exc:
-            logger.warning(f"Error while getting details of user {owner.name} - {exc}")  # noqa: G004
+            logger.warning(f"Error while getting details of user {owner.name} - {exc}")
         return None
 
     def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
@@ -238,7 +238,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 return Schema(columns=schema_columns)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while fetching columns from federated dataset {table_name} - {exc}")  # noqa: G004
+            logger.warning(f"Error while fetching columns from federated dataset {table_name} - {exc}")
         return None
 
     def get_columns(self, table_object: OutputDataset):
@@ -265,7 +265,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 row_order += 1
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error while fetching details of column {column} - {exc}")  # noqa: G004
+                logger.warning(f"Error while fetching details of column {column} - {exc}")
         return columns
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -291,7 +291,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             return f"{clean_uri(self.service_connection.instanceDomain)}/datasources/{table_name}/details/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url for {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get source url for {table_name}: {exc}")
         return None
 
     def standardize_table_name(  # pylint: disable=unused-argument

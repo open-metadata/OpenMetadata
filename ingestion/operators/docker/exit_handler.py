@@ -100,11 +100,11 @@ def get_kubernetes_client() -> client.CoreV1Api | None:
             return client.CoreV1Api()
         except Exception as kubeconfig_error:
             logger.warning(
-                f"Failed to initialize Kubernetes client - in-cluster: {in_cluster_error}, kubeconfig: {kubeconfig_error}"  # noqa: G004
+                f"Failed to initialize Kubernetes client - in-cluster: {in_cluster_error}, kubeconfig: {kubeconfig_error}"
             )
             return None
     except Exception as unexpected_error:  # noqa: B025
-        logger.error(f"Unexpected error initializing Kubernetes client: {unexpected_error}")  # noqa: G004
+        logger.error(f"Unexpected error initializing Kubernetes client: {unexpected_error}")
         return None
 
 
@@ -158,7 +158,7 @@ def find_main_pod(
             try:
                 pods = k8s_client.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
             except Exception as list_error:
-                logger.warning(f"Failed to list pods with selector '{label_selector}': {list_error}")  # noqa: G004
+                logger.warning(f"Failed to list pods with selector '{label_selector}': {list_error}")
                 continue
 
             if not pods or not pods.items:
@@ -167,17 +167,17 @@ def find_main_pod(
             for pod in pods.items:
                 try:
                     if pod.metadata and pod.metadata.name:
-                        logger.info(f"Found main pod: {pod.metadata.name} (selector: {label_selector})")  # noqa: G004
+                        logger.info(f"Found main pod: {pod.metadata.name} (selector: {label_selector})")
                         return pod
                 except Exception as pod_error:
-                    logger.warning(f"Error checking pod metadata: {pod_error}")  # noqa: G004
+                    logger.warning(f"Error checking pod metadata: {pod_error}")
                     continue
 
-        logger.warning(f"No main pod found for job {job_name}")  # noqa: G004
+        logger.warning(f"No main pod found for job {job_name}")
         return None  # noqa: TRY300
 
     except Exception as e:
-        logger.error(f"Failed to find main pod for job {job_name}: {e}")  # noqa: G004
+        logger.error(f"Failed to find main pod for job {job_name}: {e}")
         return None
 
 
@@ -200,12 +200,12 @@ def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: 
             return None
 
         pod_name = main_pod.metadata.name
-        logger.info(f"Fetching logs from pod '{pod_name}'")  # noqa: G004
+        logger.info(f"Fetching logs from pod '{pod_name}'")
 
         logs = k8s_client.read_namespaced_pod_log(name=pod_name, namespace=namespace, container="main", tail_lines=500)
 
         if logs:
-            logger.info(f"Successfully fetched {len(logs.splitlines())} lines of logs")  # noqa: G004
+            logger.info(f"Successfully fetched {len(logs.splitlines())} lines of logs")
             return logs
         else:  # noqa: RET505
             logger.info("No logs found for pod")
@@ -213,7 +213,7 @@ def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: 
 
     except Exception as e:
         logger.warning(
-            f"Failed to fetch pod logs from {main_pod.metadata.name if main_pod and main_pod.metadata else 'unknown'}: {e}"  # noqa: G004
+            f"Failed to fetch pod logs from {main_pod.metadata.name if main_pod and main_pod.metadata else 'unknown'}: {e}"
         )
         return None
 
@@ -238,7 +238,7 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
 
         # Get detailed pod information
         pod_name = main_pod.metadata.name
-        logger.info(f"Getting pod description for '{pod_name}'")  # noqa: G004
+        logger.info(f"Getting pod description for '{pod_name}'")
 
         # Build detailed pod description with safe access to attributes
         description_parts = []
@@ -278,10 +278,10 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
                                         f"    State: Terminated - Reason: {container_status.state.terminated.reason}, ExitCode: {container_status.state.terminated.exit_code}"
                                     )
                         except Exception as container_error:
-                            logger.warning(f"Error processing container status: {container_error}")  # noqa: G004
+                            logger.warning(f"Error processing container status: {container_error}")
                             continue
         except Exception as status_error:
-            logger.warning(f"Error processing pod status: {status_error}")  # noqa: G004
+            logger.warning(f"Error processing pod status: {status_error}")
 
         # Try to get pod events but don't fail if unavailable
         try:
@@ -298,12 +298,12 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
                         if event.message:
                             description_parts.append(f"    {event.message}")
                     except Exception as event_error:
-                        logger.warning(f"Error processing event: {event_error}")  # noqa: G004
+                        logger.warning(f"Error processing event: {event_error}")
                         continue
             else:
                 description_parts.append("\nEvents: No events found")
         except Exception as e:
-            logger.warning(f"Could not fetch events for pod {pod_name}: {e}")  # noqa: G004
+            logger.warning(f"Could not fetch events for pod {pod_name}: {e}")
             description_parts.append(
                 "\nEvents: Unable to fetch events. Make sure the ingestion service account has 'events' permissions."
             )
@@ -313,7 +313,7 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
         return description if description_parts else None  # noqa: TRY300
 
     except Exception as e:
-        logger.error(f"Failed to get pod description: {e}")  # noqa: G004
+        logger.error(f"Failed to get pod description: {e}")
         return None
 
 
@@ -414,13 +414,13 @@ def gather_failure_diagnostics(
         FailureDiagnostics: Object containing pod logs and description, or empty if errors occur
     """
     try:
-        logger.info(f"Kubernetes job failed, gathering diagnostics for: {job_name}")  # noqa: G004
+        logger.info(f"Kubernetes job failed, gathering diagnostics for: {job_name}")
 
         # Try to get Kubernetes client - fail gracefully if unavailable
         try:
             k8s_client = get_kubernetes_client()
         except Exception as e:
-            logger.warning(f"Failed to initialize Kubernetes client: {e}")  # noqa: G004
+            logger.warning(f"Failed to initialize Kubernetes client: {e}")
             return FailureDiagnostics()
 
         if not k8s_client:
@@ -431,11 +431,11 @@ def gather_failure_diagnostics(
         try:
             main_pod = find_main_pod(k8s_client, job_name, namespace, pipeline_run_id)
         except Exception as e:
-            logger.warning(f"Failed to find main pod for job {job_name}: {e}")  # noqa: G004
+            logger.warning(f"Failed to find main pod for job {job_name}: {e}")
             return FailureDiagnostics()
 
         if not main_pod:
-            logger.warning(f"Could not find main pod for job {job_name} - skipping diagnostics")  # noqa: G004
+            logger.warning(f"Could not find main pod for job {job_name} - skipping diagnostics")
             return FailureDiagnostics()
 
         # Try to get pod logs - continue even if this fails
@@ -443,7 +443,7 @@ def gather_failure_diagnostics(
         try:
             pod_logs = get_main_pod_logs(k8s_client, main_pod, namespace)
         except Exception as e:
-            logger.warning(f"Failed to fetch pod logs: {e}")  # noqa: G004
+            logger.warning(f"Failed to fetch pod logs: {e}")
 
         # Try to get pod description - continue even if this fails
         pod_description = None
@@ -452,7 +452,7 @@ def gather_failure_diagnostics(
             if pod_description:
                 logger.info("Successfully fetched pod description")
         except Exception as e:
-            logger.warning(f"Failed to fetch pod description: {e}")  # noqa: G004
+            logger.warning(f"Failed to fetch pod description: {e}")
 
         # Create and return diagnostics object
         diagnostics = FailureDiagnostics(pod_logs=pod_logs, pod_description=pod_description)
@@ -462,7 +462,7 @@ def gather_failure_diagnostics(
 
     except Exception as e:
         # Catch-all for any unexpected errors - diagnostics should never break the exit handler
-        logger.error(f"Unexpected error while gathering diagnostics: {e}")  # noqa: G004
+        logger.error(f"Unexpected error while gathering diagnostics: {e}")
         return FailureDiagnostics()
 
 
@@ -493,12 +493,12 @@ def update_pipeline_status_with_diagnostics(
             else:
                 pipeline_status.status = IngestionStatus([error_step])
 
-            logger.info(f"Successfully added diagnostics to pipeline status - {diagnostics.summary}")  # noqa: G004
+            logger.info(f"Successfully added diagnostics to pipeline status - {diagnostics.summary}")
         except Exception as e:
-            logger.warning(f"Failed to update pipeline status with diagnostics: {e}")  # noqa: G004
+            logger.warning(f"Failed to update pipeline status with diagnostics: {e}")
 
     except Exception as e:
-        logger.error(f"Failed to create pod diagnostics: {e}")  # noqa: G004
+        logger.error(f"Failed to create pod diagnostics: {e}")
 
 
 def main():
@@ -530,7 +530,7 @@ def main():
     namespace = os.getenv("namespace")  # Changed from workflowNamespace to namespace  # noqa: SIM112
 
     logger.info(
-        f"Environment variables - pipelineRunId: {pipeline_run_id}, pipelineStatus: {raw_pipeline_status}, jobName: {job_name}, namespace: {namespace}"  # noqa: G004
+        f"Environment variables - pipelineRunId: {pipeline_run_id}, pipelineStatus: {raw_pipeline_status}, jobName: {job_name}, namespace: {namespace}"
     )
 
     # Create workflow configuration
@@ -542,7 +542,7 @@ def main():
     # Update pipeline status if all required fields are present
     if workflow_config.ingestionPipelineFQN and pipeline_run_id and raw_pipeline_status:
         logger.info(
-            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN} for run ID {str(workflow_config.pipelineRunId.root)}"  # noqa: G004, RUF010
+            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN} for run ID {str(workflow_config.pipelineRunId.root)}"  # noqa: RUF010
         )
 
         # Get or create pipeline status
@@ -551,7 +551,7 @@ def main():
         # If the workflow already reported a terminal status, the exit handler has nothing to do.
         if pipeline_status.pipelineState in TERMINAL_PIPELINE_STATES:
             logger.info(
-                f"Pipeline already in terminal state '{pipeline_status.pipelineState.value}', "  # noqa: G004
+                f"Pipeline already in terminal state '{pipeline_status.pipelineState.value}', "
                 f"skipping exit handler update"
             )
             return
@@ -570,14 +570,14 @@ def main():
                 update_pipeline_status_with_diagnostics(pipeline_status, diagnostics)
             except Exception as e:
                 # Log the error but continue - diagnostics should never prevent status updates
-                logger.error(f"Failed to gather or add diagnostics, continuing with status update: {e}")  # noqa: G004
+                logger.error(f"Failed to gather or add diagnostics, continuing with status update: {e}")
 
         # Send updated status to OpenMetadata - this is the critical operation that must succeed
         try:
             metadata.create_or_update_pipeline_status(workflow_config.ingestionPipelineFQN, pipeline_status)
-            logger.info(f"Successfully updated pipeline status to {pipeline_status.pipelineState.value}")  # noqa: G004
+            logger.info(f"Successfully updated pipeline status to {pipeline_status.pipelineState.value}")
         except Exception as e:
-            logger.error(f"CRITICAL: Failed to send pipeline status update to OpenMetadata: {e}")  # noqa: G004
+            logger.error(f"CRITICAL: Failed to send pipeline status update to OpenMetadata: {e}")
             raise
     else:
         logger.info("Missing required fields - not updating pipeline status")
@@ -588,5 +588,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.error(f"Exit handler failed: {e}")  # noqa: G004
+        logger.error(f"Exit handler failed: {e}")
         raise

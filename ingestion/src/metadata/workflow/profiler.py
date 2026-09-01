@@ -92,7 +92,7 @@ class ProfilerWorkflow(IngestionWorkflow):
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.model_dump(exclude_unset=True).get("config", {})
         sink: Sink = sink_class.create(sink_config, self.metadata)
-        logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")  # noqa: G004
+        logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
 

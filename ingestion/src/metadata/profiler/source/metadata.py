@@ -100,7 +100,7 @@ class OpenMetadataSource(Source):
                 "and that your ingestion token (settings > bots) is still valid."
             )
 
-        logger.info(f"Starting profiler for service {self.config.source.serviceName}:{self.config.source.type.lower()}")  # noqa: G004
+        logger.info(f"Starting profiler for service {self.config.source.serviceName}:{self.config.source.type.lower()}")
 
     def _get_fields(self) -> list[str]:
         """Get the fields required to process the tables"""

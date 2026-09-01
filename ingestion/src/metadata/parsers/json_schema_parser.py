@@ -57,7 +57,7 @@ def parse_json_schema(schema_text: str, cls: type[BaseModel] = FieldModel) -> li
         return field_models  # noqa: RET504, TRY300
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unable to parse the jsonschema: {exc}")  # noqa: G004
+        logger.warning(f"Unable to parse the jsonschema: {exc}")
     return None
 
 
@@ -116,7 +116,7 @@ def get_child_models(key, value, field_models, cls: type[BaseModel] = FieldModel
         field_models.append(cls_obj)
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unable to parse the json schema into models: {exc}")  # noqa: G004
+        logger.warning(f"Unable to parse the json schema into models: {exc}")
 
 
 def get_json_schema_array_fields(

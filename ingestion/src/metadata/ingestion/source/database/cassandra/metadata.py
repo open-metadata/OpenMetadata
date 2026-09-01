@@ -67,7 +67,7 @@ class CassandraSource(CommonNoSQLSource):
         try:
             schema_names = [row.keyspace_name for row in self.cassandra.execute(CASSANDRA_GET_KEYSPACES)]
         except Exception as exp:
-            logger.debug(f"Failed to list keyspace names: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list keyspace names: {exp}")
             logger.debug(traceback.format_exc())
 
         return schema_names
@@ -84,7 +84,7 @@ class CassandraSource(CommonNoSQLSource):
                 for row in self.cassandra.execute(CASSANDRA_GET_KEYSPACE_TABLES, [schema_name])
             ]
         except Exception as exp:
-            logger.debug(f"Failed to list table names for schema [{schema_name}]: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list table names for schema [{schema_name}]: {exp}")
             logger.debug(traceback.format_exc())
 
         return tables
@@ -101,7 +101,7 @@ class CassandraSource(CommonNoSQLSource):
                 for row in self.cassandra.execute(CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS, [schema_name])
             ]
         except Exception as exp:
-            logger.debug(f"Failed to list materialized view names for schema [{schema_name}]: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list materialized view names for schema [{schema_name}]: {exp}")
             logger.debug(traceback.format_exc())
 
         return materialized_views
@@ -111,7 +111,7 @@ class CassandraSource(CommonNoSQLSource):
             data = self.cassandra.execute(CASSANDRA_GET_TABLE_COLUMNS, [schema_name, table_name])
             return [CassandraColumnParser.parse(field=field) for field in data]
         except Exception as opf:
-            logger.debug(f"Failed to read table [{table_name}]: {opf}")  # noqa: G004
+            logger.debug(f"Failed to read table [{table_name}]: {opf}")
             logger.debug(traceback.format_exc())
 
         return []

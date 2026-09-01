@@ -79,5 +79,5 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
             return len(result.fetchall())
         except Exception as exc:
             self.runner._session.rollback()
-            logger.exception(f"Error executing SQL expression: {exc}")  # noqa: G004, TRY401
+            logger.exception(f"Error executing SQL expression: {exc}")  # noqa: TRY401
             raise exc  # noqa: TRY201

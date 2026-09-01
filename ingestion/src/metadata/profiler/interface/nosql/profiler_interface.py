@@ -58,7 +58,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
                 result[metric.name()] = fn(self.table)
             except Exception as exc:
                 logger.debug(
-                    f"{traceback.format_exc()}\n"  # noqa: G004
+                    f"{traceback.format_exc()}\n"
                     f"Error trying to compute metric {metric} for {self.table.fullyQualifiedName}: {exc}"
                 )
                 raise RuntimeError(  # noqa: B904
@@ -83,7 +83,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
             return dict(row)
         except Exception as exc:
             logger.debug(
-                f"{traceback.format_exc()}\nError trying to compute metrics for {self.table.fullyQualifiedName}: {exc}"  # noqa: G004
+                f"{traceback.format_exc()}\nError trying to compute metrics for {self.table.fullyQualifiedName}: {exc}"
             )
             raise RuntimeError(f"Error trying to compute metris for {self.table.fullyQualifiedName}: {exc}")  # noqa: B904
 
@@ -123,7 +123,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {metric_func.table}")  # noqa: G004
+        logger.debug(f"Running profiler for {metric_func.table}")
         try:
             row = self._get_metric_fn[metric_func.metric_type.value](
                 metric_func.metrics,

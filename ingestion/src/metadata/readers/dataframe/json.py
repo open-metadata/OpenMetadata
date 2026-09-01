@@ -92,7 +92,7 @@ class JSONDataFrameReader(DataFrameReader):
                     yield DataFrame.from_records(batch)
                     batch = []
             except json.JSONDecodeError as error:
-                logger.info(f"Skipping invalid JSON line {line} due to an error: {error}")  # noqa: G004
+                logger.info(f"Skipping invalid JSON line {line} due to an error: {error}")
         if batch:
             yield DataFrame.from_records(batch)
 
@@ -183,7 +183,7 @@ class JSONDataFrameReader(DataFrameReader):
 
         file_size_mb = self._get_file_size_mb(key, bucket_name, file_size=file_size)
         if file_size_mb > (MAX_FILE_SIZE_FOR_PREVIEW / (1024 * 1024)):
-            logger.info(f"Large JSON file ({file_size_mb:.2f} MB). Streaming with ijson.")  # noqa: G004
+            logger.info(f"Large JSON file ({file_size_mb:.2f} MB). Streaming with ijson.")
             try:
 
                 def ijson_chunk_generator():
@@ -193,7 +193,7 @@ class JSONDataFrameReader(DataFrameReader):
 
                 return DatalakeColumnWrapper(dataframes=ijson_chunk_generator, raw_data=None, columns=None)
             except Exception as exc:
-                logger.warning(f"ijson streaming failed: {exc}. Loading entire file (may cause OOM).")  # noqa: G004
+                logger.warning(f"ijson streaming failed: {exc}. Loading entire file (may cause OOM).")
 
         with file_obj_getter() as f:  # noqa: SIM117
             with self._decompress(f, key) as decompressed:

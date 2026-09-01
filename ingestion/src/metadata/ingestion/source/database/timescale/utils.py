@@ -482,7 +482,7 @@ def get_postgres_version(engine) -> str | None:
             version_string = str(res[0])
             return version_string  # noqa: RET504
     except Exception as err:
-        logger.warning(f"Unable to fetch the Postgres Version - {err}")  # noqa: G004
+        logger.warning(f"Unable to fetch the Postgres Version - {err}")
         logger.debug(traceback.format_exc())
     return None
 
@@ -508,7 +508,7 @@ def get_postgres_time_column_name(engine) -> str:
                 )
                 return "total_exec_time"
     except Exception as ex:
-        logger.debug(f"Failed to check columns in pg_stat_statements: {ex}")  # noqa: G004
+        logger.debug(f"Failed to check columns in pg_stat_statements: {ex}")
         # Fallback to version check
         time_column_name = "total_exec_time"
         postgres_version = get_postgres_version(engine)

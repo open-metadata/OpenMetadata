@@ -128,7 +128,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                     return user
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def _get_charts_of_dashboard(
@@ -157,7 +157,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                 ]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to charts of dashboard {dashboard_details.id} due to {err}")  # noqa: G004
+            logger.warning(f"Failed to charts of dashboard {dashboard_details.id} due to {err}")
         return []
 
     def _is_table_to_table_lineage(self, columns: tuple, table: LineageTable) -> bool:
@@ -409,5 +409,5 @@ class SupersetSourceMixin(DashboardServiceSource):
                     datasource_columns.append(parsed_fields)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")  # noqa: G004
+                logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns

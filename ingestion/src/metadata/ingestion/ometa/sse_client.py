@@ -83,7 +83,7 @@ class SSEClient:
             headers["User-Agent"] = user_agent
         elif self.config.user_agent:
             self.logger.debug(
-                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"  # noqa: G004
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
             )
         opts = {
             "headers": headers,
@@ -141,7 +141,7 @@ class SSEClient:
 
                                 if self.stream_completed:
                                     self.logger.info(
-                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"  # noqa: G004
+                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
                                     )
                                     return
                         else:  # noqa: PLR5501
@@ -149,11 +149,11 @@ class SSEClient:
                                 event_buffer.append(line)
 
             except requests.exceptions.HTTPError as e:
-                self.logger.error(f"HTTP error: {e.response.status_code}")  # noqa: G004
+                self.logger.error(f"HTTP error: {e.response.status_code}")
                 raise
             except Exception as e:
                 retries += 1
-                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")  # noqa: G004
+                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")
 
                 if retries >= self.max_retries:
                     raise

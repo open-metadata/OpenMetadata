@@ -152,12 +152,12 @@ class StdDev(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except MemoryError:
                 logger.error(
-                    f"Unable to compute 'Standard Deviation' for {self.col.name} due to memory constraints."  # noqa: G004
+                    f"Unable to compute 'Standard Deviation' for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
             except Exception as err:
-                logger.debug(f"Error while computing 'Standard Deviation' for column {self.col.name}: {err}")  # noqa: G004
+                logger.debug(f"Error while computing 'Standard Deviation' for column {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -252,7 +252,7 @@ class StdDev(StaticMetric):
             if abs(variance) < 1e-10:  # Close to zero due to floating point
                 variance = 0
             else:
-                logger.warning(f"Negative variance ({variance}) encountered, returning None")  # noqa: G004
+                logger.warning(f"Negative variance ({variance}) encountered, returning None")
                 return None
 
         return math.sqrt(variance)

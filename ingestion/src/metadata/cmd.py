@@ -265,6 +265,6 @@ def metadata(args: list[str] | None = None):
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
 
-        logger.info(f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}")  # noqa: G004
+        logger.info(f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}")
         with HTTPServer((contains_args["host"], contains_args["port"]), WebhookHandler) as server:
             server.serve_forever()

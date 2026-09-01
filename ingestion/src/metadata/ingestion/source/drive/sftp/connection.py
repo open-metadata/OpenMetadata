@@ -59,7 +59,7 @@ class SftpClient:
             self.sftp.close()
             self.transport.close()
         except Exception as exc:
-            logger.warning(f"Error closing SFTP connection: {exc}")  # noqa: G004
+            logger.warning(f"Error closing SFTP connection: {exc}")
 
 
 def _parse_private_key(private_key_str: str, passphrase: str | None = None) -> paramiko.PKey | None:
@@ -158,7 +158,7 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
                 client.sftp.stat(".")
                 logger.info("Successfully authenticated to SFTP server")
             except Exception as exc:
-                logger.debug(f"Access check error traceback: {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"Access check error traceback: {traceback.format_exc()}")
                 raise SourceConnectionException(f"Failed to access SFTP server: {exc}")  # noqa: B904
 
         def list_directories():
@@ -172,15 +172,15 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
                 for root_dir in root_dirs:
                     try:
                         entries = client.sftp.listdir(root_dir)
-                        logger.info(f"Found {len(entries)} entries in '{root_dir}'")  # noqa: G004
+                        logger.info(f"Found {len(entries)} entries in '{root_dir}'")
                     except Exception as dir_exc:
-                        logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")  # noqa: G004
+                        logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")
                         raise SourceConnectionException(f"Failed to list directory '{root_dir}': {dir_exc}")  # noqa: B904
 
             except SourceConnectionException:
                 raise
             except Exception as exc:
-                logger.debug(f"Directory listing test error traceback: {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"Directory listing test error traceback: {traceback.format_exc()}")
                 raise SourceConnectionException(f"Failed to list directories: {exc}")  # noqa: B904
 
         test_fn = {

@@ -58,7 +58,7 @@ class ClassificationManager:
         cached_classifications = self._classification_cache[cache_key]
 
         if cached_classifications:
-            logger.debug(f"Returning cached enabled classifications for filter: {cache_key}")  # noqa: G004
+            logger.debug(f"Returning cached enabled classifications for filter: {cache_key}")
             return cached_classifications
 
         logger.debug("Fetching enabled classifications from OpenMetadata")
@@ -75,23 +75,23 @@ class ClassificationManager:
                 )
             )
         except Exception as exc:
-            logger.error(f"Failed to fetch classifications: {exc}")  # noqa: G004
+            logger.error(f"Failed to fetch classifications: {exc}")
             return []
 
         for classification in classifications:
             if filter_names and classification.name.root not in filter_names:
-                logger.debug(f"Skipping classification {classification.name.root} (not in filter)")  # noqa: G004
+                logger.debug(f"Skipping classification {classification.name.root} (not in filter)")
                 continue
 
             auto_config = classification.autoClassificationConfig
             if not auto_config or not auto_config.enabled:
-                logger.debug(f"Skipping classification {classification.name.root} (auto-classification disabled)")  # noqa: G004
+                logger.debug(f"Skipping classification {classification.name.root} (auto-classification disabled)")
                 continue
 
             cached_classifications.append(classification)
 
         logger.info(
-            f"Found {len(cached_classifications)} enabled classifications: {[c.name.root for c in cached_classifications]}"  # noqa: G004
+            f"Found {len(cached_classifications)} enabled classifications: {[c.name.root for c in cached_classifications]}"
         )
         return cached_classifications
 
@@ -113,10 +113,10 @@ class ClassificationManager:
 
         cache_key = ",".join(sorted(classification_names))
         if cache_key in self._tags_cache:
-            logger.debug(f"Returning cached tags for classifications: {cache_key}")  # noqa: G004
+            logger.debug(f"Returning cached tags for classifications: {cache_key}")
             return self._tags_cache[cache_key]
 
-        logger.info(f"Fetching enabled tags from classifications: {classification_names}")  # noqa: G004
+        logger.info(f"Fetching enabled tags from classifications: {classification_names}")
 
         candidate_tags: list[Tag] = []
 
@@ -141,17 +141,17 @@ class ClassificationManager:
 
                 for tag in tags:
                     if not tag.autoClassificationEnabled:
-                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (auto-classification disabled)")  # noqa: G004
+                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (auto-classification disabled)")
                         continue
 
                     if not tag.recognizers:
-                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (no recognizers configured)")  # noqa: G004
+                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (no recognizers configured)")
                         continue
 
                     candidate_tags.append(tag)
 
             except Exception as exc:
-                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")  # noqa: G004
+                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")
                 continue
 
         logger.info(

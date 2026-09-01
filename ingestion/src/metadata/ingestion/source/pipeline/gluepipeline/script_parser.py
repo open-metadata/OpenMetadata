@@ -189,7 +189,7 @@ def parse_glue_script(source_code: str) -> ScriptLineageResult:
     _parse_spark_write(source_code, result)
 
     logger.debug(
-        f"Script lineage result: "  # noqa: G004
+        f"Script lineage result: "
         f"s3_sources={result.s3_sources}, s3_targets={result.s3_targets}, "
         f"catalog_sources={len(result.catalog_sources)}, "
         f"catalog_targets={len(result.catalog_targets)}, "
@@ -208,9 +208,9 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
             table = _extract_kwarg(block, "table_name")
             if database and table:
                 result.catalog_sources.append(CatalogRef(database=database, table=table))
-                logger.debug(f"Found catalog source: {database}.{table}")  # noqa: G004
+                logger.debug(f"Found catalog source: {database}.{table}")
         except Exception as exc:
-            logger.debug(f"Failed to parse from_catalog block: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse from_catalog block: {exc}")
 
     for match in FROM_OPTIONS_PATTERN.finditer(source_code):
         try:
@@ -220,7 +220,7 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 paths = _extract_s3_paths(block)
                 result.s3_sources.extend(paths)
                 for p in paths:
-                    logger.debug(f"Found S3 source: {p}")  # noqa: G004
+                    logger.debug(f"Found S3 source: {p}")
             elif conn_type and conn_type.lower() in (
                 "jdbc",
                 "mysql",
@@ -235,7 +235,7 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 if table:
                     result.jdbc_sources.append(JDBCRef(connection_name=connection_name, table=table))
         except Exception as exc:
-            logger.debug(f"Failed to parse from_options block: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse from_options block: {exc}")
 
 
 def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):  # noqa: C901
@@ -253,9 +253,9 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
                         table=table,
                     )
                 )
-                logger.debug(f"Found JDBC target: connection={connection_name}, database={database}, table={table}")  # noqa: G004
+                logger.debug(f"Found JDBC target: connection={connection_name}, database={database}, table={table}")
         except Exception as exc:
-            logger.debug(f"Failed to parse write_jdbc_conf block: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse write_jdbc_conf block: {exc}")
 
     for match in WRITE_OPTIONS_PATTERN.finditer(source_code):
         try:
@@ -265,14 +265,14 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
                 paths = _extract_s3_paths(block)
                 result.s3_targets.extend(paths)
                 for p in paths:
-                    logger.debug(f"Found S3 target: {p}")  # noqa: G004
+                    logger.debug(f"Found S3 target: {p}")
             elif conn_type:
                 table = _extract_dict_value(block, "dbtable")
                 connection_name = _extract_kwarg(block, "catalog_connection")
                 if table:
                     result.jdbc_targets.append(JDBCRef(connection_name=connection_name, table=table))
         except Exception as exc:
-            logger.debug(f"Failed to parse write_options block: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse write_options block: {exc}")
 
     for match in WRITE_CATALOG_PATTERN.finditer(source_code):
         try:
@@ -281,9 +281,9 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
             table = _extract_kwarg(block, "table_name")
             if database and table:
                 result.catalog_targets.append(CatalogRef(database=database, table=table))
-                logger.debug(f"Found catalog target: {database}.{table}")  # noqa: G004
+                logger.debug(f"Found catalog target: {database}.{table}")
         except Exception as exc:
-            logger.debug(f"Failed to parse write_catalog block: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse write_catalog block: {exc}")
 
     for match in PURGE_TABLE_PATTERN.finditer(source_code):
         try:
@@ -292,9 +292,9 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
             table = _extract_kwarg(block, "table_name")
             if database and table:
                 result.catalog_targets.append(CatalogRef(database=database, table=table))
-                logger.debug(f"Found purge_table target: {database}.{table}")  # noqa: G004
+                logger.debug(f"Found purge_table target: {database}.{table}")
         except Exception as exc:
-            logger.debug(f"Failed to parse purge_table block: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse purge_table block: {exc}")
 
 
 def _parse_spark_read(source_code: str, result: ScriptLineageResult):
@@ -303,23 +303,23 @@ def _parse_spark_read(source_code: str, result: ScriptLineageResult):
         if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_sources:
                 result.s3_sources.append(path)
-                logger.debug(f"Found Spark read S3 source: {path}")  # noqa: G004
+                logger.debug(f"Found Spark read S3 source: {path}")
 
     for match in SPARK_READ_FORMAT_LOAD_PATTERN.finditer(source_code):
         path = match.group(1)
         if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_sources:
                 result.s3_sources.append(path)
-                logger.debug(f"Found Spark read.format().load() S3 source: {path}")  # noqa: G004
+                logger.debug(f"Found Spark read.format().load() S3 source: {path}")
 
     for match in SPARK_READ_JDBC_PATTERN.finditer(source_code):
         try:
             jdbc_url = match.group(1).strip()
             table = match.group(2).strip()
             result.jdbc_sources.append(JDBCRef(jdbc_url=jdbc_url, table=table))
-            logger.debug(f"Found Spark read.jdbc source: url={jdbc_url}, table={table}")  # noqa: G004
+            logger.debug(f"Found Spark read.jdbc source: url={jdbc_url}, table={table}")
         except Exception as exc:
-            logger.debug(f"Failed to parse spark.read.jdbc: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse spark.read.jdbc: {exc}")
 
     for match in SPARK_READ_TABLE_PATTERN.finditer(source_code):
         table_ref = match.group(1)
@@ -328,7 +328,7 @@ def _parse_spark_read(source_code: str, result: ScriptLineageResult):
             result.catalog_sources.append(CatalogRef(database=parts[0], table=parts[1]))
         else:
             result.catalog_sources.append(CatalogRef(database="default", table=table_ref))
-        logger.debug(f"Found Spark read.table source: {table_ref}")  # noqa: G004
+        logger.debug(f"Found Spark read.table source: {table_ref}")
 
 
 def _parse_spark_write(source_code: str, result: ScriptLineageResult):
@@ -337,23 +337,23 @@ def _parse_spark_write(source_code: str, result: ScriptLineageResult):
         if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_targets:
                 result.s3_targets.append(path)
-                logger.debug(f"Found Spark write S3 target: {path}")  # noqa: G004
+                logger.debug(f"Found Spark write S3 target: {path}")
 
     for match in SPARK_WRITE_FORMAT_SAVE_PATTERN.finditer(source_code):
         path = match.group(1)
         if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_targets:
                 result.s3_targets.append(path)
-                logger.debug(f"Found Spark write.format().save() S3 target: {path}")  # noqa: G004
+                logger.debug(f"Found Spark write.format().save() S3 target: {path}")
 
     for match in SPARK_WRITE_JDBC_PATTERN.finditer(source_code):
         try:
             jdbc_url = match.group(1).strip()
             table = match.group(2).strip()
             result.jdbc_targets.append(JDBCRef(jdbc_url=jdbc_url, table=table))
-            logger.debug(f"Found Spark write.jdbc target: url={jdbc_url}, table={table}")  # noqa: G004
+            logger.debug(f"Found Spark write.jdbc target: url={jdbc_url}, table={table}")
         except Exception as exc:
-            logger.debug(f"Failed to parse df.write.jdbc: {exc}")  # noqa: G004
+            logger.debug(f"Failed to parse df.write.jdbc: {exc}")
 
     for pattern in (SPARK_WRITE_SAVEASTABLE_PATTERN, SPARK_WRITE_INSERTINTO_PATTERN):
         for match in pattern.finditer(source_code):
@@ -363,4 +363,4 @@ def _parse_spark_write(source_code: str, result: ScriptLineageResult):
                 result.catalog_targets.append(CatalogRef(database=parts[0], table=parts[1]))
             else:
                 result.catalog_targets.append(CatalogRef(database="default", table=table_ref))
-            logger.debug(f"Found Spark saveAsTable/insertInto target: {table_ref}")  # noqa: G004
+            logger.debug(f"Found Spark saveAsTable/insertInto target: {table_ref}")

@@ -270,7 +270,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             entity_name = get_log_name(source)
             if skip_on_failure:
                 logger.warning(
-                    f"Failed to update {entity_name}. The patch operation was skipped. "  # noqa: G004
+                    f"Failed to update {entity_name}. The patch operation was skipped. "
                     f"Reason: {exc} | Patch ops: {patch_summary}"
                 )
                 return None
@@ -338,7 +338,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 logger.debug(traceback.format_exc())
                 entity_name = get_log_name(source)
                 logger.warning(
-                    f"Failed to patch description for {entity_name}. The patch operation was skipped. Reason: {exc}"  # noqa: G004
+                    f"Failed to patch description for {entity_name}. The patch operation was skipped. Reason: {exc}"
                 )
                 return None
             else:  # noqa: RET505
@@ -452,7 +452,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 logger.debug(traceback.format_exc())
                 entity_name = get_log_name(source)
                 logger.warning(
-                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. Reason: {exc}"  # noqa: G004
+                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. Reason: {exc}"
                 )
                 return None
             else:  # noqa: RET505
@@ -743,7 +743,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             else:
                 if patched_entity is None:
                     logger.debug(
-                        f"Empty PATCH result. Either everything is up to date or "  # noqa: G004
+                        f"Empty PATCH result. Either everything is up to date or "
                         f"columns are not matching for [{table_label}]"
                     )
                 return cast("T | None", patched_entity)
@@ -787,13 +787,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
             if resp is None:
                 logger.error(
-                    "PATCH returned None for automation workflow "  # noqa: G004
+                    "PATCH returned None for automation workflow "
                     f"[{model_str(automation_workflow)}] — the server may have rejected the request"
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"  # noqa: G004
+                f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
             )
 
     def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> Entity | None:
@@ -809,7 +809,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return self.patch(entity=type(entity), source=entity, destination=destination)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.root}: {exc}")  # noqa: G004
+            logger.warning(f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.root}: {exc}")
             return None
 
     def patch_domain(
@@ -867,7 +867,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         instance = self.get_by_id(entity=entity, entity_id=entity_id)
 
         if not instance:
-            logger.warning(f"Cannot find an instance of {entity.__name__} with the given ID.")  # noqa: G004
+            logger.warning(f"Cannot find an instance of {entity.__name__} with the given ID.")
             return None
 
         # Get existing custom properties from extension
@@ -904,6 +904,6 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return entity(**res)
 
         except Exception as exc:
-            logger.error(f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}")  # noqa: G004
+            logger.error(f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}")
             logger.debug(traceback.format_exc())
             return None

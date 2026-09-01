@@ -57,7 +57,7 @@ class IometeSource(CommonDbSourceService):
         # We override to set `catalog` correctly so get_connection builds the right
         # SQLAlchemy URL and the dialect scopes queries to the intended catalog.
         kill_active_connections(self.engine)
-        logger.info(f"Ingesting from catalog: {database_name}")  # noqa: G004
+        logger.info(f"Ingesting from catalog: {database_name}")
         new_service_connection = IometeConnection(
             **{
                 **self.service_connection.model_dump(),
@@ -95,5 +95,5 @@ class IometeSource(CommonDbSourceService):
             logger.warning("Schema definition not implemented")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None

@@ -243,7 +243,7 @@ class SnowflakeTableResovler:
         if not table_name:
             raise RuntimeError("Could not extract the table name.")
         if not context_database and not database_identifier:
-            logger.debug(f"Could not resolve database name. {identifier=}, {context_database=}")  # noqa: G004
+            logger.debug(f"Could not resolve database name. {identifier=}, {context_database=}")
             raise RuntimeError("Could not resolve database name.")
         if schema_identifier is not None:
             return (
@@ -295,7 +295,7 @@ def get_snowflake_system_queries(
     """
 
     try:
-        logger.debug(f"Parsing snowflake query [{query_log_entry.query_id}]")  # noqa: G004
+        logger.debug(f"Parsing snowflake query [{query_log_entry.query_id}]")
         identifier = _parse_query(query_log_entry.query_text)
         if not identifier:
             raise RuntimeError("Could not identify the table from the query.")  # noqa: TRY301
@@ -327,7 +327,7 @@ def get_snowflake_system_queries(
             f"""Error while processing query with id [{query_log_entry.query_id}]: {exc}\n
             To investigate the query run:
             SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY WHERE query_id = '{query_log_entry.query_id}'
-            """  # noqa: G004
+            """
         )
     return None
 

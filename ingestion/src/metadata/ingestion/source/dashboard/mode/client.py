@@ -113,7 +113,7 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching charts: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching charts: {exc}")
 
         return None
 
@@ -130,7 +130,7 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all queries: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching all queries: {exc}")
 
         return None
 
@@ -148,7 +148,7 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all charts: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching all charts: {exc}")
 
         return None
 
@@ -175,7 +175,7 @@ class ModeApiClient:
             return all_data_sources  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all data sources: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching all data sources: {exc}")
 
         return None
 
@@ -191,5 +191,5 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error testing workspace connection: {exc}")  # noqa: G004
+            logger.warning(f"Error testing workspace connection: {exc}")
             raise exc  # noqa: TRY201

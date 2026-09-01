@@ -221,7 +221,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Any | None:
     :param container: container with element
     :return: element or None
     """
-    logger.debug(f"[find_in_iter] Searching for element '{element}'")  # noqa: G004
+    logger.debug(f"[find_in_iter] Searching for element '{element}'")
     return next((elem for elem in container if elem == element), None)
 
 
@@ -619,7 +619,7 @@ def init_staging_dir(directory: str) -> None:
     """
     delete_dir_content(directory=directory)
     location = Path(directory)
-    logger.info(f"Creating the directory to store staging data in {location}")  # noqa: G004
+    logger.info(f"Creating the directory to store staging data in {location}")
     location.mkdir(parents=True, exist_ok=True)
 
 
@@ -697,7 +697,7 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         return False
 
     # Fallback:
-    logger.error(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")  # noqa: G004
+    logger.error(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")
     raise ValueError(f"Invalid threshold: {threshold}, Allowed format: <, >, <=, >=, ==, !=. Example: >5")
 
 

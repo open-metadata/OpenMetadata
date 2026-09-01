@@ -72,7 +72,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                         offset=offset,
                         limit=batch_size,
                     )
-                    logger.debug(f"Executing lineage query: {sql_statement}")  # noqa: G004
+                    logger.debug(f"Executing lineage query: {sql_statement}")
                     rows = conn.execute(text(sql_statement))
                     for row in rows:
                         query_dict = row._asdict()
@@ -88,13 +88,13 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                             )
                         except Exception as exc:
                             logger.debug(traceback.format_exc())
-                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")  # noqa: G004
+                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 total_fetched += row_count
                 if row_count < batch_size:
                     break
                 offset += batch_size
                 logger.info(
-                    f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "  # noqa: G004
+                    f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
                     f"for lineage queries"
                 )
 

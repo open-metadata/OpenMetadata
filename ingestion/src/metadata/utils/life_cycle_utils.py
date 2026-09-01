@@ -80,5 +80,5 @@ def get_query_type(create_query) -> str | None:
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception get the query type: {exc}")  # noqa: G004
+        logger.warning(f"Unexpected exception get the query type: {exc}")
     return None

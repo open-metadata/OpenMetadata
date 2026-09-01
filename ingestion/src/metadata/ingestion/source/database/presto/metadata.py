@@ -82,7 +82,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
                 )
         except KeyError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error reading row [{row}]: {err}")  # noqa: G004
+            logger.warning(f"Error reading row [{row}]: {err}")
             util.warn(f"Did not recognize type '{row.Type}' of column '{row.Column}'")
             coltype = types.NullType
         result.append(
@@ -134,7 +134,7 @@ class PrestoSource(CommonDbSourceService):
         to setup multiple inspectors. They can use this function.
         :param database_name: new database to set
         """
-        logger.info(f"Ingesting from catalog: {database_name}")  # noqa: G004
+        logger.info(f"Ingesting from catalog: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
@@ -188,4 +188,4 @@ class PrestoSource(CommonDbSourceService):
                         yield new_catalog
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
-                        logger.warning(f"Error trying to connect to database {new_catalog}: {exc}")  # noqa: G004
+                        logger.warning(f"Error trying to connect to database {new_catalog}: {exc}")

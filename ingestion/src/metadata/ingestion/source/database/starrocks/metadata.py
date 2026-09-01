@@ -143,7 +143,7 @@ def _get_sqlalchemy_type(type_str):
             return sql_type_cls(precision=int(params[0]), scale=int(params[1]))
 
     except (ValueError, TypeError) as exc:
-        logger.warning(f"Failed to parse type parameters ({type_str}): {str(exc)}, using default type")  # noqa: G004, RUF010
+        logger.warning(f"Failed to parse type parameters ({type_str}): {str(exc)}, using default type")  # noqa: RUF010
 
     # Return type instance (NullType has no parameters, call directly)
     return sql_type_cls()
@@ -266,7 +266,7 @@ class StarRocksSource(CommonDbSourceService):
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             description = table_info.get("text")
 
@@ -304,7 +304,7 @@ class StarRocksSource(CommonDbSourceService):
                     comment = row.get("Comment", "")
 
                     if not field_name:
-                        logger.warning(f"Skipping empty column name (table: {schema}.{table_name})")  # noqa: G004
+                        logger.warning(f"Skipping empty column name (table: {schema}.{table_name})")
                         continue
 
                     # Generate column information dictionary
@@ -321,11 +321,11 @@ class StarRocksSource(CommonDbSourceService):
                     # Record primary key columns
                     if key_type == "PRI":
                         primary_columns.append(field_name)
-                        logger.debug(f"Primary key column of table {schema}.{table_name}: {field_name}")  # noqa: G004
+                        logger.debug(f"Primary key column of table {schema}.{table_name}: {field_name}")
 
             except Exception as exc:
                 logger.error(
-                    f"Failed to get column information (table: {schema}.{table_name}): {str(exc)}",  # noqa: G004, RUF010
+                    f"Failed to get column information (table: {schema}.{table_name}): {str(exc)}",  # noqa: RUF010
                     exc_info=True,
                 )
 
@@ -375,7 +375,7 @@ class StarRocksSource(CommonDbSourceService):
                 # Handle warning for unknown types
                 if not column["system_data_type"]:
                     logger.warning(
-                        f"Table {schema_name}.{table_name} has a column with unknown type: {column['name']} (original type: {column['type']})"  # noqa: G004
+                        f"Table {schema_name}.{table_name} has a column with unknown type: {column['name']} (original type: {column['type']})"
                     )
 
                 # Build OpenMetadata Column instance
@@ -408,9 +408,9 @@ class StarRocksSource(CommonDbSourceService):
                 table_columns.append(om_column)
 
             except Exception as exc:
-                logger.debug(f"Detailed stack trace for failed column processing: {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"Detailed stack trace for failed column processing: {traceback.format_exc()}")
                 logger.warning(
-                    f"Failed to process column [{column.get('name')}] in table {schema_name}.{table_name}: {str(exc)}"  # noqa: G004, RUF010
+                    f"Failed to process column [{column.get('name')}] in table {schema_name}.{table_name}: {str(exc)}"  # noqa: RUF010
                 )
                 continue
 
@@ -450,18 +450,18 @@ class StarRocksSource(CommonDbSourceService):
                         for key in partition_keys
                     ]
                 )
-                logger.debug(f"Partition keys of table {schema_name}.{table_name}: {partition_keys}")  # noqa: G004
+                logger.debug(f"Partition keys of table {schema_name}.{table_name}: {partition_keys}")
                 return True, partition_details  # noqa: TRY300
 
             except Exception as exc:
-                logger.debug(f"Could not get partition information for {schema_name}.{table_name}: {exc}")  # noqa: G004
+                logger.debug(f"Could not get partition information for {schema_name}.{table_name}: {exc}")
 
         return False, None
 
     def _check_col_length(self, system_data_type: str, data_type: sqltypes.TypeEngine) -> int | None:
         """Check column length (compatible with sqlalchemy.sql.sqltypes types)"""
         if not isinstance(data_type, sqltypes.TypeEngine):
-            logger.warning(f"Not a SQLAlchemy TypeEngine instance, cannot get length: {type(data_type)}")  # noqa: G004
+            logger.warning(f"Not a SQLAlchemy TypeEngine instance, cannot get length: {type(data_type)}")
             return None
 
         # Return length only for types with length attribute

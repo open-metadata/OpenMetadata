@@ -40,7 +40,7 @@ class RedshiftProfilerInterface(SQAProfilerInterface):
         *args,
         **kwargs,
     ) -> list[SystemProfile]:
-        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")  # noqa: G004
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
         self.system_metrics_class = cast(type[RedshiftSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,

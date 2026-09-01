@@ -462,7 +462,7 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):  # pyl
 
     # If the view definition is not found via optimized query,
     # we need to get the view definition from the view ddl
-    logger.debug(f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query")  # noqa: G004
+    logger.debug(f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query")
 
     schema = schema or self.default_schema_name
     view_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'

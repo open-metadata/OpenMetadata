@@ -112,7 +112,7 @@ def get_all_view_definitions(self, connection, query):
         for view in connection.execute(text(query)):
             _store_bulk_view_definition(self, view)
     except DatabaseError as exc:
-        logger.warning(f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to per-view retrieval.")  # noqa: G004
+        logger.warning(f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to per-view retrieval.")
         logger.debug(traceback.format_exc())
         _get_view_definitions_individually(self, connection)
 
@@ -153,7 +153,7 @@ def _get_view_definitions_individually(self, connection) -> None:
         try:
             definition = _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
         except DatabaseError as exc:
-            logger.warning(f"Could not fetch view definition for {owner}.{name}: {exc}")  # noqa: G004
+            logger.warning(f"Could not fetch view definition for {owner}.{name}: {exc}")
             logger.debug(traceback.format_exc())
             continue
         if definition:
@@ -184,7 +184,7 @@ def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
         if raw_text:
             return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
     except DatabaseError:
-        logger.debug(f"Single-row text read failed for {owner}.{name}, using GET_DDL")  # noqa: G004
+        logger.debug(f"Single-row text read failed for {owner}.{name}, using GET_DDL")
     return _read_scalar(
         connection.execute(
             text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),

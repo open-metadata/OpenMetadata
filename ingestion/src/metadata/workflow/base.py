@@ -152,7 +152,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         try:
             return f"openmetadata-ingestion (v{get_client_version()})"
         except Exception as exc:
-            logger.debug(f"Could not resolve the ingestion client version: {exc}")  # noqa: G004
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")
             return "openmetadata-ingestion"
 
     @property
@@ -185,7 +185,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             try:
                 step.close()
             except Exception as exc:
-                logger.warning(f"Error trying to close the step {step} due to [{exc}]")  # noqa: G004
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
     def stop(self) -> None:
         """
@@ -278,7 +278,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """Log the workflow type and ingestion runner at the start of execution"""
         if self.config.ingestionRunnerName:
             logger.info(
-                f"Executing workflow [{self.config.ingestionPipelineFQN}] in Runner [{self.config.ingestionRunnerName}]"  # noqa: G004
+                f"Executing workflow [{self.config.ingestionPipelineFQN}] in Runner [{self.config.ingestionRunnerName}]"
             )
 
     def execute(self) -> None:
@@ -413,7 +413,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             return maybe_pipeline  # noqa: TRY300
 
         except Exception as exc:
-            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")  # noqa: G004
+            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
             return None
 
     def _get_ingestion_pipeline_service(self) -> T | None:
@@ -441,7 +441,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 )
 
                 logger.info(
-                    f"{step.name}: Processed {record_count} records,"  # noqa: G004
+                    f"{step.name}: Processed {record_count} records,"
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
                     f" found {len(step.status.failures)} errors"
@@ -452,7 +452,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self._is_debug_enabled():
                 metrics = WorkflowResourceMetrics()
                 logger.debug(
-                    f"Workflow Resources - "  # noqa: G004
+                    f"Workflow Resources - "
                     f"CPU: {metrics.cpu_usage_percent:.2f}% "
                     f"({metrics.system_cpu_cores}c/{metrics.system_cpu_threads}t) | "
                     f"Memory: {metrics.memory_used_mb:.2f}MB/"
@@ -472,7 +472,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Wild exception reporting status - {exc}")  # noqa: G004
+            logger.error(f"Wild exception reporting status - {exc}")
 
     def _is_debug_enabled(self) -> bool:
         return (

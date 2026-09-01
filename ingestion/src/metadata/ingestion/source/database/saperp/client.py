@@ -118,7 +118,7 @@ class SapErpClient:
                 entities_list.extend(response.d.results)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error fetching entities for pagination: {exc}")  # noqa: G004
+                logger.warning(f"Error fetching entities for pagination: {exc}")
         return entities_list
 
     def list_tables(self) -> list[SapErpTable] | None:
@@ -142,7 +142,7 @@ class SapErpClient:
         List all the columns on the SAP ERP instance
         """
         try:
-            logger.debug(f"Fetching columns for table {table_name}")  # noqa: G004
+            logger.debug(f"Fetching columns for table {table_name}")
             params_data = {"$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"}
             table_columns = self.paginate(
                 api_url="/ECC/DDIC/ZZ_I_DDIC_COL_CDS/",
@@ -153,5 +153,5 @@ class SapErpClient:
             return table_columns or None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching columns for table {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching columns for table {table_name}: {exc}")
         return None

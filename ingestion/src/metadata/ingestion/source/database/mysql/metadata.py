@@ -106,7 +106,7 @@ class MysqlSource(CommonDbSourceService):
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Error parsing stored procedure/function: {dict(row._mapping).get('routine_name', 'UNKNOWN')} - {exc}"  # noqa: G004
+                        f"Error parsing stored procedure/function: {dict(row._mapping).get('routine_name', 'UNKNOWN')} - {exc}"
                     )
                     self.status.failed(
                         error=StackTraceError(

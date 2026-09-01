@@ -210,7 +210,7 @@ class GcsSource(StorageServiceSource):
             blob.reload()
             return blob.size  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Failed to get size of file due to {exc}")  # noqa: G004
+            logger.debug(f"Failed to get size of file due to {exc}")
             logger.debug(traceback.format_exc())
         return None
 
@@ -296,7 +296,7 @@ class GcsSource(StorageServiceSource):
         )
         archive_entity = self.metadata.get_by_name(entity=Container, fqn=archive_fqn)
         if archive_entity is None:
-            logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")  # noqa: G004
+            logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")
             return
         archive_ref = EntityReference(id=archive_entity.id.root, type="container")  # pyright: ignore[reportCallIssue]
 
@@ -390,7 +390,7 @@ class GcsSource(StorageServiceSource):
                         yield structured_container
         except Exception as err:
             logger.warning(
-                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"  # noqa: G004
+                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"
             )
             logger.debug(traceback.format_exc())
 
@@ -402,7 +402,7 @@ class GcsSource(StorageServiceSource):
     ) -> Iterable[GCSContainerDetails]:
         for metadata_entry in entries:
             logger.info(
-                f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "  # noqa: G004
+                f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                 f"and generating structured container"
             )
             if is_archive_format(metadata_entry.structureFormat):
@@ -413,11 +413,11 @@ class GcsSource(StorageServiceSource):
                         parent=parent,
                     )
                 except (ValueError, OSError) as exc:
-                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")  # noqa: G004
+                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")
                     logger.debug(traceback.format_exc())
                 except Exception as exc:
                     logger.error(
-                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}",  # noqa: G004
+                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}",
                         exc_info=True,
                     )
                 continue
@@ -441,7 +441,7 @@ class GcsSource(StorageServiceSource):
             try:
                 bucket = client.get_bucket(bucket_name)
             except NotFound:
-                logger.warning(f"Bucket {bucket_name} not found in project {project_id}")  # noqa: G004
+                logger.warning(f"Bucket {bucket_name} not found in project {project_id}")
                 self.status.warning(f"{project_id}.{bucket_name}", "Bucket Not Found")
                 continue
             return GCSBucketResponse(
@@ -476,7 +476,7 @@ class GcsSource(StorageServiceSource):
                         )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch buckets list - {err}")  # noqa: G004
+            logger.error(f"Failed to fetch buckets list - {err}")
         return results
 
     def _get_time_interval(self, days: int = 2):
@@ -502,7 +502,7 @@ class GcsSource(StorageServiceSource):
             return point.value.int64_value  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed fetching metric {metric.value} for bucket {bucket.name}, returning 0")  # noqa: G004
+            logger.warning(f"Failed fetching metric {metric.value} for bucket {bucket.name}, returning 0")
         return 0
 
     def _generate_unstructured_container(self, bucket_response: GCSBucketResponse) -> GCSContainerDetails:
@@ -555,13 +555,13 @@ class GcsSource(StorageServiceSource):
                 # pick a random key out of the candidates if any were returned
                 if candidate_keys:
                     result_key = secrets.choice(candidate_keys)
-                    logger.info(f"File {result_key} was picked to infer data structure from.")  # noqa: G004
+                    logger.info(f"File {result_key} was picked to infer data structure from.")
                     return result_key
-                logger.warning(f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension")  # noqa: G004
+                logger.warning(f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension")
             return None  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error when trying to list objects in GCS bucket {bucket.name} at prefix {prefix}")  # noqa: G004
+            logger.warning(f"Error when trying to list objects in GCS bucket {bucket.name} at prefix {prefix}")
             return None
 
     def _get_bucket_source_url(self, bucket: GCSBucketResponse) -> str | None:
@@ -572,7 +572,7 @@ class GcsSource(StorageServiceSource):
             return f"https://console.cloud.google.com/storage/browser/{bucket.name}?project={bucket.project_id}"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def _get_object_source_url(self, bucket: GCSBucketResponse, prefix: str, is_file: bool = False) -> str | None:
@@ -591,7 +591,7 @@ class GcsSource(StorageServiceSource):
                 return f"https://console.cloud.google.com/storage/browser/{bucket.name}/{clean_prefix}?project={bucket.project_id}"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def _yield_parents_of_unstructured_container(
@@ -655,7 +655,7 @@ class GcsSource(StorageServiceSource):
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
                 logger.debug(
-                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} and generating unstructured container"  # noqa: G004
+                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} and generating unstructured container"
                 )
                 list_of_parent = key.strip(KEY_SEPARATOR).split(KEY_SEPARATOR)
                 yield from self._yield_parents_of_unstructured_container(
@@ -711,7 +711,7 @@ class GcsSource(StorageServiceSource):
                 )
             else:
                 logger.debug(
-                    f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "  # noqa: G004
+                    f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                     f"and generating unstructured container"
                 )
                 prefix = f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
@@ -739,7 +739,7 @@ class GcsSource(StorageServiceSource):
         Load the metadata template file from the root of the bucket, if it exists
         """
         try:
-            logger.info(f"Looking for metadata template file at - gs://{bucket.name}/{OPENMETADATA_TEMPLATE_FILE_NAME}")  # noqa: G004
+            logger.info(f"Looking for metadata template file at - gs://{bucket.name}/{OPENMETADATA_TEMPLATE_FILE_NAME}")
             reader = self.gcs_readers.get(bucket.project_id)
             response_object = reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
@@ -750,8 +750,8 @@ class GcsSource(StorageServiceSource):
             metadata_config = StorageContainerConfig.model_validate(content)
             return metadata_config  # noqa: RET504, TRY300
         except ReadException:
-            logger.warning(f"No metadata file found at gs://{bucket.name}/{OPENMETADATA_TEMPLATE_FILE_NAME}")  # noqa: G004
+            logger.warning(f"No metadata file found at gs://{bucket.name}/{OPENMETADATA_TEMPLATE_FILE_NAME}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed loading metadata file gs://{bucket.name}/{OPENMETADATA_TEMPLATE_FILE_NAME}-{exc}")  # noqa: G004
+            logger.warning(f"Failed loading metadata file gs://{bucket.name}/{OPENMETADATA_TEMPLATE_FILE_NAME}-{exc}")
         return None

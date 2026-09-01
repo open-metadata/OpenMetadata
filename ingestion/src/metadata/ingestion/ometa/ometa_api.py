@@ -359,11 +359,11 @@ class OpenMetadata(
                     payload = decode_jwt_token(jwt_token)
                     if payload:
                         if payload.get("sub"):
-                            logger.debug(f"Authenticated user: {payload.get('sub')}")  # noqa: G004
+                            logger.debug(f"Authenticated user: {payload.get('sub')}")
                         else:
                             logger.debug("Could not extract user name from JWT token")
             except Exception as e:
-                logger.debug(f"Error processing JWT token: {e}")  # noqa: G004
+                logger.debug(f"Error processing JWT token: {e}")
 
     @classmethod
     def from_env(cls) -> "OpenMetadata":
@@ -682,8 +682,8 @@ class OpenMetadata(
                 try:
                     entities.append(entity(**elmt))
                 except Exception as exc:
-                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")  # noqa: G004
-                    logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")  # noqa: G004
+                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
+                    logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]

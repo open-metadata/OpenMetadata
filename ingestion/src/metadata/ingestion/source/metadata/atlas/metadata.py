@@ -332,7 +332,7 @@ class AtlasSource(Source):
                 om_cols.append(om_column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error parsing column [{col}]: {exc}")  # noqa: G004
+                logger.warning(f"Error parsing column [{col}]: {exc}")
                 continue
         return om_cols
 
@@ -383,7 +383,7 @@ class AtlasSource(Source):
                         yield from self.yield_lineage(from_entity_ref, to_entity_ref)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"failed to parse lineage due to {exc}")  # noqa: G004
+            logger.debug(f"failed to parse lineage due to {exc}")
             yield Either(
                 left=StackTraceError(
                     name="Lineage",

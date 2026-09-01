@@ -136,7 +136,7 @@ class LightdashSource(DashboardServiceSource):
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating dashboard [{dashboard_details.name}]: {exc}")  # noqa: G004
+            logger.warning(f"Error creating dashboard [{dashboard_details.name}]: {exc}")
 
     def yield_dashboard_chart(self, dashboard_details: LightdashDashboard) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
@@ -147,7 +147,7 @@ class LightdashSource(DashboardServiceSource):
             Iterable[CreateChartRequest]
         """
         # charts = self.charts
-        logger.info(f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}")  # noqa: G004
+        logger.info(f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}")
         for chart in dashboard_details.charts:
             try:
                 chart_url = (
@@ -172,7 +172,7 @@ class LightdashSource(DashboardServiceSource):
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")  # noqa: G004
+                logger.warning(f"Error creating chart [{chart}]: {exc}")
 
     def yield_dashboard_lineage_details(
         self,

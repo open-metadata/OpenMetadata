@@ -115,7 +115,7 @@ class UnitycatalogLineageSource(Source):
         Bulk-fetch all table and column lineage from system tables into memory.
         """
         query_log_duration = self.source_config.queryLogDuration or 1  # pyright: ignore[reportAttributeAccessIssue]
-        logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")  # noqa: G004
+        logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")
 
         try:
             with self.engine.connect() as conn:
@@ -129,12 +129,12 @@ class UnitycatalogLineageSource(Source):
                         continue
                     self.table_lineage_map[row.target_table_full_name].add(row.source_table_full_name)
             logger.info(
-                f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "  # noqa: G004
+                f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "
                 f"for {len(self.table_lineage_map)} target tables"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to cache table lineage: {exc}")  # noqa: G004
+            logger.warning(f"Failed to cache table lineage: {exc}")
 
         try:
             with self.engine.connect() as conn:
@@ -150,12 +150,12 @@ class UnitycatalogLineageSource(Source):
                     )
                     self.column_lineage_map[table_key].append((row.source_column_name, row.target_column_name))
             logger.info(
-                f"Cached column lineage: {sum(len(v) for v in self.column_lineage_map.values())} "  # noqa: G004
+                f"Cached column lineage: {sum(len(v) for v in self.column_lineage_map.values())} "
                 f"column mappings for {len(self.column_lineage_map)} table pairs"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to cache column lineage: {exc}")  # noqa: G004
+            logger.warning(f"Failed to cache column lineage: {exc}")
 
     def _cache_external_locations(self):
         """
@@ -168,19 +168,19 @@ class UnitycatalogLineageSource(Source):
                 for row in rows:
                     table_fqn = f"{row.table_catalog}.{row.table_schema}.{row.table_name}"
                     self.external_location_map[table_fqn] = row.storage_path
-            logger.info(f"Cached {len(self.external_location_map)} external table locations")  # noqa: G004
+            logger.info(f"Cached {len(self.external_location_map)} external table locations")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to cache external table locations: {exc}")  # noqa: G004
+            logger.warning(f"Failed to cache external table locations: {exc}")
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> str | None:
         if not data_model_entity:
-            logger.debug(f"No data model entity provided for column: {column}")  # noqa: G004
+            logger.debug(f"No data model entity provided for column: {column}")
             return None
         for entity_column in data_model_entity.columns:
             if entity_column.displayName.lower() == column.lower():
                 return entity_column.fullyQualifiedName.root
-        logger.debug(f"Column '{column}' not found in data model with {len(data_model_entity.columns)} columns")  # noqa: G004
+        logger.debug(f"Column '{column}' not found in data model with {len(data_model_entity.columns)} columns")
         return None
 
     def _get_container_column_lineage(
@@ -202,7 +202,7 @@ class UnitycatalogLineageSource(Source):
                 )
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error computing container column lineage for {table_entity.fullyQualifiedName.root}: {exc}")  # noqa: G004
+            logger.debug(f"Error computing container column lineage for {table_entity.fullyQualifiedName.root}: {exc}")
             logger.debug(traceback.format_exc())
             return None
 
@@ -230,7 +230,7 @@ class UnitycatalogLineageSource(Source):
                 return LineageDetails(columnsLineage=col_lineage, source=LineageSource.QueryLineage)
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error computing column lineage: {exc}")  # noqa: G004
+            logger.debug(f"Error computing column lineage: {exc}")
             logger.debug(traceback.format_exc())
             return None
 
@@ -270,7 +270,7 @@ class UnitycatalogLineageSource(Source):
                     ),
                 )
         except Exception as exc:
-            logger.debug(f"Error processing external location lineage for {databricks_table_fqn}: {exc}")  # noqa: G004
+            logger.debug(f"Error processing external location lineage for {databricks_table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
     def _process_table_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
@@ -280,7 +280,7 @@ class UnitycatalogLineageSource(Source):
             try:
                 parts = source_table_full_name.split(".")
                 if len(parts) != 3:
-                    logger.debug(f"Skipping malformed source table name: {source_table_full_name}")  # noqa: G004
+                    logger.debug(f"Skipping malformed source table name: {source_table_full_name}")
                     continue
                 catalog_name, schema_name, table_name = parts
 
@@ -295,7 +295,7 @@ class UnitycatalogLineageSource(Source):
 
                 from_entity = self.metadata.get_by_name(entity=Table, fqn=from_entity_fqn)
                 if not from_entity:
-                    logger.debug(f"Unable to find upstream entity: {source_table_full_name} -> {databricks_table_fqn}")  # noqa: G004
+                    logger.debug(f"Unable to find upstream entity: {source_table_full_name} -> {databricks_table_fqn}")
                     continue
 
                 lineage_details = self._get_column_lineage_details(
@@ -315,7 +315,7 @@ class UnitycatalogLineageSource(Source):
                     ),
                 )
             except Exception as exc:
-                logger.debug(f"Error processing lineage {source_table_full_name} -> {databricks_table_fqn}: {exc}")  # noqa: G004
+                logger.debug(f"Error processing lineage {source_table_full_name} -> {databricks_table_fqn}: {exc}")
                 logger.debug(traceback.format_exc())
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:

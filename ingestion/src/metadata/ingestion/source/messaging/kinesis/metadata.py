@@ -99,7 +99,7 @@ class KinesisSource(MessagingServiceSource):
                     args.ExclusiveStartStreamName = all_topics[-1]
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to fetch kinesis stream - {err}")  # noqa: G004
+                logger.error(f"Failed to fetch kinesis stream - {err}")
         return all_topics
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
@@ -116,12 +116,12 @@ class KinesisSource(MessagingServiceSource):
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to yield kinesis topic - {err}")  # noqa: G004
+                logger.error(f"Failed to yield kinesis topic - {err}")
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         """Method to yield the create topic request"""
         try:
-            logger.info(f"Fetching topic details {topic_details.topic_name}")  # noqa: G004
+            logger.info(f"Fetching topic details {topic_details.topic_name}")
 
             source_url = (
                 f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/kinesis/home"
@@ -164,7 +164,7 @@ class KinesisSource(MessagingServiceSource):
             return KinesisSummaryModel(**topic_summary)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")  # noqa: G004
+            logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")
         return None
 
     def _get_topic_partitions(self, topic_name: str) -> list[str]:
@@ -185,7 +185,7 @@ class KinesisSource(MessagingServiceSource):
                 args.NextToken = has_more_partitions
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")  # noqa: G004
+            logger.warning(f"Error while fetching topic partitions for topic: {topic_name} - {err}")
         return all_partitions
 
     def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[OMetaTopicSampleData]:
@@ -238,7 +238,7 @@ class KinesisSource(MessagingServiceSource):
                     break
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while fetching sample data for topic: {topic_name} - {err}")  # noqa: G004
+            logger.warning(f"Error while fetching sample data for topic: {topic_name} - {err}")
         return TopicSampleData(messages=data)
 
     def _get_sample_records(self, records: list[KinesisData]) -> list:
@@ -253,5 +253,5 @@ class KinesisSource(MessagingServiceSource):
                         sample_data.append(record_data.decode(UTF_8))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while fetching sample records for topics - {err}")  # noqa: G004
+            logger.warning(f"Error while fetching sample records for topics - {err}")
         return sample_data

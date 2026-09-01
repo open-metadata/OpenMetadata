@@ -152,7 +152,7 @@ class OMetaLineageMixin(Generic[T]):
             if err.status_code != 404:
                 logger.debug(traceback.format_exc())
                 logger.debug(
-                    f"Error {err.status_code} trying to GET lineage edge between {from_entity} and {to_entity}: {err}"  # noqa: G004
+                    f"Error {err.status_code} trying to GET lineage edge between {from_entity} and {to_entity}: {err}"
                 )
             return None
 
@@ -185,7 +185,7 @@ class OMetaLineageMixin(Generic[T]):
             if err.status_code != 404:
                 logger.debug(traceback.format_exc())
                 logger.debug(
-                    f"Error {err.status_code} trying to GET lineage edge between "  # noqa: G004
+                    f"Error {err.status_code} trying to GET lineage edge between "
                     f"{from_entity_type}:{from_entity_fqn} and {to_entity_type}:{to_entity_fqn}: {err}"
                 )
             return None
@@ -209,7 +209,7 @@ class OMetaLineageMixin(Generic[T]):
                 if data.get("toColumn") and data.get("fromColumns"):
                     flat_updated_result.add((*data.get("fromColumns", []), data.get("toColumn")))
         except Exception as exc:
-            logger.debug(f"Error while merging column lineage: {exc}")  # noqa: G004
+            logger.debug(f"Error while merging column lineage: {exc}")
             logger.debug(traceback.format_exc())
         union_result = flat_original_result.union(flat_updated_result)
         if flat_original_result == union_result:
@@ -227,7 +227,7 @@ class OMetaLineageMixin(Generic[T]):
                     )
                     return
         except Exception as e:
-            logger.debug(f"Error while updating cache: {e}")  # noqa: G004
+            logger.debug(f"Error while updating cache: {e}")
 
         search_cache.put(self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity), None)
 
@@ -424,7 +424,7 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             if err.status_code != 404:
                 logger.debug(traceback.format_exc())
-                logger.debug(f"Error {err.status_code} trying to GET linage edge between {from_id} and {to_id}: {err}")  # noqa: G004
+                logger.debug(f"Error {err.status_code} trying to GET linage edge between {from_id} and {to_id}: {err}")
             return None
 
     def patch_lineage_edge(
@@ -460,7 +460,7 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error Patching Lineage Edge {err.status_code} for {original.edge.fromEntity.fullyQualifiedName}"  # noqa: G004
+                f"Error Patching Lineage Edge {err.status_code} for {original.edge.fromEntity.fullyQualifiedName}"
             )
         except ValueError as err:
             logger.debug(str(err))
@@ -493,7 +493,7 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error Patching Lineage Edge {err.status_code} for "  # noqa: G004
+                f"Error Patching Lineage Edge {err.status_code} for "
                 f"{from_entity_type}:{from_entity_fqn} -> {to_entity_type}:{to_entity_fqn}"
             )
         return False
@@ -575,7 +575,7 @@ class OMetaLineageMixin(Generic[T]):
             )
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")  # noqa: G004
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
 
     def delete_lineage_by_name(
         self,
@@ -592,7 +592,7 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error {err.status_code} trying to DELETE lineage for "  # noqa: G004
+                f"Error {err.status_code} trying to DELETE lineage for "
                 f"{from_entity_type}:{from_entity_fqn} -> {to_entity_type}:{to_entity_fqn}"
             )
 
@@ -605,7 +605,7 @@ class OMetaLineageMixin(Generic[T]):
             self.client.delete(f"{self.get_suffix(AddLineageRequest)}/{entity_type}/{entity_id}/type/{source}")
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}")  # noqa: G004
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}")
 
     @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def delete_lineage_by_source_by_name(self, entity_type: str, entity_fqn: str, source: str) -> None:
@@ -616,7 +616,7 @@ class OMetaLineageMixin(Generic[T]):
             self.client.delete(f"{LINEAGE_ROUTE}/source/name/{entity_type}/{quote(entity_fqn)}/type/{source}")
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_fqn} of type {source}")  # noqa: G004
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_fqn} of type {source}")
 
     def add_lineage_by_query(
         self,
@@ -666,9 +666,9 @@ class OMetaLineageMixin(Generic[T]):
 
                     entity_name = resp.get("entity", {}).get("name")
                     for node in resp.get("nodes", []):
-                        logger.info(f"added lineage between table {node.get('name')} and {entity_name} ")  # noqa: G004
+                        logger.info(f"added lineage between table {node.get('name')} and {entity_name} ")
                 elif lineage_request.left:
-                    logger.error(f"Error while adding lineage: {lineage_request.left.error}")  # noqa: G004
+                    logger.error(f"Error while adding lineage: {lineage_request.left.error}")
 
     @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def patch_lineage_processed_flag(
@@ -692,5 +692,5 @@ class OMetaLineageMixin(Generic[T]):
                 data=json.dumps(patch),
             )
         except Exception as exc:
-            logger.debug(f"Error while patching lineage processed flag: {exc}")  # noqa: G004
+            logger.debug(f"Error while patching lineage processed flag: {exc}")
             logger.debug(traceback.format_exc())

@@ -197,7 +197,7 @@ class AmundsenSource(Source):
         )
 
         if not user_entity_ref:
-            logger.warning(f"No entity found for user {user['full_name']}")  # noqa: G004
+            logger.warning(f"No entity found for user {user['full_name']}")
 
         for entity in user["entities_owned"]:
             try:
@@ -227,7 +227,7 @@ class AmundsenSource(Source):
                     yield Either(right=table)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to create user entity [{user}]: {exc}")  # noqa: G004
+                logger.error(f"Failed to create user entity [{user}]: {exc}")
                 yield Either(
                     left=StackTraceError(
                         name=user.get("full_name") or "User",
@@ -368,7 +368,7 @@ class AmundsenSource(Source):
         config = WorkflowSource.model_validate(SUPERSET_DEFAULT_CONFIG)
         create_service_entity = self.metadata.get_create_service_from_source(entity=DashboardService, config=config)
         yield Either(right=create_service_entity)
-        logger.info(f"Created Dashboard Service {service_name}")  # noqa: G004
+        logger.info(f"Created Dashboard Service {service_name}")
         self.dashboard_service = self.metadata.get_by_name(entity=DashboardService, fqn=service_name)
 
     def create_dashboard_entity(self, dashboard) -> Iterable[Either[CreateDashboardRequest]]:
@@ -442,7 +442,7 @@ class AmundsenSource(Source):
 
         if service is not None:
             return service
-        logger.error(f"Please create a service with name {service_name}")  # noqa: G004
+        logger.error(f"Please create a service with name {service_name}")
         return None
 
     def test_connection(self) -> None:

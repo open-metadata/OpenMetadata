@@ -109,7 +109,7 @@ class SaphanaLineageSource(Source):
                 error_code = getattr(getattr(exc, "orig", None), "errorcode", None)
                 if error_code not in (362, 259):
                     raise
-                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")  # noqa: G004
+                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")
                 result = []
             for row in result:
                 try:
@@ -125,7 +125,7 @@ class SaphanaLineageSource(Source):
                         )
                         continue
 
-                    logger.debug(f"Processing lineage for view: {lineage_model.name}")  # noqa: G004
+                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
                     yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
                 except Exception as exc:
                     self.status.failed(

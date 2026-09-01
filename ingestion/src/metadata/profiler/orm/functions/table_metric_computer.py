@@ -299,7 +299,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             return self.tables()
         except Exception as exc:
             # if an error occurs fetching data from `__TABLES__`, fallback to `TABLE_STORAGE`
-            logger.debug(f"Error retrieving table metadata from `__TABLES__`: {exc}")  # noqa: G004
+            logger.debug(f"Error retrieving table metadata from `__TABLES__`: {exc}")
             return self.table_storage()
 
     def table_storage(self):

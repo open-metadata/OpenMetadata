@@ -46,7 +46,7 @@ class OMetaIngestionPipelineMixin:
             f"{self.get_suffix(IngestionPipeline)}/{quote(ingestion_pipeline_fqn)}/pipelineStatus",
             data=pipeline_status.model_dump_json(),
         )
-        logger.debug(f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}")  # noqa: G004
+        logger.debug(f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}")
         return resp
 
     def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> PipelineStatus | None:
@@ -137,5 +137,5 @@ class OMetaIngestionPipelineMixin:
             if pipeline and hasattr(pipeline, "id"):
                 return str(pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id)
         except Exception as e:
-            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")  # noqa: G004
+            logger.error(f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}")
         return None

@@ -142,13 +142,13 @@ class OpenLineageOwnerResolver:
             user_ref = self._user_owner_ref_by_name.get(owner_key)
             if team_ref and user_ref:
                 logger.warning(
-                    f"OpenLineage owner [{raw_owner_name}] matched both a team "  # noqa: G004
+                    f"OpenLineage owner [{raw_owner_name}] matched both a team "
                     "and a user. Using the team for pipeline ownership."
                 )
             owner_ref = team_ref or user_ref
 
         if not owner_ref:
-            logger.warning(f"Unable to resolve OpenLineage owner [{raw_owner_name}] for pipeline ownership.")  # noqa: G004
+            logger.warning(f"Unable to resolve OpenLineage owner [{raw_owner_name}] for pipeline ownership.")
         return owner_ref
 
     def _ensure_pipeline_owner_cache(self) -> None:
@@ -194,7 +194,7 @@ class OpenLineageOwnerResolver:
                             ):
                                 pipeline_owner_refs.append(team_ref)
         except Exception as exc:
-            logger.warning(f"Unable to load OpenMetadata teams for owner cache: {exc}")  # noqa: G004
+            logger.warning(f"Unable to load OpenMetadata teams for owner cache: {exc}")
 
         try:
             for user in self.metadata.list_all_entities(
@@ -229,7 +229,7 @@ class OpenLineageOwnerResolver:
                             ):
                                 pipeline_owner_refs.append(user_ref)
         except Exception as exc:
-            logger.warning(f"Unable to load OpenMetadata users for owner cache: {exc}")  # noqa: G004
+            logger.warning(f"Unable to load OpenMetadata users for owner cache: {exc}")
 
         self._team_owner_ref_by_name = team_owner_ref_by_name
         self._user_owner_ref_by_name = user_owner_ref_by_name

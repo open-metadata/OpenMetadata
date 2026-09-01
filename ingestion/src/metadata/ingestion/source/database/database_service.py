@@ -631,7 +631,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             getattr(self.source_config, "storedProcedureFilterPattern", None),
             (stored_procedure_fqn if self.source_config.useFqnForFiltering else stored_procedure_name),
         ):
-            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")  # noqa: G004
+            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")
             return True
         return False
 
@@ -663,7 +663,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for database {database_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing owner for database {database_name}: {exc}")
 
         return None
 
@@ -699,7 +699,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")
 
         return None
 
@@ -749,7 +749,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 return owner_ref  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return None
 
     def mark_tables_as_deleted(self):
@@ -760,7 +760,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
         if self.source_config.markDeletedTables:
-            logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # noqa: G004
+            logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
             schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
 
             for schema_fqn in schema_fqn_list:
@@ -777,7 +777,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         Use the current inspector to mark Stored Procedures as deleted
         """
         if self.source_config.markDeletedStoredProcedures:
-            logger.info(f"Mark Deleted Stored Procedures Processing database [{self.context.get().database}]")  # noqa: G004
+            logger.info(f"Mark Deleted Stored Procedures Processing database [{self.context.get().database}]")
 
             schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
 
@@ -796,7 +796,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.markDeletedDatabases:
             logger.info(
-                f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"  # noqa: G004
+                f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"
             )
 
             # We need to include ALL databases from the source in the source state
@@ -834,7 +834,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             raise ValueError("No Database found in the context. We cannot run the schema deletion.")
 
         if self.source_config.markDeletedSchemas:
-            logger.info(f"Mark Deleted Schemas set to True. Processing database [{self.context.get().database}]")  # noqa: G004
+            logger.info(f"Mark Deleted Schemas set to True. Processing database [{self.context.get().database}]")
 
             # Build the database FQN to use as parameter
             database_fqn = fqn.build(

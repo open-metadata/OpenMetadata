@@ -54,7 +54,7 @@ def run_profiler(
 class ProfilerTestParameters:
     table_fqn: str
     expected_table_profile: TableProfile
-    expected_column_profiles: list[ColumnProfile] = None
+    expected_column_profiles: list[ColumnProfile]
     config_predicate: Callable[[DatabaseServiceProfilerPipeline], bool] = lambda x: True
 
 

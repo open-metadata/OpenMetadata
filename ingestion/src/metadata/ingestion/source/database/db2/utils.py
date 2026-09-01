@@ -84,9 +84,9 @@ def get_columns_os390(self, connection, table_name, schema=None, **kw):  # pylin
             coltype = self.ischema_names[coltype]
         else:
             if not coltype:
-                logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")  # noqa: G004
+                logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")
             else:
-                logger.warning(f"Did not recognize type '{coltype}' of column '{r[0]}' - ingesting as UNKNOWN")  # noqa: G004
+                logger.warning(f"Did not recognize type '{coltype}' of column '{r[0]}' - ingesting as UNKNOWN")
             coltype = sa_types.NULLTYPE
 
         sa_columns.append(
@@ -152,7 +152,7 @@ def check_clidriver_version(clidriver_version: str):
     Check if the CLI Driver version is valid
     """
     if clidriver_version not in [v.value for v in DB2CLIDriverVersions]:
-        logger.warning(f"Invalid CLI Driver version provided: {clidriver_version}")  # noqa: G004
+        logger.warning(f"Invalid CLI Driver version provided: {clidriver_version}")
         return None
     return DB2CLIDriverVersions(clidriver_version)
 

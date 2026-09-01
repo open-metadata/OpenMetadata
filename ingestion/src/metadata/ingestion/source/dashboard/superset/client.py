@@ -168,7 +168,7 @@ class SupersetAPIClient:
                 return dashboard  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch dashboard {dashboard_id}")  # noqa: G004
+            logger.warning(f"Failed to fetch dashboard {dashboard_id}")
         return FetchedDashboard()
 
     def get_chart_count(self) -> int:

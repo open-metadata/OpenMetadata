@@ -164,7 +164,7 @@ class QlikCloudClient:
                 return QlikApp(**resp_dashboard.get("attributes"))
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
     def get_dashboard_models(self) -> list[QlikTable]:

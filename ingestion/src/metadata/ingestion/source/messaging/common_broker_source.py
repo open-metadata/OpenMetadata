@@ -118,9 +118,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         try:
             schema_type_map = {key.lower(): value.value for key, value in SchemaType.__members__.items()}
-            logger.info(f"Fetching topic schema {topic_details.topic_name}")  # noqa: G004
+            logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
-            logger.info(f"Fetching topic config {topic_details.topic_name}")  # noqa: G004
+            logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
@@ -195,7 +195,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
         except (KafkaException, KafkaError) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")  # noqa: G004
+            logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
     def _get_schema_text_with_references(self, schema) -> str | None:
         """
@@ -215,7 +215,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 return schema_text
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get schema with references: {exc}")  # noqa: G004
+            logger.error(f"Failed to get schema with references: {exc}")
         return None
 
     def _parse_topic_metadata(self, topic_name: str) -> Schema | None:
@@ -232,7 +232,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(
                 (  # noqa: UP034
-                    f"Failed to get schema for topic [{topic_name}] "  # noqa: G004
+                    f"Failed to get schema for topic [{topic_name}] "
                     f"(looking for {topic_schema_registry_name}) in registry: {exc}"
                 )
             )
@@ -257,7 +257,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             try:
                 if self.consumer_client:
                     self.consumer_client.subscribe([topic_name], on_assign=on_partitions_assignment_to_consumer)
-                    logger.info(f"Broker consumer polling for sample messages in topic {topic_name}")  # noqa: G004
+                    logger.info(f"Broker consumer polling for sample messages in topic {topic_name}")
                     messages = []
                     n_poll = 10
                     total_timeout = 10
@@ -270,14 +270,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                                 break
                             msg = self.consumer_client.poll(timeout=remaining)
                         except KafkaException as exc:
-                            logger.warning(f"Consumer error polling topic {topic_name}: {exc}")  # noqa: G004
+                            logger.warning(f"Consumer error polling topic {topic_name}: {exc}")
                             continue
                         if msg is None:
                             break
                         if msg.error():
                             # End of a partition is not a failure; other partitions may still have data.
                             if msg.error().code() != KafkaError._PARTITION_EOF:
-                                logger.warning(f"Consumer error polling topic {topic_name}: {msg.error()}")  # noqa: G004
+                                logger.warning(f"Consumer error polling topic {topic_name}: {msg.error()}")
                             continue
                         messages.append(msg)
             except Exception as exc:
@@ -301,7 +301,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                                 )
                             )
                         except Exception as exc:
-                            logger.warning(f"Failed to decode sample data from topic {topic_name}: {exc}")  # noqa: G004
+                            logger.warning(f"Failed to decode sample data from topic {topic_name}: {exc}")
             if self.consumer_client:
                 self.consumer_client.unsubscribe()
             yield Either(

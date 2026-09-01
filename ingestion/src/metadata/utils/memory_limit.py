@@ -97,7 +97,7 @@ class MemoryMonitor:
 
             context_str = f"[{self.context}] " if self.context else ""
             logger.debug(
-                f"{context_str}Memory monitor stopped for {self.function_name}(). Peak function memory: {peak_mb:.2f}MB"  # noqa: G004
+                f"{context_str}Memory monitor stopped for {self.function_name}(). Peak function memory: {peak_mb:.2f}MB"
             )
 
     def start(self):
@@ -168,7 +168,7 @@ def memory_limit(
 
                 if verbose:
                     logger.debug(
-                        f"{context_str}Started memory monitoring for {fn.__name__}() (limit: {max_memory_mb}MB)"  # noqa: G004
+                        f"{context_str}Started memory monitoring for {fn.__name__}() (limit: {max_memory_mb}MB)"
                     )
 
                 result = fn(*args, **kwargs)
@@ -180,7 +180,7 @@ def memory_limit(
             except MemoryLimitExceeded:
                 peak_mb = monitor.peak_memory / BYTES_PER_MB
                 logger.error(
-                    f"{context_str}Function {fn.__name__}() exceeded memory limit of {max_memory_mb}MB. "  # noqa: G004
+                    f"{context_str}Function {fn.__name__}() exceeded memory limit of {max_memory_mb}MB. "
                     f"Peak usage: {peak_mb:.2f}MB"
                 )
                 raise MemoryLimitExceeded(  # noqa: B904

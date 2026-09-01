@@ -151,7 +151,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         data: list
         if operation is PatchOperation.REMOVE:
             if len(instance.policies.root) == 1:
-                logger.error(f"The Role with id [{model_str(entity_id)}] has only one (1) policy. Unable to remove.")  # noqa: G004
+                logger.error(f"The Role with id [{model_str(entity_id)}] has only one (1) policy. Unable to remove.")
                 return None
 
             data = [
@@ -213,7 +213,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
             if not is_policy_found:
                 logger.error(
-                    f"Policy [{model_str(policy_id)}] not found for Role [{model_str(entity_id)}]. No policies removed."  # noqa: G004
+                    f"Policy [{model_str(policy_id)}] not found for Role [{model_str(entity_id)}]. No policies removed."
                 )
                 return None
         else:
@@ -237,7 +237,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")  # noqa: G004
+            logger.error(f"Error trying to PATCH policies for Role [{model_str(entity_id)}]: {exc}")
 
         return None
 
@@ -289,7 +289,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         else:
             if rule_index == 0:
-                logger.error(f"Unable to remove only rule from Policy [{entity_id}].")  # noqa: G004
+                logger.error(f"Unable to remove only rule from Policy [{entity_id}].")
                 return None
 
             data = [
@@ -305,7 +305,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                     break
 
                 if rule_index == 0:
-                    logger.error(f"Rule [{rule.name}] not found in Policy [{entity_id}]. Unable to remove rule.")  # noqa: G004
+                    logger.error(f"Rule [{rule.name}] not found in Policy [{entity_id}]. Unable to remove rule.")
                     return None
 
                 previous_rule: Rule = instance.rules.root[rule_index - 1]
@@ -376,6 +376,6 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")  # noqa: G004
+            logger.error(f"Error trying to PATCH description for Role [{model_str(entity_id)}]: {exc}")
 
         return None

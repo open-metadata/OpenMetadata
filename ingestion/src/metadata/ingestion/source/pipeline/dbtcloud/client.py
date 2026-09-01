@@ -157,7 +157,7 @@ class DBTCloudClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Failed to get job info for project_id: `{project_id}`, "  # noqa: G004
+                f"Failed to get job info for project_id: `{project_id}`, "
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
@@ -226,7 +226,7 @@ class DBTCloudClient:
                 yield from self._get_jobs()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get job info :{exc}")  # noqa: G004
+            logger.error(f"Unable to get job info :{exc}")
 
     def _get_jobs_total_count(
         self,
@@ -252,7 +252,7 @@ class DBTCloudClient:
                 return job_list_response.extra.pagination.total_count
         except Exception as exc:
             logger.debug(
-                f"Could not fetch job count for project_id: `{project_id}`, environment_id: `{environment_id}` : {exc}"  # noqa: G004
+                f"Could not fetch job count for project_id: `{project_id}`, environment_id: `{environment_id}` : {exc}"
             )
         return 0
 
@@ -277,7 +277,7 @@ class DBTCloudClient:
 
             return self._get_jobs_total_count()
         except Exception as exc:
-            logger.debug(f"Could not fetch job count: {exc}")  # noqa: G004
+            logger.debug(f"Could not fetch job count: {exc}")
         return None
 
     def get_latest_successful_run_id(self, job_id: int) -> int | None:
@@ -302,7 +302,7 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
             return None
 
     def get_latest_run(self, job_id: int) -> DBTRun | None:
@@ -327,7 +327,7 @@ class DBTCloudClient:
                 latest_run = runs[0]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get latest run for job {job_id}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get latest run for job {job_id}: {exc}")
         return latest_run
 
     def get_runs(self, job_id: int, lookback_days: int | None = None) -> Iterable[DBTRun]:
@@ -386,7 +386,7 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get run info :{exc}")  # noqa: G004
+            logger.error(f"Unable to get run info :{exc}")
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
@@ -405,7 +405,7 @@ class DBTCloudClient:
             if result.get("data") and result["data"].get("job"):
                 model_list = DBTModelList.model_validate(result["data"]["job"])
                 logger.debug(
-                    f"Successfully fetched models and seeds from dbt for "  # noqa: G004
+                    f"Successfully fetched models and seeds from dbt for "
                     f"job_id:{job_id} run_id:{run_id}: "
                     f"models={len(model_list.models or [])}, seeds={len(model_list.seeds or [])}, sources={len(model_list.sources or [])}"
                 )
@@ -413,5 +413,5 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get models with lineage info: {exc}")  # noqa: G004
+            logger.error(f"Unable to get models with lineage info: {exc}")
         return None, None, None

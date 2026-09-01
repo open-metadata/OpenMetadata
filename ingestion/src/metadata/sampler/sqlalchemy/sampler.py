@@ -326,7 +326,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 if self._handle_array_column(col):
                     slice_expression = self._get_slice_expression(col)
                     select_columns.append(slice_expression)
-                    logger.debug(f"Limiting array column {col.name} to {max_elements} elements to prevent OOM")  # noqa: G004
+                    logger.debug(f"Limiting array column {col.name} to {max_elements} elements to prevent OOM")
                     has_array_columns = True
                 else:
                     select_columns.append(col)
@@ -412,7 +412,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         try:
             self.connection.pool.dispose()
         except Exception as e:
-            logger.warning(f"Error disposing connection pool: {e}")  # noqa: G004
+            logger.warning(f"Error disposing connection pool: {e}")
 
     def __del__(self):
         """Destructor to ensure cleanup when object is garbage collected"""

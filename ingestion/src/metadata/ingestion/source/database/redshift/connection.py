@@ -247,7 +247,7 @@ class RedshiftIamCredentialManager:
             # a connection while the current credential is still valid; keep serving it
             # and retry on the next connection.
             if self._credential is not None and not self._is_expired():
-                logger.warning(f"Redshift IAM credential refresh failed ({exc}); reusing cached credential")  # noqa: G004
+                logger.warning(f"Redshift IAM credential refresh failed ({exc}); reusing cached credential")
                 return
             raise
         expiration = credential.expiration

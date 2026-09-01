@@ -79,13 +79,13 @@ class MWAAClient:
                 try:
                     return json.loads(rest_api_response)
                 except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse MWAA response as JSON: {rest_api_response}")  # noqa: G004
+                    logger.warning(f"Failed to parse MWAA response as JSON: {rest_api_response}")
                     return {"raw_response": rest_api_response}
 
             return rest_api_response  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"MWAA REST API call failed for {path}: {e}")  # noqa: G004
+            logger.error(f"MWAA REST API call failed for {path}: {e}")
             logger.debug(traceback.format_exc())
             raise
 
@@ -222,7 +222,7 @@ class MWAAClient:
             response = self.list_dag_runs(dag_id, limit=limit)
             runs_data = response.get("dag_runs", [])
         except Exception as exc:
-            logger.warning(f"Could not fetch dag runs for {dag_id}: {exc}")  # noqa: G004
+            logger.warning(f"Could not fetch dag runs for {dag_id}: {exc}")
             return []
 
         result = []
@@ -245,7 +245,7 @@ class MWAAClient:
             path = f"/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
             instances_data = self._paginate(path, key="task_instances")
         except Exception as exc:
-            logger.warning(f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}")  # noqa: G004
+            logger.warning(f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}")
             return []
 
         return [

@@ -49,7 +49,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
         query = None
         try:
             query = self.get_sql_statement()
-            logger.debug(f"Executing usage query: {query}")  # noqa: G004
+            logger.debug(f"Executing usage query: {query}")
             with get_connection(self.service_connection).connect() as conn:
                 rows = conn.execute(text(query))
                 queries = []
@@ -74,7 +74,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                     except Exception as err:
                         logger.debug(traceback.format_exc())
                         logger.error(str(err))
-            logger.info(f"Processed {row_count} query log entries for usage")  # noqa: G004
+            logger.info(f"Processed {row_count} query log entries for usage")
             if queries:
                 yield TableQueries(queries=queries)
 
@@ -88,7 +88,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 f"while reading query logs from [{query_source}]: {err}"
             )
             if query:
-                logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")  # noqa: G004
+                logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
             logger.debug(stack_trace)
             logger.error(error_message)
             self.status.failed(

@@ -188,7 +188,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             if hasattr(self.inspector, "info_cache"):
                 self.inspector.info_cache.clear()
         except Exception as exc:
-            logger.debug(f"Failed to clear reflection cache: {exc}")  # noqa: G004
+            logger.debug(f"Failed to clear reflection cache: {exc}")
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
@@ -355,7 +355,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")  # noqa: G004
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
     def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
         """
@@ -436,7 +436,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
-                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # noqa: G004
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,

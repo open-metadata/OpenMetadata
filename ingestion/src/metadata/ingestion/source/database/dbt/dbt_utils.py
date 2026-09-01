@@ -449,7 +449,7 @@ def _validate_entity_reference_type(
             converted = format_entity_reference(entity, entity_type)
             return True, None, converted
         else:  # noqa: RET505
-            logger.warning(f"Entity not found: type={entity_type}, fqn={entity_fqn}")  # noqa: G004
+            logger.warning(f"Entity not found: type={entity_type}, fqn={entity_fqn}")
             return (
                 False,
                 f"Entity not found: type={entity_type}, fqn={entity_fqn}",
@@ -574,7 +574,7 @@ def validate_custom_property_value(
     validator = CUSTOM_PROPERTY_TYPE_VALIDATORS.get(property_type)
 
     if not validator:
-        logger.warning(f"Unknown custom property type: {property_type}")  # noqa: G004
+        logger.warning(f"Unknown custom property type: {property_type}")
         return False, f"Unknown property type: {property_type}", None
 
     # Run validation and conversion
@@ -583,7 +583,7 @@ def validate_custom_property_value(
         is_valid, error_msg, converted_value = validator(value, property_config, metadata)
         return is_valid, error_msg, converted_value  # noqa: TRY300
     except Exception as exc:
-        logger.debug(f"Validation exception for {property_name}: {exc}")  # noqa: G004
+        logger.debug(f"Validation exception for {property_name}: {exc}")
         logger.debug(traceback.format_exc())
         return False, f"Validation error: {str(exc)}", None  # noqa: RUF010
 
@@ -618,7 +618,7 @@ def create_test_case_parameter_definitions(dbt_test):
             return test_case_param_definition  # noqa: RET504
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")  # noqa: G004
+        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")
     return None
 
 
@@ -652,7 +652,7 @@ def create_test_case_parameter_values(dbt_test):
             return test_case_param_values  # noqa: RET504
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")  # noqa: G004
+        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")
     return None
 
 
@@ -885,7 +885,7 @@ def get_dbt_compiled_query(mnode) -> str | None:
         return mnode.compiled_code
     if hasattr(mnode, CompiledQueriesEnum.COMPILED_SQL.value) and mnode.compiled_sql:
         return mnode.compiled_sql
-    logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")  # noqa: G004
+    logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
     return None
 
 
@@ -897,7 +897,7 @@ def get_dbt_raw_query(mnode) -> str | None:
         return mnode.raw_code
     if hasattr(mnode, RawQueriesEnum.RAW_SQL.value) and mnode.raw_sql:
         return mnode.raw_sql
-    logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")  # noqa: G004
+    logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")
     return None
 
 
@@ -1043,20 +1043,20 @@ def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity
     # Get entity class
     entity_class = ENTITY_TYPE_MAP.get(entity_type)
     if not entity_class:
-        logger.warning(f"Unknown entity type: {entity_type}")  # noqa: G004
+        logger.warning(f"Unknown entity type: {entity_type}")
         return None
 
     try:
         # Fetch entity from OpenMetadata by FQN
         entity = metadata.get_by_name(entity=entity_class, fqn=entity_fqn)
         if entity:
-            logger.debug(f"Found {entity_type} entity: {entity_fqn}")  # noqa: G004
+            logger.debug(f"Found {entity_type} entity: {entity_fqn}")
             return entity
         else:  # noqa: RET505
-            logger.warning(f"{entity_type} entity not found: {entity_fqn}")  # noqa: G004
+            logger.warning(f"{entity_type} entity not found: {entity_fqn}")
             return None
     except Exception as exc:
-        logger.warning(f"Error finding {entity_type} entity '{entity_fqn}': {exc}")  # noqa: G004
+        logger.warning(f"Error finding {entity_type} entity '{entity_fqn}': {exc}")
         logger.debug(traceback.format_exc())
         return None
 
@@ -1258,7 +1258,7 @@ def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Any | None:
         domain_entity = metadata.get_by_name(entity=Domain, fqn=domain_name)
         return domain_entity  # noqa: RET504, TRY300
     except Exception as exc:
-        logger.warning(f"Error finding domain {domain_name}: {exc}")  # noqa: G004
+        logger.warning(f"Error finding domain {domain_name}: {exc}")
         logger.debug(traceback.format_exc())
         return None
 
@@ -1283,5 +1283,5 @@ def format_domain_reference(domain_entity: Any) -> dict[str, Any] | None:
             "fullyQualifiedName": domain_fqn,
         }
     except Exception as exc:
-        logger.warning(f"Error formatting domain reference: {exc}")  # noqa: G004
+        logger.warning(f"Error formatting domain reference: {exc}")
         return None

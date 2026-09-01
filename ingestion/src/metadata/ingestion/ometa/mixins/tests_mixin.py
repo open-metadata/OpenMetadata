@@ -104,7 +104,7 @@ class OMetaTestsMixin:
         if test_suite:
             return test_suite
 
-        logger.info(f"TestSuite {test_suite_name} not found. Creating new TestSuite: {test_suite_name}")  # noqa: G004
+        logger.info(f"TestSuite {test_suite_name} not found. Creating new TestSuite: {test_suite_name}")
 
         return self.create_or_update(
             CreateTestSuiteRequest(
@@ -144,7 +144,7 @@ class OMetaTestsMixin:
             return test_definition
 
         logger.info(
-            f"TestDefinition {test_definition_fqn} not found. Creating new TestDefinition: {test_definition_fqn}"  # noqa: G004
+            f"TestDefinition {test_definition_fqn} not found. Creating new TestDefinition: {test_definition_fqn}"
         )
 
         return self.create_or_update(
@@ -182,7 +182,7 @@ class OMetaTestsMixin:
         if test_case:
             return test_case
 
-        logger.info(f"TestCase {test_case_fqn} not found. Creating TestCase {test_case_fqn}")  # noqa: G004
+        logger.info(f"TestCase {test_case_fqn} not found. Creating TestCase {test_case_fqn}")
 
         test_case = self.create_or_update(
             CreateTestCaseRequest(
@@ -354,7 +354,7 @@ class OMetaTestsMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}")  # noqa: G004
+            logger.warning(f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -362,12 +362,12 @@ class OMetaTestsMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: {err}"  # noqa: G004
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {test_case.fullyQualifiedName.root}: {exc}"  # noqa: G004
+                    f"Error trying to parse sample data results from {test_case.fullyQualifiedName.root}: {exc}"
                 )
 
         return None
@@ -385,14 +385,14 @@ class OMetaTestsMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to GET failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")  # noqa: G004
+            logger.warning(f"Error trying to GET failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
                 return TableData(**resp)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error parsing failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")  # noqa: G004
+                logger.warning(f"Error parsing failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")
 
         return None
 

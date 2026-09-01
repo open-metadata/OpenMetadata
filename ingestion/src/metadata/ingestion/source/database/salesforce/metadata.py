@@ -212,12 +212,12 @@ class SalesforceSource(DatabaseServiceSource):
             )
             table_description = result["records"][0]["Description"]
         except KeyError as err:
-            logger.warning(f"Unable to get required key from Tooling API response for table [{table_name}]: {err}")  # noqa: G004
+            logger.warning(f"Unable to get required key from Tooling API response for table [{table_name}]: {err}")
         except IndexError as err:
-            logger.warning(f"Unable to get row for table [{table_name}] from EntityDefinition: {err}")  # noqa: G004
+            logger.warning(f"Unable to get row for table [{table_name}] from EntityDefinition: {err}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get description with Tooling API for table [{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get description with Tooling API for table [{table_name}]: {exc}")
         return table_description
 
     def get_table_column_description(self, table_name: str) -> list | None:
@@ -232,10 +232,10 @@ class SalesforceSource(DatabaseServiceSource):
             )
             all_column_description = result["records"]
         except KeyError as err:
-            logger.warning(f"Unable to get required key from Tooling API response for table [{table_name}]: {err}")  # noqa: G004
+            logger.warning(f"Unable to get required key from Tooling API response for table [{table_name}]: {err}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get column description with Tooling API for table [{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get column description with Tooling API for table [{table_name}]: {exc}")
         return all_column_description
 
     def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
@@ -297,7 +297,7 @@ class SalesforceSource(DatabaseServiceSource):
                         column_name = item["QualifiedApiName"]
                         column_description_mapping.update({column_name: item["Description"]})
                 except Exception as ex:
-                    logger.debug(f"Error creating column description mapping: {str(ex)}")  # noqa: G004, RUF010
+                    logger.debug(f"Error creating column description mapping: {str(ex)}")  # noqa: RUF010
         for column in salesforce_fields:
             col_constraint = None
             if column["nillable"]:
@@ -372,5 +372,5 @@ class SalesforceSource(DatabaseServiceSource):
                 return f"https://{instance_url}/lightning/o/{table_name}/list"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url for {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get source url for {table_name}: {exc}")
         return None

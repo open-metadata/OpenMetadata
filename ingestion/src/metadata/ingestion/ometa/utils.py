@@ -146,5 +146,5 @@ def decode_jwt_token(jwt_token: str) -> dict[str, Any] | None:
         decoded_payload = base64.urlsafe_b64decode(payload)
         return json.loads(decoded_payload.decode("utf-8"))
     except Exception as e:
-        logger.debug(f"Failed to decode JWT token: {e}")  # noqa: G004
+        logger.debug(f"Failed to decode JWT token: {e}")
         return None

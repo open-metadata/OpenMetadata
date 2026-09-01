@@ -124,7 +124,7 @@ class QueryParserSource(Source, ABC):
             return
         self._result_limit_warned = True
         logger.warning(
-            f"Reached the configured resultLimit of {result_limit} query log entries; "  # noqa: G004
+            f"Reached the configured resultLimit of {result_limit} query log entries; "
             f"the query log may have been truncated and {subject} may be incomplete. "
             f"Consider increasing resultLimit."
         )

@@ -73,7 +73,7 @@ class SingleStoreProfilerInterface(SQAProfilerInterface):
             if row:
                 return row._asdict()
         except ProgrammingError:
-            logger.info(f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow")  # noqa: G004
+            logger.info(f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow")
             return None
 
         except Exception as exc:

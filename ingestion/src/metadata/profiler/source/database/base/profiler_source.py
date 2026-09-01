@@ -273,11 +273,11 @@ class ProfilerSource(ProfilerSourceInterface):
             for name in reference_metrics:
                 metric = metrics_registry.get(name)
                 if metric is None:
-                    logger.warning(f"Metric {name} not found in registry. Skipping this metric.")  # noqa: G004
+                    logger.warning(f"Metric {name} not found in registry. Skipping this metric.")
                     continue
                 if metric.name() in RUNTIME_PROPS_METRICS:
                     logger.warning(
-                        f"Metric {name} requires runtime properties and cannot be "  # noqa: G004
+                        f"Metric {name} requires runtime properties and cannot be "
                         f"added as a profiler metric. Skipping this metric."
                     )
                     continue

@@ -210,7 +210,7 @@ class DeltalakeSource(DatabaseServiceSource):
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception for table [{table_info}]: {exc}")  # noqa: G004
+                logger.warning(f"Unexpected exception for table [{table_info}]: {exc}")
                 self.status.warnings.append(f"{self.config.serviceName}.{table_info.name}")
 
     def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:

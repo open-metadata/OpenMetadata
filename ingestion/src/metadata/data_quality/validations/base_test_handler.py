@@ -147,8 +147,8 @@ class BaseTestValidator(ABC):
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
-            logger.debug(f"Executing dimensional validation for test case: {self.test_case.fullyQualifiedName}")  # noqa: G004
-            logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")  # noqa: G004
+            logger.debug(f"Executing dimensional validation for test case: {self.test_case.fullyQualifiedName}")
+            logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
 
             if not self.are_dimension_columns_valid():
                 return test_result
@@ -156,19 +156,19 @@ class BaseTestValidator(ABC):
             try:
                 dimension_results = self._run_dimensional_validation()
                 if dimension_results:
-                    logger.debug(f"Dimensional validation completed with {len(dimension_results)} results")  # noqa: G004
+                    logger.debug(f"Dimensional validation completed with {len(dimension_results)} results")
 
                     test_case_dimension_results = self._convert_to_test_case_dimension_results(
                         dimension_results, test_result
                     )
 
                     test_result.dimensionResults = test_case_dimension_results
-                    logger.debug(f"Attached {len(test_case_dimension_results)} dimension results to main test result")  # noqa: G004
+                    logger.debug(f"Attached {len(test_case_dimension_results)} dimension results to main test result")
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
             except Exception as exc:
-                logger.warning(f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}")  # noqa: G004
+                logger.warning(f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}")
                 logger.debug(traceback.format_exc())
 
         return test_result
@@ -233,14 +233,14 @@ class BaseTestValidator(ABC):
                     dimension_results.extend(single_dimension_results)
 
                 except Exception as exc:
-                    logger.warning(f"Error executing dimensional query for column {dimension_column}: {exc}")  # noqa: G004
+                    logger.warning(f"Error executing dimensional query for column {dimension_column}: {exc}")
                     logger.debug(traceback.format_exc())
                     continue
 
             return dimension_results  # noqa: TRY300
 
         except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")  # noqa: G004
+            logger.warning(f"Error executing dimensional validation: {exc}")
             logger.debug(traceback.format_exc())
             return []
 
@@ -594,14 +594,14 @@ class BaseTestValidator(ABC):
 
             if missing_columns:
                 logger.warning(
-                    f"Dimensional validation skipped: Dimension columns not found in table: {', '.join(missing_columns)}"  # noqa: G004
+                    f"Dimensional validation skipped: Dimension columns not found in table: {', '.join(missing_columns)}"
                 )
                 return False
 
             return True  # noqa: TRY300
 
         except Exception as exc:
-            logger.warning(f"Unable to validate dimension columns: {exc}")  # noqa: G004
+            logger.warning(f"Unable to validate dimension columns: {exc}")
             return False
 
     def get_dimension_result_object(

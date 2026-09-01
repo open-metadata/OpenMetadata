@@ -105,7 +105,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             agent = f"{connector}_{workflow_type}" if workflow_type else connector
             context = self._user_agent_context()
         except Exception as exc:
-            logger.debug(f"Could not build the connector User-Agent header: {exc}")  # noqa: G004
+            logger.debug(f"Could not build the connector User-Agent header: {exc}")
             return None
         return f"{agent} ({context})" if context else agent
 
@@ -119,7 +119,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         try:
             return get_pipeline_type_from_source_config(source_config).value
         except Exception as exc:
-            logger.debug(f"Using the raw source-config type for the User-Agent: {exc}")  # noqa: G004
+            logger.debug(f"Using the raw source-config type for the User-Agent: {exc}")
             return getattr(getattr(source_config.config, "type", None), "value", None)
 
     def _user_agent_context(self) -> str:
@@ -131,7 +131,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         try:
             parts.append(f"v{get_client_version()}")
         except Exception as exc:
-            logger.debug(f"Could not resolve the ingestion client version: {exc}")  # noqa: G004
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")
         return "; ".join(parts)
 
     @abstractmethod
@@ -216,7 +216,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Unknown error getting service connection for service name [{service_name}]"  # noqa: G004
+                    f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
@@ -233,7 +233,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         except AttributeError:
             if profiler_config_class.model_validate(self.config.processor.model_dump().get("config")).ignoreValidation:
                 logger.debug(
-                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"  # noqa: G004
+                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
                 )
                 return
             raise WorkflowExecutionError(  # noqa: B904
@@ -252,5 +252,5 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
                 raise e  # noqa: TRY201
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import source of type '{source_type}'")  # noqa: G004
+            logger.error(f"Failed to import source of type '{source_type}'")
             raise MissingPluginException(source_type)  # noqa: B904

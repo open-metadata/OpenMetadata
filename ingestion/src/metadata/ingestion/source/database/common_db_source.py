@@ -161,7 +161,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
 
         self._release_engine()
-        logger.info(f"Ingesting from database: {database_name}")  # noqa: G004
+        logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.database = database_name
@@ -194,7 +194,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         try:
             self.engine.dispose()
         except Exception as exc:  # pylint: disable=broad-except
-            logger.error(f"Failed to dispose engine: {exc}")  # noqa: G004
+            logger.error(f"Failed to dispose engine: {exc}")
         self.engine = None
         self.connection_obj = None
         if self._connection is not None:
@@ -336,7 +336,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             description = table_info.get("text")
         return description
@@ -382,7 +382,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             try:
                 table_iter = self.query_table_names_and_types(schema_name)
             except Exception as err:
-                logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")  # noqa: G004
+                logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
                 logger.debug(traceback.format_exc())
                 table_iter = []
             for table_and_type in table_iter:
@@ -407,7 +407,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         )
                         continue
                 except Exception as err:
-                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")  # noqa: G004
+                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")
                     logger.debug(traceback.format_exc())
                     continue
                 yield table_name, table_and_type.type_
@@ -416,7 +416,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             try:
                 view_iter = self.query_view_names_and_types(schema_name)
             except Exception as err:
-                logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")  # noqa: G004
+                logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
                 logger.debug(traceback.format_exc())
                 view_iter = []
             for view_and_type in view_iter:
@@ -441,7 +441,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         )
                         continue
                 except Exception as err:
-                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")  # noqa: G004
+                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")
                     logger.debug(traceback.format_exc())
                     continue
                 yield view_name, view_and_type.type_
@@ -477,7 +477,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument

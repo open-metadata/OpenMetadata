@@ -76,7 +76,7 @@ class OMetaDomainMixin:
             return self.client.get(path, params)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get data product assets due to {exc}")  # noqa: G004
+            logger.warning(f"Could not get data product assets due to {exc}")
             return {}
 
     def get_domain_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
@@ -97,7 +97,7 @@ class OMetaDomainMixin:
             return self.client.get(path, params)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get domain assets due to {exc}")  # noqa: G004
+            logger.warning(f"Could not get domain assets due to {exc}")
             return {}
 
     def _handle_data_product_assets(

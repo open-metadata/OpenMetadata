@@ -46,7 +46,7 @@ def get_credentials_from_url(original: ReadersCredentials, url: str) -> ReadersC
     """
     if original.repositoryOwner.root not in url:
         logger.warning(
-            f"Default repository owner [{original.repositoryOwner.root}] not found in [{url}]."  # noqa: G004
+            f"Default repository owner [{original.repositoryOwner.root}] not found in [{url}]."
             " We'll use the default reader credentials."
         )
         return original

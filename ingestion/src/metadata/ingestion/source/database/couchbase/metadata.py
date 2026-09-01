@@ -71,7 +71,7 @@ class CouchbaseSource(CommonNoSQLSource):
                     self.index_condition_map.clear()
                     yield bucket_name.name
         except Exception as exp:
-            logger.debug(f"Failed to fetch bucket name: {exp}")  # noqa: G004
+            logger.debug(f"Failed to fetch bucket name: {exp}")
             logger.debug(traceback.format_exc())
 
     def get_schema_name_list(self) -> list[str]:
@@ -86,7 +86,7 @@ class CouchbaseSource(CommonNoSQLSource):
             self.context.get().scope_dict = {scope.name: scope for scope in collection_manager.get_all_scopes()}
             return [scopes.name for scopes in collection_manager.get_all_scopes()]
         except Exception as exp:
-            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -98,7 +98,7 @@ class CouchbaseSource(CommonNoSQLSource):
             scope_object = self.context.get().scope_dict.get(schema_name)
             return [TableNameAndType(name=collection.name) for collection in scope_object.collections]
         except Exception as exp:
-            logger.debug(f"Failed to list collection names for scope [{schema_name}]: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list collection names for scope [{schema_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -162,11 +162,11 @@ class CouchbaseSource(CommonNoSQLSource):
             return list(query_iter.rows())
         except QueryIndexNotFoundException as exp:  # noqa: F841
             logger.warning(
-                f"Fetching columns failed for [`{database_name}`.`{schema_name}`.`{table_name}`],"  # noqa: G004
+                f"Fetching columns failed for [`{database_name}`.`{schema_name}`.`{table_name}`],"
                 " check if the index is created for the table or data exists in the table"
             )
             logger.debug(traceback.format_exc())
         except Exception as exp:
-            logger.debug(f"Failed to list column names for table [{table_name}]: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list column names for table [{table_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []

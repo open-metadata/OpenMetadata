@@ -103,7 +103,7 @@ class BurstIQClient:
         }
 
         try:
-            logger.info(f"Authenticating with BurstIQ at: {token_url}")  # noqa: G004
+            logger.info(f"Authenticating with BurstIQ at: {token_url}")
             response = requests.post(
                 token_url,
                 data=payload,
@@ -119,17 +119,17 @@ class BurstIQClient:
             customer_name = getattr(self.config, "biqCustomerName", None)
             sdz_name = getattr(self.config, "biqSdzName", None)
 
-            logger.info(f"Authentication successful. Token expires in {token.expires_in} seconds")  # noqa: G004
+            logger.info(f"Authentication successful. Token expires in {token.expires_in} seconds")
             if customer_name and sdz_name:
-                logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")  # noqa: G004
+                logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")
 
         except requests.exceptions.HTTPError as exc:
             if exc.response is not None:
-                logger.error(f"Authentication HTTP {exc.response.status_code} error. Response: {exc.response.text}")  # noqa: G004
+                logger.error(f"Authentication HTTP {exc.response.status_code} error. Response: {exc.response.text}")
             logger.debug(traceback.format_exc())
             raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
         except Exception as exc:
-            logger.error(f"Authentication failed: {exc}")  # noqa: G004
+            logger.error(f"Authentication failed: {exc}")
             logger.debug(traceback.format_exc())
             raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
 
@@ -178,46 +178,46 @@ class BurstIQClient:
             headers.update(kwargs.pop("headers"))
 
         params = kwargs.get("params", {})
-        logger.debug(f"Making {method} request to {url} with params: {params}")  # noqa: G004
+        logger.debug(f"Making {method} request to {url} with params: {params}")
 
         try:
             start_time = time.time()
             response = self.session.request(method, url, headers=headers, timeout=API_TIMEOUT, **kwargs)
             elapsed_time = time.time() - start_time
 
-            logger.debug(f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}")  # noqa: G004
+            logger.debug(f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}")
 
             response.raise_for_status()
 
             json_data = response.json()
 
             if isinstance(json_data, list):
-                logger.debug(f"Received {len(json_data)} items in response")  # noqa: G004
+                logger.debug(f"Received {len(json_data)} items in response")
             else:
                 logger.debug("Received single item response")
 
             return json_data  # noqa: TRY300
 
         except requests.exceptions.Timeout as exc:
-            logger.error(f"Request timeout after {API_TIMEOUT}s for {url}: {exc}")  # noqa: G004
+            logger.error(f"Request timeout after {API_TIMEOUT}s for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise ConnectionError(
                 f"BurstIQ API request timed out after {API_TIMEOUT}s for {url}. "
                 "Please check your network connection and BurstIQ API availability."
             ) from exc
         except requests.exceptions.ConnectionError as exc:
-            logger.error(f"Connection error for {url}: {exc}")  # noqa: G004
+            logger.error(f"Connection error for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise ConnectionError(
                 f"Failed to connect to BurstIQ API at {url}. Please verify the API URL and network connectivity."
             ) from exc
         except requests.exceptions.HTTPError as exc:
             if exc.response is not None:
-                logger.error(f"HTTP {exc.response.status_code} error for {url}. Response: {exc.response.text}")  # noqa: G004
+                logger.error(f"HTTP {exc.response.status_code} error for {url}. Response: {exc.response.text}")
             logger.debug(traceback.format_exc())
             raise
         except Exception as exc:
-            logger.error(f"API request failed for {url}: {exc}")  # noqa: G004
+            logger.error(f"API request failed for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise
 
@@ -242,7 +242,7 @@ class BurstIQClient:
                     f"BurstIQ system wallet '{wallet_id}' is invalid or does not exist. "
                     f"Verify biqSystemWalletId in the connection configuration. BurstIQ response: {body[:200]}"
                 ) from exc
-            logger.debug(f"System wallet validation deferred to GetDictionaries (non-wallet error): {exc}")  # noqa: G004
+            logger.debug(f"System wallet validation deferred to GetDictionaries (non-wallet error): {exc}")
 
     def get_dictionaries(self, limit: int | None = None) -> list[BurstIQDictionary]:
         """
@@ -266,7 +266,7 @@ class BurstIQClient:
 
         raw_items = data if isinstance(data, list) else [data]
         dictionaries = [BurstIQDictionary.model_validate(item) for item in raw_items]
-        logger.info(f"Found {len(dictionaries)} dictionaries")  # noqa: G004
+        logger.info(f"Found {len(dictionaries)} dictionaries")
         return dictionaries
 
     def get_dictionary_by_name(self, name: str) -> BurstIQDictionary | None:
@@ -279,7 +279,7 @@ class BurstIQClient:
         Returns:
             BurstIQDictionary instance or None
         """
-        logger.debug(f"Fetching dictionary: {name}")  # noqa: G004
+        logger.debug(f"Fetching dictionary: {name}")
         data = self._make_request("GET", f"/api/metadata/dictionary/{name}")
         if data is None:
             return None
@@ -318,7 +318,7 @@ class BurstIQClient:
         if skip:
             params["skip"] = skip
 
-        logger.info(f"Fetching edges from BurstIQ (filters: name={name}, from={from_dictionary}, to={to_dictionary})")  # noqa: G004
+        logger.info(f"Fetching edges from BurstIQ (filters: name={name}, from={from_dictionary}, to={to_dictionary})")
         data = self._make_request("GET", "/api/metadata/edge", params=params)
 
         if data is None:
@@ -326,7 +326,7 @@ class BurstIQClient:
 
         raw_items = data if isinstance(data, list) else [data]
         edges = [BurstIQEdge.model_validate(item) for item in raw_items]
-        logger.info(f"Found {len(edges)} edge definitions")  # noqa: G004
+        logger.info(f"Found {len(edges)} edge definitions")
         return edges
 
     def get_chain_metrics(self) -> dict[str, int]:
@@ -359,7 +359,7 @@ class BurstIQClient:
             List of flat record dicts (data envelope unwrapped)
         """
         tql = f"FROM {chain} SKIP {skip} LIMIT {limit} SELECT data.*"
-        logger.info(f"Fetching records for chain '{chain}' via TQL (limit={limit})")  # noqa: G004
+        logger.info(f"Fetching records for chain '{chain}' via TQL (limit={limit})")
         system_wallet_id = getattr(self.config, "biqSystemWalletId", None)
         if not system_wallet_id:
             raise WorkflowFatalError(
@@ -384,7 +384,7 @@ class BurstIQClient:
             return []
 
         records = [TQLRecord.model_validate(item).to_record() for item in raw if isinstance(item, dict)]
-        logger.info(f"Fetched {len(records)} records for chain '{chain}'")  # noqa: G004
+        logger.info(f"Fetched {len(records)} records for chain '{chain}'")
         return records
 
     def close(self):

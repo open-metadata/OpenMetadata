@@ -204,7 +204,7 @@ class SnowflakeSemanticViewLineage:
                 try:
                     yield from self._iter_database_lineage(database)
                 except Exception as exc:  # pylint: disable=broad-except
-                    logger.warning(f"Failed to extract semantic view lineage for database [{database}]: {exc}")  # noqa: G004
+                    logger.warning(f"Failed to extract semantic view lineage for database [{database}]: {exc}")
                     logger.debug(traceback.format_exc())
         finally:
             self._close()
@@ -226,9 +226,9 @@ class SnowflakeSemanticViewLineage:
                 database = row[1]
                 if not filter_by_database(self.database_filter_pattern, database):
                     databases.append(database)
-            logger.info(f"Semantic view lineage will scan {len(databases)} database(s)")  # noqa: G004
+            logger.info(f"Semantic view lineage will scan {len(databases)} database(s)")
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning(f"Failed to list databases for semantic view lineage: {exc}")  # noqa: G004
+            logger.warning(f"Failed to list databases for semantic view lineage: {exc}")
             logger.debug(traceback.format_exc())
         return databases
 
@@ -252,7 +252,7 @@ class SnowflakeSemanticViewLineage:
                         database, schema, view, view_entity, metrics_by_view.get(view_key, [])
                     )
             except Exception as exc:  # pylint: disable=broad-except
-                logger.warning(f"Failed semantic view lineage for [{database}.{schema}.{view}]: {exc}")  # noqa: G004
+                logger.warning(f"Failed semantic view lineage for [{database}.{schema}.{view}]: {exc}")
                 logger.debug(traceback.format_exc())
 
     def _fetch_table_maps(self, database: str) -> dict[ViewKey, dict[str, BaseTable]]:
@@ -444,5 +444,5 @@ class SnowflakeSemanticViewLineage:
             try:
                 self._connection.close()
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(f"Failed to close semantic view lineage connection: {exc}")  # noqa: G004
+                logger.debug(f"Failed to close semantic view lineage connection: {exc}")
             self._connection = None

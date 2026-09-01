@@ -143,7 +143,7 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")  # noqa: G004
+            logger.error(f"Unhandled error trying to update Ingestion Pipeline status [{err}]")
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -222,7 +222,7 @@ class WorkflowStatusMixin:
                     progress_update,
                 )
         except Exception as err:
-            logger.debug(f"Failed to send progress update: {err}")  # noqa: G004
+            logger.debug(f"Failed to send progress update: {err}")
 
     def terminal_progress_update_type(self, pipeline_state: PipelineState) -> ProgressUpdateType:
         if pipeline_state is PipelineState.failed:

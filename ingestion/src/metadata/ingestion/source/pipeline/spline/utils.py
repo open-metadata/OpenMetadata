@@ -33,7 +33,7 @@ def parse_dbfs_path(path: str) -> str | None:
     try:
         return path.split("/")[-1]  # noqa: PLC0207
     except Exception as exc:
-        logger.error(f"Failed to parse dbfs: {exc}")  # noqa: G004
+        logger.error(f"Failed to parse dbfs: {exc}")
         logger.error(traceback.format_exc())
     return None
 
@@ -70,7 +70,7 @@ def parse_jdbc_url(url: str) -> tuple[str | None, str | None, str | None]:
 
         return DEFAULT_DATABASE, database, table  # noqa: TRY300
     except Exception as exc:
-        logger.error(f"Failed to parse jdbc url: {exc}")  # noqa: G004
+        logger.error(f"Failed to parse jdbc url: {exc}")
         logger.error(traceback.format_exc())
 
     return None, None, None

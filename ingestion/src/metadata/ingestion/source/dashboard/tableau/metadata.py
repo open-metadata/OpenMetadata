@@ -188,7 +188,7 @@ class TableauSource(DashboardServiceSource):
                 return self.metadata.get_reference_by_email(dashboard_details.owner.email)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     @staticmethod
@@ -205,7 +205,7 @@ class TableauSource(DashboardServiceSource):
                         tags.add(tag.name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching tags from data models: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching tags from data models: {exc}")
 
         return tags
 
@@ -246,7 +246,7 @@ class TableauSource(DashboardServiceSource):
             return "\n\n".join(sql_queries) or None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing queries for datamodel [{data_model.id}]: {exc}")  # noqa: G004
+            logger.warning(f"Error processing queries for datamodel [{data_model.id}]: {exc}")
         return None
 
     def _create_datamodel_request(
@@ -452,7 +452,7 @@ class TableauSource(DashboardServiceSource):
                         )
             return column_lineage  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error to get column lineage: {exc}")  # noqa: G004
+            logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
         return column_lineage or None
 
@@ -474,7 +474,7 @@ class TableauSource(DashboardServiceSource):
                     )
                     datamodel_entity = self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
                     if not datamodel_entity:
-                        logger.debug(f"Datamodel entity not found for lineage: {str(datamodel)}")  # noqa: G004, RUF010
+                        logger.debug(f"Datamodel entity not found for lineage: {str(datamodel)}")  # noqa: RUF010
                         continue
                     # TableauPublishedDatasource will be skipped here and their lineage will be processed later
                     if datamodel_entity.dataModelType == DataModelType.TableauPublishedDatasource:
@@ -491,7 +491,7 @@ class TableauSource(DashboardServiceSource):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: G004, RUF010
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 
     def _get_table_datamodel_lineage(
@@ -568,7 +568,7 @@ class TableauSource(DashboardServiceSource):
                         )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to get datamodel child column lineage: {exc}")  # noqa: G004
+            logger.warning(f"Error to get datamodel child column lineage: {exc}")
         return datamodel_child_column_lineage or None
 
     def _get_datamodel_col_lineage(
@@ -596,7 +596,7 @@ class TableauSource(DashboardServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to get datamodel column lineage: {exc}")  # noqa: G004
+            logger.warning(f"Error to get datamodel column lineage: {exc}")
 
         return datamodel_column_lineage or None
 
@@ -677,7 +677,7 @@ class TableauSource(DashboardServiceSource):
                                     and prefix_database_name.lower() != database_name.lower()
                                 ):
                                     logger.debug(
-                                        f"[{query_hash}] Database {database_name} does not match"  # noqa: G004
+                                        f"[{query_hash}] Database {database_name} does not match"
                                         f" prefix {prefix_database_name}"
                                     )
                                     continue
@@ -688,14 +688,14 @@ class TableauSource(DashboardServiceSource):
                                     and prefix_schema_name.lower() != schema_name.lower()
                                 ):
                                     logger.debug(
-                                        f"[{query_hash}] Schema {schema_name} does not match"  # noqa: G004
+                                        f"[{query_hash}] Schema {schema_name} does not match"
                                         f" prefix {prefix_schema_name}"
                                     )
                                     continue
 
                                 if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
                                     logger.debug(
-                                        f"[{query_hash}] Table {table_name} does not match prefix {prefix_table_name}"  # noqa: G004
+                                        f"[{query_hash}] Table {table_name} does not match prefix {prefix_table_name}"
                                     )
                                     continue
 
@@ -712,7 +712,7 @@ class TableauSource(DashboardServiceSource):
                                 )
                                 if not from_entities:
                                     logger.debug(
-                                        f"[{query_hash}] No table entities found for custom SQL lineage."  # noqa: G004
+                                        f"[{query_hash}] No table entities found for custom SQL lineage."
                                         f"fqn_search_string={fqn_search_string}, table_name={table_name}, query={query}"
                                     )
                                 for table_entity in from_entities or []:
@@ -863,7 +863,7 @@ class TableauSource(DashboardServiceSource):
                     database_name = get_database_name_for_lineage(db_service_entity, database_name)
                 else:
                     logger.warning(
-                        f"Database service '{db_service_name}' not found for table '{table.name}'. "  # noqa: G004
+                        f"Database service '{db_service_name}' not found for table '{table.name}'. "
                         f"Please ensure the database service exists in OpenMetadata."
                     )
 
@@ -871,12 +871,12 @@ class TableauSource(DashboardServiceSource):
             table_name = database_schema_table.get("table")
 
             if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                 return None
             if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
+                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
             if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")  # noqa: G004
+                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
 
             fqn_search_string = build_es_fqn_search_string(
                 database_name=prefix_database_name or database_name,
@@ -896,7 +896,7 @@ class TableauSource(DashboardServiceSource):
             # using this strategy as a fallback.
             if not table.fullName:
                 logger.debug(
-                    "No table entity found for lineage using GraphQL APIs."  # noqa: G004
+                    "No table entity found for lineage using GraphQL APIs."
                     f"fqn_search_string={fqn_search_string}, table_name={table_name}"
                 )
                 return None
@@ -918,12 +918,12 @@ class TableauSource(DashboardServiceSource):
                 if table_entity:
                     return [TableAndQuery(table=table_entity)]
             logger.debug(
-                "No table entity found for lineage using GraphQL APIs."  # noqa: G004
+                "No table entity found for lineage using GraphQL APIs."
                 f"fqn_search_string={fqn_search_string}, table_name={table_name}"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to get tables for lineage using GraphQL Apis: {exc}")  # noqa: G004
+            logger.warning(f"Error to get tables for lineage using GraphQL Apis: {exc}")
         return None
 
     def _get_table_entities_from_query(
@@ -969,14 +969,14 @@ class TableauSource(DashboardServiceSource):
 
                     if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
                         logger.debug(
-                            f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}"  # noqa: G004
+                            f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}"
                         )
                         continue
                     if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                        logger.debug(f"[{query_hash}] Schema {schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
+                        logger.debug(f"[{query_hash}] Schema {schema_name} does not match prefix {prefix_schema_name}")
                         continue
                     if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-                        logger.debug(f"[{query_hash}] Table {table_name} does not match prefix {prefix_table_name}")  # noqa: G004
+                        logger.debug(f"[{query_hash}] Table {table_name} does not match prefix {prefix_table_name}")
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
@@ -992,7 +992,7 @@ class TableauSource(DashboardServiceSource):
                     )
                     if not from_entities:
                         logger.debug(
-                            f"[{query_hash}] No table entities found for lineage using SQL Queries."  # noqa: G004
+                            f"[{query_hash}] No table entities found for lineage using SQL Queries."
                             f"fqn_search_string={fqn_search_string}, "
                             f"table_name={table_name}, query={custom_sql_table.query}"
                         )
@@ -1006,7 +1006,7 @@ class TableauSource(DashboardServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to get tables for lineage using SQL Queries: {exc}")  # noqa: G004
+            logger.warning(f"Error to get tables for lineage using SQL Queries: {exc}")
         return tables_list or []
 
     def _get_database_tables(
@@ -1061,7 +1061,7 @@ class TableauSource(DashboardServiceSource):
                     columns.append(Column(**parsed_column))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to process datamodel nested column: {exc}")  # noqa: G004
+                logger.warning(f"Error to process datamodel nested column: {exc}")
         return columns
 
     @staticmethod
@@ -1120,7 +1120,7 @@ class TableauSource(DashboardServiceSource):
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")  # noqa: G004
+                logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
     def get_project_name(self, dashboard_details: Any) -> str | None:
@@ -1130,9 +1130,9 @@ class TableauSource(DashboardServiceSource):
         try:
             return dashboard_details.project.name
         except Exception as exc:
-            logger.info(f"Cannot parse project name for dashboard:{dashboard_details.id} from Tableau server")  # noqa: G004
+            logger.info(f"Cannot parse project name for dashboard:{dashboard_details.id} from Tableau server")
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching project name for {dashboard_details.id}: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching project name for {dashboard_details.id}: {exc}")
         return None
 
     def get_project_names(self, dashboard_details: Any) -> str | None:
@@ -1143,7 +1143,7 @@ class TableauSource(DashboardServiceSource):
             return self.client.get_project_parents_by_id(dashboard_details.project.id)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching project names for {dashboard_details.id}: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching project names for {dashboard_details.id}: {exc}")
         return None
 
     def yield_dashboard_usage(self, dashboard_details: TableauDashboard) -> Iterable[Either[DashboardUsage]]:
@@ -1167,16 +1167,16 @@ class TableauSource(DashboardServiceSource):
             )
 
             if not dashboard:
-                logger.debug(f"Dashboard {dashboard_fqn} not found, skipping usage")  # noqa: G004
+                logger.debug(f"Dashboard {dashboard_fqn} not found, skipping usage")
                 return
 
             current_views = dashboard_details.user_views
 
             if not current_views:
-                logger.debug(f"No usage to report for {dashboard_details.name}")  # noqa: G004
+                logger.debug(f"No usage to report for {dashboard_details.name}")
 
             if not dashboard.usageSummary:
-                logger.info(f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}")  # noqa: G004
+                logger.info(f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}")
                 yield Either(
                     right=DashboardUsage(
                         dashboard=dashboard,
@@ -1190,12 +1190,12 @@ class TableauSource(DashboardServiceSource):
                 new_usage = current_views - latest_usage
                 if new_usage < 0:
                     logger.warning(
-                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."  # noqa: G004
+                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."
                         f" Got new_usage={new_usage}."
                     )
                     return
 
-                logger.info(f"Yielding new usage for {dashboard.fullyQualifiedName.root}")  # noqa: G004
+                logger.info(f"Yielding new usage for {dashboard.fullyQualifiedName.root}")
                 yield Either(
                     right=DashboardUsage(
                         dashboard=dashboard,
@@ -1204,8 +1204,8 @@ class TableauSource(DashboardServiceSource):
                 )
 
             else:
-                logger.debug(f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute.")  # noqa: G004
-                logger.info(f"Usage already informed for {dashboard.fullyQualifiedName.root}")  # noqa: G004
+                logger.debug(f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute.")
+                logger.info(f"Usage already informed for {dashboard.fullyQualifiedName.root}")
 
         except Exception as exc:
             yield Either(

@@ -342,7 +342,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         metadata = OpenMetadata(config=metadata_config)
 
         if workflow_config.ingestionPipelineFQN:
-            logger.info(f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}")  # noqa: G004
+            logger.info(f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}")
 
             pipeline_status = metadata.get_pipeline_status(
                 workflow_config.ingestionPipelineFQN,
@@ -352,11 +352,11 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
             pipeline_status.pipelineState = PipelineState.failed
 
             metadata.create_or_update_pipeline_status(workflow_config.ingestionPipelineFQN, pipeline_status)
-            logger.info(f"Successfully sent failed status for {workflow_config.ingestionPipelineFQN}")  # noqa: G004
+            logger.info(f"Successfully sent failed status for {workflow_config.ingestionPipelineFQN}")
         else:
             logger.info("Workflow config does not have ingestionPipelineFQN informed. We won't update the status.")
     except Exception as exc:
-        logger.error(f"Failed to send failed status callback: {exc}", exc_info=True)  # noqa: G004
+        logger.error(f"Failed to send failed status callback: {exc}", exc_info=True)
 
 
 class CustomPythonOperator(PythonOperator):
@@ -374,13 +374,13 @@ class CustomPythonOperator(PythonOperator):
         try:
             workflow_config = self.op_kwargs.get("workflow_config")
             if workflow_config:
-                logger.info(f"Task killed, sending failed status for workflow: {workflow_config.ingestionPipelineFQN}")  # noqa: G004
+                logger.info(f"Task killed, sending failed status for workflow: {workflow_config.ingestionPipelineFQN}")
                 send_failed_status_callback(workflow_config)
             else:
                 logger.warning("on_kill called but no workflow_config found in op_kwargs")
         except Exception as exc:
             # Log the error but don't raise - we don't want to prevent cleanup
-            logger.error(f"Error in on_kill callback: {exc}", exc_info=True)  # noqa: G004
+            logger.error(f"Error in on_kill callback: {exc}", exc_info=True)
 
 
 def build_dag(

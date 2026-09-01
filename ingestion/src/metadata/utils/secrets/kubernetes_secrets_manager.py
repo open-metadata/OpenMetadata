@@ -112,14 +112,14 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             kubeconfig_path = self.credentials.kubeconfigPath
             if kubeconfig_path:
                 config.load_kube_config(config_file=kubeconfig_path)
-                logger.info(f"Using kubeconfig from path: {kubeconfig_path}")  # noqa: G004
+                logger.info(f"Using kubeconfig from path: {kubeconfig_path}")
             else:
                 config.load_kube_config()
                 logger.info("Using default kubeconfig")
 
         self.client = client.CoreV1Api()
         self.namespace = self.credentials.namespace or _get_current_namespace()
-        logger.info(f"Kubernetes SecretsManager initialized with namespace: {self.namespace}")  # noqa: G004
+        logger.info(f"Kubernetes SecretsManager initialized with namespace: {self.namespace}")
 
     def get_string_value(self, secret_id: str) -> str:
         """
@@ -133,21 +133,21 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             # Kubernetes stores secret data as base64 encoded
             if secret.data and "value" in secret.data:
                 secret_value = base64.b64decode(secret.data["value"]).decode("utf-8")
-                logger.debug(f"Got value for secret {secret_id}")  # noqa: G004
+                logger.debug(f"Got value for secret {secret_id}")
                 return secret_value
-            logger.warning(f"Secret {secret_id} exists but has no 'value' key")  # noqa: G004
+            logger.warning(f"Secret {secret_id} exists but has no 'value' key")
             return None  # noqa: TRY300
 
         except ApiException as exc:
             if exc.status == 404:
-                logger.debug(f"Secret {secret_id} not found")  # noqa: G004
+                logger.debug(f"Secret {secret_id} not found")
                 return None
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")  # noqa: G004
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")  # noqa: G004
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
 
     def load_credentials(self) -> dict | None:

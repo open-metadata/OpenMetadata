@@ -134,7 +134,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                     df = self._rename_complex_columns(df)  # noqa: PLW2901
                     yield df.astype(dict(zip(df.keys(), coltype_mapping)))  # noqa: B905
                 except (TypeError, ValueError) as err:
-                    logger.warning(f"NaN/NoneType found in the Dataframe: {err}")  # noqa: G004
+                    logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                     yield df
 
         return yield_type_casted_dfs
@@ -182,7 +182,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return row_dict  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to compute profile for {exc}")  # noqa: G004
+            logger.warning(f"Error trying to compute profile for {exc}")
             raise RuntimeError(exc)  # noqa: B904
 
     def _get_object_stats(self) -> dict[str, Any]:
@@ -210,7 +210,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch object stats for {self.table_entity.name.root}: {exc}")  # noqa: G004
+            logger.warning(f"Could not fetch object stats for {self.table_entity.name.root}: {exc}")
             return {}
 
         # A size of 0 is a real size, hence `is not None` rather than a truthiness check.
@@ -248,7 +248,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 metric_resp = metric(column).df_fn(runner)
                 row_dict[metric.name()] = None if pd.isnull(metric_resp) else metric_resp
         except Exception as exc:
-            logger.debug(f"{traceback.format_exc()}\nError trying to compute profile for {exc}")  # noqa: G004
+            logger.debug(f"{traceback.format_exc()}\nError trying to compute profile for {exc}")
             raise RuntimeError(exc)  # noqa: B904
         return row_dict
 
@@ -295,7 +295,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return metric_values if metric_values else None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
     def _compute_system_metrics(
@@ -344,7 +344,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {metric_func.table.name.root}")  # noqa: G004
+        logger.debug(f"Running profiler for {metric_func.table.name.root}")
         try:
             row = None
             if self.dataset is not None:
@@ -385,7 +385,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return metric(column).fn(column_results)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
     def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: dict):
@@ -403,7 +403,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             return metric(column).df_fn(column_results, self.dataset)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
     def get_all_metrics(

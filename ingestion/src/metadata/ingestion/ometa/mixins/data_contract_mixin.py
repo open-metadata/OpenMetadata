@@ -64,7 +64,7 @@ class OMetaDataContractMixin:
                 return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating data contract result for {model_str(data_contract_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error creating data contract result for {model_str(data_contract_id)}: {err}")
         return None
 
     def get_data_contract_results(
@@ -102,7 +102,7 @@ class OMetaDataContractMixin:
                 return [DataContractResult(**result) for result in resp.get("data", [])]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting data contract results for {model_str(data_contract_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error getting data contract results for {model_str(data_contract_id)}: {err}")
         return None
 
     def get_latest_data_contract_result(self, data_contract_id: Uuid) -> DataContractResult | None:
@@ -121,7 +121,7 @@ class OMetaDataContractMixin:
                 return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting latest data contract result for {model_str(data_contract_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error getting latest data contract result for {model_str(data_contract_id)}: {err}")
         return None
 
     def get_data_contract_result_by_id(self, data_contract_id: Uuid, result_id: Uuid) -> DataContractResult | None:
@@ -144,7 +144,7 @@ class OMetaDataContractMixin:
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error getting data contract result {model_str(result_id)} for {model_str(data_contract_id)}: {err}"  # noqa: G004
+                f"Error getting data contract result {model_str(result_id)} for {model_str(data_contract_id)}: {err}"
             )
         return None
 
@@ -198,7 +198,7 @@ class OMetaDataContractMixin:
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error deleting data contract result at {timestamp} for {model_str(data_contract_id)}: {err}"  # noqa: G004
+                f"Error deleting data contract result at {timestamp} for {model_str(data_contract_id)}: {err}"
             )
         return False
 
@@ -218,7 +218,7 @@ class OMetaDataContractMixin:
                 return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error validating data contract {model_str(data_contract_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error validating data contract {model_str(data_contract_id)}: {err}")
         return None
 
     def export_to_odcs(self, data_contract_id: Uuid) -> ODCSDataContract | None:
@@ -237,7 +237,7 @@ class OMetaDataContractMixin:
                 return ODCSDataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error exporting data contract {model_str(data_contract_id)} to ODCS: {err}")  # noqa: G004
+            logger.warning(f"Error exporting data contract {model_str(data_contract_id)} to ODCS: {err}")
         return None
 
     def export_to_odcs_by_fqn(self, fqn: str) -> ODCSDataContract | None:
@@ -256,7 +256,7 @@ class OMetaDataContractMixin:
                 return ODCSDataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error exporting data contract {fqn} to ODCS: {err}")  # noqa: G004
+            logger.warning(f"Error exporting data contract {fqn} to ODCS: {err}")
         return None
 
     def export_to_odcs_yaml(self, data_contract_id: Uuid) -> str | None:
@@ -278,7 +278,7 @@ class OMetaDataContractMixin:
                     return resp
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error exporting data contract {model_str(data_contract_id)} to ODCS YAML: {err}")  # noqa: G004
+            logger.warning(f"Error exporting data contract {model_str(data_contract_id)} to ODCS YAML: {err}")
         return None
 
     def export_to_odcs_yaml_by_fqn(self, fqn: str) -> str | None:
@@ -300,7 +300,7 @@ class OMetaDataContractMixin:
                     return resp
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error exporting data contract {fqn} to ODCS YAML: {err}")  # noqa: G004
+            logger.warning(f"Error exporting data contract {fqn} to ODCS YAML: {err}")
         return None
 
     def import_from_odcs(
@@ -329,7 +329,7 @@ class OMetaDataContractMixin:
                 return DataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error importing ODCS contract for entity {model_str(entity_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error importing ODCS contract for entity {model_str(entity_id)}: {err}")
         return None
 
     def import_from_odcs_yaml(
@@ -359,7 +359,7 @@ class OMetaDataContractMixin:
                 return DataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error importing ODCS YAML contract for entity {model_str(entity_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error importing ODCS YAML contract for entity {model_str(entity_id)}: {err}")
         return None
 
     def create_or_update_from_odcs(
@@ -392,7 +392,7 @@ class OMetaDataContractMixin:
                 return DataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating/updating ODCS contract for entity {model_str(entity_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error creating/updating ODCS contract for entity {model_str(entity_id)}: {err}")
         return None
 
     def create_or_update_from_odcs_yaml(
@@ -426,7 +426,7 @@ class OMetaDataContractMixin:
                 return DataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating/updating ODCS YAML contract for entity {model_str(entity_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error creating/updating ODCS YAML contract for entity {model_str(entity_id)}: {err}")
         return None
 
     def validate_data_contract_by_entity_id(self, entity_id: Uuid, entity_type: str) -> DataContractResult | None:
@@ -466,7 +466,7 @@ class OMetaDataContractMixin:
                 return resp
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error validating data contract yaml: {err}")  # noqa: G004
+            logger.warning(f"Error validating data contract yaml: {err}")
         return None
 
     def validate_odcs_yaml(
@@ -491,7 +491,7 @@ class OMetaDataContractMixin:
                 return resp
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error validating ODCS yaml for {model_str(entity_id)}: {err}")  # noqa: G004
+            logger.warning(f"Error validating ODCS yaml for {model_str(entity_id)}: {err}")
         return None
 
     def parse_odcs_yaml(self, yaml_content: str) -> Any | None:
@@ -508,7 +508,7 @@ class OMetaDataContractMixin:
                 return resp
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error parsing ODCS yaml: {err}")  # noqa: G004
+            logger.warning(f"Error parsing ODCS yaml: {err}")
         return None
 
     def delete_data_contract_results_before(self, data_contract_id: Uuid, timestamp: int) -> bool:
@@ -523,6 +523,6 @@ class OMetaDataContractMixin:
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error deleting data contract results before {timestamp} for {model_str(data_contract_id)}: {err}"  # noqa: G004
+                f"Error deleting data contract results before {timestamp} for {model_str(data_contract_id)}: {err}"
             )
         return False

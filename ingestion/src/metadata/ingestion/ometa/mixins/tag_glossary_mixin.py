@@ -41,7 +41,7 @@ class OMetaTagGlossaryMixin:
             return self.client.get(path, params)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get tag assets due to {exc}")  # noqa: G004
+            logger.warning(f"Could not get tag assets due to {exc}")
             return {}
 
     def get_glossary_term_assets(self, fqn: str, limit: int = 10, offset: int = 0) -> dict:
@@ -62,5 +62,5 @@ class OMetaTagGlossaryMixin:
             return self.client.get(path, params)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get glossary term assets due to {exc}")  # noqa: G004
+            logger.warning(f"Could not get glossary term assets due to {exc}")
             return {}

@@ -122,7 +122,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
 
         if column not in table_stats.columns:
             logger.debug(
-                f"Column {column} not found in statistics for {schema}.{table_name}. "  # noqa: G004
+                f"Column {column} not found in statistics for {schema}.{table_name}. "
                 "Run ANALYZE TABLE to collect statistics."
             )
             return {}
@@ -198,7 +198,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
                     table_stats.columns[row.column_name] = col_stats
             except Exception as exc:
                 logger.debug(
-                    f"Could not fetch column statistics for {schema}.{table}: {exc}. "  # noqa: G004
+                    f"Could not fetch column statistics for {schema}.{table}: {exc}. "
                     "This is expected if ANALYZE has not been run on the table."
                 )
 

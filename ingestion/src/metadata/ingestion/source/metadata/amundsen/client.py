@@ -104,4 +104,4 @@ class Neo4jHelper:
             self.driver.close()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Exception encountered while closing the graph driver: {exc}")  # noqa: G004
+            logger.warning(f"Exception encountered while closing the graph driver: {exc}")

@@ -270,7 +270,7 @@ class ParsedLineage(BaseModel):
             try:
                 source_entity = source.get_entity(metadata=metadata, engine=engine, service_name=service_name)
                 if not source_entity:
-                    logger.warning(f"Can't find entity for source [{source}]")  # noqa: G004
+                    logger.warning(f"Can't find entity for source [{source}]")
                     continue
 
                 source_entity_type = type(source_entity).__name__
@@ -329,7 +329,7 @@ class ParsedLineage(BaseModel):
                     column=source_col,
                 )
                 if not from_column_fqn:
-                    logger.warning(f"Can't find source column [{source_col}] in [{source_table}]")  # noqa: G004
+                    logger.warning(f"Can't find source column [{source_col}] in [{source_table}]")
                     continue
 
                 from_columns.append(
@@ -344,7 +344,7 @@ class ParsedLineage(BaseModel):
             )
             if not to_column_fqn:
                 logger.warning(
-                    f"Can't find target column [{mapping.target}] in [{to_entity}]. For source columns: {from_columns}"  # noqa: G004
+                    f"Can't find target column [{mapping.target}] in [{to_entity}]. For source columns: {from_columns}"
                 )
                 continue
 
@@ -449,7 +449,7 @@ def _traverse_ds_with_columns(
                 )
         else:
             logger.info(
-                f"Can't find mapping for column [{current_column}] in [{current_ds}]. "  # noqa: G004
+                f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
                 f"This might be a constant or derived column."
             )
 
@@ -914,7 +914,7 @@ def _build_cv_attributes(
             else None
         )
         if not formula:
-            logger.debug(f"Skipping formula without expression at {view_attr}")  # noqa: G004
+            logger.debug(f"Skipping formula without expression at {view_attr}")
             continue
 
         involved_columns = FORMULA_PATTERN.findall(formula)

@@ -121,13 +121,13 @@ class MetadataUsageBulkSink(BulkSink):
                 "database_schema": table_usage.databaseSchema,
             }
             logger.debug(
-                f"[UsageSink] Added new table usage entry for {table_entity.id.root} "  # noqa: G004
+                f"[UsageSink] Added new table usage entry for {table_entity.id.root} "
                 f"(count={table_usage.count}, date={table_usage.date})"
             )
         else:
             self.table_usage_map[table_entity.id.root]["usage_count"] += table_usage.count
             logger.debug(
-                f"[UsageSink] Updated usage count for {table_entity.id.root} "  # noqa: G004
+                f"[UsageSink] Updated usage count for {table_entity.id.root} "
                 f"(+={table_usage.count}, total={self.table_usage_map[table_entity.id.root]['usage_count']})"
             )
 
@@ -144,12 +144,12 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 self.metadata.publish_table_usage(value_dict["table_entity"], table_usage_request)
                 logger.info(
-                    f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.root}"  # noqa: G004
+                    f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.root}"
                 )
                 self.status.scanned(f"Table: {value_dict['table_entity'].fullyQualifiedName.root}")
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Cannot construct UsageRequest from {value_dict['table_entity']}: {err}")  # noqa: G004
+                logger.warning(f"Cannot construct UsageRequest from {value_dict['table_entity']}: {err}")
             except Exception as exc:
                 name = value_dict["table_entity"].fullyQualifiedName.root
                 error = f"Failed to update usage for {name} :{exc}"
@@ -193,7 +193,7 @@ class MetadataUsageBulkSink(BulkSink):
                 table_entities = None
                 try:
                     logger.debug(
-                        f"[UsageSink] Fetching table entities for "  # noqa: G004
+                        f"[UsageSink] Fetching table entities for "
                         f"service={self.service_name}, "
                         f"database={table_usage.databaseName}, "
                         f"schema={table_usage.databaseSchema}, "
@@ -209,10 +209,10 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Cannot get table entities from query table {table_usage.table}: {exc}")  # noqa: G004
+                    logger.warning(f"Cannot get table entities from query table {table_usage.table}: {exc}")
 
                 if not table_entities:
-                    logger.warning(f"Could not fetch table {table_usage.databaseName}.{table_usage.table}")  # noqa: G004
+                    logger.warning(f"Could not fetch table {table_usage.databaseName}.{table_usage.table}")
                     continue
 
                 self.get_table_usage_and_joins(table_entities, table_usage)
@@ -228,7 +228,7 @@ class MetadataUsageBulkSink(BulkSink):
                     self.metadata.publish_query_cost(cost_record, self.service_name)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to publish query cost for query={cost_record.query[:100]}...: {exc}")  # noqa: G004
+                    logger.warning(f"Failed to publish query cost for query={cost_record.query[:100]}...: {exc}")
 
     # Check here how to properly pick up ES and/or table query data
     def run(self) -> None:
@@ -241,13 +241,13 @@ class MetadataUsageBulkSink(BulkSink):
         tables and publish the join information.
         """
         for table_entity in table_entities:
-            logger.debug(f"Processing table entity {table_entity.name.root}")  # noqa: G004
+            logger.debug(f"Processing table entity {table_entity.name.root}")
             if table_entity is not None:
                 table_join_request = None
                 try:
                     self.__populate_table_usage_map(table_usage=table_usage, table_entity=table_entity)
                     table_join_request = self.__get_table_joins(table_entity=table_entity, table_usage=table_usage)
-                    logger.debug(f"table join request {table_join_request}")  # noqa: G004
+                    logger.debug(f"table join request {table_join_request}")
 
                     if table_join_request is not None and len(table_join_request.columnJoins) > 0:
                         self.metadata.publish_frequently_joined_with(table_entity, table_join_request)
@@ -257,7 +257,7 @@ class MetadataUsageBulkSink(BulkSink):
                         self._get_table_life_cycle_data(table_entity=table_entity, table_usage=table_usage)
                 except APIError as err:
                     if err.status_code == 409:
-                        logger.warning(f"Entity already exists for {table_usage.table}, skipping: {err}")  # noqa: G004
+                        logger.warning(f"Entity already exists for {table_usage.table}, skipping: {err}")
                     else:
                         error = f"Failed to update query join for {table_usage}: {err}"
                         logger.debug(traceback.format_exc())
@@ -277,7 +277,7 @@ class MetadataUsageBulkSink(BulkSink):
                     self.status.failed(StackTraceError(name=name, error=error, stackTrace=traceback.format_exc()))
             else:
                 logger.warning(
-                    f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"  # noqa: G004
+                    f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                 )
                 self.status.warning(f"Table: {table_usage.table}", reason="Could not fetch table")
 
@@ -310,13 +310,13 @@ class MetadataUsageBulkSink(BulkSink):
                         fullyQualifiedName=str(joined_column_fqn), joinCount=1
                     )
                 else:
-                    logger.debug(f"Skipping join columns for {column} {joined_column_fqn}")  # noqa: G004
+                    logger.debug(f"Skipping join columns for {column} {joined_column_fqn}")
             column_joins_dict[column_join.tableColumn.column] = joined_with
 
         for key, value in column_joins_dict.items():
             key_name = get_column_fqn(table_entity=table_entity, column=key)
             if not key_name:
-                logger.warning(f"Could not find column {key} in table {table_entity.fullyQualifiedName.root}")  # noqa: G004
+                logger.warning(f"Could not find column {key} in table {table_entity.fullyQualifiedName.root}")
                 continue
             table_joins.columnJoins.append(
                 ColumnJoins(columnName=fqn.split(key_name)[-1], joinedWith=list(value.values()))
@@ -388,6 +388,6 @@ class MetadataUsageBulkSink(BulkSink):
             self.metadata.compute_percentile(Database, self.today)
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to publish compute.percentile: {err}")  # noqa: G004
+            logger.error(f"Failed to publish compute.percentile: {err}")
 
         self.metadata.close()

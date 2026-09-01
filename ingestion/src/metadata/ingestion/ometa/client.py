@@ -117,7 +117,7 @@ def _decode_body(resp: requests.Response, url: object, raise_on_html: bool = Fal
         return resp
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")  # noqa: G004
+        logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
     return None
 
 
@@ -228,7 +228,7 @@ class REST:
             self._session.headers["User-Agent"] = user_agent
         elif self.config.user_agent:
             logger.debug(
-                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"  # noqa: G004
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
             )
         self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
@@ -340,7 +340,7 @@ class REST:
                 try:
                     return self._one_request(method, url, opts, retry, raw)
                 except LimitsException as exc:
-                    logger.error(f"Feature limit exceeded for {url}")  # noqa: G004
+                    logger.error(f"Feature limit exceeded for {url}")
                     self._limits_reached.add(path)
                     raise exc  # noqa: TRY201
                 except RetryException:
@@ -354,7 +354,7 @@ class REST:
                     time.sleep(retry_wait)
                     retry -= 1
                     if retry == 0:
-                        logger.error(f"No more retries left for {url}")  # noqa: G004
+                        logger.error(f"No more retries left for {url}")
                         traceback.format_exc()
             return None
 
@@ -409,7 +409,7 @@ class REST:
             raise RestTransportError(method, url, exc) from exc
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
             # A raw caller asked for the response; swallowing to None would strand it
             # with an AttributeError. Re-raise so the real cause reaches the caller.
             if raw:

@@ -216,7 +216,7 @@ class OMetaUserMixin:
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to resolve owner reference for '{name}' due to: {err}. Skipping owner assignment.")  # noqa: G004
+            logger.warning(f"Failed to resolve owner reference for '{name}' due to: {err}. Skipping owner assignment.")
 
         return None
 
@@ -238,7 +238,7 @@ class OMetaUserMixin:
             return self.client.get(path, params)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get user assets due to {exc}")  # noqa: G004
+            logger.warning(f"Could not get user assets due to {exc}")
             return {}
 
     def get_team_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
@@ -259,5 +259,5 @@ class OMetaUserMixin:
             return self.client.get(path, params)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get team assets due to {exc}")  # noqa: G004
+            logger.warning(f"Could not get team assets due to {exc}")
             return {}

@@ -121,7 +121,7 @@ def query_sync_logs(
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
-            f"Could not query fivetran_metadata.log for connector [{connector_id}] in database [{log_database}]: {exc}"  # noqa: G004
+            f"Could not query fivetran_metadata.log for connector [{connector_id}] in database [{log_database}]: {exc}"
         )
         return None
     finally:

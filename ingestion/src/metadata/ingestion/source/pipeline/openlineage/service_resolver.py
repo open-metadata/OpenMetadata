@@ -86,7 +86,7 @@ def find_pipeline_by_namespace(
     fallback_fqn = f"{namespace}.{name}"
     existing = metadata.get_by_name(Pipeline, fallback_fqn)
     if existing:
-        logger.info(f"Resolved pipeline via namespace fallback: {fallback_fqn}")  # noqa: G004
+        logger.info(f"Resolved pipeline via namespace fallback: {fallback_fqn}")
         return namespace, existing
 
     return None
@@ -134,7 +134,7 @@ def get_or_create_pipeline_service(
             _cache[service_name] = service_name
         return service_name
 
-    logger.info(f"Creating pipeline service '{service_name}' with type '{service_type.value}'")  # noqa: G004
+    logger.info(f"Creating pipeline service '{service_name}' with type '{service_type.value}'")
     request = CreatePipelineServiceRequest(
         name=EntityName(service_name),
         serviceType=service_type,

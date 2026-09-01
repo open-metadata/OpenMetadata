@@ -61,7 +61,7 @@ def failure_callback(context: dict[str, str]) -> None:
             )
         else:
             logging.warning(
-                f"Pipeline {airflow_service_entity.name.root}.{dag.dag_id} not found. Skipping status update."  # noqa: G004
+                f"Pipeline {airflow_service_entity.name.root}.{dag.dag_id} not found. Skipping status update."
             )
 
     except Exception as exc:  # pylint: disable=broad-except

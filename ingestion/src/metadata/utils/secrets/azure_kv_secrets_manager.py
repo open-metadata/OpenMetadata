@@ -107,11 +107,11 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
         """
         try:
             secret: KeyVaultSecret = self.client.get_secret(secret_id)
-            logger.debug(f"Got value for secret {secret_id}")  # noqa: G004
+            logger.debug(f"Got value for secret {secret_id}")
             return secret.value  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")  # noqa: G004
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
 
     def load_credentials(self) -> Optional["AzureCredentials"]:  # noqa: F821

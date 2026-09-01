@@ -176,5 +176,5 @@ class FlinkSource(PipelineServiceSource):
             return f"{self.client.config.hostPort}/#/overview"  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get source url: {exc}")
         return None

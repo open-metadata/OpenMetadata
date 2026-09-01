@@ -28,10 +28,10 @@ class ExasolProfilerInterface(SQAProfilerInterface):
         **kwargs,
     ) -> list[SystemProfile]:
         if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
-            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")  # noqa: G004
+            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")
             return []
 
-        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")  # noqa: G004
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
         exasol_system_metrics_constructor = cast(
             Callable[[Session, QueryRunner], ExasolSystemMetricsComputer],  # noqa: TC006
             self.system_metrics_class,

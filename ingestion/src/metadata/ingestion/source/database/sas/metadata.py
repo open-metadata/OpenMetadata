@@ -215,7 +215,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         metadata: OpenMetadata,
         pipeline_name: str | None = None,
     ):
-        logger.info(f"running create {config_dict}")  # noqa: G004
+        logger.info(f"running create {config_dict}")
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SASConnection = config.serviceConnection.root.config
         if not isinstance(connection, SASConnection):
@@ -247,7 +247,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
     def process_report(self, report):
         self.table_fqns = []
-        logger.info(f"Ingesting report: {report}")  # noqa: G004
+        logger.info(f"Ingesting report: {report}")
         report_instance = self.sas_client.get_instance(report["id"])
         for table in self.get_report_tables(report_instance["resourceId"].split("/")[-1]):
             yield from self.create_table_entity(table)
@@ -258,10 +258,10 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         Process dataflow assets
         """
         self.table_fqns = []
-        logger.info(f"Ingesting dataflow: {data_flow}")  # noqa: G004
+        logger.info(f"Ingesting dataflow: {data_flow}")
         data_flow_instance = self.sas_client.get_instance(data_flow["id"])
         if not data_flow_instance.get("relationships"):
-            logger.warning(f"No relationships are found for {data_flow['name']}")  # noqa: G004
+            logger.warning(f"No relationships are found for {data_flow['name']}")
             return
         input_asset_ids = [
             rel["endpointId"]
@@ -288,7 +288,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         Then the db service name will be the provider id
         """
         data_store_endpoint = db["resourceId"][1:]
-        logger.info(f"{data_store_endpoint}")  # noqa: G004
+        logger.info(f"{data_store_endpoint}")
         data_store_resource = self.sas_client.get_data_source(data_store_endpoint)
 
         data_store_parent_endpoint = ""
@@ -509,7 +509,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                     parsed_string["dataLength"] = col_attributes["charsMaxCount"]
                 else:
                     parsed_string["dataLength"] = 0
-            logger.info(f"This is parsed string: {parsed_string}")  # noqa: G004
+            logger.info(f"This is parsed string: {parsed_string}")
             col = Column(**parsed_string)
             columns.append(col)
         return columns, col_profile_list
@@ -519,7 +519,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         """
         Create database + db service & Create database schema
         """
-        logger.info(f"Ingesting table: {table}")  # noqa: G004
+        logger.info(f"Ingesting table: {table}")
         global table_entity  # noqa: PLW0603
         global table_fqn  # noqa: PLW0603
 
@@ -529,7 +529,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         try:
             table_url = self.sas_client.get_information_catalog_link(table["id"])
             col_entity_instances, table_entity_instance = self.get_entities_using_view(table["id"])
-            logger.info(f"table entity: {table_entity_instance}")  # noqa: G004
+            logger.info(f"table entity: {table_entity_instance}")
 
             if not table_entity_instance:
                 return
@@ -613,14 +613,14 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                 # that masks the real sink-side failure.
                 if table_entity is None:
                     logger.warning(
-                        f"Table [{table_name}] was not created in OpenMetadata; "  # noqa: G004
+                        f"Table [{table_name}] was not created in OpenMetadata; "
                         "skipping description/extension/profile updates. "
                         "Check the sink logs for the underlying error."
                     )
                     return
 
                 # update the description
-                logger.debug(f"Updating description for {table_entity.id.root} with {table_description}")  # noqa: G004
+                logger.debug(f"Updating description for {table_entity.id.root} with {table_description}")
                 self.metadata.client.patch(
                     path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
@@ -635,7 +635,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                 )
 
                 # update the custom properties
-                logger.debug(f"Updating custom properties for {table_entity.id.root} with {extension_attributes}")  # noqa: G004
+                logger.debug(f"Updating custom properties for {table_entity.id.root} with {extension_attributes}")
                 self.metadata.client.patch(
                     path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
@@ -674,7 +674,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                 )
 
         except Exception as exc:
-            logger.error(f"table failed to create: {table}")  # noqa: G004
+            logger.error(f"table failed to create: {table}")
             error_name = table_name or (table.get("id") if isinstance(table, dict) else "unknown")
             yield Either(
                 left=StackTraceError(
@@ -695,7 +695,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             source_name = table_extension["sourceName"]
             # see if the source table already exists
             source_table_fqn = self.get_table_fqn(source_name)
-            logger.debug(f"source_table_fqn for sourceTable is {source_table_fqn}")  # noqa: G004
+            logger.debug(f"source_table_fqn for sourceTable is {source_table_fqn}")
             source_table_entity = self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
             target_table_entity = self.metadata.get_by_name(entity=Table, fqn=self.get_table_fqn(table_name))
 
@@ -776,7 +776,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
             except HTTPError as exc:
                 # append http error to table description if it can't be found
-                logger.error(f"table_uri: {table_uri}")  # noqa: G004
+                logger.error(f"table_uri: {table_uri}")
                 self.report_description.append(str(exc))
                 name_index = table_uri.rindex("/")
                 table_name = table_uri[name_index + 1 :]
@@ -833,7 +833,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             for entity in table_entities:
                 yield self.create_lineage_request("table", "dashboard", entity, dashboard_entity)
         except Exception as exc:
-            logger.error(f"report failed to create: {report}")  # noqa: G004
+            logger.error(f"report failed to create: {report}")
             yield Either(
                 left=StackTraceError(
                     name=report_name,
@@ -878,7 +878,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             for entity in output_entities:
                 yield self.create_lineage_request("dashboard", "table", dashboard_entity, entity)
         except Exception as exc:
-            logger.error(f"dataflow failed to create: {data_flow}")  # noqa: G004
+            logger.error(f"dataflow failed to create: {data_flow}")
             yield Either(
                 left=StackTraceError(
                     name=data_flow_id,

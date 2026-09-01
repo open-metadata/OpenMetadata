@@ -66,7 +66,7 @@ class OpenMetadataLineageOperator(BaseOperator):
         try:
             xlet_list: list[XLets] = get_xlets_from_dag(self.dag)
 
-            logger.info(f"Extracted the following XLet data from the DAG: {xlet_list}")  # noqa: G004
+            logger.info(f"Extracted the following XLet data from the DAG: {xlet_list}")
 
             metadata = OpenMetadata(self.server_config)
             runner = AirflowLineageRunner(
@@ -81,5 +81,5 @@ class OpenMetadataLineageOperator(BaseOperator):
             runner.execute()
         except Exception as err:
             logger.info(traceback.format_exc())
-            logger.error(f"Error executing the lineage runner - {err}")  # noqa: G004
+            logger.error(f"Error executing the lineage runner - {err}")
             raise err  # noqa: TRY201

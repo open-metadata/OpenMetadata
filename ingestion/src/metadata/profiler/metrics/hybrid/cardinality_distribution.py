@@ -70,7 +70,7 @@ class CardinalityDistribution(HybridMetric):
 
         if not (is_concatenable(self.col.type) or is_enum(self.col.type)):
             logger.debug(
-                f"CardinalityDistribution not applicable for {self.col.name} because type {self.col.type} is not supported."  # noqa: G004
+                f"CardinalityDistribution not applicable for {self.col.name} because type {self.col.type} is not supported."
             )
             return None
 
@@ -82,7 +82,7 @@ class CardinalityDistribution(HybridMetric):
             return None
 
         if total_count == distinct_count:
-            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")  # noqa: G004
+            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")
             return {"allValuesUnique": True}
 
         col = column(self.col.name, self.col.type)
@@ -148,7 +148,7 @@ class CardinalityDistribution(HybridMetric):
 
         if not (is_concatenable(self.col.type) or is_enum(self.col.type)):
             logger.debug(
-                f"CardinalityDistribution not applicable for {self.col.name} because type {self.col.type} is not supported."  # noqa: G004
+                f"CardinalityDistribution not applicable for {self.col.name} because type {self.col.type} is not supported."
             )
             return None
 
@@ -160,7 +160,7 @@ class CardinalityDistribution(HybridMetric):
             return None
 
         if total_count == distinct_count:
-            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")  # noqa: G004
+            logger.debug(f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct.")
             return {"allValuesUnique": True}
 
         try:
@@ -207,5 +207,5 @@ class CardinalityDistribution(HybridMetric):
             }
 
         except Exception as err:
-            logger.debug(f"Error computing CardinalityDistribution for {self.col.name}: {err}")  # noqa: G004
+            logger.debug(f"Error computing CardinalityDistribution for {self.col.name}: {err}")
             return None

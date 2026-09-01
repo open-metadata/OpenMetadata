@@ -69,7 +69,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
             if skip_cold_storage:
                 blob_tier = getattr(file, "blob_tier", None)
                 if blob_tier and blob_tier in AZURE_COLD_TIERS:
-                    logger.debug(f"Skipping cold storage object: {file.name} (blob_tier: {blob_tier})")  # noqa: G004
+                    logger.debug(f"Skipping cold storage object: {file.name} (blob_tier: {blob_tier})")
                     continue
             yield file.name, getattr(file, "size", None)
 

@@ -77,7 +77,7 @@ class S3Sampler(StorageSampler):
         prefix = self.entity.prefix  # pyright: ignore[reportAttributeAccessIssue]
 
         if not prefix:
-            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")  # noqa: G004
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")
             return None
 
         prefix_without_leading_slash = prefix.lstrip("/")
@@ -87,7 +87,7 @@ class S3Sampler(StorageSampler):
 
             if S3_CLIENT_ROOT_RESPONSE not in response:
                 logger.warning(
-                    f"No objects found in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}"  # noqa: G004
+                    f"No objects found in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}"
                 )
                 return None
 
@@ -96,17 +96,17 @@ class S3Sampler(StorageSampler):
             if candidate_keys:
                 result_key = secrets.choice(candidate_keys)
                 logger.info(
-                    f"File {result_key} picked for sampling from container {self.entity.fullyQualifiedName.root}"  # noqa: G004
+                    f"File {result_key} picked for sampling from container {self.entity.fullyQualifiedName.root}"
                 )
                 return result_key
 
             logger.warning(
-                f"No valid files found in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}"  # noqa: G004
+                f"No valid files found in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}"
             )
             return None  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(
-                f"Error listing objects in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}: {exc}"  # noqa: G004
+                f"Error listing objects in S3 bucket {bucket_name} with prefix {prefix_without_leading_slash}: {exc}"
             )
             return None

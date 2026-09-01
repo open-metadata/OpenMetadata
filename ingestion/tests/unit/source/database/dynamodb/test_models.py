@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+#  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -9,24 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import traceback
-
-from sqlalchemy.engine import Engine
-
-from metadata.utils.logger import cli_logger
-
-logger = cli_logger()
+from metadata.ingestion.source.database.dynamodb.models import TableResponse
 
 
-def kill_active_connections(engine: Engine):
-    """
-    Method to kill the active connections
-    as well as idle connections in the engine
-    """
-    try:
-        active_conn = engine.pool.checkedout() + engine.pool.checkedin()
-        if active_conn:
-            engine.dispose()
-    except Exception as exc:
-        logger.warning(f"Error Killing the active connections {exc}")
-        logger.debug(traceback.format_exc())
+def test_missing_items_can_be_consumed_as_an_empty_page() -> None:
+    attributes = [{"id": "existing"}]
+
+    attributes.extend(TableResponse.model_validate({}).Items)
+
+    assert attributes == [{"id": "existing"}]

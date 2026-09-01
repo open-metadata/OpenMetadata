@@ -303,10 +303,8 @@
     },
     "ingestion/src/metadata/ingestion/api/parser.py": {
       "5e85f291ef5e6771c616e24c39b0efecf4933188813fa38b41b2c63c37a6f264": 1,
-      "6171056453bbb0208ae7dd1cc8d8d95f0698fadc37795b8560701a5d914f1500": 1,
       "8cf781a4e8a9e76fa02569f46390cfd60c66f888c7afe45339844bc79cd8d164": 1,
       "b9f2a9c923069a806feb68111cc88b8a7f08e199f88de46d8bb96965d33b0295": 1,
-      "bca2034fb2c7109503c1fce71cdf49fccb4de63e4eaebfa197de857079640be9": 1,
       "c106ab86df4e3fad9299036aba9803fef5c702c89eaee89f5d704010925c6251": 1,
       "e082cc80d3384e1f24a3062e94159a51f48bf3dc4b0e97fda1820a6a4da66628": 1
     },
@@ -3302,9 +3300,6 @@
       "c28a419183313463a59eabf5f5a41cc2955806382ee04af5e588ecc82b94a177": 1,
       "c8505376daf1aca18cd29d36eae86c3f0964fe4aba2cb40012b92bf80c4d3c0a": 1,
       "f65dc8e30d2e20c6abcda4492835fcff4c0bdcb9797192c895b3caa74602f8d1": 1
-    },
-    "openmetadata-airflow-apis/openmetadata_managed_apis/utils/parser.py": {
-      "6171056453bbb0208ae7dd1cc8d8d95f0698fadc37795b8560701a5d914f1500": 1
     },
     "openmetadata-airflow-apis/openmetadata_managed_apis/workflows/ingestion/common.py": {
       "7280d5179da6832bb77f0a73e888cfee7bac02f702b33fb15400ecdfea8f150b": 1,

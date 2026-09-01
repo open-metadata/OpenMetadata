@@ -79,7 +79,7 @@ def infer_json_schema_from_sample(
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Failed to infer JSON schema from sample data: {exc}")  # noqa: G004
+        logger.warning(f"Failed to infer JSON schema from sample data: {exc}")
         return None, None
 
 
@@ -97,7 +97,7 @@ def _parse_json_values(json_values: list[Any]) -> list[dict]:
         try:
             if isinstance(value, str):
                 if len(value) > MAX_JSON_VALUE_SIZE:
-                    logger.debug(f"Skipping JSON value exceeding size limit: {len(value)} bytes")  # noqa: G004
+                    logger.debug(f"Skipping JSON value exceeding size limit: {len(value)} bytes")
                     continue
                 parsed_value = json.loads(value)
             elif isinstance(value, dict):
@@ -263,5 +263,5 @@ def _create_child_column(key: str, value: Any) -> Column | None:
         return Column(**column_dict)
 
     except Exception as exc:
-        logger.debug(f"Failed to create child column for key '{key}': {exc}")  # noqa: G004
+        logger.debug(f"Failed to create child column for key '{key}': {exc}")
         return None

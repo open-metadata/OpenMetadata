@@ -75,7 +75,7 @@ def get_manifest(config):
 def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
     try:
         if config.manifestFilePath is not None:
-            logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")  # noqa: G004
+            logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")
             with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:  # noqa: PTH123
                 metadata_manifest = manifest.read()
             return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
@@ -88,7 +88,7 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
 @get_manifest.register
 def _(config: StorageMetadataHttpConfig) -> ManifestMetadataConfig:
     try:
-        logger.debug(f"Requesting [dbtManifestHttpPath] to: {config.manifestHttpPath}")  # noqa: G004
+        logger.debug(f"Requesting [dbtManifestHttpPath] to: {config.manifestHttpPath}")
         http_manifest = requests.get(  # pylint: disable=missing-timeout
             config.manifestHttpPath
         )

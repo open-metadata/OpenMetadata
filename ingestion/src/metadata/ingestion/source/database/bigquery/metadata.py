@@ -262,7 +262,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             try:
                 self._policy_tag_client = get_policy_tag_client(self.service_connection)
             except Exception as exc:
-                logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")  # noqa: G004
+                logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")
 
         if self.incremental.enabled:
             logger.info(
@@ -315,7 +315,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                             return gcp_config.projectId.root
                         return [gcp_config.projectId.root]
                 except Exception as exc:
-                    logger.warning(f"Error getting project ID, falling back: {exc}")  # noqa: G004
+                    logger.warning(f"Error getting project ID, falling back: {exc}")
 
             # Fallback to ADC default project
             try:
@@ -323,7 +323,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 if project_id:
                     return [project_id] if isinstance(project_id, str) else project_id
             except Exception as exc:
-                logger.warning(f"Error getting default project from ADC: {exc}")  # noqa: G004
+                logger.warning(f"Error getting default project from ADC: {exc}")
 
             raise InvalidSourceException(  # noqa: TRY301
                 "Unable to get project IDs. Either configure project IDs in the connection or "
@@ -403,7 +403,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
 
         except Exception as exc:
-            logger.error(f"Error listing tables for {dataset_ref}: {exc}")  # noqa: G004
+            logger.error(f"Error listing tables for {dataset_ref}: {exc}")
             raise
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -559,7 +559,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                                 }
                                 taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
                     except Exception as exc:
-                        logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")  # noqa: G004
+                        logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
             else:
                 logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
 
@@ -671,7 +671,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             return dataset_obj.description or ""  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch dataset description for [{schema_name}]: {err}")  # noqa: G004
+            logger.debug(f"Failed to fetch dataset description for [{schema_name}]: {err}")
         return ""
 
     def _prepare_schema_incremental_data(self, schema_name: str):
@@ -792,7 +792,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         except KeyError:
             pass
 
-        logger.debug(f"Fetching table object for {cache_key} using BigQuery API")  # noqa: G004
+        logger.debug(f"Fetching table object for {cache_key} using BigQuery API")
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         table_obj = self.client.get_table(bq_table_fqn)
 
@@ -843,7 +843,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     column["policy_tags"] = cached["display_name"]
                     return column
 
-                logger.debug(f"Policy tag {policy_tag_name} not in cache, fetching from API")  # noqa: G004
+                logger.debug(f"Policy tag {policy_tag_name} not in cache, fetching from API")
 
                 if not self._policy_tag_client:
                     logger.warning("PolicyTagManagerClient not available for fallback fetch")
@@ -857,7 +857,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return column
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")  # noqa: G004
+            logger.warning(f"Skipping Policy Tag: {exc}")
 
     def get_column_tag_labels(self, table_name: str, column: dict) -> list[TagLabel] | None:
         """
@@ -974,7 +974,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {project_id}: {exc}")  # noqa: G004
+                    logger.error(f"Error trying to connect to database {project_id}: {exc}")
 
     def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -992,7 +992,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     return f"CREATE MATERIALIZED VIEW {schema_name}.{table_name} AS {table_obj.mview_query}"
 
                 logger.debug(
-                    f"Falling back to inspector for view definition as view_query not found for {table_obj.table_id}"  # noqa: G004
+                    f"Falling back to inspector for view definition as view_query not found for {table_obj.table_id}"
                 )
                 view_definition = inspector.get_view_definition(
                     fqn._build(self.context.get().database, schema_name, table_name)
@@ -1007,10 +1007,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             if self.source_config.includeDDL:
                 return self._table_ddl_cache.get(table_name)
         except NotImplementedError:
-            logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")  # noqa: G004
+            logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting schema definition for {schema_name}.{table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error getting schema definition for {schema_name}.{table_name}: {exc}")
         return None
 
     def _get_partition_column_name(self, columns: list[dict], partition_field_name: str):
@@ -1024,7 +1024,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     return column_name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting partition column name for {partition_field_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error getting partition column name for {partition_field_name}: {exc}")
         return None
 
     def update_table_constraints(
@@ -1058,7 +1058,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     )
                 )
         except Exception as exc:
-            logger.warning(f"Error getting clustering fields for {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error getting clustering fields for {table_name}: {exc}")
             logger.debug(traceback.format_exc())
         return table_constraints
 
@@ -1156,7 +1156,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting table partition details for {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error getting table partition details for {table_name}: {exc}")
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):
@@ -1169,7 +1169,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             try:
                 self._policy_tag_client.transport.close()
             except Exception as exc:
-                logger.debug(f"Error closing PolicyTagManagerClient: {exc}")  # noqa: G004
+                logger.debug(f"Error closing PolicyTagManagerClient: {exc}")
 
         clear_constraint_cache()
 
@@ -1206,7 +1206,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             return database_url  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get source url: {exc}")
         return None
 
     def get_source_url(
@@ -1335,7 +1335,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
-                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # noqa: G004
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,

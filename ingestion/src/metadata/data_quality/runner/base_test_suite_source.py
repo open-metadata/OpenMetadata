@@ -180,7 +180,7 @@ class BaseTestSuiteRunner:
                 profiler_config = cast("ProfilerConfiguration", settings.config_value)
                 sample_data_config = profiler_config.sampleDataConfig
         except Exception as exc:
-            logger.debug(f"Could not fetch global profiler config: {exc}")  # noqa: G004
+            logger.debug(f"Could not fetch global profiler config: {exc}")
         return sample_data_config
 
     def get_data_quality_runner(self) -> DataTestsRunner:

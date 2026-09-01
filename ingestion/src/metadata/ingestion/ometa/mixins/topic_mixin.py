@@ -58,7 +58,7 @@ class OMetaTopicMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to GET sample data for {topic.fullyQualifiedName.root}: {exc}")  # pyright: ignore[reportOptionalMemberAccess]  # noqa: G004
+            logger.warning(f"Error trying to GET sample data for {topic.fullyQualifiedName.root}: {exc}")  # pyright: ignore[reportOptionalMemberAccess]
 
         if resp:
             try:
@@ -66,7 +66,7 @@ class OMetaTopicMixin:
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {topic.fullyQualifiedName.root}: {exc}"  # pyright: ignore[reportOptionalMemberAccess]  # noqa: G004
+                    f"Error trying to parse sample data results from {topic.fullyQualifiedName.root}: {exc}"  # pyright: ignore[reportOptionalMemberAccess]
                 )
 
         return None

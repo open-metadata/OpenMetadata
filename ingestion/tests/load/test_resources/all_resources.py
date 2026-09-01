@@ -21,7 +21,7 @@ def get_all_tasks_set() -> list:
             module_name = file_path.stem
             spec = importlib.util.spec_from_file_location(module_name, module_path)
             if not spec:
-                logger.error(f"Could not load module {module_name}")  # noqa: G004
+                logger.error(f"Could not load module {module_name}")
                 continue
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)  # type: ignore

@@ -82,7 +82,7 @@ class OpenMetadataLineageBackend(LineageBackend):
 
             if additional_client_config_arguments:
                 dag.log.info(
-                    f"Using custom timeout={config.timeout}, retry={config.retry}, retry_wait={config.retry_wait}, retry_codes={config.retry_codes}"  # noqa: G004
+                    f"Using custom timeout={config.timeout}, retry={config.retry}, retry_wait={config.retry_wait}, retry_codes={config.retry_codes}"
                 )
             metadata = OpenMetadata(
                 config.metadata_config,

@@ -351,7 +351,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: G004, RUF010
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 
     def get_db_service_prefixes(self) -> list[str]:
@@ -507,7 +507,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to process the dashboard owners
         """
-        logger.debug(f"Processing ownership is not supported for {self.service_connection.type.name}")  # noqa: G004
+        logger.debug(f"Processing ownership is not supported for {self.service_connection.type.name}")
         return None
 
     def register_record(self, dashboard_request: CreateDashboardRequest) -> None:
@@ -641,7 +641,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Cannot extract dashboard details from {dashboard}: {exc}")  # noqa: G004
+                logger.warning(f"Cannot extract dashboard details from {dashboard}: {exc}")
                 continue
 
             yield dashboard_details
@@ -677,7 +677,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
-        logger.debug(f"Project name is not supported for {self.service_connection.type.name}")  # noqa: G004
+        logger.debug(f"Project name is not supported for {self.service_connection.type.name}")
         return None
 
     def get_project_names(  # pylint: disable=unused-argument, useless-return
@@ -686,7 +686,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Get the project / workspace / folder / collection names of the dashboard
         """
-        logger.debug(f"Project names are not supported for {self.service_connection.type.name}")  # noqa: G004
+        logger.debug(f"Project names are not supported for {self.service_connection.type.name}")
         return None
 
     def create_patch_request(self, original_entity: Entity, create_request: C) -> PatchRequest:
@@ -748,5 +748,5 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
             return column_lineage  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error to get column lineage: {exc}")  # noqa: G004
+            logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())

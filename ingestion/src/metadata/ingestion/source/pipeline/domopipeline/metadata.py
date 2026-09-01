@@ -128,7 +128,7 @@ class DomopipelineSource(PipelineServiceSource):
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
         pipeline_id = str(pipeline_details.get("id"))
         if not pipeline_id:
-            logger.debug(f"Could not extract ID from {pipeline_details} while getting status.")  # noqa: G004
+            logger.debug(f"Could not extract ID from {pipeline_details} while getting status.")
             return
         runs = self.connection.get_runs(pipeline_id)
         try:
@@ -183,5 +183,5 @@ class DomopipelineSource(PipelineServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url for {pipeline_id}: {exc}")  # noqa: G004
+            logger.error(f"Unable to get source url for {pipeline_id}: {exc}")
         return None

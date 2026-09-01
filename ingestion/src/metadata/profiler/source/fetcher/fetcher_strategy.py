@@ -297,7 +297,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         try:
             total = self.metadata.list_entities(entity=Table, params=self._build_table_params(database), limit=1).total
         except Exception as exc:
-            logger.debug(f"Could not seed table total for `{db_fqn}`: {exc}")  # noqa: G004
+            logger.debug(f"Could not seed table total for `{db_fqn}`: {exc}")
             total = None
         if total is not None:
             self.progress.seed_scope_total(Table.__name__, db_fqn, total)

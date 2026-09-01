@@ -72,7 +72,7 @@ class FirstQuartile(StaticMetric, PercentilMixin):
                 0.25,
             )
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing First Quartile")  # noqa: G004
+        logger.debug(f"Don't know how to process type {self.col.type} when computing First Quartile")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -90,12 +90,12 @@ class FirstQuartile(StaticMetric, PercentilMixin):
                 df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
-                    f"Unable to compute Median for {self.col.name} due to memory constraints."  # noqa: G004
+                    f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitioning."
                 )
                 return None
             # check if nan
             first_quartile = df.quantile(0.25, interpolation="midpoint")
             return None if pd.isnull(first_quartile) else first_quartile
-        logger.debug(f"Don't know how to process type {self.col.type} when computing First Quartile")  # noqa: G004
+        logger.debug(f"Don't know how to process type {self.col.type} when computing First Quartile")
         return None

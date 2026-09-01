@@ -118,9 +118,9 @@ class BurstIQProfilerInterface(PandasProfilerInterface):
                                     mask = df[col_name].notna()
                                     df.loc[mask, col_name] = df.loc[mask, col_name].astype(dtype)
                                 except (TypeError, ValueError) as err:
-                                    logger.warning(f"NaN/NoneType found in the Dataframe: {err}")  # noqa: G004
+                                    logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 except Exception as err:  # pylint: disable=broad-except
-                    logger.warning(f"Error casting BurstIQ dataframe columns: {err}")  # noqa: G004
+                    logger.warning(f"Error casting BurstIQ dataframe columns: {err}")
                     logger.debug(_tb.format_exc())
                 yield df
 

@@ -179,7 +179,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 return True
         except Exception as exc:
-            logger.debug(f"Could not fetch global profiler config: {exc}")  # noqa: G004
+            logger.debug(f"Could not fetch global profiler config: {exc}")
         return False
 
     @abstractmethod

@@ -198,7 +198,7 @@ class StoredProcedureLineageMixin(ABC):
                         "Stored Procedure Filtered Out",
                     )
                     continue
-                logger.debug(f"Processing Lineage for [{procedure.name}]")  # noqa: G004
+                logger.debug(f"Processing Lineage for [{procedure.name}]")
                 procedures_by_name[procedure.name.root.lower()].append(procedure)
 
         # Yield the ProcedureAndQuery for filtered stored procedure
@@ -216,8 +216,8 @@ class StoredProcedureLineageMixin(ABC):
                     query_by_procedure=query_by_procedure,
                 )
 
-        logger.info(f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}")  # noqa: G004
-        logger.info(f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}")  # noqa: G004
+        logger.info(f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}")
+        logger.info(f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}")
 
     def yield_procedure_lineage(
         self,

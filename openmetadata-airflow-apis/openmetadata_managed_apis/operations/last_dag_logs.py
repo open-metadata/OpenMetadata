@@ -94,7 +94,7 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool
 
         return chunk  # noqa: TRY300
     except Exception as exc:
-        logger.warning(f"Failed to read log chunk from {file_path}: {exc}")  # noqa: G004
+        logger.warning(f"Failed to read log chunk from {file_path}: {exc}")
         return None
 
 
@@ -170,7 +170,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: int | None = None) -> Respon
         base_log_folder_real = os.path.realpath(base_log_folder)
 
         if not log_file_path_real.startswith(base_log_folder_real + os.sep):
-            logger.warning(f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}")  # noqa: G004
+            logger.warning(f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}")
             return ApiResponse.bad_request(f"Invalid log path for DAG {dag_id} and Task {task_id}.")
 
         if os.path.exists(log_file_path_real):  # noqa: PTH110
@@ -197,7 +197,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: int | None = None) -> Respon
                     }
                 )
     except Exception as exc:
-        logger.debug(f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}")  # noqa: G004
+        logger.debug(f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}")
 
     # Fallback to TaskLogReader if streaming fails
     return _last_dag_logs_fallback(dag_id, task_id, after, target_task_instance, task_log_reader, try_number)

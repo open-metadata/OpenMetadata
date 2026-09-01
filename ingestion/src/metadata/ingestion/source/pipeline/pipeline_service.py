@@ -251,10 +251,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     and task.endDate.startswith(self.today)
                 )
                 if not current_task_usage:
-                    logger.debug(f"No usage to report for {pipeline.fullyQualifiedName.root}")  # noqa: G004
+                    logger.debug(f"No usage to report for {pipeline.fullyQualifiedName.root}")
 
                 if not pipeline.usageSummary:
-                    logger.info(f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}")  # noqa: G004
+                    logger.info(f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}")
                     yield Either(
                         right=PipelineUsage(
                             pipeline=pipeline,
@@ -268,12 +268,12 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     new_usage = current_task_usage - latest_usage
                     if new_usage < 0:
                         logger.warning(
-                            f"Wrong computation of usage difference for {pipeline.fullyQualifiedName.root}."  # noqa: G004
+                            f"Wrong computation of usage difference for {pipeline.fullyQualifiedName.root}."
                             f" Got new_usage={new_usage}."
                         )
                         return
 
-                    logger.info(f"Yielding new usage for {pipeline.fullyQualifiedName.root}")  # noqa: G004
+                    logger.info(f"Yielding new usage for {pipeline.fullyQualifiedName.root}")
                     yield Either(
                         right=PipelineUsage(
                             pipeline=pipeline,
@@ -282,8 +282,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     )
 
                 else:
-                    logger.debug(f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute.")  # noqa: G004
-                    logger.info(f"Usage already informed for {pipeline.fullyQualifiedName.root}")  # noqa: G004
+                    logger.debug(f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute.")
+                    logger.info(f"Usage already informed for {pipeline.fullyQualifiedName.root}")
 
         except Exception as exc:
             yield Either(
@@ -401,9 +401,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                             right=TablePipelineObservability(table=table, observability_data=observability_list)
                         )
                     else:
-                        logger.warning(f"Table not found: {table_fqn}")  # noqa: G004
+                        logger.warning(f"Table not found: {table_fqn}")
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")  # noqa: G004
+            logger.error(f"Failed to extract pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(

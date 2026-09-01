@@ -93,7 +93,7 @@ def get_column_fqn(
         except Exception as e:
             logger.debug(traceback.format_exc())
             logger.debug(
-                f"Error getting column FQN for column [{column}] in"  # noqa: G004
+                f"Error getting column FQN for column [{column}] in"
                 f"table [{table_entity.fullyQualifiedName}] for column [{tbl_column}]: {e}"
             )
 
@@ -135,7 +135,7 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str 
 
         if service:
             service_type = service.connection.config.type.value.lower()
-            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")  # noqa: G004
+            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")
 
             # cache the result
             database_service_type_cache.put(service_name, service_type)
@@ -143,7 +143,7 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str 
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")  # noqa: G004
+        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")
 
     return None
 
@@ -201,7 +201,7 @@ def search_table_entities(
     """
     if not table:
         logger.debug(
-            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"  # noqa: G004
+            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
         )
         return None
 
@@ -255,7 +255,7 @@ def search_table_entities(
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")  # noqa: G004
+            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
 
     return None
 
@@ -290,7 +290,7 @@ def get_table_fqn_from_query_name(
         database_query, schema_query, table = (empty_list * (3 - len(split_table))) + split_table
 
         logger.debug(
-            f"[UsageSink] Extracted components before cleanup -> "  # noqa: G004
+            f"[UsageSink] Extracted components before cleanup -> "
             f"database: {database_query}, schema: {schema_query}, table: {table}"
         )
 
@@ -355,7 +355,7 @@ def handle_udf_column_lineage(
         column_lineage_original.update(result)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error handling UDF column lineage: {exc}")  # noqa: G004
+        logger.error(f"Error handling UDF column lineage: {exc}")
 
 
 @functools.lru_cache(maxsize=1000)
@@ -411,7 +411,7 @@ def _replace_target_table(parser: LineageParser, expected_table_name: str) -> Li
         parser.parser._sql_holder = SQLLineageHolder.of(*parser.parser._stmt_holders)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.debug(f"Error replacing target table: {exc}")  # noqa: G004
+        logger.debug(f"Error replacing target table: {exc}")
 
 
 # pylint: disable=too-many-arguments
@@ -535,7 +535,7 @@ def get_source_table_names(
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error getting source table names for table [{source_table}]: {exc}")  # noqa: G004
+        logger.error(f"Error getting source table names for table [{source_table}]: {exc}")
 
 
 def get_table_entities_from_query(
@@ -743,7 +743,7 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                logger.debug(f"WARNING: Table entity [{table_name}] not found in OpenMetadata")  # noqa: G004
+                logger.debug(f"WARNING: Table entity [{table_name}] not found in OpenMetadata")
         if graph is not None and (not from_table_entities or not to_table_entities):
             # Add nodes and edges with minimal data
             graph.add_node(
@@ -843,7 +843,7 @@ def get_lineage_by_query(
             lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
         masked_query = lineage_parser.masked_query
         query_hash = lineage_parser.query_hash
-        logger.debug(f"[{query_hash}] Running lineage with query: {masked_query or query}")  # noqa: G004
+        logger.debug(f"[{query_hash}] Running lineage with query: {masked_query or query}")
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -950,7 +950,7 @@ def get_lineage_via_table_entity(
             lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
         masked_query = lineage_parser.masked_query
         query_hash = lineage_parser.query_hash
-        logger.debug(f"[{query_hash}] Getting lineage via table entity using query: {masked_query or query}")  # noqa: G004
+        logger.debug(f"[{query_hash}] Getting lineage via table entity using query: {masked_query or query}")
         to_table_name = table_entity.name.root
 
         for from_table_name in lineage_parser.source_tables:
@@ -1066,7 +1066,7 @@ def _get_lineage_for_path(
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")  # noqa: G004
+        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")
     return None
 
 
@@ -1117,7 +1117,7 @@ def _process_sequence(
                 table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error creating lineage for node [{node}]: {exc}")  # noqa: G004
+            logger.error(f"Error creating lineage for node [{node}]: {exc}")
 
 
 def _get_paths_from_subtree(subtree: DiGraph) -> list[list[Any]]:
@@ -1143,7 +1143,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> list[list[Any]]:
     @timeout(seconds=NODE_PROCESSING_TIMEOUT)
     def process_root_node(root, leaf_nodes):
         """Process a single root node and return all paths to leaf nodes."""
-        logger.debug(f"Processing root node {root}")  # noqa: G004
+        logger.debug(f"Processing root node {root}")
         node_paths = []
         for leaf in leaf_nodes:
             node_paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
@@ -1155,7 +1155,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> list[list[Any]]:
             root_paths = process_root_node(root, leaf_set)
             paths.extend(root_paths)
         except TimeoutError:
-            logger.warning(f"Processing root node {root} failed after timeout of {NODE_PROCESSING_TIMEOUT} seconds")  # noqa: G004
+            logger.warning(f"Processing root node {root} failed after timeout of {NODE_PROCESSING_TIMEOUT} seconds")
     return paths
 
 
@@ -1207,7 +1207,7 @@ def get_lineage_by_graph(
     if graph is None:
         return
 
-    logger.info(f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges")  # noqa: G004
+    logger.info(f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges")
     # Get all weakly connected components
     components = list(nx.weakly_connected_components(graph))
 

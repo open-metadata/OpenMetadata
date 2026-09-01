@@ -129,11 +129,11 @@ def extract_kafka_sources(source_code: str) -> list[KafkaSourceConfig]:
                     )
                     kafka_configs.append(kafka_config)
                     logger.debug(
-                        f"Extracted Kafka config: brokers={bootstrap_servers}, "  # noqa: G004
+                        f"Extracted Kafka config: brokers={bootstrap_servers}, "
                         f"topics={topic_list}, group_prefix={group_id_prefix}"
                     )
             except Exception as exc:
-                logger.warning(f"Failed to parse individual Kafka config block: {exc}")  # noqa: G004
+                logger.warning(f"Failed to parse individual Kafka config block: {exc}")
                 continue
 
         # Fallback: If no explicit Kafka pattern found, look for topic_name variable
@@ -144,7 +144,7 @@ def extract_kafka_sources(source_code: str) -> list[KafkaSourceConfig]:
                 # Look for variables that likely contain topic names
                 if any(keyword in var_name.lower() for keyword in ["topic", "subject", "stream"]):
                     topic_candidates.append(var_value)
-                    logger.debug(f"Found potential topic from variable {var_name}: {var_value}")  # noqa: G004
+                    logger.debug(f"Found potential topic from variable {var_name}: {var_value}")
 
             if topic_candidates:
                 kafka_config = KafkaSourceConfig(
@@ -153,10 +153,10 @@ def extract_kafka_sources(source_code: str) -> list[KafkaSourceConfig]:
                     group_id_prefix=None,
                 )
                 kafka_configs.append(kafka_config)
-                logger.debug(f"Extracted Kafka config from variables: topics={topic_candidates}")  # noqa: G004
+                logger.debug(f"Extracted Kafka config from variables: topics={topic_candidates}")
 
     except Exception as exc:
-        logger.warning(f"Error parsing Kafka sources from code: {exc}")  # noqa: G004
+        logger.warning(f"Error parsing Kafka sources from code: {exc}")
 
     return kafka_configs
 
@@ -184,13 +184,13 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
             var_name = match.group(2)
             # Resolve variable
             if var_name in variables:
-                logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")  # noqa: G004
+                logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")
                 return variables[var_name]
             else:  # noqa: RET505
-                logger.debug(f"Variable {var_name} referenced but not found in source code")  # noqa: G004
+                logger.debug(f"Variable {var_name} referenced but not found in source code")
 
     except Exception as exc:
-        logger.debug(f"Failed to extract option {option_name}: {exc}")  # noqa: G004
+        logger.debug(f"Failed to extract option {option_name}: {exc}")
     return None
 
 
@@ -258,7 +258,7 @@ def get_pipeline_libraries(pipeline_config: dict) -> list[DLTLibrarySource]:
                     )
                     logger.info("   ✓ Found glob %s, listing: %s", include, base_path)
         except Exception as exc:
-            logger.debug(f"Failed to process library entry {lib}: {exc}")  # noqa: G004
+            logger.debug(f"Failed to process library entry {lib}: {exc}")
             continue
 
     return libraries

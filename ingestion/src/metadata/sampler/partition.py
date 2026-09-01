@@ -146,7 +146,7 @@ def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -
             )
         # TODO: Allow External Hive Partitioning for profiler
         logger.info(
-            f"Unknown partition type {partition.intervalType}. Cannot infer partition. Partitionning "  # noqa: G004
+            f"Unknown partition type {partition.intervalType}. Cannot infer partition. Partitionning "
             "will be set to None. If partitionning is required for your table, you can set it "
             "directly in the table config. More information can be found at "
             "https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/"

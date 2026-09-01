@@ -129,7 +129,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
             )
         ):
             logger.warning(
-                'Statistics are missing for table "{schema}.{table}". Profiling might be inaccurate.\n'  # noqa: G004
+                'Statistics are missing for table "{schema}.{table}". Profiling might be inaccurate.\n'
                 "Gather statistics for the table by running:"
                 f"  ANALYZE {schema}.{table}"
             )

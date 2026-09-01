@@ -95,11 +95,11 @@ class HexSource(DashboardServiceSource):
         if self.query_fetcher:
             db_service_prefixes = self.get_db_service_prefixes()
             if db_service_prefixes:
-                logger.info(f"Fetching Hex lineage using {len(db_service_prefixes)} database service prefixes")  # noqa: G004
+                logger.info(f"Fetching Hex lineage using {len(db_service_prefixes)} database service prefixes")
 
                 for db_service_prefix in db_service_prefixes:
                     try:
-                        logger.info(f"Processing service prefix: {db_service_prefix}")  # noqa: G004
+                        logger.info(f"Processing service prefix: {db_service_prefix}")
                         projects_data_from_warehouse = self.query_fetcher.fetch_hex_queries_from_service_prefix(
                             db_service_prefix
                         )
@@ -120,15 +120,15 @@ class HexSource(DashboardServiceSource):
                                 existing_project_data.add_tables(project_data.upstream_tables)
 
                             logger.debug(
-                                f"Found lineage for project {project_id}: "  # noqa: G004
+                                f"Found lineage for project {project_id}: "
                                 f"{len(self.hex_project_lineage[project_id].upstream_tables)} upstream tables"
                             )
 
                     except Exception as e:
-                        logger.error(f"Error fetching lineage from prefix {db_service_prefix}: {e}")  # noqa: G004
+                        logger.error(f"Error fetching lineage from prefix {db_service_prefix}: {e}")
                         logger.debug(traceback.format_exc())
 
-                logger.info(f"Total Hex projects with lineage: {len(self.hex_project_lineage)}")  # noqa: G004
+                logger.info(f"Total Hex projects with lineage: {len(self.hex_project_lineage)}")
 
     def get_dashboards_list(self):
         """
@@ -162,7 +162,7 @@ class HexSource(DashboardServiceSource):
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_tags(self, dashboard_details: Project) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -255,7 +255,7 @@ class HexSource(DashboardServiceSource):
         # Check if we have lineage data for this project
         project_lineage = self.hex_project_lineage.get(dashboard_details.id)
         if not project_lineage or not project_lineage.upstream_tables:
-            logger.debug(f"No lineage found for Hex project: {dashboard_details.id}")  # noqa: G004
+            logger.debug(f"No lineage found for Hex project: {dashboard_details.id}")
             return
 
         try:
@@ -269,11 +269,11 @@ class HexSource(DashboardServiceSource):
 
             dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
             if not dashboard:
-                logger.warning(f"Dashboard not found in OpenMetadata: {dashboard_fqn}")  # noqa: G004
+                logger.warning(f"Dashboard not found in OpenMetadata: {dashboard_fqn}")
                 return
 
             logger.info(
-                f"Creating lineage for Hex project {dashboard_details.title} "  # noqa: G004
+                f"Creating lineage for Hex project {dashboard_details.title} "
                 f"with {len(project_lineage.upstream_tables)} upstream tables"
             )
 
@@ -294,11 +294,11 @@ class HexSource(DashboardServiceSource):
                     )
 
                     yield Either(right=lineage_request)
-                    logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")  # noqa: G004
+                    logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")
 
                 except Exception as e:
                     table_fqn = table_entity.fullyQualifiedName.root if table_entity else "Unknown"
-                    logger.error(f"Error creating lineage for table {table_fqn}: {e}")  # noqa: G004
+                    logger.error(f"Error creating lineage for table {table_fqn}: {e}")
                     yield Either(
                         left=StackTraceError(
                             name="Lineage",
@@ -308,7 +308,7 @@ class HexSource(DashboardServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(f"Error building lineage for dashboard {dashboard_details.id}: {exc}")  # noqa: G004
+            logger.error(f"Error building lineage for dashboard {dashboard_details.id}: {exc}")
             yield Either(
                 left=StackTraceError(
                     name="Dashboard Lineage",

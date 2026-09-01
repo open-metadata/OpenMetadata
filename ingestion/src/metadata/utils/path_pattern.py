@@ -219,7 +219,7 @@ def _check_partition_consistency(structures: list[list[str]], table_root: str) -
     for structure in structures[1:]:
         if structure != reference:
             logger.warning(
-                f"Inconsistent partition structure under '{table_root}'. "  # noqa: G004
+                f"Inconsistent partition structure under '{table_root}'. "
                 f"Found {structure} vs {reference}. Skipping auto-partition detection."
             )
             return None
@@ -259,7 +259,7 @@ def detect_hive_partitions(keys: list[str], table_root: str) -> list[Column] | N
         return None
     if has_flat_files:
         logger.warning(
-            f"Table root '{table_root}' has a mix of partitioned and flat files. Skipping partition detection."  # noqa: G004
+            f"Table root '{table_root}' has a mix of partitioned and flat files. Skipping partition detection."
         )
         return None
 

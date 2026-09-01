@@ -39,7 +39,7 @@ def _write_repo(tmp_path: Path, source: str) -> tuple[Path, Path]:
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["G004", "UP"]
+select = ["UP"]
 """.strip()
         + "\n"
     )
@@ -58,7 +58,12 @@ def _ruff_executable() -> str:
 def test_forbidden_suppression_scan_ignores_string_contents(tmp_path: Path) -> None:
     _, source_path = _write_repo(
         tmp_path,
-        ('EXAMPLE = "# noqa: UP006"\nvalue = 1  # noqa: RUF100\nother = 2  # noqa: F841, UP006\n'),
+        (
+            'EXAMPLE = "# noqa: UP006"\n'
+            "value = 1  # noqa: RUF100\n"
+            "other = 2  # noqa: F841, UP006\n"
+            "logging = 3  # noqa: G004\n"
+        ),
     )
 
     findings = find_forbidden_suppressions([source_path])
@@ -66,6 +71,7 @@ def test_forbidden_suppression_scan_ignores_string_contents(tmp_path: Path) -> N
     assert [(finding.line, finding.code) for finding in findings] == [
         (2, "RUF100"),
         (3, "UP006"),
+        (4, "G004"),
     ]
 
 
@@ -96,6 +102,25 @@ def test_discovery_rejects_lowercase_forbidden_suppression(tmp_path: Path) -> No
     state = collect_policy_state(repo_root, _ruff_executable())
 
     assert [(finding.code, finding.line) for finding in state.forbidden_suppressions] == [("UP006", 1)]
+
+
+def test_discovery_does_not_require_optional_search_tool(tmp_path: Path, monkeypatch) -> None:
+    repo_root, _ = _write_repo(tmp_path, "VALUE = 1\n")
+    monkeypatch.setenv("PATH", "")
+
+    state = collect_policy_state(repo_root, _ruff_executable())
+
+    assert not state.forbidden_suppressions
+
+
+def test_discovery_fails_when_source_root_is_missing(tmp_path: Path) -> None:
+    repo_root, _ = _write_repo(tmp_path, "VALUE = 1\n")
+    airflow_root = repo_root / "openmetadata-airflow-apis"
+    (airflow_root / "keep.py").unlink()
+    airflow_root.rmdir()
+
+    with pytest.raises(PolicyError, match="cannot scan"):
+        collect_policy_state(repo_root, _ruff_executable())
 
 
 def test_logging_fingerprint_survives_line_movement(tmp_path: Path) -> None:

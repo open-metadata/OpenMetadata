@@ -91,7 +91,7 @@ class TestCaseRunner(Processor):
         test_suite_runner = self.get_test_suite_runner(record.table)
 
         logger.debug(
-            f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"  # noqa: G004
+            f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
         )
         if len(openmetadata_test_cases) == 0:
             logger.warning("No test cases found for the table")
@@ -165,7 +165,7 @@ class TestCaseRunner(Processor):
             return test_cases
 
         for test_case_to_create in test_cases_to_create:
-            logger.debug(f"Creating test case with name {test_case_to_create.name}")  # noqa: G004
+            logger.debug(f"Creating test case with name {test_case_to_create.name}")
             try:
                 test_case = self.metadata.create_or_update(
                     CreateTestCaseRequest(
@@ -252,10 +252,10 @@ class TestCaseRunner(Processor):
                 self.metadata.get_by_id(TestDefinition, test_definition_id, nullable=False),
             )
             if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
-                logger.debug(f"Test case {test_case.name.root} is not an OpenMetadata test case.")  # noqa: G004
+                logger.debug(f"Test case {test_case.name.root} is not an OpenMetadata test case.")
                 continue
             if not getattr(test_definition, "enabled", True):
-                logger.debug(f"Test case {test_case.name.root} is disabled. Skipping execution.")  # noqa: G004
+                logger.debug(f"Test case {test_case.name.root} is disabled. Skipping execution.")
                 continue
             om_test_cases.append(test_case)
 

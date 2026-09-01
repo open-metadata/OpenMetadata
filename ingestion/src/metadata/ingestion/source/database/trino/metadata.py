@@ -190,7 +190,7 @@ def _parse_sqltype(type_str: str, table_name: str, column_name: str):
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(
-            f"Could not resolve a SQLAlchemy type for column [{table_name}.{column_name}] of type [{type_str}]: {err}"  # noqa: G004
+            f"Could not resolve a SQLAlchemy type for column [{table_name}.{column_name}] of type [{type_str}]: {err}"
         )
         return sqltypes.NULLTYPE
 
@@ -307,11 +307,11 @@ def get_view_definition(self, connection: Connection, view_name: str, schema: st
                 view_definition = res.scalar()
             except Exception as fallback_err:
                 logger.warning(
-                    f"SHOW CREATE VIEW failed for [{full_view_name}] (may require owner permissions): {fallback_err}"  # noqa: G004
+                    f"SHOW CREATE VIEW failed for [{full_view_name}] (may require owner permissions): {fallback_err}"
                 )
 
         if not view_definition:
-            logger.warning(f"Could not get view definition for view [{full_view_name}]")  # noqa: G004
+            logger.warning(f"Could not get view definition for view [{full_view_name}]")
             return None
 
         # Ensure CREATE VIEW prefix exists for lineage parser compatibility.
@@ -321,7 +321,7 @@ def get_view_definition(self, connection: Connection, view_name: str, schema: st
 
         return view_definition  # noqa: TRY300
     except Exception as err:
-        logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")  # noqa: G004
+        logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")
 
 
 TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access
@@ -351,7 +351,7 @@ class TrinoSource(CommonDbSourceService):
         to setup multiple inspectors. They can use this function.
         :param database_name: new database to set
         """
-        logger.info(f"Ingesting from catalog: {database_name}")  # noqa: G004
+        logger.info(f"Ingesting from catalog: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
@@ -405,4 +405,4 @@ class TrinoSource(CommonDbSourceService):
                         yield new_catalog
                     except Exception as err:
                         logger.debug(traceback.format_exc())
-                        logger.warning(f"Error trying to connect to database {new_catalog}: {err}")  # noqa: G004
+                        logger.warning(f"Error trying to connect to database {new_catalog}: {err}")

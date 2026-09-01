@@ -82,7 +82,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
         try:
             with get_connection(self.service_connection).connect() as conn:
                 sql_statement = self.get_sql_statement()
-                logger.debug(f"Executing lineage query: {sql_statement}")  # noqa: G004
+                logger.debug(f"Executing lineage query: {sql_statement}")
                 rows = conn.execute(text(sql_statement))
                 row_count = 0
                 for row in rows:
@@ -103,7 +103,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                     except Exception as err:
                         logger.debug(traceback.format_exc())
                         logger.error(str(err))
-                logger.info(f"Processed {row_count} query log entries for lineage")  # noqa: G004
+                logger.info(f"Processed {row_count} query log entries for lineage")
         except Exception as err:
-            logger.error(f"Source usage processing error - {err}")  # noqa: G004
+            logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())

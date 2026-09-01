@@ -104,7 +104,7 @@ def upload_sample_data(
         )
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error uploading the sample data: {err}")  # noqa: G004
+        logger.warning(f"Error uploading the sample data: {err}")
 
 
 # pylint: disable=unused-argument
@@ -128,4 +128,4 @@ def _(
         Bucket=bucket_name,
         Key=object_key,
     )
-    logger.debug(f"Sample Data Successfully Uploaded to {object_key}")  # noqa: G004
+    logger.debug(f"Sample Data Successfully Uploaded to {object_key}")

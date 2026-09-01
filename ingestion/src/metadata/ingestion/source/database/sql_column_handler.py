@@ -166,21 +166,21 @@ class SqlColumnHandlerMixin:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"  # noqa: G004
+                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             unique_constraints = []
         try:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"  # noqa: G004
+                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             foreign_constraints = []
         try:
             pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         except (NotImplementedError, KeyError, NoSuchTableError):
             logger.debug(
-                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"  # noqa: G004
+                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             pk_constraints = {}
 
@@ -297,7 +297,7 @@ class SqlColumnHandlerMixin:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unexpected exception getting columns for table [{table_name}] "  # noqa: G004
+                f"Unexpected exception getting columns for table [{table_name}] "
                 f"(schema: '{schema_name}', db: '{db_name}'): {exc}"
             )
             columns = []
@@ -317,7 +317,7 @@ class SqlColumnHandlerMixin:
                 if col_type is None:
                     col_type = DataType.UNKNOWN.name
                     data_type_display = col_type.lower()
-                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: G004, RUF010
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: RUF010
                 data_type_display = self._get_display_datatype(
                     data_type_display,
                     col_type,
@@ -367,7 +367,7 @@ class SqlColumnHandlerMixin:
                 om_column = process_column(column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")  # noqa: G004
+                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
                 continue
             table_columns.append(om_column)
 
@@ -472,7 +472,7 @@ class SqlColumnHandlerMixin:
             return
 
         logger.debug(
-            f"JSON schema extraction for [{schema_name}.{table_name}]: "  # noqa: G004
+            f"JSON schema extraction for [{schema_name}.{table_name}]: "
             f"json_columns={[c.name.root for c in json_columns]}, "
             f"string_columns={[c.name.root for c in string_columns]}"
         )
@@ -502,13 +502,13 @@ class SqlColumnHandlerMixin:
                                 column.dataType = DataType.JSON
                                 column.dataTypeDisplay = "json"
                         logger.debug(
-                            f"Extracted JSON schema for column [{col_name}] in table [{schema_name}.{table_name}]"  # noqa: G004
+                            f"Extracted JSON schema for column [{col_name}] in table [{schema_name}.{table_name}]"
                         )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to extract JSON schema for table [{schema_name}.{table_name}]: {exc}. "  # noqa: G004
+                f"Failed to extract JSON schema for table [{schema_name}.{table_name}]: {exc}. "
                 f"Continuing without JSON schema information."
             )
 

@@ -54,9 +54,9 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         **kwargs,
     ) -> list[SystemProfile]:
         if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
-            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")  # noqa: G004
+            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")
             return []
-        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")  # noqa: G004
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
         self.system_metrics_class = cast(type[DatabricksSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,

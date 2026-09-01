@@ -32,7 +32,7 @@ def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> str | None:  # 
     For Debezium CDC topics, searches for fields inside after/before envelope children.
     """
     if not topic_entity.messageSchema or not topic_entity.messageSchema.schemaFields:
-        logger.debug(f"Topic {model_str(topic_entity.name)} has no message schema")  # noqa: G004
+        logger.debug(f"Topic {model_str(topic_entity.name)} has no message schema")
         return None
 
     for field in topic_entity.messageSchema.schemaFields:
@@ -74,5 +74,5 @@ def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> str | None:  # 
             envelope_fqn = field.fullyQualifiedName.root
             return f"{envelope_fqn}.{field_name}"
 
-    logger.debug(f"Field {field_name} not found in topic {model_str(topic_entity.name)} schema")  # noqa: G004
+    logger.debug(f"Field {field_name} not found in topic {model_str(topic_entity.name)} schema")
     return None

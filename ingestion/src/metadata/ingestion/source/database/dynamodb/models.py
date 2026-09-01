@@ -14,7 +14,7 @@ DynamoDB Models
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TableResponse(BaseModel):
@@ -22,5 +22,5 @@ class TableResponse(BaseModel):
     DynamoDB table response model
     """
 
-    Items: list[dict] | None = []
+    Items: list[dict] = Field(default_factory=list)
     LastEvaluatedKey: Any | None = None

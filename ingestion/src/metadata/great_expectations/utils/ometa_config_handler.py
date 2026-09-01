@@ -70,7 +70,7 @@ def render_template(environment: Environment, template_file: str = "config.yml")
         return tmplt.render()
     except TemplateNotFound as err:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Template file at {template_file} not found: {err}")  # noqa: G004
+        logger.warning(f"Template file at {template_file} not found: {err}")
         try:
             tmplt = environment.get_template("config.yaml")
             return tmplt.render()

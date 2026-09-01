@@ -111,7 +111,7 @@ class BurstiqLineageSource(Source):
             )
             return self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         except Exception as exc:
-            logger.debug(f"Table not found for dictionary {dictionary_name}: {exc}")  # noqa: G004
+            logger.debug(f"Table not found for dictionary {dictionary_name}: {exc}")
             return None
 
     def _process_edge(self, edge: BurstIQEdge) -> Either[AddLineageRequest] | None:
@@ -130,7 +130,7 @@ class BurstiqLineageSource(Source):
 
             if not from_table or not to_table:
                 logger.debug(
-                    f"Skipping edge {edge.name}: tables not found ({edge.fromDictionary} -> {edge.toDictionary})"  # noqa: G004
+                    f"Skipping edge {edge.name}: tables not found ({edge.fromDictionary} -> {edge.toDictionary})"
                 )
                 return None
 
@@ -160,7 +160,7 @@ class BurstiqLineageSource(Source):
             )
 
             logger.info(
-                f"Created lineage: {edge.fromDictionary} -> {edge.toDictionary} ({len(column_lineage)} columns)"  # noqa: G004
+                f"Created lineage: {edge.fromDictionary} -> {edge.toDictionary} ({len(column_lineage)} columns)"
             )
 
             return Either(right=AddLineageRequest(edge=entities_edge))
@@ -187,7 +187,7 @@ class BurstiqLineageSource(Source):
             # Fetch all edges from API
             logger.info("Fetching edges from BurstIQ /api/metadata/edge...")
             edges = client.get_edges()
-            logger.info(f"Processing {len(edges)} edges")  # noqa: G004
+            logger.info(f"Processing {len(edges)} edges")
 
             for edge in edges:
                 result = self._process_edge(edge)
@@ -197,7 +197,7 @@ class BurstiqLineageSource(Source):
             logger.info("Lineage extraction complete")
 
         except Exception as exc:
-            logger.error(f"Lineage extraction failed: {exc}")  # noqa: G004
+            logger.error(f"Lineage extraction failed: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(

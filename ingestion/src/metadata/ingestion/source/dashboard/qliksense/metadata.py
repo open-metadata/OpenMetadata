@@ -210,7 +210,7 @@ class QliksenseSource(DashboardServiceSource):
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")  # noqa: G004
+                logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
     def yield_datamodel(self, _: QlikDashboard) -> Iterable[Either[DashboardDataModel]]:
@@ -290,7 +290,7 @@ class QliksenseSource(DashboardServiceSource):
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error occured while finding table fqn: {exc}")  # noqa: G004
+                logger.warning(f"Error occured while finding table fqn: {exc}")
         return None
 
     def _fetch_script_table_sources(self) -> None:
@@ -398,15 +398,15 @@ class QliksenseSource(DashboardServiceSource):
                     and datamodel.tableName
                     and prefix_table_name.lower() != datamodel.tableName.lower()
                 ):
-                    logger.debug(f"Table {datamodel.tableName} does not match prefix {prefix_table_name}")  # noqa: G004
+                    logger.debug(f"Table {datamodel.tableName} does not match prefix {prefix_table_name}")
                     continue
 
                 if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                    logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
+                    logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
                     continue
 
                 if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                     continue
 
                 fqn_search_string = build_es_fqn_search_string(

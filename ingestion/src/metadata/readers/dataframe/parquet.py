@@ -79,7 +79,7 @@ class ParquetDataFrameReader(DataFrameReader):
                         yield from dataframe_to_chunks(df_batch)
                         batch_count += 1
 
-                logger.info(f"Successfully processed {batch_count} batches from large parquet file")  # noqa: G004
+                logger.info(f"Successfully processed {batch_count} batches from large parquet file")
                 return
 
             # Method 2: Row group reading (PyArrow >= 0.15.0)
@@ -98,10 +98,10 @@ class ParquetDataFrameReader(DataFrameReader):
                                 yield df_chunk
                             batch_count += 1
                     except Exception as row_exc:
-                        logger.warning(f"Failed to read row group {i}: {row_exc}")  # noqa: G004
+                        logger.warning(f"Failed to read row group {i}: {row_exc}")
                         continue
 
-                logger.info(f"Successfully processed {batch_count} row groups from large parquet file")  # noqa: G004
+                logger.info(f"Successfully processed {batch_count} row groups from large parquet file")
                 return
 
             # Method 3: Regular reading (final fallback)
@@ -112,13 +112,13 @@ class ParquetDataFrameReader(DataFrameReader):
         except Exception as exc:
             # If all chunking fails, try regular reading as final fallback
             logger.warning(
-                f"Batched reading failed: {exc}. Falling back to regular reading - this may cause memory issues for large files"  # noqa: G004
+                f"Batched reading failed: {exc}. Falling back to regular reading - this may cause memory issues for large files"
             )
             try:
                 df = parquet_file.read().to_pandas()
                 yield from dataframe_to_chunks(df)
             except Exception as fallback_exc:
-                logger.error(f"Failed to read parquet file: {fallback_exc}")  # noqa: G004
+                logger.error(f"Failed to read parquet file: {fallback_exc}")
                 raise fallback_exc  # noqa: TRY201
 
     @singledispatchmethod
@@ -162,7 +162,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
         except Exception as exc:
             # Fallback to regular reading if size check fails
-            logger.warning(f"Error reading parquet file from GCS '{file_path}': {exc}. Falling back to regular reading")  # noqa: G004
+            logger.warning(f"Error reading parquet file from GCS '{file_path}': {exc}. Falling back to regular reading")
 
             def chunk_generator():
                 file = gcs.open(file_path)
@@ -222,7 +222,7 @@ class ParquetDataFrameReader(DataFrameReader):
             try:
                 file_size = s3_fs.info(file_path)["size"]
             except Exception as exc:
-                logger.warning(f"Could not determine file size for {file_path}: {exc}. Assuming large file.")  # noqa: G004
+                logger.warning(f"Could not determine file size for {file_path}: {exc}. Assuming large file.")
                 file_size = 0
 
         if self._should_use_chunking(file_size):
@@ -230,12 +230,12 @@ class ParquetDataFrameReader(DataFrameReader):
             def chunk_generator():
                 if file_size:
                     logger.info(
-                        f"Large parquet file detected ({file_size} bytes > "  # noqa: G004
+                        f"Large parquet file detected ({file_size} bytes > "
                         f"{MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
                         f"Using batched reading for file: {file_path}"
                     )
                 else:
-                    logger.info(f"Unknown file size. Using batched reading for file: {file_path}")  # noqa: G004
+                    logger.info(f"Unknown file size. Using batched reading for file: {file_path}")
                 with s3_fs.open(file_path) as f:
                     parquet_file = ParquetFile(f)
                     yield from self._read_parquet_in_batches(parquet_file)
@@ -278,7 +278,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
                 def arrow_chunk_generator():
                     logger.info(
-                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "  # noqa: G004
+                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
                         f"Using batched reading for file: {account_url}"
                     )
                     arrow_fs = PyFileSystem(FSSpecHandler(adlfs_fs))
@@ -297,7 +297,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
         except Exception as exc:
             logger.warning(
-                f"Error reading parquet file from Azure '{account_url}': {exc}. Falling back to pandas reading"  # noqa: G004
+                f"Error reading parquet file from Azure '{account_url}': {exc}. Falling back to pandas reading"
             )
 
             def chunk_generator():
@@ -326,7 +326,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
                 def arrow_chunk_generator():
                     logger.info(
-                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "  # noqa: G004
+                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
                         f"Using batched reading for file: {key}"
                     )
                     parquet_file = ParquetFile(key)
@@ -343,7 +343,7 @@ class ParquetDataFrameReader(DataFrameReader):
                 return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
         except Exception as exc:
-            logger.warning(f"Error reading parquet file from local path '{key}': {exc}. Falling back to pandas reading")  # noqa: G004
+            logger.warning(f"Error reading parquet file from local path '{key}': {exc}. Falling back to pandas reading")
 
             def chunk_generator():
                 dataframe = pd.read_parquet(key)

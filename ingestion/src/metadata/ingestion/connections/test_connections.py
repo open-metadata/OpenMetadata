@@ -125,7 +125,7 @@ def _test_connection_steps_automation_workflow(
     try:
         for step in steps:
             try:
-                logger.info(f"Running {step.name}...")  # noqa: G004
+                logger.info(f"Running {step.name}...")
                 step.function()
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
@@ -136,7 +136,7 @@ def _test_connection_steps_automation_workflow(
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"{step.name}-{err}")  # noqa: G004
+                logger.error(f"{step.name}-{err}")
                 test_connection_result.steps.append(
                     TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
                         name=step.name,
@@ -169,7 +169,7 @@ def _test_connection_steps_automation_workflow(
         )
 
     except Exception as err:
-        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")  # noqa: G004
+        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")
         logger.debug(traceback.format_exc())
         test_connection_result.lastUpdatedAt = datetime.now().timestamp()
         metadata.create_or_update(
@@ -196,7 +196,7 @@ def _test_connection_steps_during_ingestion(
     )
     for step in steps:
         try:
-            logger.info(f"Running {step.name}...")  # noqa: G004
+            logger.info(f"Running {step.name}...")
             step.function()
             test_connection_result.steps.append(
                 TestConnectionStepResult(
@@ -207,7 +207,7 @@ def _test_connection_steps_during_ingestion(
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"{step.name}-{err}")  # noqa: G004
+            logger.error(f"{step.name}-{err}")
             test_connection_result.steps.append(
                 TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
                     name=step.name,
@@ -233,7 +233,7 @@ def raise_test_connection_exception(result: TestConnectionResult) -> None:
         if not step.passed and step.mandatory:
             raise SourceConnectionException(f"Failed to run the test connection step: {step.name}")
         if not step.passed:
-            logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")  # noqa: G004
+            logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")
 
 
 def test_connection_steps(

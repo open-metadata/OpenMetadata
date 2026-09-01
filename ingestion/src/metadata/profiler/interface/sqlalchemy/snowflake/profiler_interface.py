@@ -62,6 +62,6 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
 
     def _programming_error_static_metric(self, runner, column, exc, session, metrics):
         if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(session.get_bind().dialect.name):
-            logger.info(f"Computing metrics without sum for {runner.table_name}.{column.name}")  # noqa: G004
+            logger.info(f"Computing metrics without sum for {runner.table_name}.{column.name}")
             return self._compute_static_metrics_wo_sum(metrics, runner, session, column)
         return None

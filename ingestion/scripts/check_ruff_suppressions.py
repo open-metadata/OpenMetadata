@@ -14,6 +14,7 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -27,8 +28,11 @@ from typing import Any
 BASELINE_VERSION = 1
 BASELINE_NAME = ".ruff-g004-baseline.json"
 DISCOVERY_RULES = ("G004", "UP006", "UP007", "UP035", "UP045")
-FORBIDDEN_SUPPRESSION_CODES = frozenset({"PGH004", "RUF100", "UP006", "UP007", "UP035", "UP045"})
+FORBIDDEN_SUPPRESSION_CODES = frozenset({"G004", "PGH004", "RUF100", "UP006", "UP007", "UP035", "UP045"})
 MODERN_TYPING_RULES = frozenset({"UP006", "UP007", "UP035", "UP045"})
+EXCLUDED_DISCOVERY_DIRS = frozenset(
+    {".mypy_cache", ".pytest_cache", ".ruff_cache", ".tox", ".venv", "__pycache__", "build", "dist"}
+)
 _NOQA_CODES = re.compile(r"#\s*(?:ruff:\s*)?noqa\s*:\s*([^#\r\n]*)", re.IGNORECASE)
 _RULE_CODE = re.compile(r"[A-Z]+\d+")
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -132,25 +136,27 @@ def _run(command: list[str]) -> subprocess.CompletedProcess[str]:
     return result
 
 
-def _suppression_candidate_files(repo_root: Path, rg_executable: str = "rg") -> list[Path]:
-    command = [
-        rg_executable,
-        "-l",
-        "--ignore-case",
-        "--glob",
-        "*.py",
-        "|".join(sorted(FORBIDDEN_SUPPRESSION_CODES)),
-        str(repo_root / "ingestion"),
-        str(repo_root / "openmetadata-airflow-apis"),
-    ]
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
-    except OSError as exc:
-        raise PolicyError(f"cannot run {rg_executable}: {exc}") from exc
-    if result.returncode not in (0, 1):
-        detail = result.stderr.strip() or result.stdout.strip()
-        raise PolicyError(f"command failed ({result.returncode}): {' '.join(command)}\n{detail}")
-    return [Path(line) for line in result.stdout.splitlines() if line]
+def _raise_scan_error(error: OSError) -> None:
+    raise PolicyError(f"cannot scan {error.filename}: {error}") from error
+
+
+def _suppression_candidate_files(repo_root: Path) -> list[Path]:
+    candidate_bytes = tuple(code.encode() for code in FORBIDDEN_SUPPRESSION_CODES)
+    candidates: list[Path] = []
+    for source_root in (repo_root / "ingestion", repo_root / "openmetadata-airflow-apis"):
+        for directory, subdirectories, filenames in os.walk(source_root, onerror=_raise_scan_error):
+            subdirectories[:] = sorted(name for name in subdirectories if name not in EXCLUDED_DISCOVERY_DIRS)
+            for filename in sorted(filenames):
+                if not filename.endswith(".py"):
+                    continue
+                path = Path(directory, filename)
+                try:
+                    content = path.read_bytes().upper()
+                except OSError as exc:
+                    raise PolicyError(f"cannot read {path}: {exc}") from exc
+                if any(code in content for code in candidate_bytes):
+                    candidates.append(path)
+    return candidates
 
 
 def find_forbidden_suppressions(paths: list[Path]) -> tuple[Finding, ...]:
@@ -254,9 +260,9 @@ def _fingerprint_logging_diagnostics(
     return debt, locations
 
 
-def collect_policy_state(repo_root: Path, ruff_executable: str, rg_executable: str = "rg") -> PolicyState:
+def collect_policy_state(repo_root: Path, ruff_executable: str) -> PolicyState:
     repo_root = repo_root.resolve()
-    candidates = _suppression_candidate_files(repo_root, rg_executable)
+    candidates = _suppression_candidate_files(repo_root)
     forbidden = find_forbidden_suppressions(candidates)
     diagnostics = _load_diagnostics(repo_root, ruff_executable)
     logging_debt, logging_locations = _fingerprint_logging_diagnostics(repo_root, diagnostics)

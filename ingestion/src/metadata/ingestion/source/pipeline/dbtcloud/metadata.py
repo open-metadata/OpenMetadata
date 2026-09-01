@@ -162,7 +162,7 @@ class DbtcloudSource(PipelineServiceSource):
         if table_entity is None and db_service_name:
             table_entity = self._get_table_by_exact_fqn(db_service_name, node)
         if table_entity is None:
-            logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")  # noqa: G004
+            logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")
         return table_entity
 
     @staticmethod
@@ -189,7 +189,7 @@ class DbtcloudSource(PipelineServiceSource):
             picked = exact[0]
             if len(exact) > 1:
                 logger.warning(
-                    f"dbt node {node.uniqueId} matches {len(exact)} tables across services "  # noqa: G004
+                    f"dbt node {node.uniqueId} matches {len(exact)} tables across services "
                     f"({[DbtcloudSource._table_fqn(table) for table in exact]}); using "
                     f"{DbtcloudSource._table_fqn(picked)}. Set 'dbServiceNames' to disambiguate."
                 )
@@ -239,7 +239,7 @@ class DbtcloudSource(PipelineServiceSource):
         runs = list(self.client.get_runs(job_id=job_id, lookback_days=lookback_days))
         if not runs:
             logger.debug(
-                f"No dbt Cloud run for job {job_id} within the last {lookback_days} day(s); "  # noqa: G004
+                f"No dbt Cloud run for job {job_id} within the last {lookback_days} day(s); "
                 f"falling back to the latest run"
             )
             latest_run = self.client.get_latest_run(job_id=job_id)
@@ -267,7 +267,7 @@ class DbtcloudSource(PipelineServiceSource):
                 ctx.current_runs = runs
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get runs of job {job.name} due to : {exc}")  # noqa: G004
+            logger.warning(f"Failed to get runs of job {job.name} due to : {exc}")
 
     @staticmethod
     def _get_task_list(job_url: str) -> list[Task]:
@@ -336,7 +336,7 @@ class DbtcloudSource(PipelineServiceSource):
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             if not pipeline_entity:
-                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")  # noqa: G004
+                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
                 return
 
             # Use combined GraphQL call instead of two separate calls
@@ -440,7 +440,7 @@ class DbtcloudSource(PipelineServiceSource):
         if unmatched_nodes:
             sample = sorted(unmatched_nodes)[:UNMATCHED_NODES_SAMPLE_SIZE]
             logger.warning(
-                f"{len(unmatched_nodes)} dbt node(s) of job {pipeline_details.name} could not be matched to a "  # noqa: G004
+                f"{len(unmatched_nodes)} dbt node(s) of job {pipeline_details.name} could not be matched to a "
                 f"table in OpenMetadata, so no lineage was created for them. Ingest the warehouse holding those "
                 f"tables first and check the 'dbServiceNames' lineage configuration. Unmatched (first "
                 f"{len(sample)}): {sample}"
@@ -456,11 +456,11 @@ class DbtcloudSource(PipelineServiceSource):
         """
         is_candidate = True
         if not is_source and not node.runGeneratedAt:
-            logger.debug(f"Skipping dbt node with missing runGeneratedAt: name={node.name}")  # noqa: G004
+            logger.debug(f"Skipping dbt node with missing runGeneratedAt: name={node.name}")
             is_candidate = False
         elif not all([node.name, node.database, node.dbtschema]):
             logger.debug(
-                f"Skipping dbt node with missing attributes: name={node.name}, "  # noqa: G004
+                f"Skipping dbt node with missing attributes: name={node.name}, "
                 f"database={node.database}, schema={node.dbtschema}"
             )
             is_candidate = False
@@ -526,7 +526,7 @@ class DbtcloudSource(PipelineServiceSource):
             )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")  # noqa: G004
+            logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the ``Pipeline`` denominator from the dbt Cloud job count.
@@ -551,7 +551,7 @@ class DbtcloudSource(PipelineServiceSource):
             yield from self.client.get_jobs()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to : {exc}")  # noqa: G004
+            logger.error(f"Failed to get pipeline list due to : {exc}")
 
     def get_pipeline_name(self, pipeline_details: DBTJob) -> str:
         """
@@ -561,7 +561,7 @@ class DbtcloudSource(PipelineServiceSource):
             return pipeline_details.name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name due to : {exc}")  # noqa: G004
+            logger.error(f"Failed to get pipeline name due to : {exc}")
 
         return None
 
@@ -577,7 +577,7 @@ class DbtcloudSource(PipelineServiceSource):
                 dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                 return Timestamp(datetime_to_ts(dt))
             except Exception as exc:
-                logger.warning(f"Failed to parse timestamp '{timestamp_str}': {exc}")  # noqa: G004
+                logger.warning(f"Failed to parse timestamp '{timestamp_str}': {exc}")
                 return None
 
     @staticmethod
@@ -645,7 +645,7 @@ class DbtcloudSource(PipelineServiceSource):
                 and ctx.current_pipeline_entity
                 and ctx.current_table_fqns
             ):
-                logger.debug(f"Using context data for observability - {len(ctx.current_table_fqns)} tables")  # noqa: G004
+                logger.debug(f"Using context data for observability - {len(ctx.current_table_fqns)} tables")
 
                 schedule_interval = str(pipeline_details.schedule.cron) if pipeline_details.schedule else None
 
@@ -697,7 +697,7 @@ class DbtcloudSource(PipelineServiceSource):
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")  # noqa: G004
+            logger.error(f"Failed to extract pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
 
     def yield_pipeline_status(self, pipeline_details: DBTJob) -> Iterable[Either[OMetaPipelineStatus]]:
@@ -729,7 +729,7 @@ class DbtcloudSource(PipelineServiceSource):
                 status_timestamp = end_time if end_time else start_time
                 if status_timestamp is None:
                     logger.debug(
-                        f"Skipping pipeline status for run '{run.id}' in pipeline {pipeline_fqn}: "  # noqa: G004
+                        f"Skipping pipeline status for run '{run.id}' in pipeline {pipeline_fqn}: "
                         f"run has no start or finish timestamp"
                     )
                     continue

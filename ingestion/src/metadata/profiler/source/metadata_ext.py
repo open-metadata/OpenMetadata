@@ -93,7 +93,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self._connection = None
         self.set_inspector()
 
-        logger.info(f"Starting profiler for service {self.config.source.type}:{self.config.source.type.lower()}")  # noqa: G004
+        logger.info(f"Starting profiler for service {self.config.source.type}:{self.config.source.type.lower()}")
 
     def set_inspector(self, database_name: str = None) -> None:  # noqa: RUF013
         """
@@ -103,7 +103,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         """
         new_service_connection = deepcopy(self.service_connection)
         if database_name:
-            logger.info(f"Ingesting from database: {database_name}")  # noqa: G004
+            logger.info(f"Ingesting from database: {database_name}")
             new_service_connection.database = database_name
         self.engine = get_ssl_connection(new_service_connection)
         self.inspector = inspect(self.engine)
@@ -119,7 +119,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     service_name=None,
                 )
                 if not database_entity:
-                    logger.debug(f"Database Entity for database `{database_name}` not found")  # noqa: G004
+                    logger.debug(f"Database Entity for database `{database_name}` not found")
                     continue
                 for schema_name in self.get_schema_names():
                     for table_name in self.get_table_names(schema_name):
@@ -133,7 +133,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                         )
                         if not table_entity:
                             logger.debug(
-                                f"Table Entity for table `{database_name}.{schema_name}.{table_name}` not found"  # noqa: G004
+                                f"Table Entity for table `{database_name}.{schema_name}.{table_name}` not found"
                             )
                             continue
 
@@ -214,5 +214,5 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 database_name = self.service_connection.__dict__.get("database", custom_database_name or "default")
                 yield database_name
         except Exception as exc:
-            logger.debug(f"Failed to fetch database names {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch database names {exc}")
             logger.debug(traceback.format_exc())

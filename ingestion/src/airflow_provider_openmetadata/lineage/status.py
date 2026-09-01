@@ -78,7 +78,7 @@ def add_status(
     # Let this fail if we cannot properly extract & cast the start_date
     run_date = getattr(dag_run, "logical_date", None) or dag_run.execution_date
     execution_date = datetime_to_ts(run_date)
-    operator.log.info(f"Logging pipeline status for execution {execution_date}")  # noqa: G004
+    operator.log.info(f"Logging pipeline status for execution {execution_date}")
 
     # Check if we already have a pipelineStatus for
     # our execution_date that we should update
@@ -114,5 +114,5 @@ def add_status(
         taskStatus=updated_task_status,
     )
 
-    operator.log.info(f"Added status to DAG {updated_status}")  # noqa: G004
+    operator.log.info(f"Added status to DAG {updated_status}")
     metadata.add_pipeline_status(fqn=pipeline.fullyQualifiedName.root, status=updated_status)

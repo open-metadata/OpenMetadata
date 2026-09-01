@@ -28,7 +28,7 @@ def deprecated(message: str, release: str):
             logger = logging.getLogger(METADATA_LOGGER)
             # Log deprecation warning using the logging system
             # This will respect the loggerLevel configuration
-            logger.warning(f"[{fn.__name__}] will be deprecated in the release [{release}]: {message}")  # noqa: G004
+            logger.warning(f"[{fn.__name__}] will be deprecated in the release [{release}]: {message}")
 
             return fn(*args, **kwargs)
 

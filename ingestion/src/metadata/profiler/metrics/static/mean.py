@@ -128,7 +128,7 @@ class Mean(StaticMetric):
         if is_concatenable(self.col.type):
             return AvgFn(LenFn(column(self.col.name, self.col.type)))
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing MEAN")  # noqa: G004
+        logger.debug(f"Don't know how to process type {self.col.type} when computing MEAN")
         return None
 
     # pylint: disable=import-outside-toplevel
@@ -142,12 +142,12 @@ class Mean(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(f"Error while computing mean for column {self.col.name}: {err}")  # noqa: G004
+                logger.debug(f"Error while computing mean for column {self.col.name}: {err}")
                 return None
         mean = computation.aggregate_accumulator(accumulator)
 
         if mean is None:
-            logger.warning(f"Don't know how to process type {self.col.type} when computing MEAN")  # noqa: G004
+            logger.warning(f"Don't know how to process type {self.col.type} when computing MEAN")
             return None
         return mean
 

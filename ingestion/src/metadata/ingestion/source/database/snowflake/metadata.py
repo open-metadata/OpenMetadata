@@ -374,7 +374,7 @@ class SnowflakeSource(
                     schema_name = row.SCHEMA_NAME
                     if not row.TAG_VALUE:
                         logger.warning(
-                            f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "  # noqa: G004
+                            f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "
                             "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
                         )
                         continue
@@ -384,7 +384,7 @@ class SnowflakeSource(
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema tags: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch schema tags: {exc}")
 
     def set_database_tags_map(self, database_name: str) -> None:
         """Fetch and store database-level tags for the current database"""
@@ -409,7 +409,7 @@ class SnowflakeSource(
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch database tags: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch database tags: {exc}")
 
     def get_schema_description(self, schema_name: str) -> str | None:
         """
@@ -530,7 +530,7 @@ class SnowflakeSource(
                 yield database_name
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to connect to database {database_name}: {exc}")  # noqa: G004
+                logger.warning(f"Error trying to connect to database {database_name}: {exc}")
 
     def __clean_append(self, token: Token, result_list: list) -> None:
         """
@@ -572,7 +572,7 @@ class SnowflakeSource(
             return result  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse cluster key - {err}")  # noqa: G004
+            logger.warning(f"Failed to parse cluster key - {err}")
         return None
 
     def __fix_partition_column_case(
@@ -634,7 +634,7 @@ class SnowflakeSource(
             except Exception as exc:
                 try:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error fetching tags {exc}. Trying with quoted names")  # noqa: G004
+                    logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
                     result = self.connection.execute(
                         text(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
@@ -646,7 +646,7 @@ class SnowflakeSource(
                     )
                 except Exception as inner_exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to fetch tags due to [{inner_exc}]")  # noqa: G004
+                    logger.error(f"Failed to fetch tags due to [{inner_exc}]")
 
             schema_fqn = cast(
                 "str",
@@ -665,7 +665,7 @@ class SnowflakeSource(
                 # row[0] = TAG_NAME, row[1] = TAG_VALUE
                 if not row[1]:
                     logger.warning(
-                        f"Skipping tag '{row[0]}' for '{'.'.join(fqn_elements)}' - "  # noqa: G004
+                        f"Skipping tag '{row[0]}' for '{'.'.join(fqn_elements)}' - "
                         "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
                     )
                     continue
@@ -803,7 +803,7 @@ class SnowflakeSource(
                     )
                 )
             except Exception as err:
-                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")  # noqa: G004
+                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")
                 logger.debug(traceback.format_exc())
         self.context.get_global().deleted_tables.extend(deleted_fqns)
 
@@ -873,7 +873,7 @@ class SnowflakeSource(
             try:
                 table_list.extend(self._get_semantic_view_names_and_types(schema_name))
             except Exception as exc:
-                logger.warning(f"Failed to list semantic views for schema [{schema_name}]: {exc}")  # noqa: G004
+                logger.warning(f"Failed to list semantic views for schema [{schema_name}]: {exc}")
                 logger.debug(traceback.format_exc())
 
         return table_list
@@ -886,7 +886,7 @@ class SnowflakeSource(
                 return res.NAME
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch Organization name due to: {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch Organization name due to: {exc}")
         return None
 
     def _get_current_account(self) -> str | None:
@@ -897,7 +897,7 @@ class SnowflakeSource(
                 return res.ACCOUNT
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch current account due to: {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch current account due to: {exc}")
         return None
 
     def _get_source_url_root(self, database_name: str | None = None, schema_name: str | None = None) -> str:
@@ -929,7 +929,7 @@ class SnowflakeSource(
                 return url
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.error(f"Unable to get source url: {exc}")
         return None
 
     def get_procedure_source_url(
@@ -960,7 +960,7 @@ class SnowflakeSource(
                 return url
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get procedure source url: {exc}")  # noqa: G004
+            logger.error(f"Unable to get procedure source url: {exc}")
         return None
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -989,7 +989,7 @@ class SnowflakeSource(
                     stored_procedure = SnowflakeStoredProcedure.model_validate(row._asdict())
                     if stored_procedure.definition is None:
                         logger.debug(
-                            f"Missing ownership permissions on procedure {stored_procedure.name}."  # noqa: G004
+                            f"Missing ownership permissions on procedure {stored_procedure.name}."
                             " Trying to fetch description via DESCRIBE."
                         )
                         stored_procedure.definition = self.describe_procedure_definition(stored_procedure)
@@ -998,7 +998,7 @@ class SnowflakeSource(
                     yield stored_procedure
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching stored procedures: {exc}")  # noqa: G004
+            logger.error(f"Error fetching stored procedures: {exc}")
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -1033,7 +1033,7 @@ class SnowflakeSource(
                 return rows[0]._mapping["body"] if rows else ""
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching stored procedure definition: {exc}")  # noqa: G004
+            logger.error(f"Error fetching stored procedure definition: {exc}")
             return ""
 
     def yield_stored_procedure(
@@ -1088,7 +1088,7 @@ class SnowflakeSource(
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
-                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # noqa: G004
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
@@ -1110,7 +1110,7 @@ class SnowflakeSource(
         try:
             columns = self._fetch_semantic_view_columns(schema_name, table_name)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning(f"Failed to fetch semantic view columns for [{schema_name}.{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch semantic view columns for [{schema_name}.{table_name}]: {exc}")
             logger.debug(traceback.format_exc())
         return columns
 
@@ -1164,7 +1164,7 @@ class SnowflakeSource(
             if getattr(p_err.orig, "errno", None) != INFO_SCHEMA_TOO_MUCH_DATA:
                 raise
             logger.warning(
-                f"Schema-wide semantic catalog query for [{schema}] returned too much data; "  # noqa: G004
+                f"Schema-wide semantic catalog query for [{schema}] returned too much data; "
                 "falling back to per-view queries"
             )
             catalog = None
@@ -1215,7 +1215,7 @@ class SnowflakeSource(
                 fact_rows = self._semantic_rows(SEMANTIC_FACTS, query_schema, query_view)
                 metric_rows = self._semantic_rows(SEMANTIC_METRICS, query_schema, query_view)
                 logger.info(
-                    f"Semantic view [{schema}.{view}]: emitting {len(metric_rows)} metric(s) "  # noqa: G004
+                    f"Semantic view [{schema}.{view}]: emitting {len(metric_rows)} metric(s) "
                     f"with {len(dimension_rows)} dimension(s) and {len(fact_rows)} measure(s)"
                 )
                 if not metric_rows:
@@ -1242,7 +1242,7 @@ class SnowflakeSource(
                         )
                     )
             except Exception as exc:  # pylint: disable=broad-except
-                logger.warning(f"Failed to build metrics for semantic view [{schema}.{view}]: {exc}")  # noqa: G004
+                logger.warning(f"Failed to build metrics for semantic view [{schema}.{view}]: {exc}")
                 logger.debug(traceback.format_exc())
 
     def _get_columns_internal(  # pyright: ignore[reportIncompatibleMethodOverride]
@@ -1277,7 +1277,7 @@ class SnowflakeSource(
                     # Can't fetch source of stream is source is dropped or no priviledge
                     if table_name == "No privilege or table dropped":
                         logger.warning(
-                            f"Couldn't fetch columns of stream [{result and result[1]}] "  # noqa: G004
+                            f"Couldn't fetch columns of stream [{result and result[1]}] "
                             f"(schema: '{schema_name}', db: '{db_name}') due to error on"
                             f" source: [{table_name}]. Result: {result}"
                         )
@@ -1300,7 +1300,7 @@ class SnowflakeSource(
             columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         except sa_exc.NoSuchTableError:
             logger.warning(
-                f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."  # noqa: G004
+                f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."
                 " Unable to fetch columns. Please check if the configured Snowflake user has"
                 " necessary grants on this table."
             )
@@ -1355,7 +1355,7 @@ class SnowflakeSource(
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
 
         return None
 
@@ -1382,7 +1382,7 @@ class SnowflakeSource(
         Therefore, this function will return `None` or a placeholder, and ownership
         metadata will not be populated in the OpenMetadata ingestion process.
         """
-        logger.debug(f"Processing ownership is not supported for {self.service_connection.type.name}")  # noqa: G004
+        logger.debug(f"Processing ownership is not supported for {self.service_connection.type.name}")
 
     def _get_classification_name(self, tag_label: TagLabel) -> str:
         """Extract classification name from tag FQN (e.g., 'ENV.staging' -> 'ENV')"""

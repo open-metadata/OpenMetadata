@@ -259,11 +259,11 @@ class ZipArchiveReader(ArchiveReader):
                 if entry_info.is_dir():
                     continue
                 if not _is_safe_archive_path(entry_info.filename):
-                    logger.warning(f"Skipping suspicious path {entry_info.filename!r}")  # noqa: G004
+                    logger.warning(f"Skipping suspicious path {entry_info.filename!r}")
                     continue
                 if entry_info.file_size > _MAX_INNER_FILE_BYTES:
                     logger.warning(
-                        f"Skipping {entry_info.filename!r}: uncompressed size {entry_info.file_size} exceeds limit"  # noqa: G004
+                        f"Skipping {entry_info.filename!r}: uncompressed size {entry_info.file_size} exceeds limit"
                     )
                     continue
 
@@ -278,7 +278,7 @@ class ZipArchiveReader(ArchiveReader):
 
                 yield ArchiveEntry(name=entry_info.filename, size=entry_info.file_size, loader=_load)
             except Exception as exc:
-                logger.warning(f"Skipping archive entry {entry_info.filename!r}: {exc}")  # noqa: G004
+                logger.warning(f"Skipping archive entry {entry_info.filename!r}: {exc}")
 
     def close(self) -> None:
         self._zip_file.close()
@@ -362,16 +362,16 @@ class ZipRangeReader(ArchiveReader):
                 if zip_entry.name.endswith("/"):
                     continue
                 if not _is_safe_archive_path(zip_entry.name):
-                    logger.warning(f"Skipping suspicious path {zip_entry.name!r}")  # noqa: G004
+                    logger.warning(f"Skipping suspicious path {zip_entry.name!r}")
                     continue
                 if zip_entry.uncomp_size > _MAX_INNER_FILE_BYTES:
                     logger.warning(
-                        f"Skipping {zip_entry.name!r}: uncompressed size {zip_entry.uncomp_size} exceeds limit"  # noqa: G004
+                        f"Skipping {zip_entry.name!r}: uncompressed size {zip_entry.uncomp_size} exceeds limit"
                     )
                     continue
                 yield ArchiveEntry(name=zip_entry.name, size=zip_entry.uncomp_size, loader=_load)
             except Exception as exc:
-                logger.warning(f"Skipping archive entry {zip_entry.name!r}: {exc}")  # noqa: G004
+                logger.warning(f"Skipping archive entry {zip_entry.name!r}: {exc}")
 
     def close(self) -> None:
         pass
@@ -387,7 +387,7 @@ class ZipReader(ArchiveReader):
         try:
             self._reader: ArchiveReader = ZipRangeReader(blob)
         except (ValueError, struct.error, OSError) as exc:
-            logger.warning(f"ZipRangeReader failed ({exc}), falling back to full download")  # noqa: G004
+            logger.warning(f"ZipRangeReader failed ({exc}), falling back to full download")
             data = blob.read_all()
             self._reader = ZipArchiveReader(data)
 
@@ -424,14 +424,14 @@ class TarArchiveReader(ArchiveReader):
                 if not tar_member.isfile():
                     continue
                 if not _is_safe_archive_path(tar_member.name):
-                    logger.warning(f"Skipping suspicious path {tar_member.name!r}")  # noqa: G004
+                    logger.warning(f"Skipping suspicious path {tar_member.name!r}")
                     continue
                 if tar_member.size > _MAX_INNER_FILE_BYTES:
-                    logger.warning(f"Skipping {tar_member.name!r}: size {tar_member.size} exceeds limit")  # noqa: G004
+                    logger.warning(f"Skipping {tar_member.name!r}: size {tar_member.size} exceeds limit")
                     continue
                 yield ArchiveEntry(name=tar_member.name, size=tar_member.size, loader=_load)
             except Exception as exc:
-                logger.warning(f"Skipping archive entry {tar_member.name!r}: {exc}")  # noqa: G004
+                logger.warning(f"Skipping archive entry {tar_member.name!r}: {exc}")
 
     def close(self) -> None:
         self._tar_file.close()
@@ -469,7 +469,7 @@ class SevenZipArchiveReader(ArchiveReader):
                 file_path.chmod(0o644)
                 size = file_path.stat().st_size
                 if size > _MAX_INNER_FILE_BYTES:
-                    logger.warning(f"Skipping {relative_name!r}: size {size} exceeds limit")  # noqa: G004
+                    logger.warning(f"Skipping {relative_name!r}: size {size} exceeds limit")
                     continue
 
                 def _load(fp=file_path):
@@ -477,7 +477,7 @@ class SevenZipArchiveReader(ArchiveReader):
 
                 yield ArchiveEntry(name=relative_name, size=size, loader=_load)
             except Exception as exc:
-                logger.warning(f"Skipping archive entry {relative_name!r}: {exc}")  # noqa: G004
+                logger.warning(f"Skipping archive entry {relative_name!r}: {exc}")
 
     def close(self) -> None:
         self._tmpdir.cleanup()
@@ -510,14 +510,14 @@ class RarArchiveReader(ArchiveReader):
                 if entry_info.is_dir():
                     continue
                 if not _is_safe_archive_path(entry_info.filename):
-                    logger.warning(f"Skipping suspicious path {entry_info.filename!r}")  # noqa: G004
+                    logger.warning(f"Skipping suspicious path {entry_info.filename!r}")
                     continue
                 if entry_info.file_size > _MAX_INNER_FILE_BYTES:
-                    logger.warning(f"Skipping {entry_info.filename!r}: size {entry_info.file_size} exceeds limit")  # noqa: G004
+                    logger.warning(f"Skipping {entry_info.filename!r}: size {entry_info.file_size} exceeds limit")
                     continue
                 yield ArchiveEntry(name=entry_info.filename, size=entry_info.file_size, loader=_load)
             except Exception as exc:
-                logger.warning(f"Skipping archive entry {entry_info.filename!r}: {exc}")  # noqa: G004
+                logger.warning(f"Skipping archive entry {entry_info.filename!r}: {exc}")
 
     def close(self) -> None:
         self._rar_file.close()
@@ -599,7 +599,7 @@ def get_first_schema_entry(
     """
     for entry in reader.entries():
         if entry.name.lower().endswith(tuple(ARCHIVE_EXTENSIONS)):
-            logger.info(f"Skipping nested archive {entry.name!r}")  # noqa: G004
+            logger.info(f"Skipping nested archive {entry.name!r}")
             continue
         inner_format = detect_inner_format(entry.name)
         if inner_format is not None:
@@ -618,7 +618,7 @@ def iter_archive_entries_with_schema(
     columns: list = []
     for entry in reader.entries():
         if entry.name.lower().endswith(tuple(ARCHIVE_EXTENSIONS)):
-            logger.info(f"Skipping nested archive {entry.name!r}")  # noqa: G004
+            logger.info(f"Skipping nested archive {entry.name!r}")
             continue
         entry_format = detect_inner_format(entry.name)
         if not columns and entry_format is not None:
@@ -637,11 +637,11 @@ def infer_columns_from_archive_entry(entry: ArchiveEntry, inner_format: Supporte
             return AvroDataFrameReader._get_avro_columns(entry.data) or []
         reader = _DF_READERS.get(inner_format)
         if reader is None:
-            logger.warning(f"No reader for inner format {inner_format.value!r}")  # noqa: G004
+            logger.warning(f"No reader for inner format {inner_format.value!r}")
             return []
         df = reader(entry.data)
         return DataFrameColumnParser.create(df, inner_format).get_columns()
     except Exception as exc:
-        logger.warning(f"Failed to infer columns from {entry.name!r}: {exc}")  # noqa: G004
+        logger.warning(f"Failed to infer columns from {entry.name!r}: {exc}")
         logger.debug(traceback.format_exc())
         return []

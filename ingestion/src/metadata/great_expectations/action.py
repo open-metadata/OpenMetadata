@@ -589,7 +589,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 test_case_fqn=test_case.fullyQualifiedName.root,
             )
 
-            logger.debug(f"Test case result for {test_case.fullyQualifiedName.root} successfully ingested")  # noqa: G004
+            logger.debug(f"Test case result for {test_case.fullyQualifiedName.root} successfully ingested")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

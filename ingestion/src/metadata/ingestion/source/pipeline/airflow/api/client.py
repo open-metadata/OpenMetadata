@@ -166,10 +166,10 @@ class AirflowApiClient:
             try:
                 return response.json()
             except Exception as exc:
-                logger.error(f"Failed to parse JSON response: {exc}")  # noqa: G004
-                logger.warning(f"Response content type: {response.headers.get('content-type')}")  # noqa: G004
-                logger.debug(f"Response status code: {response.status_code}")  # noqa: G004
-                logger.debug(f"Response text: {response.text[:500]}")  # noqa: G004
+                logger.error(f"Failed to parse JSON response: {exc}")
+                logger.warning(f"Response content type: {response.headers.get('content-type')}")
+                logger.debug(f"Response status code: {response.status_code}")
+                logger.debug(f"Response text: {response.text[:500]}")
                 return {}
         return response
 
@@ -218,7 +218,7 @@ class AirflowApiClient:
             if isinstance(total_entries, int):
                 return total_entries
         except Exception as exc:
-            logger.debug(f"Could not fetch DAG count: {exc}")  # noqa: G004
+            logger.debug(f"Could not fetch DAG count: {exc}")
         return None
 
     def get_dag_tasks(self, dag_id: str) -> dict:
@@ -344,7 +344,7 @@ class AirflowApiClient:
             response = self.list_dag_runs(dag_id, limit=limit)
             runs_data = response.get("dag_runs", [])
         except Exception as exc:
-            logger.warning(f"Could not fetch dag runs for {dag_id}: {exc}")  # noqa: G004
+            logger.warning(f"Could not fetch dag runs for {dag_id}: {exc}")
             return []
 
         result = []
@@ -369,7 +369,7 @@ class AirflowApiClient:
             path = f"{self._prefix}/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
             instances_data = self._paginate(path, key="task_instances")
         except Exception as exc:
-            logger.warning(f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}")  # noqa: G004
+            logger.warning(f"Could not fetch task instances for {dag_id}/{dag_run_id}: {exc}")
             return []
 
         return [

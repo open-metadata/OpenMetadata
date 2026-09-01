@@ -160,7 +160,7 @@ class QlikcloudSource(QliksenseSource):
                     "Filtering dashboard as project id is not present in projects map",
                 )
                 logger.warning(
-                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present in projects map"  # noqa: G004
+                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present in projects map"
                 )
                 continue
             project = self.projects_map[dashboard.space_id]
@@ -244,7 +244,7 @@ class QlikcloudSource(QliksenseSource):
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error occured while finding table fqn: {exc}")  # noqa: G004
+                logger.warning(f"Error occured while finding table fqn: {exc}")
         return None
 
     def yield_dashboard_lineage_details(
@@ -272,7 +272,7 @@ class QlikcloudSource(QliksenseSource):
                             data_model_entity.displayName,
                             "Filtering Table as display name doesnt match prefix table name",
                         )
-                        logger.debug(f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}")  # noqa: G004
+                        logger.debug(f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}")
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(

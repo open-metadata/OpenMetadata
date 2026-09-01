@@ -137,7 +137,7 @@ class ProtobufParser:
             return proto_path, str(file_path)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
         return None
 
     def get_protobuf_python_object(self, proto_path: str, file_path: str):
@@ -168,7 +168,7 @@ class ProtobufParser:
             return instance  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
         return None
 
     def parse_protobuf_schema(self, cls: type[BaseModel] = FieldModel) -> list[FieldModel | Column] | None:
@@ -195,7 +195,7 @@ class ProtobufParser:
             return field_models  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")  # noqa: G004
+            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
         return None
 
     def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:
@@ -229,6 +229,6 @@ class ProtobufParser:
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")  # noqa: G004
+                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
 
         return field_models

@@ -199,7 +199,7 @@ def get_sink(
     sink_class = import_sink_class(sink_type=sink_type, from_=from_)
     sink_config = sink_config.model_dump().get("config", {})
     sink: Sink = sink_class.create(sink_config, metadata_config)
-    logger.debug(f"Sink type:{sink_type}, {sink_class} configured")  # noqa: G004
+    logger.debug(f"Sink type:{sink_type}, {sink_class} configured")
 
     return sink
 
@@ -286,7 +286,7 @@ class SideEffectsLoader(metaclass=Singleton):
                     logger.debug(traceback.format_exc())
                     raise DynamicImportException(module=module, cause=err)  # noqa: B904
             else:
-                logger.debug(f"Module {module} already imported")  # noqa: G004
+                logger.debug(f"Module {module} already imported")
 
 
 def import_side_effects(*modules):

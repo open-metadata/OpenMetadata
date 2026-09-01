@@ -113,7 +113,7 @@ class RuntimeParameterSetterFactory:
                 if test_definition and test_definition.validatorClass:
                     setter_classes = self._validator_class_map.get(test_definition.validatorClass, set())
             except Exception as exc:
-                logger.debug(f"Could not fetch test definition {name}: {exc}")  # noqa: G004
+                logger.debug(f"Could not fetch test definition {name}: {exc}")
 
         return {
             setter(

@@ -54,11 +54,11 @@ class FivetranClient:
         if response is None:
             raise RuntimeError(f"Fivetran API request failed for {path} — received None response")
         if not isinstance(response, dict):
-            logger.warning(f"Unexpected response type for {path}: {type(response)}")  # noqa: G004
+            logger.warning(f"Unexpected response type for {path}: {type(response)}")
             return {}
         data = response.get("data")
         if not isinstance(data, dict):
-            logger.warning(f"Missing or invalid 'data' field in response for {path}")  # noqa: G004
+            logger.warning(f"Missing or invalid 'data' field in response for {path}")
             return {}
         return data
 

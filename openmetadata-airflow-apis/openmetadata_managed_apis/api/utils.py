@@ -171,7 +171,7 @@ class ScanDagsTask(Process):
             job.kill()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.info(f"Rescan Complete: Killed Job: {exc}")  # noqa: G004
+            logger.info(f"Rescan Complete: Killed Job: {exc}")
 
     @staticmethod
     def _run_dag_processor():

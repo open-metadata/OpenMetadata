@@ -50,7 +50,7 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
             except Exception as err:
                 failed_queries += 1
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing the following query while restoring [{clean_query}] - {err}")  # noqa: G004
+                logger.warning(f"Error processing the following query while restoring [{clean_query}] - {err}")
 
         log_ansi_encoded_string(
             color=ANSI.GREEN,

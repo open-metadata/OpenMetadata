@@ -85,14 +85,14 @@ def get_view_lineage(
     )
 
     if not view_definition:
-        logger.warning(f"View definition for view {table_fqn} not available")  # noqa: G004
+        logger.warning(f"View definition for view {table_fqn} not available")
         return
 
     try:
         connection_type = str(connection_type)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         start_time = time.time()
-        logger.debug(f"Processing view lineage for: {table_fqn}")  # noqa: G004
+        logger.debug(f"Processing view lineage for: {table_fqn}")
         lineage_parser = LineageParser(
             view_definition,
             dialect,
@@ -116,7 +116,7 @@ def get_view_lineage(
 
         end_time = time.time()
         logger.debug(
-            f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"  # noqa: G004
+            f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
         )
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from (
@@ -154,4 +154,4 @@ def get_view_lineage(
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}")  # noqa: G004
+        logger.warning(f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}")

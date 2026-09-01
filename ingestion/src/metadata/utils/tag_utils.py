@@ -83,7 +83,7 @@ def get_ometa_tag_and_classification(
     for tag in tags:
         # Skip empty or whitespace-only tags
         if not tag or not str(tag).strip():
-            logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")  # noqa: G004
+            logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")
             continue
 
         specific_tag_description = tag_description
@@ -119,7 +119,7 @@ def get_ometa_tag_and_classification(
                 ),
             )
             yield Either(right=classification)
-            logger.debug(f"Classification {classification_name}, Tag {tag} Ingested")  # noqa: G004
+            logger.debug(f"Classification {classification_name}, Tag {tag} Ingested")
         except Exception as err:
             yield Either(
                 left=StackTraceError(
@@ -142,7 +142,7 @@ def get_tag_label(
     """
     # Skip empty or whitespace-only tag names
     if not tag_name or not str(tag_name).strip():
-        logger.warning(f"Skipping empty or whitespace-only tag name for classification '{classification_name}'")  # noqa: G004
+        logger.warning(f"Skipping empty or whitespace-only tag name for classification '{classification_name}'")
         return None
 
     try:
@@ -171,11 +171,11 @@ def get_tag_label(
                 source=source,
             )
 
-        logger.warning(f"Tag does not exist: {tag_fqn}")  # noqa: G004
+        logger.warning(f"Tag does not exist: {tag_fqn}")
 
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error processing tag label: {err}")  # noqa: G004
+        logger.error(f"Error processing tag label: {err}")
     return None
 
 
@@ -194,7 +194,7 @@ def get_tag_labels(
         for tag in tags:
             # Skip empty or whitespace-only tags
             if not tag or not str(tag).strip():
-                logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")  # noqa: G004
+                logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")
                 continue
 
             try:
@@ -209,5 +209,5 @@ def get_tag_labels(
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error processing tag labels: {err}")  # noqa: G004
+                logger.error(f"Error processing tag labels: {err}")
     return tag_labels_list or None

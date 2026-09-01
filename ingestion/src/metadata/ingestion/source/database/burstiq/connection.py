@@ -76,7 +76,7 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
             """Test fetching edges used for lineage"""
             edges = client.get_edges(limit=1)
             # Edges might not exist, so don't fail if empty
-            logger.info(f"Found {len(edges)} edges in BurstIQ")  # noqa: G004
+            logger.info(f"Found {len(edges)} edges in BurstIQ")
 
         test_fn = {
             "CheckAccess": test_authenticate,

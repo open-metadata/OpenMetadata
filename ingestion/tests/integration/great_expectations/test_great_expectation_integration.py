@@ -127,12 +127,12 @@ class TestGreatExpectationIntegration(TestCase):
         try:
             User.__table__.create(bind=cls.engine)
         except Exception as exc:
-            LOGGER.warning(f"Table Already exists: {exc}")  # noqa: G004
+            LOGGER.warning(f"Table Already exists: {exc}")
 
         try:
             Order.__table__.create(bind=cls.engine)
         except Exception as exc:
-            LOGGER.warning(f"Table Already exists: {exc}")  # noqa: G004
+            LOGGER.warning(f"Table Already exists: {exc}")
 
         cls.session.query(Order).delete()
         cls.session.query(User).delete()

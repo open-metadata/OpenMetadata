@@ -79,7 +79,7 @@ class QueryLogger:
             query.duration_ms = (query.end_time - query.start_time).total_seconds() * 1000
 
             logger.debug(
-                "Query execution details:\n"  # noqa: G004
+                "Query execution details:\n"
                 f"  Start Time: {query.start_time}\n"
                 f"  End Time: {query.end_time}\n"
                 f"  Duration: {query.duration_ms:.2f} ms\n"

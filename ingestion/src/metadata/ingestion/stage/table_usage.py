@@ -90,7 +90,7 @@ class TableUsageStage(Stage):
         if location.is_dir():
             logger.info("Location exists, cleaning it up")
             shutil.rmtree(self.config.filename)
-        logger.info(f"Creating the directory to store staging data in {location}")  # noqa: G004
+        logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
     def _get_user_entity(self, username: str) -> tuple[list[str] | None, list[str] | None]:

@@ -188,7 +188,7 @@ class MlflowSource(MlModelServiceSource):
         new to ingest: both yield zero records and a 100% successful run, which reads as
         "working" when in fact the credentials cannot see a single model.
         """
-        logger.info(f"Listed {total} registered model(s) from the MLflow registry over {pages} page(s)")  # noqa: G004
+        logger.info(f"Listed {total} registered model(s) from the MLflow registry over {pages} page(s)")
 
         if total == 0:
             logger.warning(
@@ -243,12 +243,12 @@ class MlflowSource(MlModelServiceSource):
                     return versions
 
             logger.warning(
-                f"Gave up paginating versions of {model_name} after {MAX_VERSION_PAGES} pages "  # noqa: G004
+                f"Gave up paginating versions of {model_name} after {MAX_VERSION_PAGES} pages "
                 "with more still pending; skipping the model rather than risking a stale version."
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error searching for versions of model {model_name} - {err}")  # noqa: G004
+            logger.warning(f"Error searching for versions of model {model_name} - {err}")
 
         return []
 
@@ -260,7 +260,7 @@ class MlflowSource(MlModelServiceSource):
             try:
                 numbered.append((int(version.version), version))
             except (TypeError, ValueError):
-                logger.warning(f"Skipping version with non-numeric identifier: {version.version}")  # noqa: G004
+                logger.warning(f"Skipping version with non-numeric identifier: {version.version}")
 
         return max(numbered, key=lambda pair: pair[0], default=(None, None))[1]
 
@@ -331,10 +331,10 @@ class MlflowSource(MlModelServiceSource):
                 return [MlHyperParameter(name=param[0], value=param[1]) for param in data.params.items()]
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Validation error adding hyper parameters from RunData: {data} - {err}")  # noqa: G004
+            logger.warning(f"Validation error adding hyper parameters from RunData: {data} - {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Wild error adding hyper parameters from RunData: {data} - {err}")  # noqa: G004
+            logger.warning(f"Wild error adding hyper parameters from RunData: {data} - {err}")
 
         return None
 
@@ -353,10 +353,10 @@ class MlflowSource(MlModelServiceSource):
                 return MlStore(storage=storage)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Validation error adding the MlModel store from ModelVersion: {version} - {err}")  # noqa: G004
+            logger.warning(f"Validation error adding the MlModel store from ModelVersion: {version} - {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Wild error adding the MlModel store from ModelVersion: {version} - {err}")  # noqa: G004
+            logger.warning(f"Wild error adding the MlModel store from ModelVersion: {version} - {err}")
         return None
 
     def _get_ml_features(  # pylint: disable=arguments-differ
@@ -399,7 +399,7 @@ class MlflowSource(MlModelServiceSource):
         """
         history = (data.tags or {}).get(LOG_MODEL_HISTORY_TAG)
         if not history:
-            logger.debug(f"Run {run_id} has no {LOG_MODEL_HISTORY_TAG} tag, as expected on MLflow 3.x")  # noqa: G004
+            logger.debug(f"Run {run_id} has no {LOG_MODEL_HISTORY_TAG} tag, as expected on MLflow 3.x")
             return None
 
         columns = None
@@ -408,13 +408,13 @@ class MlflowSource(MlModelServiceSource):
                 (prop for prop in self._parse_signature_payload(history) if prop.get("run_id") == run_id), None
             )
             if entry is None:
-                logger.debug(f"No {LOG_MODEL_HISTORY_TAG} entry matches run {run_id}")  # noqa: G004
+                logger.debug(f"No {LOG_MODEL_HISTORY_TAG} entry matches run {run_id}")
             else:
                 inputs = (entry.get("signature") or {}).get("inputs")
                 columns = self._parse_signature_payload(inputs) if inputs else None
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(f"Could not read the signature from the {LOG_MODEL_HISTORY_TAG} tag of run {run_id} - {exc}")  # noqa: G004
+            logger.debug(f"Could not read the signature from the {LOG_MODEL_HISTORY_TAG} tag of run {run_id} - {exc}")
 
         return columns
 
@@ -452,7 +452,7 @@ class MlflowSource(MlModelServiceSource):
         would resolve against MLflow's global config instead of this connector's client.
         """
         artifact_uri = f"{artifact_location}/{MLMODEL_METADATA_FILE}"
-        logger.debug(f"Reading the model signature from {artifact_uri}")  # noqa: G004
+        logger.debug(f"Reading the model signature from {artifact_uri}")
 
         with tempfile.TemporaryDirectory() as tmp_dir, suppress_artifact_progress_bar():
             local_path = download_artifacts(

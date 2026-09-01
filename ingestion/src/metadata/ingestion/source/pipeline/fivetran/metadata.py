@@ -235,7 +235,7 @@ class FivetranSource(PipelineServiceSource):
                     continue
                 return service  # noqa: TRY300
             except Exception as exc:
-                logger.debug(f"Could not resolve service [{service_name}]: {exc}")  # noqa: G004
+                logger.debug(f"Could not resolve service [{service_name}]: {exc}")
         return None
 
     def _get_status_from_db(
@@ -381,7 +381,7 @@ class FivetranSource(PipelineServiceSource):
         ) in self.fivetran_client.get_connector_schema_details(connector_id=pipeline_details.source.get("id")).items():
             if not schema_data.get("enabled"):
                 logger.debug(
-                    f"Skipping schema [{schema_name}] for pipeline [{pipeline_name}] lineage - schema is disabled"  # noqa: G004
+                    f"Skipping schema [{schema_name}] for pipeline [{pipeline_name}] lineage - schema is disabled"
                 )
                 skip_reasons["schema disabled in Fivetran"] += 1
                 continue
@@ -391,7 +391,7 @@ class FivetranSource(PipelineServiceSource):
             for table_name, table_data in schema_data.get("tables", {}).items():
                 if not table_data.get("enabled"):
                     logger.debug(
-                        f"Skipping table [{schema_name}].[{table_name}] for pipeline"  # noqa: G004
+                        f"Skipping table [{schema_name}].[{table_name}] for pipeline"
                         f" [{pipeline_name}] lineage - table is disabled"
                     )
                     skip_reasons["table disabled in Fivetran"] += 1
@@ -409,7 +409,7 @@ class FivetranSource(PipelineServiceSource):
                     )
                 if not from_entity:
                     logger.debug(
-                        f"Lineage skipped for pipeline [{pipeline_name}]"  # noqa: G004
+                        f"Lineage skipped for pipeline [{pipeline_name}]"
                         f" since source entity [{schema_name}.{table_name}] not found."
                     )
                     skip_reasons["source entity not found"] += 1
@@ -437,7 +437,7 @@ class FivetranSource(PipelineServiceSource):
                     )
                 if not to_entity:
                     logger.debug(
-                        f"Lineage skipped for pipeline [{pipeline_name}]"  # noqa: G004
+                        f"Lineage skipped for pipeline [{pipeline_name}]"
                         f" since destination entity [{destination_schema_name}."
                         f"{destination_table_name}] not found."
                     )
@@ -446,7 +446,7 @@ class FivetranSource(PipelineServiceSource):
 
                 if from_entity.id == to_entity.id:
                     logger.debug(
-                        f"Lineage skipped for pipeline [{pipeline_name}] - self-referencing lineage is not allowed."  # noqa: G004
+                        f"Lineage skipped for pipeline [{pipeline_name}] - self-referencing lineage is not allowed."
                     )
                     skip_reasons["self-referencing edge"] += 1
                     continue
@@ -464,7 +464,7 @@ class FivetranSource(PipelineServiceSource):
                     # Column-config endpoint isn't supported for every connector type
                     # (e.g. messaging sources); best-effort - keep the entity-level edge.
                     logger.warning(
-                        f"Column lineage skipped for [{schema_name}].[{table_name}] in [{pipeline_name}]: {exc}"  # noqa: G004
+                        f"Column lineage skipped for [{schema_name}].[{table_name}] in [{pipeline_name}]: {exc}"
                     )
                     logger.debug(traceback.format_exc())
                     col_lineage = []
@@ -472,7 +472,7 @@ class FivetranSource(PipelineServiceSource):
                 if pipeline_entity is None:
                     pipeline_entity = self._get_pipeline_entity()
                     if not pipeline_entity:
-                        logger.warning(f"Pipeline entity not found for [{pipeline_name}], skipping lineage.")  # noqa: G004
+                        logger.warning(f"Pipeline entity not found for [{pipeline_name}], skipping lineage.")
                         return
 
                 edge_count += 1
@@ -502,7 +502,7 @@ class FivetranSource(PipelineServiceSource):
         if not edge_count and actionable_reasons:
             reason, count = actionable_reasons.most_common(1)[0]
             logger.warning(
-                f"Pipeline [{pipeline_name}] produced no lineage."  # noqa: G004
+                f"Pipeline [{pipeline_name}] produced no lineage."
                 f" Most common actionable reason: {reason} ({count} of {sum(skip_reasons.values())} candidates)."
                 " If dbServiceNames/messagingServiceNames are unset, entities are matched across all"
                 " services; if they are set, verify the names match the services holding these entities."
@@ -576,7 +576,7 @@ class FivetranSource(PipelineServiceSource):
             return None
         service_name = result.service.name if result.service else "unknown"
         logger.debug(
-            f"Resolved {entity_type.__name__} [{search_string}] via cross-service search in service [{service_name}]"  # noqa: G004
+            f"Resolved {entity_type.__name__} [{search_string}] via cross-service search in service [{service_name}]"
         )
         return result
 
@@ -613,7 +613,7 @@ class FivetranSource(PipelineServiceSource):
             dest_column_name = column_data.get("name_in_destination")
             if not column_name or not dest_column_name:
                 logger.debug(
-                    f"Skipping column mapping [{column_name}] -> [{dest_column_name}]"  # noqa: G004
+                    f"Skipping column mapping [{column_name}] -> [{dest_column_name}]"
                     f" for pipeline [{pipeline_name}] - name is None"
                 )
                 continue
@@ -622,7 +622,7 @@ class FivetranSource(PipelineServiceSource):
             to_col = _resolve_field_fqn(to_entity, dest_column_name)
             if not from_col or not to_col:
                 logger.debug(
-                    f"Skipping column [{column_name}] -> [{dest_column_name}]"  # noqa: G004
+                    f"Skipping column [{column_name}] -> [{dest_column_name}]"
                     f" for pipeline [{pipeline_name}] - FQN not resolved"
                 )
                 continue
@@ -641,7 +641,7 @@ class FivetranSource(PipelineServiceSource):
             try:
                 destination = self.fivetran_client.get_destination_details(destination_id=group_id)
             except Exception as exc:
-                logger.warning(f"Failed to get destination for group [{group_id}]: {exc}")  # noqa: G004
+                logger.warning(f"Failed to get destination for group [{group_id}]: {exc}")
                 continue
             for connector in self.fivetran_client.list_group_connectors(group_id=group_id):
                 connector_id: str = connector.get("id", "")
@@ -653,7 +653,7 @@ class FivetranSource(PipelineServiceSource):
                         connector_id=connector_id,
                     )
                 except Exception as exc:
-                    logger.warning(f"Failed to get details for connector [{connector_id}] in group [{group_id}]: {exc}")  # noqa: G004
+                    logger.warning(f"Failed to get details for connector [{connector_id}] in group [{group_id}]: {exc}")
 
     def get_pipeline_name(self, pipeline_details: FivetranPipelineDetails) -> str:
         return pipeline_details.pipeline_display_name or pipeline_details.pipeline_name
@@ -721,5 +721,5 @@ class FivetranSource(PipelineServiceSource):
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get source url: {exc}")
         return None

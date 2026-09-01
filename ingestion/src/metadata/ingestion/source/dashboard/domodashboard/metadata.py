@@ -110,10 +110,10 @@ class DomodashboardSource(DashboardServiceSource):
                     if owner_details.get("email"):
                         return self.metadata.get_reference_by_email(owner_details["email"])
                 except Exception as exc:
-                    logger.warning(f"Error while getting details of user {owner.displayName} - {exc}")  # noqa: G004
+                    logger.warning(f"Error while getting details of user {owner.displayName} - {exc}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_dashboard(self, dashboard_details: DomoDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
@@ -185,7 +185,7 @@ class DomodashboardSource(DashboardServiceSource):
                 owners=self.get_owners(pages.get("owners", [])),
             )
         except Exception as exc:
-            logger.warning(f"Error while getting details from collection page {page_id} - {exc}")  # noqa: G004
+            logger.warning(f"Error while getting details from collection page {page_id} - {exc}")
             logger.debug(traceback.format_exc())
             return None
 

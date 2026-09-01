@@ -61,7 +61,7 @@ def build_query_filter(filters: list[tuple[Column, str, Any]], or_filter: bool =
             )  # type: ignore
         except TypeError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error when looking for operator {operator} - {err}")  # noqa: G004
+            logger.error(f"Error when looking for operator {operator} - {err}")
         else:
             list_of_filters.append(getattr(column, filter_attr)(value))
 

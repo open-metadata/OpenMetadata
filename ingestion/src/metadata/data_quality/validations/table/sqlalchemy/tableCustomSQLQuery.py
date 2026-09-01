@@ -325,7 +325,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
                     return result  # noqa: RET504, TRY300
                 except Exception as exc:
                     logger.error(
-                        f"Failed to execute custom SQL with partition expression. Query: {count_query}\nError: {exc}\n",  # noqa: G004
+                        f"Failed to execute custom SQL with partition expression. Query: {count_query}\nError: {exc}\n",
                         exc_info=True,
                     )
                     self.runner.session.rollback()

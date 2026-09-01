@@ -184,7 +184,7 @@ class ColumnValuesToMatchRegexValidator(
                 )
 
         except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")  # noqa: G004
+            logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results

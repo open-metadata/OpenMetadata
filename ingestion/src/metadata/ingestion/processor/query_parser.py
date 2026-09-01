@@ -133,11 +133,11 @@ class QueryParserProcessor(Processor):
             except Exception as exc:
                 failed_cnt += 1
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing query [{table_query.query}]: {exc}")  # noqa: G004
+                logger.warning(f"Error processing query [{table_query.query}]: {exc}")
             cur_total_cnt = success_cnt + failed_cnt
             if cur_total_cnt % 1000 == 0 or cur_total_cnt == total_cnt:
                 logger.info(
-                    f"Total query count:{cur_total_cnt} / {total_cnt}."  # noqa: G004
+                    f"Total query count:{cur_total_cnt} / {total_cnt}."
                     f" Current success count: {success_cnt}."
                     f" Current failed count: {failed_cnt}."
                 )

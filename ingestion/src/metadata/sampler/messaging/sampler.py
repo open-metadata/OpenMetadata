@@ -91,7 +91,7 @@ class MessagingSampler(SamplerInterface):
         current_name = f"{parent_name}.{field.name.root}" if parent_name else field.name.root
 
         if depth > max_depth:
-            logger.warning(f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {current_name}")  # noqa: G004
+            logger.warning(f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {current_name}")
             return [SQALikeColumn(current_name, cast("DataType", field.dataType))]
 
         if field.dataType == DataTypeTopic.RECORD and field.children:

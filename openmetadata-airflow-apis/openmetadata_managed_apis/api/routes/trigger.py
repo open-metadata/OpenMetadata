@@ -68,7 +68,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to trigger dag [{dag_id}]: {exc}")  # noqa: G004
+            logger.error(f"Failed to trigger dag [{dag_id}]: {exc}")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Workflow [{dag_id}] has filed to trigger due to [{exc}] ",

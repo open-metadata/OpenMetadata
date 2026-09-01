@@ -116,5 +116,5 @@ class HiveSource(CommonDbSourceService):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None

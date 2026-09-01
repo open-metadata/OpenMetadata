@@ -202,7 +202,7 @@ class GluepipelineSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get lineage details for job : {job} due to : {exc}")  # noqa: G004
+            logger.warning(f"Failed to get lineage details for job : {job} due to : {exc}")
         return lineage_details
 
     def _extract_visual_etl_lineage(self, config_nodes: dict, lineage_details: dict):
@@ -258,7 +258,7 @@ class GluepipelineSource(PipelineServiceSource):
 
         result = parse_glue_script(script_content)
         if not result.has_lineage:
-            logger.debug(f"No lineage found in script: {script_location}")  # noqa: G004
+            logger.debug(f"No lineage found in script: {script_location}")
             return
 
         self._resolve_s3_entities(result.s3_sources, lineage_details, "sources")
@@ -274,12 +274,12 @@ class GluepipelineSource(PipelineServiceSource):
             bucket = parsed.netloc
             key = parsed.path.lstrip("/")
             if not bucket or not key:
-                logger.warning(f"Invalid S3 URI for script: {s3_uri}")  # noqa: G004
+                logger.warning(f"Invalid S3 URI for script: {s3_uri}")
                 return None
             response = self.s3_client.get_object(Bucket=bucket, Key=key)
             return response["Body"].read().decode("utf-8")
         except Exception as exc:
-            logger.error(f"Failed to download script from {s3_uri}: {exc}")  # noqa: G004
+            logger.error(f"Failed to download script from {s3_uri}: {exc}")
             logger.debug(traceback.format_exc())
             return None
 
@@ -301,11 +301,11 @@ class GluepipelineSource(PipelineServiceSource):
                     lineage_details[direction].append(storage_entity)
                 else:
                     logger.warning(
-                        f"Could not find container entity for S3 path: {path}. "  # noqa: G004
+                        f"Could not find container entity for S3 path: {path}. "
                         "Ensure the S3 storage service has been ingested."
                     )
             except Exception as exc:
-                logger.debug(f"Failed to resolve S3 path {path}: {exc}")  # noqa: G004
+                logger.debug(f"Failed to resolve S3 path {path}: {exc}")
 
     def _resolve_catalog_entities(self, refs: list, lineage_details: dict, direction: str):
         for ref in refs:
@@ -327,7 +327,7 @@ class GluepipelineSource(PipelineServiceSource):
                         break
                 except Exception as exc:
                     logger.debug(
-                        f"Failed to resolve catalog ref {ref.database}.{ref.table} in service {db_service_name}: {exc}"  # noqa: G004
+                        f"Failed to resolve catalog ref {ref.database}.{ref.table} in service {db_service_name}: {exc}"
                     )
 
     def _resolve_jdbc_entities(self, refs: list, lineage_details: dict, direction: str):
@@ -368,7 +368,7 @@ class GluepipelineSource(PipelineServiceSource):
                         lineage_details[direction].append(table_entity)
                         break
                 except Exception as exc:
-                    logger.debug(f"Failed to resolve JDBC ref {table_name} in service {db_service_name}: {exc}")  # noqa: G004
+                    logger.debug(f"Failed to resolve JDBC ref {table_name} in service {db_service_name}: {exc}")
 
     def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:
@@ -382,7 +382,7 @@ class GluepipelineSource(PipelineServiceSource):
             self._glue_connection_cache[connection_name] = result
             return result  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Failed to resolve Glue connection '{connection_name}': {exc}")  # noqa: G004
+            logger.debug(f"Failed to resolve Glue connection '{connection_name}': {exc}")
             self._glue_connection_cache[connection_name] = None
             return None
 

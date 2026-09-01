@@ -121,7 +121,7 @@ class MicrostrategySource(DashboardServiceSource):
         try:
             return dashboard_details.projectName
         except Exception as exc:
-            logger.debug(f"Cannot get project name from dashboard [{dashboard_details.name}] - [{exc}]")  # noqa: G004
+            logger.debug(f"Cannot get project name from dashboard [{dashboard_details.name}] - [{exc}]")
         return None
 
     def get_dashboard_details(self, dashboard: MstrDashboard) -> MstrDashboardDetails:
@@ -221,7 +221,7 @@ class MicrostrategySource(DashboardServiceSource):
                         table_name=str(table),
                     )
                     if not table_entities:
-                        logger.debug(f"[{query_hash}] Table not found in metadata: {str(table)}")  # noqa: G004, RUF010
+                        logger.debug(f"[{query_hash}] Table not found in metadata: {str(table)}")  # noqa: RUF010
                         continue
                     for table_entity in table_entities or []:
                         if prefix_table_name and prefix_table_name.lower() != str(table_entity.name.root).lower():
@@ -281,7 +281,7 @@ class MicrostrategySource(DashboardServiceSource):
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating dashboard: {exc}")  # noqa: G004
+                logger.warning(f"Error creating dashboard: {exc}")
 
     def _yield_chart_from_visualization(self, page: MstrPage) -> Iterable[Either[CreateChartRequest]]:
         for chart in page.visualizations:
@@ -327,7 +327,7 @@ class MicrostrategySource(DashboardServiceSource):
                 datasource_columns.append(Column(**parsed_column))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")  # noqa: G004
+                logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
     def yield_datamodel(

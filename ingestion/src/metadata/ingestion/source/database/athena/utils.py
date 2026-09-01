@@ -85,7 +85,7 @@ def _get_column_type(self, type_):
     elif col_map.get(name):
         col_type = col_map.get(name)
     else:
-        logger.warning(f"Did not recognize type '{type_}'")  # noqa: G004
+        logger.warning(f"Did not recognize type '{type_}'")
         col_type = types.NullType
     return col_type(*args)
 

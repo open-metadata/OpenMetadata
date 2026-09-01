@@ -55,7 +55,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
                         total_rows += len(dataframe.query(partition_expression))
                     except Exception as e:
                         logger.error(
-                            "Error executing partition expression, "  # noqa: G004
+                            "Error executing partition expression, "
                             f"expression may be invalid: {partition_expression} - {e}"
                         )
                         return None

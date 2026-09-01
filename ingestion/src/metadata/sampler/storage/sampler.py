@@ -96,7 +96,7 @@ class StorageSampler(SamplerInterface):
             return self._columns
 
         if not self.entity.dataModel or not self.entity.dataModel.columns:  # pyright: ignore[reportAttributeAccessIssue]
-            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no data model columns")  # noqa: G004
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no data model columns")
             return []
 
         self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]  # pyright: ignore[reportAttributeAccessIssue]
@@ -105,21 +105,21 @@ class StorageSampler(SamplerInterface):
     def _get_file_format(self) -> SupportedTypes | None:
         """Extract file format from container"""
         if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:  # pyright: ignore[reportAttributeAccessIssue]
-            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")  # noqa: G004
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")
             return None
 
         file_format = self.entity.fileFormats[0].value  # pyright: ignore[reportAttributeAccessIssue]
         try:
             return SupportedTypes(file_format)
         except ValueError:
-            logger.warning(f"Unsupported file format: {file_format}")  # noqa: G004
+            logger.warning(f"Unsupported file format: {file_format}")
             return None
 
     def fetch_sample_data(self, columns: list[SQALikeColumn] | None) -> TableData:
         """Fetch sample data from storage container"""
         sample_file_path = self._get_sample_file_path()
         if not sample_file_path:
-            logger.warning(f"No sample file found for container {self.entity.fullyQualifiedName.root}")  # noqa: G004
+            logger.warning(f"No sample file found for container {self.entity.fullyQualifiedName.root}")
             return TableData(columns=[], rows=[])
 
         bucket_name = self._get_bucket_name()
@@ -149,7 +149,7 @@ class StorageSampler(SamplerInterface):
                 return TableData(columns=col_names, rows=rows)
 
         except Exception as exc:
-            logger.warning(f"Failed to fetch sample data for {self.entity.fullyQualifiedName.root}: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch sample data for {self.entity.fullyQualifiedName.root}: {exc}")
 
         return TableData(columns=[], rows=[])
 

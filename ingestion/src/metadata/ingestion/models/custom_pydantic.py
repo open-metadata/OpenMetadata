@@ -114,7 +114,7 @@ class BaseModel(PydanticBaseModel):
                     if isinstance(value, dict):
                         setattr(self, field, FilterPattern(**value))
         except Exception as exc:
-            logger.warning(f"Exception while parsing FilterPattern: {exc}")  # noqa: G004
+            logger.warning(f"Exception while parsing FilterPattern: {exc}")
 
     @model_validator(mode="after")
     def parse_name(self):  # pylint: disable=inconsistent-return-statements
@@ -237,11 +237,11 @@ class _CustomSecretStr(SecretStr):
             and SecretsManagerFactory().get_secrets_manager()
         ):
             secret_id = self._secret_value.replace(SECRET, "")
-            logger.info(f"Getting secret value for {secret_id}")  # noqa: G004
+            logger.info(f"Getting secret value for {secret_id}")
             try:
                 secret_value = SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
             except Exception as exc:
-                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")  # noqa: G004
+                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
 
         if secret_value is None:
             logger.warning("Resolved a null secret value; treating it as an empty string")

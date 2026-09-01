@@ -51,7 +51,7 @@ class AthenaLakeFormationClient:
             return lf_tags.LFTagOnDatabase  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get LF-Tags for database resource [{name}] due to: {exc}. Skipping.")  # noqa: G004
+            logger.warning(f"Unable to get LF-Tags for database resource [{name}] due to: {exc}. Skipping.")
         return None
 
     def get_table_and_column_tags(self, schema_name: str, table_name: str) -> LFTags:
@@ -79,5 +79,5 @@ class AthenaLakeFormationClient:
             return LFTags(**response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get LF-Tags for table resource [{table_name}] due to: {exc}. Skipping.")  # noqa: G004
+            logger.warning(f"Unable to get LF-Tags for table resource [{table_name}] due to: {exc}. Skipping.")
         return LFTags()

@@ -112,7 +112,7 @@ class ValidationResult(BaseModel):
                 cast(FullyQualifiedEntityName, test_case.fullyQualifiedName).root,  # noqa: TC006
             )
 
-            logger.debug(f"Result: {res}")  # noqa: G004
+            logger.debug(f"Result: {res}")
 
     @classmethod
     def merge(cls, *results: "ValidationResult") -> "ValidationResult":

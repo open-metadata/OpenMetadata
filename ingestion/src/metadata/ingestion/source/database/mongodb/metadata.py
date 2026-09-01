@@ -63,7 +63,7 @@ class MongodbSource(CommonNoSQLSource):
                 return [self.service_connection.databaseSchema]
             return self.mongodb.list_database_names()
         except Exception as exp:
-            logger.debug(f"Failed to list database names: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list database names: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -76,7 +76,7 @@ class MongodbSource(CommonNoSQLSource):
             database = self.mongodb.get_database(schema_name)
             return [TableNameAndType(name=name) for name in database.list_collection_names()]
         except Exception as exp:
-            logger.debug(f"Failed to list collection names for schema [{schema_name}]: {exp}")  # noqa: G004
+            logger.debug(f"Failed to list collection names for schema [{schema_name}]: {exp}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -90,6 +90,6 @@ class MongodbSource(CommonNoSQLSource):
             collection = database.get_collection(table_name)
             return list(collection.find().limit(SAMPLE_SIZE))
         except OperationFailure as opf:
-            logger.debug(f"Failed to read collection [{table_name}]: {opf}")  # noqa: G004
+            logger.debug(f"Failed to read collection [{table_name}]: {opf}")
             logger.debug(traceback.format_exc())
         return []

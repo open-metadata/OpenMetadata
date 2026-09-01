@@ -862,7 +862,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
         # Load drive sample data
         try:
-            logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")  # noqa: G004
+            logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")
             self.drive_service_json = json.load(
                 open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/service.json",
@@ -870,13 +870,13 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     encoding=UTF_8,
                 )
             )
-            logger.info(f"Drive service JSON: {self.drive_service_json}")  # noqa: G004
+            logger.info(f"Drive service JSON: {self.drive_service_json}")
             logger.info("Creating drive service...")
 
             # Check if service already exists
             try:
                 self.drive_service = self.metadata.get_by_name(entity=DriveService, fqn=self.drive_service_json["name"])
-                logger.info(f"Drive service already exists: {self.drive_service.name}")  # noqa: G004
+                logger.info(f"Drive service already exists: {self.drive_service.name}")
             except Exception:
                 # Create the service using direct API call
                 drive_service_request = CreateDriveServiceRequest(**self.drive_service_json)
@@ -888,7 +888,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 )
 
                 self.drive_service = DriveService(**resp)
-                logger.info(f"Created drive service: {self.drive_service.name}")  # noqa: G004
+                logger.info(f"Created drive service: {self.drive_service.name}")
             self.directories = json.load(
                 open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/directories.json",
@@ -919,13 +919,13 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             )
             self.has_drive_data = True
             logger.info(
-                f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"  # noqa: G004
+                f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
             )
         except Exception as exc:
             import traceback
 
-            logger.warning(f"Drive sample data not found: {exc}")  # noqa: G004
-            logger.debug(f"Traceback: {traceback.format_exc()}")  # noqa: G004
+            logger.warning(f"Drive sample data not found: {exc}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
 
         # Optional, like the drive bundle above: a sampleDataFolder that predates this
@@ -1048,7 +1048,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     yield from self._ingest_data_contract_results(table_fqn)
 
                 except ValidationError as err:
-                    logger.warning(f"Failed to create data contract {contract_data.get('name', 'unknown')}: {err}")  # noqa: G004
+                    logger.warning(f"Failed to create data contract {contract_data.get('name', 'unknown')}: {err}")
                     yield Either(
                         left=StackTraceError(
                             name="DataContract",
@@ -1058,7 +1058,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
                 except Exception as err:
                     logger.warning(
-                        f"Unexpected error creating data contract {contract_data.get('name', 'unknown')}: {err}"  # noqa: G004
+                        f"Unexpected error creating data contract {contract_data.get('name', 'unknown')}: {err}"
                     )
                     yield Either(
                         left=StackTraceError(
@@ -1069,7 +1069,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
 
         except Exception as err:
-            logger.warning(f"Failed to ingest data contracts: {err}")  # noqa: G004
+            logger.warning(f"Failed to ingest data contracts: {err}")
             yield Either(
                 left=StackTraceError(
                     name="DataContract",
@@ -1091,7 +1091,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     break
 
             if not contract_results_data:
-                logger.debug(f"No results found for contract {table_fqn}")  # noqa: G004
+                logger.debug(f"No results found for contract {table_fqn}")
                 return
 
             table_fqn = contract_results_data.pop("table_fqn")
@@ -1099,10 +1099,10 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             try:
                 contract = self.metadata.get_by_name(entity=DataContract, fqn=contract_fqn)
                 if not contract:
-                    logger.warning(f"Could not find data contract {contract_fqn}")  # noqa: G004
+                    logger.warning(f"Could not find data contract {contract_fqn}")
                     return
             except Exception as e:
-                logger.warning(f"Could not retrieve data contract {contract_fqn}: {e}")  # noqa: G004
+                logger.warning(f"Could not retrieve data contract {contract_fqn}: {e}")
                 return
 
             # Create results with timestamps going back in time (similar to test case results)
@@ -1126,12 +1126,12 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     yield Either(right=result)
 
                 except ValidationError as err:
-                    logger.warning(f"Failed to create data contract result for {table_fqn}: {err}")  # noqa: G004
+                    logger.warning(f"Failed to create data contract result for {table_fqn}: {err}")
                 except Exception as err:
-                    logger.warning(f"Unexpected error creating data contract result for {table_fqn}: {err}")  # noqa: G004
+                    logger.warning(f"Unexpected error creating data contract result for {table_fqn}: {err}")
 
         except Exception as err:
-            logger.warning(f"Failed to ingest results for contract {table_fqn}: {err}")  # noqa: G004
+            logger.warning(f"Failed to ingest results for contract {table_fqn}: {err}")
 
     def modify_column_descriptions(self):
         """
@@ -1176,7 +1176,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     tries = 3
                     parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
                     while not parent_object and tries > 0:
-                        logger.info(f"Trying to GET {parent} Parent Team")  # noqa: G004
+                        logger.info(f"Trying to GET {parent} Parent Team")
                         parent_object = self.metadata.get_by_name(
                             entity=Team,
                             fqn=parent,
@@ -1192,7 +1192,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
     def ingest_drives(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Drive data"""
-        logger.info(f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}")  # noqa: G004
+        logger.info(f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}")
         if not getattr(self, "has_drive_data", False):
             logger.warning("No drive data to ingest")
             return
@@ -1230,9 +1230,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             # Use direct API call instead of yielding since suffix mapping is missing
             try:
                 resp = self.metadata.client.put(path="/drives/directories", data=directory_request.model_dump_json())
-                logger.debug(f"Created directory: {directory_data['name']}")  # noqa: G004
+                logger.debug(f"Created directory: {directory_data['name']}")
             except Exception as e:
-                logger.warning(f"Failed to create directory {directory_data['name']}: {e}")  # noqa: G004
+                logger.warning(f"Failed to create directory {directory_data['name']}: {e}")
 
             # Store the FQN for later reference
             # Build FQN manually since Directory FQN builder is not implemented
@@ -1269,9 +1269,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             # Use direct API call instead of yielding since suffix mapping is missing
             try:
                 resp = self.metadata.client.put(path="/drives/files", data=file_request.model_dump_json())
-                logger.debug(f"Created file: {file_data['name']}")  # noqa: G004
+                logger.debug(f"Created file: {file_data['name']}")
             except Exception as e:
-                logger.warning(f"Failed to create file {file_data['name']}: {e}")  # noqa: G004
+                logger.warning(f"Failed to create file {file_data['name']}: {e}")
 
         # Create spreadsheets
         spreadsheet_refs = {}
@@ -1301,25 +1301,25 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     path="/drives/spreadsheets",
                     data=spreadsheet_request.model_dump_json(),
                 )
-                logger.debug(f"Created spreadsheet: {spreadsheet_data['name']}")  # noqa: G004
+                logger.debug(f"Created spreadsheet: {spreadsheet_data['name']}")
             except Exception as e:
-                logger.warning(f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}")  # noqa: G004
+                logger.warning(f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}")
 
             # Store FQN for worksheet references
             # Build FQN manually - spreadsheets use simple FQN without directory path
             spreadsheet_fqn = f"{self.drive_service.fullyQualifiedName.root}.{spreadsheet_data['name']}"
             spreadsheet_refs[spreadsheet_data["name"]] = spreadsheet_fqn
-            logger.debug(f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}")  # noqa: G004
+            logger.debug(f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}")
 
         # Create worksheets
         for worksheet_data in self.worksheets:
             spreadsheet_fqn = spreadsheet_refs.get(worksheet_data["spreadsheet"])
             logger.debug(
-                f"Creating worksheet {worksheet_data['name']} for spreadsheet {worksheet_data['spreadsheet']} -> {spreadsheet_fqn}"  # noqa: G004
+                f"Creating worksheet {worksheet_data['name']} for spreadsheet {worksheet_data['spreadsheet']} -> {spreadsheet_fqn}"
             )
 
             if not spreadsheet_fqn:
-                logger.warning(f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs")  # noqa: G004
+                logger.warning(f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs")
                 continue
 
             worksheet_request = CreateWorksheetRequest(
@@ -1337,9 +1337,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 resp = self.metadata.client.put(  # noqa: F841
                     path="/drives/worksheets", data=worksheet_request.model_dump_json()
                 )
-                logger.debug(f"Created worksheet: {worksheet_data['name']}")  # noqa: G004
+                logger.debug(f"Created worksheet: {worksheet_data['name']}")
             except Exception as e:
-                logger.warning(f"Failed to create worksheet {worksheet_data['name']}: {e}")  # noqa: G004
+                logger.warning(f"Failed to create worksheet {worksheet_data['name']}: {e}")
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
@@ -1647,9 +1647,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     destination.certification = AssetCertification.model_validate(table["certification"])
 
                     self.metadata.patch(entity=Table, source=table_entity, destination=destination)
-                    logger.debug(f"Patched certification for {table_entity.fullyQualifiedName.root}")  # noqa: G004
+                    logger.debug(f"Patched certification for {table_entity.fullyQualifiedName.root}")
                 except Exception as exc:
-                    logger.warning(f"Failed to patch certification for {table.get('name')}: {exc}")  # noqa: G004
+                    logger.warning(f"Failed to patch certification for {table.get('name')}: {exc}")
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
@@ -1807,7 +1807,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=data_model_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception ingesting chart [{data_model}]: {err}")  # noqa: G004
+                logger.warning(f"Unexpected exception ingesting chart [{data_model}]: {err}")
 
         for chart in self.looker_charts:
             try:
@@ -1823,7 +1823,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=chart_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")  # noqa: G004
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
         for dashboard in self.looker_dashboards:
             try:
@@ -1839,7 +1839,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=dashboard_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception ingesting dashboard [{dashboard}]: {err}")  # noqa: G004
+                logger.warning(f"Unexpected exception ingesting dashboard [{dashboard}]: {err}")
 
         orders_view = self.metadata.get_by_name(entity=DashboardDataModel, fqn="sample_looker.model.orders_view")
         operations_view = self.metadata.get_by_name(
@@ -1889,7 +1889,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=chart_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")  # noqa: G004
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
     def ingest_data_models(self) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         for data_model in self.data_models["datamodels"]:
@@ -1907,7 +1907,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=data_model_ev)
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception ingesting chart [{data_model}]: {err}")  # noqa: G004
+                logger.warning(f"Unexpected exception ingesting chart [{data_model}]: {err}")
 
     def ingest_dashboards(self) -> Iterable[Either[CreateDashboardRequest]]:
         for dashboard in self.dashboards["dashboards"]:
@@ -1957,7 +1957,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
                 if not from_entity_ref or not to_entity_ref:
                     logger.warning(
-                        f"Skipping lineage edge from [{edge['from']['fqn']}] to [{edge['to']['fqn']}]: entity not found"  # noqa: G004
+                        f"Skipping lineage edge from [{edge['from']['fqn']}] to [{edge['to']['fqn']}]: entity not found"
                     )
                     continue
                 edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
@@ -2164,7 +2164,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=model_ev)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error ingesting MlModel [{model}]: {exc}")  # noqa: G004
+                logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
 
     def ingest_sagemaker_models(self) -> Iterable[Either[CreateMlModelRequest]]:
         """
@@ -2205,7 +2205,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=model_ev)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error ingesting SageMaker MlModel [{model}]: {exc}")  # noqa: G004
+                logger.warning(f"Error ingesting SageMaker MlModel [{model}]: {exc}")
 
     def ingest_containers(self) -> Iterable[Either[CreateContainerRequest]]:
         """
@@ -2240,7 +2240,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=container_request)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error ingesting Container [{container}]: {exc}")  # noqa: G004
+                logger.warning(f"Error ingesting Container [{container}]: {exc}")
 
         # Create a very nested container structure:
         try:
@@ -2272,7 +2272,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error ingesting nested containers: {exc}")  # noqa: G004
+            logger.warning(f"Error ingesting nested containers: {exc}")
 
     def ingest_users(self) -> Iterable[Either[OMetaUserProfile]]:
         """Ingest Sample User data"""
@@ -2311,7 +2311,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield Either(right=OMetaUserProfile(user=user_metadata, teams=teams, roles=roles))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error ingesting users: {exc}")  # noqa: G004
+            logger.error(f"Error ingesting users: {exc}")
 
     def ingest_profiles(self) -> Iterable[Either[OMetaTableProfileSampleData]]:
         """Iterate over all the profile data and ingest them"""
@@ -2365,7 +2365,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     yield Either(right=table_profile)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error ingesting Profiles [{table_profile}]: {exc}")  # noqa: G004
+                    logger.warning(f"Error ingesting Profiles [{table_profile}]: {exc}")
 
     def ingest_test_suite(self) -> Iterable[Either[OMetaTestSuiteSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
@@ -2491,7 +2491,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 fields=["testSuite", "testDefinition"],
             )
             if not case:
-                logger.warning(f"Test case {test_case_fqn} not found. Skipping its sample results.")  # noqa: G004
+                logger.warning(f"Test case {test_case_fqn} not found. Skipping its sample results.")
                 continue
             for days, result in enumerate(test_case_results["results"]):
                 test_case_result_req = OMetaTestCaseResultsSample(
@@ -2662,14 +2662,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 )
             )
 
-            logger.info(f"Created database service {service_name} ({NUM_SERVICES})")  # noqa: G004
+            logger.info(f"Created database service {service_name} ({NUM_SERVICES})")
             tasks = []  # noqa: F841
             # Create databases sequentially
             for db_idx in range(DATABASES_PER_SERVICE):
                 yield from self.create_database(service_name, db_idx)
 
         except Exception as e:
-            logger.error(f"Failed to create database service {service_name}: {e}")  # noqa: G004
+            logger.error(f"Failed to create database service {service_name}: {e}")
 
     def process_service_batch(self) -> None:
         """Process a batch of services.
@@ -2739,7 +2739,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 yield from self.create_schema(database_fqn, schema_idx)
 
         except Exception as e:
-            logger.error(f"Failed to create database {db_name}: {e}")  # noqa: G004
+            logger.error(f"Failed to create database {db_name}: {e}")
 
     def create_schema(self, database_fqn: str, schema_idx: int) -> None:
         """Create a schema.
@@ -2759,7 +2759,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             yield from self.create_table(schema_name)
 
         except Exception as e:
-            logger.error(f"Failed to create schema {schema_name}: {e}")  # noqa: G004
+            logger.error(f"Failed to create schema {schema_name}: {e}")
 
     def create_table(self, schema_fqn: str) -> None:
         """Create a batch of tables for a schema.
@@ -2794,4 +2794,4 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 )
                 yield table_request
             except Exception as e:
-                logger.warning(f"Error creating table request: {e}")  # noqa: G004
+                logger.warning(f"Error creating table request: {e}")

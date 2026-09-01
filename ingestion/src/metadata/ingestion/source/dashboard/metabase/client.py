@@ -175,7 +175,7 @@ class MetabaseClient:
             return charts_dict  # noqa: TRY300
         except Exception as e:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the cards : {e}")  # noqa: G004
+            logger.error(f"Failed to fetch the cards : {e}")
         return {}
 
     def _create_default_dashboard_details(self, orphan_charts_id: list) -> MetabaseDashboardDetails:
@@ -238,7 +238,7 @@ class MetabaseClient:
                 return self._process_dashboard_response(resp_dashboard, charts_dict, dashboard_id)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
     def get_database(self, database_id: str) -> MetabaseDatabase | None:
@@ -253,7 +253,7 @@ class MetabaseClient:
                 return MetabaseDatabase(**resp_database)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the database with id: {database_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the database with id: {database_id}")
         return None
 
     def get_table(self, table_id: str) -> MetabaseTable | None:
@@ -268,7 +268,7 @@ class MetabaseClient:
                 return MetabaseTable(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the table with id: {table_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the table with id: {table_id}")
         return None
 
     def get_user_details(self, user_id: str) -> MetabaseUser | None:
@@ -283,5 +283,5 @@ class MetabaseClient:
                 return MetabaseUser(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the user with id: {user_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the user with id: {user_id}")
         return None

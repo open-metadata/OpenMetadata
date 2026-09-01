@@ -138,7 +138,7 @@ class TableauClient:
                 self.owner_cache[owner_id] = owner_obj
                 return owner_obj
         except Exception as err:
-            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")  # noqa: G004, RUF010
+            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")  # noqa: RUF010
         return None
 
     def get_workbook_charts_and_user_count(
@@ -165,10 +165,10 @@ class TableauClient:
                 )
                 view_count += view.total_views
             except AttributeError as e:
-                logger.debug(f"Failed to process view due to missing attribute: {str(e)}")  # noqa: G004, RUF010
+                logger.debug(f"Failed to process view due to missing attribute: {str(e)}")  # noqa: RUF010
                 continue
             except Exception as e:
-                logger.debug(f"Failed to process view: {str(e)}")  # noqa: G004, RUF010
+                logger.debug(f"Failed to process view: {str(e)}")  # noqa: RUF010
                 continue
 
         return charts, view_count
@@ -184,7 +184,7 @@ class TableauClient:
                 all_projects.append(project)  # noqa: PERF402
             self.all_projects = all_projects
         except Exception as e:
-            logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: G004, RUF010
+            logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
 
     def get_project_parents_by_id(self, project_id: str) -> str | None:
         """
@@ -213,7 +213,7 @@ class TableauClient:
                 parent_projects = ".".join(reversed(parent_projects))
                 return parent_projects  # noqa: RET504
         except Exception as e:
-            logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: G004, RUF010
+            logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: RUF010
         return None
 
     def get_workbook_count(self) -> int:
@@ -246,10 +246,10 @@ class TableauClient:
                 )
                 yield workbook
             except AttributeError as err:
-                logger.warning(f"Failed to process workbook due to missing attribute: {str(err)}")  # noqa: G004, RUF010
+                logger.warning(f"Failed to process workbook due to missing attribute: {str(err)}")  # noqa: RUF010
                 continue
             except Exception as err:
-                logger.warning(f"Failed to process workbook: {str(err)}")  # noqa: G004, RUF010
+                logger.warning(f"Failed to process workbook: {str(err)}")  # noqa: RUF010
                 continue
 
     def test_get_workbooks(self):
@@ -394,7 +394,7 @@ class TableauClient:
                     return tableau_datasource_connection.embeddedDatasourcesConnection
                 else:  # noqa: RET505
                     logger.warning(
-                        f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "  # noqa: G004
+                        f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "
                         "If this is a recently created or updated workbook, it may take some time "
                         f"to become available for querying via the GraphQL API. : \n graphql = {datasources_graphql_result}\n"
                     )
@@ -440,12 +440,12 @@ class TableauClient:
         """
         Get custom SQL table queries for a specific dashboard/workbook ID
         """
-        logger.debug(f"Getting custom SQL table queries for datasource {datasource_id}")  # noqa: G004
+        logger.debug(f"Getting custom SQL table queries for datasource {datasource_id}")
 
         if datasource_id in self.custom_sql_table_queries:
-            logger.debug(f"Found cached queries for datasource {datasource_id}")  # noqa: G004
+            logger.debug(f"Found cached queries for datasource {datasource_id}")
             return self.custom_sql_table_queries[datasource_id]
-        logger.debug(f"No cached queries for datasource {datasource_id}")  # noqa: G004
+        logger.debug(f"No cached queries for datasource {datasource_id}")
         return None
 
     def cache_custom_sql_tables(self) -> None:
@@ -466,7 +466,7 @@ class TableauClient:
             for tables in response.data.values():
                 for table in tables:
                     if not (table.query and table.downstreamDatasources):
-                        logger.debug(f"Skipping table {table} - missing query or workbooks")  # noqa: G004
+                        logger.debug(f"Skipping table {table} - missing query or workbooks")
                         continue
 
                     query = table.query

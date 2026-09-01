@@ -112,7 +112,7 @@ class DatabricksOwnerResolver:
                     return ResolvedDatabricksOwner(display_name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to fetch Databricks service principal [{owner}]: {exc}")  # noqa: G004
+            logger.warning(f"Unable to fetch Databricks service principal [{owner}]: {exc}")
         return None
 
     def _resolve_group(self, owner: str) -> ResolvedDatabricksOwner | None:
@@ -135,7 +135,7 @@ class DatabricksOwnerResolver:
                     return ResolvedDatabricksOwner(display_name, is_group=True)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to fetch Databricks group [{owner}]: {exc}")  # noqa: G004
+            logger.warning(f"Unable to fetch Databricks group [{owner}]: {exc}")
         return None
 
     def _get_reference(self, owner: ResolvedDatabricksOwner) -> EntityReferenceList | None:

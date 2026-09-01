@@ -63,9 +63,9 @@ class TimescaleLineageSource(PostgresLineageSource):
             with self.engine.connect() as conn:
                 result = conn.execute(text(TIMESCALE_CHECK_EXTENSION)).first()
             self.timescaledb_installed = result.timescaledb_installed if result else False
-            logger.info(f"TimescaleDB extension installed for lineage: {self.timescaledb_installed}")  # noqa: G004
+            logger.info(f"TimescaleDB extension installed for lineage: {self.timescaledb_installed}")
         except Exception as exc:
-            logger.warning(f"Could not check TimescaleDB extension: {exc}")  # noqa: G004
+            logger.warning(f"Could not check TimescaleDB extension: {exc}")
             self.timescaledb_installed = False
 
     def view_lineage_producer(self) -> Iterable[TableView]:
@@ -103,12 +103,12 @@ class TimescaleLineageSource(PostgresLineageSource):
                         view_definition=row.view_definition,
                     )
 
-                    logger.debug(f"Extracted continuous aggregate view: {row.view_schema}.{row.view_name}")  # noqa: G004
+                    logger.debug(f"Extracted continuous aggregate view: {row.view_schema}.{row.view_name}")
 
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to process continuous aggregate {row.view_schema}.{row.view_name}: {exc}")  # noqa: G004
+                    logger.warning(f"Failed to process continuous aggregate {row.view_schema}.{row.view_name}: {exc}")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to extract continuous aggregate views: {exc}")  # noqa: G004
+            logger.warning(f"Failed to extract continuous aggregate views: {exc}")

@@ -83,7 +83,7 @@ class WorkflowFactory:
         dag = self.build_dag()
         self.dag = dag
         self.register_dag(dag, globals_namespace)
-        logger.info(f"Registered the dag: {dag.dag_id}")  # noqa: G004
+        logger.info(f"Registered the dag: {dag.dag_id}")
 
     def get_dag(self) -> DAG:
         return self.dag

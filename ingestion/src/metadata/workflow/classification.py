@@ -68,7 +68,7 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
                 self.steps = (sampler_processor, sink)
         else:
             logger.warning(
-                f"Unsupported source config type {type(source_config).__name__}. "  # noqa: G004
+                f"Unsupported source config type {type(source_config).__name__}. "
                 "Auto-classification workflow requires DatabaseServiceAutoClassificationPipeline, "
                 "StorageServiceAutoClassificationPipeline, or MessagingServiceAutoClassificationPipeline"
             )

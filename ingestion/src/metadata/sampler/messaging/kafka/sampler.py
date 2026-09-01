@@ -132,7 +132,7 @@ class KafkaSampler(MessagingSampler):
                     if isinstance(avro_obj, dict):
                         return avro_obj
             except Exception as exc:
-                logger.debug(f"Failed to deserialize Avro message: {exc}")  # noqa: G004
+                logger.debug(f"Failed to deserialize Avro message: {exc}")
 
         return {"message": str(raw_value)}
 
@@ -153,7 +153,7 @@ class KafkaSampler(MessagingSampler):
             if AvroDeserializer and schema_registry_client:
                 self._avro_deserializer = AvroDeserializer(schema_registry_client)
         except Exception as exc:
-            logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")  # noqa: G004
+            logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")
         return getattr(self, "_avro_deserializer", None)
 
     def _fetch_messages(self, count: int) -> list[dict]:

@@ -56,7 +56,7 @@ class MF4DataFrameReader(DataFrameReader):
             if common_props:
                 schema_dict = {key: pd.Series(value) for key, value in common_props.items()}
                 schema_df = pd.DataFrame(schema_dict, index=[0])
-                logger.info(f"Extracted {len(schema_dict)} properties from MF4 header")  # noqa: G004
+                logger.info(f"Extracted {len(schema_dict)} properties from MF4 header")
 
                 def chunk_generator():
                     yield schema_df

@@ -157,7 +157,7 @@ class SftpSource(DriveServiceSource):
             self._fetch_all_files()
 
         except Exception as e:
-            logger.error(f"Error fetching directories: {e}")  # noqa: G004
+            logger.error(f"Error fetching directories: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_directories_recursive(
@@ -194,7 +194,7 @@ class SftpSource(DriveServiceSource):
                     self._fetch_directories_recursive(full_path, directories, full_path)
 
         except Exception as e:
-            logger.warning(f"Error fetching directories from {path}: {e}")  # noqa: G004
+            logger.warning(f"Error fetching directories from {path}: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_all_files(self) -> None:
@@ -231,7 +231,7 @@ class SftpSource(DriveServiceSource):
                             files_by_parent[full_path].append(file_info)
 
                 except Exception as e:
-                    logger.warning(f"Error fetching files from {full_path}: {e}")  # noqa: G004
+                    logger.warning(f"Error fetching files from {full_path}: {e}")
 
             root_dirs = self.service_connection.rootDirectories or ["/"]
             for root_dir in root_dirs:
@@ -262,13 +262,13 @@ class SftpSource(DriveServiceSource):
                             files_by_parent["root"].append(file_info)
 
                 except Exception as e:
-                    logger.warning(f"Error fetching root files from {root_dir}: {e}")  # noqa: G004
+                    logger.warning(f"Error fetching root files from {root_dir}: {e}")
 
             self._files_by_parent_cache = files_by_parent
-            logger.debug(f"Cached {total_files} files across {len(files_by_parent)} directories")  # noqa: G004
+            logger.debug(f"Cached {total_files} files across {len(files_by_parent)} directories")
 
         except Exception as e:
-            logger.error(f"Error fetching all files: {e}")  # noqa: G004
+            logger.error(f"Error fetching all files: {e}")
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
@@ -319,7 +319,7 @@ class SftpSource(DriveServiceSource):
 
             ordered_directory_paths = self._sort_directories_by_hierarchy()
 
-            logger.debug(f"Processing {len(ordered_directory_paths)} directories in hierarchical order")  # noqa: G004
+            logger.debug(f"Processing {len(ordered_directory_paths)} directories in hierarchical order")
 
             included_directories = set()
 
@@ -334,7 +334,7 @@ class SftpSource(DriveServiceSource):
                         and parent_full_path in self._directories_cache
                         and parent_full_path not in included_directories
                     ):
-                        logger.debug(f"Skipping directory '{directory_info.name}' because its parent was not included")  # noqa: G004
+                        logger.debug(f"Skipping directory '{directory_info.name}' because its parent was not included")
                         should_include = False
 
                 if should_include:
@@ -352,10 +352,10 @@ class SftpSource(DriveServiceSource):
                         included_directories.add(dir_path)
                         yield dir_path
                     else:
-                        logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")  # noqa: G004
+                        logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")
 
         except Exception as e:
-            logger.error(f"Error getting directory names: {e}")  # noqa: G004
+            logger.error(f"Error getting directory names: {e}")
             logger.debug(traceback.format_exc())
 
     def get_file_names(self) -> Iterable[str]:
@@ -373,7 +373,7 @@ class SftpSource(DriveServiceSource):
 
             self._current_directory_context = directory_path
 
-            logger.debug(f"Processing directory: {directory_info.name} (Path: {directory_path})")  # noqa: G004
+            logger.debug(f"Processing directory: {directory_info.name} (Path: {directory_path})")
 
             parent_reference = None
             if directory_info.parents:
@@ -397,7 +397,7 @@ class SftpSource(DriveServiceSource):
                 service_name=self.context.get().drive_service,
             )
 
-            logger.debug(f"Creating directory request: name={directory_info.name}, service={service_fqn}")  # noqa: G004
+            logger.debug(f"Creating directory request: name={directory_info.name}, service={service_fqn}")
 
             request = CreateDirectoryRequest(
                 name=directory_info.name,
@@ -422,7 +422,7 @@ class SftpSource(DriveServiceSource):
             yield Either(right=request)
 
         except Exception as exc:
-            logger.error(f"Error creating directory request for {directory_path}: {exc}")  # noqa: G004
+            logger.error(f"Error creating directory request for {directory_path}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -506,7 +506,7 @@ class SftpSource(DriveServiceSource):
             if not self._root_files_processed:
                 root_files = self._files_by_parent_cache.get("root", [])
                 if root_files:
-                    logger.debug(f"Processing {len(root_files)} root files")  # noqa: G004
+                    logger.debug(f"Processing {len(root_files)} root files")
 
                     for file_info in root_files:
                         try:
@@ -521,7 +521,7 @@ class SftpSource(DriveServiceSource):
                                 )
                                 if structured_only and not self._is_structured_data_file(file_info.name):
                                     logger.debug(
-                                        f"Skipping non-structured root file '{file_info.name}' "  # noqa: G004
+                                        f"Skipping non-structured root file '{file_info.name}' "
                                         "(structuredDataFilesOnly=true)"
                                     )
                                     continue
@@ -559,10 +559,10 @@ class SftpSource(DriveServiceSource):
                                         sample_data=sample_data,
                                     )
                             else:
-                                logger.debug(f"Root file '{file_info.name}' filtered out")  # noqa: G004
+                                logger.debug(f"Root file '{file_info.name}' filtered out")
 
                         except Exception as file_exc:
-                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")  # noqa: G004
+                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")
                             yield Either(
                                 left=StackTraceError(
                                     name=file_info.name,
@@ -577,10 +577,10 @@ class SftpSource(DriveServiceSource):
                 return
 
             if not files_in_directory:
-                logger.debug(f"No files found in directory {directory_path}")  # noqa: G004
+                logger.debug(f"No files found in directory {directory_path}")
                 return
 
-            logger.debug(f"Processing {len(files_in_directory)} files in directory {directory_path}")  # noqa: G004
+            logger.debug(f"Processing {len(files_in_directory)} files in directory {directory_path}")
 
             directory_reference = None
             directory_path_components = None
@@ -602,11 +602,11 @@ class SftpSource(DriveServiceSource):
                         structured_only = getattr(self.service_connection, "structuredDataFilesOnly", False)
                         if structured_only and not self._is_structured_data_file(file_info.name):
                             logger.debug(
-                                f"Skipping non-structured file '{file_info.name}' (structuredDataFilesOnly=true)"  # noqa: G004
+                                f"Skipping non-structured file '{file_info.name}' (structuredDataFilesOnly=true)"
                             )
                             continue
 
-                        logger.debug(f"Processing file: {file_info.name} (MIME: {file_info.mime_type})")  # noqa: G004
+                        logger.debug(f"Processing file: {file_info.name} (MIME: {file_info.mime_type})")
 
                         columns = None
                         sample_data = None
@@ -641,10 +641,10 @@ class SftpSource(DriveServiceSource):
                                 sample_data=sample_data,
                             )
                     else:
-                        logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")  # noqa: G004
+                        logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")
 
                 except Exception as file_exc:
-                    logger.error(f"Error processing file {file_info.name}: {file_exc}")  # noqa: G004
+                    logger.error(f"Error processing file {file_info.name}: {file_exc}")
                     yield Either(
                         left=StackTraceError(
                             name=file_info.name,
@@ -654,7 +654,7 @@ class SftpSource(DriveServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(f"Error processing files in directory {directory_path}: {exc}")  # noqa: G004
+            logger.error(f"Error processing files in directory {directory_path}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -697,7 +697,7 @@ class SftpSource(DriveServiceSource):
                 self._connection.close()
 
         except Exception as e:
-            logger.error(f"Error closing SFTP source: {e}")  # noqa: G004
+            logger.error(f"Error closing SFTP source: {e}")
             logger.debug(traceback.format_exc())
 
     def _is_csv_file(self, filename: str) -> bool:
@@ -739,11 +739,11 @@ class SftpSource(DriveServiceSource):
             file_entity = self.metadata.get_by_name(entity=File, fqn=file_fqn)
             if file_entity:
                 self.metadata.ingest_file_sample_data(file_entity, sample_data)
-                logger.debug(f"Ingested sample data for file: {file_fqn}")  # noqa: G004
+                logger.debug(f"Ingested sample data for file: {file_fqn}")
             else:
-                logger.warning(f"Could not find file entity to ingest sample data: {file_fqn}")  # noqa: G004
+                logger.warning(f"Could not find file entity to ingest sample data: {file_fqn}")
         except Exception as e:
-            logger.error(f"Failed to ingest sample data for file {file_name}: {e}")  # noqa: G004
+            logger.error(f"Failed to ingest sample data for file {file_name}: {e}")
             logger.debug(traceback.format_exc())
 
     def _get_csv_separator(self, filename: str) -> str:
@@ -769,7 +769,7 @@ class SftpSource(DriveServiceSource):
         """
         try:
             separator = self._get_csv_separator(filename)
-            logger.debug(f"Extracting CSV schema from {file_path} with separator '{separator}'")  # noqa: G004
+            logger.debug(f"Extracting CSV schema from {file_path} with separator '{separator}'")
 
             with self.client.sftp.open(file_path, "r") as remote_file:
                 content = remote_file.read()
@@ -785,7 +785,7 @@ class SftpSource(DriveServiceSource):
             )
 
             if len(df.columns) == 0:
-                logger.debug(f"CSV file {file_path} has no columns")  # noqa: G004
+                logger.debug(f"CSV file {file_path} has no columns")
                 return None, None
 
             columns = []
@@ -813,13 +813,13 @@ class SftpSource(DriveServiceSource):
                     columns=[str(col) for col in df.columns],
                     rows=sample_rows,
                 )
-                logger.debug(f"Extracted {len(columns)} columns and {len(sample_rows)} sample rows from {filename}")  # noqa: G004
+                logger.debug(f"Extracted {len(columns)} columns and {len(sample_rows)} sample rows from {filename}")
             else:
-                logger.debug(f"Extracted {len(columns)} columns from {filename}")  # noqa: G004
+                logger.debug(f"Extracted {len(columns)} columns from {filename}")
 
             return columns, sample_data  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Failed to extract CSV schema from {file_path}: {e}")  # noqa: G004
+            logger.error(f"Failed to extract CSV schema from {file_path}: {e}")
             logger.debug(traceback.format_exc())
             return None, None

@@ -169,7 +169,7 @@ class SamplerInterface(ABC):
             return TableData(rows=[], columns=[])
         try:
             if sample_data_config.readSampleData or sample_data_config.storeSampleData:
-                logger.debug(f"Fetching sample data for {self.entity.fullyQualifiedName.root}...")  # noqa: G004
+                logger.debug(f"Fetching sample data for {self.entity.fullyQualifiedName.root}...")
                 table_data = self.fetch_sample_data(self.columns)
                 table_data.rows = [
                     [self._truncate_cell(cell) for cell in row]
@@ -187,7 +187,7 @@ class SamplerInterface(ABC):
 
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching sample data: {err}")  # noqa: G004
+            logger.warning(f"Error fetching sample data: {err}")
             raise err  # noqa: TRY201
 
     @property

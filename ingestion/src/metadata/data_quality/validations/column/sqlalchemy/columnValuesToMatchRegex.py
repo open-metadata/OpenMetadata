@@ -67,7 +67,7 @@ class ColumnValuesToMatchRegexValidator(
             )
             res = dict(row._mapping)
         except (CompileError, SQLAlchemyError) as err:
-            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")  # noqa: G004
+            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
             regex_count = Metrics.likeCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
@@ -139,7 +139,7 @@ class ColumnValuesToMatchRegexValidator(
             return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")  # noqa: G004
+            logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results

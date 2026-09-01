@@ -349,12 +349,12 @@ def _unsafe_parse_config(config: dict, cls: type[T], message: str) -> None:
     Given a config dictionary and the class it should match,
     try to parse it or log the given message
     """
-    logger.debug(f"Parsing message: [{message}]")  # noqa: G004
+    logger.debug(f"Parsing message: [{message}]")
     # Parse the service connection dictionary with the scoped class
     try:
         cls.model_validate(config)
     except ValidationError as err:
-        logger.debug(f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}")  # noqa: G004
+        logger.debug(f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}")
         raise err  # noqa: TRY201
 
 
@@ -363,7 +363,7 @@ def _unsafe_parse_dbt_config(config: dict, cls: type[T], message: str) -> None:
     Given a config dictionary and the class it should match,
     try to parse it or log the given message
     """
-    logger.debug(f"Parsing message: [{message}]")  # noqa: G004
+    logger.debug(f"Parsing message: [{message}]")
     try:
         # Parse the oneOf config types of dbt to check
         dbt_config_type = config["dbtConfigSource"]["dbtConfigType"]
@@ -373,7 +373,7 @@ def _unsafe_parse_dbt_config(config: dict, cls: type[T], message: str) -> None:
         # Parse the entire dbtPipeline object
         cls.model_validate(config)
     except ValidationError as err:
-        logger.debug(f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}")  # noqa: G004
+        logger.debug(f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}")
         raise err  # noqa: TRY201
 
 
@@ -407,7 +407,7 @@ def parse_service_connection(config_dict: dict) -> None:
         if source_type is None:
             raise InvalidWorkflowException("Missing type in the serviceConnection config")
 
-        logger.debug(f"Error parsing the Workflow Configuration for {source_type} ingestion")  # noqa: G004
+        logger.debug("Parsing the workflow configuration for %s ingestion", source_type)
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)
@@ -503,7 +503,7 @@ def _preprocess_auto_classification_config(config_dict: dict) -> None:
             config_dict["source"]["sourceConfig"]["config"] = validated_config
 
     except (KeyError, AttributeError, ValidationError) as exc:
-        logger.debug(f"Could not preprocess auto-classification config: {exc}")  # noqa: G004
+        logger.debug(f"Could not preprocess auto-classification config: {exc}")
 
 
 def parse_workflow_config_gracefully(
@@ -610,7 +610,7 @@ def parse_automation_workflow_gracefully(
         if source_type is None:
             raise InvalidWorkflowException("Missing type in the connection config")  # noqa: B904
 
-        logger.debug(f"Error parsing the Workflow Configuration for {source_type} ingestion")  # noqa: G004
+        logger.debug("Parsing the workflow configuration for %s ingestion", source_type)
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)

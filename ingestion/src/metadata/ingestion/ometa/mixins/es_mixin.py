@@ -167,7 +167,7 @@ class ESMixin(Generic[T]):
                 return instance
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")  # noqa: G004
+            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
 
         return None
 
@@ -180,7 +180,7 @@ class ESMixin(Generic[T]):
                 yield instance
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")  # noqa: G004
+            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
 
         return None
 
@@ -280,10 +280,10 @@ class ESMixin(Generic[T]):
             return response  # noqa: RET504, TRY300
         except KeyError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")  # noqa: G004
+            logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")  # noqa: G004
+            logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")
         return None
 
     @staticmethod
@@ -313,12 +313,12 @@ class ESMixin(Generic[T]):
 
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not get queries from ES due to [{err}]")  # noqa: G004
+            logger.warning(f"Could not get queries from ES due to [{err}]")
             return None
 
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unknown error extracting results from ES query [{err}]")  # noqa: G004
+            logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
 
     def _get_include_fields_query(self, fields: list[str] | None) -> str:
@@ -434,13 +434,13 @@ class ESMixin(Generic[T]):
         try:
             response = self.client.get(query_string)
             if response is None:
-                logger.warning(f"Received null response from Elasticsearch for query: {query_string}")  # noqa: G004
+                logger.warning(f"Received null response from Elasticsearch for query: {query_string}")
                 return None
             return ESResponse.model_validate(response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Elasticsearch query failed: {exc}. Query: {query_string}. "  # noqa: G004
+                f"Elasticsearch query failed: {exc}. Query: {query_string}. "
                 "This may indicate issues with the Elasticsearch cluster, broken indexes, "
                 "or connectivity problems. Please check Elasticsearch cluster health and logs."
             )
@@ -457,7 +457,7 @@ class ESMixin(Generic[T]):
                     nullable=False,  # Raise an error if we don't find the Entity
                 )
             except Exception as exc:
-                logger.warning(f"Error while getting {hit.source['fullyQualifiedName']} - {exc}")  # noqa: G004
+                logger.warning(f"Error while getting {hit.source['fullyQualifiedName']} - {exc}")
 
     def yield_es_view_def(
         self,
@@ -546,6 +546,6 @@ class ESMixin(Generic[T]):
             )
             return entity_result  # noqa: RET504, TRY300
         except Exception as exc:
-            logger.debug(f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}")  # noqa: G004
+            logger.debug(f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}")
             logger.debug(traceback.format_exc())
         return None

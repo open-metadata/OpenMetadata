@@ -70,7 +70,7 @@ class CountInSet(StaticMetric):
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")  # noqa: G004
+            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -84,7 +84,7 @@ class CountInSet(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to run countInSet for {self.col.name}: {err}")  # noqa: G004
+                logger.warning(f"Error trying to run countInSet for {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 

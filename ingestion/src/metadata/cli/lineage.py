@@ -80,4 +80,4 @@ def run_lineage(config_path: Path) -> None:
             check_patch=workflow.checkPatch,
         )
     else:
-        logger.error(f"Service not found with name {workflow.serviceName}")  # noqa: G004
+        logger.error(f"Service not found with name {workflow.serviceName}")

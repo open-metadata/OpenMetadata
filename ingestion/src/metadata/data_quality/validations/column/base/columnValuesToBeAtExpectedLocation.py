@@ -442,14 +442,14 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
                     all_dimension_results.extend(dimension_results)
 
                 except Exception as exc:
-                    logger.warning(f"Error creating dimension results for column {dimension_col_name}: {exc}")  # noqa: G004
+                    logger.warning(f"Error creating dimension results for column {dimension_col_name}: {exc}")
                     logger.debug(traceback.format_exc())
                     continue
 
             return all_dimension_results  # noqa: TRY300
 
         except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")  # noqa: G004
+            logger.warning(f"Error executing dimensional validation: {exc}")
             logger.debug(traceback.format_exc())
             return []
 

@@ -285,7 +285,7 @@ class LookerSource(DashboardServiceSource):
         if not file_path.is_file():
             if isinstance(credentials, LocalRepositoryPath):
                 logger.warning(
-                    f"Manifest file '{path}' not found in local repository at {file_path}. "  # noqa: G004
+                    f"Manifest file '{path}' not found in local repository at {file_path}. "
                     f"Ensure the manifest file exists in your local LookML repository."
                 )
             return None
@@ -299,7 +299,7 @@ class LookerSource(DashboardServiceSource):
                 if isinstance(credentials, LocalRepositoryPath):
                     # For local repository path, warn about remote dependencies
                     logger.warning(
-                        f"Remote dependency '{remote_name}' found in manifest. "  # noqa: G004
+                        f"Remote dependency '{remote_name}' found in manifest. "
                         f"When using localRepositoryPath, remote dependencies are not automatically fetched. "
                         f"If needed, manually place the dependency in the '{IMPORTED_PROJECTS_DIR}/{remote_name}' directory within your local repository."
                     )
@@ -363,7 +363,7 @@ class LookerSource(DashboardServiceSource):
                 parser = BulkLkmlParser(reader=primary_reader, additional_readers=additional_readers)
                 self._project_parsers[project_name] = parser
 
-            logger.info(f"We found the following parsers:\n {self._project_parsers}")  # noqa: G004
+            logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
     def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
         """
@@ -373,7 +373,7 @@ class LookerSource(DashboardServiceSource):
             project: Project = self.client.project(project_id=project_name)
             return get_credentials_from_url(original=self.repository_credentials, url=project.git_remote_url)
         except Exception as err:
-            logger.error(f"Error trying to build project credentials - [{err}]. We'll use the default ones.")  # noqa: G004
+            logger.error(f"Error trying to build project credentials - [{err}]. We'll use the default ones.")
             return self.repository_credentials
 
     @property
@@ -430,7 +430,7 @@ class LookerSource(DashboardServiceSource):
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Unexpected error fetching LookML models - {err}")  # noqa: G004
+                logger.error(f"Unexpected error fetching LookML models - {err}")
 
     def _reconcilable_explore_total(self, all_lookml_models: Sequence[LookmlModel]) -> int:
         """Count the explores that ``fetch_lookml_explores`` would actually
@@ -475,7 +475,7 @@ class LookerSource(DashboardServiceSource):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Error fetching LookML Explore [{explore_nav.name}] in model [{lookml_model.name}] - {err}"  # noqa: G004
+                        f"Error fetching LookML Explore [{explore_nav.name}] in model [{lookml_model.name}] - {err}"
                     )
 
     def yield_standalone_datamodels(
@@ -512,7 +512,7 @@ class LookerSource(DashboardServiceSource):
         for view_name, view in project_parser._views_cache.items():
             # Skip if view was already processed
             if view_name in self._views_cache:
-                logger.debug(f"View [{view_name}] already processed, skipping")  # noqa: G004
+                logger.debug(f"View [{view_name}] already processed, skipping")
                 continue
 
             # Check if filtered
@@ -521,7 +521,7 @@ class LookerSource(DashboardServiceSource):
                 continue
 
             try:
-                logger.info(f"Processing standalone view: {view_name}")  # noqa: G004
+                logger.info(f"Processing standalone view: {view_name}")
 
                 if view.tags and self.source_config.includeTags:
                     yield from self.yield_data_model_tags(view.tags or [])
@@ -665,10 +665,10 @@ class LookerSource(DashboardServiceSource):
                 # We will only try and fetch if we have the credentials
                 if self.repository_credentials:
                     logger.info(
-                        f"Repository credentials are present, processing views of explore model {datamodel_name}"  # noqa: G004
+                        f"Repository credentials are present, processing views of explore model {datamodel_name}"
                     )
                     if model.joins:
-                        logger.info(f"Joins are present, processing views of explore model {datamodel_name}")  # noqa: G004
+                        logger.info(f"Joins are present, processing views of explore model {datamodel_name}")
                     for view in model.joins:
                         if filter_by_datamodel(self.source_config.dataModelFilterPattern, view.name):
                             self.status.filter(view.name, "Data model (View) filtered out.")
@@ -677,7 +677,7 @@ class LookerSource(DashboardServiceSource):
                         yield from self._process_view(view_name=ViewName(view_name), explore=model)
                     if model.view_name:
                         logger.info(
-                            f"View name is present, processing view {model.view_name} of explore model {datamodel_name}"  # noqa: G004
+                            f"View name is present, processing view {model.view_name} of explore model {datamodel_name}"
                         )
                         yield from self._process_view(view_name=ViewName(model.view_name), explore=model)
 
@@ -726,10 +726,10 @@ class LookerSource(DashboardServiceSource):
                 project_parser = self.parser.get(explore.project_name)
                 if project_parser:
                     explore_sql = project_parser.parsed_files.get(Includes(get_path_from_link(explore.lookml_link)))
-                    logger.debug(f"Explore SQL for project {explore.project_name}: \n{explore_sql}")  # noqa: G004
+                    logger.debug(f"Explore SQL for project {explore.project_name}: \n{explore_sql}")
                     return explore_sql
             except Exception as err:
-                logger.warning(f"Exception getting the model sql: {err}")  # noqa: G004
+                logger.warning(f"Exception getting the model sql: {err}")
 
         return None
 
@@ -784,7 +784,7 @@ class LookerSource(DashboardServiceSource):
                 yield from self.add_view_lineage(view, explore)
             else:
                 logger.warning(
-                    f"Cannot find the view [{view_name}] in the configured repositories. "  # noqa: G004
+                    f"Cannot find the view [{view_name}] in the configured repositories. "
                     "It may be defined in an imported project not listed in 'additionalRepositories'."
                 )
 
@@ -804,7 +804,7 @@ class LookerSource(DashboardServiceSource):
                 sql_query,
             )
         except Exception as e:
-            logger.warning(f"Something went wrong while replacing derived view references: {e}")  # noqa: G004
+            logger.warning(f"Something went wrong while replacing derived view references: {e}")
         return sql_query
 
     def build_lineage_for_unparsed_views(self) -> Iterable[Either[AddLineageRequest]]:
@@ -820,7 +820,7 @@ class LookerSource(DashboardServiceSource):
                 sql_query = self.replace_derived_references(self._unparsed_views[view_name])
                 if view_references := find_derived_references(sql_query):
                     # There are still derived references in the view query
-                    logger.debug(f"Views {view_references} not found for {view_name}. Skipping.")  # noqa: G004
+                    logger.debug(f"Views {view_references} not found for {view_name}. Skipping.")
                     continue
                 self._parsed_views[view_name] = sql_query
                 del self._unparsed_views[view_name]
@@ -847,7 +847,7 @@ class LookerSource(DashboardServiceSource):
         Extract column level lineage from a LookML view.
         Returns a list of tuples containing (source_column, target_column)
         """
-        logger.debug(f"Extracting column lineage for view: {view.name}")  # noqa: G004
+        logger.debug(f"Extracting column lineage for view: {view.name}")
         column_lineage = []
         try:
             # Build a map: field_name → sql block
@@ -887,13 +887,13 @@ class LookerSource(DashboardServiceSource):
                     for source_col in source_cols:
                         column_lineage.append((source_col, field_name))  # noqa: PERF401
                 except Exception as err:
-                    logger.warning(f"Error processing field {field_name}: {err}")  # noqa: G004
+                    logger.warning(f"Error processing field {field_name}: {err}")
                     logger.debug(traceback.format_exc())
                     continue
 
             return column_lineage  # noqa: TRY300
         except Exception as e:
-            logger.warning(f"Error extracting column lineage: {e}")  # noqa: G004
+            logger.warning(f"Error extracting column lineage: {e}")
             logger.debug(traceback.format_exc())
             return []
 
@@ -907,13 +907,13 @@ class LookerSource(DashboardServiceSource):
                 # Look for fields with format view_name.col
                 field_name = field.name.root
                 if "." not in field_name:
-                    logger.debug(f"Field [{field_name}] does not have a view name. Skipping.")  # noqa: G004
+                    logger.debug(f"Field [{field_name}] does not have a view name. Skipping.")
                     continue
 
                 view_name, col_name = field_name.split(".")
                 if view_name != self._view_data_model.displayName:
                     logger.debug(
-                        f"View name [{view_name}] do not match the view name"  # noqa: G004
+                        f"View name [{view_name}] do not match the view name"
                         f"[{self._view_data_model.displayName}] Skipping."
                     )
                     continue
@@ -935,7 +935,7 @@ class LookerSource(DashboardServiceSource):
                     processed_column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
             except Exception as err:
                 logger.warning(
-                    "Error processing column lineage for explore_model"  # noqa: G004
+                    "Error processing column lineage for explore_model"
                     f"[{explore_model.name}] field [{field.name}]: {err}"
                 )
                 logger.debug(traceback.format_exc())
@@ -969,16 +969,16 @@ class LookerSource(DashboardServiceSource):
 
                                 if extended_view_model:
                                     logger.debug(
-                                        f"Extended view [{extended_view_name}] found in OpenMetadata for standalone view [{view.name}]"  # noqa: G004
+                                        f"Extended view [{extended_view_name}] found in OpenMetadata for standalone view [{view.name}]"
                                     )
                             except Exception:
                                 logger.debug(
-                                    f"Extended view [{extended_view_name}] not found in cache or OpenMetadata for standalone view [{view.name}]"  # noqa: G004
+                                    f"Extended view [{extended_view_name}] not found in cache or OpenMetadata for standalone view [{view.name}]"
                                 )
 
                         if extended_view_model:
                             logger.debug(
-                                f"Building lineage from extended view {extended_view_name} to standalone view {self._view_data_model.name}"  # noqa: G004
+                                f"Building lineage from extended view {extended_view_name} to standalone view {self._view_data_model.name}"
                             )
                             yield self._get_add_lineage_request(
                                 from_entity=extended_view_model,
@@ -1019,10 +1019,10 @@ class LookerSource(DashboardServiceSource):
                     if view_references := find_derived_references(sql_query):
                         self._add_dependency_edge(view.name, view_references)
                         logger.warning(
-                            f"Not all references are replaced for standalone view [{view.name}]. Parsing it later."  # noqa: G004
+                            f"Not all references are replaced for standalone view [{view.name}]. Parsing it later."
                         )
                         return
-                logger.debug(f"Processing standalone view [{view.name}] with SQL: \n[{sql_query}]")  # noqa: G004
+                logger.debug(f"Processing standalone view [{view.name}] with SQL: \n[{sql_query}]")
                 yield from self._build_lineage_for_view(view.name, sql_query)
                 if self._unparsed_views:
                     self.build_lineage_for_unparsed_views()
@@ -1049,7 +1049,7 @@ class LookerSource(DashboardServiceSource):
             # Now the context has the newly created view
             if explore_model:
                 logger.debug(
-                    f"Building lineage request for view {self._view_data_model.name} to explore {explore_model.name}"  # noqa: G004
+                    f"Building lineage request for view {self._view_data_model.name} to explore {explore_model.name}"
                 )
                 column_lineage = self._get_explore_column_lineage(explore_model)
                 yield self._get_add_lineage_request(
@@ -1060,7 +1060,7 @@ class LookerSource(DashboardServiceSource):
 
             else:
                 logger.info(
-                    f"Could not find model for explore [{explore.model_name}: {explore.name}] in the cache"  # noqa: G004
+                    f"Could not find model for explore [{explore.model_name}: {explore.name}] in the cache"
                     " while processing view lineage."
                 )
 
@@ -1079,16 +1079,16 @@ class LookerSource(DashboardServiceSource):
 
                                 if extended_view_model:
                                     logger.debug(
-                                        f"Extended view [{extended_view_name}] found in OpenMetadata for view [{view.name}]"  # noqa: G004
+                                        f"Extended view [{extended_view_name}] found in OpenMetadata for view [{view.name}]"
                                     )
                             except Exception:
                                 logger.debug(
-                                    f"Extended view [{extended_view_name}] not found in cache or OpenMetadata for view [{view.name}]"  # noqa: G004
+                                    f"Extended view [{extended_view_name}] not found in cache or OpenMetadata for view [{view.name}]"
                                 )
 
                         if extended_view_model:
                             logger.debug(
-                                f"Building lineage from extended view {extended_view_name} to view {self._view_data_model.name}"  # noqa: G004
+                                f"Building lineage from extended view {extended_view_name} to view {self._view_data_model.name}"
                             )
                             yield self._get_add_lineage_request(
                                 from_entity=extended_view_model,
@@ -1129,9 +1129,9 @@ class LookerSource(DashboardServiceSource):
                     # If we still have derived references, we cannot process the view
                     if view_references := find_derived_references(sql_query):
                         self._add_dependency_edge(view.name, view_references)
-                        logger.warning(f"Not all references are replaced for view [{view.name}]. Parsing it later.")  # noqa: G004
+                        logger.warning(f"Not all references are replaced for view [{view.name}]. Parsing it later.")
                         return
-                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")  # noqa: G004
+                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
                 yield from self._build_lineage_for_view(view.name, sql_query)
                 if self._unparsed_views:
                     self.build_lineage_for_unparsed_views()
@@ -1220,7 +1220,7 @@ class LookerSource(DashboardServiceSource):
                 manual.set_total(Dashboard.__name__, len(kept))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Wild error trying to obtain dashboard list {err}")  # noqa: G004
+            logger.error(f"Wild error trying to obtain dashboard list {err}")
             # If we cannot list the dashboards, let's blow up
             raise err  # noqa: TRY201
         else:
@@ -1264,7 +1264,7 @@ class LookerSource(DashboardServiceSource):
                     return self.metadata.get_reference_by_email(dashboard_owner.email.lower())
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
 
         return None
 
@@ -1305,7 +1305,7 @@ class LookerSource(DashboardServiceSource):
         try:
             return dashboard_details.folder.name
         except Exception as exc:
-            logger.debug(f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]")  # noqa: G004
+            logger.debug(f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]")
         return None
 
     @staticmethod
@@ -1496,7 +1496,7 @@ class LookerSource(DashboardServiceSource):
                             )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error yielding chart lineage for chart [{chart_id}]: {err}")  # noqa: G004
+                    logger.warning(f"Error yielding chart lineage for chart [{chart_id}]: {err}")
 
         except Exception as exc:
             yield Either(
@@ -1521,7 +1521,7 @@ class LookerSource(DashboardServiceSource):
             for column_tuple in column_lineage or []:
                 try:
                     if len(column_tuple) < 2:
-                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")  # noqa: G004
+                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")
                         continue
 
                     source_col = column_tuple[0]
@@ -1529,7 +1529,7 @@ class LookerSource(DashboardServiceSource):
 
                     if not source_col or not target_col:
                         logger.debug(
-                            f"Skipping column tuple with empty values: source={source_col}, "  # noqa: G004
+                            f"Skipping column tuple with empty values: source={source_col}, "
                             f"target={target_col}, to_entity={to_entity.name}"
                         )
                         continue
@@ -1547,7 +1547,7 @@ class LookerSource(DashboardServiceSource):
                             )
                         )
                 except Exception as err:
-                    logger.warning(f"Error processing column lineage {column_tuple}: {err}")  # noqa: G004
+                    logger.warning(f"Error processing column lineage {column_tuple}: {err}")
                     logger.debug(traceback.format_exc())
                     continue
         return processed_column_lineage
@@ -1570,7 +1570,7 @@ class LookerSource(DashboardServiceSource):
             db_service_prefix: db service prefix from the config
             to_entity: Dashboard Entity being used
         """
-        logger.debug(f"Building lineage request for {source} to {to_entity.name}")  # noqa: G004
+        logger.debug(f"Building lineage request for {source} to {to_entity.name}")
 
         source_elements = fqn.split_table_name(table_name=source)
 
@@ -1641,7 +1641,7 @@ class LookerSource(DashboardServiceSource):
                     continue
 
                 if not chart.id:
-                    logger.debug(f"Found chart {chart} without id. Skipping.")  # noqa: G004
+                    logger.debug(f"Found chart {chart} without id. Skipping.")
                     continue
 
                 description = self.build_chart_description(chart)
@@ -1690,7 +1690,7 @@ class LookerSource(DashboardServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error getting chart description: {err}")  # noqa: G004
+            logger.error(f"Error getting chart description: {err}")
             return None
 
     def yield_dashboard_usage(  # pylint: disable=W0221
@@ -1748,10 +1748,10 @@ class LookerSource(DashboardServiceSource):
             current_views = dashboard_details.view_count
 
             if not current_views:
-                logger.debug(f"No usage to report for {dashboard_details.title}")  # noqa: G004
+                logger.debug(f"No usage to report for {dashboard_details.title}")
 
             if not dashboard.usageSummary:
-                logger.info(f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}")  # noqa: G004
+                logger.info(f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}")
                 yield Either(
                     right=DashboardUsage(
                         dashboard=dashboard,
@@ -1765,12 +1765,12 @@ class LookerSource(DashboardServiceSource):
                 new_usage = current_views - latest_usage
                 if new_usage < 0:
                     logger.warning(
-                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."  # noqa: G004
+                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."
                         f" Got new_usage={new_usage}."
                     )
                     return
 
-                logger.info(f"Yielding new usage for {dashboard.fullyQualifiedName.root}")  # noqa: G004
+                logger.info(f"Yielding new usage for {dashboard.fullyQualifiedName.root}")
                 yield Either(
                     right=DashboardUsage(
                         dashboard=dashboard,
@@ -1779,8 +1779,8 @@ class LookerSource(DashboardServiceSource):
                 )
 
             else:
-                logger.debug(f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute.")  # noqa: G004
-                logger.info(f"Usage already informed for {dashboard.fullyQualifiedName.root}")  # noqa: G004
+                logger.debug(f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute.")
+                logger.info(f"Usage already informed for {dashboard.fullyQualifiedName.root}")
 
         except Exception as exc:
             yield Either(

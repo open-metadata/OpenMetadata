@@ -145,14 +145,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             if user_count is not None:
                 clamped = max(1, min(MAX_THREADS, user_count))
                 if clamped != user_count:
-                    logger.debug(f"Clamped threadCount from {user_count} to {clamped} (allowed range 1-{MAX_THREADS}).")  # noqa: G004
+                    logger.debug(f"Clamped threadCount from {user_count} to {clamped} (allowed range 1-{MAX_THREADS}).")
                 return clamped
 
         # Auto-calculate based on task count
         task_counts = len(MetricFilter.filter_empty_metrics(metric_funcs))
         min_threads = min(MIN_THREADS, task_counts)
         calculated = min(MAX_THREADS, max(min_threads, (task_counts // 3) or 1))
-        logger.debug(f"Calculated effective thread count: {calculated} for {task_counts} tasks.")  # noqa: G004
+        logger.debug(f"Calculated effective thread count: {calculated} for {task_counts} tasks.")
 
         return int(calculated)
 
@@ -223,7 +223,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to compute profile for {runner.table_name}: {exc}"  # type: ignore  # noqa: G004
+                f"Error trying to compute profile for {runner.table_name}: {exc}"  # type: ignore
             )
             session.rollback()
             raise RuntimeError(exc)  # noqa: B904
@@ -342,7 +342,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             if row:
                 return row._asdict()
         except ProgrammingError as exc:
-            logger.info(f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}")  # noqa: G004
+            logger.info(f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}")
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -395,7 +395,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        logger.debug(f"No implementation found for {self.session.get_bind().dialect.name} for {metrics.name()} metric")  # noqa: G004
+        logger.debug(f"No implementation found for {self.session.get_bind().dialect.name} for {metrics.name()} metric")
         return []
 
     def _create_thread_safe_runner(self, session, column=None):
@@ -417,7 +417,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}")  # noqa: G004
+        logger.debug(f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}")
         Session = self.session_factory  # pylint: disable=invalid-name  # noqa: N806
         max_retries = 3
         retry_count = 0
@@ -462,13 +462,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         if retry_count < max_retries:
                             backoff = min(initial_backoff * (2 ** (retry_count - 1)), max_backoff)
                             logger.debug(
-                                f"Connection error detected, retrying ({retry_count}/{max_retries}) "  # noqa: G004
+                                f"Connection error detected, retrying ({retry_count}/{max_retries}) "
                                 f"after {backoff:.2f} seconds..."
                             )
                             session.rollback()
                             time.sleep(backoff)
                             continue
-                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")  # noqa: G004
+                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")
                     error = (
                         f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
                         f"metric_type.value: {exc}"
@@ -499,7 +499,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     ):
         """get all profiler metrics"""
         thread_count = self._get_effective_thread_count(metric_funcs)
-        logger.debug(f"Computing metrics with {thread_count} threads.")  # noqa: G004
+        logger.debug(f"Computing metrics with {thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}  # noqa: C408
         with CustomThreadPoolExecutor(max_workers=thread_count) as pool:
             futures = [
@@ -535,7 +535,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 except concurrent.futures.TimeoutError as exc:
                     pool.shutdown39(wait=True, cancel_futures=True)
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")  # noqa: G004
+                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError  # noqa: B904
                 except KeyboardInterrupt:
                     pool.shutdown39(wait=True, cancel_futures=True)
@@ -557,7 +557,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return metric(column).fn(column_results)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
 
@@ -582,7 +582,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return metric(column).fn(dataset, column_results, self.session)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
 

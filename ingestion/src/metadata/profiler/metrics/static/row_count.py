@@ -73,7 +73,7 @@ class RowCount(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             return computation.aggregate_accumulator(accumulator)
         except Exception as err:
-            logger.debug(f" Failure when Computing RowCount.\n Error: {err}")  # noqa: G004
+            logger.debug(f" Failure when Computing RowCount.\n Error: {err}")
             return 0
 
     def get_pandas_computation(self) -> PandasComputation:

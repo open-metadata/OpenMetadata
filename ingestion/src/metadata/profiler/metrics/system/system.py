@@ -157,7 +157,7 @@ class SystemMetricsRegistry:
         try:
             implementation = import_from_module(f"metadata.profiler.metrics.system.{dialect.name.lower()}.system")
         except DynamicImportException:
-            logger.warning(f"No implementation found for {dialect.name.lower()}")  # noqa: G004
+            logger.warning(f"No implementation found for {dialect.name.lower()}")
             return
         cls._registry[dialect.name.lower()] = implementation
 

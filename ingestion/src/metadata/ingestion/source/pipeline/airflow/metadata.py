@@ -188,10 +188,10 @@ class AirflowSource(PipelineServiceSource):
                 self._is_remote_airflow_3 = False
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to detect remote Airflow version - {exc}. Assuming Airflow 2.x")  # noqa: G004
+            logger.warning(f"Failed to detect remote Airflow version - {exc}. Assuming Airflow 2.x")
             self._is_remote_airflow_3 = False
 
-        logger.info(f"Detected remote Airflow version: {'3.x' if self._is_remote_airflow_3 else '2.x'}")  # noqa: G004
+        logger.info(f"Detected remote Airflow version: {'3.x' if self._is_remote_airflow_3 else '2.x'}")
         return self._is_remote_airflow_3
 
     @property
@@ -211,7 +211,7 @@ class AirflowSource(PipelineServiceSource):
                 self._execution_date_column = "execution_date"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to inspect dag_run table columns - {exc}. Fallback to execution_date")  # noqa: G004
+            logger.warning(f"Failed to inspect dag_run table columns - {exc}. Fallback to execution_date")
             self._execution_date_column = "execution_date"
 
         return self._execution_date_column
@@ -260,7 +260,7 @@ class AirflowSource(PipelineServiceSource):
             return [tag[0] for tag in tag_query]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not extract tags details due to {exc}")  # noqa: G004
+            logger.warning(f"Could not extract tags details due to {exc}")
         return []
 
     def yield_tag(self, pipeline_details: AirflowDagDetails) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -325,7 +325,7 @@ class AirflowSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Could not get pipeline status for {dag_id}. "  # noqa: G004
+                f"Could not get pipeline status for {dag_id}. "
                 f"This might be due to Airflow version incompatibility - {exc}"
             )
             return []
@@ -378,7 +378,7 @@ class AirflowSource(PipelineServiceSource):
                     run_id = row.get("run_id")
                     if not task_id or not run_id:
                         logger.debug(
-                            f"Skipping TaskInstance row with missing task_id/run_id for dag_id={dag_id}: {row}"  # noqa: G004
+                            f"Skipping TaskInstance row with missing task_id/run_id for dag_id={dag_id}: {row}"
                         )
                         continue
                     if task_id not in serialized_tasks_ids:
@@ -393,12 +393,12 @@ class AirflowSource(PipelineServiceSource):
                     )
                 except Exception as row_exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Skipping malformed TaskInstance row for dag_id={dag_id}: {row_exc}")  # noqa: G004
+                    logger.warning(f"Skipping malformed TaskInstance row for dag_id={dag_id}: {row_exc}")
                     continue
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Tried to get TaskInstances for run_ids. The run_id column "  # noqa: G004
+                f"Tried to get TaskInstances for run_ids. The run_id column "
                 f"might not be available in older Airflow DB schemas - {exc}."
             )
 
@@ -435,7 +435,7 @@ class AirflowSource(PipelineServiceSource):
                     # tasks but runs were still emitted.
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Failed TaskInstance chunk for "  # noqa: G004
+                        f"Failed TaskInstance chunk for "
                         f"{pipeline_details.dag_id} "
                         f"(runs {start}-{start + len(chunk)}) - {chunk_exc}"
                     )
@@ -461,7 +461,7 @@ class AirflowSource(PipelineServiceSource):
                     timestamp = datetime_to_ts(execution_date)
                     if timestamp is None:
                         logger.warning(
-                            f"Skipping pipeline status for run {dag_run.run_id}: "  # noqa: G004
+                            f"Skipping pipeline status for run {dag_run.run_id}: "
                             "both logical_date and start_date are None"
                         )
                         continue
@@ -506,7 +506,7 @@ class AirflowSource(PipelineServiceSource):
             return json.loads(zlib.decompress(compressed_data))
         except (zlib.error, json.JSONDecodeError, ValueError, MemoryError) as exc:
             logger.warning(
-                f"Failed to read serialized DAG data for '{dag_id}'. "  # noqa: G004
+                f"Failed to read serialized DAG data for '{dag_id}'. "
                 f"Ensure COMPRESS_SERIALIZED_DAGS uses zlib compression (the Airflow default): {exc}"
             )
             return None
@@ -612,7 +612,7 @@ class AirflowSource(PipelineServiceSource):
                 results = paginated_query.all()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error fetching DAG page at offset {offset} - {exc}")  # noqa: G004
+                logger.warning(f"Error fetching DAG page at offset {offset} - {exc}")
                 self.status.failed(
                     StackTraceError(
                         name="Airflow DAG Pagination",
@@ -637,7 +637,7 @@ class AirflowSource(PipelineServiceSource):
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         logger.warning(
-                            f"Could not query DagModel.is_paused for {serialized_dag[0]}. "  # noqa: G004
+                            f"Could not query DagModel.is_paused for {serialized_dag[0]}. "
                             f"Using default pipeline state - {exc}"
                         )
                         # If we can't query is_paused, assume the pipeline is active
@@ -667,7 +667,7 @@ class AirflowSource(PipelineServiceSource):
                     yield dag
                 except ValidationError as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error building pydantic model for {serialized_dag[0]} - {err}")  # noqa: G004
+                    logger.warning(f"Error building pydantic model for {serialized_dag[0]} - {err}")
                     self.status.failed(
                         StackTraceError(
                             name=serialized_dag[0],
@@ -677,7 +677,7 @@ class AirflowSource(PipelineServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Wild error yielding dag {serialized_dag[0]} - {err}")  # noqa: G004
+                    logger.warning(f"Wild error yielding dag {serialized_dag[0]} - {err}")
                     self.status.failed(
                         StackTraceError(
                             name=serialized_dag[0],
@@ -805,7 +805,7 @@ class AirflowSource(PipelineServiceSource):
         try:
             return self.metadata.get_reference_by_name(name=owner, is_owner=True)
         except Exception as exc:
-            logger.warning(f"Error while getting details of user {owner} - {exc}")  # noqa: G004
+            logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None
 
     def yield_pipeline(self, pipeline_details: AirflowDagDetails) -> Iterable[Either[CreatePipelineRequest]]:
@@ -951,7 +951,7 @@ class AirflowSource(PipelineServiceSource):
                             yield Either(right=lineage)
                         else:
                             logger.warning(
-                                f"Lineage skipped: Outlet entity not found in OpenMetadata. "  # noqa: G004
+                                f"Lineage skipped: Outlet entity not found in OpenMetadata. "
                                 f"Entity type: [{to_xlet.entity.__name__}], "
                                 f"FQN: [{to_xlet.fqn}], "
                                 f"Pipeline: [{pipeline_entity.fullyQualifiedName.root}]. "
@@ -959,7 +959,7 @@ class AirflowSource(PipelineServiceSource):
                             )
                 else:
                     logger.warning(
-                        f"Lineage skipped: Inlet entity not found in OpenMetadata. "  # noqa: G004
+                        f"Lineage skipped: Inlet entity not found in OpenMetadata. "
                         f"Entity type: [{from_xlet.entity.__name__}], "
                         f"FQN: [{from_xlet.fqn}], "
                         f"Pipeline: [{pipeline_entity.fullyQualifiedName.root}]. "
@@ -1029,7 +1029,7 @@ class AirflowSource(PipelineServiceSource):
                 and ctx.current_table_fqns
             ):
                 logger.debug(
-                    f"Processing observability for current dag {pipeline_details.dag_id} with "  # noqa: G004
+                    f"Processing observability for current dag {pipeline_details.dag_id} with "
                     f"{len(ctx.current_table_fqns)} tables and {len(ctx.current_dag_runs)} runs"
                 )
 
@@ -1047,7 +1047,7 @@ class AirflowSource(PipelineServiceSource):
                             table_pipeline_map[table_fqn].append(observability)
 
                     except Exception as exc:
-                        logger.warning(f"Failed to build observability for dag run {dag_run.run_id}: {exc}")  # noqa: G004
+                        logger.warning(f"Failed to build observability for dag run {dag_run.run_id}: {exc}")
                         logger.debug(traceback.format_exc())
                         continue
 
@@ -1065,7 +1065,7 @@ class AirflowSource(PipelineServiceSource):
 
                     # Validate cache structure
                     if not isinstance(cached_data, dict):
-                        logger.warning(f"Invalid cache structure for {cache_key}, skipping")  # noqa: G004
+                        logger.warning(f"Invalid cache structure for {cache_key}, skipping")
                         failed_cache_entries += 1
                         continue
 
@@ -1076,7 +1076,7 @@ class AirflowSource(PipelineServiceSource):
 
                     # Validate cache entry has required data
                     if not pipeline_entity or not table_fqns or not dag_run:
-                        logger.debug(f"Incomplete cache entry for {cache_key}, skipping")  # noqa: G004
+                        logger.debug(f"Incomplete cache entry for {cache_key}, skipping")
                         continue
 
                     # Build observability for this cached run
@@ -1095,14 +1095,14 @@ class AirflowSource(PipelineServiceSource):
                     processed_cache_entries += 1
 
                 except Exception as exc:
-                    logger.warning(f"Error processing cache entry {cache_key}: {exc}")  # noqa: G004
+                    logger.warning(f"Error processing cache entry {cache_key}: {exc}")
                     logger.debug(traceback.format_exc())
                     failed_cache_entries += 1
                     continue
 
             # Summary logging
             logger.info(
-                f"Pipeline observability extraction complete for {pipeline_details.dag_id}: "  # noqa: G004
+                f"Pipeline observability extraction complete for {pipeline_details.dag_id}: "
                 f"{len(table_pipeline_map)} tables, {processed_cache_entries} cache entries processed, "
                 f"{failed_cache_entries} cache entries failed"
             )
@@ -1110,7 +1110,7 @@ class AirflowSource(PipelineServiceSource):
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}")  # noqa: G004
+            logger.error(f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}")
             logger.debug(traceback.format_exc())
 
     def close(self):

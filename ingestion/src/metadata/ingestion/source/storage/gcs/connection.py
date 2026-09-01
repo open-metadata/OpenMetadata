@@ -111,7 +111,7 @@ class Tester:
                         break
                 if not matched and self.connection.containerFilterPattern:
                     logger.warning(
-                        f"No buckets in project {project_id} matched the "  # noqa: G004
+                        f"No buckets in project {project_id} matched the "
                         f"containerFilterPattern. Check your include/exclude patterns."
                     )
             if not self.bucket_tests:
@@ -140,7 +140,7 @@ class Tester:
             except StopIteration:
                 # Empty bucket - this is valid, we can list blobs
                 # even if there are none
-                logger.debug(f"Bucket {bucket_test.bucket_name} is empty, but list permission is working correctly")  # noqa: G004
+                logger.debug(f"Bucket {bucket_test.bucket_name} is empty, but list permission is working correctly")
 
     def get_blob(self):
         if not self.bucket_tests:

@@ -105,7 +105,7 @@ class NERScanner(BaseScanner):
             try:
                 self.process_data(row=row, entities_score=entities_score)
             except Exception as exc:
-                logger.error(f"Unknown error while processing {row} - {exc}")  # noqa: G004
+                logger.error(f"Unknown error while processing {row} - {exc}")
                 logger.debug(traceback.format_exc())
 
         if entities_score:

@@ -89,7 +89,7 @@ class Db2Source(CommonDbSourceService):
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             if table_info.get("text"):
                 description = table_info["text"]

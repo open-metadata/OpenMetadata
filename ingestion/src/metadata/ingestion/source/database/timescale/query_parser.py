@@ -89,13 +89,13 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                         results = conn.execute(text(POSTGRES_GET_DATABASE)).all()
                     for res in results:
                         row = list(res)
-                        logger.info(f"Ingesting from database: {row[0]}")  # noqa: G004
+                        logger.info(f"Ingesting from database: {row[0]}")
                         self.config.serviceConnection.root.config.database = row[0]  # pyright: ignore[reportAttributeAccessIssue]
                         self.engine = get_connection(self.service_connection)
                         yield from self.process_table_query()
 
         except Exception as err:
-            logger.error(f"Source usage processing error - {err}")  # noqa: G004
+            logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
 
     @staticmethod

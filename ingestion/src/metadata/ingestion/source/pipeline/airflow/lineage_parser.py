@@ -199,7 +199,7 @@ def _parse_xlets(xlet: Any) -> None:
     We can use this function to register further inlets/outlets
     representations, e.g., https://github.com/open-metadata/OpenMetadata/issues/11626
     """
-    logger.warning(f"Inlet/Outlet type {type(xlet)} is not supported.")  # noqa: G004
+    logger.warning(f"Inlet/Outlet type {type(xlet)} is not supported.")
 
 
 @_parse_xlets.register
@@ -278,7 +278,7 @@ def dictionary_lineage_annotation(
         entity_class = ENTITY_REFERENCE_CLASS_MAP.get(xlet_dict["entity"])
         if entity_class is None:
             logger.warning(
-                f"Skipping xlet with unknown entity type [{xlet_dict['entity']}] "  # noqa: G004
+                f"Skipping xlet with unknown entity type [{xlet_dict['entity']}] "
                 f"for fqn [{xlet_dict.get('fqn')}]. Known types: {sorted(ENTITY_REFERENCE_CLASS_MAP)}"
             )
             return None
@@ -356,7 +356,7 @@ def _(xlet: str) -> dict[str, list[OMEntity]] | None:
 
         return {om_entity.key: [om_entity]}  # noqa: TRY300
     except Exception as exc:
-        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")  # noqa: G004
+        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")
         return None
 
 
@@ -397,10 +397,10 @@ def get_xlets_from_operator(
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:
-        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")  # noqa: G004
+        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
 
     else:
-        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")  # noqa: G004
+        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
 
     return xlet_data
 

@@ -189,7 +189,7 @@ class DorisSource(CommonDbSourceService):
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             description = table_info.get("text")
 
@@ -253,7 +253,7 @@ class DorisSource(CommonDbSourceService):
                 if col_data_length is None:
                     col_data_length = 1
                 if column["system_data_type"] is None:
-                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: G004, RUF010
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: RUF010
                 om_column = Column(
                     name=column["name"] if column["name"] else " ",
                     description=column.get("comment"),
@@ -272,7 +272,7 @@ class DorisSource(CommonDbSourceService):
                 om_column.tags = self.get_column_tag_labels(table_name=table_name, column=column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")  # noqa: G004
+                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
                 continue
             table_columns.append(om_column)
         return table_columns, [], []

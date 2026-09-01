@@ -62,7 +62,7 @@ class HelloPipelines(AppRunner):
         return "HelloPipelines"
 
     def run(self) -> None:
-        logger.info(f"sleeping for {self.app_config.sleep}")  # noqa: G004
+        logger.info(f"sleeping for {self.app_config.sleep}")
         sleep(self.app_config.sleep)
         logger.info("echoing")
         logger.info(self.app_config.echo)

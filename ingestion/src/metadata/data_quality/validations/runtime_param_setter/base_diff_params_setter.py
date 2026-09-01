@@ -123,7 +123,7 @@ class BaseTableParameter:
                 table = dialect_instance.denormalize_name(name=table)
                 schema = dialect_instance.denormalize_name(name=schema)
         except Exception as e:
-            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")  # noqa: G004
+            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
@@ -147,7 +147,7 @@ class BaseTableParameter:
                     return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
             logger.debug(
-                f"[Data Diff]: Could not build a connection dict for "  # noqa: G004
+                f"[Data Diff]: Could not build a connection dict for "
                 f"{service_connection_config.type.value}; falling back to the connection URL",
                 exc_info=True,
             )

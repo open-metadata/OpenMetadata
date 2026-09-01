@@ -203,7 +203,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             try:
                 return get_manifest(self.source_config.storageMetadataConfigSource)
             except StorageMetadataConfigException as exc:
-                logger.warning(f"Could not get global manifest due to [{exc}]")  # noqa: G004
+                logger.warning(f"Could not get global manifest due to [{exc}]")
         return None
 
     def _load_metadata_file(self, bucket_name: str):  # pylint: disable=unused-argument
@@ -290,7 +290,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             )
             if entries:
                 logger.info(
-                    f"Using defaultManifest from pipeline config for bucket "  # noqa: G004
+                    f"Using defaultManifest from pipeline config for bucket "
                     f"'{bucket_name}' (no bucket manifest file found)."
                 )
                 return entries
@@ -413,7 +413,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         # `transactions` would list files for both directories. We need the prefix to be `transactions/`.
         result = f"{metadata_entry.dataPath.strip(KEY_SEPARATOR)}{KEY_SEPARATOR}"
         if not metadata_entry.structureFormat:
-            logger.warning(f"Ignoring un-structured metadata entry {result}")  # noqa: G004
+            logger.warning(f"Ignoring un-structured metadata entry {result}")
             return None
         return result
 
@@ -526,7 +526,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             scanned += 1
             if scanned > MAX_KEYS_PER_GLOB:
                 logger.warning(
-                    f"Glob '{pattern}' scanned {MAX_KEYS_PER_GLOB:,} keys in "  # noqa: G004
+                    f"Glob '{pattern}' scanned {MAX_KEYS_PER_GLOB:,} keys in "
                     f"bucket '{bucket_name}' without completing. Stopping to "
                     f"avoid excessive API usage — narrow the pattern."
                 )
@@ -540,7 +540,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
         if not matched:
             logger.info(
-                f"No files matched glob '{pattern}' in bucket "  # noqa: G004
+                f"No files matched glob '{pattern}' in bucket "
                 f"'{bucket_name}'. If this is unexpected, verify that "
                 f"glob dataPath is supported on your storage provider "
                 f"(currently S3 only — GCS/Azure require a list_keys "
@@ -598,7 +598,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             structure_format = entry.structureFormat or infer_structure_format(file_keys[0])
             if not structure_format:
                 logger.warning(
-                    f"Could not determine file format for '{container_name}' "  # noqa: G004
+                    f"Could not determine file format for '{container_name}' "
                     f"(glob '{pattern}'). Set structureFormat on the manifest "
                     f"entry or use a recognized file extension. Skipping."
                 )
@@ -672,7 +672,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             #    entries pointing at sidecar files are caught too.
             if is_excluded_artifact(path):
                 logger.info(
-                    f"Skipping manifest entry '{path}' in bucket "  # noqa: G004
+                    f"Skipping manifest entry '{path}' in bucket "
                     f"'{bucket_name}' — matches a default excluded "
                     f"path segment (Spark/Delta internal)."
                 )
@@ -683,7 +683,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             # 2. Pipeline-level containerFilterPattern against the dataPath.
             if pattern and filter_by_container(pattern, path):
                 logger.info(
-                    f"Skipping manifest entry '{path}' in bucket '{bucket_name}' — filtered by containerFilterPattern."  # noqa: G004
+                    f"Skipping manifest entry '{path}' in bucket '{bucket_name}' — filtered by containerFilterPattern."
                 )
                 if hasattr(self, "status") and hasattr(self.status, "filter"):
                     self.status.filter(path, "containerFilterPattern excluded")

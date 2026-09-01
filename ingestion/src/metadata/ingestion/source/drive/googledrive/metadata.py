@@ -80,7 +80,7 @@ def convert_timestamp_to_unix_millis(timestamp_str: str | None) -> int | None:
             dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             return int(dt.timestamp() * 1000)
         except (ValueError, AttributeError) as e:
-            logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")  # noqa: G004
+            logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")
 
     return None
 
@@ -207,7 +207,7 @@ class GoogleDriveSource(DriveServiceSource):
             self._fetch_all_files()
 
         except Exception as e:
-            logger.error(f"Error fetching directories: {e}")  # noqa: G004
+            logger.error(f"Error fetching directories: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_all_files(self) -> None:
@@ -254,18 +254,18 @@ class GoogleDriveSource(DriveServiceSource):
 
             # Cache the files
             self._files_by_parent_cache = files_by_parent
-            logger.debug(f"Cached {total_files} files across {len(files_by_parent)} directories")  # noqa: G004
+            logger.debug(f"Cached {total_files} files across {len(files_by_parent)} directories")
 
             # Log some sample directories with file counts
             for parent_id, files in list(files_by_parent.items())[:5]:
                 if parent_id == "root":
-                    logger.debug(f"Root directory has {len(files)} files")  # noqa: G004
+                    logger.debug(f"Root directory has {len(files)} files")
                 elif parent_id in self._directories_cache:
                     dir_name = self._directories_cache[parent_id].name
-                    logger.debug(f"Directory '{dir_name}' has {len(files)} files")  # noqa: G004
+                    logger.debug(f"Directory '{dir_name}' has {len(files)} files")
 
         except Exception as e:
-            logger.error(f"Error fetching all files: {e}")  # noqa: G004
+            logger.error(f"Error fetching all files: {e}")
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
@@ -290,7 +290,7 @@ class GoogleDriveSource(DriveServiceSource):
                     # Parent not in cache (possibly filtered out or no permissions)
                     # Treat as root only if it passes filtering later
                     logger.debug(
-                        f"Directory {directory_info.name} has parent {parent_id} not in cache, "  # noqa: G004
+                        f"Directory {directory_info.name} has parent {parent_id} not in cache, "
                         "treating as potential root"
                     )
                     root_directories.append(dir_id)
@@ -370,7 +370,7 @@ class GoogleDriveSource(DriveServiceSource):
                     break
 
         except Exception as e:
-            logger.error(f"Error fetching drive items: {e}")  # noqa: G004
+            logger.error(f"Error fetching drive items: {e}")
             logger.debug(traceback.format_exc())
 
     def _fetch_files(self, directory_id: str | None = None) -> Iterable[GoogleDriveFile]:
@@ -437,7 +437,7 @@ class GoogleDriveSource(DriveServiceSource):
                     break
 
         except Exception as e:
-            logger.error(f"Error fetching spreadsheets: {e}")  # noqa: G004
+            logger.error(f"Error fetching spreadsheets: {e}")
             logger.debug(traceback.format_exc())
 
     def get_directory_names(self) -> Iterable[str]:
@@ -451,7 +451,7 @@ class GoogleDriveSource(DriveServiceSource):
             # Get directories in hierarchical order (parents before children)
             ordered_directory_ids = self._sort_directories_by_hierarchy()
 
-            logger.debug(f"Processing {len(ordered_directory_ids)} directories in hierarchical order")  # noqa: G004
+            logger.debug(f"Processing {len(ordered_directory_ids)} directories in hierarchical order")
 
             # Track which directories pass the filter to ensure child directories
             # are only included if their parents are also included
@@ -466,7 +466,7 @@ class GoogleDriveSource(DriveServiceSource):
                     parent_id = directory_info.parents[0]
                     if parent_id in self._directories_cache and parent_id not in included_directories:
                         # Parent was filtered out or failed, skip this directory
-                        logger.debug(f"Skipping directory '{directory_info.name}' because its parent was not included")  # noqa: G004
+                        logger.debug(f"Skipping directory '{directory_info.name}' because its parent was not included")
                         should_include = False
 
                 if should_include:
@@ -479,7 +479,7 @@ class GoogleDriveSource(DriveServiceSource):
                             parent_info = f" (parent: {parent_name})"
 
                     logger.debug(
-                        f"Processing directory: {directory_info.name}{parent_info}, "  # noqa: G004
+                        f"Processing directory: {directory_info.name}{parent_info}, "
                         f"path: {'.'.join(directory_info.path) if directory_info.path else directory_info.name}"
                     )
 
@@ -499,10 +499,10 @@ class GoogleDriveSource(DriveServiceSource):
                         included_directories.add(directory_id)
                         yield directory_id
                     else:
-                        logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")  # noqa: G004
+                        logger.debug(f"Directory '{directory_info.name}' filtered out by directoryFilterPattern")
 
         except Exception as e:
-            logger.error(f"Error getting directory names: {e}")  # noqa: G004
+            logger.error(f"Error getting directory names: {e}")
             logger.debug(traceback.format_exc())
 
     def get_file_names(self) -> Iterable[str]:
@@ -523,7 +523,7 @@ class GoogleDriveSource(DriveServiceSource):
             # Set current directory context
             self._current_directory_context = directory_id
 
-            logger.debug(f"Processing directory: {directory_info.name} (ID: {directory_id})")  # noqa: G004
+            logger.debug(f"Processing directory: {directory_info.name} (ID: {directory_id})")
 
             # Build parent reference if exists and validate parent exists in OpenMetadata
             parent_reference = None
@@ -551,18 +551,18 @@ class GoogleDriveSource(DriveServiceSource):
                         existing_parent = self.metadata.get_by_name(entity=Directory, fqn=parent_reference)
                         if not existing_parent:
                             logger.warning(
-                                f"Skipping '{directory_info.name}': parent '{parent_info.path}' missing in OpenMetadata"  # noqa: G004
+                                f"Skipping '{directory_info.name}': parent '{parent_info.path}' missing in OpenMetadata"
                             )
                             return
                     except Exception as e:
                         logger.warning(
-                            f"Skipping directory '{directory_info.name}' because parent directory "  # noqa: G004
+                            f"Skipping directory '{directory_info.name}' because parent directory "
                             f"'{parent_info.path}' could not be found in OpenMetadata: {e}"
                         )
                         return
                 else:
                     # Parent not in cache (possibly filtered out or no permissions)
-                    logger.debug(f"Parent directory {parent_id} not found in cache for directory {directory_info.name}")  # noqa: G004
+                    logger.debug(f"Parent directory {parent_id} not found in cache for directory {directory_info.name}")
 
             # Build service FQN
             service_fqn = fqn.build(
@@ -571,7 +571,7 @@ class GoogleDriveSource(DriveServiceSource):
                 service_name=self.context.get().drive_service,
             )
 
-            logger.debug(f"Creating directory request: name={directory_info.name}, service={service_fqn}, ")  # noqa: G004
+            logger.debug(f"Creating directory request: name={directory_info.name}, service={service_fqn}, ")
             request = CreateDirectoryRequest(
                 name=directory_info.name,
                 directoryType=DirectoryType.Folder,
@@ -599,7 +599,7 @@ class GoogleDriveSource(DriveServiceSource):
             yield Either(right=request)
 
         except Exception as exc:
-            logger.error(f"Error creating directory request for {directory_id}: {exc}")  # noqa: G004
+            logger.error(f"Error creating directory request for {directory_id}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -675,10 +675,10 @@ class GoogleDriveSource(DriveServiceSource):
             files_in_directory = self._files_by_parent_cache.get(directory_id, [])
 
             if not files_in_directory:
-                logger.debug(f"No files found in directory {directory_id}")  # noqa: G004
+                logger.debug(f"No files found in directory {directory_id}")
                 return
 
-            logger.debug(f"Processing {len(files_in_directory)} files in directory {directory_id}")  # noqa: G004
+            logger.debug(f"Processing {len(files_in_directory)} files in directory {directory_id}")
 
             # Get directory FQN from cache for file references
             directory_reference = None
@@ -697,7 +697,7 @@ class GoogleDriveSource(DriveServiceSource):
                 # Get root files and process them
                 root_files = self._files_by_parent_cache.get("root", [])
                 if root_files:
-                    logger.debug(f"Processing {len(root_files)} root files (files with no parent directory)")  # noqa: G004
+                    logger.debug(f"Processing {len(root_files)} root files (files with no parent directory)")
 
                     for file_info in root_files:
                         try:
@@ -706,7 +706,7 @@ class GoogleDriveSource(DriveServiceSource):
                                 self.source_config.fileFilterPattern,
                                 file_info.name,
                             ):
-                                logger.debug(f"Processing root file: {file_info.name} (MIME: {file_info.mimeType})")  # noqa: G004
+                                logger.debug(f"Processing root file: {file_info.name} (MIME: {file_info.mimeType})")
 
                                 request = CreateFileRequest(
                                     name=file_info.name,
@@ -722,10 +722,10 @@ class GoogleDriveSource(DriveServiceSource):
                                 self.register_record_file(request)
                                 yield Either(right=request)
                             else:
-                                logger.debug(f"Root file '{file_info.name}' filtered out by fileFilterPattern")  # noqa: G004
+                                logger.debug(f"Root file '{file_info.name}' filtered out by fileFilterPattern")
 
                         except Exception as file_exc:
-                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")  # noqa: G004
+                            logger.error(f"Error processing root file {file_info.name}: {file_exc}")
                             yield Either(
                                 left=StackTraceError(
                                     name=file_info.name,
@@ -751,7 +751,7 @@ class GoogleDriveSource(DriveServiceSource):
                         self.source_config.fileFilterPattern,
                         file_info.name,
                     ):
-                        logger.debug(f"Processing file: {file_info.name} (MIME: {file_info.mimeType})")  # noqa: G004
+                        logger.debug(f"Processing file: {file_info.name} (MIME: {file_info.mimeType})")
 
                         request = CreateFileRequest(
                             name=file_info.name,
@@ -767,10 +767,10 @@ class GoogleDriveSource(DriveServiceSource):
                         self.register_record_file(request)
                         yield Either(right=request)
                     else:
-                        logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")  # noqa: G004
+                        logger.debug(f"File '{file_info.name}' filtered out by fileFilterPattern")
 
                 except Exception as file_exc:
-                    logger.error(f"Error processing file {file_info.name}: {file_exc}")  # noqa: G004
+                    logger.error(f"Error processing file {file_info.name}: {file_exc}")
                     yield Either(
                         left=StackTraceError(
                             name=file_info.name,
@@ -780,7 +780,7 @@ class GoogleDriveSource(DriveServiceSource):
                     )
 
         except Exception as exc:
-            logger.error(f"Error processing files in directory {directory_id}: {exc}")  # noqa: G004
+            logger.error(f"Error processing files in directory {directory_id}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -812,7 +812,7 @@ class GoogleDriveSource(DriveServiceSource):
 
         except Exception as exc:
             title = spreadsheet_details.properties.title if spreadsheet_details.properties else "Unknown"
-            logger.error(f"Error creating spreadsheet request for {title}: {exc}")  # noqa: G004
+            logger.error(f"Error creating spreadsheet request for {title}: {exc}")
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -857,7 +857,7 @@ class GoogleDriveSource(DriveServiceSource):
                             sheet_title=worksheet_title,
                         )
                     except Exception as col_exc:
-                        logger.debug(f"Error extracting columns for worksheet {worksheet_title}: {col_exc}")  # noqa: G004
+                        logger.debug(f"Error extracting columns for worksheet {worksheet_title}: {col_exc}")
 
                 # Get worksheet metadata from properties
                 worksheet_id = None
@@ -901,7 +901,7 @@ class GoogleDriveSource(DriveServiceSource):
                 self.register_record_worksheet(request)
                 yield Either(right=request)
             except Exception as exc:
-                logger.error(f"Error creating worksheet request for {worksheet.name or 'Unknown'}: {exc}")  # noqa: G004
+                logger.error(f"Error creating worksheet request for {worksheet.name or 'Unknown'}: {exc}")
                 logger.debug(traceback.format_exc())
                 yield Either(
                     left=StackTraceError(
@@ -935,7 +935,7 @@ class GoogleDriveSource(DriveServiceSource):
                 self._connection.close()
 
         except Exception as e:
-            logger.error(f"Error closing Google Drive source: {e}")  # noqa: G004
+            logger.error(f"Error closing Google Drive source: {e}")
             logger.debug(traceback.format_exc())
 
     def _normalize_rows_to_headers(self, data_rows: list[list], headers: list[str]) -> list[list]:
@@ -1003,6 +1003,6 @@ class GoogleDriveSource(DriveServiceSource):
             return inferred_columns  # noqa: TRY300
 
         except Exception as exc:
-            logger.error(f"Error fetching columns for sheet '{sheet_title}': {exc}")  # noqa: G004
+            logger.error(f"Error fetching columns for sheet '{sheet_title}': {exc}")
             logger.debug(traceback.format_exc())
             return []

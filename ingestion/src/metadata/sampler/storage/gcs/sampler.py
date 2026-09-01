@@ -67,7 +67,7 @@ class GCSSampler(StorageSampler):
                 continue
 
         logger.warning(
-            f"Bucket {bucket_name} not found in any GCS project for container {self.entity.fullyQualifiedName.root}"  # noqa: G004
+            f"Bucket {bucket_name} not found in any GCS project for container {self.entity.fullyQualifiedName.root}"
         )
         return bucket_name, None
 
@@ -94,13 +94,13 @@ class GCSSampler(StorageSampler):
 
         if not project_id:
             logger.warning(
-                f"Could not find project for bucket {bucket_name} in container {self.entity.fullyQualifiedName.root}"  # noqa: G004
+                f"Could not find project for bucket {bucket_name} in container {self.entity.fullyQualifiedName.root}"
             )
             return None
 
         prefix = self.entity.prefix  # pyright: ignore[reportAttributeAccessIssue]
         if not prefix:
-            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")  # noqa: G004
+            logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")
             return None
 
         prefix_without_leading_slash = prefix.lstrip("/")
@@ -117,17 +117,17 @@ class GCSSampler(StorageSampler):
             if candidate_keys:
                 result_key = secrets.choice(candidate_keys)
                 logger.info(
-                    f"File {result_key} picked for sampling from container {self.entity.fullyQualifiedName.root}"  # noqa: G004
+                    f"File {result_key} picked for sampling from container {self.entity.fullyQualifiedName.root}"
                 )
                 return result_key
 
             logger.warning(
-                f"No valid files found in GCS bucket {bucket_name} with prefix {prefix_without_leading_slash}"  # noqa: G004
+                f"No valid files found in GCS bucket {bucket_name} with prefix {prefix_without_leading_slash}"
             )
             return None  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(
-                f"Error listing blobs in GCS bucket {bucket_name} with prefix {prefix_without_leading_slash}: {exc}"  # noqa: G004
+                f"Error listing blobs in GCS bucket {bucket_name} with prefix {prefix_without_leading_slash}: {exc}"
             )
             return None

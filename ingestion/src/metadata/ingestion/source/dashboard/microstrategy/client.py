@@ -102,7 +102,7 @@ class MicroStrategyClient:
                 return auth_data
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the auth header and cookies due to : [{exc}]")  # noqa: G004
+            logger.error(f"Failed to fetch the auth header and cookies due to : [{exc}]")
         return None
 
     def _set_api_session(self, auth_data: AuthHeaderCookie) -> bool:
@@ -116,7 +116,7 @@ class MicroStrategyClient:
             timeout=60,
         )
         if api_session.ok:
-            logger.info(f"Connection Successful User {self.config.username} is Authenticated")  # noqa: G004
+            logger.info(f"Connection Successful User {self.config.username} is Authenticated")
             return True
         raise requests.ConnectionError(
             "Connection Failed, Failed to set an api session, Please validate the credentials"
@@ -135,7 +135,7 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to close the api sesison due to [{exc}]")  # noqa: G004
+            logger.error(f"Failed to close the api sesison due to [{exc}]")
 
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
@@ -154,7 +154,7 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the project list due to [{exc}]")  # noqa: G004
+            logger.error(f"Failed to fetch the project list due to [{exc}]")
 
         return []
 
@@ -240,7 +240,7 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
 
         return None
 
@@ -259,6 +259,6 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the cube with id: {cube_id}")  # noqa: G004
+            logger.error(f"Failed to fetch the cube with id: {cube_id}")
 
         return None

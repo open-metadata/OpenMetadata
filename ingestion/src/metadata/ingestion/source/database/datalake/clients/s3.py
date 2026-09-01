@@ -81,7 +81,7 @@ class DatalakeS3Client(DatalakeBaseClient):
                     "DEEP_ARCHIVE_ACCESS",
                 }:
                     logger.debug(
-                        f"Skipping cold storage object: {key['Key']} "  # noqa: G004
+                        f"Skipping cold storage object: {key['Key']} "
                         f"(StorageClass: {storage_class}, ArchiveStatus: {archive_status})"
                     )
                     continue

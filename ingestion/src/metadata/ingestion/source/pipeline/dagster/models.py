@@ -126,7 +126,7 @@ class AssetKey(BaseModel):
 
             logger = ingestion_logger()
             logger.warning(
-                f"stripAssetKeyPrefixLength ({strip_prefix}) is >= asset key length "  # noqa: G004
+                f"stripAssetKeyPrefixLength ({strip_prefix}) is >= asset key length "
                 f"({len(self.path)}). Asset key: {self.to_string()}"
             )
             return self

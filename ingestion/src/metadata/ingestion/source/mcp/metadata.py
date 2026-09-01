@@ -171,7 +171,7 @@ class McpSource(Source):
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         """Iterate over discovered MCP servers and yield CreateMcpServerRequest requests"""
         servers = self.connection_manager.discover_servers()
-        logger.info(f"Discovered {len(servers)} MCP server(s)")  # noqa: G004
+        logger.info(f"Discovered {len(servers)} MCP server(s)")
 
         for server in servers:
             if self._should_filter_server(server.name):
@@ -203,12 +203,12 @@ class McpSource(Source):
             yield Either(right=create_request)
 
         except McpProtocolError as exc:
-            logger.warning(f"MCP protocol error for server '{server.name}': {exc}")  # noqa: G004
+            logger.warning(f"MCP protocol error for server '{server.name}': {exc}")
             create_request = self._build_create_request(server, error=str(exc))
             yield Either(right=create_request)
 
         except Exception as exc:
-            logger.error(f"Failed to process MCP server '{server.name}': {exc}")  # noqa: G004
+            logger.error(f"Failed to process MCP server '{server.name}': {exc}")
             yield Either(
                 left=StackTraceError(
                     name=server.name,
@@ -244,23 +244,23 @@ class McpSource(Source):
         if self.service_connection.fetchTools:
             try:
                 client.list_tools()
-                logger.debug(f"Fetched {len(server.tools)} tools from '{server.name}'")  # noqa: G004
+                logger.debug(f"Fetched {len(server.tools)} tools from '{server.name}'")
             except McpProtocolError as e:
-                logger.warning(f"Could not fetch tools from '{server.name}': {e}")  # noqa: G004
+                logger.warning(f"Could not fetch tools from '{server.name}': {e}")
 
         if self.service_connection.fetchResources:
             try:
                 client.list_resources()
-                logger.debug(f"Fetched {len(server.resources)} resources from '{server.name}'")  # noqa: G004
+                logger.debug(f"Fetched {len(server.resources)} resources from '{server.name}'")
             except McpProtocolError as e:
-                logger.warning(f"Could not fetch resources from '{server.name}': {e}")  # noqa: G004
+                logger.warning(f"Could not fetch resources from '{server.name}': {e}")
 
         if self.service_connection.fetchPrompts:
             try:
                 client.list_prompts()
-                logger.debug(f"Fetched {len(server.prompts)} prompts from '{server.name}'")  # noqa: G004
+                logger.debug(f"Fetched {len(server.prompts)} prompts from '{server.name}'")
             except McpProtocolError as e:
-                logger.warning(f"Could not fetch prompts from '{server.name}': {e}")  # noqa: G004
+                logger.warning(f"Could not fetch prompts from '{server.name}': {e}")
 
     def _build_create_request(self, server: ClientServerInfo, error: str | None = None) -> CreateMcpServerRequest:
         """Build CreateMcpServerRequest request from server info"""

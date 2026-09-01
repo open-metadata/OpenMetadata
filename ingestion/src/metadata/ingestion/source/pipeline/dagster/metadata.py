@@ -123,7 +123,7 @@ class DagsterSource(PipelineServiceSource):
                     task_list.append(task)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error to fetch tasks for {pipeline_name}:{job}: {exc}")  # noqa: G004
+                    logger.warning(f"Error to fetch tasks for {pipeline_name}:{job}: {exc}")
 
         return task_list or None
 
@@ -244,7 +244,7 @@ class DagsterSource(PipelineServiceSource):
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             if not pipeline_entity:
-                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")  # noqa: G004
+                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
                 return
 
             assets = self.client.get_assets(
@@ -271,7 +271,7 @@ class DagsterSource(PipelineServiceSource):
                 if not to_result.is_resolved:
                     normalized_key = asset.assetKey.normalize(self.strip_asset_key_prefix_length).to_string()
                     logger.debug(
-                        f"Could not resolve table for asset: {asset.assetKey.to_string()} "  # noqa: G004
+                        f"Could not resolve table for asset: {asset.assetKey.to_string()} "
                         f"(normalized: {normalized_key})"
                     )
                     continue
@@ -337,7 +337,7 @@ class DagsterSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unable to get pipelines list\n"  # noqa: G004
+                f"Unable to get pipelines list\n"
                 f"Please check if dagster is running correctly and is in good state: {exc}"
             )
             raise WorkflowFatalError("Unable to get pipeline list")  # noqa: B904
@@ -359,7 +359,7 @@ class DagsterSource(PipelineServiceSource):
             return SourceUrl(url)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to get pipeline url: {exc}")  # noqa: G004
+            logger.warning(f"Error to get pipeline url: {exc}")
         return None
 
     def _is_asset_in_pipeline(self, asset: DagsterAssetNode, pipeline_name: str) -> bool:
@@ -390,7 +390,7 @@ class DagsterSource(PipelineServiceSource):
             table = parts[0]
         else:
             logger.debug(
-                f"Unexpected asset key format after normalization: {asset_key_str} "  # noqa: G004
+                f"Unexpected asset key format after normalization: {asset_key_str} "
                 f"(original: {asset.assetKey.to_string()}, stripped {self.strip_asset_key_prefix_length} segments)"
             )
             return TableResolutionResult()
@@ -418,7 +418,7 @@ class DagsterSource(PipelineServiceSource):
                     return TableResolutionResult(table_fqn=table_fqn, table_entity=table_entity)
 
             except Exception as exc:
-                logger.debug(f"Failed to resolve for service {service_name}: {exc}")  # noqa: G004
+                logger.debug(f"Failed to resolve for service {service_name}: {exc}")
 
         return TableResolutionResult()
 

@@ -96,7 +96,7 @@ class SASClient:
             asset_filter = self.custom_filter_dataflows
 
         logger.debug(
-            f"Configuration for {assets}: enable {assets} - {enable_asset}, custom {assets} filter - {asset_filter}"  # noqa: G004
+            f"Configuration for {assets}: enable {assets} - {enable_asset}, custom {assets} filter - {asset_filter}"
         )
         endpoint = f"catalog/search?indices={assets}&q={asset_filter if str(asset_filter) != 'None' else '*'}"
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
@@ -111,7 +111,7 @@ class SASClient:
             "Content-type": "application/vnd.sas.metadata.instance.query+json",
             "Accept": "application/json",
         }
-        logger.info(f"{query}")  # noqa: G004
+        logger.info(f"{query}")
         response = self.client.post(path=endpoint, data=query, headers=headers)
         if "error" in response.keys():  # noqa: SIM118
             raise APIError(f"{response}")
@@ -122,7 +122,7 @@ class SASClient:
             "Accept-Item": "application/vnd.sas.data.source+json",
         }
         response = self.client.get(path=endpoint, headers=headers)
-        logger.info(f"{response}")  # noqa: G004
+        logger.info(f"{response}")
         if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         return response

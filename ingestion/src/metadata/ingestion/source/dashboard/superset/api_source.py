@@ -188,7 +188,7 @@ class SupersetAPISource(SupersetSourceMixin):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to build source table fqn for [{getattr(chart_json, 'table_name', None)}]: {err}")  # noqa: G004
+            logger.warning(f"Failed to build source table fqn for [{getattr(chart_json, 'table_name', None)}]: {err}")
         return None
 
     def yield_dashboard_chart(self, dashboard_details: DashboardResult) -> Iterable[Either[CreateChartRequest]]:
@@ -197,7 +197,7 @@ class SupersetAPISource(SupersetSourceMixin):
             try:
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json:
-                    logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
@@ -233,7 +233,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     database_name = self._resolve_lineage_database_name(datasource_json, db_service_name)
 
                     if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                         return None
 
                     if (
@@ -242,7 +242,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         and prefix_schema_name.lower() != datasource_json.result.table_schema.lower()
                     ):
                         logger.debug(
-                            f"Schema {datasource_json.result.table_schema} does not match prefix {prefix_schema_name}"  # noqa: G004
+                            f"Schema {datasource_json.result.table_schema} does not match prefix {prefix_schema_name}"
                         )
                         return None
 
@@ -252,7 +252,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         and prefix_table_name.lower() != datasource_json.result.table_name.lower()
                     ):
                         logger.debug(
-                            f"Table {datasource_json.result.table_name} does not match prefix {prefix_table_name}"  # noqa: G004
+                            f"Table {datasource_json.result.table_name} does not match prefix {prefix_table_name}"
                         )
                         return None
 
@@ -264,7 +264,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch Datasource with id [{datasource_id}]: {err}")  # noqa: G004
+            logger.warning(f"Failed to fetch Datasource with id [{datasource_id}]: {err}")
 
         return None
 
@@ -274,7 +274,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 try:
                     chart_json = self.all_charts.get(chart_id)
                     if not chart_json or not chart_json.datasource_id:
-                        logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
+                        logger.warning(f"chart details for id: {chart_id} not found, skipped")
                         continue
                     datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
                     if filter_by_datamodel(

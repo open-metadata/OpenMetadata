@@ -89,7 +89,7 @@ class RegexCount(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to run RegExp Match Count for {self.col.name}: {err}")  # noqa: G004
+                logger.warning(f"Error trying to run RegExp Match Count for {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 

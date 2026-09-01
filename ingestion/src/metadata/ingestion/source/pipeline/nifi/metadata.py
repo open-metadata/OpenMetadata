@@ -154,7 +154,7 @@ class NifiSource(PipelineServiceSource):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Wild error encountered when trying to get tasks from Pipeline Details {pipeline_details} - {err}."  # noqa: G004
+                f"Wild error encountered when trying to get tasks from Pipeline Details {pipeline_details} - {err}."
             )
         return None
 
@@ -284,11 +284,11 @@ class NifiSource(PipelineServiceSource):
                 yield nifi_pipeline_details
             except (ValueError, KeyError, ValidationError) as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Cannot create NifiPipelineDetails from {process_group} - {err}")  # noqa: G004
+                logger.warning(f"Cannot create NifiPipelineDetails from {process_group} - {err}")
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Wild error encountered when trying to get pipelines from Process Group {process_group} - {err}."  # noqa: G004
+                    f"Wild error encountered when trying to get pipelines from Process Group {process_group} - {err}."
                 )
 
     def get_process_group_connections(self, process_group: dict) -> list[NifiProcessorConnections]:
@@ -316,7 +316,7 @@ class NifiSource(PipelineServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Wild error encountered when trying to get process group connections from \
-                    {process_group[PROCESS_GROUP_FLOW][BREADCRUMB][BREADCRUMB].get('name')} - {err}."  # noqa: G004
+                    {process_group[PROCESS_GROUP_FLOW][BREADCRUMB][BREADCRUMB].get('name')} - {err}."
                 )
         return connections
 
@@ -333,7 +333,7 @@ class NifiSource(PipelineServiceSource):
                 fqn=f"{self.context.get().pipeline_service}.{pipeline_id}",
             )
             if not to_entity:
-                logger.warning(f"Pipeline {pipeline_id} not found in metadata, skipping lineage")  # noqa: G004
+                logger.warning(f"Pipeline {pipeline_id} not found in metadata, skipping lineage")
                 continue
             for parent_pipeline_id in parent_pipeline_ids:
                 from_entity = self.metadata.get_by_name(
@@ -341,7 +341,7 @@ class NifiSource(PipelineServiceSource):
                     fqn=f"{self.context.get().pipeline_service}.{parent_pipeline_id}",
                 )
                 if not from_entity:
-                    logger.warning(f"Parent Pipeline {parent_pipeline_id} not found in metadata, skipping lineage")  # noqa: G004
+                    logger.warning(f"Parent Pipeline {parent_pipeline_id} not found in metadata, skipping lineage")
                     continue
                 yield Either(
                     right=AddLineageRequest(
@@ -360,7 +360,7 @@ class NifiSource(PipelineServiceSource):
                 fqn=f"{self.context.get().pipeline_service}.{connection.source_id}",
             )
             if not from_entity:
-                logger.warning(f"Pipeline {connection.source_id} not found in metadata, skipping lineage")  # noqa: G004
+                logger.warning(f"Pipeline {connection.source_id} not found in metadata, skipping lineage")
                 continue
 
             to_entity = self.metadata.get_by_name(
@@ -368,7 +368,7 @@ class NifiSource(PipelineServiceSource):
                 fqn=f"{self.context.get().pipeline_service}.{connection.destination_id}",
             )
             if not to_entity:
-                logger.warning(f"Pipeline {connection.destination_id} not found in metadata, skipping lineage")  # noqa: G004
+                logger.warning(f"Pipeline {connection.destination_id} not found in metadata, skipping lineage")
                 continue
 
             yield Either(

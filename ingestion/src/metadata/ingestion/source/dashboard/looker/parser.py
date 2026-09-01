@@ -91,7 +91,7 @@ class LkmlParser:
 
         # If the path starts with //, we will ignore it for now
         if path.startswith("//"):
-            logger.info(f"We do not support external includes yet. Skipping {path}")  # noqa: G004
+            logger.info(f"We do not support external includes yet. Skipping {path}")
             return []
 
         try:
@@ -99,12 +99,12 @@ class LkmlParser:
 
         except ReadException as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to read the file [{path}]: {err}")  # noqa: G004
+            logger.error(f"Error trying to read the file [{path}]: {err}")
         except ValidationError as err:
-            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")  # noqa: G004
+            logger.error(f"Validation error building the .lkml file from [{path}]: {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")  # noqa: G004
+            logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")
 
         return None
 
@@ -147,7 +147,7 @@ class LkmlParser:
                 if res:
                     return res
             # Nothing matched, we cannot find the file
-            logger.warning(f"We could not match any file from the include {path}")  # noqa: G004
+            logger.warning(f"We could not match any file from the include {path}")
             return []
 
         return [path]
@@ -164,7 +164,7 @@ class LkmlParser:
                 try:
                     return self.reader.read(path + suffix)
                 except ReadException as err:
-                    logger.debug(f"Error trying to read the file [{path}]: {err}")  # noqa: G004
+                    logger.debug(f"Error trying to read the file [{path}]: {err}")
 
         else:
             return self.reader.read(path)
@@ -177,7 +177,7 @@ class LkmlParser:
         Otherwise, return None
         """
         if view_name in self._views_cache:
-            logger.debug(f"Found view [{view_name}] in cache: \n{self._views_cache[view_name]}")  # noqa: G004
+            logger.debug(f"Found view [{view_name}] in cache: \n{self._views_cache[view_name]}")
             return self._views_cache[view_name]
 
         return None

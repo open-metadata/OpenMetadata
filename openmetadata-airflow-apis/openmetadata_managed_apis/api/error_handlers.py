@@ -32,5 +32,5 @@ def handle_any_error(exc):
 
 @blueprint.app_errorhandler(MissingArgException)
 def handle_missing_arg(exc):
-    logger.exception(f"Missing Argument Exception: {exc}")  # noqa: G004
+    logger.exception(f"Missing Argument Exception: {exc}")
     return ApiResponse.bad_request(repr(exc))

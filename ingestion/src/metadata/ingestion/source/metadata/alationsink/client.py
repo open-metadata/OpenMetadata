@@ -176,12 +176,12 @@ class AlationSinkClient:
             )
             if req:
                 logger.info(
-                    f"Successfully wrote entity for [{ROUTES.get(type(create_request))}]: {create_request.title}"  # noqa: G004
+                    f"Successfully wrote entity for [{ROUTES.get(type(create_request))}]: {create_request.title}"
                 )
                 return req
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entity: {exc}")  # noqa: G004
+            logger.error(f"Failed to write entity: {exc}")
         return None
 
     def write_entities(self, ds_id: int, create_requests: Any) -> Any | None:
@@ -199,10 +199,10 @@ class AlationSinkClient:
             )
             if req:
                 logger.info(
-                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"  # noqa: G004, RUF010
+                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"  # noqa: RUF010
                 )
             return req  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entities: {exc}")  # noqa: G004
+            logger.error(f"Failed to write entities: {exc}")
         return None

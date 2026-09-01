@@ -97,7 +97,7 @@ class ProcedureAndProcedureGraph(BaseModel):
 def is_lineage_query(query_type: str, query_text: str) -> bool:
     """Check if it's worth it to parse the query for lineage"""
 
-    logger.debug(f"Validating query lineage for type [{query_type}] and text [{query_text}]")  # noqa: G004
+    logger.debug(f"Validating query lineage for type [{query_type}] and text [{query_text}]")
 
     if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
         return True
@@ -216,7 +216,7 @@ def procedure_lineage_processor(
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Could not get lineage for store procedure "  # noqa: G004
+                f"Could not get lineage for store procedure "
                 f"'{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
             )
         try:
@@ -229,7 +229,7 @@ def procedure_lineage_processor(
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Could not get query for store procedure "  # noqa: G004
+                f"Could not get query for store procedure "
                 f"'{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
             )
 
@@ -276,7 +276,7 @@ def process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
         time.sleep(0.1)
         return True  # noqa: TRY300
     except Exception as e:
-        logger.error(f"Error processing chunk in subprocess: {e}")  # noqa: G004
+        logger.error(f"Error processing chunk in subprocess: {e}")
         logger.error(traceback.format_exc())
         return False
 
@@ -399,4 +399,4 @@ def view_lineage_processor(
                     queue.put(lineage)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error processing view {view}: {exc}")  # noqa: G004
+        logger.warning(f"Error processing view {view}: {exc}")

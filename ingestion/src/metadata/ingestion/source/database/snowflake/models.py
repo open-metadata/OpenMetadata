@@ -82,7 +82,7 @@ class SnowflakeStoredProcedure(BaseModel):
 
             return f"({quote(', '.join(clean_signature_list))})"
         except Exception as exc:
-            logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")  # noqa: G004
+            logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
             return signature
 
     def unquote_signature(self) -> str | None:

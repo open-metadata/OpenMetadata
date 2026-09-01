@@ -31,4 +31,4 @@ def list_s3_objects(client, **kwargs) -> Iterable:
             yield from page.get("Contents", [])
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception to yield s3 object: {exc}")  # noqa: G004
+        logger.warning(f"Unexpected exception to yield s3 object: {exc}")

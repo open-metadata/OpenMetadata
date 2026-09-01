@@ -129,16 +129,16 @@ class LineageParser:
         :return: List of involved tables
         """
         try:
-            logger.debug(f"[{self.query_hash}] [UsageSink] Source tables: {self.source_tables}")  # noqa: G004
-            logger.debug(f"[{self.query_hash}] [UsageSink] Intermediate tables: {self.intermediate_tables}")  # noqa: G004
-            logger.debug(f"[{self.query_hash}] [UsageSink] Target tables: {self.target_tables}")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] [UsageSink] Source tables: {self.source_tables}")
+            logger.debug(f"[{self.query_hash}] [UsageSink] Intermediate tables: {self.intermediate_tables}")
+            logger.debug(f"[{self.query_hash}] [UsageSink] Target tables: {self.target_tables}")
 
             return list(set(self.source_tables).union(set(self.intermediate_tables)).union(set(self.target_tables)))
 
         except SQLLineageException as exc:
-            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
             logger.warning(
-                f"[{self.query_hash}] Cannot extract source table information from query"  # noqa: G004
+                f"[{self.query_hash}] Cannot extract source table information from query"
                 f" [{self.masked_query or self.query}]: {exc}"
             )
 
@@ -200,8 +200,8 @@ class LineageParser:
                 tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
                 column_lineage.append((src_col, tgt_col))
         except Exception as err:
-            logger.warning(f"[{self.query_hash}] Failed to fetch column level lineage due to: {err}")  # noqa: G004
-            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")  # noqa: G004
+            logger.warning(f"[{self.query_hash}] Failed to fetch column level lineage due to: {err}")
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
         return column_lineage
 
     @cached_property
@@ -217,7 +217,7 @@ class LineageParser:
         for table in self.involved_tables or []:  # pyright: ignore[reportGeneralTypeIssues]
             table_name = get_formatted_entity_name(str(table))
             if not has_table_name(table_name):
-                logger.debug(f"[{self.query_hash}] Skipping table reference without a table name [{table_name}]")  # noqa: G004
+                logger.debug(f"[{self.query_hash}] Skipping table reference without a table name [{table_name}]")
                 continue
             clean_tables.append(table_name)
 
@@ -232,18 +232,18 @@ class LineageParser:
         """
         # Check if involved_tables is present
         if not self.involved_tables:
-            logger.debug(f"[{self.query_hash}] [UsageSink] No involved tables found — alias map will be empty.")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] [UsageSink] No involved tables found — alias map will be empty.")
             return {}
 
         # Log raw involved tables for inspection
         logger.debug(
-            f"[{self.query_hash}] [UsageSink] Involved tables before alias mapping:"  # noqa: G004
+            f"[{self.query_hash}] [UsageSink] Involved tables before alias mapping:"
             f" {[str(t) for t in self.involved_tables]}"
         )
 
         # Log alias/name pairs for each table
         logger.debug(
-            f"[{self.query_hash}] [UsageSink] Table alias-name pairs:"  # noqa: G004
+            f"[{self.query_hash}] [UsageSink] Table alias-name pairs:"
             f" {[(t.alias, str(t)) for t in self.involved_tables]}"
         )
 
@@ -255,7 +255,7 @@ class LineageParser:
         }
 
         # Log the final computed alias map
-        logger.debug(f"[{self.query_hash}] [UsageSink] Final computed alias map: {alias_map}")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] [UsageSink] Final computed alias map: {alias_map}")
 
         return alias_map
 
@@ -275,7 +275,7 @@ class LineageParser:
         """
         tables = self.clean_table_list
         logger.debug(
-            f"[{self.query_hash}] [UsageSink] Searching for table '{table_name}'"  # noqa: G004
+            f"[{self.query_hash}] [UsageSink] Searching for table '{table_name}'"
             f" in schema '{schema_name}', database '{database_name}',"
             f" within tables list: {tables}"
         )
@@ -291,7 +291,7 @@ class LineageParser:
         if db_schema_table:
             return db_schema_table
 
-        logger.debug(f"[{self.query_hash}] Cannot find table {db_schema_table} in involved tables")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] Cannot find table {db_schema_table} in involved tables")
         return None
 
     def get_comparison_elements(self, identifier: Identifier) -> tuple[str | None, str | None]:
@@ -300,30 +300,30 @@ class LineageParser:
         :param identifier: comparison identifier
         :return: table name and column name from the identifier
         """
-        logger.debug(f"[{self.query_hash}] [DEBUG] Raw identifier object: {identifier!r}")  # noqa: G004
-        logger.debug(f"[{self.query_hash}] [DEBUG] Identifier type: {type(identifier)}")  # noqa: G004
-        logger.debug(f"[{self.query_hash}] [DEBUG] Identifier value: {getattr(identifier, 'value', None)}")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] [DEBUG] Raw identifier object: {identifier!r}")
+        logger.debug(f"[{self.query_hash}] [DEBUG] Identifier type: {type(identifier)}")
+        logger.debug(f"[{self.query_hash}] [DEBUG] Identifier value: {getattr(identifier, 'value', None)}")
 
         aliases = self.table_aliases
-        logger.debug(f"[{self.query_hash}] [DEBUG] Current table aliases: {aliases}")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] [DEBUG] Current table aliases: {aliases}")
 
         values = identifier.value.split(".")
-        logger.debug(f"[{self.query_hash}] [DEBUG] Split identifier values: {values}")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] [DEBUG] Split identifier values: {values}")
 
         if len(values) > 4:
-            logger.debug(f"[{self.query_hash}] Invalid comparison element from identifier: {identifier}")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] Invalid comparison element from identifier: {identifier}")
             return None, None
 
         database_name, schema_name, table_or_alias, column_name = ([None] * (4 - len(values))) + values
 
         logger.debug(
-            f"[{self.query_hash}] [DEBUG] Parsed components =>"  # noqa: G004
+            f"[{self.query_hash}] [DEBUG] Parsed components =>"
             f" database_name={database_name}, schema_name={schema_name},"
             f" table_or_alias={table_or_alias}, column_name={column_name}"
         )
 
         if not table_or_alias or not column_name:
-            logger.debug(f"[{self.query_hash}] Cannot obtain comparison elements from identifier {identifier}")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] Cannot obtain comparison elements from identifier {identifier}")
             return None, None
 
         alias_to_table = aliases.get(table_or_alias)
@@ -337,7 +337,7 @@ class LineageParser:
         )
 
         if not table_from_list:
-            logger.debug(f"[{self.query_hash}] Cannot find {table_or_alias} in comparison elements")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] Cannot find {table_or_alias} in comparison elements")
             return None, None
 
         return table_from_list, column_name
@@ -400,7 +400,7 @@ class LineageParser:
         for comparison in comparisons:
             try:
                 if "." not in comparison.left.value or "." not in comparison.right.value:
-                    logger.debug(f"Ignoring comparison {comparison}")  # noqa: G004
+                    logger.debug(f"Ignoring comparison {comparison}")
                     continue
 
                 table_left, column_left = self.get_comparison_elements(identifier=comparison.left)
@@ -408,10 +408,10 @@ class LineageParser:
 
                 if not table_left or not table_right:
                     logger.debug(
-                        f"[{self.query_hash}] Cannot extract table names when parsing JOIN information"  # noqa: G004
+                        f"[{self.query_hash}] Cannot extract table names when parsing JOIN information"
                         f" from {comparison}"
                     )
-                    logger.debug(f"[{self.query_hash}] Query: {self.masked_query or self.query}")  # noqa: G004
+                    logger.debug(f"[{self.query_hash}] Query: {self.masked_query or self.query}")
                     continue
 
                 left_table_column = TableColumn(table=table_left, column=column_left)
@@ -421,8 +421,8 @@ class LineageParser:
                 # The backend will prepare the symmetric information.
                 self.stateful_add_table_joins(join_data, left_table_column, right_table_column)
             except Exception as exc:
-                logger.debug(f"[{self.query_hash}] Cannot process comparison {comparison}: {exc}")  # noqa: G004
-                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"[{self.query_hash}] Cannot process comparison {comparison}: {exc}")
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
 
     @cached_property
     def table_joins(self) -> dict[str, list[TableColumnJoin]]:
@@ -503,7 +503,7 @@ class LineageParser:
         elapsed = time.time() - start_time
 
         elapsed_str = pretty_print_time_duration(elapsed)
-        logger.debug(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")
 
         return result
 
@@ -518,7 +518,7 @@ class LineageParser:
             return None
 
         logger.debug(
-            f"[{self.query_hash}] Evaluating best parser (query length: {len(query)} chars)"  # noqa: G004
+            f"[{self.query_hash}] Evaluating best parser (query length: {len(query)} chars)"
             f" for query (dialect: {dialect.value}, parser_type: {parser_type}):"
             f" {self.masked_query or self.query}"
         )
@@ -564,12 +564,12 @@ class LineageParser:
                     f"[{self.query_hash}] Query parsing with SqlGlot failed with error: {err}"
                 )
                 logger.debug(self.query_parsing_failure_reason)
-                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
                 lr_sqlglot = None
 
             if lr_sqlglot:
                 self.query_hash += "-SqlGlot"
-                logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")  # noqa: G004
+                logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
                 return lr_sqlglot
 
         @timeout(seconds=timeout_seconds)
@@ -613,12 +613,12 @@ class LineageParser:
                     f"[{self.query_hash}] Query parsing with SqlFluff failed with error: {err}"
                 )
                 logger.debug(self.query_parsing_failure_reason)
-                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
                 lr_sqlfluff = None
 
             if lr_sqlfluff:
                 self.query_hash += "-SqlFluff"
-                logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")  # noqa: G004
+                logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
                 return lr_sqlfluff
 
         @timeout(seconds=timeout_seconds)
@@ -661,17 +661,17 @@ class LineageParser:
                 f"[{self.query_hash}] Query parsing with SqlParse failed with error: {err}"
             )
             logger.debug(self.query_parsing_failure_reason)
-            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
             # All parsers SqlGlot, SqlFluff, SqlParse have failed to parse the query
             lr_sqlparse = None
 
         if lr_sqlparse:
             self.query_hash += "-SqlParse"
-            logger.debug(f"[{self.query_hash}] Selected SqlParse for query parsing")  # noqa: G004
+            logger.debug(f"[{self.query_hash}] Selected SqlParse for query parsing")
             return lr_sqlparse
 
         # log failed query
-        logger.debug(f"[{self.query_hash}] Query parsing failed with SqlGlot, SqlFluff and SqlParse")  # noqa: G004
+        logger.debug(f"[{self.query_hash}] Query parsing failed with SqlGlot, SqlFluff and SqlParse")
         return None
 
     @staticmethod

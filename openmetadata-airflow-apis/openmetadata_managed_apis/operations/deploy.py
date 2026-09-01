@@ -79,7 +79,7 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-        logger.info(f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}")  # noqa: G004
+        logger.info(f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}")
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
@@ -96,7 +96,7 @@ class DagDeployer:
         # Create directory if it doesn't exist
         dag_config_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Saving file to {dag_config_file_path}")  # noqa: G004
+        logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:  # noqa: PTH123
             outfile.write(dump_with_safe_jwt(self.ingestion_pipeline))
 
@@ -127,7 +127,7 @@ class DagDeployer:
             dag_file = import_path(str(dag_py_file))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")  # noqa: G004
+            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")
             raise exc  # noqa: TRY201
 
         if dag_file is None:
@@ -176,7 +176,7 @@ class DagDeployer:
         Run all methods to deploy the DAG
         """
         dag_config_file_path = Path(DAG_GENERATED_CONFIGS) / f"{self.dag_id}.json"
-        logger.info(f"Config file under {dag_config_file_path}")  # noqa: G004
+        logger.info(f"Config file under {dag_config_file_path}")
 
         dag_runner_config = self.store_airflow_pipeline_config(dag_config_file_path)
         dag_py_file = self.store_and_validate_dag_file(dag_runner_config)

@@ -64,7 +64,7 @@ class HexApiClient:
                 raise Exception("Invalid response from Hex API")  # noqa: TRY002, TRY301
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to test connection: {exc}")  # noqa: G004
+            logger.error(f"Failed to test connection: {exc}")
             raise
 
     def get_projects(self) -> list[Project]:
@@ -90,7 +90,7 @@ class HexApiClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching projects: {exc}")  # noqa: G004
+            logger.error(f"Error fetching projects: {exc}")
 
         return projects
 

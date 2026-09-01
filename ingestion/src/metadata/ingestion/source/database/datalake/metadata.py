@@ -140,7 +140,7 @@ class DatalakeSource(DatabaseServiceSource):
                     yield database_name
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {database_name}: {exc}")  # noqa: G004
+                    logger.error(f"Error trying to connect to database {database_name}: {exc}")
 
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
@@ -237,11 +237,11 @@ class DatalakeSource(DatabaseServiceSource):
 
                 if self.filter_dl_table(table_name):
                     continue
-                logger.info(f"Processing table: {table_name}")  # noqa: G004
+                logger.info(f"Processing table: {table_name}")
                 file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
 
                 if table_name.endswith("/") or not file_extension:
-                    logger.debug(f"Object filtered due to unsupported file type: {key_name}")  # noqa: G004
+                    logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
                 yield table_name, TableType.Regular, file_extension, file_size
@@ -284,7 +284,7 @@ class DatalakeSource(DatabaseServiceSource):
                     display_name = table_name
                     table_name = md5(table_name.encode()).hexdigest()
                     logger.debug(
-                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "  # noqa: G004
+                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
                         f"as name and storing the full path in displayName: [{display_name}]"
                     )
                 table_request = CreateTableRequest(

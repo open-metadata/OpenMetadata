@@ -119,7 +119,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
             if skip_cold_storage:
                 storage_class = getattr(key, "storage_class", None)
                 if storage_class and storage_class in GCS_COLD_STORAGE_CLASSES:
-                    logger.debug(f"Skipping cold storage object: {key.name} (storage_class: {storage_class})")  # noqa: G004
+                    logger.debug(f"Skipping cold storage object: {key.name} (storage_class: {storage_class})")
                     continue
             yield key.name, key.size
 

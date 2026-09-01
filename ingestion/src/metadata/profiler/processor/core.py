@@ -265,7 +265,7 @@ class Profiler(Generic[TMetric]):
             ComposedMetric, col, self.profiler_interface.table_entity.serviceType
         ):
             # Composed metrics require the results as an argument
-            logger.debug(f"Running composed metric {metric.name()} for {col.name}")  # noqa: G004
+            logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
             self._column_results[col.name][metric.name()] = self.profiler_interface.get_composed_metrics(
                 col,
@@ -287,7 +287,7 @@ class Profiler(Generic[TMetric]):
         for metric in self.metric_filter.get_column_metrics(
             HybridMetric, col, self.profiler_interface.table_entity.serviceType
         ):
-            logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")  # noqa: G004
+            logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
             self._column_results[col.name][metric.name()] = self.profiler_interface.get_hybrid_metrics(
                 col,
                 metric,
@@ -459,7 +459,7 @@ class Profiler(Generic[TMetric]):
         in a Dict in the shape {col_name: Profiler}
         """
 
-        logger.debug(f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}...")  # noqa: G004
+        logger.debug(f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}...")
         self.compute_metrics()
 
         profile = self.get_profile()
@@ -542,7 +542,7 @@ class Profiler(Generic[TMetric]):
 
         except ValidationError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Cannot transform profiler results to TableProfile: {err}")  # noqa: G004
+            logger.error(f"Cannot transform profiler results to TableProfile: {err}")
             raise err  # noqa: TRY201
 
     @property

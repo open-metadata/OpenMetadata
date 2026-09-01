@@ -144,7 +144,7 @@ def get_all_table_ddls(self, connection, query, schema_name, **kw):  # pylint: d
             self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")  # noqa: G004
+        logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")
         # Roll back the aborted transaction so the connection remains usable
         # for subsequent queries (e.g. get_table_comment). Without this,
         # psycopg2 raises InFailedSqlTransaction on every query that follows.

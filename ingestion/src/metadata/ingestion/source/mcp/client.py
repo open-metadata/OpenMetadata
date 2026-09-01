@@ -118,7 +118,7 @@ class StdioTransport:
         if self.env:
             overridden = self._SENSITIVE_ENV_VARS & self.env.keys()
             if overridden:
-                logger.warning(f"MCP server '{self.command}' overrides sensitive env vars: {overridden}")  # noqa: G004
+                logger.warning(f"MCP server '{self.command}' overrides sensitive env vars: {overridden}")
             full_env.update(self.env)
 
         try:
@@ -146,7 +146,7 @@ class StdioTransport:
         try:
             response = json.loads(line)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse MCP response: {e}")  # noqa: G004
+            logger.error(f"Failed to parse MCP response: {e}")
             return
         msg_id = response.get("id")
         if msg_id is None:
@@ -168,7 +168,7 @@ class StdioTransport:
                     self._handle_response_line(line)
             except Exception as e:
                 if self._running:
-                    logger.error(f"Error reading from MCP server: {e}")  # noqa: G004
+                    logger.error(f"Error reading from MCP server: {e}")
                 break
 
     def _drain_stderr(self) -> None:
@@ -178,7 +178,7 @@ class StdioTransport:
                 line = self.process.stderr.readline()
                 if not line:
                     break
-                logger.debug(f"MCP server stderr: {line.strip()}")  # noqa: G004
+                logger.debug(f"MCP server stderr: {line.strip()}")
             except Exception:
                 break
 
@@ -287,7 +287,7 @@ class HttpTransport:
                 timeout=self.timeout,
             )
         except Exception as e:
-            logger.error(f"Failed to send notification '{method}': {e}")  # noqa: G004
+            logger.error(f"Failed to send notification '{method}': {e}")
 
     def send_request(self, method: str, params: dict | None = None) -> dict[str, Any]:
         """Send a JSON-RPC request via HTTP POST"""
@@ -462,14 +462,14 @@ def parse_claude_desktop_config(config_path: str, config: dict | None = None) ->
     if config is None:
         path = Path(config_path).expanduser()
         if not path.exists():
-            logger.warning(f"Config file not found: {config_path}")  # noqa: G004
+            logger.warning(f"Config file not found: {config_path}")
             return []
 
         try:
             with open(path, "r", encoding="utf-8") as f:  # noqa: PTH123
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse config file {config_path}: {e}")  # noqa: G004
+            logger.error(f"Failed to parse config file {config_path}: {e}")
             return []
 
     servers = []
@@ -484,7 +484,7 @@ def parse_claude_desktop_config(config_path: str, config: dict | None = None) ->
             env=server_config.get("env", {}),
         )
         servers.append(server_info)
-        logger.debug(f"Found MCP server '{name}' in config")  # noqa: G004
+        logger.debug(f"Found MCP server '{name}' in config")
 
     return servers
 
@@ -507,14 +507,14 @@ def parse_vscode_config(config_path: str, config: dict | None = None) -> list[Mc
     if config is None:
         path = Path(config_path).expanduser()
         if not path.exists():
-            logger.warning(f"VS Code settings not found: {config_path}")  # noqa: G004
+            logger.warning(f"VS Code settings not found: {config_path}")
             return []
 
         try:
             with open(path, "r", encoding="utf-8") as f:  # noqa: PTH123
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse VS Code settings {config_path}: {e}")  # noqa: G004
+            logger.error(f"Failed to parse VS Code settings {config_path}: {e}")
             return []
 
     servers = []
@@ -530,7 +530,7 @@ def parse_vscode_config(config_path: str, config: dict | None = None) -> list[Mc
             url=server_config.get("url"),
         )
         servers.append(server_info)
-        logger.debug(f"Found MCP server '{name}' in VS Code config")  # noqa: G004
+        logger.debug(f"Found MCP server '{name}' in VS Code config")
 
     return servers
 
@@ -549,7 +549,7 @@ def discover_servers_from_config_files(
     for config_path in config_paths:
         path = Path(config_path).expanduser()
         if not path.exists():
-            logger.warning(f"Config file not found: {config_path}")  # noqa: G004
+            logger.warning(f"Config file not found: {config_path}")
             continue
 
         try:
@@ -561,7 +561,7 @@ def discover_servers_from_config_files(
             elif "mcp.servers" in config:
                 servers = parse_vscode_config(config_path, config)
             else:
-                logger.warning(f"Unknown config format in {config_path}")  # noqa: G004
+                logger.warning(f"Unknown config format in {config_path}")
                 continue
 
             for server in servers:
@@ -570,6 +570,6 @@ def discover_servers_from_config_files(
                     seen_names.add(server.name)
 
         except Exception as e:
-            logger.warning(f"Error processing config {config_path}: {e}")  # noqa: G004
+            logger.warning(f"Error processing config {config_path}: {e}")
 
     return all_servers

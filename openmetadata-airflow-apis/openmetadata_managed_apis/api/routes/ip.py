@@ -41,7 +41,7 @@ def _get_ip_safely(url: str) -> str | None:
         return host_ip.text  # noqa: TRY300
     except (NewConnectionError, ConnectionError, ValueError) as err:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not extract IP info from {url} due to {err}. Retrying...")  # noqa: G004
+        logger.warning(f"Could not extract IP info from {url} due to {err}. Retrying...")
         return None
 
 

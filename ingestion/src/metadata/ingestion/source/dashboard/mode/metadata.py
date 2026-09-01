@@ -160,7 +160,7 @@ class ModeSource(DashboardServiceSource):
                     and database_name
                     and prefix_database_name.lower() != str(database_name).lower()
                 ):
-                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
+                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                     continue
 
                 lineage_parser = LineageParser(
@@ -173,7 +173,7 @@ class ModeSource(DashboardServiceSource):
                     database_schema_name = self.check_database_schema_name(database_schema_name)
 
                     if prefix_table_name and table and prefix_table_name.lower() != str(table).lower():
-                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")  # noqa: G004
+                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
                         continue
 
                     if (
@@ -182,7 +182,7 @@ class ModeSource(DashboardServiceSource):
                         and prefix_schema_name.lower() != str(database_schema_name).lower()
                     ):
                         logger.debug(
-                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"  # noqa: G004
+                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
                         )
                         continue
 

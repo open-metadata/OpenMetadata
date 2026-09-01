@@ -87,7 +87,7 @@ class BulkLkmlParser(metaclass=Singleton):
                     view.source_file = _path
                     self._views_cache[view.name] = view
             except Exception as err:
-                logger.debug(f"Error parsing file {_path}: {err}")  # noqa: G004
+                logger.debug(f"Error parsing file {_path}: {err}")
 
     def _read_file(self, path: Includes, reader: LocalReader | None = None) -> str:
         """
@@ -102,7 +102,7 @@ class BulkLkmlParser(metaclass=Singleton):
                 try:
                     return reader_to_use.read(path + suffix)
                 except ReadException as err:
-                    logger.debug(f"Error trying to read the file [{path}]: {err}")  # noqa: G004
+                    logger.debug(f"Error trying to read the file [{path}]: {err}")
 
         else:
             return reader_to_use.read(path)

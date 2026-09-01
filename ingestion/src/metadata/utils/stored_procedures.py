@@ -46,5 +46,5 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
             .split(".")[-1]
         )
     except Exception as exc:
-        logger.warning(f"Error trying to get the procedure name in [{query_text}] due to [{exc}]")  # noqa: G004
+        logger.warning(f"Error trying to get the procedure name in [{query_text}] due to [{exc}]")
         return None

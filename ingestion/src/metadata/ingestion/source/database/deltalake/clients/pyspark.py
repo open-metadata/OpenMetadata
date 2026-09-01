@@ -149,7 +149,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
         """Returns the Tables name and type, based on the underlying client."""
         for table in self._spark.catalog.listTables(dbName=schema_name):
             if table.tableType == SparkTableType.TEMPORARY.value:
-                logger.debug(f"Skipping temporary table {table.name}")  # noqa: G004
+                logger.debug(f"Skipping temporary table {table.name}")
                 continue
 
             yield TableInfo(
@@ -220,7 +220,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             describe_output = self._spark.sql(f"describe extended {view_name}").collect()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to fetch view schema [{view_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception to fetch view schema [{view_name}]: {exc}")
             return None
 
         view_detail = {}
@@ -244,7 +244,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 field_dict[field.name] = field
         except (AnalysisException, ParseException) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception getting columns for [{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Unexpected exception getting columns for [{table_name}]: {exc}")
             return []
 
         parsed_columns: list[Column] = []

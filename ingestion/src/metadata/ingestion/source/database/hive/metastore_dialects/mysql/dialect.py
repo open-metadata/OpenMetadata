@@ -41,7 +41,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
         schema_names = [row[0] for row in connection.execute(text("select NAME from DBS;"))]
-        logger.debug(f"Fetched schema names: {schema_names}")  # noqa: G004
+        logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
 
     def get_view_names(self, connection, schema=None, **kw):
@@ -50,7 +50,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE TBL_TYPE = 'VIRTUAL_VIEW'"""
         view_names = [row[0] for row in connection.execute(text(query))]
-        logger.debug(f"Fetched view names for schema '{schema}': {view_names}")  # noqa: G004
+        logger.debug(f"Fetched view names for schema '{schema}': {view_names}")
         return view_names
 
     def _get_table_columns(self, connection, table_name, schema):
@@ -100,7 +100,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE (TBL_TYPE != 'VIRTUAL_VIEW' OR TBL_TYPE IS NULL)"""
         table_names = [row[0] for row in connection.execute(text(query))]
-        logger.debug(f"Fetched table names for schema '{schema}': {table_names}")  # noqa: G004
+        logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
         return table_names
 
     @reflection.cache

@@ -126,14 +126,14 @@ def fetch_dataframe_generator(
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error fetching file [{bucket_name}/{key}] using "  # noqa: G004
+                    f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
                 raise err  # noqa: TRY201
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(
-            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"  # noqa: G004
+            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err  # noqa: TRY201
@@ -182,13 +182,13 @@ def fetch_dataframe_first_chunk(
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error fetching first chunk of file [{bucket_name}/{key}] using "  # noqa: G004
+                    f"Error fetching first chunk of file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(
-            f"Error fetching first chunk of file [{bucket_name}/{key}] using "  # noqa: G004
+            f"Error fetching first chunk of file [{bucket_name}/{key}] using "
             f"[{config_source.__class__.__name__}] due to: [{err}]"
         )
         raise err  # noqa: TRY201
@@ -357,7 +357,7 @@ class GenericDataFrameColumnParser:
                     cols.append(Column(**parsed_string))
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")  # noqa: G004
+                    logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
         return cols
 
     @classmethod
@@ -410,7 +410,7 @@ class GenericDataFrameColumnParser:
                                 parsed_object_datatype_list.append("str")
                         except Exception as err:
                             logger.debug(
-                                f"Failed to parse datatype for column {column_name}, exc: {err},Falling back to string."  # noqa: G004
+                                f"Failed to parse datatype for column {column_name}, exc: {err},Falling back to string."
                             )
                             parsed_object_datatype_list.append("str")
 
@@ -419,7 +419,7 @@ class GenericDataFrameColumnParser:
                 except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
                     logger.debug(
-                        f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "  # noqa: G004
+                        f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
                         f"Falling back to string."
                     )
                     data_type = "str"
@@ -428,11 +428,11 @@ class GenericDataFrameColumnParser:
                 data_type or col_series.dtypes.name,
             )
             if not data_type:
-                logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")  # noqa: G004
+                logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")
             data_type = data_type or DataType.STRING
         except Exception as err:
             logger.warning(
-                f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"  # noqa: G004
+                f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
             )
             logger.debug(traceback.format_exc())
         return data_type or DataType.STRING
@@ -515,14 +515,14 @@ class GenericDataFrameColumnParser:
                         dict_values.append(parsed)
                     else:
                         logger.debug(
-                            "Skipping non-object JSON value while extracting column children: "  # noqa: G004
+                            "Skipping non-object JSON value while extracting column children: "
                             f"parsed type is {type(parsed).__name__}"
                         )
                 except (TypeError, json.JSONDecodeError) as exc:
-                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")  # noqa: G004
+                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
             else:
                 logger.debug(
-                    "Skipping non-string, non-dict value while extracting column children: "  # noqa: G004
+                    "Skipping non-string, non-dict value while extracting column children: "
                     f"type is {type(value).__name__}"
                 )
 
@@ -617,7 +617,7 @@ class ParquetDataFrameColumnParser:
                 except AttributeError as exc:
                     # if the value field is not specified, we will set it to UNKNOWN
                     logger.debug(
-                        f"Could not extract array item type for column '{column.name}': {exc}. "  # noqa: G004
+                        f"Could not extract array item type for column '{column.name}': {exc}. "
                         f"Setting arrayDataType to UNKNOWN."
                     )
                     parsed_column["arrayDataType"] = DataType.UNKNOWN
@@ -714,7 +714,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 # Otherwise, try to parse as standard JSON Schema
                 return parse_json_schema(schema_text=self.raw_data, cls=Column)
             except Exception as exc:
-                logger.warning(f"Unable to parse the json schema: {exc}")  # noqa: G004
+                logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())
         return self._get_columns(self.data_frame)
 
@@ -755,7 +755,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 except (ValueError, AttributeError) as exc:
                     # If the type is not recognized, default to STRING
                     logger.debug(
-                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. Defaulting to STRING."  # noqa: G004
+                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. Defaulting to STRING."
                     )
                     data_type = DataType.STRING
 
@@ -773,7 +773,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
 
                 columns.append(column)
             except Exception as exc:
-                logger.warning(f"Unable to parse field {field}: {exc}")  # noqa: G004
+                logger.warning(f"Unable to parse field {field}: {exc}")
                 logger.debug(traceback.format_exc())
 
         return columns
@@ -798,7 +798,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                     data_type = DataType(type_str.upper()) if isinstance(type_str, str) else DataType.STRING
                 except (ValueError, AttributeError) as exc:
                     logger.debug(
-                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "  # noqa: G004
+                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "
                         f"Defaulting to STRING."
                     )
                     data_type = DataType.STRING
@@ -816,7 +816,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
 
                 children.append(child)
             except Exception as exc:
-                logger.warning(f"Unable to parse nested field {field}: {exc}")  # noqa: G004
+                logger.warning(f"Unable to parse nested field {field}: {exc}")
                 logger.debug(traceback.format_exc())
 
         return children

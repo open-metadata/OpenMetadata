@@ -77,7 +77,7 @@ class CustomNERScanner:
                 for recognizer in self.recognizer_registry.get_recognizers_for_tag(tag.fullyQualifiedName):
                     recognizer.supported_language = SUPPORTED_LANG
                     self.analyzer_engine.registry.add_recognizer(recognizer)
-                    logger.info(f"Registered recognizer {recognizer.name} for tag {tag.fullyQualifiedName}")  # noqa: G004
+                    logger.info(f"Registered recognizer {recognizer.name} for tag {tag.fullyQualifiedName}")
 
     def scan_text(self, text: str, classification_fqn: str | None = None) -> list[TagLabel]:
         """

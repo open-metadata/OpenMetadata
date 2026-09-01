@@ -74,7 +74,7 @@ class McpConnectionManager:
         elif discovery_method == DiscoveryMethod.Registry:
             self._discovered_servers = self._discover_from_registry()
         else:
-            logger.warning(f"Unknown discovery method: {discovery_method}")  # noqa: G004
+            logger.warning(f"Unknown discovery method: {discovery_method}")
             self._discovered_servers = []
 
         return self._discovered_servers
@@ -135,10 +135,10 @@ class McpConnectionManager:
             client = self.connect_to_server(server)
             return True  # noqa: TRY300
         except McpProtocolError as e:
-            logger.error(f"Failed to connect to MCP server '{server.name}': {e}")  # noqa: G004
+            logger.error(f"Failed to connect to MCP server '{server.name}': {e}")
             return False
         except Exception as e:
-            logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")  # noqa: G004
+            logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")
             return False
         finally:
             if client:
@@ -167,7 +167,7 @@ def _test_discover_servers(manager: McpConnectionManager) -> None:
     servers = manager.discover_servers()
     if not servers:
         raise SourceConnectionException("No MCP servers discovered")
-    logger.info(f"Discovered {len(servers)} MCP server(s)")  # noqa: G004
+    logger.info(f"Discovered {len(servers)} MCP server(s)")
 
 
 def _test_connect_to_servers(manager: McpConnectionManager) -> None:
@@ -177,10 +177,10 @@ def _test_connect_to_servers(manager: McpConnectionManager) -> None:
 
     for server in servers[:3]:
         if manager.test_server_connection(server):
-            logger.info(f"Successfully connected to MCP server '{server.name}'")  # noqa: G004
+            logger.info(f"Successfully connected to MCP server '{server.name}'")
             connected = True
             break
-        logger.warning(f"Could not connect to MCP server '{server.name}'")  # noqa: G004
+        logger.warning(f"Could not connect to MCP server '{server.name}'")
 
     if not connected:
         raise SourceConnectionException("Could not connect to any discovered MCP servers")

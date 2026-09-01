@@ -127,7 +127,7 @@ class AirflowApiSource(PipelineServiceSource):
                 return
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not preserve source state for Airflow DAG {dag_id}: {exc}")  # noqa: G004
+            logger.warning(f"Could not preserve source state for Airflow DAG {dag_id}: {exc}")
 
         self._dag_listing_complete = False
 
@@ -185,7 +185,7 @@ class AirflowApiSource(PipelineServiceSource):
                 if ref:
                     refs.root.extend(ref.root)
             except Exception as exc:
-                logger.warning(f"Error while getting details of user {owner_name} - {exc}")  # noqa: G004
+                logger.warning(f"Error while getting details of user {owner_name} - {exc}")
         return refs if refs.root else None
 
     def _build_tasks(self, dag_details: AirflowApiDagDetails) -> list[Task]:

@@ -181,6 +181,6 @@ def generate_source_hash(create_request: C, exclude_fields: dict | None = None) 
         return hashlib.md5(json_bytes).hexdigest()
 
     except Exception as exc:
-        logger.warning(f"Failed to generate source hash due to - {exc}")  # noqa: G004
+        logger.warning(f"Failed to generate source hash due to - {exc}")
         logger.debug(traceback.format_exc())
     return None

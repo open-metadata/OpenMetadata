@@ -109,7 +109,7 @@ class GrafanaSource(DashboardServiceSource):
         for ds in datasources:
             self.datasources[ds.uid] = ds
             self.datasources[ds.name] = ds
-        logger.info(f"Found {len(datasources)} datasources")  # noqa: G004
+        logger.info(f"Found {len(datasources)} datasources")
 
     def get_dashboards_list(self) -> list[dict] | None:
         """Get list of dashboards"""
@@ -125,7 +125,7 @@ class GrafanaSource(DashboardServiceSource):
         try:
             return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
-            logger.warning(f"Failed to get dashboard details for {dashboard['uid']}: {exc}")  # noqa: G004
+            logger.warning(f"Failed to get dashboard details for {dashboard['uid']}: {exc}")
             return None
 
     def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> EntityReferenceList | None:
@@ -135,7 +135,7 @@ class GrafanaSource(DashboardServiceSource):
                 # Try to get user by email if available
                 return self.metadata.get_reference_by_email(dashboard_details.meta.createdBy)
         except Exception as err:
-            logger.debug(f"Could not fetch owner data: {err}")  # noqa: G004
+            logger.debug(f"Could not fetch owner data: {err}")
         return None
 
     def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
@@ -378,7 +378,7 @@ class GrafanaSource(DashboardServiceSource):
 
         except Exception as exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")  # noqa: G004
+            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
             logger.error(traceback.format_exc())
 
     def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> str | None:
@@ -400,7 +400,7 @@ class GrafanaSource(DashboardServiceSource):
 
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error extracting datasource name: {exc}")  # noqa: G004
+            logger.debug(f"Error extracting datasource name: {exc}")
             return None
 
     def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> str | None:
@@ -421,7 +421,7 @@ class GrafanaSource(DashboardServiceSource):
                 # Try generic query field
                 return target.query
         except Exception as exc:
-            logger.debug(f"Error extracting SQL query: {exc}")  # noqa: G004
+            logger.debug(f"Error extracting SQL query: {exc}")
             return None
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:

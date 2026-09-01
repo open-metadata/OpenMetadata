@@ -131,7 +131,7 @@ class RedashSource(DashboardServiceSource):
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def get_dashboard_url(self, dashboard_details: dict) -> str:
@@ -241,7 +241,7 @@ class RedashSource(DashboardServiceSource):
                             and prefix_table_name.lower() != database_schema_table.get("table").lower()
                         ):
                             logger.debug(
-                                f"[{query_hash}] Table {database_schema_table.get('table')} does not match"  # noqa: G004
+                                f"[{query_hash}] Table {database_schema_table.get('table')} does not match"
                                 f" prefix {prefix_table_name}"
                             )
                             continue
@@ -252,7 +252,7 @@ class RedashSource(DashboardServiceSource):
                             and prefix_schema_name.lower() != database_schema_name.lower()
                         ):
                             logger.debug(
-                                f"[{query_hash}] Schema {database_schema_name} does not match"  # noqa: G004
+                                f"[{query_hash}] Schema {database_schema_name} does not match"
                                 f" prefix {prefix_schema_name}"
                             )
                             continue
@@ -263,7 +263,7 @@ class RedashSource(DashboardServiceSource):
                             and prefix_database_name.lower() != database_schema_table.get("database").lower()
                         ):
                             logger.debug(
-                                f"[{query_hash}] Database {database_schema_table.get('database')} does not match"  # noqa: G004
+                                f"[{query_hash}] Database {database_schema_table.get('database')} does not match"
                                 f" prefix {prefix_database_name}"
                             )
                             continue

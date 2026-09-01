@@ -296,13 +296,13 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         if self.service_connection.catalog:
             configured_catalog = self.service_connection.catalog
             try:
-                logger.debug(f"Fetching configured catalog [{configured_catalog}] details to cache for later use")  # noqa: G004
+                logger.debug(f"Fetching configured catalog [{configured_catalog}] details to cache for later use")
                 catalog = self.client.catalogs.get(configured_catalog)
                 with self._state_lock:
                     self._catalog_cache[configured_catalog] = catalog
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch configured catalog [{configured_catalog}]: {exc}")  # noqa: G004
+                logger.warning(f"Failed to fetch configured catalog [{configured_catalog}]: {exc}")
             self._set_incremental_table_processor(configured_catalog)
             yield configured_catalog
         else:
@@ -453,11 +453,11 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             for row in cursor:
                 table_identifier = (row.table_catalog, row.table_schema, row.table_name)
                 tables_with_constraints.add(table_identifier)
-                logger.debug(f"Table with constraints: {table_identifier}")  # noqa: G004
+                logger.debug(f"Table with constraints: {table_identifier}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error fetching table constraints for catalog [{catalog_name}], schema [{schema_name}]: {exc}"  # noqa: G004
+                f"Error fetching table constraints for catalog [{catalog_name}], schema [{schema_name}]: {exc}"
             )
         return tables_with_constraints
 
@@ -607,7 +607,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     return result[0]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get schema definition for table [{table_name}]: {exc}")  # noqa: G004
+            logger.warning(f"Unable to get schema definition for table [{table_name}]: {exc}")
         return None
 
     def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
@@ -763,7 +763,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             if not self.context.get().__dict__.get("database"):
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
             if self.source_config.markDeletedTables:
-                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # pyright: ignore[reportAttributeAccessIssue]  # noqa: G004
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # pyright: ignore[reportAttributeAccessIssue]
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
@@ -799,7 +799,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to add description to complex datatypes for column [{column.name}]: {exc}")  # noqa: G004
+            logger.warning(f"Unable to add description to complex datatypes for column [{column.name}]: {exc}")
 
     def get_columns(self, table_name: str, column_data: list[ColumnInfo]) -> Iterable[Column]:
         """
@@ -832,7 +832,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error processing column [{getattr(column, 'name', None)}] "  # noqa: G004
+                    f"Error processing column [{getattr(column, 'name', None)}] "
                     f"of table [{table_name}], skipping it: {exc}"
                 )
 
@@ -874,7 +874,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error getting tags for {error_context}: {exc}")  # noqa: G004
+                logger.warning(f"Error getting tags for {error_context}: {exc}")
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog database/catalog tags using SQL query"""
@@ -946,5 +946,5 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner {owner}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing owner {owner}: {exc}")
         return None

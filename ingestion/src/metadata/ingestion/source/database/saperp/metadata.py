@@ -114,7 +114,7 @@ class SaperpSource(CommonDbSourceService):
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to process table information for table: {str(table_name)} - {err}")  # noqa: G004, RUF010
+                logger.warning(f"Unable to process table information for table: {str(table_name)} - {err}")  # noqa: RUF010
 
     def _check_col_length(  # pylint: disable=arguments-differ
         self,
@@ -132,7 +132,7 @@ class SaperpSource(CommonDbSourceService):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch column length: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch column length: {exc}")
         return None, None
 
     def _get_table_constraints(self, columns: list[Column] | None) -> TableConstraintsModel:
@@ -156,7 +156,7 @@ class SaperpSource(CommonDbSourceService):
                 return TableConstraintsModel(table_constraints=table_constraints or None, pk_columns=pk_columns)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch table constraints: {exc}")  # noqa: G004
+            logger.warning(f"Failed to fetch table constraints: {exc}")
         return TableConstraintsModel()
 
     def _get_column_constraint(self, column: SapErpColumn, pk_columns: list[str]):
@@ -211,7 +211,7 @@ class SaperpSource(CommonDbSourceService):
                 if sap_column.datatype is None:
                     column_type = DataType.UNKNOWN.name
                     data_type_display = column_type.lower()
-                    logger.warning(f"Unknown type {repr(sap_column.datatype)}: {sap_column.fieldname}")  # noqa: G004, RUF010
+                    logger.warning(f"Unknown type {repr(sap_column.datatype)}: {sap_column.fieldname}")  # noqa: RUF010
                 data_type_display = self._get_display_datatype(
                     column_type,
                     col_data_length,
@@ -245,7 +245,7 @@ class SaperpSource(CommonDbSourceService):
                 om_columns.append(om_column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to get column details for {sap_column.fieldname}: {exc}")  # noqa: G004
+                logger.warning(f"Unable to get column details for {sap_column.fieldname}: {exc}")
         return ColumnsAndConstraints(
             columns=om_columns,
             table_constraints=table_constraints_model.table_constraints,

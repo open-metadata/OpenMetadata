@@ -38,7 +38,7 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
 
     if source_type is None:
         logger.warning(
-            f"Lineage of airbyte pipeline with source [{source_connection.resolved_type}] is not supported yet"  # noqa: G004
+            f"Lineage of airbyte pipeline with source [{source_connection.resolved_type}] is not supported yet"
         )
         return None
 
@@ -70,7 +70,7 @@ def get_destination_table_details(
 
     if destination_type is None:
         logger.warning(
-            f"Lineage of airbyte pipeline with destination [{destination_connection.resolved_type}] is not supported yet"  # noqa: G004
+            f"Lineage of airbyte pipeline with destination [{destination_connection.resolved_type}] is not supported yet"
         )
         return None
 

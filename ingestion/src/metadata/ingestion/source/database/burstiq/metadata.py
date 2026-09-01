@@ -121,7 +121,7 @@ class Burstiqsource(DatabaseServiceSource):
             return self._current_dictionary
 
         # If not cached or doesn't match, fetch from API
-        logger.warning(f"Dictionary for table '{table_name}' not in cache, fetching from API...")  # noqa: G004
+        logger.warning(f"Dictionary for table '{table_name}' not in cache, fetching from API...")
         client = self.client
         return client.get_dictionary_by_name(table_name)
 
@@ -231,12 +231,12 @@ class Burstiqsource(DatabaseServiceSource):
 
         except ConnectionError as err:
             # Connection errors are critical - fail fast and stop the workflow
-            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")  # noqa: G004
+            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Cannot connect to BurstIQ API: {err}") from err
         except Exception as err:
             # Other errors - log and re-raise to fail the workflow
-            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")  # noqa: G004
+            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")
             logger.debug(traceback.format_exc())
             raise
 
@@ -292,7 +292,7 @@ class Burstiqsource(DatabaseServiceSource):
             return Column(**column_props)
 
         except Exception as exc:
-            logger.warning(f"Error processing column {attribute.name} for table {table_name}: {exc}")  # noqa: G004
+            logger.warning(f"Error processing column {attribute.name} for table {table_name}: {exc}")
             logger.debug(traceback.format_exc())
             return None
 

@@ -86,7 +86,7 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
                 if next_token is None:
                     break
         except Exception as exc:
-            logger.debug(f"Failed to fetch work groups due to: {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch work groups due to: {exc}")
             logger.debug(traceback.format_exc())
             if is_first_call:
                 # if it fails for the first api call, most likely due to insufficient

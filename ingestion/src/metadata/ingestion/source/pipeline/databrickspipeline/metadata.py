@@ -129,7 +129,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 yield DataBrickPipelineDetails(**workflow)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get jobs list due to : {exc}")  # noqa: G004
+            logger.error(f"Failed to get jobs list due to : {exc}")
 
         # Fetch DLT pipelines directly (new)
         try:
@@ -137,12 +137,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 try:
                     yield DataBrickPipelineDetails(**pipeline)
                 except Exception as exc:
-                    logger.debug(f"Error creating DLT pipeline details: {exc}")  # noqa: G004
+                    logger.debug(f"Error creating DLT pipeline details: {exc}")
                     logger.debug(traceback.format_exc())
                     continue
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get DLT pipelines list due to : {exc}")  # noqa: G004
+            logger.warning(f"Failed to get DLT pipelines list due to : {exc}")
 
         return None
 
@@ -153,7 +153,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             return pipeline_details.settings.name if pipeline_details.settings else None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name due to : {exc}")  # noqa: G004
+            logger.error(f"Failed to get pipeline name due to : {exc}")
 
         return None
 
@@ -233,7 +233,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             ]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get tasks list due to : {exc}")  # noqa: G004
+            logger.warning(f"Failed to get tasks list due to : {exc}")
         return []
 
     def yield_pipeline_status(
@@ -317,7 +317,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             for column_tuple in column_lineage or []:
                 try:
                     if len(column_tuple) < 2:
-                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")  # noqa: G004
+                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")
                         continue
 
                     source_col = column_tuple[0]
@@ -325,7 +325,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                     if not source_col or not target_col:
                         logger.debug(
-                            f"Skipping column tuple with empty values: source={source_col}, "  # noqa: G004
+                            f"Skipping column tuple with empty values: source={source_col}, "
                             f"target={target_col}, to_entity={to_entity.name}"
                         )
                         continue
@@ -343,11 +343,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             )
                         )
                 except Exception as err:
-                    logger.warning(f"Error processing column lineage {column_tuple}: {err}")  # noqa: G004
+                    logger.warning(f"Error processing column lineage {column_tuple}: {err}")
                     logger.debug(traceback.format_exc())
                     continue
         if not processed_column_lineage:
-            logger.warning(f"No column lineage found for {from_entity.name} to {to_entity.name}")  # noqa: G004
+            logger.warning(f"No column lineage found for {from_entity.name} to {to_entity.name}")
         return processed_column_lineage or []
 
     def _get_databricks_services(self) -> list[str]:
@@ -359,7 +359,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         # Return cached services if already fetched
         if self._databricks_services_cached:
-            logger.debug(f"Using cached Databricks services: {self._databricks_services}")  # noqa: G004
+            logger.debug(f"Using cached Databricks services: {self._databricks_services}")
             return self._databricks_services
 
         try:
@@ -378,7 +378,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     service_type = service.serviceType.value if hasattr(service, "serviceType") else None
                     service_name = service.name.root if hasattr(service.name, "root") else service.name
 
-                    logger.debug(f"  Service: {service_name}, Type: {service_type}")  # noqa: G004
+                    logger.debug(f"  Service: {service_name}, Type: {service_type}")
 
                     # Check if it's a Databricks or Unity Catalog service
                     if service_type and service_type.lower() in [
@@ -386,21 +386,21 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         "unitycatalog",
                     ]:
                         databricks_services.append(service_name)
-                        logger.debug(f"    ✓ Databricks/Unity Catalog service: {service_name}")  # noqa: G004
+                        logger.debug(f"    ✓ Databricks/Unity Catalog service: {service_name}")
 
                 except Exception as exc:
-                    logger.debug(f"  Error processing service: {exc}")  # noqa: G004
+                    logger.debug(f"  Error processing service: {exc}")
                     continue
 
             # Cache the results
             self._databricks_services = databricks_services
             self._databricks_services_cached = True
 
-            logger.info(f"Found {len(databricks_services)} Databricks/Unity Catalog service(s): {databricks_services}")  # noqa: G004
+            logger.info(f"Found {len(databricks_services)} Databricks/Unity Catalog service(s): {databricks_services}")
             return databricks_services  # noqa: TRY300
 
         except Exception as exc:
-            logger.warning(f"Error fetching Databricks services: {exc}")  # noqa: G004
+            logger.warning(f"Error fetching Databricks services: {exc}")
             logger.debug(traceback.format_exc())
             # Cache empty list to avoid repeated failures
             self._databricks_services = []
@@ -505,10 +505,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
             # Check cache first to avoid duplicate API calls
             cache_key = f"{catalog}.{schema}.{table_name}"
             if cache_key in self._dlt_table_cache:
-                logger.debug(f"DLT table found in cache: {cache_key}")  # noqa: G004
+                logger.debug(f"DLT table found in cache: {cache_key}")
                 return self._dlt_table_cache.get(cache_key)
 
-            logger.debug(f"Searching for DLT table: catalog={catalog}, schema={schema}, table={table_name}")  # noqa: G004
+            logger.debug(f"Searching for DLT table: catalog={catalog}, schema={schema}, table={table_name}")
 
             # Get all Databricks/Unity Catalog services (uses cache)
             databricks_services = self._get_databricks_services()
@@ -518,12 +518,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 # Fall back to configured dbServiceNames if available
                 databricks_services = self.get_db_service_names() or []
                 if databricks_services:
-                    logger.info(f"Using configured database services: {databricks_services}")  # noqa: G004
+                    logger.info(f"Using configured database services: {databricks_services}")
 
             if not databricks_services:
                 return None
 
-            logger.debug(f"Trying {len(databricks_services)} Databricks service(s)")  # noqa: G004
+            logger.debug(f"Trying {len(databricks_services)} Databricks service(s)")
 
             # Try each Databricks service with exact case
             for service_name in databricks_services:
@@ -538,19 +538,19 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         table_name=table_name,
                     )
 
-                    logger.debug(f"  Trying FQN: {table_fqn}")  # noqa: G004
+                    logger.debug(f"  Trying FQN: {table_fqn}")
 
                     # Try to get table
                     table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                     if table:
-                        logger.info(f"Found DLT table with FQN: {table_fqn}")  # noqa: G004
+                        logger.info(f"Found DLT table with FQN: {table_fqn}")
                         # Cache the found table
                         cache_key = f"{catalog}.{schema}.{table_name}"
                         self._dlt_table_cache.put(cache_key, table)
                         return table
 
                 except Exception as exc:
-                    logger.debug(f"  Error checking service {service_name}: {exc}")  # noqa: G004
+                    logger.debug(f"  Error checking service {service_name}: {exc}")
                     continue
 
             # If no exact match found, try case-insensitive (Unity Catalog lowercases table names)
@@ -566,26 +566,26 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         table_name=table_name.lower(),
                     )
 
-                    logger.debug(f"  Trying lowercase FQN: {table_fqn}")  # noqa: G004
+                    logger.debug(f"  Trying lowercase FQN: {table_fqn}")
 
                     table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                     if table:
-                        logger.info(f"Found DLT table with FQN (lowercase): {table_fqn}")  # noqa: G004
+                        logger.info(f"Found DLT table with FQN (lowercase): {table_fqn}")
                         # Cache the found table
                         cache_key = f"{catalog}.{schema}.{table_name}"
                         self._dlt_table_cache.put(cache_key, table)
                         return table
 
                 except Exception as exc:
-                    logger.debug(f"  Error checking service {service_name} (lowercase): {exc}")  # noqa: G004
+                    logger.debug(f"  Error checking service {service_name} (lowercase): {exc}")
                     continue
 
         except Exception as exc:
-            logger.debug(f"Could not find DLT table {table_name}: {exc}")  # noqa: G004
+            logger.debug(f"Could not find DLT table {table_name}: {exc}")
             logger.debug(traceback.format_exc())
 
         logger.warning(
-            f"DLT table not found: {catalog}.{schema}.{table_name}. "  # noqa: G004
+            f"DLT table not found: {catalog}.{schema}.{table_name}. "
             f"Ensure the table is ingested from a Databricks/Unity Catalog database service."
         )
         # Cache None to avoid repeated lookups for non-existent tables
@@ -604,7 +604,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         When TopicName has dots, it's quoted: MessagingServiceName."dev.ern.topic"
         """
         try:
-            logger.debug(f"Searching for topic {topic_name} across all messaging services")  # noqa: G004
+            logger.debug(f"Searching for topic {topic_name} across all messaging services")
 
             # Use ES search with wildcard pattern to find topic regardless of service
             # Pattern: *.topic_name or *."topic.with.dots"
@@ -614,7 +614,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             search_topic_name = f'"{topic_name}"' if "." in topic_name else topic_name
             search_pattern = f"*.{search_topic_name}"
 
-            logger.debug(f"Using search pattern: {search_pattern}")  # noqa: G004
+            logger.debug(f"Using search pattern: {search_pattern}")
 
             # Search using ES field query for FQN pattern matching
             query_string = f"/search/fieldQuery?fieldName=fullyQualifiedName&fieldValue={search_pattern}&from=0&size=10&index={ES_INDEX_MAP['Topic']}&deleted=false"
@@ -629,18 +629,18 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     # Fetch full topic entity
                     topic = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
                     if topic:
-                        logger.info(f"Found topic {topic_name} with FQN: {topic_fqn}")  # noqa: G004
+                        logger.info(f"Found topic {topic_name} with FQN: {topic_fqn}")
                         return topic
             except Exception as search_exc:
-                logger.debug(f"ES search error: {search_exc}")  # noqa: G004
+                logger.debug(f"ES search error: {search_exc}")
                 logger.debug(traceback.format_exc())
 
         except Exception as exc:
-            logger.debug(f"Could not find topic {topic_name}: {exc}")  # noqa: G004
+            logger.debug(f"Could not find topic {topic_name}: {exc}")
             logger.debug(traceback.format_exc())
 
         logger.warning(
-            f"Topic {topic_name} not found in OpenMetadata. Ensure the topic is ingested from a messaging service."  # noqa: G004
+            f"Topic {topic_name} not found in OpenMetadata. Ensure the topic is ingested from a messaging service."
         )
         return None
 
@@ -654,10 +654,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         try:
             logger.info("=" * 80)
-            logger.info(f"KAFKA LINEAGE EXTRACTION STARTED")  # noqa: F541, G004
-            logger.info(f"Pipeline: {pipeline_details.name if hasattr(pipeline_details, 'name') else 'N/A'}")  # noqa: G004
-            logger.info(f"Job ID: {pipeline_details.job_id}")  # noqa: G004
-            logger.info(f"Pipeline ID: {pipeline_details.pipeline_id}")  # noqa: G004
+            logger.info(f"KAFKA LINEAGE EXTRACTION STARTED")  # noqa: F541
+            logger.info(f"Pipeline: {pipeline_details.name if hasattr(pipeline_details, 'name') else 'N/A'}")
+            logger.info(f"Job ID: {pipeline_details.job_id}")
+            logger.info(f"Pipeline ID: {pipeline_details.pipeline_id}")
             logger.info("=" * 80)
 
             # Only process DLT pipelines - check for pipeline_id
@@ -669,70 +669,70 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 try:
                     tasks = pipeline_details.settings.tasks
                     logger.debug(
-                        f"Checking for DLT pipeline in job {pipeline_details.job_id}: "  # noqa: G004
+                        f"Checking for DLT pipeline in job {pipeline_details.job_id}: "
                         f"{len(tasks) if tasks else 0} tasks found"
                     )
 
                     if tasks:
                         for task in tasks:
-                            logger.debug(f"Task: {task.name}, has pipeline_task: {task.pipeline_task is not None}")  # noqa: G004
+                            logger.debug(f"Task: {task.name}, has pipeline_task: {task.pipeline_task is not None}")
                             # Check for direct DLT pipeline task
                             if task.pipeline_task and task.pipeline_task.pipeline_id:
                                 pipeline_id = task.pipeline_task.pipeline_id
                                 logger.info(
-                                    f"✓ Found DLT pipeline_id from job task: {pipeline_id} for job {pipeline_details.job_id}"  # noqa: G004
+                                    f"✓ Found DLT pipeline_id from job task: {pipeline_id} for job {pipeline_details.job_id}"
                                 )
                                 break
                 except Exception as exc:
-                    logger.debug(f"Error checking for pipeline tasks: {exc}")  # noqa: G004
+                    logger.debug(f"Error checking for pipeline tasks: {exc}")
                     logger.debug(traceback.format_exc())
 
             # Only process if we have a DLT pipeline_id
             if not pipeline_id:
                 logger.info(
-                    f"⊗ No DLT pipeline_id found - skipping Kafka lineage extraction"  # noqa: F541, G004
+                    f"⊗ No DLT pipeline_id found - skipping Kafka lineage extraction"  # noqa: F541
                 )
-                logger.info(f"   Job ID: {pipeline_details.job_id}")  # noqa: G004
-                logger.info(f"   Pipeline ID: {pipeline_details.pipeline_id}")  # noqa: G004
+                logger.info(f"   Job ID: {pipeline_details.job_id}")
+                logger.info(f"   Pipeline ID: {pipeline_details.pipeline_id}")
                 logger.info("=" * 80)
                 return
 
-            logger.info(f"✓ Processing Kafka lineage for DLT pipeline: {pipeline_id}")  # noqa: G004
+            logger.info(f"✓ Processing Kafka lineage for DLT pipeline: {pipeline_id}")
 
             # Get pipeline configuration and extract target catalog/schema
             target_catalog = None
             target_schema = None
             notebook_paths = []
             try:
-                logger.info(f"⟳ Fetching pipeline configuration for {pipeline_id}...")  # noqa: G004
+                logger.info(f"⟳ Fetching pipeline configuration for {pipeline_id}...")
                 pipeline_config = self.client.get_pipeline_details(pipeline_id)
                 if not pipeline_config:
-                    logger.warning(f"✗ Could not fetch pipeline config for {pipeline_id}")  # noqa: G004
+                    logger.warning(f"✗ Could not fetch pipeline config for {pipeline_id}")
                     logger.info("=" * 80)
                     return
 
-                logger.debug(f"✓ Pipeline config fetched successfully")  # noqa: F541, G004
-                logger.debug(f"   Config keys: {list(pipeline_config.keys())}")  # noqa: G004
+                logger.debug(f"✓ Pipeline config fetched successfully")  # noqa: F541
+                logger.debug(f"   Config keys: {list(pipeline_config.keys())}")
 
                 # Extract spec for detailed configuration
                 spec = pipeline_config.get("spec", {})
-                logger.info(f"✓ Pipeline spec extracted")  # noqa: F541, G004
-                logger.info(f"   Spec keys: {list(spec.keys()) if spec else 'None'}")  # noqa: G004
+                logger.info(f"✓ Pipeline spec extracted")  # noqa: F541
+                logger.info(f"   Spec keys: {list(spec.keys()) if spec else 'None'}")
 
                 # Extract target catalog and schema for DLT tables
                 target_catalog = spec.get("catalog") if spec else None
                 # Schema can be in 'target' or 'schema' field
                 target_schema = spec.get("target") or spec.get("schema") if spec else None
-                logger.info(f"✓ DLT Target Location:")  # noqa: F541, G004
-                logger.info(f"   Catalog: {target_catalog or 'NOT SET'}")  # noqa: G004
-                logger.info(f"   Schema: {target_schema or 'NOT SET'}")  # noqa: G004
+                logger.info(f"✓ DLT Target Location:")  # noqa: F541
+                logger.info(f"   Catalog: {target_catalog or 'NOT SET'}")
+                logger.info(f"   Schema: {target_schema or 'NOT SET'}")
 
                 # Extract notebook/file paths from libraries in spec
                 notebook_paths = []
                 if spec:
                     # the key can be present and null, so read it rather than test for it
                     libraries = spec.get("libraries") or []
-                    logger.info(f"⟳ Extracting notebook paths from {len(libraries)} libraries...")  # noqa: G004
+                    logger.info(f"⟳ Extracting notebook paths from {len(libraries)} libraries...")
                     notebook_paths = get_pipeline_libraries(spec)
 
                 # Also check for source path in spec configuration
@@ -749,28 +749,28 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         source_path = spec["development"].get("source_path")
 
                     if source_path:
-                        logger.info(f"   ✓ Found source_path in pipeline spec: {source_path}")  # noqa: G004
+                        logger.info(f"   ✓ Found source_path in pipeline spec: {source_path}")
                         # a source path is the root of the pipeline's code, so it is a
                         # directory whether or not Databricks spells the trailing slash
                         notebook_paths.append(DLTLibrarySource(path=source_path.rstrip("/") + "/", is_directory=True))
 
-                logger.info(f"✓ Total notebook paths found: {len(notebook_paths)}")  # noqa: G004
+                logger.info(f"✓ Total notebook paths found: {len(notebook_paths)}")
                 for idx, library in enumerate(notebook_paths):
                     logger.info("   %s. %s", idx + 1, library.path)
             except Exception as exc:
-                logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")  # noqa: G004
+                logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")
                 logger.debug(traceback.format_exc())
                 logger.info("=" * 80)
                 return
 
             if not notebook_paths:
-                logger.warning(f"✗ No notebook paths found for pipeline {pipeline_id}")  # noqa: G004
+                logger.warning(f"✗ No notebook paths found for pipeline {pipeline_id}")
                 logger.info("   Cannot extract Kafka lineage without notebook source code")
                 logger.info("=" * 80)
                 return
 
             # Expand directories to individual notebook files
-            logger.info(f"⟳ Expanding directory paths to individual notebooks...")  # noqa: F541, G004
+            logger.info(f"⟳ Expanding directory paths to individual notebooks...")  # noqa: F541
             expanded_paths = []
             for library in notebook_paths:
                 if library.is_directory is False:
@@ -789,55 +789,55 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 else:
                     logger.debug("   ⊗ Nothing found under %s", library.path)
 
-            logger.info(f"✓ Total notebooks to process: {len(expanded_paths)}")  # noqa: G004
+            logger.info(f"✓ Total notebooks to process: {len(expanded_paths)}")
 
             # Process each notebook to extract Kafka sources and DLT tables
             logger.info("-" * 80)
-            logger.info(f"PROCESSING NOTEBOOKS FOR KAFKA LINEAGE")  # noqa: F541, G004
+            logger.info(f"PROCESSING NOTEBOOKS FOR KAFKA LINEAGE")  # noqa: F541
             logger.info("-" * 80)
 
             for idx, lib_path in enumerate(expanded_paths, 1):
                 try:
-                    logger.info(f"\n📓 Notebook {idx}/{len(expanded_paths)}: {lib_path}")  # noqa: G004
-                    logger.info(f"⟳ Exporting notebook source code...")  # noqa: F541, G004
+                    logger.info(f"\n📓 Notebook {idx}/{len(expanded_paths)}: {lib_path}")
+                    logger.info(f"⟳ Exporting notebook source code...")  # noqa: F541
 
                     source_code = self.client.export_notebook_source(lib_path)
                     if not source_code:
-                        logger.warning(f"✗ Could not export source for {lib_path}")  # noqa: G004
+                        logger.warning(f"✗ Could not export source for {lib_path}")
                         continue
 
-                    logger.info(f"✓ Source code exported ({len(source_code)} characters)")  # noqa: G004
+                    logger.info(f"✓ Source code exported ({len(source_code)} characters)")
 
                     # Log full source code for debugging
-                    logger.debug(f"   ===== FULL NOTEBOOK SOURCE CODE =====")  # noqa: F541, G004
+                    logger.debug(f"   ===== FULL NOTEBOOK SOURCE CODE =====")  # noqa: F541
                     for i, line in enumerate(source_code.split("\n"), 1):
-                        logger.debug(f"   {i:3d}: {line}")  # noqa: G004
-                    logger.debug(f"   ===== END OF SOURCE CODE =====")  # noqa: F541, G004
+                        logger.debug(f"   {i:3d}: {line}")
+                    logger.debug(f"   ===== END OF SOURCE CODE =====")  # noqa: F541
 
                     # Extract Kafka topics
-                    logger.info(f"⟳ Parsing Kafka sources from notebook...")  # noqa: F541, G004
-                    logger.debug(f"   Looking for patterns:")  # noqa: F541, G004
+                    logger.info(f"⟳ Parsing Kafka sources from notebook...")  # noqa: F541
+                    logger.debug(f"   Looking for patterns:")  # noqa: F541
                     logger.debug(
-                        f"   - Kafka: .format('kafka')...option('subscribe', 'topic')"  # noqa: F541, G004
+                        f"   - Kafka: .format('kafka')...option('subscribe', 'topic')"  # noqa: F541
                     )
-                    logger.debug(f"   - DLT: @dlt.table(name='table_name')")  # noqa: F541, G004
+                    logger.debug(f"   - DLT: @dlt.table(name='table_name')")  # noqa: F541
                     kafka_sources = extract_kafka_sources(source_code)
                     if kafka_sources:
                         topics_found = [t for ks in kafka_sources for t in ks.topics]
-                        logger.info(f"✓ Found {len(kafka_sources)} Kafka source(s) with {len(topics_found)} topic(s):")  # noqa: G004
+                        logger.info(f"✓ Found {len(kafka_sources)} Kafka source(s) with {len(topics_found)} topic(s):")
                         for ks_idx, ks in enumerate(kafka_sources, 1):
-                            logger.info(f"   Kafka Source {ks_idx}:")  # noqa: G004
-                            logger.info(f"     Topics: {ks.topics}")  # noqa: G004
-                            logger.info(f"     Bootstrap Servers: {ks.bootstrap_servers or 'NOT SET'}")  # noqa: G004
-                            logger.info(f"     Group ID Prefix: {ks.group_id_prefix or 'NOT SET'}")  # noqa: G004
+                            logger.info(f"   Kafka Source {ks_idx}:")
+                            logger.info(f"     Topics: {ks.topics}")
+                            logger.info(f"     Bootstrap Servers: {ks.bootstrap_servers or 'NOT SET'}")
+                            logger.info(f"     Group ID Prefix: {ks.group_id_prefix or 'NOT SET'}")
                     else:
-                        logger.info(f"⊗ No Kafka sources found in notebook")  # noqa: F541, G004
+                        logger.info(f"⊗ No Kafka sources found in notebook")  # noqa: F541
 
                     # Extract DLT table dependencies
-                    logger.info(f"⟳ Parsing DLT table dependencies from notebook...")  # noqa: F541, G004
+                    logger.info(f"⟳ Parsing DLT table dependencies from notebook...")  # noqa: F541
                     dlt_dependencies = extract_dlt_table_dependencies(source_code)
                     if dlt_dependencies:
-                        logger.info(f"✓ Found {len(dlt_dependencies)} DLT table(s) with dependencies")  # noqa: G004
+                        logger.info(f"✓ Found {len(dlt_dependencies)} DLT table(s) with dependencies")
                         for dep in dlt_dependencies:
                             s3_info = (
                                 f", reads_from_s3={dep.reads_from_s3}, s3_locations={dep.s3_locations}"
@@ -845,11 +845,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 else ""
                             )
                             logger.info(
-                                f"   - {dep.table_name}: depends_on={dep.depends_on}, "  # noqa: G004
+                                f"   - {dep.table_name}: depends_on={dep.depends_on}, "
                                 f"reads_from_kafka={dep.reads_from_kafka}{s3_info}"
                             )
                     else:
-                        logger.info(f"⊗ No DLT table dependencies found in notebook")  # noqa: F541, G004
+                        logger.info(f"⊗ No DLT table dependencies found in notebook")  # noqa: F541
 
                     # Check if we have anything to process
                     has_kafka = kafka_sources and len(kafka_sources) > 0
@@ -858,24 +858,24 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                     if not dlt_dependencies:
                         logger.warning(
-                            f"⊗ Skipping lineage for this notebook - no DLT tables found"  # noqa: F541, G004
+                            f"⊗ Skipping lineage for this notebook - no DLT tables found"  # noqa: F541
                         )
                         continue
 
                     if not has_kafka and not has_s3:
                         logger.info(
-                            f"⊗ No external sources (Kafka or S3) found in this notebook - only table-to-table lineage will be created"  # noqa: F541, G004
+                            f"⊗ No external sources (Kafka or S3) found in this notebook - only table-to-table lineage will be created"  # noqa: F541
                         )
 
-                    logger.info(f"✓ Notebook has DLT tables - creating lineage...")  # noqa: F541, G004
+                    logger.info(f"✓ Notebook has DLT tables - creating lineage...")  # noqa: F541
                     if has_kafka:
-                        logger.info(f"   Kafka sources: {len(kafka_sources)}")  # noqa: G004
+                        logger.info(f"   Kafka sources: {len(kafka_sources)}")
                     if has_s3:
                         s3_count = sum(len(dep.s3_locations) for dep in dlt_dependencies if dep.reads_from_s3)
-                        logger.info(f"   S3 sources: {s3_count} location(s)")  # noqa: G004
+                        logger.info(f"   S3 sources: {s3_count} location(s)")
 
                     # Create lineage edges based on dependencies
-                    logger.info(f"\n⟳ Creating lineage edges...")  # noqa: F541, G004
+                    logger.info(f"\n⟳ Creating lineage edges...")  # noqa: F541
                     lineage_created = 0
 
                     # Step 1: Create Kafka topic -> DLT table lineage
@@ -888,15 +888,15 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     for kafka_config in kafka_sources:
                         for topic_name in kafka_config.topics:
                             try:
-                                logger.info(f"\n   🔍 Processing Kafka topic: {topic_name}")  # noqa: G004
+                                logger.info(f"\n   🔍 Processing Kafka topic: {topic_name}")
 
                                 kafka_topic = self._find_kafka_topic(topic_name)
                                 if not kafka_topic:
-                                    logger.warning(f"   ✗ Kafka topic '{topic_name}' not found in OpenMetadata")  # noqa: G004
+                                    logger.warning(f"   ✗ Kafka topic '{topic_name}' not found in OpenMetadata")
                                     continue
 
                                 logger.info(
-                                    f"   ✓ Topic found: {kafka_topic.fullyQualifiedName.root if hasattr(kafka_topic.fullyQualifiedName, 'root') else kafka_topic.fullyQualifiedName}"  # noqa: G004
+                                    f"   ✓ Topic found: {kafka_topic.fullyQualifiedName.root if hasattr(kafka_topic.fullyQualifiedName, 'root') else kafka_topic.fullyQualifiedName}"
                                 )
 
                                 # Find tables that read DIRECTLY from Kafka
@@ -904,7 +904,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 # Downstream tables get table -> table lineage in Step 2
                                 for dep in dlt_dependencies:
                                     if dep.reads_from_kafka:
-                                        logger.info(f"   🔍 Processing table: {dep.table_name}")  # noqa: G004
+                                        logger.info(f"   🔍 Processing table: {dep.table_name}")
 
                                         target_table = self._find_dlt_table(
                                             table_name=dep.table_name,
@@ -921,7 +921,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                                 )
                                                 else target_table.fullyQualifiedName
                                             )
-                                            logger.info(f"   ✅ Creating lineage: {topic_name} -> {table_fqn}")  # noqa: G004
+                                            logger.info(f"   ✅ Creating lineage: {topic_name} -> {table_fqn}")
 
                                             yield Either(
                                                 right=AddLineageRequest(
@@ -953,10 +953,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             )
                                             lineage_created += 1
                                         else:
-                                            logger.warning(f"   ✗ Table '{dep.table_name}' not found")  # noqa: G004
+                                            logger.warning(f"   ✗ Table '{dep.table_name}' not found")
 
                             except Exception as exc:
-                                logger.error(f"   ✗ Failed to process topic {topic_name}: {exc}")  # noqa: G004
+                                logger.error(f"   ✗ Failed to process topic {topic_name}: {exc}")
                                 logger.debug(traceback.format_exc())
                                 continue
 
@@ -966,7 +966,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             for source_table_name in dep.depends_on:
                                 try:
                                     logger.info(
-                                        f"\n   🔍 Processing table dependency: {source_table_name} -> {dep.table_name}"  # noqa: G004
+                                        f"\n   🔍 Processing table dependency: {source_table_name} -> {dep.table_name}"
                                     )
 
                                     # Check if source is a view/table that reads from S3
@@ -985,7 +985,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                                         if target_table:
                                             for s3_location in source_dep.s3_locations:
-                                                logger.info(f"   🔍 Looking for S3 container: {s3_location}")  # noqa: G004
+                                                logger.info(f"   🔍 Looking for S3 container: {s3_location}")
                                                 # Search for container by S3 path
                                                 storage_location = s3_location.rstrip("/")
                                                 container_entity = self.metadata.es_search_container_by_path(
@@ -994,7 +994,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                                                 if container_entity and container_entity[0]:
                                                     logger.info(
-                                                        f"   ✅ Creating lineage: {container_entity[0].fullyQualifiedName.root if hasattr(container_entity[0].fullyQualifiedName, 'root') else container_entity[0].fullyQualifiedName} -> {target_table.fullyQualifiedName.root if hasattr(target_table.fullyQualifiedName, 'root') else target_table.fullyQualifiedName}"  # noqa: G004
+                                                        f"   ✅ Creating lineage: {container_entity[0].fullyQualifiedName.root if hasattr(container_entity[0].fullyQualifiedName, 'root') else container_entity[0].fullyQualifiedName} -> {target_table.fullyQualifiedName.root if hasattr(target_table.fullyQualifiedName, 'root') else target_table.fullyQualifiedName}"
                                                     )
 
                                                     yield Either(
@@ -1028,13 +1028,13 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                                     lineage_created += 1
                                                 else:
                                                     logger.warning(
-                                                        f"   ✗ S3 container not found for path: {storage_location}"  # noqa: G004
+                                                        f"   ✗ S3 container not found for path: {storage_location}"
                                                     )
                                                     logger.info(
-                                                        f"      Make sure the S3 container is ingested in OpenMetadata"  # noqa: F541, G004
+                                                        f"      Make sure the S3 container is ingested in OpenMetadata"  # noqa: F541
                                                     )
                                         else:
-                                            logger.warning(f"   ✗ Target table '{dep.table_name}' not found")  # noqa: G004
+                                            logger.warning(f"   ✗ Target table '{dep.table_name}' not found")
                                         continue
 
                                     # Otherwise, create table → table lineage
@@ -1060,7 +1060,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             if hasattr(target_table.fullyQualifiedName, "root")
                                             else target_table.fullyQualifiedName
                                         )
-                                        logger.info(f"   ✅ Creating lineage: {source_fqn} -> {target_fqn}")  # noqa: G004
+                                        logger.info(f"   ✅ Creating lineage: {source_fqn} -> {target_fqn}")
 
                                         yield Either(
                                             right=AddLineageRequest(
@@ -1094,34 +1094,34 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                         lineage_created += 1
                                     else:
                                         if not source_table:
-                                            logger.warning(f"   ✗ Source table '{source_table_name}' not found")  # noqa: G004
+                                            logger.warning(f"   ✗ Source table '{source_table_name}' not found")
                                         if not target_table:
-                                            logger.warning(f"   ✗ Target table '{dep.table_name}' not found")  # noqa: G004
+                                            logger.warning(f"   ✗ Target table '{dep.table_name}' not found")
 
                                 except Exception as exc:
                                     logger.error(
-                                        f"   ✗ Failed to process dependency {source_table_name} -> {dep.table_name}: {exc}"  # noqa: G004
+                                        f"   ✗ Failed to process dependency {source_table_name} -> {dep.table_name}: {exc}"
                                     )
                                     logger.debug(traceback.format_exc())
                                     continue
 
-                    logger.info(f"\n✓ Lineage edges created for this notebook: {lineage_created}")  # noqa: G004
+                    logger.info(f"\n✓ Lineage edges created for this notebook: {lineage_created}")
                 except Exception as exc:
-                    logger.error(f"✗ Failed to process notebook {lib_path}: {exc}")  # noqa: G004
+                    logger.error(f"✗ Failed to process notebook {lib_path}: {exc}")
                     logger.debug(traceback.format_exc())
-                    logger.info(f"   Continuing with next notebook...")  # noqa: F541, G004
+                    logger.info(f"   Continuing with next notebook...")  # noqa: F541
                     continue
 
             logger.info("\n" + "=" * 80)
-            logger.info(f"KAFKA LINEAGE EXTRACTION COMPLETED")  # noqa: F541, G004
-            logger.info(f"Pipeline: {pipeline_details.name if hasattr(pipeline_details, 'name') else 'N/A'}")  # noqa: G004
+            logger.info(f"KAFKA LINEAGE EXTRACTION COMPLETED")  # noqa: F541
+            logger.info(f"Pipeline: {pipeline_details.name if hasattr(pipeline_details, 'name') else 'N/A'}")
             logger.info("=" * 80)
 
         except Exception as exc:
-            logger.error(f"✗ Unexpected error in Kafka lineage extraction: {exc}")  # noqa: G004
-            logger.error(f"   Job ID: {pipeline_details.job_id}")  # noqa: G004
+            logger.error(f"✗ Unexpected error in Kafka lineage extraction: {exc}")
+            logger.error(f"   Job ID: {pipeline_details.job_id}")
             logger.error(
-                f"   Pipeline ID: {pipeline_details.pipeline_id if hasattr(pipeline_details, 'pipeline_id') else 'N/A'}"  # noqa: G004
+                f"   Pipeline ID: {pipeline_details.pipeline_id if hasattr(pipeline_details, 'pipeline_id') else 'N/A'}"
             )
             logger.debug(traceback.format_exc())
             logger.info("=" * 80)
@@ -1148,7 +1148,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 return
 
             table_lineage_list = self.client.get_table_lineage(entity_id=entity_id)
-            logger.debug(f"Processing pipeline lineage for {entity_id}")  # noqa: G004
+            logger.debug(f"Processing pipeline lineage for {entity_id}")
             if table_lineage_list:
                 for table_lineage in table_lineage_list:
                     source_table_full_name = table_lineage.get("source_table_full_name")
@@ -1161,7 +1161,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     # legitimately names its target as its own source. Kept as
                     # lineage it renders as a loop on the node and says nothing.
                     if source_table_full_name == target_table_full_name:
-                        logger.debug(f"Skipping self-referencing lineage row for {source_table_full_name}")  # noqa: G004
+                        logger.debug(f"Skipping self-referencing lineage row for {source_table_full_name}")
                         continue
 
                     source = fqn.split_table_name(source_table_full_name)
@@ -1229,7 +1229,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             )
                         )
             else:
-                logger.debug(f"No table lineage found for {entity_id}")  # noqa: G004
+                logger.debug(f"No table lineage found for {entity_id}")
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

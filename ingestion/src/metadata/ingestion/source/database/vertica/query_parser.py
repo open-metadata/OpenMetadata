@@ -63,7 +63,7 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
                 results = conn.execute(text(VERTICA_LIST_DATABASES)).all()
             for res in results:
                 row = list(res)
-                logger.info(f"Ingesting from database: {row[0]}")  # noqa: G004
+                logger.info(f"Ingesting from database: {row[0]}")
                 self.config.serviceConnection.root.config.database = row[0]  # pyright: ignore[reportAttributeAccessIssue]
                 self.engine = get_connection(self.service_connection)
                 yield from super().get_table_query()

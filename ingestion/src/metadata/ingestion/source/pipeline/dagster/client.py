@@ -70,11 +70,11 @@ class DagsterClient:
             result = RepositoriesOrErrorModel.model_validate(result)
             return result.repositoriesOrError.nodes  # noqa: TRY300
         except ConnectionError as conerr:
-            logger.debug(f"Failed due to: {traceback.format_exc()}")  # noqa: G004
-            logger.error(f"Cannot connect to dagster client {conerr}")  # noqa: G004
+            logger.debug(f"Failed due to: {traceback.format_exc()}")
+            logger.error(f"Cannot connect to dagster client {conerr}")
         except Exception as exc:
-            logger.debug(f"Failed due to: {traceback.format_exc()}")  # noqa: G004
-            logger.error(f"Unable to get dagster run list {exc}")  # noqa: G004
+            logger.debug(f"Failed due to: {traceback.format_exc()}")
+            logger.error(f"Unable to get dagster run list {exc}")
 
         return None
 
@@ -105,7 +105,7 @@ class DagsterClient:
             return runs.pipelineOrError  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error while getting runs for {job_id} - {pipeline_name} - {err}")  # noqa: G004
+            logger.error(f"Error while getting runs for {job_id} - {pipeline_name} - {err}")
 
         return None
 
@@ -128,7 +128,7 @@ class DagsterClient:
             return jobs.graphOrError  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error while getting jobs {pipeline_name} - {err}")  # noqa: G004
+            logger.error(f"Error while getting jobs {pipeline_name} - {err}")
 
         return None
 
@@ -151,10 +151,10 @@ class DagsterClient:
             if response.repositoryOrError.typename == "Repository":
                 return response.repositoryOrError.assetNodes
 
-            logger.warning(f"Failed to fetch assets: {response.repositoryOrError.typename}")  # noqa: G004
+            logger.warning(f"Failed to fetch assets: {response.repositoryOrError.typename}")
             return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching assets: {exc}")  # noqa: G004
+            logger.error(f"Error fetching assets: {exc}")
             return None

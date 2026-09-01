@@ -105,7 +105,7 @@ class DataFrameReader(ABC):
                 return os.path.getsize(key) / (1024 * 1024)  # noqa: PTH202
 
         except Exception as exc:
-            logger.debug(f"Could not determine file size for {key}: {exc}")  # noqa: G004
+            logger.debug(f"Could not determine file size for {key}: {exc}")
             return 0
 
     @abstractmethod

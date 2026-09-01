@@ -300,7 +300,7 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         # Resolve to absolute path to handle relative paths like "."
         dbt_project_path = dbt_project_path.resolve()
 
-        logger.info(f"Starting DBT artifacts ingestion from: {dbt_project_path}")  # noqa: G004
+        logger.info(f"Starting DBT artifacts ingestion from: {dbt_project_path}")
 
         if not dbt_project_path.exists():
             raise FileNotFoundError(f"DBT project path does not exist: {dbt_project_path}")  # noqa: TRY301
@@ -314,8 +314,8 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info("Extracting OpenMetadata configuration...")
         om_config = extract_openmetadata_config(dbt_config)
 
-        logger.info(f"Publishing to OpenMetadata: {om_config.openmetadata_host_port}")  # noqa: G004
-        logger.info(f"Service name: {om_config.openmetadata_service_name}")  # noqa: G004
+        logger.info(f"Publishing to OpenMetadata: {om_config.openmetadata_host_port}")
+        logger.info(f"Service name: {om_config.openmetadata_service_name}")
 
         logger.info("Creating workflow configuration...")
         workflow_config = create_dbt_workflow_config(dbt_project_path, om_config)
@@ -331,6 +331,6 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info("DBT artifacts ingestion completed successfully")
 
     except Exception as exc:
-        logger.error(f"Error during DBT artifacts ingestion: {exc}")  # noqa: G004
+        logger.error(f"Error during DBT artifacts ingestion: {exc}")
         logger.debug(traceback.format_exc())
         sys.exit(1)

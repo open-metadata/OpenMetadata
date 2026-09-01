@@ -171,7 +171,7 @@ class ReturnStep(Step, ABC):
                     self.status.scanned(result.right)
                     return result.right
         except WorkflowFatalError as err:
-            logger.error(f"Fatal error running step [{self}]: [{err}]")  # noqa: G004
+            logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err  # noqa: TRY201
         except AttributeError as exc:
             error = f"Object type defined in `def _run()` {inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
@@ -222,7 +222,7 @@ class StageStep(Step, ABC):
                 if result.right is not None:
                     self.status.scanned(result.right)
         except WorkflowFatalError as err:
-            logger.error(f"Fatal error running step [{self}]: [{err}]")  # noqa: G004
+            logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err  # noqa: TRY201
         except AttributeError as exc:
             error = f"Object type defined in `def _run()` {inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
@@ -267,7 +267,7 @@ class IterStep(Step, ABC):
                     self.status.scanned(result.right)
                     yield result.right
         except WorkflowFatalError as err:
-            logger.error(f"Fatal error running step [{self}]: [{err}]")  # noqa: G004
+            logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err  # noqa: TRY201
         except AttributeError as exc:
             error = (

@@ -112,9 +112,9 @@ class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDr
                 # Try to get user info - this will fail if credentials are invalid
                 about = client.drive_service.about().get(fields="user").execute()  # pyright: ignore[reportAttributeAccessIssue]
                 user_email = about.get("user", {}).get("emailAddress", "Unknown")
-                logger.info(f"Successfully authenticated as: {user_email}")  # noqa: G004
+                logger.info(f"Successfully authenticated as: {user_email}")
             except Exception as exc:
-                logger.debug(f"Access check error traceback: {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"Access check error traceback: {traceback.format_exc()}")
                 raise SourceConnectionException(f"Failed to access Google Drive API: {exc}")  # noqa: B904
 
         def get_drive_files():
@@ -140,21 +140,21 @@ class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDr
                 )
 
                 files = results.get("files", [])
-                logger.info(f"Found {len(files)} files in Drive (sample)")  # noqa: G004
+                logger.info(f"Found {len(files)} files in Drive (sample)")
 
                 # Also test for shared drives
                 logger.info("Testing shared drive access")
                 try:
                     shared_results = client.drive_service.drives().list(pageSize=5, fields="drives(id, name)").execute()  # pyright: ignore[reportAttributeAccessIssue]
                     shared_drives = shared_results.get("drives", [])
-                    logger.info(f"Found {len(shared_drives)} shared drives")  # noqa: G004
+                    logger.info(f"Found {len(shared_drives)} shared drives")
                     for drive in shared_drives:
-                        logger.info(f"Shared drive: {drive.get('name')} (ID: {drive.get('id')})")  # noqa: G004
+                        logger.info(f"Shared drive: {drive.get('name')} (ID: {drive.get('id')})")
                 except Exception as shared_exc:
-                    logger.warning(f"Could not access shared drives: {shared_exc}")  # noqa: G004
+                    logger.warning(f"Could not access shared drives: {shared_exc}")
 
             except Exception as exc:
-                logger.debug(f"Drive files test error traceback: {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"Drive files test error traceback: {traceback.format_exc()}")
                 raise SourceConnectionException(f"Failed to list drive files: {exc}")  # noqa: B904
 
         def get_spreadsheets(include_sheets: bool = False):
@@ -173,10 +173,10 @@ class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDr
                 results = client.drive_service.files().list(q=query, pageSize=5, fields="files(id, name)").execute()  # pyright: ignore[reportAttributeAccessIssue]
 
                 files = results.get("files", [])
-                logger.info(f"Found {len(files)} spreadsheets")  # noqa: G004
+                logger.info(f"Found {len(files)} spreadsheets")
 
             except Exception as exc:
-                logger.debug(f"Spreadsheet test error traceback: {traceback.format_exc()}")  # noqa: G004
+                logger.debug(f"Spreadsheet test error traceback: {traceback.format_exc()}")
                 raise SourceConnectionException(f"Failed to list spreadsheets: {exc}")  # noqa: B904
 
         test_fn = {

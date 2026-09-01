@@ -48,6 +48,6 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
 
     ingestion_runner = getattr(automation_workflow.request, "ingestionRunner", None)
     if ingestion_runner:
-        logger.info(f"Executing automation [{automation_workflow.name.root}] in Runner [{ingestion_runner}]")  # noqa: G004
+        logger.info(f"Executing automation [{automation_workflow.name.root}] in Runner [{ingestion_runner}]")
 
     return run_workflow(automation_workflow.request, automation_workflow, metadata)

@@ -61,7 +61,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
                 return schema  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch the schema name due to: {exc}")  # noqa: G004
+            logger.debug(f"Failed to fetch the schema name due to: {exc}")
         return None
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:

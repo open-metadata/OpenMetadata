@@ -129,7 +129,7 @@ class DomoClient:
                 )
 
         except Exception as exc:
-            logger.error(f"Error while getting details for Card {page_id} - {exc}")  # noqa: G004
+            logger.error(f"Error while getting details for Card {page_id} - {exc}")
             logger.debug(traceback.format_exc())
 
         return None
@@ -139,7 +139,7 @@ class DomoClient:
             response = self.client.get(path=WORKFLOW_URL, headers=HEADERS)
             return response  # noqa: RET504, TRY300
         except Exception as exc:
-            logger.error(f"Error while getting pipelines - {exc}")  # noqa: G004
+            logger.error(f"Error while getting pipelines - {exc}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -149,7 +149,7 @@ class DomoClient:
             response = self.client.get(path=url, headers=HEADERS)
             return response  # noqa: RET504, TRY300
         except Exception as exc:
-            logger.warning(f"Error while getting runs for pipeline {workflow_id} - {exc}")  # noqa: G004
+            logger.warning(f"Error while getting runs for pipeline {workflow_id} - {exc}")
             logger.debug(traceback.format_exc())
         return []
 
@@ -163,7 +163,7 @@ class DomoClient:
             self.client.get(path="content/v1/cards", headers=HEADERS)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error listing cards due to [{exc}]")  # noqa: G004
+            logger.error(f"Error listing cards due to [{exc}]")
             raise exc  # noqa: TRY201
 
 

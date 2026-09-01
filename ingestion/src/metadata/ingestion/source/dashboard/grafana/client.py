@@ -80,12 +80,12 @@ class GrafanaApiClient:
         except requests.exceptions.HTTPError as err:
             status_code = err.response.status_code if err.response is not None else None
             if status_code in (401, 403):
-                logger.warning(f"Permission denied for {endpoint}. Status: {status_code}")  # noqa: G004
+                logger.warning(f"Permission denied for {endpoint}. Status: {status_code}")
             else:
-                logger.error(f"HTTP error for {endpoint}: {err}")  # noqa: G004
+                logger.error(f"HTTP error for {endpoint}: {err}")
             return None
         except Exception as err:
-            logger.error(f"Error making request to {endpoint}: {err}")  # noqa: G004
+            logger.error(f"Error making request to {endpoint}: {err}")
             return None
 
     def get_folders(self) -> list[GrafanaFolder]:
@@ -114,7 +114,7 @@ class GrafanaApiClient:
             return folders  # noqa: TRY300
 
         except Exception as err:
-            logger.error(f"Error fetching folders from Grafana: {err}")  # noqa: G004
+            logger.error(f"Error fetching folders from Grafana: {err}")
 
     def search_dashboards(self, folder_id: int | None = None) -> list[GrafanaSearchResult]:
         """Search for dashboards with optional folder filter"""
@@ -151,7 +151,7 @@ class GrafanaApiClient:
 
             return dashboards  # noqa: TRY300
         except Exception as err:
-            logger.error(f"Error fetching dashboards from Grafana: {err}")  # noqa: G004
+            logger.error(f"Error fetching dashboards from Grafana: {err}")
 
     def get_dashboard(self, uid: str) -> GrafanaDashboardResponse | None:
         """Get detailed dashboard information by UID"""
@@ -161,7 +161,7 @@ class GrafanaApiClient:
                 return GrafanaDashboardResponse(**response.json())
             return None  # noqa: TRY300
         except Exception as err:
-            logger.error(f"Error fetching dashboard details from Grafana: {err}")  # noqa: G004
+            logger.error(f"Error fetching dashboard details from Grafana: {err}")
             return None
 
     def get_datasources(self) -> list[GrafanaDatasource]:
@@ -172,7 +172,7 @@ class GrafanaApiClient:
                 return [GrafanaDatasource(**ds) for ds in response.json()]
             return []  # noqa: TRY300
         except Exception as err:
-            logger.error(f"Error fetching datasources from Grafana: {err}")  # noqa: G004
+            logger.error(f"Error fetching datasources from Grafana: {err}")
             return []
 
     def get_datasource(self, datasource_id: int | str) -> GrafanaDatasource | None:
@@ -189,7 +189,7 @@ class GrafanaApiClient:
                 return GrafanaDatasource(**response.json())
 
         except Exception as err:
-            logger.error(f"Error fetching datasource from Grafana: {err}")  # noqa: G004
+            logger.error(f"Error fetching datasource from Grafana: {err}")
             return None
 
     def test_connection(self) -> bool:
@@ -198,7 +198,7 @@ class GrafanaApiClient:
             response = self._make_request("GET", "/org")
             return response is not None  # noqa: TRY300
         except Exception as err:
-            logger.error(f"Failed to test Grafana connection: {err}")  # noqa: G004
+            logger.error(f"Failed to test Grafana connection: {err}")
             return False
 
     def close(self):

@@ -271,7 +271,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
 
         for node in nodes:
-            logger.debug(f"Processing node {node}")  # noqa: G004
+            logger.debug(f"Processing node {node}")
 
             # Each node producer will give us a list of entities that we need
             # to process. Each of the internal stages will sink result to OM API.
@@ -332,7 +332,7 @@ class TopologyRunnerMixin(Generic[C]):
             yield from stage_fn(node_entity) or []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error running stage processor: {exc}")  # noqa: G004
+            logger.error(f"Error running stage processor: {exc}")
 
     def _process_stage(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
         """
@@ -343,7 +343,7 @@ class TopologyRunnerMixin(Generic[C]):
         entities by comparing ``sourceHash``) is handled server-side by the bulk endpoint, so the
         connector no longer pre-fetches existing entities to build a local cache.
         """
-        logger.debug(f"Processing stage: {stage}")  # noqa: G004
+        logger.debug(f"Processing stage: {stage}")
         operation_metrics = OperationMetricsState()
         stage_start = perf_counter()
 
@@ -353,7 +353,7 @@ class TopologyRunnerMixin(Generic[C]):
                 yield from self.sink_request(stage=stage, entity_request=entity_request)
             except ValueError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")  # noqa: G004
+                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
 
         # Track STAGE time - processing and sinking entities
         stage_time_ms = (perf_counter() - stage_start) * 1000
@@ -370,7 +370,7 @@ class TopologyRunnerMixin(Generic[C]):
         If the node has post_process steps, iterate over them and yield the result
         """
         if node.post_process:
-            logger.debug(f"Post processing node {node}")  # noqa: G004
+            logger.debug(f"Post processing node {node}")
             for process in node.post_process:
                 try:
                     node_post_process = getattr(self, process)

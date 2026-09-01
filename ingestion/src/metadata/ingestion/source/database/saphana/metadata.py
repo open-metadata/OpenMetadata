@@ -113,7 +113,7 @@ class SaphanaSource(CommonDbSourceService):
                     ).all()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error fetching table functions for schema [{schema_name}]: {exc}")  # noqa: G004
+                logger.warning(f"Error fetching table functions for schema [{schema_name}]: {exc}")
                 return
 
             for row in results:
@@ -124,7 +124,7 @@ class SaphanaSource(CommonDbSourceService):
                     yield stored_procedure
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error parsing table function row: {row} - {exc}")  # noqa: G004
+                    logger.warning(f"Error parsing table function row: {row} - {exc}")
                     self.status.failed(
                         error=StackTraceError(
                             name=row._asdict().get("function_name", "UNKNOWN"),
