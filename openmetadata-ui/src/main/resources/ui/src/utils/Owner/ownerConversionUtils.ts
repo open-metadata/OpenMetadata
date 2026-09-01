@@ -10,16 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OwnerRef } from '@openmetadata/ui-core-components';
-import type { EntityReference } from '../../generated/entity/type';
 
-export const toOwnerRef = (ref: EntityReference): OwnerRef => ({
-  id: ref.id,
-  name: ref.name,
-  displayName: ref.displayName,
-  type: (ref.type ?? 'user') as OwnerRef['type'],
-  href: ref.href,
-});
-
-export const toOwnerRefs = (refs?: EntityReference[]): OwnerRef[] =>
-  (refs ?? []).map(toOwnerRef);
+// Re-exported from core-components so both OpenMetadata and Collate import
+// from the same canonical location: @openmetadata/ui-core-components.
+export { toOwnerRef, toOwnerRefs } from '@openmetadata/ui-core-components';
+export type { OwnerLike } from '@openmetadata/ui-core-components';
