@@ -2899,7 +2899,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       K createRequest = createRequest(ns.prefix("bulk" + i), ns);
       T entity = createEntity(createRequest);
       createdIds.add(entity.getId());
-      if (firstEntity == null) firstEntity = entity;
+      if (firstEntity == null) {
+        firstEntity = entity;
+      }
     }
 
     // Verify all entities can be fetched individually
@@ -2914,7 +2916,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
     // mid-list otherwise.
     String scopeService = getEntityServiceFqn(firstEntity);
-    if (scopeService != null) params.setService(scopeService);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
     assertNotNull(response, "List response should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities");
@@ -3349,7 +3353,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     for (int i = 0; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("list" + i), ns);
       T created = createEntity(createRequest);
-      if (firstEntity == null) firstEntity = created;
+      if (firstEntity == null) {
+        firstEntity = created;
+      }
     }
 
     // Basic list test - just verify list API works
@@ -3358,7 +3364,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
     // mid-list otherwise.
     String scopeService = getEntityServiceFqn(firstEntity);
-    if (scopeService != null) params.setService(scopeService);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
     assertNotNull(response, "List response should not be null");
@@ -3378,7 +3386,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     for (int i = 0; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("page" + i), ns);
       T created = createEntity(createRequest);
-      if (firstEntity == null) firstEntity = created;
+      if (firstEntity == null) {
+        firstEntity = created;
+      }
     }
 
     // Basic pagination test - verify pagination works
@@ -3387,7 +3397,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
     // mid-list otherwise.
     String scopeService = getEntityServiceFqn(firstEntity);
-    if (scopeService != null) params.setService(scopeService);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
 
     org.openmetadata.sdk.models.ListResponse<T> page = listEntities(params);
     assertNotNull(page, "Page should not be null");
@@ -5374,7 +5386,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
     // mid-list otherwise.
     String scopeService = entities.isEmpty() ? null : getEntityServiceFqn(entities.get(0));
-    if (scopeService != null) params.setService(scopeService);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
     assertNotNull(response, "List response should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities");

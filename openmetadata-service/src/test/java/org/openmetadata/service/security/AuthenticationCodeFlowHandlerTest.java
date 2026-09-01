@@ -12,10 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -978,10 +980,10 @@ class AuthenticationCodeFlowHandlerTest {
 
     handler.handleRefresh(request, response);
 
-    verify(session, org.mockito.Mockito.never()).invalidate();
+    verify(session, never()).invalidate();
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     verify(response).setContentType("application/json");
-    verify(outputStream).print(org.mockito.ArgumentMatchers.contains("Session expired"));
+    verify(outputStream).print(contains("Session expired"));
   }
 
   @Test
