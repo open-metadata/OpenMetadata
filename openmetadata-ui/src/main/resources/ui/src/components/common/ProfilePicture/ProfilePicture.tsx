@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar } from 'antd';
-import classNames from 'classnames';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { ComponentProps } from 'react';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import { useMemo } from 'react';
@@ -26,13 +26,45 @@ import Loader from '../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
+type CoreAvatarSize = NonNullable<ComponentProps<typeof Avatar>['size']>;
+
+// Maps numeric pixel width to the closest core-components Avatar size.
+const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
+  16: 'xxs',
+  18: 'xxs',
+  20: 'xs',
+  24: 'xs',
+  28: 'xs',
+  32: 'sm',
+  36: 'sm',
+  40: 'md',
+  48: 'lg',
+  56: 'xl',
+  64: '2xl',
+};
+
+// Font size for initials — Avatar renders `placeholder` raw without sizing it,
+// so we must size the text explicitly to match the circle.
+const INITIALS_FONT_SIZE: Partial<Record<number, number>> = {
+  16: 8,
+  18: 8,
+  20: 10,
+  24: 10,
+  28: 11,
+  32: 12,
+  36: 13,
+  40: 14,
+  48: 16,
+  56: 18,
+  64: 22,
+};
+
 interface Props extends UserData {
   width?: string;
   type?: ImageShape;
   className?: string;
   height?: string;
   isTeam?: boolean;
-  size?: number | 'small' | 'default' | 'large';
   avatarType?: 'solid' | 'outlined';
 }
 
@@ -40,17 +72,18 @@ const ProfilePicture = ({
   name,
   displayName,
   className = '',
-  type = 'circle',
   width = '36',
-  height,
   isTeam = false,
-  size,
   avatarType = 'outlined',
 }: Props) => {
   const { permissions } = usePermissionProvider();
-  const { color, character, backgroundColor } = getRandomColor(
-    displayName ?? name
-  );
+  const avatarName = displayName ?? name ?? '';
+  const numericWidth = parseInt(width) || 36;
+  const avatarSize: CoreAvatarSize = WIDTH_TO_SIZE[numericWidth] ?? 'sm';
+  const { color, character, backgroundColor } = getRandomColor(avatarName);
+  const isSolid = avatarType === 'solid';
+  const initialsSize =
+    INITIALS_FONT_SIZE[numericWidth] ?? Math.round(numericWidth * 0.38);
 
   const viewUserPermission = useMemo(() => {
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
@@ -62,59 +95,34 @@ const ProfilePicture = ({
     isTeam,
   });
 
-  const getAvatarByName = () => {
-    return (
-      <Avatar
-        className={classNames('flex-center flex-shrink', className)}
-        data-testid="profile-avatar"
-        icon={character}
-        shape={type}
-        size={size ?? parseInt(width)}
-        style={{
-          color: avatarType === 'solid' ? 'default' : color,
-          backgroundColor: avatarType === 'solid' ? color : backgroundColor,
-          fontWeight: avatarType === 'solid' ? 400 : 500,
-          border: `0.5px solid ${avatarType === 'solid' ? 'default' : color}`,
-        }}
-      />
-    );
-  };
-
-  const getAvatarElement = () => {
-    return isPicLoading ? (
-      <div
-        className="d-inline-block relative"
-        style={{
-          height: `${height || width}px`,
-          width: `${width}px`,
-        }}>
-        {getAvatarByName()}
-        <div
-          className="absolute inset-0 opacity-60 bg-grey-4 rounded-full"
-          data-testid="loader-cntnr">
-          <Loader
-            className="absolute inset-0"
-            size="small"
-            style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
-            type="white"
-          />
-        </div>
-      </div>
-    ) : (
-      getAvatarByName()
-    );
-  };
-
-  return profileURL ? (
-    <Avatar
-      className={className}
-      data-testid="profile-image"
-      shape={type}
-      size={size ?? parseInt(width)}
-      src={profileURL}
+  const placeholder = isPicLoading && !profileURL ? (
+    <Loader
+      size={numericWidth <= 24 ? 'x-small' : 'small'}
+      type={isSolid ? 'white' : 'default'}
     />
   ) : (
-    getAvatarElement()
+    <span
+      style={{
+        color: isSolid ? '#fff' : color,
+        fontSize: initialsSize,
+        fontWeight: isSolid ? 400 : 500,
+      }}>
+      {character}
+    </span>
+  );
+
+  return (
+    <Avatar
+      className={className}
+      contrastBorder={!isSolid}
+      data-testid="profile-avatar"
+      placeholder={placeholder}
+      size={avatarSize}
+      src={profileURL || undefined}
+      style={{
+        backgroundColor: isSolid ? color : backgroundColor,
+      }}
+    />
   );
 };
 

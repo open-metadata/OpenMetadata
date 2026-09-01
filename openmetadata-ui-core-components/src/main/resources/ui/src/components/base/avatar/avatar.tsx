@@ -55,12 +55,12 @@ export interface AvatarProps {
 const styles = {
   xxs: {
     root: 'tw:size-4 tw:outline-[0.5px] tw:-outline-offset-[0.5px]',
-    initials: 'tw:text-xs tw:font-semibold',
+    initials: 'tw:text-[8px] tw:font-semibold',
     icon: 'tw:size-3',
   },
   xs: {
     root: 'tw:size-6 tw:outline-[0.5px] tw:-outline-offset-[0.5px]',
-    initials: 'tw:text-xs tw:font-semibold',
+    initials: 'tw:text-[10px] tw:font-semibold',
     icon: 'tw:size-4',
   },
   sm: {
@@ -122,7 +122,7 @@ export const Avatar = ({
 
     if (initials) {
       return (
-        <span className={cx('tw:text-quaternary', styles[size].initials)}>
+        <span className={cx('tw:text-current', styles[size].initials)}>
           {initials}
         </span>
       );

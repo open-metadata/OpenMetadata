@@ -388,8 +388,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         columnDetails.push({
           key: 'Owner',
           value: (
-            <Owner
-              avatarSize={18}
+            <OwnerLabel
+              avatarSize={24}
               isCompactView={false}
               owners={toOwnerRefs(columnSource?.owners ?? [])}
               showLabel={false}
@@ -435,8 +435,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <Owner
-              avatarSize={18}
+            <OwnerLabel
+              avatarSize={24}
               isCompactView={false}
               owners={toOwnerRefs((source?.owners as EntityReference[]) ?? [])}
               showLabel={false}

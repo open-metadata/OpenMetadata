@@ -346,7 +346,7 @@ export const SelectableList = ({
                   customTagRenderer(item)
                 ) : (
                   <UserTag
-                    avatarType="outlined"
+                    avatarType="solid"
                     id={item.name ?? ''}
                     name={getEntityName(item)}
                   />

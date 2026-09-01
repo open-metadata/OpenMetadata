@@ -83,8 +83,10 @@ export interface DynamicPalettes {
 
 export type OwnerKind = 'user' | 'team';
 
+/** Pixel size for avatar display in compact contexts (16–64 px). */
 export type AvatarSize = 16 | 18 | 20 | 24 | 32 | 40 | 48 | 56 | 64;
 
+/** Minimal owner reference used across avatar group and chip components. */
 export interface OwnerRef {
   id: string;
   name?: string;
