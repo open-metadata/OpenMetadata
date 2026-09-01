@@ -616,12 +616,16 @@ test.describe(
           .locator('textarea')
           .fill('External test for read-only validation');
 
-        await page.getByTestId('entity-type').click();
-        // React Aria can replace an option node while Playwright is checking
-        // click actionability. Typeahead keeps selection on the listbox itself.
-        await page.keyboard.type('TABLE');
-        await page.keyboard.press('Enter');
-        await expect(page.getByTestId('entity-type')).toContainText('TABLE');
+        const entityTypeSelect = page.getByTestId('entity-type');
+        await entityTypeSelect.getByRole('button').click();
+        const tableOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
+        });
+        await expect(tableOption).toBeVisible();
+        await tableOption.click();
+
+        await expect(entityTypeSelect).toContainText('TABLE');
 
         // OpenMetadata is selected by default. Remove its chip (the chip is a
         // span with the label and an unlabeled remove button) and add dbt so the
