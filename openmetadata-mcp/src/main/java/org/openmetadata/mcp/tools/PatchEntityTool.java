@@ -55,8 +55,6 @@ public class PatchEntityTool implements McpTool {
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
-  //   metric               read-only attributes, hierarchy authorization
-  //   metricGroup          per-member EDIT_ALL for membership changes
   //   notificationTemplate provider-aware EDIT_ALL authorization
   //   persona              authorizeAdmin
   //   testCase             table-or-testCase authorization, sample cleanup
@@ -71,8 +69,6 @@ public class PatchEntityTool implements McpTool {
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
           Entity.INTAKE_FORM,
-          Entity.METRIC,
-          Entity.METRIC_GROUP,
           Entity.NOTIFICATION_TEMPLATE,
           Entity.PERSONA,
           Entity.TEST_CASE,
