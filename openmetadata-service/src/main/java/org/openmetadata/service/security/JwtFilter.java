@@ -64,6 +64,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -204,16 +205,9 @@ public class JwtFilter implements ContainerRequestFilter {
           throw new AuthorizationException("Only bot users can impersonate other users");
         }
         impersonatedBy = userName;
-        try {
-          User impersonatedUser =
-              Entity.getEntityByName(Entity.USER, impersonateUser, "", Include.NON_DELETED);
-          userName = impersonatedUser.getName();
-          email = impersonatedUser.getEmail();
-        } catch (Exception e) {
-          LOG.warn("Impersonation target user not found: {}", impersonateUser);
-          throw new AuthenticationException(
-              "Cannot impersonate non-existent user: " + impersonateUser);
-        }
+        User impersonatedUser = resolveImpersonationTarget(impersonatedBy, impersonateUser);
+        userName = impersonatedUser.getName();
+        email = impersonatedUser.getEmail();
       }
 
       checkValidationsForToken(claims, tokenFromHeader, tokenKeyId, userName, impersonatedBy);
@@ -245,6 +239,27 @@ public class JwtFilter implements ContainerRequestFilter {
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
     }
+  }
+
+  /**
+   * Resolves the {@code X-Impersonate-User} target and authorizes the swap here, where the header
+   * is read, so the grant is enforced at the door and fails closed.
+   *
+   * <p>{@link Authorizer} entry points check this too. Both are needed: the authorizer covers the
+   * paths that reach it, and this covers the ones that never call an authorizer at all - which is
+   * how GHSA-3w33-vhhj-h357 slipped through {@code authorizeRequests}. The authorizer-side check is
+   * memoized per request, so the duplicate costs one extra lookup on impersonated requests only.
+   */
+  private User resolveImpersonationTarget(String botName, String targetName) {
+    User target;
+    try {
+      target = Entity.getEntityByName(Entity.USER, targetName, "", Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Impersonation target user not found: {}", targetName);
+      throw new AuthenticationException("Cannot impersonate non-existent user: " + targetName);
+    }
+    ImpersonationAuthorizer.authorize(botName, target);
+    return target;
   }
 
   public void checkValidationsForToken(
@@ -284,11 +299,12 @@ public class JwtFilter implements ContainerRequestFilter {
           enforcePrincipalDomain);
     }
 
-    // Validate Bot token matches what was created in OM
-    // Skip validation for impersonation tokens - they are generated dynamically and not stored in
-    // cache
-    if (impersonatedBy == null && isBot(claims)) {
-      validateBotToken(tokenFromHeader, userName);
+    // Validate Bot token matches what was created in OM. Under impersonation the principal has
+    // already been swapped to the target, so the token must be checked against the bot that
+    // presented it - checking the target (or skipping, as this did) would let a rotated or revoked
+    // bot token keep authenticating simply by carrying an impersonation header.
+    if (isBot(claims)) {
+      validateBotToken(tokenFromHeader, impersonatedBy == null ? userName : impersonatedBy);
     }
 
     // validate personal access token

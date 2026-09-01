@@ -3,11 +3,13 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -361,6 +363,129 @@ public class BotImpersonationIT {
     assertTrue(
         Boolean.TRUE.equals(refreshed.getAllowImpersonation()),
         "Rejected non-admin revoke must leave the grant intact");
+  }
+
+  /**
+   * GHSA-gxpr-mwqj-gjmr, second link: {@code PUT /v1/users/security/token} never called the
+   * authorizer, so an impersonated principal minted a standalone personal access token for the
+   * impersonated user - an administrator credential that works without the impersonation header
+   * and outlives revocation of the grant.
+   */
+  @Test
+  void test_impersonation_cannotMintPersonalAccessTokenForTarget(TestNamespace ns) {
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "patmint", "admin");
+
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users/security/token",
+                        Map.of("tokenName", ns.prefix("poc_pat"), "JWTTokenExpiry", "OneHour"),
+                        null),
+            "An impersonated request must not mint a personal access token for the target");
+    assertTrue(
+        denied.getMessage().contains("identity endpoint"),
+        "Error should name the identity endpoint: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_cannotReadOrRevokeTargetPersonalAccessTokens(TestNamespace ns) {
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "patread", "admin");
+
+    // The list response carries each token's jwtToken, so a read is credential theft on its own.
+    assertThrows(
+        Exception.class,
+        () ->
+            asAdmin
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/users/security/token", null),
+        "An impersonated request must not read the target's personal access tokens");
+    assertThrows(
+        Exception.class,
+        () ->
+            asAdmin
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PUT,
+                    "/v1/users/security/token/revoke?removeAll=true",
+                    Map.of("tokenIds", List.of()),
+                    null),
+        "An impersonated request must not revoke the target's personal access tokens");
+  }
+
+  @Test
+  void test_impersonation_cannotGenerateJwtForTarget(TestNamespace ns) {
+    User target = createRegularUser(ns, "jwtmint");
+    OpenMetadataClient asTarget = grantedBotImpersonating(ns, "jwtmint", target.getName());
+
+    assertThrows(
+        Exception.class,
+        () ->
+            asTarget
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    "/v1/users/generateToken",
+                    Map.of("id", target.getId().toString(), "JWTTokenExpiry", "OneHour"),
+                    null),
+        "An impersonated request must not mint a JWT for the target");
+  }
+
+  @Test
+  void test_impersonation_cannotReachCredentialEndpointEvenWithGrant(TestNamespace ns) {
+    // The grant scopes who a bot may act as, not what it may take. generateRandomPwd is part of
+    // the credential surface, so it stays closed even for a fully authorized impersonation.
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "randompwd", "admin");
+
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/generateRandomPwd", null),
+            "An impersonated request must not reach the credential surface");
+    assertTrue(
+        denied.getMessage().contains("identity endpoint"),
+        "Error should name the identity endpoint: " + denied.getMessage());
+  }
+
+  @Test
+  void test_rotatedBotToken_rejectedEvenWithImpersonationHeader(TestNamespace ns) {
+    // validateBotToken was skipped outright whenever an impersonation header was present, because
+    // the principal had already been swapped and the lookup key would have been the target rather
+    // than the bot. A rotated or revoked bot token therefore kept authenticating indefinitely as
+    // long as the caller added the header.
+    User target = createRegularUser(ns, "rotated");
+    User botUser = createBotUser(ns, "rotate");
+    createBot(ns.prefix("imp_rotate_bot"), botUser, true);
+
+    String staleToken = generateBotToken(botUser);
+    JWTAuthMechanism rotated =
+        SdkClients.adminClient().users().generateToken(botUser.getId(), JWTTokenExpiry.Ninety);
+    assertNotEquals(
+        staleToken, rotated.getJWTToken(), "Regenerating must actually rotate the bot's token");
+
+    OpenMetadataClient staleClient = impersonationClient(staleToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () -> staleClient.users().getByName(target.getName()),
+            "A rotated bot token must not authenticate just because it carries an impersonation header");
+    assertTrue(
+        denied.getMessage().contains("does not match the current bot's token"),
+        "Error should state the token is stale: " + denied.getMessage());
+  }
+
+  private OpenMetadataClient grantedBotImpersonating(
+      TestNamespace ns, String suffix, String targetUserName) {
+    User botUser = createBotUser(ns, suffix);
+    createBot(ns.prefix("imp_" + suffix + "_bot"), botUser, true);
+    return impersonationClient(generateBotToken(botUser), targetUserName);
   }
 
   private Bot putBot(
