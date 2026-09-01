@@ -181,6 +181,12 @@
           "type": "boolean",
           "default": false
         },
+        "includeSynonyms": {
+          "title": "Include Synonyms",
+          "description": "Discover SQL Server synonyms and record them as alternate names (aliases) on the table they resolve to. Also enables alias resolution when building lineage.",
+          "type": "boolean",
+          "default": false
+        },
         "schemaFilterPattern": {
           "title": "Default Schema Filter Pattern",
           "description": "Regex to only include/exclude schemas that matches the pattern.",
