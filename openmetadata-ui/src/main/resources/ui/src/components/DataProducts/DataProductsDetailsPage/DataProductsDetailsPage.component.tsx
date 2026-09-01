@@ -56,6 +56,7 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -151,6 +152,14 @@ const DataProductsDetailsPage = ({
     version: string;
   }>();
   const { fqn: dataProductFqn } = useFqn();
+  // The "Data Product Domain Validation" rule is a cross-cutting data-asset
+  // rule; read it against TABLE as a representative asset type since the "Add
+  // Assets" picker spans every asset type. Hold the strict domain-scoped
+  // default until the rules actually load (an empty rule set from the backend
+  // is indistinguishable from "not fetched yet").
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TABLE);
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -1006,7 +1015,8 @@ const DataProductsDetailsPage = ({
             dataProduct.domains
               ?.map((domain) => domain.fullyQualifiedName)
               .join(', ') ?? '',
-            dataProduct.fullyQualifiedName ?? ''
+            dataProduct.fullyQualifiedName ?? '',
+            requireDomainForDataProduct
           ) as QueryFilterInterface
         }
         type={AssetsOfEntity.DATA_PRODUCT}

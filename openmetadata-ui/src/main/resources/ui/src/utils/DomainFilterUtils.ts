@@ -22,48 +22,61 @@ import { getEntityReferenceFromEntity } from './EntityReferenceUtils';
 
 export const getQueryFilterToIncludeDomain = (
   domainFqn: string,
-  dataProductFqn: string
-) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          term: {
-            'domains.fullyQualifiedName': domainFqn,
+  dataProductFqn: string,
+  requireDomain = true
+) => {
+  const must: QueryFieldInterface[] = [];
+
+  // When the "Data Product Domain Validation" rule is disabled the backend
+  // permits assigning assets from any domain, so the picker must not scope
+  // results to the Data Product's own domain.
+  if (requireDomain) {
+    must.push({
+      term: {
+        'domains.fullyQualifiedName': domainFqn,
+      },
+    });
+  }
+
+  must.push(
+    {
+      bool: {
+        must_not: [
+          {
+            term: {
+              'dataProducts.fullyQualifiedName': dataProductFqn,
+            },
           },
-        },
-        {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  'dataProducts.fullyQualifiedName': dataProductFqn,
-                },
-              },
-            ],
-          },
-        },
-        {
-          bool: {
-            must_not: [
-              {
-                terms: {
-                  entityType: [
-                    EntityType.DATA_PRODUCT,
-                    EntityType.TEST_SUITE,
-                    EntityType.QUERY,
-                    EntityType.TEST_CASE,
-                    EntityType.TABLE_COLUMN,
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
+        ],
+      },
     },
-  },
-});
+    {
+      bool: {
+        must_not: [
+          {
+            terms: {
+              entityType: [
+                EntityType.DATA_PRODUCT,
+                EntityType.TEST_SUITE,
+                EntityType.QUERY,
+                EntityType.TEST_CASE,
+                EntityType.TABLE_COLUMN,
+              ],
+            },
+          },
+        ],
+      },
+    }
+  );
+
+  return {
+    query: {
+      bool: {
+        must,
+      },
+    },
+  };
+};
 
 export const getQueryFilterToExcludeDomainTerms = (
   fqn: string,
