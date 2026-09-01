@@ -534,6 +534,46 @@ class TestOMetaTableAPI:
         assert len(query_with_owner.users) == 1
         assert query_with_owner.users[0].id == user.id
 
+    def test_same_query_on_second_table_attaches_usage(
+        self,
+        metadata,
+        database_service,
+        test_schema,
+        create_table,
+    ):
+        """Same SQL on two tables shares one Query (service.hash) and both get usage. Issue #32030."""
+        table_a = create_table(
+            CreateTableRequest(
+                name="query_usage_a",
+                databaseSchema=test_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
+            )
+        )
+        table_b = create_table(
+            CreateTableRequest(
+                name="query_usage_b",
+                databaseSchema=test_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
+            )
+        )
+        shared_sql = SqlQuery("select * from query_fqn_second_table")
+        shared_query = CreateQueryRequest(
+            query=shared_sql,
+            service=FullyQualifiedEntityName(database_service.name.root),
+        )
+
+        metadata.ingest_entity_queries_data(entity=table_a, queries=[shared_query])
+        metadata.ingest_entity_queries_data(entity=table_b, queries=[shared_query])
+
+        queries_a: List[Query] = metadata.get_entity_queries(table_a.id, fields=["*"])  # noqa: UP006
+        queries_b: List[Query] = metadata.get_entity_queries(table_b.id, fields=["*"])  # noqa: UP006
+
+        assert len(queries_a) == 1
+        assert len(queries_b) == 1
+        assert queries_a[0].id == queries_b[0].id
+        assert queries_a[0].query == shared_sql
+        assert str(queries_a[0].fullyQualifiedName.root).startswith(f"{database_service.name.root}.")
+
     def test_list_versions(self, metadata, table_request, create_table):
         """
         Test listing table entity versions
