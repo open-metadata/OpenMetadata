@@ -19,6 +19,8 @@ from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Language, MetricType, Type
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     SERVICE_PREFIX_MAX_LEN,
@@ -126,6 +128,7 @@ def test_metric_children_are_qualified_by_logical_table():
         metric_row=("ORDERS", "TOTAL", "NUMBER", "SUM(orders.amount)", None, None),
         dimension_rows=[orders_status, returns_status],
         fact_rows=[orders_amount, returns_amount],
+        view_ref=None,
     )
 
     assert [d.name for d in request.dimensions] == ["ORDERS.STATUS", "RETURNS.STATUS"]
@@ -136,7 +139,9 @@ def test_metric_child_names_preserve_dots():
     """The server quotes dotted child names when appending them to the metric FQN."""
     row = ('"my.table"', '"my.dim"', "VARCHAR", "t.c", None, None)
 
-    request = build_metric_request("svc", "DB", "S", "V", metric_row=ORDER_COUNT, dimension_rows=[row], fact_rows=[])
+    request = build_metric_request(
+        "svc", "DB", "S", "V", metric_row=ORDER_COUNT, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
 
     assert request.dimensions[0].name == "my.table.my.dim"
 
@@ -181,6 +186,7 @@ def test_infer_metric_type_by_prefix():
 
 
 def test_build_metric_request_maps_all_fields():
+    view_ref = EntityReference(id="12345678-1234-1234-1234-123456789012", type="table")
     request = build_metric_request(
         "snowflake_svc",
         "TEST_DB",
@@ -189,6 +195,7 @@ def test_build_metric_request_maps_all_fields():
         metric_row=TOTAL_REVENUE,
         dimension_rows=[DIM_REGION],
         fact_rows=[FACT_LINE_AMOUNT],
+        view_ref=view_ref,
     )
     assert request.name.root == build_metric_name(
         "snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "orders", "total_revenue"
@@ -202,9 +209,10 @@ def test_build_metric_request_maps_all_fields():
     assert request.dimensions[0].expression == "customers.c_region"
     assert [m.name for m in request.measures] == ["orders.line_amount"]
     assert request.measures[0].expression == "orders.o_totalprice"
+    assert request.assets.root[0].id.root == view_ref.id.root
 
 
-def test_build_metric_request_without_optional_fields():
+def test_build_metric_request_without_comment_or_assets():
     request = build_metric_request(
         "svc",
         "db",
@@ -213,10 +221,12 @@ def test_build_metric_request_without_optional_fields():
         metric_row=ORDER_COUNT,
         dimension_rows=[],
         fact_rows=[],
+        view_ref=None,
     )
     assert request.description is None
     assert request.dimensions is None
     assert request.measures is None
+    assert request.assets is None
     assert request.metricType == MetricType.COUNT
 
 
@@ -262,7 +272,8 @@ def _rows_for(query):
 
 
 def _metric_requests(records):
-    return [record.right for record in records if record.right is not None]
+    """The stage interleaves a sink-flush Barrier with the CreateMetricRequests."""
+    return [r.right for r in records if r.right is not None and not isinstance(r.right, Barrier)]
 
 
 def test_yield_table_metrics_yields_one_per_metric():
@@ -275,20 +286,30 @@ def test_yield_table_metrics_yields_one_per_metric():
     names = {r.displayName for r in requests}
     assert names == {"total_revenue", "order_count"}
     revenue = next(r for r in requests if r.displayName == "total_revenue")
+    assert str(revenue.assets.root[0].id.root) == "12345678-1234-1234-1234-123456789012"
     assert [d.name for d in revenue.dimensions] == ["customers.region"]
     assert [m.name for m in revenue.measures] == ["orders.line_amount"]
 
 
-def test_yield_table_metrics_does_not_flush_or_resolve_the_view():
-    """The lineage workflow links the semantic view after both entities exist, so
-    metric extraction must not flush the table sink or issue a per-view lookup."""
+def test_yield_table_metrics_flushes_the_sink_before_resolving_the_view():
+    """The semantic view's own Table is still sitting in the sink's bulk buffer
+    (CreateTableRequest batches at bulk_sink_batch_size; CreateMetricRequest is
+    written immediately), so resolving it by FQN first would 404 on every first
+    run and drop the assets[] back-reference. Yield a Barrier to flush, and only
+    then look the view up."""
     source = _make_source()
     source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
 
-    records = list(source.yield_table_metrics((VIEW, TableType.SemanticView)))
+    records = source.yield_table_metrics((VIEW, TableType.SemanticView))
 
-    assert [record.right.displayName for record in records] == ["total_revenue", "order_count"]
+    first = next(records).right
+    assert isinstance(first, Barrier)
+    # the lookup must not have happened yet -- that is the whole point of the flush
     source.metadata.get_by_name.assert_not_called()
+
+    remaining = [r.right for r in records]
+    source.metadata.get_by_name.assert_called_once()
+    assert [r.displayName for r in remaining] == ["total_revenue", "order_count"]
 
 
 def test_yield_table_metrics_does_not_flush_when_the_view_has_no_metrics():
@@ -407,7 +428,9 @@ def test_dimensions_carry_the_detail_stripped_from_columns():
     """The view's columns no longer describe synonyms, so the Metric's dimensions
     must carry them or they are lost entirely."""
     row = ("customers", "REGION", "VARCHAR", "customers.c_region", "Customer region", "geo, area")
-    request = build_metric_request("svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[])
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
 
     dimension = request.dimensions[0]
 
@@ -420,7 +443,9 @@ def test_description_omits_the_logical_table():
     """The owning logical table is already named by the expression, so repeating it
     in the description is noise."""
     row = ("customers", "REGION", "VARCHAR", "customers.c_region", "Customer region", None)
-    request = build_metric_request("svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[])
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
 
     assert request.dimensions[0].description == "Customer region"
 
@@ -432,7 +457,9 @@ def test_dimension_type_is_classified_from_the_data_type():
         ("customers", "REGION", "VARCHAR", "customers.c_region", None, None),
         ("orders", "UNTYPED", None, "orders.x", None, None),
     ]
-    request = build_metric_request("svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=rows, fact_rows=[])
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=rows, fact_rows=[], view_ref=None
+    )
 
     by_name = {d.name: d.type for d in request.dimensions}
 
@@ -449,7 +476,9 @@ def test_measure_aggregation_is_inferred_only_when_aggregated():
         ("orders", "REVENUE", "NUMBER", "SUM(orders.o_totalprice)", None, None),
         ("orders", "LINE_AMOUNT", "NUMBER", "orders.o_totalprice", None, None),
     ]
-    request = build_metric_request("svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[], fact_rows=rows)
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[], fact_rows=rows, view_ref=None
+    )
 
     by_name = {m.name: m.aggregation for m in request.measures}
 
@@ -458,6 +487,8 @@ def test_measure_aggregation_is_inferred_only_when_aggregated():
 
 def test_semantic_description_is_none_when_the_row_is_bare():
     row = ("", "PLAIN", "VARCHAR", "t.c", None, None)
-    request = build_metric_request("svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[])
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
 
     assert request.dimensions[0].description is None
