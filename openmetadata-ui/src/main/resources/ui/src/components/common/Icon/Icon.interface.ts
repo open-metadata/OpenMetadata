@@ -16,12 +16,10 @@ export interface IconProps {
   iconValue: string | undefined;
   size?: number;
   className?: string;
-  /** Layout/positioning styles (e.g. margin, flexShrink). Applied to the element
-   * occupying space in the caller's layout, regardless of loading state. */
-  wrapperStyle?: React.CSSProperties;
   /** Cosmetic styles for the rendered icon/image itself (e.g. borderRadius). Never
    * applied to the loading skeleton. */
   imageStyle?: React.CSSProperties;
+  imageClassName?: string;
   strokeWidth?: number;
   alt?: string;
   fallback?: ReactNode;
