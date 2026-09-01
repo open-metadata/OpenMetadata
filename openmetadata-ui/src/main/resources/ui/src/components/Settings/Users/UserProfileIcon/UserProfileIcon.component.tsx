@@ -40,6 +40,12 @@ import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
+
+// Toggle owns its label markup, so scope the typography override here to keep
+// the shared AI menu styling unchanged while matching the Classic mode row.
+const CLASSIC_THEME_SWITCHER_CLASS =
+  'tw:w-full tw:pl-6 tw:[&>div>p]:text-xs tw:[&>div>p]:font-semibold';
+
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -372,7 +378,7 @@ export const UserProfileIcon = () => {
       {
         key: 'theme-mode',
         icon: '',
-        label: <ThemeModeSwitcher className="tw:w-full" />,
+        label: <ThemeModeSwitcher className={CLASSIC_THEME_SWITCHER_CLASS} />,
         type: 'group',
       },
       {
