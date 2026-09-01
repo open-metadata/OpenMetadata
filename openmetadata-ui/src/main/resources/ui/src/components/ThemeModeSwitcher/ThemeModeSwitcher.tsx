@@ -12,6 +12,7 @@
  */
 
 import { Toggle } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 
@@ -25,7 +26,10 @@ const ThemeModeSwitcher = ({ className }: ThemeModeSwitcherProps) => {
 
   return (
     <Toggle
-      className={className}
+      className={classNames(
+        'tw:w-full tw:flex-row-reverse tw:items-center tw:justify-between',
+        className
+      )}
       isSelected={theme === 'dark'}
       label={t('label.dark-mode')}
       onChange={(isDarkMode) => setTheme(isDarkMode ? 'dark' : 'light')}
