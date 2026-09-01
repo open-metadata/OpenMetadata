@@ -13,6 +13,7 @@ Preprocessing functions for the classification tasks.
 """
 
 import datetime
+import numbers
 from typing import Any, List, Mapping, Optional, Sequence, Union, cast  # noqa: UP035
 
 from metadata.utils.logger import pii_logger
@@ -37,7 +38,7 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP00
             )
             return value[:MAX_NLP_TEXT_LENGTH]
         return value
-    if isinstance(value, (int, float, datetime.datetime, datetime.date)):
+    if isinstance(value, (numbers.Number, datetime.datetime, datetime.date)):
         # Values we want to convert to string out of the box
         return str(value)
     if isinstance(value, bytes):
