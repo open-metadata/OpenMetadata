@@ -95,14 +95,14 @@ export const useIngestionLogSource = ({
 
   const fetchPage = useCallback(
     (cursor?: string) =>
-      getIngestionPipelineLogById(ingestionFqn, cursor).then((res) => ({
+      getIngestionPipelineLogById(ingestionFqn, runId, cursor).then((res) => ({
         content: ingestionType
           ? getLogTaskFieldForType(res.data, ingestionType)
           : '',
         after: res.data.after,
         total: res.data.total,
       })),
-    [ingestionFqn, ingestionType]
+    [ingestionFqn, ingestionType, runId]
   );
 
   const paginatedEnabled = hasLog && !isStreaming;
