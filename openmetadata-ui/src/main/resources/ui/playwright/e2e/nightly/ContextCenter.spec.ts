@@ -447,7 +447,6 @@ test.describe('Context Center - Article Attachments', () => {
       await expect(
         page.getByTestId('uploaded-image-node').first()
       ).toBeVisible();
-      await page.waitForTimeout(500);
     });
 
     await test.step('navigate away immediately without waiting for autosave', async () => {
