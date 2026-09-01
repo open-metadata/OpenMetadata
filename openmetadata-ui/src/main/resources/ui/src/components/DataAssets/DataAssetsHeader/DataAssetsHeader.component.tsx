@@ -464,9 +464,33 @@ export const DataAssetsHeader = ({
   // (getPrioritizedEditPermission) — pure renames onto the named flags. No named flag exists
   // for EditCertification, so `can(Operation.EditCertification)` (same escape hatch the
   // derivation util itself uses, identical computation to the old prioritized call).
+  //
+  // Three ManageButton/AnnouncementDrawer props consume these flags too, but only two of
+  // them belong under this deleted gate (whole-branch review, I6):
+  // - `onAnnouncementClick` (ManageButton) and `createPermission` (AnnouncementDrawer) were
+  //   already deleted-gated in the pre-refactor code (`permissions?.EditAll ? ... :
+  //   undefined`, evaluated only when the entity wasn't deleted at the call site) — keep
+  //   reading `flags.canEditAll` here; this class of conversion was already adjudicated and
+  //   is regression-tested.
+  // - `editDisplayNamePermission` (ManageButton's rename affordance) was NOT deleted-gated
+  //   pre-refactor (`permissions?.EditAll || permissions?.EditDisplayName`, unconditional) —
+  //   it must stay ungated. Renaming is a manage-surface affordance that has to keep working
+  //   on soft-deleted entities (same precedent as TeamDetailsV1's `ungatedFlags`: the only
+  //   way back from soft-delete lives behind this same ManageButton, so gating its other
+  //   affordances on `deleted` would strand the entity). See `ungatedFlags` below.
   const flags = useMemo(
     () => getDerivedPermissionFlags(permissions, deleted),
     [permissions, deleted]
+  );
+  // Second derivation with no `deleted` arg, so nothing is gated — reproduces the old
+  // unconditional `permissions?.EditAll || permissions?.EditDisplayName` read for
+  // editDisplayNamePermission below. The field-over-EditAll prioritization
+  // (getPrioritizedEditPermission, inside getDerivedPermissionFlags) is a deliberate
+  // deny-wins upgrade over the old raw OR and is fine to keep — only the deleted-gating
+  // was in error.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
   );
   const {
     canEditAll: editDomainPermission,
@@ -895,7 +919,7 @@ export const DataAssetsHeader = ({
               canDelete={flags.canDelete}
               deleted={dataAsset.deleted}
               displayName={getEntityName(dataAsset)}
-              editDisplayNamePermission={flags.canEditDisplayName}
+              editDisplayNamePermission={ungatedFlags.canEditDisplayName}
               entityFQN={dataAsset.fullyQualifiedName}
               entityId={dataAsset.id}
               entityName={dataAsset.name}

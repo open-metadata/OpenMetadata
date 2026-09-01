@@ -180,9 +180,30 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
+// Captures the `editDisplayNamePermission` prop directly instead of rendering an opaque
+// div — needed to assert the rename affordance stays ungated on soft-deleted entities
+// (whole-branch review, I6): it must NOT follow the same `!deleted` gating as
+// onAnnouncementClick below, since the pre-refactor code never gated it.
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
-  () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          editDisplayNamePermission,
+        }: {
+          editDisplayNamePermission?: boolean;
+        }) => (
+          <div
+            data-edit-display-name-permission={String(
+              Boolean(editDisplayNamePermission)
+            )}
+            data-testid="manage-button">
+            ManageButton.component
+          </div>
+        )
+      )
 );
 // `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
 // drawer open through the *widget* path — the live path for a deleted entity, since
@@ -996,6 +1017,77 @@ describe('DataAssetsHeader component', () => {
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
         'true'
+      );
+    });
+  });
+
+  // Whole-branch review, I6: editDisplayNamePermission (ManageButton's rename affordance)
+  // was NOT deleted-gated in the pre-refactor code (`permissions?.EditAll ||
+  // permissions?.EditDisplayName`, unconditional) — unlike createPermission/
+  // onAnnouncementClick above, which were already deleted-gated pre-refactor. It must stay
+  // ungated: the only way back from soft-delete lives behind this same ManageButton, so
+  // gating its other affordances on `deleted` would strand the entity (TeamDetailsV1
+  // `ungatedFlags` precedent).
+  describe('ManageButton.editDisplayNamePermission wiring', () => {
+    it('keeps the rename affordance enabled for a soft-deleted entity when EditAll is granted', () => {
+      // DEFAULT_ENTITY_PERMISSION sets EditDisplayName: false explicitly, and the
+      // field-priority derivation (kept per the ruling — deny-wins is convention) would let
+      // that explicit false win over EditAll. Omit the field key entirely so the
+      // prioritized lookup falls through to EditAll, isolating the assertion to the
+      // deleted-gating fix under test rather than field-vs-EditAll priority.
+      const { EditDisplayName: _omitted, ...permissionsWithoutFieldOverride } =
+        DEFAULT_ENTITY_PERMISSION;
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={
+            {
+              ...permissionsWithoutFieldOverride,
+              EditAll: true,
+            } as typeof DEFAULT_ENTITY_PERMISSION
+          }
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'true'
+      );
+    });
+
+    it('keeps the rename affordance enabled for a soft-deleted entity when EditDisplayName is explicitly granted', () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: false,
+            EditDisplayName: true,
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'true'
+      );
+    });
+
+    it('denies the rename affordance when EditAll and EditDisplayName are both denied, deleted or not', () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: false }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: false }}
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'false'
       );
     });
   });
