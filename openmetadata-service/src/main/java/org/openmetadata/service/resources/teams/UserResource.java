@@ -680,8 +680,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
-    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext);
+    if (grantsPrivileges(create)) {
+      authorizeAdminForPrivilegedFields(securityContext);
     }
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
@@ -812,7 +812,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext);
+      authorizeAdminForPrivilegedFields(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
@@ -821,9 +821,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
-    } else if (existingUser != null && hasRoleElevation(existingUser, user)) {
-      // Self-updates skip generic authorization, so gaining roles needs an explicit admin check.
-      authorizer.authorizeAdmin(securityContext);
+    } else if (hasRoleElevation(existingUser, user)) {
+      authorizeAdminForPrivilegedFields(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
@@ -1135,8 +1134,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private static final String ROLES_FIELD = "roles";
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
 
-  // A root-level operation (path "") replaces the whole user document, so it requires the
-  // same admin authorization as the privilege fields it can change.
+  // A root-level operation (path "") replaces the whole user document, so it covers the same
+  // fields as the explicit paths below.
   private static boolean isPrivilegedUserPatchPath(String path) {
     return path.isEmpty()
         || path.equals(IS_ADMIN_PATCH_PATH)
@@ -1144,18 +1143,46 @@ public class UserResource extends EntityResource<User, UserRepository> {
         || path.contains(ROLES_PATCH_PATH_SEGMENT);
   }
 
-  // Elevation is gaining a role the user does not already hold. Shedding roles - all of them or
-  // only some - is a privilege reduction and stays allowed without an admin check.
+  // True when the request asks for a role the user does not already hold. A null existingUser
+  // means the user is being created, so every requested role is a new one.
   private boolean hasRoleElevation(User existingUser, User updatedUser) {
     Set<UUID> updatedRoleIds = roleIds(updatedUser.getRoles());
     if (updatedRoleIds.isEmpty()) {
       return false;
+    }
+    if (existingUser == null) {
+      return true;
     }
     // existingUser comes from findByNameOrNull(), which sets core fields only, so its roles are
     // always null - they have to be loaded before they can be compared against.
     List<EntityReference> currentRoles =
         repository.get(null, existingUser.getId(), getFields(ROLES_FIELD), ALL, false).getRoles();
     return !roleIds(currentRoles).containsAll(updatedRoleIds);
+  }
+
+  // Fields on CreateUser that only an admin may set, whoever the user being created is.
+  private boolean grantsPrivileges(CreateUser create) {
+    return Boolean.TRUE.equals(create.getIsAdmin())
+        || Boolean.TRUE.equals(create.getIsBot())
+        || grantsRolesFromRequestBody(create);
+  }
+
+  // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
+  // authorization token when useRolesFromProvider is on, so there the body has no effect.
+  private boolean grantsRolesFromRequestBody(CreateUser create) {
+    return !nullOrEmpty(create.getRoles())
+        && !Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider());
+  }
+
+  // The principal is not in the database yet during self sign-up, and authorizeAdmin() resolves the
+  // subject from it, so a plain call would surface the outcome as a 404 instead of a 403.
+  private void authorizeAdminForPrivilegedFields(SecurityContext securityContext) {
+    String principal = securityContext.getUserPrincipal().getName();
+    try {
+      authorizer.authorizeAdmin(securityContext);
+    } catch (EntityNotFoundException e) {
+      throw new AuthorizationException(CatalogExceptionMessage.notAdmin(principal));
+    }
   }
 
   private static Set<UUID> roleIds(List<EntityReference> roles) {

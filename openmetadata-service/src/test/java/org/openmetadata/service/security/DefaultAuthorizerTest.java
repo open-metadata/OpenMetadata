@@ -532,9 +532,8 @@ class DefaultAuthorizerTest {
 
   @Test
   void impersonationPolicyIsEnforcedOnEveryAuthorizerEntryPoint() {
-    // The bot is enabled for impersonation but its IMPERSONATE policy denies this target. Every
-    // entry point must reject it - including the admin-only guards, which short-circuit on
-    // isAdmin() and would otherwise inherit the impersonated admin's privileges.
+    // The bot is enabled for impersonation but its IMPERSONATE policy denies this target, so every
+    // entry point must reject it - including the admin-only guards.
     User adminTarget = new User().withName("admin").withIsAdmin(true);
     User bot = new User().withName("ingestion-bot").withIsBot(true).withAllowImpersonation(true);
     SecurityContext securityContext = impersonatedSecurityContext("admin", "ingestion-bot");
@@ -590,6 +589,56 @@ class DefaultAuthorizerTest {
       assertEquals(
           "Bot flagless-bot does not have impersonation enabled",
           denied(() -> authorizer.authorizeAdmin(securityContext)));
+    }
+  }
+
+  @Test
+  void impersonationPolicyIsEnforcedOnTheUserNameAdminGuard() {
+    // authorizeAdmin(String) only receives the effective user name, so the impersonating bot has to
+    // come from the request ThreadLocal.
+    User adminTarget = new User().withName("admin").withIsAdmin(true);
+    User bot = new User().withName("ingestion-bot").withIsBot(true).withAllowImpersonation(true);
+    ImpersonationContext.setImpersonatedBy(bot.getName());
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      stubImpersonation(mockedSubjectContext, mockedEntity, adminTarget, bot);
+      mockedPolicyEvaluator
+          .when(
+              () ->
+                  PolicyEvaluator.hasPermission(
+                      any(SubjectContext.class),
+                      any(ResourceContextInterface.class),
+                      any(OperationContext.class)))
+          .thenThrow(new AuthorizationException("denied by policy"));
+
+      assertEquals(
+          "Bot ingestion-bot is not authorized to impersonate user admin",
+          denied(() -> authorizer.authorizeAdmin("admin")));
+    }
+  }
+
+  @Test
+  void authorizedImpersonationPassesTheUserNameAdminGuard() {
+    User adminTarget = new User().withName("admin").withIsAdmin(true);
+    User bot = new User().withName("ingestion-bot").withIsBot(true).withAllowImpersonation(true);
+    ImpersonationContext.setImpersonatedBy(bot.getName());
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      stubImpersonation(mockedSubjectContext, mockedEntity, adminTarget, bot);
+      mockedPolicyEvaluator
+          .when(
+              () ->
+                  PolicyEvaluator.hasPermission(
+                      any(SubjectContext.class),
+                      any(ResourceContextInterface.class),
+                      any(OperationContext.class)))
+          .thenAnswer(invocation -> null);
+
+      assertDoesNotThrow(() -> authorizer.authorizeAdmin("admin"));
     }
   }
 

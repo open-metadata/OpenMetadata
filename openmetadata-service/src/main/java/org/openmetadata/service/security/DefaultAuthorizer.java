@@ -139,7 +139,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorizeAdmin(String adminName) {
-    SubjectContext subjectContext = SubjectContext.getSubjectContext(adminName);
+    SubjectContext subjectContext = getSubjectContext(adminName);
     if (subjectContext.isAdmin()) {
       return;
     }
@@ -170,17 +170,29 @@ public class DefaultAuthorizer implements Authorizer {
 
   /**
    * Resolves the effective subject for the request and, when the caller is a bot acting through
-   * impersonation, validates that impersonation before the subject is handed out.
+   * impersonation, checks that impersonation before the subject is handed out.
    *
-   * <p>The validation lives here rather than in the individual guards because every authorization
-   * entry point and every resource that filters on the effective subject funnels through this
-   * method. Guards such as {@link #authorizeAdmin(SecurityContext)} and {@link
-   * #authorizeAdminOrBot(SecurityContext)} short-circuit on {@code isAdmin()}, so a check placed
-   * only in {@link #authorize} would let a bot impersonating an admin reach admin-only endpoints
-   * without its {@code IMPERSONATE} policy ever being evaluated.
+   * <p>The check lives here rather than in the individual guards because every authorization entry
+   * point and every resource that filters on the effective subject funnels through this method.
    */
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {
-    SubjectContext subjectContext = resolveSubjectContext(securityContext);
+    return validateImpersonation(resolveSubjectContext(securityContext));
+  }
+
+  /**
+   * Resolves the effective subject from a username, for the call sites that only have the effective
+   * user name rather than the {@link SecurityContext}. The impersonating bot is not carried by the
+   * name, so it is read from the request's {@link ImpersonationContext}.
+   */
+  public static SubjectContext getSubjectContext(String userName) {
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (impersonatedBy == null) {
+      return SubjectContext.getSubjectContext(userName);
+    }
+    return validateImpersonation(SubjectContext.getSubjectContext(userName, impersonatedBy));
+  }
+
+  private static SubjectContext validateImpersonation(SubjectContext subjectContext) {
     if (subjectContext.impersonatedBy() != null) {
       checkImpersonationAuthorization(subjectContext);
     }

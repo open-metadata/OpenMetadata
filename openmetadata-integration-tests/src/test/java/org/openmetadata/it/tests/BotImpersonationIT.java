@@ -243,9 +243,8 @@ public class BotImpersonationIT {
 
   @Test
   void test_nonAdminRole_deniesAdminTargetOnAdminOnlyEndpoint(TestNamespace ns) {
-    // GET /v1/system/settings is guarded only by authorizeAdmin, which short-circuits on the
-    // effective subject's isAdmin(). Without the impersonation check on that path a bot could
-    // borrow the impersonated admin's privileges while its own policy denies admin targets.
+    // GET /v1/system/settings is guarded by authorizeAdmin, which resolves the effective subject
+    // rather than the bot, so the bot's impersonation policy still decides the outcome.
     User botUser = createBotUser(ns, "adminguard");
     createBot(ns.prefix("imp_adminguard_bot"), botUser, true);
     swapImpersonationRole(botUser, BOT_NON_ADMIN_IMPERSONATION_ROLE);

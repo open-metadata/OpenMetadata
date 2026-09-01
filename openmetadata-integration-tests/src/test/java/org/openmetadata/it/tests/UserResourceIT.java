@@ -2165,8 +2165,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   // ===================================================================
-  // AUTHORIZATION HARDENING TESTS
-  // Root JSON Patch replacement and personal access token constraints
+  // AUTHORIZATION
+  // Root JSON Patch replacement, roles and personal access token constraints
   // ===================================================================
 
   private static final ObjectMapper PATCH_MAPPER = new ObjectMapper();
@@ -2305,7 +2305,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         elevateException.getStatusCode(),
         "Role elevation must be rejected: " + elevateException.getMessage());
 
-    // Self-updates that do not gain roles stay allowed
+    // Self-updates that leave the roles alone stay allowed
     String selfUpdateBody =
         "{\"name\":\""
             + testUser.getName()
@@ -2321,8 +2321,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_updateUser_selfPartialRoleShedding_allowed(TestNamespace ns) throws Exception {
-    // Dropping one of several roles is a privilege reduction, not an elevation, so it must not
-    // require admin even though the resulting role set still differs from the current one.
+    // Dropping one of several roles asks for no new role, so it must not require admin even though
+    // the resulting role set still differs from the current one.
     // The name must equal the email local part: JwtFilter resolves the caller's username from the
     // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
     String userName = "roleshedder" + ns.shortPrefix();
@@ -2387,6 +2387,82 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .getHttpClient()
                     .executeForString(HttpMethod.POST, "/v1/users", botUserBody));
     assertEquals(403, botException.getStatusCode());
+  }
+
+  @Test
+  void test_createUser_withRoles_forbiddenForNonAdmin(TestNamespace ns) throws Exception {
+    String roleGrab = ns.prefix("roleGrab");
+    String createBody =
+        "{\"name\":\""
+            + roleGrab
+            + "\",\"email\":\""
+            + toValidEmail(roleGrab)
+            + "\",\"roles\":[\""
+            + getRoleId("DataSteward")
+            + "\"]}";
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Setting roles at creation is admin only: " + exception.getMessage());
+  }
+
+  @Test
+  void test_createUser_selfSignUpWithRoles_forbidden(TestNamespace ns) throws Exception {
+    // A principal that authenticates but has no user row yet takes the self sign-up path, where the
+    // roles in the payload are decided before the entity exists.
+    // The name must equal the email local part for JwtFilter to resolve the caller.
+    String userName = "selfsignup" + ns.shortPrefix();
+    String email = userName + "@test.com";
+    OpenMetadataClient newcomerClient = SdkClients.createClient(userName, email, new String[] {});
+    String createBody =
+        "{\"name\":\""
+            + userName
+            + "\",\"email\":\""
+            + email
+            + "\",\"roles\":[\""
+            + getRoleId("DataSteward")
+            + "\"]}";
+
+    OpenMetadataException postException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        postException.getStatusCode(),
+        "Self sign-up cannot set roles: " + postException.getMessage());
+
+    OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", createBody));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Self creation through PUT cannot set roles: " + putException.getMessage());
+
+    OpenMetadataException notCreated =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/name/" + userName, null));
+    assertEquals(404, notCreated.getStatusCode(), "The rejected user should not exist");
   }
 
   private String getRoleId(String roleName) throws Exception {

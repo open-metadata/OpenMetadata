@@ -8,7 +8,7 @@ public class ImpersonationContext {
   private static final ThreadLocal<String> impersonatedBy = new ThreadLocal<>();
 
   /**
-   * {@code "<bot>-><target>"} of an impersonation already cleared by {@link DefaultAuthorizer}.
+   * {@code "<bot>-><target>"} of an impersonation already checked by {@link DefaultAuthorizer}.
    * Subject resolution re-checks impersonation on every call and a single request resolves the
    * subject many times, so this keeps the bot lookup and policy evaluation to once per request.
    */
