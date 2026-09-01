@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { useNavigate } from 'react-router-dom';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
-import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import bigQueryConnection from '../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import customDatabaseConnection from '../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
 import mysqlConnection from '../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import postgresConnection from '../../public/jsons/connectionSchemas/connections/database/postgresConnection.json';
 import snowflakeConnection from '../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { getDatabaseConfig } from './DatabaseServicePureUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 

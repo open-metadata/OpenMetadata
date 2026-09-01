@@ -57,9 +57,16 @@ module.exports = {
   clearMocks: true,
   moduleNameMapper: {
     // Mock `*.assets.ts` wrappers around `import.meta.glob(...)` — Vite-only
-    // syntax that ts-jest cannot parse. The stub returns `{}` for every named
-    // export so consumers hit their empty-map fallback branch.
+    // syntax that ts-jest cannot parse. The stub returns `{}` for empty-map
+    // consumers; `applicationSchemaLoaders` gets real loaders backed by
+    // `require()` so ApplicationsClassBase tests see the on-disk JSON.
     '\\.assets$': '<rootDir>/src/test/unit/mocks/glob.mock.js',
+    // Test shim for `loadConnectionSchema` — the real impl uses `fetch()`,
+    // unavailable in jsdom. This mock reads from `public/jsons/...` on disk
+    // synchronously via `require()` so tests get identical schema payloads
+    // without network calls.
+    '/loadConnectionSchema$':
+      '<rootDir>/src/test/unit/mocks/loadConnectionSchema.mock.js',
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|mp4|MP4|webm|WEBM|less|LESS|css|CSS)$':

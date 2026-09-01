@@ -25,10 +25,15 @@ import type { FC, SVGProps } from 'react';
 // under `assets/svg/` became individual chunks. Narrowing the glob keeps the
 // same lazy-load behaviour (each logo is still its own chunk, fetched on
 // demand) but only for the ~9 files that could actually match.
+//
+// No `?react` query — the repo's `src/@types/svg.d.ts` declares plain
+// `import '*.svg'` returns `{ ReactComponent, default: <url> }`. Keeping the
+// convention here means the loader's returned module shape matches every
+// other SVG import site.
 export const appLogoLoaders = import.meta.glob<{
-  default: FC<SVGProps<SVGSVGElement>>;
+  default: string;
   ReactComponent: FC<SVGProps<SVGSVGElement>>;
-}>('../../../../assets/svg/*Application.svg', { query: '?react' });
+}>('../../../../assets/svg/*Application.svg');
 
 // Screenshot PNGs are served as URL strings, not JSX modules — `eager` + `?url`
 // emits each as a static asset with no JS chunk. Previously each screenshot

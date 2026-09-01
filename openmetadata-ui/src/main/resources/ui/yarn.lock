@@ -13624,7 +13624,7 @@ vite-tsconfig-paths@^5.1.4:
     globrex "^0.1.2"
     tsconfck "^3.0.3"
 
-"vite@npm:rolldown-vite@latest":
+"vite@npm:rolldown-vite@7.3.1":
   version "7.3.1"
   resolved "https://registry.yarnpkg.com/rolldown-vite/-/rolldown-vite-7.3.1.tgz#432c09996320610d7fdc5fecf538128b65386461"
   integrity sha512-LYzdNAjRHhF2yA4JUQm/QyARyi216N2rpJ0lJZb8E9FU2y5v6Vk+xq/U4XBOxMefpWixT5H3TslmAHm1rqIq2w==

@@ -18,12 +18,19 @@ export type ConnectionSchemaModule = Record<string, unknown>;
 // cache well above that so every unique schema is served from memory after
 // first fetch, while still bounding growth if a future migration adds churn.
 const SCHEMA_CACHE_LIMIT = 256;
+
+// Backed by an insertion-ordered `Map`. On both a cache hit AND a cache miss
+// we re-insert the entry to move it to the tail, so `keys().next().value` is
+// always the least-recently-used entry when we need to evict.
 const schemaCache = new Map<string, Promise<ConnectionSchemaModule>>();
 
-const rememberSchema = (
+const touchLRU = (
   key: string,
   value: Promise<ConnectionSchemaModule>
-) => {
+): void => {
+  // Delete before set so the entry moves to the tail regardless of whether
+  // it was already present.
+  schemaCache.delete(key);
   if (schemaCache.size >= SCHEMA_CACHE_LIMIT) {
     const oldest = schemaCache.keys().next().value;
     if (oldest !== undefined) {
@@ -31,6 +38,21 @@ const rememberSchema = (
     }
   }
   schemaCache.set(key, value);
+};
+
+// Reject anything that could escape the `/jsons/connectionSchemas/` root once
+// concatenated into the fetch URL. Callers pass fixed literals today, but a
+// defence-in-depth guard here means a future dynamic caller can't accidentally
+// probe arbitrary paths on the origin.
+const assertSafeRelativePath = (relativePath: string): void => {
+  if (
+    relativePath.startsWith('/') ||
+    relativePath.startsWith('\\') ||
+    relativePath.includes('..') ||
+    relativePath.includes('\0')
+  ) {
+    throw new Error(`Invalid connection schema path: ${relativePath}`);
+  }
 };
 
 const fetchSchema = async (
@@ -66,8 +88,12 @@ const fetchSchema = async (
 export const loadConnectionSchema = (
   relativePath: string
 ): Promise<ConnectionSchemaModule> => {
+  assertSafeRelativePath(relativePath);
+
   const cached = schemaCache.get(relativePath);
   if (cached) {
+    touchLRU(relativePath, cached);
+
     return cached;
   }
 
@@ -77,7 +103,7 @@ export const loadConnectionSchema = (
 
     throw error;
   });
-  rememberSchema(relativePath, pending);
+  touchLRU(relativePath, pending);
 
   return pending;
 };

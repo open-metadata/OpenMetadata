@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { APIServiceType } from '../generated/entity/services/apiService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }

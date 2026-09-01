@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import type { DashboardConnection } from '../generated/entity/services/dashboardService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }

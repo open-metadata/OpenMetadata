@@ -23,9 +23,9 @@ import type { AppPlugin } from '../plugins/AppPlugin';
 // jest.config.js `moduleNameMapper` — `import.meta.glob` is Vite-only syntax
 // that ts-jest cannot parse). Runtime behaviour is unchanged.
 import {
+  applicationSchemaLoaders,
   appLogoLoaders,
   appScreenshotUrls,
-  applicationSchemaLoaders,
 } from './ApplicationsClassBase.assets';
 
 const ApplicationConfiguration =
@@ -38,7 +38,10 @@ class ApplicationsClassBase {
     const key = `../../../../jsons/applicationSchemas/${fqn}.json`;
     const loader = applicationSchemaLoaders[key];
     if (!loader) {
-      return {};
+      // Callers (e.g. AppDetails.component) rely on a rejected promise to
+      // surface a toast + fallback UI. Preserve that contract instead of
+      // silently returning an empty object.
+      throw new Error(`Application schema not found: ${fqn}`);
     }
     const module = await loader();
 
@@ -92,8 +95,15 @@ class ApplicationsClassBase {
   public async importAppScreenshot(screenshotName: string) {
     const key = `../../../../assets/img/appScreenshots/${screenshotName}.png`;
     const url = appScreenshotUrls[key];
+    if (!url) {
+      // Callers (e.g. MarketPlaceAppDetails) `try/catch` around this to drop
+      // missing screenshots. Preserve the rejection semantics of the old
+      // dynamic `import()` so the catch path still runs and we don't render
+      // an `<img>` with no `src`.
+      throw new Error(`App screenshot not found: ${screenshotName}`);
+    }
 
-    return { default: url ?? null };
+    return { default: url };
   }
 
   public appPluginRegistry: Record<

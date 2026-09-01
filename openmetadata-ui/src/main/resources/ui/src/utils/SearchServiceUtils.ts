@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
