@@ -36,22 +36,39 @@ interface PasswordStrengthMeterProps {
  */
 export const PASSWORD_FIELD_WIDTH_CLASS = 'tw:w-full tw:max-w-[360px]';
 
-const STRENGTH_LABEL: Record<StrengthLevel, string> = {
-  [StrengthLevel.Weak]: 'label.weak',
-  [StrengthLevel.Medium]: 'label.medium',
-  [StrengthLevel.Strong]: 'label.strong',
-};
+interface StrengthStyle {
+  labelKey: string;
+  bar: string;
+  text: string;
+  /**
+   * Tints a satisfied rule's checkbox to the current strength color. The
+   * `!` suffixes are needed because `CheckboxBase` already sets its selected
+   * background and `::after` border to the brand color.
+   */
+  checkbox: string;
+}
 
-const STRENGTH_BAR_CLASS: Record<StrengthLevel, string> = {
-  [StrengthLevel.Weak]: 'tw:bg-error-solid',
-  [StrengthLevel.Medium]: 'tw:bg-warning-solid',
-  [StrengthLevel.Strong]: 'tw:bg-brand-solid',
-};
-
-const STRENGTH_TEXT_CLASS: Record<StrengthLevel, string> = {
-  [StrengthLevel.Weak]: 'tw:text-error-primary',
-  [StrengthLevel.Medium]: 'tw:text-warning-primary',
-  [StrengthLevel.Strong]: 'tw:text-brand-secondary',
+const STRENGTH_STYLE: Record<StrengthLevel, StrengthStyle> = {
+  [StrengthLevel.Weak]: {
+    labelKey: 'label.weak',
+    bar: 'tw:bg-utility-error-600',
+    text: 'tw:text-utility-error-600',
+    checkbox: 'tw:bg-utility-error-600! tw:after:outline-utility-error-600!',
+  },
+  [StrengthLevel.Medium]: {
+    labelKey: 'label.medium',
+    bar: 'tw:bg-utility-warning-600',
+    text: 'tw:text-utility-warning-600',
+    checkbox:
+      'tw:bg-utility-warning-600! tw:after:outline-utility-warning-600!',
+  },
+  [StrengthLevel.Strong]: {
+    labelKey: 'label.strong',
+    bar: 'tw:bg-utility-success-600',
+    text: 'tw:text-utility-success-600',
+    checkbox:
+      'tw:bg-utility-success-600! tw:after:outline-utility-success-600!',
+  },
 };
 
 /**
@@ -71,6 +88,7 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
     [password]
   );
   const filledPercent = (satisfiedIds.size / PASSWORD_RULES.length) * 100;
+  const style = STRENGTH_STYLE[strength];
 
   return (
     <Box
@@ -83,16 +101,16 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
           aria-hidden
           className={`tw:h-[5px] tw:shrink-0 tw:overflow-hidden tw:rounded-[10px] tw:bg-quaternary ${PASSWORD_FIELD_WIDTH_CLASS}`}>
           <div
-            className={`tw:h-full tw:rounded-[10px] tw:transition-[width] ${STRENGTH_BAR_CLASS[strength]}`}
+            className={`tw:h-full tw:rounded-[10px] tw:transition-[width] ${style.bar}`}
             style={{ width: `${filledPercent}%` }}
           />
         </div>
         <Typography
-          className={STRENGTH_TEXT_CLASS[strength]}
+          className={style.text}
           data-testid="password-strength-label"
           size="text-sm"
           weight="medium">
-          {t(STRENGTH_LABEL[strength])}
+          {t(style.labelKey)}
         </Typography>
       </Box>
       <ul
@@ -105,7 +123,11 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
             <li
               className="tw:flex tw:items-center tw:gap-2 tw:whitespace-nowrap"
               key={rule.id}>
-              <CheckboxBase isSelected={isSatisfied} size="sm" />
+              <CheckboxBase
+                className={isSatisfied ? style.checkbox : undefined}
+                isSelected={isSatisfied}
+                size="sm"
+              />
               <Typography
                 className="tw:text-tertiary"
                 data-testid={`password-rule-${rule.id}`}
