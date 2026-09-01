@@ -10,35 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Box,
-  Breadcrumbs,
-  Button,
-  Card,
-  Skeleton,
-  Tabs,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { ArrowLeft, ClockRewind } from '@untitledui/icons';
-import type { FC } from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { EntityTabs } from '../../../enums/entity.enum';
-import type { ChangeDescription } from '../../../generated/entity/data/metric';
-import { Operation } from '../../../generated/entity/policies/policy';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
-import MetricCustomPropertyValue from '../MetricCustomPropertyValue/MetricCustomPropertyValue.component';
-import MetricExpression from '../MetricExpression/MetricExpression';
-import type { MetricVersionProp } from './MetricVersion.interface';
-import {
-  getMetricVersionField,
-  getMetricVersionMetadata,
-  getMetricVersionTags,
-} from './MetricVersion.utils';
 
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import classNames from 'classnames';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ChangeDescription } from '../../../generated/entity/data/metric';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { TagSource } from '../../../generated/type/tagLabel';
+import {
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtilsPure';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import Description from '../../common/EntityDescription/Description';
+import Loader from '../../common/Loader/Loader';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import MetricExpression from '../MetricExpression/MetricExpression';
+import { MetricVersionProp } from './MetricVersion.interface';
 const MetricVersion: FC<MetricVersionProp> = ({
   version,
   currentVersionData,
@@ -51,11 +53,25 @@ const MetricVersion: FC<MetricVersionProp> = ({
   versionHandler,
   entityPermissions,
   domains,
-}) => {
+}: MetricVersionProp) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
+
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owners,
+          tier,
+          domains
+        ),
+      [changeDescription, owners, tier, domains]
+    );
 
   useEffect(() => {
     setChangeDescription(
@@ -63,231 +79,166 @@ const MetricVersion: FC<MetricVersionProp> = ({
     );
   }, [currentVersionData]);
 
-  const { ownerDisplayName, tierDisplayName, domainDisplayName } = useMemo(
-    () => getMetricVersionMetadata({ owners, tier, domains }),
-    [domains, owners, tier]
-  );
-  const tags = useMemo(
-    () => getMetricVersionTags(currentVersionData),
-    [currentVersionData]
-  );
-  const description = useMemo(
-    () =>
-      getMetricVersionField(
-        changeDescription,
-        'description',
-        currentVersionData.description
-      ),
-    [changeDescription, currentVersionData.description]
-  );
-  const displayName = useMemo(
-    () =>
-      getMetricVersionField(
-        changeDescription,
-        'displayName',
-        currentVersionData.displayName
-      ),
-    [changeDescription, currentVersionData.displayName]
-  );
-  const canViewCustomProperties = getPrioritizedViewPermission(
-    entityPermissions,
-    Operation.ViewCustomFields
-  );
-  const customProperties = Object.entries(currentVersionData.extension ?? {});
-  const versions = (versionList.versions ?? []).map(String);
-  const breadcrumbItems = [
-    ...slashedMetricName.map((item, index) => ({
-      id: `${index}-${item.name}`,
-      label: item.name,
-      ...(typeof item.url === 'string' ? { href: item.url } : {}),
-    })),
-    {
-      id: 'version',
-      label: `${t('label.version')} ${version ?? ''}`.trim(),
-    },
-  ];
-
-  if (isVersionLoading) {
-    return (
-      <main className="tw:min-h-full tw:bg-secondary tw:p-6">
-        <Box
-          aria-label={t('label.loading')}
-          direction="col"
-          gap={3}
-          role="status">
-          <Skeleton height={72} variant="rounded" />
-          <Skeleton height={320} variant="rounded" />
-        </Box>
-      </main>
+  const handleTabChange = (activeKey: string) => {
+    navigate(
+      getVersionPath(
+        EntityType.METRIC,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
     );
-  }
+  };
+
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
+  const description = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DESCRIPTION,
+      currentVersionData.description
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
+
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel id={EntityTabs.OVERVIEW} name={t('label.overview')} />
+        ),
+        key: EntityTabs.OVERVIEW,
+        children: (
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <Description
+                    description={description}
+                    entityType={EntityType.METRIC}
+                    showActions={false}
+                  />
+                </Col>
+                <Col span={24}>
+                  <MetricExpression />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  newLook
+                  activeDomains={domains}
+                  dataProducts={currentVersionData?.dataProducts ?? []}
+                  hasPermission={false}
+                />
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV2
+                    newLook
+                    entityType={EntityType.METRIC}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.METRIC}
+            hasEditAccess={false}
+            hasPermission={viewCustomPropertiesPermission}
+          />
+        ),
+      },
+    ],
+    [description, currentVersionData, viewCustomPropertiesPermission, tags]
+  );
 
   return (
-    <main
-      className="tw:min-h-full tw:bg-secondary"
-      data-testid="metric-version-page">
-      <Box
-        className="tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:py-5 tw:md:px-6"
-        direction="col"
-        gap={4}>
-        <Breadcrumbs autoCollapse items={breadcrumbItems} size="sm" />
-        <Box align="start" className="tw:flex-wrap" gap={3} justify="between">
-          <Box align="start" gap={3}>
-            <Button
-              aria-label={t('label.back')}
-              color="secondary"
-              iconLeading={ArrowLeft}
-              onPress={backHandler}
-            />
-            <Box direction="col" gap={1}>
-              <Typography size="display-xs" weight="semibold">
-                <h1>{displayName ?? getEntityName(currentVersionData)}</h1>
-              </Typography>
-              <Box align="center" className="tw:flex-wrap" gap={2}>
-                <Badge color="brand" size="sm">
-                  {t('label.version')} {version}
-                </Badge>
-                {currentVersionData.metricType && (
-                  <Badge color="gray" size="sm">
-                    {getMetricEnumLabel(t, currentVersionData.metricType)}
-                  </Badge>
-                )}
-                {currentVersionData.entityStatus && (
-                  <Badge color="gray" size="sm">
-                    {getMetricEnumLabel(t, currentVersionData.entityStatus)}
-                  </Badge>
-                )}
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-        <Tabs selectedKey={EntityTabs.OVERVIEW}>
-          <Tabs.List
-            aria-label={t('label.metric')}
-            items={[{ id: EntityTabs.OVERVIEW, label: t('label.overview') }]}
-            type="underline">
-            {(item) => <Tabs.Item id={item.id} label={item.label} />}
-          </Tabs.List>
-        </Tabs>
-      </Box>
+    <>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedMetricName}
+                currentVersionData={currentVersionData}
+                deleted={Boolean(currentVersionData?.deleted)}
+                displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.METRIC}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.METRIC as CustomizeEntityType}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  className="tabs-new"
+                  defaultActiveKey={tab}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
+          </Row>
+        </div>
+      )}
 
-      <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:p-4 tw:xl:grid-cols-[minmax(0,1fr)_20rem] tw:md:p-6">
-        <Box direction="col" gap={4}>
-          <Card>
-            <Card.Header title={t('label.description')} />
-            <Card.Content>
-              <Typography
-                className="tw:whitespace-pre-wrap tw:text-secondary"
-                size="text-sm">
-                {description ?? t('label.no-description')}
-              </Typography>
-            </Card.Content>
-          </Card>
-          <Card>
-            <Card.Header title={t('label.definition')} />
-            <Card.Content>
-              <MetricExpression metric={currentVersionData} />
-            </Card.Content>
-          </Card>
-          {canViewCustomProperties && (
-            <Card data-testid="metric-version-custom-properties">
-              <Card.Header title={t('label.custom-property-plural')} />
-              <Card.Content>
-                {customProperties.length ? (
-                  <Box direction="col" gap={3}>
-                    {customProperties.map(([name, value]) => (
-                      <Box direction="col" gap={1} key={name}>
-                        <Typography
-                          className="tw:text-tertiary"
-                          size="text-xs"
-                          weight="semibold">
-                          {name}
-                        </Typography>
-                        <MetricCustomPropertyValue value={value} />
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography className="tw:text-tertiary" size="text-sm">
-                    {t('label.empty-dash')}
-                  </Typography>
-                )}
-              </Card.Content>
-            </Card>
-          )}
-        </Box>
-
-        <Box direction="col" gap={4}>
-          <Card data-testid="entity-right-panel">
-            <Card.Header title={t('label.metadata')} />
-            <Card.Content>
-              <Box direction="col" gap={3}>
-                {[
-                  [t('label.owner-plural'), ownerDisplayName],
-                  [t('label.domain-plural'), domainDisplayName],
-                  [t('label.tier'), tierDisplayName],
-                ].map(([label, value]) => (
-                  <Box direction="col" gap={1} key={label}>
-                    <Typography
-                      className="tw:text-tertiary"
-                      size="text-xs"
-                      weight="semibold">
-                      {label}
-                    </Typography>
-                    <Typography size="text-sm">
-                      {value || t('label.empty-dash')}
-                    </Typography>
-                  </Box>
-                ))}
-                <Box direction="col" gap={1}>
-                  <Typography
-                    className="tw:text-tertiary"
-                    size="text-xs"
-                    weight="semibold">
-                    {t('label.tag-plural')}
-                  </Typography>
-                  <Box className="tw:flex-wrap" gap={1}>
-                    {tags.length ? (
-                      tags.map((tag) => (
-                        <Badge color="gray" key={tag.tagFQN} size="sm">
-                          {tag.displayName ?? tag.name ?? tag.tagFQN}
-                        </Badge>
-                      ))
-                    ) : (
-                      <Typography className="tw:text-tertiary" size="text-sm">
-                        {t('label.empty-dash')}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-            </Card.Content>
-          </Card>
-
-          <Card data-testid="versions-list-container">
-            <Card.Header title={t('label.version-plural-history')} />
-            <Card.Content>
-              <Box direction="col" gap={2}>
-                {versions.map((candidateVersion) => (
-                  <Button
-                    color={
-                      candidateVersion === String(version)
-                        ? 'secondary'
-                        : 'tertiary'
-                    }
-                    data-testid={`version-${candidateVersion}`}
-                    iconLeading={ClockRewind}
-                    key={candidateVersion}
-                    onPress={() => versionHandler(candidateVersion)}>
-                    {t('label.version')} {candidateVersion}
-                  </Button>
-                ))}
-              </Box>
-            </Card.Content>
-          </Card>
-        </Box>
-      </Box>
-    </main>
+      <EntityVersionTimeLine
+        currentVersion={version ?? ''}
+        entityType={EntityType.METRIC}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </>
   );
 };
 

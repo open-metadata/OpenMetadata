@@ -27,7 +27,6 @@
  *  - expandable        → tree/nested rows via record.children; expandedRowRender not supported
  *  - onRow             → onClick and onDoubleClick are forwarded to the row element
  *  - onCell            → onClick, data-*, colSpan forwarded to the underlying td element
- *                        (colSpan: 0 skips the cell, matching AntD's covered-cell convention)
  *  - filterIcon/filterDropdown/onFilter → filter state managed internally; confirm/close close the dropdown
  *
  * Sorting:
@@ -44,7 +43,6 @@ import {
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
-import type { ComponentProps } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -98,7 +96,6 @@ import {
   getColumnStickyStyle,
   resolveCellValue,
   resolveColumnTitle,
-  resolveSelectedRows,
 } from './TableV2Utils';
 
 type TableV2Props<T extends object> = TableComponentProps<T>;
@@ -349,6 +346,27 @@ const TableV2 = <T extends object>(
     return rest.rowSelection.type === 'radio' ? 'single' : 'multiple';
   }, [rest.rowSelection]);
 
+  const handleSelectionChange = useCallback(
+    (keys: AriaSelection) => {
+      if (!rest.rowSelection?.onChange) {
+        return;
+      }
+      const dataSource = filteredDataSource;
+      const selectedKeys =
+        keys === 'all'
+          ? dataSource.map((r, i) => getRowKey(r, i))
+          : [...keys].map(String);
+      const selectedRows = dataSource.filter((r, i) =>
+        selectedKeys.includes(getRowKey(r, i))
+      );
+
+      rest.rowSelection.onChange(selectedKeys, selectedRows, {
+        type: selectionMode === 'single' ? 'single' : 'multiple',
+      });
+    },
+    [rest.rowSelection, filteredDataSource, getRowKey, selectionMode]
+  );
+
   // ─── Column resize (via React Aria ColumnResizer) ──────────────────────────
 
   const handleColumnResize = useCallback(
@@ -514,41 +532,6 @@ const TableV2 = <T extends object>(
     clientPagination,
   ]);
 
-  /**
-   * Resolves an aria selection back to the caller's keys and rows.
-   *
-   * Tree tables resolve against the flattened visible rows, not the top-level `dataSource`: an
-   * expanded child is nested inside its parent record, so a top-level scan would silently drop it.
-   * Select-all is the worst case — aria checks every visible row, and reporting only the roots
-   * would hand a bulk action a shorter list than the user can see is selected.
-   */
-  const handleSelectionChange = useCallback(
-    (keys: AriaSelection) => {
-      if (!rest.rowSelection?.onChange) {
-        return;
-      }
-      const { selectedKeys, selectedRows } = resolveSelectedRows({
-        selection: keys,
-        isTree: Boolean(rest.expandable),
-        flatRows,
-        dataSource: filteredDataSource,
-        getRowKey,
-      });
-
-      rest.rowSelection.onChange(selectedKeys, selectedRows, {
-        type: selectionMode === 'single' ? 'single' : 'multiple',
-      });
-    },
-    [
-      rest.rowSelection,
-      rest.expandable,
-      flatRows,
-      filteredDataSource,
-      getRowKey,
-      selectionMode,
-    ]
-  );
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -664,11 +647,7 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
-              dragAndDropHooks={
-                dragAndDropHooks as ComponentProps<
-                  typeof UntitledTable
-                >['dragAndDropHooks']
-              }
+              dragAndDropHooks={dragAndDropHooks}
               selectedKeys={
                 rest.rowSelection?.selectedRowKeys
                   ? new Set(rest.rowSelection.selectedRowKeys.map(String))
@@ -853,13 +832,6 @@ const TableV2 = <T extends object>(
                             actualIndex
                           ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
                           {};
-
-                        // AntD's convention: colSpan 0 means "this cell is covered by an earlier
-                        // cell's span". Rendering it anyway would add a column to the row and
-                        // knock every following cell out of alignment.
-                        if (cellHandlerProps.colSpan === 0) {
-                          return null;
-                        }
 
                         return (
                           <UntitledTable.Cell
