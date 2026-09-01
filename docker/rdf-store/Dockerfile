@@ -1,9 +1,16 @@
 # Apache Jena Fuseki Docker Image for OpenMetadata RDF Store
-#
-# Fuseki 6.x requires Java 21 (Jena 6 baseline) — the base image major version is
-# load-bearing, not a preference.
+# eclipse-temurin replaces the deprecated `openjdk` Docker Hub images
+# (`openjdk:17-jdk-slim` was removed from the registry — CI builds against it
+# fail with "manifest unknown"). JRE is enough since this image only runs the
+# Fuseki shell launcher; no compilation happens inside the container. The JRE is
+# 21 because Fuseki 6.x is compiled with --release 21; on a 17 JRE the server
+# dies at startup with UnsupportedClassVersionError, so the base image major
+# version is load-bearing, not a preference.
 FROM eclipse-temurin:21-jre-jammy
 
+# 6.2.0 fixes CVE-2026-61372: the SPARQL Update engine accepted LOAD source
+# URLs pointing at local resources, so an authenticated update could read data
+# off this container's filesystem. No 5.x release carries the fix.
 ENV FUSEKI_VERSION=6.2.0
 # From https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-6.2.0.tar.gz.sha512.
 # The download below fails the build on mismatch so a tampered or truncated mirror

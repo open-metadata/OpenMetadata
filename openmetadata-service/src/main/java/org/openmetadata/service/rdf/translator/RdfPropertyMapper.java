@@ -94,9 +94,14 @@ public class RdfPropertyMapper {
     // import, ontology export, the translator - down with it. Reproduced on jena-core +
     // jena-arq 6.2.0 alone; Jena 5.6.0 bootstraps from the same first touch without error.
     // Entering through JenaSystem.init() instead completes subsystem init while nothing is
-    // half-built. This class is the server's first Jena touch (RdfResource.initialize builds
-    // a JsonLdTranslator at startup even when RDF is disabled), so the guard belongs here.
-    // Remove it when Jena fixes the initialization order upstream.
+    // half-built.
+    //
+    // OpenMetadataApplication.run() calls JenaSystem.init() too, and that covers the server
+    // whichever class reaches Jena first. This one is not redundant with it: it covers JVMs
+    // that never boot the application - unit tests, tooling, and the forked probe in
+    // RdfJenaBootstrapTest, which loads this class directly and fails without this block.
+    // JenaSystem.init() is idempotent, so having both costs nothing. Remove both together
+    // when Jena fixes the initialization order upstream.
     JenaSystem.init();
   }
 
