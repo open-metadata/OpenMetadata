@@ -18,7 +18,6 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
@@ -640,7 +639,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     } catch (Exception e) {
       throw new TechnicalException(e);
     }
-    return resolveProviderMetadata(client.getConfiguration()).getAuthorizationEndpointURI().toString()
+    return resolveProviderMetadata(client.getConfiguration())
+            .getAuthorizationEndpointURI()
+            .toString()
         + '?'
         + queryString;
   }
@@ -937,8 +938,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
             redirectUri,
-            java.net.URLEncoder.encode(
-                credentials.getIdToken(), StandardCharsets.UTF_8),
+            java.net.URLEncoder.encode(credentials.getIdToken(), StandardCharsets.UTF_8),
             java.net.URLEncoder.encode(email, StandardCharsets.UTF_8),
             java.net.URLEncoder.encode(userName, StandardCharsets.UTF_8));
     response.sendRedirect(url);
