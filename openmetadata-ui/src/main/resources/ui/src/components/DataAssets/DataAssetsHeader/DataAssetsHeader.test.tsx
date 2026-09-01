@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -523,6 +524,46 @@ describe('DataAssetsHeader component', () => {
     mockIsAlertSupported = false;
   });
 
+  it('should navigate from the accessible DQ failure alert control', async () => {
+    mockIsAlertSupported = true;
+    (getEntityDetailsPath as jest.Mock).mockReturnValueOnce('/lineage');
+    (getDataQualityLineage as jest.Mock).mockResolvedValueOnce({
+      entity: {
+        id: 'current-entity',
+        type: EntityType.TABLE,
+        fullyQualifiedName: 'fullyQualifiedName',
+      },
+      nodes: [
+        {
+          id: 'upstream-entity',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'upstreamFullyQualifiedName',
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <DataAssetsHeader isDqAlertSupported {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const alertButton = await screen.findByRole('button', {
+      name: 'label.check-upstream-failure',
+    });
+
+    expect(within(alertButton).queryByRole('link')).not.toBeInTheDocument();
+
+    fireEvent.click(alertButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      pathname: '/lineage',
+      search: 'layers%5B0%5D=DataObservability',
+    });
+
+    mockIsAlertSupported = false;
+  });
+
   it('should render source URL button when sourceUrl is present', () => {
     const mockSourceUrl = 'http://test-source.com';
 
@@ -544,6 +585,28 @@ describe('DataAssetsHeader component', () => {
     expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
     expect(sourceUrlLink).toHaveAttribute('target', '_blank');
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
+  });
+
+  it('should show the source URL tooltip when the link receives focus', async () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'http://test-source.com',
+        }}
+      />
+    );
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Tab' });
+      sourceUrlButton.focus();
+    });
+
+    expect(sourceUrlButton).toHaveFocus();
+    expect(await screen.findByText('label.source-url')).toBeVisible();
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {

@@ -223,6 +223,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -230,6 +232,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           entity: t('label.ml-model'),
         })
       );
+
+      return false;
     }
   };
 
