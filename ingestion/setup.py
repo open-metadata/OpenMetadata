@@ -45,6 +45,8 @@ VERSIONS = {
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
+    # 2.6.0 triggers Airflow 3.3.1's settings/Connection import cycle on Python 3.10.
+    "pygtrie": "pygtrie>=2.5,<2.6",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy>=2,<3",
@@ -206,6 +208,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
+        VERSIONS["pygtrie"],
         # Transitive floor pins for Airflow 3.x stack — Dependabot CVEs.
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
@@ -490,6 +493,7 @@ test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
+    VERSIONS["pygtrie"],
     "boto3-stubs",
     "mypy-boto3-glue",
     "coverage",

@@ -72,17 +72,21 @@ class SearchIndexRetryQueueIT {
     String entityFqn = ns.prefix("rq") + ".testEntity";
 
     retryQueueDAO.upsert(
-        entityId, entityFqn, "test failure reason", SearchIndexRetryQueue.STATUS_PENDING, "table");
+        entityId,
+        entityFqn,
+        "test failure reason",
+        SearchIndexRetryQueue.STATUS_COMPLETED,
+        "table");
 
     List<SearchIndexRetryRecord> records =
-        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_COMPLETED, 1000);
     assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
 
     SearchIndexRetryRecord record =
         records.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
     assertEquals(entityFqn, record.getEntityFqn());
     assertEquals("test failure reason", record.getFailureReason());
-    assertEquals(SearchIndexRetryQueue.STATUS_PENDING, record.getStatus());
+    assertEquals(SearchIndexRetryQueue.STATUS_COMPLETED, record.getStatus());
     assertEquals("table", record.getEntityType());
     assertEquals(0, record.getRetryCount());
     assertNull(record.getClaimedAt());
