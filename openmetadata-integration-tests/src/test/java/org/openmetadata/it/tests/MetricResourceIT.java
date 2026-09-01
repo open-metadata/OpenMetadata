@@ -1873,8 +1873,15 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     }
   }
 
+  /**
+   * Metric approval is the generic RequestApproval task type (no dedicated MetricApproval type), so
+   * its reject carries the same {@code requiresComment=true} UI hint Glossary does — enforced by the
+   * UI, not the backend. Backend comment enforcement is DAR-only. A commentless metric reject must
+   * therefore succeed and drive the metric to REJECTED. An unknown transition id still 400s
+   * (transition validation is independent of comments).
+   */
   @Test
-  void rejectNewMetricRequiresCommentAndSetsRejected(TestNamespace ns) {
+  void rejectNewMetricWithoutCommentSetsRejected(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     Metric metric =
         createEntity(
@@ -1897,22 +1904,11 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                       new ResolveTask()
                           .withTransitionId("unknown-reject-transition")
                           .withResolutionType(TaskResolutionType.Rejected)));
-      assertApiStatus(
-          400,
-          () ->
-              SdkClients.user1Client()
-                  .tasks()
-                  .resolve(
-                      task.getId().toString(),
-                      new ResolveTask().withResolutionType(TaskResolutionType.Rejected)));
-      String decisionNote = "The definition needs revision";
       SdkClients.user1Client()
           .tasks()
           .resolve(
               task.getId().toString(),
-              new ResolveTask()
-                  .withResolutionType(TaskResolutionType.Rejected)
-                  .withComment(decisionNote));
+              new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
 
       Awaitility.await("New Metric rejection should synchronize status and notification")
           .atMost(Duration.ofMinutes(2))
@@ -1926,12 +1922,10 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
       Task rejectedTask = SdkClients.adminClient().tasks().get(task.getId().toString());
       assertEquals(TaskEntityStatus.Rejected, rejectedTask.getStatus());
       assertEquals(TaskResolutionType.Rejected, rejectedTask.getResolution().getType());
-      assertEquals(decisionNote, rejectedTask.getResolution().getComment());
       EntityHistory taskHistory = SdkClients.adminClient().tasks().getVersionList(task.getId());
       EntityHistory metricHistory =
           SdkClients.adminClient().metrics().getVersionList(metric.getId());
       assertHistoryContains(taskHistory, "status", TaskEntityStatus.Rejected.value());
-      assertHistoryContains(taskHistory, "comment", decisionNote);
       assertHistoryContains(metricHistory, "entityStatus", EntityStatus.REJECTED.value());
     } finally {
       SdkClients.adminClient().eventSubscriptions().delete(notification.getId().toString());

@@ -578,8 +578,15 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(TaskResolutionType.Rejected, resolvedTask.getResolution().getType());
   }
 
+  /**
+   * A non-DAR task (here DescriptionUpdate on a table) whose reject transition declares {@code
+   * requiresComment=true} must still be rejectable without a comment — the flag is a UI hint, and
+   * backend comment enforcement is scoped to DataAccessRequest (TaskResource) + metric approvals.
+   * #30896 added a global guard that 400'd every non-metric commentless reject (tables, dashboards,
+   * incidents, suggestions); this test locks the commentless reject open.
+   */
   @Test
-  void testResolveTaskRejectsMissingRequiredTransitionComment(TestNamespace ns) {
+  void testResolveDescriptionUpdateRejectWithoutCommentSucceeds(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
     Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
@@ -591,8 +598,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Task task =
         createEntity(
             new CreateTask()
-                .withName(ns.prefix("resolve-reject-comment-required"))
-                .withDescription("Task whose rejection requires a comment")
+                .withName(ns.prefix("resolve-reject-no-comment"))
+                .withDescription("Non-DAR reject must not require a comment")
                 .withCategory(TaskCategory.MetadataUpdate)
                 .withType(TaskEntityType.DescriptionUpdate)
                 .withAbout(entityLink("table", table.getFullyQualifiedName()))
@@ -600,12 +607,17 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     awaitTaskReadyForWorkflowResolution(task.getId());
     ResolveTask resolveRequest = new ResolveTask().withResolutionType(TaskResolutionType.Rejected);
 
-    assertThrows(
-        InvalidRequestException.class,
-        () -> SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest));
+    // Load-bearing: a commentless reject on a non-DAR task must NOT 400.
+    SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
-    Task unchanged = SdkClients.adminClient().tasks().get(task.getId().toString());
-    assertEquals(TaskEntityStatus.Open, unchanged.getStatus());
+    Awaitility.await("DescriptionUpdate reject without a comment reaches Rejected")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    TaskEntityStatus.Rejected,
+                    SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus()));
   }
 
   @Test

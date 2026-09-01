@@ -79,87 +79,58 @@ class TaskWorkflowHandlerTest {
     assertNotNull(handler);
   }
 
+  /**
+   * A {@code requiresComment=true} transition is a UI hint only — the backend must NOT 400 a
+   * commentless reject. Backend enforcement is DataAccessRequest-only (TaskResource); every other
+   * task type, metric approvals included, relies on the UI honoring the hint. #30896 added a global
+   * transition-based guard here that regressed every non-DAR reject spec (tables, dashboards,
+   * incidents, suggestions); this test locks the commentless path open through the full resolveTask
+   * flow.
+   */
   @Test
-  void testMetricRejectedResolutionRequiresComment() {
-    Task metricApproval = metricApprovalTask();
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                TaskWorkflowHandler.validateMetricRejectionComment(
-                    metricApproval, TaskResolutionType.Rejected, null));
-
-    assertEquals("A rejection comment is required", exception.getMessage());
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            TaskWorkflowHandler.validateMetricRejectionComment(
-                metricApproval, TaskResolutionType.Rejected, ""));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            TaskWorkflowHandler.validateMetricRejectionComment(
-                metricApproval, TaskResolutionType.Rejected, "   "));
-  }
-
-  @Test
-  void testMetricRejectionAlwaysRequiresComment() {
-    Task metricApproval = metricApprovalTask();
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            TaskWorkflowHandler.validateMetricRejectionComment(
-                metricApproval, TaskResolutionType.Rejected, null));
-    assertDoesNotThrow(
-        () ->
-            TaskWorkflowHandler.validateMetricRejectionComment(
-                metricApproval, TaskResolutionType.Rejected, "Metric definition is incomplete"));
-  }
-
-  @Test
-  void testNonMetricTransitionsPreserveCommentlessApiContract() {
-    Task dataAccessRequest =
+  void testRejectWithRequiresCommentTransitionAllowsMissingComment() {
+    UUID taskId = UUID.randomUUID();
+    TaskAvailableTransition rejectTransition =
+        new TaskAvailableTransition()
+            .withId("reject")
+            .withResolutionType(TaskResolutionType.Rejected)
+            .withRequiresComment(true);
+    Task task =
         new Task()
-            .withType(TaskEntityType.DataAccessRequest)
-            .withAbout(new EntityReference().withType(Entity.TABLE));
-    Task incident =
-        new Task()
-            .withType(TaskEntityType.TestCaseResolution)
-            .withAbout(new EntityReference().withType(Entity.TEST_CASE));
+            .withId(taskId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withType(Entity.TABLE))
+            .withAvailableTransitions(List.of(rejectTransition));
+    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
 
-    assertDoesNotThrow(
-        () ->
-            TaskWorkflowHandler.validateMetricRejectionComment(
-                dataAccessRequest, TaskResolutionType.Rejected, null));
-    assertDoesNotThrow(
-        () ->
-            TaskWorkflowHandler.validateMetricRejectionComment(
-                incident, TaskResolutionType.Completed, null));
-  }
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
 
-  @Test
-  void testTransitionRequiringCommentRejectsBlankResolutionComments() {
-    TaskAvailableTransition transition =
-        new TaskAvailableTransition().withId("reject").withRequiresComment(true);
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
+          .thenAnswer(invocation -> invocation.getArgument(1));
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
+      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
+      when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> TaskWorkflowHandler.validateResolutionComment(transition, null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> TaskWorkflowHandler.validateResolutionComment(transition, "   "));
-    assertDoesNotThrow(
-        () -> TaskWorkflowHandler.validateResolutionComment(transition, "Missing ownership"));
-  }
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      when(taskRepository.getFields(anyString())).thenReturn(fields);
+      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
 
-  @Test
-  void testTransitionWithoutCommentRequirementAcceptsMissingComment() {
-    TaskAvailableTransition transition =
-        new TaskAvailableTransition().withId("approve").withRequiresComment(false);
+      Task result =
+          assertDoesNotThrow(
+              () ->
+                  TaskWorkflowHandler.getInstance()
+                      .resolveTask(
+                          task, "reject", TaskResolutionType.Rejected, null, null, null, "alice"));
 
-    assertDoesNotThrow(() -> TaskWorkflowHandler.validateResolutionComment(transition, null));
-    assertDoesNotThrow(() -> TaskWorkflowHandler.validateResolutionComment(null, null));
+      assertSame(refreshedTask, result);
+    }
   }
 
   @Test
@@ -666,11 +637,5 @@ class TaskWorkflowHandlerTest {
     assertTrue(
         parentTags == null || parentTags.isEmpty(),
         "Column tag suggestion must not tag the parent table");
-  }
-
-  private Task metricApprovalTask() {
-    return new Task()
-        .withType(TaskEntityType.RequestApproval)
-        .withAbout(new EntityReference().withType(Entity.METRIC));
   }
 }

@@ -142,8 +142,6 @@ public class TaskWorkflowHandler {
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     TaskResolutionType effectiveResolutionType =
         resolveResolutionType(task, requestedResolutionType, selectedTransition);
-    validateResolutionComment(selectedTransition, comment);
-    validateMetricRejectionComment(task, effectiveResolutionType, comment);
     LOG.info(
         "[TaskWorkflowHandler] Resolving task: id='{}', transitionId='{}', resolutionType='{}', user='{}'",
         taskId,
@@ -175,25 +173,6 @@ public class TaskWorkflowHandler {
           comment,
           user);
     }
-  }
-
-  static void validateMetricRejectionComment(
-      Task task, TaskResolutionType resolutionType, String comment) {
-    if (isMetricApprovalRejection(task, resolutionType) && (comment == null || comment.isBlank())) {
-      throw new IllegalArgumentException("A rejection comment is required");
-    }
-  }
-
-  static void validateResolutionComment(TaskAvailableTransition transition, String comment) {
-    if (transition != null
-        && Boolean.TRUE.equals(transition.getRequiresComment())
-        && (comment == null || comment.isBlank())) {
-      throw new IllegalArgumentException("A rejection comment is required");
-    }
-  }
-
-  private static boolean isMetricApprovalRejection(Task task, TaskResolutionType resolutionType) {
-    return isMetricApprovalTask(task) && resolutionType == TaskResolutionType.Rejected;
   }
 
   private static boolean isMetricApprovalTask(Task task) {
