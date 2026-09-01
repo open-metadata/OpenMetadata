@@ -26,7 +26,6 @@ import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketp
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
@@ -42,7 +41,7 @@ import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/doc
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke } from '../utils/IconUtils';
+import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
 import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
@@ -186,7 +185,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.ONTOLOGY_EXPLORER,
         title: 'label.ontology-explorer',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
-        icon: LineageIcon,
+        icon: OntologyStudioIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
