@@ -184,6 +184,19 @@ def filter_by_database(database_filter_pattern: Optional[FilterPattern], databas
     return _filter(database_filter_pattern, database_name)
 
 
+def filter_by_workgroup(workgroup_filter_pattern: Optional[FilterPattern], workgroup_name: str) -> bool:  # noqa: UP045
+    """
+    Return True if the workgroup needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param workgroup_filter_pattern: Model defining workgroup filtering logic
+    :param workgroup_name: Athena workgroup name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(workgroup_filter_pattern, workgroup_name)
+
+
 def filter_by_pipeline(pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str) -> bool:  # noqa: UP045
     """
     Return True if the schema needs to be filtered, False otherwise

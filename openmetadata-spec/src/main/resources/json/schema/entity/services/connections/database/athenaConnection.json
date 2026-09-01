@@ -81,6 +81,17 @@
       "description": "Regex to only include/exclude databases that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
+    "workgroupFilterPattern": {
+      "title": "Workgroup Filter Pattern",
+      "description": "Regex to only include/exclude Athena workgroups when scanning for usage and lineage.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "excludeIdentityCenterWorkgroups": {
+      "title": "Exclude Identity Center Workgroups",
+      "description": "Exclude Athena workgroups enabled for AWS IAM Identity Center when scanning for usage and lineage. Such workgroups cannot be queried with static IAM credentials, so they are excluded by default.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

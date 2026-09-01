@@ -22,6 +22,7 @@ from metadata.utils.filters import (
     filter_by_classifications,
     filter_by_dashboard,
     filter_by_fqn,
+    filter_by_workgroup,
     filter_pattern_enabled,
     validate_regex,
 )
@@ -104,6 +105,22 @@ def test_filter_by_fqn():
 
     assert not filter_by_fqn(fqn_filter_schema, "service.my_db.my_schema.table")
     assert filter_by_fqn(fqn_filter_schema, "service.another_db.my_schema.table")
+
+
+def test_filter_by_workgroup():
+    """Check Athena workgroup filters"""
+    workgroup_filter_exc = FilterPattern(excludes=["^team_a_.*$"])
+
+    assert filter_by_workgroup(workgroup_filter_exc, "team_a_workgroup")
+    assert not filter_by_workgroup(workgroup_filter_exc, "team_b_workgroup")
+
+    workgroup_filter_inc = FilterPattern(includes=["^team_a_.*$"])
+
+    assert not filter_by_workgroup(workgroup_filter_inc, "team_a_workgroup")
+    assert filter_by_workgroup(workgroup_filter_inc, "team_b_workgroup")
+
+    # No pattern configured -> nothing is filtered
+    assert not filter_by_workgroup(None, "any_workgroup")
 
 
 def test_filter_numbers():

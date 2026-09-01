@@ -29,10 +29,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.athena.models import (
     AthenaQueryExecutionList,
     QueryExecutionIdsResponse,
+    WorkGroup,
     WorkGroupsList,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
+from metadata.utils.filters import filter_by_workgroup
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -69,6 +71,21 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
             return self.client.list_work_groups()
         return self.client.list_work_groups(NextToken=next_token)
 
+    def _skip_work_group(self, work_group: WorkGroup) -> bool:
+        """
+        Decide whether an ENABLED work group should be excluded from usage/lineage scanning
+        """
+        if self.service_connection.excludeIdentityCenterWorkgroups and work_group.IdentityCenterApplicationArn:
+            logger.debug(
+                f"Skipping work group '{work_group.Name}': it is enabled for AWS IAM Identity Center "
+                "and cannot be queried with static IAM credentials."
+            )
+            return True
+        if filter_by_workgroup(self.service_connection.workgroupFilterPattern, work_group.Name):  # pyright: ignore[reportArgumentType]
+            logger.debug(f"Skipping work group '{work_group.Name}': excluded by workgroupFilterPattern.")
+            return True
+        return False
+
     def get_work_groups(self) -> str:
         """
         Method to get list of names of athena work groups
@@ -80,7 +97,11 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
                 work_group_list = self._get_work_group_response(next_token, is_first_call)
                 response_obj = WorkGroupsList(**work_group_list)
                 for work_group in response_obj.WorkGroups:
-                    if work_group.State and work_group.State.upper() == ATHENA_ENABLED_WORK_GROUP_STATE:
+                    if (
+                        work_group.State
+                        and work_group.State.upper() == ATHENA_ENABLED_WORK_GROUP_STATE
+                        and not self._skip_work_group(work_group)
+                    ):
                         yield work_group.Name
                 next_token = response_obj.NextToken
                 is_first_call = False

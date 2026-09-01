@@ -45,6 +45,10 @@ class AthenaQueryExecutionList(BaseModel):
 class WorkGroup(BaseModel):
     Name: Optional[str] = None  # noqa: UP045
     State: Optional[str] = None  # noqa: UP045
+    # Present only for workgroups enabled for AWS IAM Identity Center. Those
+    # workgroups reject queries run with static IAM credentials, so this field
+    # is used to skip them outright rather than fail every query attempt.
+    IdentityCenterApplicationArn: Optional[str] = None  # noqa: UP045
 
 
 class WorkGroupsList(BaseModel):

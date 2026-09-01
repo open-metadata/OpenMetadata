@@ -235,3 +235,22 @@ $$section
 ### Default Table Filter Pattern $(id="tableFilterPattern")
 Regex to only include/exclude tables that matches the pattern.
 $$
+
+$$section
+### Workgroup Filter Pattern $(id="workgroupFilterPattern")
+Regex to only include/exclude Athena workgroups when scanning for usage and lineage.
+
+This is independent of the [Workgroup](#workgroup) field above, which only scopes where OpenMetadata's
+own staging queries run — this pattern controls which of the account's workgroups are scanned for
+query history.
+$$
+
+$$section
+### Exclude Identity Center Workgroups $(id="excludeIdentityCenterWorkgroups")
+Exclude Athena workgroups enabled for AWS IAM Identity Center when scanning for usage and lineage.
+
+Workgroups enabled for IAM Identity Center require a federated identity session to query - they
+cannot be queried with static IAM credentials or an assumed role, regardless of the permissions
+granted. This option is enabled by default so these workgroups are skipped automatically; disable
+it only for troubleshooting.
+$$

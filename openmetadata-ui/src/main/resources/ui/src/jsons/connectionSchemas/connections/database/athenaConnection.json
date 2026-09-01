@@ -218,6 +218,35 @@
       },
       "additionalProperties": false
     },
+    "workgroupFilterPattern": {
+      "title": "Workgroup Filter Pattern",
+      "description": "Regex to only include/exclude Athena workgroups when scanning for usage and lineage.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "excludeIdentityCenterWorkgroups": {
+      "title": "Exclude Identity Center Workgroups",
+      "description": "Exclude Athena workgroups enabled for AWS IAM Identity Center when scanning for usage and lineage. Such workgroups cannot be queried with static IAM credentials, so they are excluded by default.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "description": "Supports Metadata Extraction.",
