@@ -229,14 +229,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public boolean isCollectionRequest() {
-    // Neither an id nor a name (and no directly injected entity) means this addresses the whole
-    // collection, not a single entity — so a null entity here is a list request, not a failed
-    // lookup.
-    return id == null && name == null && entity == null;
-  }
-
-  @Override
   public List<EntityReference> getDomains() {
     resolveEntity();
     if (entity == null) {
