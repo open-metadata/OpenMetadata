@@ -1301,9 +1301,10 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         Resolve topics for a source connector from configuration alone.
 
-        Only names that configuration determines are produced here. A Debezium outbox
-        EventRouter picks its destination from a row value, so no name is derivable and
-        the connector resolves nothing rather than guessing.
+        Only names that configuration determines are produced here. An outbox EventRouter
+        whose ``route.topic.replacement`` still carries a ``${...}`` token picks its
+        destination from a row value, so no name is derivable and the connector resolves
+        nothing rather than guessing.
 
         Two guesses were removed because neither can attribute a topic to a table:
 
@@ -1316,15 +1317,20 @@ class KafkaconnectSource(PipelineServiceSource):
           shared the prefix.
 
         The runtime's own active-topic list (KIP-558) is the only source that knows a
-        routed name, and it is consulted before this method is ever called.
+        row-derived routed name, and it is consulted before this method is ever called.
         """
         if self._has_outbox_event_router(pipeline_details.config):
+            static_topic = self._static_outbox_topic(pipeline_details.config or {})
+            if static_topic:
+                logger.info(f"Outbox EventRouter routes every event to '{static_topic}'")
+                return [KafkaConnectTopics(name=static_topic)]
+
             logger.warning(
                 f"Outbox EventRouter topics could not be resolved for '{pipeline_details.name}'. "
-                "The routed topic name is derived from row data, so it is not derivable from the "
-                "connector config and no lineage is emitted. Enable topic.tracking.enable on the "
-                "Connect workers so the runtime can report the connector's real topics. Confluent "
-                "Cloud does not expose that endpoint for managed connectors."
+                "Its route.topic.replacement resolves per row, so the destination is not derivable "
+                "from the connector config and no lineage is emitted. Enable topic.tracking.enable "
+                "on the Connect workers so the runtime can report the connector's real topics. "
+                "Confluent Cloud does not expose that endpoint for managed connectors."
             )
             return []
 
@@ -1343,6 +1349,25 @@ class KafkaconnectSource(PipelineServiceSource):
             )
 
         return topics_to_process
+
+    def _static_outbox_topic(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+        """
+        The destination of an outbox EventRouter whose ``route.topic.replacement`` holds
+        no ``${...}`` token.
+
+        Such a replacement names one fixed topic for every routed event, which makes it
+        as deterministic as any other config-declared name. Only a replacement that still
+        interpolates a row value is unresolvable. Any RegexRouter later in the chain is
+        applied so the name matches the topic that is actually published.
+
+        Returns None when the key is absent: an absent replacement means the routed name
+        is unknown, and synthesising Debezium's default would invent a claim.
+        """
+        transform = self._event_router_transform(connector_config)
+        replacement = connector_config.get(f"transforms.{transform}.route.topic.replacement") if transform else None
+        if not replacement or "${" in replacement:
+            return None
+        return apply_topic_routing_transforms(replacement, connector_config)
 
     def _has_outbox_event_router(self, connector_config: Optional[dict]) -> bool:  # noqa: UP045
         """Return True if the connector uses a Debezium outbox EventRouter SMT."""

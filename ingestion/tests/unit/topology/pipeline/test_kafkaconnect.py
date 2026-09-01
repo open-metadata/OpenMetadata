@@ -2230,6 +2230,45 @@ class TestRoutingPatternsDoNotGenerateTopics:
 
         assert [t.name for t in topics] == [], "a routing pattern must not generate candidates"
 
+    def test_fully_static_replacement_is_config_deterministic(self):
+        """
+        A replacement with no ${...} token routes every event to one fixed topic, so the
+        destination is as derivable as any other declared name and must still resolve
+        without the runtime. Only a replacement that interpolates a row value is unknown.
+        """
+        source = _source_with_topics(["prod.events.all", "prod.events.settings_v1", "prod.events.orderPlaced_v1"])
+        details = KafkaConnectPipelineDetails(
+            name="outbox-static", type="source", config=self._config("prod.events.all")
+        )
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.wallet.suffixcol",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == ["prod.events.all"], (
+            "a static replacement names exactly one topic, with no namespace scan or pattern match"
+        )
+
+    def test_static_replacement_composes_with_a_following_regex_router(self):
+        """The published name is what survives the SMT chain, so later routers apply."""
+        config = self._config("outbox.event.all")
+        config["transforms"] = "outbox,reroute"
+        config["transforms.reroute.type"] = "org.apache.kafka.connect.transforms.RegexRouter"
+        config["transforms.reroute.regex"] = r"outbox\.event\.(.*)"
+        config["transforms.reroute.replacement"] = "prod.events.$1"
+        source = _source_with_topics(["prod.events.all"])
+        details = KafkaConnectPipelineDetails(name="outbox-static", type="source", config=config)
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.wallet.suffixcol",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == ["prod.events.all"]
+
     def test_absent_route_topic_replacement_resolves_nothing(self):
         """
         An absent key means the routed name is unknown. The old code synthesised
