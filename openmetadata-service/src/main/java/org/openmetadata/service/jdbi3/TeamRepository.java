@@ -703,7 +703,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeRelationships(Team team) {
-    validateDirectUserAddition(team, team.getUsers());
     for (EntityReference user : listOrEmpty(team.getUsers())) {
       addRelationship(team.getId(), user.getId(), TEAM, Entity.USER, Relationship.HAS);
     }
