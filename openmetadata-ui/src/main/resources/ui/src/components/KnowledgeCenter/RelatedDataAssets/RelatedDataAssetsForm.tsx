@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Space } from 'antd';
-import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
-import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-
+import { BadgeWithButton, Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space } from 'antd';
 import { FC, useState } from 'react';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import i18n from '../../../utils/i18next/LocalUtil';
 
 interface RelatedDataAssetsFormProps {
@@ -41,25 +41,44 @@ const knowledgeCenterQueryFilter = {
 };
 
 export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
-  defaultValue,
   initialOptions,
   onCancel,
   onSubmit,
 }) => {
   const { t } = i18n;
-  const [form] = Form.useForm();
+  const [selected, setSelected] = useState<DataAssetOption[]>(
+    initialOptions ?? []
+  );
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
 
+  const placeholder = t('label.data-asset-plural');
+
+  const handleChange = (option?: DataAssetOption | DataAssetOption[]) => {
+    if (!option) {
+      setSelected([]);
+
+      return;
+    }
+    setSelected(Array.isArray(option) ? option : [option]);
+  };
+
+  const handleRemoveChip = (id: string) => {
+    const next = selected.filter((s) => String(s.value ?? '') !== id);
+    handleChange(next.length ? next : undefined);
+  };
+
+  const handleSubmit = () => {
+    setIsSubmitLoading(true);
+    onSubmit(selected);
+  };
+
+  const chipItems = selected.map((s) => ({
+    id: String(s.value ?? ''),
+    label: s.displayName ?? String(s.label ?? ''),
+  }));
+
   return (
-    <Form
-      data-testid="dataAssetsForm"
-      form={form}
-      initialValues={{ dataAssets: defaultValue }}
-      name="dataAssetsForm"
-      onFinish={(data) => {
-        setIsSubmitLoading(true);
-        onSubmit(data['dataAssets']);
-      }}>
+    <div data-testid="dataAssetsForm">
       <Row gutter={[0, 8]}>
         <Col className="gutter-row d-flex justify-end" span={24}>
           <Space align="center">
@@ -74,26 +93,59 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             <Button
               className="p-x-05"
               data-testid="saveDataAssets"
-              htmlType="submit"
               icon={<CheckOutlined size={12} />}
               loading={isSubmitLoading}
               size="small"
               type="primary"
+              onClick={handleSubmit}
             />
           </Space>
         </Col>
 
         <Col className="gutter-row" span={24}>
-          <Form.Item noStyle name="dataAssets">
-            <DataAssetAsyncSelectList
-              initialOptions={initialOptions}
-              mode="multiple"
-              placeholder={t('label.data-asset-plural')}
-              queryFilter={knowledgeCenterQueryFilter}
-            />
-          </Form.Item>
+          <DataAssetSelectList
+            initialOptions={initialOptions}
+            placeholder={placeholder}
+            popoverPlacement="top end"
+            queryFilter={knowledgeCenterQueryFilter}
+            renderTrigger={({ open }) => (
+              <Box
+              align="center"
+              className="tw:relative tw:w-full tw:rounded-lg tw:bg-primary tw:px-3 tw:py-1.5 tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+              gap={2}
+                wrap="wrap"
+                onClick={open}>
+                {chipItems.length > 0 ? chipItems.map((item) => (
+                    <BadgeWithButton
+                      buttonLabel={t('label.remove')}
+                      color="gray"
+                      key={item.id}
+                      size="sm"
+                      type="modern"
+                      onButtonClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveChip(item.id);
+                      }}>
+                        <div className="tw:max-w-28">
+                          <Typography
+                            className="tw:whitespace-nowrap"
+                            ellipsis={{ tooltip : item.label }}
+                            size="text-xs">
+                            {item.label}
+                          </Typography>
+                        </div>
+                    </BadgeWithButton>
+                )): <Typography className="tw:text-tertiary">
+                  {t('label.data-asset-plural')}
+                </Typography>}
+              </Box>
+            )}
+            selectionMode="multiple"
+            value={selected}
+            onChange={handleChange}
+          />
         </Col>
       </Row>
-    </Form>
+    </div>
   );
 };

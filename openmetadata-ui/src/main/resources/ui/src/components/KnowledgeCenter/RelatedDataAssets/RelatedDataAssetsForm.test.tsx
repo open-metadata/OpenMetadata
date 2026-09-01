@@ -15,8 +15,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { RelatedDataAssetsForm } from './RelatedDataAssetsForm';
 jest.mock(
-  'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
-  () => jest.fn(() => <div data-testid="DataAssetAsyncSelectList" />)
+  '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
+  () => jest.fn(() => <div data-testid="DataAssetSelectList" />)
 );
 
 const mockCancel = jest.fn();
@@ -35,7 +35,7 @@ describe('RelatedDataAssetsForm', () => {
       />
     );
 
-    expect(screen.getByTestId('DataAssetAsyncSelectList')).toBeInTheDocument();
+    expect(screen.getByTestId('DataAssetSelectList')).toBeInTheDocument();
     expect(screen.getByTestId('cancelDataAssets')).toBeInTheDocument();
     expect(screen.getByTestId('saveDataAssets')).toBeInTheDocument();
   });

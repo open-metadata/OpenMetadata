@@ -81,7 +81,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
         displayName: getEntityName(item),
         reference: item,
         label: getEntityName(item),
-        value: item.id,
+        value: item.fullyQualifiedName,
       })
     );
 
