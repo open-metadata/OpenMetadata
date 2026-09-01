@@ -248,10 +248,14 @@ describe('QueryCardExtraOption component test', () => {
   });
 
   it('onClick ofEdit dropdown option should call onEditClick', async () => {
+    // EditQueries (not EditAll) is the operation the edit action actually
+    // checks — getPrioritizedEditPermission/can(Operation.EditQueries)
+    // honors an explicit field-level value over EditAll (Task 6 Finding 1:
+    // explicit-deny-wins), so the field itself must be granted here.
     render(
       <QueryCardExtraOption
         {...mockProps}
-        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditQueries: true }}
       />
     );
 
