@@ -619,12 +619,18 @@ describe('TableV2 — the pager reaches the parent', () => {
 
 /**
  * TableV2-only: AntD sizes columns through a `<col>` element, so there is no
- * shared attribute to compare. What matters is that it sets no per-column
- * min-width — a percentage floor rounds up on every column and the total then
- * exceeds the container, raising a scrollbar on a table that fits.
+ * shared attribute to compare. What matters is where it sets no per-column
+ * min-width, which is everywhere — a percentage floor rounds up on every column
+ * and the total then exceeds the container, raising a scrollbar on a table that
+ * fits, while a pixel floor on a table that cannot scroll pins each column at
+ * its declared width and leaves the leftover space empty after the last one.
+ * The floor earns its place only where the table is free to overflow.
  */
 describe('TableV2 — column width floors', () => {
-  const renderWith = (width: number | string) => {
+  const renderWith = (
+    width: number | string,
+    scroll?: { x?: number | string }
+  ) => {
     render(
       <TableV2
         columns={[
@@ -634,18 +640,89 @@ describe('TableV2 — column width floors', () => {
         dataSource={[{ a: '1', b: '2' }]}
         pagination={false}
         rowKey="a"
+        scroll={scroll}
       />
     );
 
     return document.querySelector('thead th') as HTMLElement;
   };
 
-  it('floors a pixel width so the column keeps its size', () => {
-    expect(renderWith(250).style.minWidth).toBe('250px');
+  it('floors a pixel width on a table that scrolls sideways', () => {
+    expect(renderWith(250, { x: 1200 }).style.minWidth).toBe('250px');
   });
 
-  it('leaves a percentage width unfloored', () => {
+  it('leaves a pixel width unfloored when the table cannot scroll', () => {
+    expect(renderWith(250).style.minWidth).toBe('');
+  });
+
+  it('still applies the width itself', () => {
+    expect(renderWith(250).style.width).toBe('250px');
+  });
+
+  it('leaves a percentage width unfloored either way', () => {
     expect(renderWith('32%').style.minWidth).toBe('');
+    expect(renderWith('32%', { x: 1200 }).style.minWidth).toBe('');
+  });
+});
+
+/**
+ * TableV2-only: the core `Table.Cell` sizes its own padding, but every cell
+ * here also carries a padding class, and a class wins for the same property —
+ * so the size prop has to drive that class or it changes nothing on screen.
+ */
+describe('TableV2 — size drives cell padding', () => {
+  const paddingOf = (size?: 'compact' | 'small' | 'middle' | 'large') => {
+    const { unmount } = render(
+      <TableV2
+        columns={[{ dataIndex: 'a', key: 'a', title: 'A' }]}
+        dataSource={[{ a: '1' }]}
+        pagination={false}
+        rowKey="a"
+        size={size}
+      />
+    );
+    const header = document.querySelector('thead th') as HTMLElement;
+    const cell = document.querySelector('tbody td') as HTMLElement;
+    const classes = {
+      header: header.className,
+      cell: cell.className,
+    };
+    unmount();
+
+    return classes;
+  };
+
+  it('defaults to the middle scale', () => {
+    expect(paddingOf().header).toContain('tw:py-2 tw:pl-4 tw:pr-2');
+    expect(paddingOf('middle').cell).toContain('tw:py-2 tw:pl-4 tw:pr-2');
+  });
+
+  it('tightens for small and compact', () => {
+    expect(paddingOf('small').header).toContain('tw:p-2');
+    expect(paddingOf('compact').cell).toContain('tw:py-1.5 tw:pl-3 tw:pr-2');
+  });
+
+  it('loosens for large', () => {
+    expect(paddingOf('large').header).toContain('tw:py-4 tw:pl-6 tw:pr-4');
+    expect(paddingOf('large').cell).toContain('tw:py-4 tw:pl-6 tw:pr-4');
+  });
+
+  it('lets a call site override the body padding outright', () => {
+    render(
+      <TableV2
+        cellClassName="tw:p-8"
+        columns={[{ dataIndex: 'a', key: 'a', title: 'A' }]}
+        dataSource={[{ a: '1' }]}
+        pagination={false}
+        rowKey="a"
+        size="large"
+      />
+    );
+
+    const cell = document.querySelector('tbody td') as HTMLElement;
+
+    expect(cell.className).toContain('tw:p-8');
+    expect(cell.className).not.toContain('tw:py-4 tw:pl-6 tw:pr-4');
   });
 });
 

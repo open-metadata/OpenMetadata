@@ -169,6 +169,26 @@ const toCoreSize = (size: TableComponentProps<never>['size']) =>
   CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
+ * Cell padding per AntD size.
+ *
+ * The core `Table.Cell` sizes its own padding, but every cell here also carries
+ * these classes, and a class beats the core's for the same property — so
+ * without this map `size` changed nothing a user could see. `middle` keeps the
+ * padding every migrated table already renders with; the other steps move
+ * around it.
+ */
+const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
+  compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
+  small: 'tw:p-2',
+  middle: 'tw:py-2 tw:pl-4 tw:pr-2',
+  large: 'tw:py-4 tw:pl-6 tw:pr-4',
+};
+
+const toCellPaddingClass = (size: TableComponentProps<never>['size']) =>
+  CELL_PADDING_BY_ANTD_SIZE[size ?? 'middle'] ??
+  CELL_PADDING_BY_ANTD_SIZE.middle;
+
+/**
  * Internal pagination is off whenever the parent owns paging, so a server page
  * is never sliced a second time.
  */
@@ -1246,7 +1266,8 @@ const TableV2 = <T extends object>(
                     <UntitledTable.Head
                       allowsSorting={!!colType.sorter}
                       className={classNames(
-                        'tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary',
+                        toCellPaddingClass(rest.size),
+                        'tw:text-sm tw:text-tertiary',
                         getAlignClass(colType.align),
                         getHeaderAlignClass(colType.align)
                       )}
@@ -1254,17 +1275,20 @@ const TableV2 = <T extends object>(
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
                       style={{
-                        ...(rest.size === 'small' ? { padding: '8px' } : {}),
                         ...(colWidth !== undefined
                           ? {
                               width: colWidth,
-                              // A floor only makes sense for a pixel width. As
-                              // a percentage it is the same value as `width`,
-                              // and once each column rounds up against the
-                              // container the floors total more than 100% —
-                              // enough to raise a scrollbar on a table that
-                              // fits. AntD sets no per-column min-width.
-                              ...(typeof colWidth === 'number'
+                              // A floor only holds a pixel column open where
+                              // the table is allowed to overflow. Without
+                              // `scroll.x` it instead pins every column at its
+                              // declared width, so a fixed-layout table stops
+                              // spreading the leftover space and leaves a gap
+                              // after the last column — AntD puts its widths on
+                              // `<col>` with no floor and always fills. A
+                              // percentage floor is worse still: rounded up per
+                              // column it totals over 100% and raises a
+                              // scrollbar on a table that fits.
+                              ...(scroll?.x && typeof colWidth === 'number'
                                 ? { minWidth: colWidth }
                                 : {}),
                             }
@@ -1445,7 +1469,10 @@ const TableV2 = <T extends object>(
                                 // take the browser default and sit centred.
                                 // Topping them leaves short values riding above
                                 // a header that is centred in its own row.
-                                'tw:py-2 tw:pl-4 tw:pr-2 tw:align-middle',
+                                classNames(
+                                  toCellPaddingClass(rest.size),
+                                  'tw:align-middle'
+                                ),
                               getAlignClass(colType.align),
                               'tw:group-data-[dragging]:opacity-40',
                               'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
@@ -1453,17 +1480,16 @@ const TableV2 = <T extends object>(
                             )}
                             key={cellKey}
                             style={{
-                              ...(rest.size === 'small' && !rest.cellClassName
-                                ? { padding: '8px' }
-                                : {}),
                               ...(columnWidths[cellKey] !== undefined ||
                               colType.width !== undefined
                                 ? {
                                     width:
                                       columnWidths[cellKey] ??
                                       (colType.width as number),
-                                    // Pixel widths only — see the header cell.
-                                    ...(typeof colType.width === 'number'
+                                    // Scrollable pixel columns only — see the
+                                    // header cell.
+                                    ...(scroll?.x &&
+                                    typeof colType.width === 'number'
                                       ? { minWidth: colType.width }
                                       : {}),
                                   }
