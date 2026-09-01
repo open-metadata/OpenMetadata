@@ -48,6 +48,29 @@ import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
+// Fixes #31776 -- remembers the user's last-chosen view (table, grid, or
+// tree) as their default for next time, mirroring MetricListPage's
+// identical localStorage pattern for the same concern.
+const DOMAIN_VIEW_STORAGE_KEY = 'domainList.viewMode.v1';
+
+const getInitialViewMode = (): ViewMode => {
+  try {
+    const storedMode = localStorage.getItem(DOMAIN_VIEW_STORAGE_KEY);
+    if (
+      storedMode === ViewMode.Table ||
+      storedMode === ViewMode.Card ||
+      storedMode === ViewMode.Tree
+    ) {
+      return storedMode;
+    }
+  } catch {
+    // localStorage may be unavailable (private browsing, quota) -- fall
+    // through to the default below.
+  }
+
+  return ViewMode.Table;
+};
+
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
@@ -127,7 +150,16 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const [view, setView] = useState<ViewMode>(getInitialViewMode);
+  const handleViewChange = useCallback((nextView: ViewMode) => {
+    setView(nextView);
+    try {
+      localStorage.setItem(DOMAIN_VIEW_STORAGE_KEY, nextView);
+    } catch {
+      // localStorage may be unavailable (private browsing, quota) -- the
+      // toggle still works for this session, it just won't persist.
+    }
+  }, []);
   const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
@@ -315,7 +347,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <ViewToggle
               value={view}
               views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
-              onChange={setView}
+              onChange={handleViewChange}
             />
             {deleteIconButton}
           </Box>

@@ -71,6 +71,25 @@ import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
+// Fixes #31776 -- remembers the user's last-chosen view (table or grid) as
+// their default for next time, mirroring MetricListPage's identical
+// localStorage pattern for the same concern.
+const DATA_PRODUCT_VIEW_STORAGE_KEY = 'dataProductList.viewMode.v1';
+
+const getInitialViewMode = (): ViewMode => {
+  try {
+    const storedMode = localStorage.getItem(DATA_PRODUCT_VIEW_STORAGE_KEY);
+    if (storedMode === ViewMode.Table || storedMode === ViewMode.Card) {
+      return storedMode;
+    }
+  } catch {
+    // localStorage may be unavailable (private browsing, quota) -- fall
+    // through to the default below.
+  }
+
+  return ViewMode.Table;
+};
+
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
@@ -150,7 +169,16 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const [view, setView] = useState<ViewMode>(getInitialViewMode);
+  const handleViewChange = useCallback((nextView: ViewMode) => {
+    setView(nextView);
+    try {
+      localStorage.setItem(DATA_PRODUCT_VIEW_STORAGE_KEY, nextView);
+    } catch {
+      // localStorage may be unavailable (private browsing, quota) -- the
+      // toggle still works for this session, it just won't persist.
+    }
+  }, []);
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -422,7 +450,7 @@ const DataProductListPage = ({
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}
