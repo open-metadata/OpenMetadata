@@ -36,9 +36,11 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -118,20 +120,16 @@ public class IngestionPipelineOwnerInheritanceIT {
   }
 
   @Test
-  void test_isOwnerPolicy_appliesToEditTriggerAndDeploy(TestNamespace ns) {
+  void test_isOwnerPolicy_appliesToEditTriggerDeployAndToggle(TestNamespace ns) {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     String unique = UUID.randomUUID().toString().substring(0, 8);
 
     Rule ownerRule =
         new Rule()
             .withName("pipelineOwnerActions")
-            .withDescription("Allow owners to edit, trigger, and deploy ingestion pipelines")
+            .withDescription("Allow owners to edit and trigger ingestion pipelines")
             .withEffect(Rule.Effect.ALLOW)
-            .withOperations(
-                List.of(
-                    MetadataOperation.EDIT_ALL,
-                    MetadataOperation.TRIGGER,
-                    MetadataOperation.DEPLOY))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.TRIGGER))
             .withResources(List.of("ingestionPipeline"))
             .withCondition("isOwner()");
     Policy ownerPolicy =
@@ -311,6 +309,24 @@ public class IngestionPipelineOwnerInheritanceIT {
         descriptor.getOperations().contains(MetadataOperation.DEPLOY),
         "ingestionPipeline descriptor must expose Deploy so it is grantable scoped to "
             + "Ingestion Pipeline in the policy editor");
+  }
+
+  @Test
+  void test_bulkDeployRejectsNullRequestBody() {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                adminClient
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST,
+                        "/v1/services/ingestionPipelines/bulk/deploy",
+                        JsonUtils.readTree("null"),
+                        Void.class));
+
+    assertTrue(exception.getMessage().contains("must not be null"));
   }
 
   @Test

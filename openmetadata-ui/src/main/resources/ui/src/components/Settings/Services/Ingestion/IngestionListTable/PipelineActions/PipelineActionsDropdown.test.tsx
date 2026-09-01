@@ -137,8 +137,8 @@ describe('PipelineActionsDropdown', () => {
 
   it('should hide deploy button when Deploy permission is absent', async () => {
     const permissions = {
-      ...ENTITY_PERMISSIONS,
-      [Operation.Deploy]: false,
+      ...DEFAULT_ENTITY_PERMISSION,
+      [Operation.Delete]: true,
     } as OperationPermission;
 
     await act(async () => {
@@ -161,7 +161,35 @@ describe('PipelineActionsDropdown', () => {
     await clickOnMoreActions();
 
     expect(screen.queryByTestId('deploy-button')).toBeNull();
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
+  });
+
+  it('should display deploy button with EditAll when Deploy permission is absent', async () => {
+    const permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      [Operation.EditAll]: true,
+    } as OperationPermission;
+
+    await act(async () => {
+      render(
+        <PipelineActionsDropdown
+          {...mockPipelineActionsDropdownProps}
+          ingestion={{
+            ...mockPipelineActionsDropdownProps.ingestion,
+            deployed: false,
+            enabled: true,
+          }}
+          ingestionPipelinePermissions={permissions}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await clickOnMoreActions();
+
+    expect(screen.getByTestId('deploy-button')).toBeInTheDocument();
   });
 
   it('should display deploy button with only Deploy permission', async () => {

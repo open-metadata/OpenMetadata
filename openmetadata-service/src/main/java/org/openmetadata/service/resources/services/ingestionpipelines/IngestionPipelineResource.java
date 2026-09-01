@@ -35,6 +35,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -784,7 +785,7 @@ public class IngestionPipelineResource
   public List<PipelineServiceClientResponse> bulkDeployIngestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<UUID> pipelineIdList) {
+      @NotNull @Valid List<UUID> pipelineIdList) {
     pipelineIdList.forEach(
         id -> authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY));
 
@@ -1521,22 +1522,30 @@ public class IngestionPipelineResource
 
   private void authorizePipelineOperation(
       SecurityContext securityContext, UUID id, MetadataOperation operation) {
-    OperationContext operationContext = new OperationContext(entityType, operation);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizer.authorizeRequests(
+        securityContext, getPipelineOperationAuthRequests(id, operation), AuthorizationLogic.ANY);
   }
 
-  // Requiring EditAll to persist the runner's result would reject an allowed action after its
-  // external side effect has already happened.
+  // Preserve existing EditAll access while allowing roles to grant only the scoped action.
+  private List<AuthRequest> getPipelineOperationAuthRequests(UUID id, MetadataOperation operation) {
+    ResourceContext<IngestionPipeline> resourceContext = getResourceContextById(id);
+    return List.of(
+        new AuthRequest(new OperationContext(entityType, operation), resourceContext),
+        new AuthRequest(
+            new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext));
+  }
+
   private Response createOrUpdateAfterPipelineOperation(
       UriInfo uriInfo,
       SecurityContext securityContext,
       IngestionPipeline ingestionPipeline,
       MetadataOperation operation) {
-    OperationContext operationContext = new OperationContext(entityType, operation);
-    AuthRequest authRequest =
-        new AuthRequest(operationContext, getResourceContextById(ingestionPipeline.getId()));
     return createOrUpdate(
-        uriInfo, securityContext, List.of(authRequest), AuthorizationLogic.ALL, ingestionPipeline);
+        uriInfo,
+        securityContext,
+        getPipelineOperationAuthRequests(ingestionPipeline.getId(), operation),
+        AuthorizationLogic.ANY,
+        ingestionPipeline);
   }
 
   public PipelineServiceClientResponse triggerPipelineInternal(

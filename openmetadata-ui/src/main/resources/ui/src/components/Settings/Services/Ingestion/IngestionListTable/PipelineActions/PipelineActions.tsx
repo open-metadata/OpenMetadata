@@ -56,7 +56,9 @@ function PipelineActions({
     return {
       editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
       deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
-      deployPermission: ingestionPipelinePermissions?.[Operation.Deploy],
+      deployPermission:
+        ingestionPipelinePermissions?.[Operation.EditAll] ||
+        ingestionPipelinePermissions?.[Operation.Deploy],
       triggerPermission: ingestionPipelinePermissions?.[Operation.Trigger],
       editStatusPermission:
         ingestionPipelinePermissions?.[Operation.EditAll] ||
@@ -64,8 +66,10 @@ function PipelineActions({
     };
   }, [ingestionPipelinePermissions]);
 
+  const canDeploy = pipeline.enabled && deployPermission;
+  const canTrigger = pipeline.enabled && pipeline.deployed && triggerPermission;
   const hasDropdownPermission =
-    editPermission || deletePermission || deployPermission || triggerPermission;
+    editPermission || deletePermission || canDeploy || canTrigger;
 
   const onPauseUnpauseClick = useCallback(
     async (id: string) => {

@@ -76,7 +76,9 @@ function PipelineActionsDropdown({
       editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
       deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
       deployPermission:
-        ingestionPipelinePermissions?.[Operation.Deploy] ?? false,
+        ingestionPipelinePermissions?.[Operation.EditAll] ||
+        ingestionPipelinePermissions?.[Operation.Deploy] ||
+        false,
       triggerPermission:
         ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
     };
