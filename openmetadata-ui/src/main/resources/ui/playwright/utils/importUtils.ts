@@ -550,6 +550,10 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 };
 
 export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
+  // After the previous editor closes, Ant Design's FocusTrap unmount can move
+  // focus away from the rdg cell. Re-focus the active cell so the Enter press
+  // reliably opens the cell editor.
+  await page.locator('[role="gridcell"][tabindex="0"]').focus();
   await page.keyboard.press('Enter', { delay: 100 });
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();

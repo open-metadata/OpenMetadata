@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import type { CSSProperties } from 'react';
 import { SEMICOLON_SPLITTER } from '../../../../constants/regex.constants';
@@ -152,14 +153,15 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
       content = (
         <div className="csv-cell-chips csv-cell-chips-custom-properties">
           {customPropertyItems.map((item) => (
-            // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- chips inside react-data-grid cells: Tooltip's AriaButton wrapper disrupts rdg keyboard focus management
-            <span
+            <Tooltip
               key={item.key}
-              className="csv-chip csv-chip-prop"
-              title={`${item.label}: ${item.value}`}>
-              {item.label}:{' '}
-              <span className="csv-chip-value">{item.value}</span>
-            </span>
+              title={`${item.label}: ${item.value}`}
+              triggerTabIndex={-1}>
+              <span className="csv-chip csv-chip-prop">
+                {item.label}:{' '}
+                <span className="csv-chip-value">{item.value}</span>
+              </span>
+            </Tooltip>
           ))}
         </div>
       );
@@ -171,13 +173,14 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
           const { label } = parseEntity(item);
 
           return (
-            // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- chips inside react-data-grid cells: Tooltip's AriaButton wrapper disrupts rdg keyboard focus management
-            <span key={item} className="csv-owner-chip" title={label}>
-              <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
-                {getInitials(label)}
+            <Tooltip key={item} title={label} triggerTabIndex={-1}>
+              <span className="csv-owner-chip">
+                <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
+                  {getInitials(label)}
+                </span>
+                <span className="csv-owner-name">{label}</span>
               </span>
-              <span className="csv-owner-name">{label}</span>
-            </span>
+            </Tooltip>
           );
         })}
       </div>
@@ -191,14 +194,13 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
             column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item;
 
           return (
-            // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- chips inside react-data-grid cells: Tooltip's AriaButton wrapper disrupts rdg keyboard focus management
-            <span
-              key={item}
-              className={`csv-chip csv-chip-${variant}`}
-              style={getChipStyle(column, item, itemStyles)}
-              title={item}>
-              {label}
-            </span>
+            <Tooltip key={item} title={item} triggerTabIndex={-1}>
+              <span
+                className={`csv-chip csv-chip-${variant}`}
+                style={getChipStyle(column, item, itemStyles)}>
+                {label}
+              </span>
+            </Tooltip>
           );
         })}
       </div>
