@@ -19,7 +19,7 @@ import {
 import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
-import { getIngestionPipelineLogById } from '../rest/ingestionPipelineAPI';
+import { getIngestionPipelineLogById , getIngestionPipelineLogByRunId  } from '../rest/ingestionPipelineAPI';
 import { StreamHealth } from '../utils/SseStreamUtils';
 import { usePaginatedLiveLog } from './usePaginatedLiveLog';
 
@@ -94,14 +94,16 @@ export const useIngestionLogSource = ({
   const isStreaming = canStream && isLive && !streamGaveUp;
 
   const fetchPage = useCallback(
-    (cursor?: string) =>
-      getIngestionPipelineLogById(ingestionFqn, runId, cursor).then((res) => ({
+    (cursor?: string) => {
+      const logPromise = runId ? getIngestionPipelineLogByRunId(ingestionFqn, runId, cursor) : getIngestionPipelineLogById(ingestionFqn, cursor);
+      return logPromise.then((res) => ({
         content: ingestionType
           ? getLogTaskFieldForType(res.data, ingestionType)
           : '',
         after: res.data.after,
         total: res.data.total,
-      })),
+      }));
+    },
     [ingestionFqn, ingestionType, runId]
   );
 
