@@ -25,7 +25,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   formatClientContent,
-  getTextFromHtmlString,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -43,6 +42,14 @@ const BlockEditor = withSuspenseFallback(
 // genuinely different font-size still gets corrected by the real
 // measurement below; this only shrinks how far off the very first frame is.
 const DEFAULT_LINE_HEIGHT_PX = 21;
+
+// Matches a block-level closing tag or a self-closing line break, so a
+// separator can be inserted at each one before extracting plain text —
+// textContent concatenates text nodes with no regard for block boundaries
+// (e.g. "<h1>Title</h1><p>body</p>".textContent is "Titlebody", not
+// "Title body"), so adjacent blocks would otherwise run together.
+const BLOCK_BOUNDARY_REGEX =
+  /<\/(p|div|h[1-6]|li|ul|ol|blockquote|pre|table|tr|thead|tbody)>|<(?:br|hr)\s*\/?>/gi;
 
 const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   markdown = '',
@@ -68,10 +75,22 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   // browsers is inconsistent when it sits directly inside the clamped box.
   // Render plain text instead while collapsed so the clamped box's direct
   // child is text, and swap back to the real rich BlockEditor once expanded.
-  const plainTextContent = useMemo(
-    () => (clampByLines ? getTextFromHtmlString(content) : ''),
-    [clampByLines, content]
-  );
+  // Extracted via the DOM (not a tag-stripping regex) so entities decode
+  // correctly (`&amp;` -> `&`), with a separator inserted at each block
+  // boundary first so adjacent blocks don't run into one word.
+  const plainTextContent = useMemo(() => {
+    if (!clampByLines) {
+      return '';
+    }
+
+    const withBlockSeparators = content.replace(BLOCK_BOUNDARY_REGEX, '$& ');
+    const doc = new DOMParser().parseFromString(
+      withBlockSeparators,
+      'text/html'
+    );
+
+    return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+  }, [clampByLines, content]);
   const [readMore, setReadMore] = useState<boolean>(isDescriptionExpanded);
   const [isOverflowing, setIsOverflowing] = useState<boolean>(false);
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);

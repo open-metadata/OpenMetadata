@@ -31,9 +31,6 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
 jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   formatClientContent: jest.fn((content) => content),
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
-  getTextFromHtmlString: jest.fn((content) =>
-    (content ?? '').replace(/<[^>]{1,1000}>/g, '').trim()
-  ),
 }));
 
 const mockLongMarkdown = `
@@ -865,6 +862,34 @@ describe('RichTextEditorPreviewNew', () => {
       });
 
       expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
+    });
+
+    it('decodes HTML entities in the clamped plain-text preview instead of showing them literally', () => {
+      render(
+        <RichTextEditorPreviewNew
+          {...mockProp}
+          clampByLines
+          markdown="<p>Sales &amp; Marketing</p>"
+        />
+      );
+
+      const parser = screen.getByTestId('markdown-parser');
+
+      expect(parser.textContent).toBe('Sales & Marketing');
+    });
+
+    it('separates adjacent block elements with a space instead of running them into one word', () => {
+      render(
+        <RichTextEditorPreviewNew
+          {...mockProp}
+          clampByLines
+          markdown="<h1>Title</h1><p>body</p>"
+        />
+      );
+
+      const parser = screen.getByTestId('markdown-parser');
+
+      expect(parser.textContent).toBe('Title body');
     });
   });
 
