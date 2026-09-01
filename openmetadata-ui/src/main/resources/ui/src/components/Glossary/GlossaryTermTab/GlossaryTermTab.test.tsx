@@ -691,6 +691,55 @@ describe('Test GlossaryTermTab component', () => {
         expect(mockSetTermsSearchTerm).toHaveBeenCalledWith('');
       });
     });
+
+    it('resets the locally-selected status filter back to the default when the active entity changes, keeping it in sync with the store-reset badge filter', async () => {
+      mockUseGlossaryStore.activeGlossary = mockedGlossaryTerms[0];
+
+      const { rerender } = render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review'
+        );
+      });
+
+      // Narrow the status filter on this entity.
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+      fireEvent.click(
+        screen.getByTestId(`glossary-status-option-${EntityStatus.Rejected}`)
+      );
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review,Rejected'
+        );
+      });
+      mockSetTermsStatusFilter.mockClear();
+
+      // Navigate to a different entity -- GlossaryV1 would reset the
+      // store's termsStatusFilter back to default here too; this component's
+      // own local selection must follow, not keep applying "Rejected" to
+      // the new entity while the badge shows the reset default.
+      mockUseGlossaryStore.activeGlossary = mockedGlossaryTerms[1];
+      rerender(<GlossaryTermTab isGlossary={false} />);
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review'
+        );
+      });
+
+      // The dropdown's own checkbox selection must also reflect the reset,
+      // not silently disagree with what was just republished to the store.
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+
+      expect(
+        screen.queryByTestId(`glossary-status-option-${EntityStatus.Rejected}`)
+      ).not.toBeChecked();
+    });
   });
 
   describe('Expand/Collapse Functionality', () => {
