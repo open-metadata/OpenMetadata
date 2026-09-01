@@ -17,7 +17,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, uuid } from '../../../utils/common';
+import { getApiContext, uuid, visitGlossaryPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const policy = new PolicyClass();
@@ -114,21 +114,29 @@ test.describe(
       await page.close();
     });
 
-    test('Deny still applies per-entity: a non-owner is refused the glossary', async ({
+    test('A non-owner sees the glossary in the list but is blocked on the glossary page', async ({
       browser,
     }) => {
+      test.slow();
       const page = await browser.newPage();
       await nonOwnerUser.login(page);
       const { apiContext, afterAction } = await getApiContext(page);
 
-      await test.step('Listing glossaries is allowed', async () => {
+      await test.step('The collection list is allowed and, by design, includes the non-owned glossary', async () => {
+        // Accepted OM behavior: the REST list authorizes at the collection level and does not
+        // filter per entity, so a non-owner still sees every glossary here. Owner-scoped
+        // visibility is enforced per entity when a specific glossary is opened (asserted below).
         const listResponse = await apiContext.get(
           '/api/v1/glossaries?fields=owners&limit=50'
         );
         expect(listResponse.status()).toBe(200);
+        const listed = (await listResponse.json()).data as { id: string }[];
+        expect(listed.some((g) => g.id === glossary.responseData.id)).toBe(
+          true
+        );
       });
 
-      await test.step('The specific non-owned glossary is denied', async () => {
+      await test.step('Opening the specific non-owned glossary is denied by the API', async () => {
         const encodedFqn = encodeURIComponent(
           glossary.responseData.fullyQualifiedName
         );
@@ -136,6 +144,18 @@ test.describe(
           `/api/v1/glossaries/name/${encodedFqn}?fields=owners`
         );
         expect(getResponse.status()).toBe(403);
+      });
+
+      await test.step('Clicking the non-owned glossary shows the permission wall in the UI', async () => {
+        // The glossary is listed in the left panel (collection-level), so the non-owner can click
+        // into it — but the entity page must render the permission error, not the glossary content.
+        await visitGlossaryPage(page, glossary.responseData.displayName);
+        await expect(
+          page.getByTestId('permission-error-placeholder')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).toBeHidden();
       });
 
       await afterAction();

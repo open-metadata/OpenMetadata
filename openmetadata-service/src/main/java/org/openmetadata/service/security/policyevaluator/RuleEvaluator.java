@@ -77,9 +77,11 @@ public class RuleEvaluator {
     if (subjectContext == null || resourceContext == null) {
       return false;
     }
-    // A list request resolves no concrete entity, so ownership can't be evaluated. Return true to
-    // defer to per-entity checks; false would let a negated-owner Deny rule match and hide the
-    if (resourceContext.getEntity() == null) {
+    // A list request resolves no concrete entity, so ownership can't be evaluated. Defer to the
+    // per-entity check by returning true here; returning false would let a !isOwner() Deny match
+    // and hide the whole listing from the owner too. Restrict this to real collection requests so
+    // a single-entity GET whose target failed to resolve is not treated as owned.
+    if (resourceContext.getEntity() == null && resourceContext.isCollectionRequest()) {
       return true;
     }
     return subjectContext.isOwner(resourceContext.getOwners());

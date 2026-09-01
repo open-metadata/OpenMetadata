@@ -350,12 +350,29 @@ class RuleEvaluatorTest {
     // a !isOwner() Deny rule from matching and blocking the whole listing.
     ResourceContextInterface listContext = mock(ResourceContextInterface.class);
     Mockito.when(listContext.getEntity()).thenReturn(null);
+    Mockito.when(listContext.isCollectionRequest()).thenReturn(true);
 
     RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, listContext);
     EvaluationContext ctx = new StandardEvaluationContext(evaluator);
 
     assertTrue(parseExpression("isOwner()").getValue(ctx, Boolean.class));
     assertFalse(parseExpression("!isOwner()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isOwner_unresolvedSingleEntityDoesNotDefer() {
+    // A single-entity GET whose target failed to resolve also has a null entity, but it is NOT a
+    // collection request. isOwner() must stay false there so a sole `Allow isOwner()` grant cannot
+    // momentarily authorize access to a non-resolving entity.
+    ResourceContextInterface notFoundContext = mock(ResourceContextInterface.class);
+    Mockito.when(notFoundContext.getEntity()).thenReturn(null);
+    Mockito.when(notFoundContext.isCollectionRequest()).thenReturn(false);
+
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, notFoundContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+
+    assertFalse(parseExpression("isOwner()").getValue(ctx, Boolean.class));
+    assertTrue(parseExpression("!isOwner()").getValue(ctx, Boolean.class));
   }
 
   @Test

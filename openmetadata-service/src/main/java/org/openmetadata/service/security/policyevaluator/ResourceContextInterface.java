@@ -45,4 +45,14 @@ public interface ResourceContextInterface {
   }
 
   List<EntityReference> getDomains();
+
+  /**
+   * True when this context addresses a whole collection (a list request) rather than a single
+   * entity, so no concrete entity can ever be resolved. Distinguishes a genuine list request from a
+   * single-entity request whose target merely failed to resolve (e.g. an {@code EntityNotFound}),
+   * which also leaves {@link #getEntity()} null but must not be treated as an authorized collection.
+   */
+  default boolean isCollectionRequest() {
+    return false;
+  }
 }
