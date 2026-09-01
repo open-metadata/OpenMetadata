@@ -110,7 +110,7 @@ export const useIngestionLogSource = ({
   const paginatedEnabled = hasLog && !isStreaming;
   const paginated = usePaginatedLiveLog({
     fetchPage,
-    resetKey: ingestionFqn,
+    resetKey: runId ? `${ingestionFqn}/${runId}` : ingestionFqn,
     enabled: paginatedEnabled,
     isLive: paginatedEnabled && isLive,
   });
