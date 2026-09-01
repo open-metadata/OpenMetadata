@@ -465,29 +465,27 @@ export const DataAssetsHeader = ({
   // for EditCertification, so `can(Operation.EditCertification)` (same escape hatch the
   // derivation util itself uses, identical computation to the old prioritized call).
   //
-  // Three ManageButton/AnnouncementDrawer props consume these flags too, but only two of
-  // them belong under this deleted gate (whole-branch review, I6):
-  // - `onAnnouncementClick` (ManageButton) and `createPermission` (AnnouncementDrawer) were
-  //   already deleted-gated in the pre-refactor code (`permissions?.EditAll ? ... :
-  //   undefined`, evaluated only when the entity wasn't deleted at the call site) — keep
-  //   reading `flags.canEditAll` here; this class of conversion was already adjudicated and
-  //   is regression-tested.
-  // - `editDisplayNamePermission` (ManageButton's rename affordance) was NOT deleted-gated
-  //   pre-refactor (`permissions?.EditAll || permissions?.EditDisplayName`, unconditional) —
-  //   it must stay ungated. Renaming is a manage-surface affordance that has to keep working
-  //   on soft-deleted entities (same precedent as TeamDetailsV1's `ungatedFlags`: the only
-  //   way back from soft-delete lives behind this same ManageButton, so gating its other
-  //   affordances on `deleted` would strand the entity). See `ungatedFlags` below.
+  // Behavior-parity fix (base commit 9cf866cd23): all three ManageButton/AnnouncementDrawer
+  // props below read raw `permissions?.EditAll` in base, none gated by `deleted` —
+  // `onAnnouncementClick={permissions?.EditAll ? handleOpenAnnouncementDrawer : undefined}`,
+  // `createPermission={permissions?.EditAll}`, and
+  // `editDisplayNamePermission={permissions?.EditAll || permissions?.EditDisplayName}` were
+  // all unconditional. An earlier pass on this branch deleted-gated `onAnnouncementClick`
+  // and `createPermission` (claiming they were already gated pre-refactor); that claim does
+  // not hold against base and is reverted here. All three now read `ungatedFlags` — renaming
+  // and announcement affordances are manage-surface actions that must keep working on
+  // soft-deleted entities (the only way back from soft-delete lives behind this same
+  // ManageButton; TeamDetailsV1's `ungatedFlags` precedent). See `ungatedFlags` below.
   const flags = useMemo(
     () => getDerivedPermissionFlags(permissions, deleted),
     [permissions, deleted]
   );
   // Second derivation with no `deleted` arg, so nothing is gated — reproduces the old
-  // unconditional `permissions?.EditAll || permissions?.EditDisplayName` read for
-  // editDisplayNamePermission below. The field-over-EditAll prioritization
-  // (getPrioritizedEditPermission, inside getDerivedPermissionFlags) is a deliberate
-  // deny-wins upgrade over the old raw OR and is fine to keep — only the deleted-gating
-  // was in error.
+  // unconditional `permissions?.EditAll` / `permissions?.EditAll || permissions?.EditDisplayName`
+  // reads for onAnnouncementClick / createPermission / editDisplayNamePermission below. The
+  // field-over-EditAll prioritization (getPrioritizedEditPermission, inside
+  // getDerivedPermissionFlags) is a deliberate deny-wins upgrade over the old raw OR and is
+  // fine to keep — only the deleted-gating was in error.
   const ungatedFlags = useMemo(
     () => getDerivedPermissionFlags(permissions),
     [permissions]
@@ -927,7 +925,9 @@ export const DataAssetsHeader = ({
               extraDropdownContent={extraDropdownContent}
               isRecursiveDelete={isRecursiveDelete}
               onAnnouncementClick={
-                flags.canEditAll ? handleOpenAnnouncementDrawer : undefined
+                ungatedFlags.canEditAll
+                  ? handleOpenAnnouncementDrawer
+                  : undefined
               }
               onEditDisplayName={onDisplayNameUpdate}
               onProfilerSettingUpdate={onProfilerSettingUpdate}
@@ -1145,7 +1145,7 @@ export const DataAssetsHeader = ({
 
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createPermission={flags.canEditAll}
+          createPermission={ungatedFlags.canEditAll}
           entityFQN={dataAsset.fullyQualifiedName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
