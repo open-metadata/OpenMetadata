@@ -18,7 +18,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -299,7 +298,6 @@ test.describe(
       }
 
       await page.getByTestId('manage-button').click();
-      await waitForAntdPopupToSettle(page);
       await expect(page.getByTestId('restore-button')).toBeVisible();
       await expect(page.getByTestId('delete-button')).not.toBeVisible();
       await expect(page.getByTestId('rename-button')).not.toBeVisible();
