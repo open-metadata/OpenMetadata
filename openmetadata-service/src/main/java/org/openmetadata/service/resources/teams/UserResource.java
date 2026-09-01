@@ -806,6 +806,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     repository.prepareInternal(user, true);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     if (existingUser == null) {
+      repository.prepareInternal(user, false);
       limits.enforceLimits(
           securityContext,
           getResourceContextByName(user.getFullyQualifiedName()),

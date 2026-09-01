@@ -349,6 +349,35 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_putCreateUserRejectsDepartmentTeam(TestNamespace ns) {
+    Team department =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("department"))
+                    .withTeamType(CreateTeam.TeamType.DEPARTMENT)
+                    .withDescription("Department cannot have direct users"));
+    String name = ns.prefix("departmentPutUser");
+    CreateUser create =
+        new CreateUser()
+            .withName(name)
+            .withEmail(toValidEmail(name))
+            .withTeams(List.of(department.getId()));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.PUT, "/v1/users", create, User.class));
+
+    assertTrue(exception.getMessage().contains("Department"));
+    assertThrows(Exception.class, () -> SdkClients.adminClient().users().getByName(name));
+  }
+
+  @Test
   void test_createUserWithRoles(TestNamespace ns) {
 
     // Use shared role from SharedEntities
