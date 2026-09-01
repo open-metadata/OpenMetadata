@@ -13,7 +13,12 @@
 import test, { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+  waitForMetricsSearchResponse,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -50,21 +55,10 @@ const waitForMetricIndexed = async (
   }).toPass({ timeout: 90_000, intervals: [2_000] });
 };
 
-const waitForMetricHierarchyResponse = (page: Page, query?: string) =>
-  page.waitForResponse((response) => {
-    const url = new URL(response.url());
-
-    return (
-      response.request().method() === 'GET' &&
-      url.pathname.endsWith('/api/v1/metrics/hierarchy') &&
-      (query === undefined || url.searchParams.get('q') === query)
-    );
-  });
-
 const goToMetricList = async (page: Page) => {
   await redirectToHomePage(page);
 
-  const listResponse = waitForMetricHierarchyResponse(page);
+  const listResponse = waitForMetricsSearchResponse(page);
   await sidebarClick(page, SidebarItem.METRICS);
   await listResponse;
 
@@ -113,7 +107,16 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
       // The debounced search must actually reach the API. Regression #29538
       // cancelled this request on the re-render that typing triggered, so the
       // list never filtered — this waitForResponse would then time out.
-      const searchResponse = waitForMetricHierarchyResponse(page, matchName);
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname.endsWith('/api/v1/search/query') &&
+          url.searchParams.get('index') === 'metric' &&
+          url.searchParams.get('q') === matchName
+        );
+      });
 
       await searchInput.fill(matchName);
 
@@ -135,7 +138,7 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     });
 
     await test.step('clearing the search restores the full list', async () => {
-      const clearResponse = waitForMetricHierarchyResponse(page);
+      const clearResponse = waitForMetricsSearchResponse(page);
 
       await searchInput.fill('');
 
