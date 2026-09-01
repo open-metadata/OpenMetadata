@@ -24,6 +24,7 @@
  *  - expandable        → tree/nested rows via record.children, plus expandedRowRender
  *  - onRow             → onClick and onDoubleClick are forwarded to the row element
  *  - onCell            → onClick, data-*, colSpan forwarded to the underlying td element
+ *                        (colSpan: 0 skips the cell, matching AntD's covered-cell convention)
  *  - filterIcon/filterDropdown/onFilter → filter state managed internally; confirm/close close the dropdown
  *
  * Test contract — these hooks are stable and tests may rely on them:
@@ -50,6 +51,7 @@ import {
 import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
+import type { ComponentProps } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -461,7 +463,6 @@ const TableV2 = <T extends object>(
     [rest.pagination, pageSizeOverride, hasParentPagination, rest.dataSource]
   );
 
-
   const isCustomizeColumnEnable = useMemo(
     () =>
       !isEmpty(rest.staticVisibleColumns) && !isEmpty(defaultVisibleColumns),
@@ -850,32 +851,6 @@ const TableV2 = <T extends object>(
     );
   }, [rest.rowSelection, rowEntries]);
 
-  const handleSelectionChange = useCallback(
-    (keys: AriaSelection) => {
-      if (!rest.rowSelection?.onChange) {
-        return;
-      }
-      // Resolved through the row's own id. Filtering the data by key instead
-      // reported every record sharing that key, so selecting one of a pair of
-      // duplicate-keyed rows handed the call site both.
-      const selected =
-        keys === 'all'
-          ? rowEntries
-          : [...keys]
-              .map((key) => rowEntryById.get(String(key)))
-              .filter((entry): entry is (typeof rowEntries)[number] =>
-                Boolean(entry)
-              );
-
-      rest.rowSelection.onChange(
-        selected.map(({ key }) => key),
-        selected.map(({ record }) => record),
-        { type: selectionMode === 'single' ? 'single' : 'multiple' }
-      );
-    },
-    [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
-  );
-
   // ─── Column resize (via React Aria ColumnResizer) ──────────────────────────
 
   const handleColumnResize = useCallback(
@@ -1008,6 +983,38 @@ const TableV2 = <T extends object>(
       ...(pageSizeOptions.length ? { pageSizeOptions } : {}),
     };
   }, [clientPagination, handlePageSizeChange]);
+
+  /**
+   * Resolves an aria selection back to the caller's keys and rows.
+   *
+   * Against `rowEntries`, which is the flattened visible rows paired with the
+   * ids React Aria actually reports. Two things fall out of that: an expanded
+   * child is resolved like any other row rather than being missed inside its
+   * parent record, and two rows sharing a `rowKey` stay distinct — resolving by
+   * key handed the call site both when only one was selected.
+   */
+  const handleSelectionChange = useCallback(
+    (keys: AriaSelection) => {
+      if (!rest.rowSelection?.onChange) {
+        return;
+      }
+      const selected =
+        keys === 'all'
+          ? rowEntries
+          : [...keys]
+              .map((key) => rowEntryById.get(String(key)))
+              .filter((entry): entry is (typeof rowEntries)[number] =>
+                Boolean(entry)
+              );
+
+      rest.rowSelection.onChange(
+        selected.map(({ key }) => key),
+        selected.map(({ record }) => record),
+        { type: selectionMode === 'single' ? 'single' : 'multiple' }
+      );
+    },
+    [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
+  );
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -1153,18 +1160,6 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
-              style={
-                // AntD reads `scroll.x` as the table's own width and lets the
-                // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
-                // table is squeezed into its container instead, and columns
-                // that cannot wrap spill over their neighbours.
-                scroll?.x
-                  ? {
-                      width: scroll.x as string | number,
-                      minWidth: '100%',
-                    }
-                  : undefined
-              }
               disabledBehavior="selection"
               disabledKeys={disabledRowKeys}
               dragAndDropHooks={
@@ -1177,7 +1172,7 @@ const TableV2 = <T extends object>(
                  * assignable; the cast is confined to this one hand-off and
                  * disappears once the versions converge.
                  */
-                dragAndDropHooks as React.ComponentProps<
+                dragAndDropHooks as ComponentProps<
                   typeof UntitledTable
                 >['dragAndDropHooks']
               }
@@ -1198,6 +1193,18 @@ const TableV2 = <T extends object>(
                   : undefined
               }
               stickyHeader={Boolean(rest.sticky) || Boolean(scroll?.y)}
+              style={
+                // AntD reads `scroll.x` as the table's own width and lets the
+                // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
+                // table is squeezed into its container instead, and columns
+                // that cannot wrap spill over their neighbours.
+                scroll?.x
+                  ? {
+                      width: scroll.x as string | number,
+                      minWidth: '100%',
+                    }
+                  : undefined
+              }
               onRowAction={
                 rest.onRowAction
                   ? (key) =>
@@ -1388,6 +1395,13 @@ const TableV2 = <T extends object>(
                             actualIndex
                           ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
                           {};
+
+                        // AntD's convention: colSpan 0 means "this cell is covered by an earlier
+                        // cell's span". Rendering it anyway would add a column to the row and
+                        // knock every following cell out of alignment.
+                        if (cellHandlerProps.colSpan === 0) {
+                          return null;
+                        }
 
                         return (
                           <UntitledTable.Cell
