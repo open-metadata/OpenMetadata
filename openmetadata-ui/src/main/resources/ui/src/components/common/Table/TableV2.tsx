@@ -1241,7 +1241,18 @@ const TableV2 = <T extends object>(
                       style={{
                         ...(rest.size === 'small' ? { padding: '8px' } : {}),
                         ...(colWidth !== undefined
-                          ? { width: colWidth, minWidth: colWidth }
+                          ? {
+                              width: colWidth,
+                              // A floor only makes sense for a pixel width. As
+                              // a percentage it is the same value as `width`,
+                              // and once each column rounds up against the
+                              // container the floors total more than 100% —
+                              // enough to raise a scrollbar on a table that
+                              // fits. AntD sets no per-column min-width.
+                              ...(typeof colWidth === 'number'
+                                ? { minWidth: colWidth }
+                                : {}),
+                            }
                           : {}),
                         ...(rest.resizableColumns
                           ? { position: 'relative' }
@@ -1432,8 +1443,10 @@ const TableV2 = <T extends object>(
                                     width:
                                       columnWidths[cellKey] ??
                                       (colType.width as number),
-                                    minWidth:
-                                      (colType.width as number) ?? undefined,
+                                    // Pixel widths only — see the header cell.
+                                    ...(typeof colType.width === 'number'
+                                      ? { minWidth: colType.width }
+                                      : {}),
                                   }
                                 : {}),
                               ...stickyStyle,
