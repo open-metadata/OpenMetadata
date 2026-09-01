@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1883 endpoints** across 75 resource packages · 1873 carry a summary.
+**1862 endpoints** across 75 resource packages · 1852 carry a summary.
 
 ## (root)
 
@@ -1072,11 +1072,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/glossaryTerms/name/{fqn}/exportAsync` | Export glossary term in CSV format asynchronously |
 | `PUT` | `/v1/glossaryTerms/name/{fqn}/import` | Import glossary terms from CSV |
 | `PUT` | `/v1/glossaryTerms/name/{fqn}/importAsync` | Import glossary term from CSV asynchronously |
+| `GET` | `/v1/glossaryTerms/ontology/data` | Get a bounded page of ontology data clusters |
+| `GET` | `/v1/glossaryTerms/ontology/summary` | Get the bounded ontology health summary |
 | `GET` | `/v1/glossaryTerms/relationTypes/usage` | Get usage counts for all relation types |
 | `PUT` | `/v1/glossaryTerms/restore` | Restore a soft deleted glossary term |
 | `GET` | `/v1/glossaryTerms/search` | Search glossary terms with pagination |
-| `GET` | `/v1/glossaryTerms/studio/data` | Get a bounded page of Ontology Studio data clusters |
-| `GET` | `/v1/glossaryTerms/studio/summary` | Get the bounded Ontology Studio health summary |
 | `DELETE` | `/v1/glossaryTerms/{id}` | Delete a glossary term by Id |
 | `GET` | `/v1/glossaryTerms/{id}` | Get a glossary term by Id |
 | `PATCH` | `/v1/glossaryTerms/{id}` | Update a glossary term |
@@ -1090,7 +1090,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/glossaryTerms/{id}/relations/{toTermId}` | Remove a relation to another glossary term |
 | `PUT` | `/v1/glossaryTerms/{id}/relations/{toTermId}` | Change the type or metadata of an existing typed relation |
 | `GET` | `/v1/glossaryTerms/{id}/relationsGraph` | Get the relation graph for a glossary term |
-| `GET` | `/v1/glossaryTerms/{id}/studioAssets` | List a bounded page of detailed assets for an Ontology Studio term |
 | `PUT` | `/v1/glossaryTerms/{id}/tags/validate` | Validate Tags Addition to Glossary Term |
 | `GET` | `/v1/glossaryTerms/{id}/versions` | List glossary term versions |
 | `GET` | `/v1/glossaryTerms/{id}/versions/{version}` | Get a version of the glossary term |
@@ -1242,20 +1241,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/v1/metricGroups` | List metric groups |
-| `POST` | `/v1/metricGroups` | Create a metric group |
-| `PUT` | `/v1/metricGroups` | Create or update a metric group |
-| `DELETE` | `/v1/metricGroups/name/{fqn}` | Delete a metric group by fully qualified name |
-| `GET` | `/v1/metricGroups/name/{fqn}` | Get a metric group by fully qualified name |
-| `PUT` | `/v1/metricGroups/restore` | Restore a soft deleted metric group |
-| `DELETE` | `/v1/metricGroups/{id}` | Delete a metric group by Id |
-| `GET` | `/v1/metricGroups/{id}` | Get a metric group by Id |
-| `PATCH` | `/v1/metricGroups/{id}` | Update a metric group |
-| `GET` | `/v1/metricGroups/{id}/metrics` | List Metrics in a Metric Group |
-| `GET` | `/v1/metricGroups/{id}/versions` | List metric group versions |
-| `GET` | `/v1/metricGroups/{id}/versions/{version}` | Get a version of the metric group |
-| `PUT` | `/v1/metricGroups/{name}/metrics/add` | Add metrics to a group |
-| `PUT` | `/v1/metricGroups/{name}/metrics/remove` | Remove metrics from a group |
 | `GET` | `/v1/metrics` | List metrics |
 | `POST` | `/v1/metrics` | Create a Metric |
 | `PUT` | `/v1/metrics` | Create or update a metric |
@@ -1263,7 +1248,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/metrics/bulk` | Bulk create or update metrics |
 | `GET` | `/v1/metrics/customUnits` | Get list of custom units of measurement |
 | `GET` | `/v1/metrics/documentation/csv` | Get CSV documentation for metric import/export |
-| `GET` | `/v1/metrics/hierarchy` | List top-level Metric hierarchy entries |
 | `DELETE` | `/v1/metrics/name/{fqn}` | Delete a Metric by fully qualified name |
 | `GET` | `/v1/metrics/name/{fqn}` | Get a Metric by fully qualified name. |
 | `PATCH` | `/v1/metrics/name/{fqn}` | Update a Metric using name. |
@@ -1275,16 +1259,11 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/metrics/{id}` | Delete a Metric by id |
 | `GET` | `/v1/metrics/{id}` | Get a metric by Id |
 | `PATCH` | `/v1/metrics/{id}` | Update a Metric |
-| `GET` | `/v1/metrics/{id}/assets` | List a metric's linked assets with their lineage direction |
 | `PUT` | `/v1/metrics/{id}/followers` | Add a follower |
 | `DELETE` | `/v1/metrics/{id}/followers/{userId}` | Remove a follower |
-| `GET` | `/v1/metrics/{id}/hierarchy` | Get the hierarchy context for one Metric |
-| `GET` | `/v1/metrics/{id}/observability` | Get a metric's health rollup |
 | `GET` | `/v1/metrics/{id}/versions` | List Metric versions |
 | `GET` | `/v1/metrics/{id}/versions/{version}` | Get a version of the Metric |
 | `PUT` | `/v1/metrics/{id}/vote` | Update Vote for a Metric |
-| `PUT` | `/v1/metrics/{name}/assets/add` | Link data assets to a metric |
-| `PUT` | `/v1/metrics/{name}/assets/remove` | Unlink data assets from a metric |
 
 ## mlmodels
 
