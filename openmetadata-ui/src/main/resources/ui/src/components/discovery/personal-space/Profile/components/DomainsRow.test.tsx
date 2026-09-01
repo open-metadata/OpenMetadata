@@ -86,7 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <span>{children}</span>
   ),
   Autocomplete: Object.assign(
-    ({ onItemInserted }: { onItemInserted?: (...args: never[]) => void }) => (
+    ({ onItemInserted }: { onItemInserted: (...args: unknown[]) => void }) => (
       <button
         data-testid="add-domain"
         type="button"
@@ -102,7 +102,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../../generated/entity/teams/user';
 import DomainsRow from './DomainsRow';
 
 describe('DomainsRow', () => {

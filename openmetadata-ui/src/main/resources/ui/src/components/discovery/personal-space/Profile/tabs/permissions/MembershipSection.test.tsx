@@ -43,6 +43,7 @@ describe('MembershipSection', () => {
   it('renders team and role chips plus the synthetic admin chip', () => {
     render(
       <MembershipSection
+        updateUserDetails={jest.fn()}
         userData={
           {
             name: 'alice',
@@ -65,6 +66,7 @@ describe('MembershipSection', () => {
   it('renders placeholders when there are no teams or roles', () => {
     render(
       <MembershipSection
+        updateUserDetails={jest.fn()}
         userData={{ name: 'alice', teams: [], roles: [] } as unknown as User}
       />
     );

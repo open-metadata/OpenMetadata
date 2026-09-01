@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 
 let mockIsAdmin: boolean | undefined;
 
@@ -49,7 +50,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../../generated/entity/teams/user';
 import TeamsRow from './TeamsRow';
 
 describe('TeamsRow', () => {

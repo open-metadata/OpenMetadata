@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import type { InboxDateRange } from './inbox.utils';
 
 let mockIsAdmin: boolean | undefined;
@@ -77,7 +77,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     label,
     badge,
   }: {
-    id?: string;
+    id: string;
     label?: ReactNode;
     badge?: ReactNode;
   }) => (

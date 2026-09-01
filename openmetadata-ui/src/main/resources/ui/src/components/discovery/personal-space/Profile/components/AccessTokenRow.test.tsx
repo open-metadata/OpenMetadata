@@ -60,7 +60,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       isDisabled,
     }: {
       children?: ReactNode;
-      onClick?: (...args: never[]) => void;
+      onClick?: (...args: unknown[]) => void;
       color?: string;
       isDisabled?: boolean;
     }) => (

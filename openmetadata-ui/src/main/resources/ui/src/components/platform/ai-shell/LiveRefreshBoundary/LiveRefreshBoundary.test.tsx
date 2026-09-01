@@ -12,7 +12,7 @@
  */
 
 import { act, render } from '@testing-library/react';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { LiveRefreshBoundary } from './LiveRefreshBoundary';
 import {
   createRouteActivationStore,

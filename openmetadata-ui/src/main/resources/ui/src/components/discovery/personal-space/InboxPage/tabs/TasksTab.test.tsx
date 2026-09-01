@@ -91,8 +91,8 @@ jest.mock('../components/TaskDetailPanel', () => ({
     onTaskUpdated,
   }: {
     taskId?: string;
-    onResolved?: (...args: unknown[]) => void;
-    onTaskUpdated?: (...args: unknown[]) => void;
+    onResolved: (...args: unknown[]) => void;
+    onTaskUpdated: (...args: unknown[]) => void;
   }) => (
     <div data-testid="detail">
       <span>{taskId}</span>
@@ -137,7 +137,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TabsList = ({ children }: { children?: ReactNode }) => (
     <div>{children}</div>
   );
-  const TabsItem = ({ id, label }: { id?: string; label?: ReactNode }) => (
+  const TabsItem = ({ id, label }: { id: string; label?: ReactNode }) => (
     <button
       data-testid={`task-status-${id}`}
       type="button"
@@ -228,7 +228,12 @@ describe('TasksTab', () => {
 
   it('reports the in-range visible task count via onCountChange', () => {
     hookState = {
-      items: [{ id: 't1' }, { id: 't2' }, { id: 't3' }, { id: 't4' }],
+      items: [
+        { id: 't1' },
+        { id: 't2' },
+        { id: 't3' },
+        { id: 't4' },
+      ] as unknown as Task[],
       isLoading: false,
       total: 4,
     };
@@ -290,7 +295,7 @@ describe('TasksTab', () => {
 
   it('auto-selects the first task and renders its detail', () => {
     hookState = {
-      items: [{ id: 't1' }, { id: 't2' }],
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
       isLoading: false,
       total: 2,
     };
@@ -301,7 +306,11 @@ describe('TasksTab', () => {
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
-    hookState = { items: [{ id: 't1' }], isLoading: false, total: 1 };
+    hookState = {
+      items: [{ id: 't1' }] as unknown as Task[],
+      isLoading: false,
+      total: 1,
+    };
 
     renderTab();
     fireEvent.click(screen.getByTestId('resolve'));
@@ -311,7 +320,11 @@ describe('TasksTab', () => {
   });
 
   it('keeps an approved DAR in the Open list without decrementing the total', () => {
-    hookState = { items: [{ id: 't1' }], isLoading: false, total: 1 };
+    hookState = {
+      items: [{ id: 't1' }] as unknown as Task[],
+      isLoading: false,
+      total: 1,
+    };
     // An approved Data Access Request stays Open (awaiting grant), so it must
     // remain in the default Open list rather than vanish then reappear.
     resolvedPayload = { status: 'Approved', type: 'DataAccessRequest' };
@@ -324,7 +337,11 @@ describe('TasksTab', () => {
   });
 
   it('reloads the list and invalidates the count caches after an assignee change', () => {
-    hookState = { items: [{ id: 't1' }], isLoading: false, total: 1 };
+    hookState = {
+      items: [{ id: 't1' }] as unknown as Task[],
+      isLoading: false,
+      total: 1,
+    };
 
     renderTab();
 
@@ -345,7 +362,11 @@ describe('TasksTab', () => {
   });
 
   it('invalidates the status-count cache after a task is resolved', () => {
-    hookState = { items: [{ id: 't1' }], isLoading: false, total: 1 };
+    hookState = {
+      items: [{ id: 't1' }] as unknown as Task[],
+      isLoading: false,
+      total: 1,
+    };
 
     renderTab();
 
@@ -365,7 +386,11 @@ describe('TasksTab', () => {
   it('invalidates the sidebar open-task count after a task is resolved', () => {
     // The sidebar badge fetches under its own key and never unmounts, so without
     // this invalidation it keeps the pre-approval count until a navigation.
-    hookState = { items: [{ id: 't1' }], isLoading: false, total: 1 };
+    hookState = {
+      items: [{ id: 't1' }] as unknown as Task[],
+      isLoading: false,
+      total: 1,
+    };
 
     renderTab();
 

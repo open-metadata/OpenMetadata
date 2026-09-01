@@ -39,7 +39,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../../generated/entity/teams/user';
 import MyDataAssetsList from './MyDataAssetsList';
 
 describe('MyDataAssetsList', () => {

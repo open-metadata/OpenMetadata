@@ -30,7 +30,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onPress,
   }: {
     children?: ReactNode;
-    onPress?: (...args: never[]) => void;
+    onPress?: (...args: unknown[]) => void;
   }) => (
     <button data-testid="clear-all" onClick={onPress}>
       {children}

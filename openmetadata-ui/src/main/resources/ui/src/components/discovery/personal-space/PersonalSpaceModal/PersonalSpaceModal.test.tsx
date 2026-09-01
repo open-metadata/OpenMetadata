@@ -35,7 +35,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children,
   }: {
     isOpen?: boolean;
-    onOpenChange?: (...args: never[]) => void;
+    onOpenChange: (...args: unknown[]) => void;
     children?: ReactNode;
   }) =>
     isOpen ? (

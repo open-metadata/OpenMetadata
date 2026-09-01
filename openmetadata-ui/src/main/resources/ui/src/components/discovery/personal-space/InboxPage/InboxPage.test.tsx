@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 jest.mock('@untitledui/icons', () => ({
   Inbox01: () => <span data-testid="inbox-icon" />,
@@ -35,7 +35,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TabsList = ({ children }: { children?: ReactNode }) => (
     <div>{children}</div>
   );
-  const TabsItem = ({ id, label }: { id?: string; label?: ReactNode }) => (
+  const TabsItem = ({ id, label }: { id: string; label?: ReactNode }) => (
     <button
       data-testid={`tab-${id}`}
       type="button"

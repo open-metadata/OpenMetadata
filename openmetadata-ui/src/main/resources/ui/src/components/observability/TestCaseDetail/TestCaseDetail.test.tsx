@@ -172,7 +172,7 @@ jest.mock('components/common/IconButtons/EditIconButton', () => ({
   AlignRightIconButton: ({
     onClick,
   }: {
-    onClick?: (...args: never[]) => void;
+    onClick?: (...args: unknown[]) => void;
   }) => (
     <button
       aria-label="expand-collapse-button"

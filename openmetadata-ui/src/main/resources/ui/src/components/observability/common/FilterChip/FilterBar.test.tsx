@@ -41,7 +41,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onSelectionChange,
     }: {
       children?: ReactNode;
-      onSelectionChange?: (...args: never[]) => void;
+      onSelectionChange?: (...args: unknown[]) => void;
     }) => (
       <div data-testid="dropdown-menu">
         <button

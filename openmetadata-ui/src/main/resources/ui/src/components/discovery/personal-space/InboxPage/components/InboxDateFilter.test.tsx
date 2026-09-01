@@ -13,7 +13,7 @@
 
 import { render } from '@testing-library/react';
 import { DateRangeObject } from 'Models';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 interface CapturedDatePickerProps {
   defaultDateRange?: unknown;

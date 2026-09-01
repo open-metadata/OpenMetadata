@@ -14,7 +14,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import type { User } from '../../../../../generated/entity/teams/user';
 import { ReactNode } from 'react';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockGetMyPermissionDebugInfo = jest.fn();
@@ -29,7 +29,7 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { name: 'alice' } }),
 }));
 
-jest.mock('utils/ToastUtils', () => ({
+jest.mock('../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
@@ -145,6 +145,7 @@ const renderTab = (name = 'alice') =>
   render(
     <MemoryRouter>
       <PermissionsTab
+        updateUserDetails={jest.fn()}
         userData={
           {
             name,

@@ -133,8 +133,8 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { ActivityEvent } from 'generated/entity/activity/activityEvent';
-import { Conversation } from 'generated/entity/feed/conversation';
+import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
+import { Conversation } from '../../../../../generated/entity/feed/conversation';
 import ActivityFeedItem from './ActivityFeedItem';
 
 const baseActivity = {

@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { RuleInfo } from 'rest/permissionAPI';
+import { RuleInfo } from '../../../../../../rest/permissionAPI';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

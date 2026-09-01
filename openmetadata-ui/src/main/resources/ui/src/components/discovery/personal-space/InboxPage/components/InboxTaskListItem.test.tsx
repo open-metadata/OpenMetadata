@@ -74,7 +74,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { Task } from 'generated/entity/tasks/task';
+import { Task } from '../../../../../generated/entity/tasks/task';
 import InboxTaskListItem from './InboxTaskListItem';
 
 const task = {

@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ModalOverlay: ({
@@ -21,7 +21,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children,
   }: {
     isOpen?: boolean;
-    onOpenChange?: (...args: unknown[]) => void;
+    onOpenChange: (...args: unknown[]) => void;
     children?: ReactNode;
   }) =>
     isOpen ? (

@@ -36,7 +36,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     placeholder,
   }: {
     value?: string;
-    onChange?: (...args: never[]) => void;
+    onChange: (...args: unknown[]) => void;
     placeholder?: string;
   }) => (
     <input
@@ -58,7 +58,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }: {
       children?: ReactNode;
       isOpen?: boolean;
-      onOpenChange?: (...args: never[]) => void;
+      onOpenChange?: (...args: unknown[]) => void;
     }) => (
       <div data-isopen={isOpen ? 'true' : 'false'} data-testid="dropdown-root">
         <button
@@ -77,7 +77,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onSelectionChange,
     }: {
       children?: ReactNode;
-      onSelectionChange?: (...args: never[]) => void;
+      onSelectionChange?: (...args: unknown[]) => void;
     }) => (
       <div data-testid="dropdown-menu">
         <button
@@ -130,7 +130,7 @@ jest.mock(
 
 jest.mock('./DqDateRangeFilter', () => ({
   __esModule: true,
-  default: ({ onApply }: { onApply?: (...args: never[]) => void }) => (
+  default: ({ onApply }: { onApply: (...args: unknown[]) => void }) => (
     <div data-testid="dq-date-range-filter">
       <button
         data-testid="date-apply"

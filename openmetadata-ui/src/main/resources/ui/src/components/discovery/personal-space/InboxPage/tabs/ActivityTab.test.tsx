@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { DateRangeObject } from 'Models';
 import { PropsWithChildren, ReactNode } from 'react';
 
 interface MockItem {
@@ -30,11 +29,6 @@ let activityState: {
   isLoading: boolean;
 };
 const mockRefetch = jest.fn();
-
-const baseProps = {
-  defaultDateRange: {} as DateRangeObject,
-  onDateRangeChange: jest.fn(),
-};
 
 jest.mock('../useInboxActivity', () => ({
   useInboxActivity: () => ({
@@ -124,7 +118,7 @@ describe('ActivityTab', () => {
   });
 
   it('shows the first-run empty state when there is nothing', () => {
-    render(<ActivityTab {...baseProps} />);
+    render(<ActivityTab />);
 
     expect(
       screen.getByText('label.activity-feed-starts-here')
@@ -132,14 +126,14 @@ describe('ActivityTab', () => {
   });
 
   it('shows the no-results empty state when filtered', () => {
-    render(<ActivityTab {...baseProps} isFiltered />);
+    render(<ActivityTab isFiltered />);
 
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
   });
 
   it('shows the skeleton while loading', () => {
     activityState = { ...activityState, isLoading: true };
-    render(<ActivityTab {...baseProps} />);
+    render(<ActivityTab />);
 
     expect(screen.getByTestId('activity-skeleton')).toBeInTheDocument();
   });
@@ -152,7 +146,7 @@ describe('ActivityTab', () => {
     };
     const onCountChange = jest.fn();
 
-    render(<ActivityTab {...baseProps} onCountChange={onCountChange} />);
+    render(<ActivityTab onCountChange={onCountChange} />);
 
     expect(onCountChange).toHaveBeenCalledWith(7);
   });
@@ -168,7 +162,7 @@ describe('ActivityTab', () => {
       isLoading: false,
     };
 
-    render(<ActivityTab {...baseProps} />);
+    render(<ActivityTab />);
 
     // Both kinds render, in the hook's (timestamp-merged) order.
     expect(
@@ -183,7 +177,7 @@ describe('ActivityTab', () => {
       isLoading: false,
     };
 
-    render(<ActivityTab {...baseProps} />);
+    render(<ActivityTab />);
 
     expect(screen.getByText('t1')).toBeInTheDocument();
   });
@@ -195,7 +189,7 @@ describe('ActivityTab', () => {
       isLoading: false,
     };
 
-    render(<ActivityTab {...baseProps} />);
+    render(<ActivityTab />);
     fireEvent.click(screen.getByTestId('feed-item'));
 
     expect(screen.getByTestId('drawer')).toHaveTextContent('a1');

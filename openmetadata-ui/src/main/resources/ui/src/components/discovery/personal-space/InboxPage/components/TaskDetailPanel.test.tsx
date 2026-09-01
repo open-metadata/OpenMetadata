@@ -118,7 +118,7 @@ jest.mock(
       onUpdate,
     }: {
       children?: ReactNode;
-      onUpdate?: (...args: unknown[]) => void;
+      onUpdate: (...args: unknown[]) => void;
     }) => (
       <div data-testid="user-team-picker">
         <button
@@ -173,7 +173,7 @@ jest.mock('./TaskActionCommentModal', () => ({
   }: {
     open?: boolean;
     showRootCause?: boolean;
-    onConfirm?: (...args: unknown[]) => void;
+    onConfirm: (...args: unknown[]) => void;
     onCancel?: (...args: unknown[]) => void;
   }) =>
     open ? (

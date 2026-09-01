@@ -13,14 +13,14 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { Access } from 'generated/entity/policies/accessControl/resourcePermission';
-import { getResourcePermission } from 'rest/permissionAPI';
+import { Access } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { getResourcePermission } from '../../../../rest/permissionAPI';
 import { createElement, ReactNode } from 'react';
 import { useFeedDeleteAccess } from './useFeedDeleteAccess';
 
 let mockCurrentUser: { name?: string; isAdmin?: boolean } = { name: 'bob' };
 
-jest.mock('rest/permissionAPI', () => ({
+jest.mock('../../../../rest/permissionAPI', () => ({
   getResourcePermission: jest.fn(),
 }));
 

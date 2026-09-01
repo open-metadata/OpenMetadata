@@ -25,7 +25,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: {
       children?: ReactNode;
       isOpen?: boolean;
-      onOpenChange?: (...args: never[]) => void;
+      onOpenChange: (...args: unknown[]) => void;
     }) => (
       <div data-open={isOpen} data-testid="dropdown-root">
         <button
@@ -70,10 +70,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       id,
       className,
     }: {
-      children?: ReactNode;
+      // react-aria passes render props for both slots.
+      children?: ReactNode | ((state: { isSelected: boolean }) => ReactNode);
       label?: ReactNode;
-      id?: string;
-      className?: string;
+      id: string;
+      className?:
+        | string
+        | ((state: { isSelected: boolean }) => string | undefined);
     }) => {
       const isSelected = id === 'success';
       const cls =
@@ -114,7 +117,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       placeholder,
     }: {
       value?: string;
-      onChange?: (...args: never[]) => void;
+      onChange: (...args: unknown[]) => void;
       placeholder?: string;
     }) => (
       <input
@@ -159,7 +162,7 @@ jest.mock(
       onUpdate,
     }: {
       children?: ReactNode;
-      onUpdate?: (...args: never[]) => void;
+      onUpdate: (...args: unknown[]) => void;
     }) => (
       <div data-testid="user-team-selectable-list">
         {children}

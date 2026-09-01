@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityReference } from 'generated/entity/type';
+import { EntityReference } from '../../../../../../generated/entity/type';
 
 jest.mock('utils/EntityLinkUtils', () => ({
   getEntityLinkFromType: (fqn: string, type: string) =>

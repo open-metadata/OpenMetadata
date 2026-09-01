@@ -50,7 +50,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     'data-testid': testId,
   }: {
     children?: ReactNode;
-    id?: string;
+    id: string;
     'data-testid'?: string;
   }) => (
     <span data-id={id} data-testid={testId}>
@@ -70,7 +70,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       placeholder,
     }: {
       value?: string;
-      onChange?: (...args: never[]) => void;
+      onChange: (...args: unknown[]) => void;
       placeholder?: string;
     }) => (
       <input
@@ -108,7 +108,7 @@ jest.mock(
       onUpdate,
     }: {
       children?: ReactNode;
-      onUpdate?: (...args: never[]) => void;
+      onUpdate: (...args: unknown[]) => void;
     }) => (
       <div data-testid="owner-selectable-list">
         <button data-testid="update-owner" onClick={() => onUpdate('owner-1')}>

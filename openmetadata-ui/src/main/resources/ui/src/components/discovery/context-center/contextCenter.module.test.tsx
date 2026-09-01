@@ -50,7 +50,6 @@ describe('contextCenterModule — knowledge page filter', () => {
 
     render(
       <MemoryRouter
-        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
         initialEntries={[
           '/context-center/filter?entityId=entity-123&entityType=table',
         ]}>

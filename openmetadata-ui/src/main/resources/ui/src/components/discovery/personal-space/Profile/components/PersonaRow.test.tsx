@@ -107,8 +107,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemInserted,
       onSearchChange,
     }: {
-      onItemInserted?: (...args: never[]) => void;
-      onSearchChange?: (...args: never[]) => void;
+      onItemInserted: (...args: unknown[]) => void;
+      onSearchChange?: (...args: unknown[]) => void;
     }) => (
       <div>
         <button
@@ -133,7 +133,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../../generated/entity/teams/user';
 import PersonaRow from './PersonaRow';
 
 const userData = {

@@ -12,9 +12,9 @@
  */
 
 import { act, render, screen, waitFor, within } from '@testing-library/react';
-import { PluginRouteProps } from 'components/Settings/Applications/plugins/AppPlugin';
-import { AI_APP_MODE } from 'constants/appMode.constants';
-import { useAppModeStore } from 'hooks/useAppMode';
+import { PluginRouteProps } from '../../Settings/Applications/plugins/AppPlugin';
+import { AI_APP_MODE } from '../../../constants/appMode.constants';
+import { useAppModeStore } from '../../../hooks/useAppMode';
 import { ReactNode, Suspense } from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { marketplaceModule } from './marketplace.module';
@@ -41,7 +41,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onClick,
   }: {
     children?: ReactNode;
-    onClick?: (...args: never[]) => void;
+    onClick?: (...args: unknown[]) => void;
   }) => <button onClick={onClick}>{children}</button>,
 }));
 

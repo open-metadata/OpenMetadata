@@ -35,7 +35,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { EntityReference } from 'generated/entity/type';
+import { EntityReference } from '../../../../../generated/entity/type';
 import ChipView from './ChipView';
 
 describe('ChipView', () => {

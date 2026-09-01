@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { PolicyInfo } from 'rest/permissionAPI';
+import { PolicyInfo } from '../../../../../../rest/permissionAPI';
 
 jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: (ref: { name?: string }) => ref?.name ?? '',

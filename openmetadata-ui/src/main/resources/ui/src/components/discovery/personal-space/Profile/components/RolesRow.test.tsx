@@ -28,7 +28,7 @@ jest.mock('lodash', () => ({
     Object.assign(fn, { cancel: jest.fn() }),
 }));
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn().mockResolvedValue([]),
 }));
 
@@ -88,8 +88,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemInserted,
       onSearchChange,
     }: {
-      onItemInserted?: (...args: never[]) => void;
-      onSearchChange?: (...args: never[]) => void;
+      onItemInserted: (...args: unknown[]) => void;
+      onSearchChange?: (...args: unknown[]) => void;
     }) => (
       <>
         <button
@@ -113,8 +113,8 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { User } from 'generated/entity/teams/user';
-import { searchRoles } from 'rest/rolesAPIV1';
+import { User } from '../../../../../generated/entity/teams/user';
+import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import RolesRow from './RolesRow';
 
 const mockSearchRoles = searchRoles as jest.Mock;
