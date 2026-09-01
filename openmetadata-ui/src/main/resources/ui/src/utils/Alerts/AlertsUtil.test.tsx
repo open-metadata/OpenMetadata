@@ -1565,7 +1565,7 @@ describe('normalizeDestinationConfig', () => {
     });
   });
 
-  it('should handle config with empty headers and queryParams objects', () => {
+  it('should omit empty headers and queryParams from normalized config', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
       headers: {},
@@ -1577,8 +1577,6 @@ describe('normalizeDestinationConfig', () => {
 
     expect(result).toEqual({
       endpoint: 'https://example.com/webhook',
-      headers: [],
-      queryParams: [],
       timeout: 30,
     });
   });
