@@ -217,8 +217,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (!WorkflowExpressionValidator.isSafeCondition(condition)) {
       throw BadRequestException.of(
           String.format(
-              "Workflow '%s' edge '%s' -> '%s' has an invalid condition '%s'; "
-                  + "allowed characters: letters, digits, space, '.', '_', '-'",
+              "Workflow '%s' edge '%s' -> '%s' has an invalid condition '%s'; it must contain at "
+                  + "least one letter or digit and only letters, digits, space, '.', '_', '-'",
               workflowName, edge.getFrom(), edge.getTo(), condition));
     }
     if (!WorkflowExpressionValidator.isSafeNodeReference(edge.getFrom())) {

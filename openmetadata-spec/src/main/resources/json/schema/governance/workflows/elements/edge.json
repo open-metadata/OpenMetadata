@@ -22,7 +22,7 @@
       "description": "Defines if the edge will follow a path depending on the source node result.",
       "type": "string",
       "maxLength": 256,
-      "pattern": "^[A-Za-z0-9 ._-]*$"
+      "pattern": "^(?=$|.*[A-Za-z0-9])[A-Za-z0-9 ._-]*$"
     }
   },
   "required": ["to", "from"],
