@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -407,8 +406,8 @@ public class BotImpersonationIT {
                     .executeForString(HttpMethod.GET, "/v1/users/security/token", null),
             "Listing personal access tokens while impersonating must be rejected");
     assertTrue(
-        denied.getMessage().toLowerCase(Locale.ROOT).contains("impersonat"),
-        "List must be blocked by the impersonation guard: " + denied.getMessage());
+        denied.getMessage().contains("identity endpoint"),
+        "List must be blocked as an identity endpoint: " + denied.getMessage());
   }
 
   @Test
@@ -434,8 +433,8 @@ public class BotImpersonationIT {
                         "{\"tokenIds\":[\"" + UUID.randomUUID() + "\"]}"),
             "Revoking a personal access token while impersonating must be rejected");
     assertTrue(
-        denied.getMessage().toLowerCase(Locale.ROOT).contains("impersonat"),
-        "Revoke must be blocked by the impersonation guard: " + denied.getMessage());
+        denied.getMessage().contains("identity endpoint"),
+        "Revoke must be blocked as an identity endpoint: " + denied.getMessage());
   }
 
   @Test
