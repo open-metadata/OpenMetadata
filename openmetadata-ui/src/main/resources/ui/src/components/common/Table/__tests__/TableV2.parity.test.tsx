@@ -744,6 +744,29 @@ describe('TableV2 — pixel columns stretch to fill', () => {
     unmount();
   });
 
+  it('still totals 100% on a selecting table', () => {
+    // The core injects a checkbox column ahead of these and sizes it by class.
+    // A fixed-layout table resolves that pixel column first and scales these
+    // down around it, so the shares stay a clean split of the declared widths;
+    // reserving its width here would make the checkbox absorb the leftover.
+    const { header } = widthsFor({
+      rowSelection: { onChange: jest.fn(), selectedRowKeys: [] },
+    });
+
+    expect(header.filter(Boolean)).toEqual(['75%', '25%']);
+  });
+
+  it('leaves the injected column to the core', () => {
+    const { header } = widthsFor({
+      rowSelection: { onChange: jest.fn(), selectedRowKeys: [] },
+    });
+
+    // One more header cell than the call site declared, and TableV2 writes no
+    // width onto it.
+    expect(header).toHaveLength(3);
+    expect(header[0]).toBe('');
+  });
+
   it('leaves percentage widths as the call site wrote them', () => {
     const { unmount } = render(
       <TableV2

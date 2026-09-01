@@ -566,6 +566,13 @@ const TableV2 = <T extends object>(
     }
     const total = (widths as number[]).reduce((sum, w) => sum + w, 0);
 
+    // The shares deliberately add up to 100% even on a selecting table, where
+    // the core injects a checkbox column ahead of the declared ones and sizes
+    // it by class (`tw:w-11`, `tw:w-9`). A fixed-layout table resolves that
+    // pixel column first and scales the percentages down around it — measured
+    // at 1088px: the checkbox keeps its 44px and the data columns take 777 and
+    // 259. Reserving the checkbox's width out of the total instead makes it
+    // absorb the leftover and balloon to ~195px.
     return total > 0 ? total : null;
   }, [propsColumns, scroll?.x, rest.resizableColumns]);
 
