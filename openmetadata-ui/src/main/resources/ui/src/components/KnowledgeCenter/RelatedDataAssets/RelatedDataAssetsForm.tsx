@@ -111,7 +111,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             renderTrigger={({ open }) => (
               <Box
               align="center"
-              className="tw:relative tw:w-full tw:rounded-lg tw:bg-primary tw:px-3 tw:py-1.5 tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+              className="tw:relative tw:w-full tw:bg-primary tw:px-3 tw:py-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
               gap={2}
                 wrap="wrap"
                 onClick={open}>
