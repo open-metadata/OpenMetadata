@@ -12,6 +12,7 @@
  */
 
 import { Tooltip as MuiTooltip } from '@mui/material';
+import { Tag01 } from '@untitledui/icons';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -25,6 +26,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
+import { Icon } from '../../common/Icon/Icon';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
@@ -78,6 +80,15 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
               to={redirectLink}>
               <TagChip
                 data-testid="tags"
+                icon={
+                  tag.style?.iconURL ? (
+                    <Icon
+                      fallback={<Tag01 size={14} />}
+                      iconValue={tag.style.iconURL}
+                      size={14}
+                    />
+                  ) : undefined
+                }
                 label={tagName}
                 labelDataTestId={`tag-${tag.tagFQN}`}
                 size="large"
