@@ -88,4 +88,5 @@ export type TestCaseFormType = {
   glossaryTerms?: TagLabel[];
   dimensionColumns?: string[];
   topDimensions?: number;
+  dataQualityDimension?: string;
 };

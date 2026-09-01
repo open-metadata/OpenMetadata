@@ -188,6 +188,37 @@ describe('transformTestCaseFormData', () => {
     expect(result.testDefinition).toBe('tableCustomSQLQuery');
   });
 
+  it('unwraps the dataQualityDimension FormSelectItem, custom values included', () => {
+    const result = transformTestCaseFormData(
+      {
+        testLevel: TestLevel.TABLE,
+        testTypeId: { id: 'tableRowCountToEqual' },
+        dataQualityDimension: { id: 'Timeliness', label: 'Timeliness' },
+      },
+      {
+        selectedTestLevel: TestLevel.TABLE,
+        selectedTableData: makeTable('t'),
+      }
+    );
+
+    expect(result.dataQualityDimension).toBe('Timeliness');
+  });
+
+  it('leaves dataQualityDimension out when none is selected', () => {
+    const result = transformTestCaseFormData(
+      {
+        testLevel: TestLevel.TABLE,
+        testTypeId: { id: 'tableRowCountToEqual' },
+      },
+      {
+        selectedTestLevel: TestLevel.TABLE,
+        selectedTableData: makeTable('t'),
+      }
+    );
+
+    expect(result.dataQualityDimension).toBeUndefined();
+  });
+
   it('unwraps a FormSelectItem[] dimensionColumns into a string[]', () => {
     const result = transformTestCaseFormData(
       {
@@ -297,6 +328,53 @@ describe('buildEditDefaults', () => {
     expect(result.useDynamicAssertion).toBe(false);
     expect(result.tags).toEqual([]);
     expect(result.glossaryTerms).toEqual([]);
+  });
+
+  it('prefills the custom dimension set on the test case', () => {
+    const testCase = {
+      name: 'my_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-1',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [],
+      dataQualityDimension: 'Timeliness',
+      tags: [],
+    } as unknown as TestCase;
+
+    const result = buildEditDefaults(testCase, {
+      ...tableLevelDefinition,
+      dataQualityDimension: 'Accuracy',
+    } as unknown as TestDefinition);
+
+    expect(result.dataQualityDimension).toEqual({
+      id: 'Timeliness',
+      label: 'Timeliness',
+    });
+  });
+
+  it('falls back to the test definition dimension when the test case has none', () => {
+    const testCase = {
+      name: 'my_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-1',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [],
+      tags: [],
+    } as unknown as TestCase;
+
+    const result = buildEditDefaults(testCase, {
+      ...tableLevelDefinition,
+      dataQualityDimension: 'Accuracy',
+    } as unknown as TestDefinition);
+
+    expect(result.dataQualityDimension).toEqual({
+      id: 'Accuracy',
+      label: 'Accuracy',
+    });
   });
 
   it('sets selectedColumn and COLUMN testLevel for a column-level entityLink', () => {

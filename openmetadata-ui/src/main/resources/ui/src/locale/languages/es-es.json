@@ -3527,6 +3527,7 @@
     "discover-data-products-subtitle": "Descubre productos de datos confiables y solicita acceso a los datos",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Descubra sus datos y desbloquee el valor de los activos de datos.",
     "distinct-profile-metric-description": "Porcentaje de valores distintos en la columna",
+    "doc-field-data-quality-dimension": "The data quality dimension this test case is categorized under. It defaults to the dimension of the test type, and you can pick another one or type in your own custom dimension.",
     "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-dimension-columns": "Opcionalmente, seleccione una o más columnas para agrupar los resultados de las pruebas. Los resultados se calculan por separado para cada combinación de valores de dimensión; la columna evaluada no puede ser una dimensión.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",

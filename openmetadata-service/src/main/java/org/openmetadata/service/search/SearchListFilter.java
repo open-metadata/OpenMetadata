@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -400,6 +401,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return str.replace("\"", "\\\"");
   }
 
+  /**
+   * Escapes a value for safe interpolation into a JSON string literal. Unlike {@link
+   * #escapeDoubleQuotes} this also escapes backslashes and control characters, which free-form
+   * user-supplied values may contain and which would otherwise produce malformed filter JSON.
+   */
+  private String escapeJsonString(String str) {
+    return new String(JsonStringEncoder.getInstance().quoteAsString(str));
+  }
+
   /** Comma separated statuses are matched as an OR, a single status still matches exactly. */
   private String getTestCaseStatusCondition(String status) {
     List<String> statuses =
@@ -448,7 +458,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (DataQualityDimensions.NO_DIMENSION.value().equals(dataQualityDimension)) {
       return String.format("{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"%s\"}}]}}", field);
     }
-    return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
+    // Dimensions are free-form on a test case (custom dimensions), so the value needs full JSON
+    // escaping - a backslash or control character would otherwise break the filter JSON.
+    return String.format(
+        "{\"term\": {\"%s\": \"%s\"}}", field, escapeJsonString(dataQualityDimension));
   }
 
   private String getTestCaseResolutionStatusCondition() {

@@ -790,6 +790,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition);
     validateColumnTestCase(table, entityLink, testDefinition.getEntityType());
     validateDimensionColumns(test, table);
+    setDataQualityDimension(test, testDefinition);
 
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
@@ -1009,6 +1010,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       for (String dimensionColumn : test.getDimensionColumns()) {
         validateColumn(table, dimensionColumn, Boolean.FALSE);
       }
+    }
+  }
+
+  /**
+   * A test case can carry any dimension the user wants — including custom ones that are not part of
+   * the dimensions shipped with OpenMetadata. When none is given, the test case inherits the
+   * dimension of its test definition, so that clearing the field resets it to that default.
+   */
+  static void setDataQualityDimension(TestCase test, TestDefinition testDefinition) {
+    String dimension = test.getDataQualityDimension();
+    dimension = dimension == null ? null : dimension.trim();
+    if (!nullOrEmpty(dimension)) {
+      test.setDataQualityDimension(dimension);
+    } else if (testDefinition.getDataQualityDimension() != null) {
+      test.setDataQualityDimension(testDefinition.getDataQualityDimension().value());
+    } else {
+      test.setDataQualityDimension(null);
     }
   }
 
@@ -1656,6 +1674,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "topDimensions", original.getTopDimensions(), updated.getTopDimensions()));
+      compareAndUpdate(
+          "dataQualityDimension",
+          () ->
+              recordChange(
+                  "dataQualityDimension",
+                  original.getDataQualityDimension(),
+                  updated.getDataQualityDimension()));
       compareAndUpdate(
           "testCaseStatus",
           () ->

@@ -390,6 +390,39 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
   });
 
+  it('defaults the data quality dimension to the selected test definition one', async () => {
+    mockGetListTestDefinitions.mockResolvedValue({
+      data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+      paging: { total: 1 },
+    } as never);
+
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    await waitFor(() => {
+      expect(mockGetListTestDefinitions).toHaveBeenCalled();
+    });
+
+    expect(
+      await screen.findByTestId('data-quality-dimension')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    await waitFor(() => {
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Accuracy',
+        label: 'Accuracy',
+      });
+    });
+  });
+
   it('does not expose distribution-only fields from a schema capability alone', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [DYNAMIC_DEFINITION],
@@ -844,6 +877,33 @@ describe('TestCaseFormBody', () => {
       expect(formRef?.getValues('selectedColumn')).toBe('email');
       expect(formRef?.getValues('dimensionColumns')).toEqual(['id']);
       expect(formRef?.getValues('topDimensions')).toBe(5);
+    });
+
+    it('keeps the prefilled custom dimension instead of the test definition one', async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody(
+          { table: SELECTED_TABLE, isEditMode: true },
+          {
+            testLevel: TestLevel.TABLE,
+            selectedTable: TABLE_FQN,
+            dataQualityDimension: { id: 'Timeliness', label: 'Timeliness' },
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Timeliness',
+        label: 'Timeliness',
+      });
     });
   });
 

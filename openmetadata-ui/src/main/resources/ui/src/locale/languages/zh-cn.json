@@ -3527,6 +3527,7 @@
     "discover-data-products-subtitle": "发现可信的数据产品并申请数据访问权限",
     "discover-your-data-and-unlock-the-value-of-data-assets": "深入探索数据, 释放数据资产的价值",
     "distinct-profile-metric-description": "列中不同值的百分比",
+    "doc-field-data-quality-dimension": "The data quality dimension this test case is categorized under. It defaults to the dimension of the test type, and you can pick another one or type in your own custom dimension.",
     "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-dimension-columns": "可选择一个或多个列，用于对测试结果进行分组。系统会针对每种维度值组合分别计算结果；被测试的列本身不能用作维度。",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",

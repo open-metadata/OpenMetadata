@@ -13,6 +13,7 @@
 import { compare, type Operation } from 'fast-json-patch';
 import {
   cloneDeep,
+  has,
   isArray,
   isEmpty,
   isNil,
@@ -160,6 +161,13 @@ export const createUpdatedTestCasePatch = ({
     topDimensions: isUndefined(value.topDimensions)
       ? testCase.topDimensions
       : value.topDimensions ?? undefined,
+    // The dimension field is rendered (and prefilled) whenever the full form is
+    // shown, so a submitted empty value means the user cleared the override and
+    // the patch must drop it. Only a missing key counts as untouched.
+    dataQualityDimension:
+      showOnlyParameter || !has(value, 'dataQualityDimension')
+        ? testCase.dataQualityDimension
+        : value.dataQualityDimension || undefined,
   };
 
   return compare(testCase, updatedTestCase);

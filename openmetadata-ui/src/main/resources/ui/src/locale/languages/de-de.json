@@ -3527,6 +3527,7 @@
     "discover-data-products-subtitle": "Entdecken Sie vertrauenswürdige Datenprodukte und fordern Sie Zugriff an",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Die Dinge werden einfacher mit Data Quality ohne Code. Einfache Schritte zum Testen, Bereitstellen und Sammeln von Ergebnissen mit sofortigen Benachrichtigungen bei Testfehlern. Bleiben Sie auf dem Laufenden mit zuverlässigen Daten, denen Sie vertrauen können.",
     "distinct-profile-metric-description": "Prozentsatz der unterschiedlichen Werte in der Spalte",
+    "doc-field-data-quality-dimension": "The data quality dimension this test case is categorized under. It defaults to the dimension of the test type, and you can pick another one or type in your own custom dimension.",
     "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-dimension-columns": "Optional eine oder mehrere Spalten auswählen, nach denen die Testergebnisse gruppiert werden. Die Ergebnisse werden für jede Kombination von Dimensionswerten separat berechnet; die getestete Spalte selbst kann keine Dimension sein.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",

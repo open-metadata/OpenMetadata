@@ -3527,6 +3527,7 @@
     "discover-data-products-subtitle": "探索可信的資料產品並申請資料存取權",
     "discover-your-data-and-unlock-the-value-of-data-assets": "無程式碼的資料品質讓事情變得更簡單。透過簡單的步驟來測試、部署和收集結果，並即時收到測試失敗通知。隨時掌握您可以信賴的可靠資料。",
     "distinct-profile-metric-description": "欄位中相異值的百分比",
+    "doc-field-data-quality-dimension": "The data quality dimension this test case is categorized under. It defaults to the dimension of the test type, and you can pick another one or type in your own custom dimension.",
     "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-dimension-columns": "可選擇一個或多個欄位，用於將測試結果分組。系統會針對每種維度值組合分別計算結果；被測試的欄位本身不能作為維度。",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",

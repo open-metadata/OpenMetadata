@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -25,9 +26,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -137,6 +140,39 @@ class TestCaseRepositoryTest {
           updated.getTestSuites().stream()
               .anyMatch(suite -> suite.getId().equals(logicalSuite.getId())));
     }
+  }
+
+  @Test
+  void testCaseInheritsTheTestDefinitionDimensionWhenNoneIsGiven() {
+    TestDefinition testDefinition =
+        new TestDefinition().withDataQualityDimension(DataQualityDimensions.ACCURACY);
+
+    TestCase withoutDimension = new TestCase();
+    TestCaseRepository.setDataQualityDimension(withoutDimension, testDefinition);
+
+    assertEquals("Accuracy", withoutDimension.getDataQualityDimension());
+
+    TestCase blankDimension = new TestCase().withDataQualityDimension("  ");
+    TestCaseRepository.setDataQualityDimension(blankDimension, testDefinition);
+
+    assertEquals("Accuracy", blankDimension.getDataQualityDimension());
+  }
+
+  @Test
+  void testCaseKeepsItsOwnCustomDimension() {
+    TestDefinition testDefinition =
+        new TestDefinition().withDataQualityDimension(DataQualityDimensions.ACCURACY);
+
+    TestCase testCase = new TestCase().withDataQualityDimension(" Timeliness ");
+    TestCaseRepository.setDataQualityDimension(testCase, testDefinition);
+
+    assertEquals("Timeliness", testCase.getDataQualityDimension());
+
+    // A test definition without a dimension leaves the test case without one too
+    TestCase noDimension = new TestCase();
+    TestCaseRepository.setDataQualityDimension(noDimension, new TestDefinition());
+
+    assertNull(noDimension.getDataQualityDimension());
   }
 
   @Test

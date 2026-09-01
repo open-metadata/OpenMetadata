@@ -108,6 +108,9 @@ export interface FormValues {
   parameterValues?: Array<{ name: string; value: string }>;
   dimensionColumns?: Array<string | FormSelectItem>;
   topDimensions?: number;
+  // Free-form: on top of the dimensions shipped with OpenMetadata, users can
+  // type in their own custom dimension.
+  dataQualityDimension?: string | FormSelectItem;
   // Scheduler fields
   pipelineName?: string;
   cron?: string;

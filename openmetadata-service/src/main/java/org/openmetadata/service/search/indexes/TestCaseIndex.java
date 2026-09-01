@@ -88,7 +88,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
             Entity.getEntity(
                 Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
         doc.put("testPlatforms", testDefinition.getTestPlatforms());
-        doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
+        // The test case dimension overrides the test definition one. Test cases created before
+        // dimensions could be set on them have none, so they still fall back to the definition.
+        doc.put(
+            "dataQualityDimension",
+            nullOrEmpty(testCase.getDataQualityDimension())
+                ? testDefinition.getDataQualityDimension()
+                : testCase.getDataQualityDimension());
         doc.put("testCaseType", testDefinition.getEntityType());
       } catch (EntityNotFoundException ex) {
         LOG.warn(
