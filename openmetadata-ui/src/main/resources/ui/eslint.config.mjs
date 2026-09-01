@@ -340,7 +340,10 @@ export default [
       'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
       'sonarjs/expression-complexity': 'warn', // 15
       'sonarjs/no-nested-conditional': 'warn', // 16
-      'sonarjs/no-nested-functions': 'warn', // 18
+      // Promoted to error: all 75 deeply-nested functions refactored by
+      // hoisting the innermost callback to a shallower named scope; backlog is
+      // zero and this ratchets it.
+      'sonarjs/no-nested-functions': 'error',
 
       // Security. Enforced in production code. Test fixtures, mock data, and
       // the sample-entity constants files legitimately embed http:// self-links,
