@@ -364,6 +364,9 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
       ...navbarUtilClassBase.getUserProfileExtraItems(),
+      {
+        type: 'divider',
+      },
       // A group label keeps the embedded switch non-selectable so Ant Design
       // does not close the dropdown while the user previews the new theme.
       {

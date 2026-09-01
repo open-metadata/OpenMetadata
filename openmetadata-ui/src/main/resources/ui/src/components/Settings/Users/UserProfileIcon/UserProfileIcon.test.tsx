@@ -310,8 +310,12 @@ describe('UserProfileIcon', () => {
     const profileDropdown = screen
       .getByText('label.logout')
       .closest('.profile-dropdown');
+    const themeMenuGroup = switcher.closest('.ant-dropdown-menu-item-group');
 
     expect(profileDropdown).toContainElement(switcher);
+    expect(themeMenuGroup?.previousElementSibling).toHaveClass(
+      'ant-dropdown-menu-item-divider'
+    );
 
     fireEvent.click(switcher);
 

@@ -48,4 +48,23 @@ describe('ThemeModeSwitcher', () => {
     expect(localStorage.getItem('ui-theme')).toBe('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
   });
+
+  it('uses the full row with the label separated from the toggle', () => {
+    render(
+      <ThemeProvider defaultTheme="light">
+        <ThemeModeSwitcher />
+      </ThemeProvider>
+    );
+
+    const switcherRow = screen
+      .getByRole('switch', { name: 'label.dark-mode' })
+      .closest('label');
+
+    expect(switcherRow).toHaveClass(
+      'tw:w-full',
+      'tw:flex-row-reverse',
+      'tw:items-center',
+      'tw:justify-between'
+    );
+  });
 });
