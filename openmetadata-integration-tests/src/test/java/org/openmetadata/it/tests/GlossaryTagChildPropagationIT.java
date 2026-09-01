@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -158,23 +157,12 @@ public class GlossaryTagChildPropagationIT {
   }
 
   /**
-   * Reproduces an open half of #31756 that this change set does not fix, so it is disabled rather
-   * than deleted — enable it with the fix.
-   *
-   * <p>Observed on a real stack: after the term is applied to the table, {@code SearchRepository}
-   * logs {@code "Search index update with propagation - type: table"}, so {@code requiresPropagation}
-   * opened the gate and {@code propagateInheritedFieldsToChildren} ran — yet the column doc, which is
-   * present in {@code column_search_index} and resolvable by {@code fqnParts}, still has
-   * {@code tags: []}. The label never lands, on the add path, before removal is even reached.
-   *
-   * <p>Leading hypothesis, not yet proven: {@code EntityIndexCapabilityRegistry} is populated from
-   * {@code Entity.registerEntity}, and {@code tableColumn} is a pseudo-type with no repository, so it
-   * has no registered capability. {@code IndexMappingValidator} already warns that a child alias in
-   * that state gets skipped by soft-delete propagation, so the descriptor-driven cascade may be
-   * missing it the same way. The entity-API assertions above pass, so the column *entity* read path is
-   * unaffected either way.
+   * The search half of #31756: whatever shows up under a glossary term's assets must actually lose
+   * the term when it is removed. Column docs are rebuilt from the table entity, which carries the
+   * projected labels, so a tags change has to force that rebuild — the inherited-field script path
+   * never writes {@code tags}, so a removed term used to linger and keep the column listed as an
+   * asset. See SearchRepository.hasColumnsChanged.
    */
-  @Disabled("#31756: table tag cascade never reaches column_search_index; see javadoc for evidence")
   @Test
   void termRemovalFromTable_clearsPropagatedLabelFromColumnSearchDoc(TestNamespace ns)
       throws Exception {

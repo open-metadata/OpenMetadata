@@ -1484,17 +1484,34 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * A change to the table's own tags forces a full column reindex rather than the inherited-field
+   * script update. The table's glossary terms are projected onto its columns on read (see {@code
+   * Entity.populateEntityFieldTags}), so rebuilding the column docs from the entity picks the change
+   * up in both directions, and a column's own labels survive because the projection merges behind
+   * them. The script path only writes the inherited-field map and never touches {@code tags}, which
+   * is why a term removed from a table used to linger on its column docs — and keep the columns
+   * showing up under the glossary term's assets.
+   */
   private boolean hasColumnsChanged(ChangeDescription changeDescription) {
     if (changeDescription == null) {
       return true; // Default to full reindex if no change description
     }
 
-    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
+    return changedFieldNames(changeDescription)
+        .anyMatch(
+            fieldName ->
+                fieldName.startsWith(Entity.FIELD_COLUMNS)
+                    || fieldName.startsWith(Entity.FIELD_TAGS));
+  }
+
+  private Stream<String> changedFieldNames(ChangeDescription changeDescription) {
+    return Stream.of(
+            listOrEmpty(changeDescription.getFieldsAdded()),
+            listOrEmpty(changeDescription.getFieldsUpdated()),
+            listOrEmpty(changeDescription.getFieldsDeleted()))
+        .flatMap(List::stream)
+        .map(FieldChange::getName);
   }
 
   private void updateTableColumnsInheritedFields(Table table) {
