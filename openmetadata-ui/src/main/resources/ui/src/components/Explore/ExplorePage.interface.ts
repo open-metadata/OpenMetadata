@@ -143,6 +143,8 @@ export interface ExploreQuickFilterField {
   dropdownClassName?: string;
   singleSelect?: boolean;
   sourceFields?: string;
+  /** Post-process the resolved label (e.g., strip classification prefix for tier/certification). */
+  labelTransform?: (label: string) => string;
 }
 
 // Type for all the explore tab entities
