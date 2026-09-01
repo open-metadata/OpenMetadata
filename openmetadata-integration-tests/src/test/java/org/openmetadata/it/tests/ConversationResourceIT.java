@@ -508,9 +508,6 @@ class ConversationResourceIT {
     patchTableDomains(table.getId(), List.of(allowedDomain));
     Awaitility.await("conversation moves into the allowed domain")
         .atMost(Duration.ofSeconds(30))
-        .ignoreExceptionsMatching(
-            error ->
-                error instanceof ApiException apiException && apiException.getStatusCode() == 404)
         .untilAsserted(
             () -> {
               Conversation visible = getConversation(domainClient, conversation.getId());
