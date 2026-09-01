@@ -544,6 +544,41 @@ const TableV2 = <T extends object>(
   const columnIds = useMemo(() => getColumnIds(columnKeys), [columnKeys]);
 
   /**
+   * Total of the columns' pixel widths, but only for a table that should
+   * stretch to fill: no horizontal scroll, no resizing, and every column
+   * sized in pixels.
+   *
+   * A fixed-layout table whose columns are all narrower than the table used to
+   * have the leftover spread across them by the browser. Chrome 151 stopped
+   * doing that for widths declared on the cells — it still does it for widths
+   * on `<col>`, which is where AntD put them, so the same table filled under
+   * AntD and stopped short here. React Aria owns the `<table>` and gives us no
+   * `<colgroup>` to write into, so express each width as its share of the
+   * total instead: a percentage stretches in every engine, and the columns
+   * keep their relative proportions either way.
+   */
+  const pixelWidthTotal = useMemo((): number | null => {
+    if (scroll?.x || rest.resizableColumns) {
+      return null;
+    }
+    const widths = propsColumns.map((col) => (col as ColumnType<T>).width);
+    if (!widths.length || !widths.every((w) => typeof w === 'number')) {
+      return null;
+    }
+    const total = (widths as number[]).reduce((sum, w) => sum + w, 0);
+
+    return total > 0 ? total : null;
+  }, [propsColumns, scroll?.x, rest.resizableColumns]);
+
+  const toColumnWidth = useCallback(
+    (width: number | string | undefined) =>
+      pixelWidthTotal && typeof width === 'number'
+        ? `${(width / pixelWidthTotal) * 100}%`
+        : width,
+    [pixelWidthTotal]
+  );
+
+  /**
    * A column carrying `sortOrder` drives the sort, exactly as in AntD — the
    * prop is controlled by the parent and outranks whatever the user last
    * clicked. Falls back to the internal (uncontrolled) state when no column
@@ -1277,7 +1312,7 @@ const TableV2 = <T extends object>(
                       style={{
                         ...(colWidth !== undefined
                           ? {
-                              width: colWidth,
+                              width: toColumnWidth(colWidth),
                               // A floor only holds a pixel column open where
                               // the table is allowed to overflow. Without
                               // `scroll.x` it instead pins every column at its
@@ -1483,9 +1518,10 @@ const TableV2 = <T extends object>(
                               ...(columnWidths[cellKey] !== undefined ||
                               colType.width !== undefined
                                 ? {
-                                    width:
+                                    width: toColumnWidth(
                                       columnWidths[cellKey] ??
-                                      (colType.width as number),
+                                        (colType.width as number)
+                                    ),
                                     // Scrollable pixel columns only — see the
                                     // header cell.
                                     ...(scroll?.x &&

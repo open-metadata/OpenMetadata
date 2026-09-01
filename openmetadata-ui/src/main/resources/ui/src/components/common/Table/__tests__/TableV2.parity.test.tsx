@@ -666,6 +666,108 @@ describe('TableV2 — column width floors', () => {
 });
 
 /**
+ * TableV2-only: AntD declares its widths on `<col>`, and Chrome 151 spreads a
+ * fixed-layout table's leftover space over those but no longer over widths
+ * declared on the cells — the same table filled under AntD and stopped short
+ * here. React Aria owns the `<table>` and offers no `<colgroup>`, so an
+ * all-pixel table that cannot scroll states each width as its share of the
+ * total instead.
+ */
+describe('TableV2 — pixel columns stretch to fill', () => {
+  const PIXEL_COLUMNS = [
+    { dataIndex: 'a', key: 'a', title: 'A', width: 150 },
+    { dataIndex: 'b', key: 'b', title: 'B', width: 50 },
+  ];
+
+  const widthsFor = (props: Record<string, unknown> = {}) => {
+    const { unmount } = render(
+      <TableV2
+        columns={PIXEL_COLUMNS}
+        dataSource={[{ a: '1', b: '2' }]}
+        pagination={false}
+        rowKey="a"
+        {...props}
+      />
+    );
+    const header = [...document.querySelectorAll('thead th')].map(
+      (th) => (th as HTMLElement).style.width
+    );
+    const body = [...document.querySelectorAll('tbody td')].map(
+      (td) => (td as HTMLElement).style.width
+    );
+    unmount();
+
+    return { body, header };
+  };
+
+  it('states each pixel width as its share of the total', () => {
+    expect(widthsFor().header).toEqual(['75%', '25%']);
+  });
+
+  it('sizes the body cells to match', () => {
+    expect(widthsFor().body).toEqual(['75%', '25%']);
+  });
+
+  it('keeps pixels when the table scrolls sideways', () => {
+    expect(widthsFor({ scroll: { x: 1200 } }).header).toEqual([
+      '150px',
+      '50px',
+    ]);
+  });
+
+  it('keeps pixels while columns are resizable', () => {
+    // A resizable table measures its own columns, so the values come from the
+    // resize state rather than the props — what matters is the unit: a drag
+    // sets pixels and a percentage would fight it.
+    widthsFor({ resizableColumns: true }).header.forEach((width) =>
+      expect(width).toMatch(/px$/)
+    );
+  });
+
+  it('leaves a mixed set of widths alone', () => {
+    const { unmount } = render(
+      <TableV2
+        columns={[
+          { dataIndex: 'a', key: 'a', title: 'A', width: 150 },
+          { dataIndex: 'b', key: 'b', title: 'B' },
+        ]}
+        dataSource={[{ a: '1', b: '2' }]}
+        pagination={false}
+        rowKey="a"
+      />
+    );
+
+    expect(
+      (document.querySelector('thead th') as HTMLElement).style.width
+    ).toBe('150px');
+
+    unmount();
+  });
+
+  it('leaves percentage widths as the call site wrote them', () => {
+    const { unmount } = render(
+      <TableV2
+        columns={[
+          { dataIndex: 'a', key: 'a', title: 'A', width: '60%' },
+          { dataIndex: 'b', key: 'b', title: 'B', width: '40%' },
+        ]}
+        dataSource={[{ a: '1', b: '2' }]}
+        pagination={false}
+        rowKey="a"
+      />
+    );
+
+    expect(
+      [...document.querySelectorAll('thead th')].map(
+        (th) => (th as HTMLElement).style.width
+      )
+    ).toEqual(['60%', '40%']);
+
+    unmount();
+  });
+});
+
+/**
  * TableV2-only: the core `Table.Cell` sizes its own padding, but every cell
  * here also carries a padding class, and a class wins for the same property —
  * so the size prop has to drive that class or it changes nothing on screen.
