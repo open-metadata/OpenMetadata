@@ -299,12 +299,14 @@ public class JwtFilter implements ContainerRequestFilter {
           enforcePrincipalDomain);
     }
 
-    // Validate Bot token matches what was created in OM. Under impersonation the principal has
-    // already been swapped to the target, so the token must be checked against the bot that
-    // presented it - checking the target (or skipping, as this did) would let a rotated or revoked
-    // bot token keep authenticating simply by carrying an impersonation header.
-    if (isBot(claims)) {
-      validateBotToken(tokenFromHeader, impersonatedBy == null ? userName : impersonatedBy);
+    // Validate Bot token matches what was created in OM. Under impersonation the presented token
+    // belongs to the impersonating bot (impersonatedBy), while userName is the target, so validate
+    // the bot's own token against its cache entry instead of skipping - otherwise a rotated (i.e.
+    // revoked) bot token keeps working as long as an X-Impersonate-User header is attached.
+    if (impersonatedBy != null) {
+      validateBotToken(tokenFromHeader, impersonatedBy);
+    } else if (isBot(claims)) {
+      validateBotToken(tokenFromHeader, userName);
     }
 
     // validate personal access token

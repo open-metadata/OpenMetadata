@@ -29,7 +29,14 @@ public final class ImpersonationAuthorizer {
 
   private ImpersonationAuthorizer() {}
 
+  /**
+   * Memoized per request, so the bot lookup and policy evaluation run once however many times the
+   * swap is re-checked - the filter gate and every authorizer entry point share the result.
+   */
   public static void authorize(String botName, User targetUser) {
+    if (ImpersonationContext.isValidated(botName, targetUser.getName())) {
+      return;
+    }
     User bot = getImpersonatingBot(botName);
     if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
       LOG.warn(
@@ -38,6 +45,7 @@ public final class ImpersonationAuthorizer {
           "Bot " + bot.getName() + " does not have impersonation enabled");
     }
     authorizeTarget(bot.getName(), targetUser);
+    ImpersonationContext.markValidated(botName, targetUser.getName());
   }
 
   private static User getImpersonatingBot(String botName) {

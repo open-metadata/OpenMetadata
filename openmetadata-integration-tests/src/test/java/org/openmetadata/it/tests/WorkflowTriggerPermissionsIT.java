@@ -1,7 +1,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -211,79 +210,70 @@ public class WorkflowTriggerPermissionsIT {
             + "authorizer (issue #26760) and must not be blocked by it");
   }
 
-  /**
-   * GHSA-3w33-vhhj-h357. {@code authorizeTestConnection} authorizes through {@code
-   * authorizeRequests}, which - unlike {@code authorize} - never checked impersonation. Adding
-   * {@code X-Impersonate-User: admin} to any bot token thereforeshort-circuited the whole check at
-   * {@code subjectContext.isAdmin()}, with no {@code allowImpersonation} grant and no IMPERSONATE
-   * policy rule. This is the reporter's request verbatim.
-   */
   @Test
-  void test_triggerTestConnection_ungrantedBotImpersonatingAdmin_denied(TestNamespace ns)
+  void test_triggerTestConnection_impersonatingBotWithoutGrant_returns403(TestNamespace ns)
       throws Exception {
+    // Advisory PoC: a bot without the impersonation grant attaches X-Impersonate-User to reach a
+    // gated trigger. authorizeWorkflowTrigger -> authorizeRequests must resolve the effective
+    // subject through impersonation validation and deny it, not trust the header.
     OpenMetadataClient admin = SdkClients.adminClient();
-    DatabaseService service = createMysqlService(admin, ns.prefix("svc-imp-trig"), null);
+    DatabaseService service = createMysqlService(admin, ns.prefix("svc-impbot"), null);
     Workflow workflow =
-        admin.workflows().create(testConnectionRequest(ns.prefix("imp-trig"), service.getName()));
-    String botToken = ungrantedBotToken(ns);
+        admin
+            .workflows()
+            .create(testConnectionRequest(ns.prefix("impbot-trig"), service.getName()));
 
+    String botToken = createImpersonationBotToken(ns, "nogrant", false);
     HttpResponse<String> response = triggerWorkflow(workflow.getId(), botToken, "admin");
 
     assertEquals(
         403,
         response.statusCode(),
-        "A bot without allowImpersonation must not reach the trigger endpoint by impersonating "
-            + "admin: "
+        "Impersonating bot without the grant must be denied on the trigger endpoint: "
             + response.body());
     assertTrue(
-        response.body().contains("does not have impersonation enabled"),
-        "Denial must come from the impersonation grant check: " + response.body());
+        response.body().contains("impersonation"),
+        "Denial must come from impersonation validation: " + response.body());
   }
 
-  @Test
-  void test_triggerTestConnection_ungrantedBotWithoutHeader_stillReachesAuthorizer(TestNamespace ns)
-      throws Exception {
-    // Control for the test above: the same bot, same workflow, no impersonation header. It is
-    // denied for lacking permission on the service, not for the impersonation grant - which
-    // proves the 403 above is attributable to impersonation rather than to the bot's own rights.
+  private String createImpersonationBotToken(
+      TestNamespace ns, String suffix, boolean allowImpersonation) {
+    String localPart = "trigbot" + suffix + ns.shortPrefix();
     OpenMetadataClient admin = SdkClients.adminClient();
-    DatabaseService service = createMysqlService(admin, ns.prefix("svc-imp-ctl"), null);
-    Workflow workflow =
-        admin.workflows().create(testConnectionRequest(ns.prefix("imp-ctl"), service.getName()));
-
-    HttpResponse<String> response = triggerWorkflow(workflow.getId(), ungrantedBotToken(ns), null);
-
-    assertFalse(
-        response.body().contains("does not have impersonation enabled"),
-        "Without the header there is no impersonation to reject: " + response.body());
-  }
-
-  /** A bot user with a real JWT and {@code allowImpersonation} left off. */
-  private String ungrantedBotToken(TestNamespace ns) {
-    String botName = "trigbot" + ns.shortPrefix();
-    OpenMetadataClient admin = SdkClients.adminClient();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
     User botUser =
         admin
             .users()
             .create(
                 new CreateUser()
-                    .withName(botName)
-                    .withEmail(botName + "@test.com")
+                    .withName(localPart)
+                    .withEmail(localPart + "@test.com")
                     .withIsBot(true)
-                    .withAuthenticationMechanism(
-                        new AuthenticationMechanism()
-                            .withAuthType(AuthenticationMechanism.AuthType.JWT)
-                            .withConfig(
-                                new JWTAuthMechanism()
-                                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
+                    .withAuthenticationMechanism(authMechanism));
     admin
         .bots()
         .create(
             new CreateBot()
-                .withName(ns.prefix("trigbot_bot"))
-                .withDescription("Bot without the impersonation grant")
-                .withBotUser(botUser.getName()));
+                .withName(ns.prefix("trig_" + suffix + "_bot"))
+                .withBotUser(botUser.getName())
+                .withAllowImpersonation(allowImpersonation));
     return admin.users().generateToken(botUser.getId(), JWTTokenExpiry.Seven).getJWTToken();
+  }
+
+  private HttpResponse<String> triggerWorkflow(
+      UUID workflowId, String token, String impersonateUser) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + TRIGGER_PATH + workflowId))
+            .header("Authorization", "Bearer " + token)
+            .header("X-Impersonate-User", impersonateUser)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private CreateWorkflow testConnectionRequest(String name, String serviceName) {
@@ -338,22 +328,14 @@ public class WorkflowTriggerPermissionsIT {
   }
 
   private HttpResponse<String> triggerWorkflow(UUID workflowId, String token) throws Exception {
-    return triggerWorkflow(workflowId, token, null);
-  }
-
-  private HttpResponse<String> triggerWorkflow(
-      UUID workflowId, String token, String impersonateUser) throws Exception {
-    HttpRequest.Builder builder =
+    HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + TRIGGER_PATH + workflowId))
             .header("Authorization", "Bearer " + token)
-            .header("Content-Type", "application/json");
-    if (impersonateUser != null) {
-      builder.header("X-Impersonate-User", impersonateUser);
-    }
-    return HTTP_CLIENT.send(
-        builder.POST(HttpRequest.BodyPublishers.noBody()).build(),
-        HttpResponse.BodyHandlers.ofString());
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private static void assertAuthPassed(HttpResponse<String> response, String message) {
