@@ -24,7 +24,7 @@ import {
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
   Menu,
@@ -43,6 +43,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { getVersion } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { languageSelectOptions } from '../../../../utils/i18next/i18nextUtil';
 import i18n from '../../../../utils/i18next/LocalUtil';
@@ -221,8 +222,23 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
   const openPanel = usePersonalSpaceStore((state) => state.open);
-  const { appVersion, currentUser, selectedPersona, setSelectedPersona } =
-    useApplicationStore();
+  const {
+    appVersion,
+    currentUser,
+    selectedPersona,
+    setAppVersion,
+    setSelectedPersona,
+  } = useApplicationStore();
+
+  useEffect(() => {
+    if (!appVersion) {
+      getVersion()
+        .then((res) => setAppVersion(res.version.replace('-SNAPSHOT', '')))
+        .catch(() => {
+          // version display is non-critical
+        });
+    }
+  }, []);
 
   const userExtras = currentUser as CurrentUserExtras | undefined;
   const displayName =
