@@ -253,6 +253,10 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Data quality dimension this test case belongs to. When not set at creation time, it
+ * defaults to the dimension of the test definition. Any dimension registered in Settings >
+ * Preferences > Data Quality can be used, system and custom alike.
+ *
  * Test case reference
  *
  * User working on failure resolution.

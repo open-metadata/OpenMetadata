@@ -88,7 +88,7 @@ export interface DataQualityDimension {
  * Description of the change.
  */
 export interface ChangeDescription {
-    changeSummary?: { [key: string]: any };
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -105,6 +105,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -125,6 +148,13 @@ export interface FieldChange {
 }
 
 /**
+ * Owners of this data quality dimension.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
@@ -144,7 +174,9 @@ export interface EntityReference {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the entity instance.
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
      */
     fullyQualifiedName?: string;
     /**
@@ -177,7 +209,8 @@ export interface EntityReference {
  *
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
     Automation = "automation",
@@ -197,7 +230,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }

@@ -34,7 +34,7 @@ export interface CreateDataQualityDimension {
     /**
      * Owners of this data quality dimension.
      */
-    owners?: EntityReference[];
+    owners?:   EntityReference[];
     provider?: ProviderType;
     /**
      * UI style, holding the colour the dimension is rendered with.
@@ -43,7 +43,17 @@ export interface CreateDataQualityDimension {
 }
 
 /**
+ * Owners of this data quality dimension.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -59,7 +69,9 @@ export interface EntityReference {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the entity instance.
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
      */
     fullyQualifiedName?: string;
     /**
@@ -89,7 +101,8 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
     Automation = "automation",
@@ -99,6 +112,9 @@ export enum ProviderType {
 
 /**
  * UI style, holding the colour the dimension is rendered with.
+ *
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
  */
 export interface Style {
     /**
@@ -106,7 +122,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
