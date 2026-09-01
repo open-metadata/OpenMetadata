@@ -106,7 +106,8 @@ class SearchConsumerFieldBehaviorIT {
           "en", new String[] {"Monthly revenue report", "revenue"},
           "ru", new String[] {"Ежемесячные продажи", "продаж"},
           "jp", new String[] {"東京タワーの売上", "東京"},
-          "zh", new String[] {"北京大学的销售报表", "销售"});
+          "zh", new String[] {"北京大学的销售报表", "销售"},
+          "ko", new String[] {"월간 매출 보고서", "매출"});
 
   @Container
   static OpensearchContainer<?> opensearch =
@@ -312,9 +313,12 @@ class SearchConsumerFieldBehaviorIT {
             .execute(Requests.builder().method("GET").endpoint("/_cat/plugins").build())) {
       String plugins = response.getBody().map(b -> b.bodyAsString()).orElse("");
       assertTrue(
-          plugins.contains("analysis-kuromoji") && plugins.contains("analysis-ik"),
-          "The integration-test OpenSearch image must ship analysis-kuromoji (jp) and analysis-ik "
-              + "(zh) so jp/zh mappings index with their real analyzers. Installed: "
+          plugins.contains("analysis-kuromoji")
+              && plugins.contains("analysis-ik")
+              && plugins.contains("analysis-nori"),
+          "The integration-test OpenSearch image must ship analysis-kuromoji (jp), analysis-ik "
+              + "(zh) and analysis-nori (ko) so those mappings index with their real analyzers. "
+              + "Installed: "
               + plugins);
     }
   }
