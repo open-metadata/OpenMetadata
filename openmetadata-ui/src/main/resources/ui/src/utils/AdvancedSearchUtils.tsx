@@ -48,6 +48,10 @@ const renderSearchLabel = (label: string, searchKey: string) => {
 
   for (const match of matches) {
     const matchIndex = match.index;
+    if (matchIndex === undefined) {
+      continue;
+    }
+
     if (matchIndex > previousIndex) {
       parts.push(label.slice(previousIndex, matchIndex));
     }

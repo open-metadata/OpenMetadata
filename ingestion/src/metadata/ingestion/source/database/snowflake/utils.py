@@ -477,13 +477,17 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):  # pyl
 
     schema = schema or self.default_schema_name
     view_name = _qualified_identifier(schema, table_name)
-    cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL), {"view_name": view_name})
+    cursor = None
     try:
+        cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL), {"view_name": view_name})
         result = cursor.fetchone()
         if result:
             return result[0]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(f"Failed to fetch DDL for view [{view_name}]: {exc}")
+    finally:
+        if cursor is not None:
+            cursor.close()
     return None
 
 

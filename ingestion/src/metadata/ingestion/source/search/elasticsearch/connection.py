@@ -129,9 +129,10 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext | None:
         cert_chain = None
 
     if ca_cert or cert_chain:
+        verify = str(ca_cert) if ca_cert else True
         ssl_context = create_ssl_context(
             cert=cert_chain,
-            verify=ca_cert,
+            verify=verify,
         )
         return ssl_context  # noqa: RET504
 

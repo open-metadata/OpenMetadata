@@ -14,6 +14,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.generated.schema.entity.services.connections.common.sslCertPaths import (
+    SslCertificatesByPath,
+)
 from metadata.generated.schema.entity.services.connections.common.sslCertValues import (
     SslCertificatesByValues,
 )
@@ -61,3 +64,16 @@ def test_empty_certificate_configuration_does_not_disable_tls_verification(
 
     with pytest.raises(ValueError, match="must include a CA certificate"):
         get_ssl_context(ssl_config)
+
+
+def test_client_certificate_uses_default_server_verification():
+    ssl_config = SslConfig(certificates=SslCertificatesByPath(clientCertPath="/certs/client.pem"))
+
+    with patch(f"{CONNECTION_MODULE}.create_ssl_context") as mock_create_context:
+        ssl_context = get_ssl_context(ssl_config)
+
+    assert ssl_context is mock_create_context.return_value
+    mock_create_context.assert_called_once_with(
+        cert="/certs/client.pem",
+        verify=True,
+    )
