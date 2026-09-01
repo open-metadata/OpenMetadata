@@ -164,6 +164,7 @@ test.describe('Task Resolution - OwnershipUpdate', () => {
         {
           data: {
             resolutionType: 'Rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
@@ -304,6 +305,7 @@ test.describe('Task Resolution - TierUpdate', () => {
         {
           data: {
             resolutionType: 'Rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
