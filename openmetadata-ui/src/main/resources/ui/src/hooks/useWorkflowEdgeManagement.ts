@@ -112,65 +112,67 @@ export const useWorkflowEdgeManagement = ({
     [setEdges, T]
   );
 
-  const fixMissingEdgeLabels = useCallback(() => {
-    setEdges((currentEdges) => {
-      return currentEdges.map((edge) => {
-        const sourceNode = nodes.find((n) => n.id === edge.source);
-        if (
-          edge.label &&
-          typeof edge.label === 'string' &&
-          edge.label.trim() !== ''
-        ) {
-          return edge;
-        }
-
-        if (
-          sourceNode?.data?.subType === NodeSubType.UserApprovalTask ||
-          sourceNode?.data?.subType === NodeSubType.CheckEntityAttributesTask ||
-          sourceNode?.data?.subType ===
-            NodeSubType.CheckChangeDescriptionTask ||
-          sourceNode?.data?.subType === NodeSubType.DataCompletenessTask
-        ) {
-          return {
-            ...edge,
-            label: 'TRUE',
-            data: {
-              ...edge.data,
-              conditions: [
-                {
-                  field: 'result',
-                  operator: 'equals',
-                  value: 'TRUE',
-                },
-              ],
-              condition: 'TRUE',
-            },
-            style: {
-              stroke: T.success600,
-              strokeWidth: 2,
-            },
-            labelStyle: {
-              color: T.success600,
-              fontSize: '14px',
-              fontWeight: 600,
-              letterSpacing: '1px',
-              cursor: 'pointer',
-            },
-            labelBgStyle: {
-              fill: T.success100,
-              fillOpacity: 1,
-              stroke: T.white,
-              strokeWidth: 2,
-              rx: 5,
-              ry: 5,
-            },
-          };
-        }
-
+  const fixEdgeLabel = useCallback(
+    (edge: Edge) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      if (
+        edge.label &&
+        typeof edge.label === 'string' &&
+        edge.label.trim() !== ''
+      ) {
         return edge;
-      });
-    });
-  }, [nodes, setEdges, T]);
+      }
+
+      if (
+        sourceNode?.data?.subType === NodeSubType.UserApprovalTask ||
+        sourceNode?.data?.subType === NodeSubType.CheckEntityAttributesTask ||
+        sourceNode?.data?.subType === NodeSubType.CheckChangeDescriptionTask ||
+        sourceNode?.data?.subType === NodeSubType.DataCompletenessTask
+      ) {
+        return {
+          ...edge,
+          label: 'TRUE',
+          data: {
+            ...edge.data,
+            conditions: [
+              {
+                field: 'result',
+                operator: 'equals',
+                value: 'TRUE',
+              },
+            ],
+            condition: 'TRUE',
+          },
+          style: {
+            stroke: T.success600,
+            strokeWidth: 2,
+          },
+          labelStyle: {
+            color: T.success600,
+            fontSize: '14px',
+            fontWeight: 600,
+            letterSpacing: '1px',
+            cursor: 'pointer',
+          },
+          labelBgStyle: {
+            fill: T.success100,
+            fillOpacity: 1,
+            stroke: T.white,
+            strokeWidth: 2,
+            rx: 5,
+            ry: 5,
+          },
+        };
+      }
+
+      return edge;
+    },
+    [nodes, T]
+  );
+
+  const fixMissingEdgeLabels = useCallback(() => {
+    setEdges((currentEdges) => currentEdges.map(fixEdgeLabel));
+  }, [setEdges, fixEdgeLabel]);
 
   const handleConnectionSave = useCallback(
     (connection: Connection, conditions: { value: string }[]) => {

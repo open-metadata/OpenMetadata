@@ -509,16 +509,16 @@ export function useGraphDataBuilder({
           .filter((n) => n.type !== 'dataAsset' && n.type !== 'metric')
           .map((n) => n.id)
       );
+      const getTermColor = (termId: string) => {
+        const termNode = nodesForGraph.find((n) => n.id === termId);
+
+        return termNode?.glossaryId
+          ? glossaryColorMap[termNode.glossaryId] ?? 'var(--color-blue-600)'
+          : 'var(--color-blue-600)';
+      };
       edgesForGraph.forEach((edge) => {
         const fromIsTerm = termIdSet.has(edge.from);
         const toIsTerm = termIdSet.has(edge.to);
-        const getTermColor = (termId: string) => {
-          const termNode = nodesForGraph.find((n) => n.id === termId);
-
-          return termNode?.glossaryId
-            ? glossaryColorMap[termNode.glossaryId] ?? 'var(--color-blue-600)'
-            : 'var(--color-blue-600)';
-        };
         if (fromIsTerm && !toIsTerm) {
           localAssetToTermColor.set(edge.to, getTermColor(edge.from));
         } else if (toIsTerm && !fromIsTerm) {
