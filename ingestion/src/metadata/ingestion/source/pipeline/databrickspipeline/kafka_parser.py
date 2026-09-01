@@ -204,12 +204,19 @@ def glob_base_directory(include: str) -> str:
     reduction is just dropping the `**`. Truncating at any other stray wildcard
     keeps an unexpected include pointed at a real directory rather than at a path
     that cannot be read at all.
+
+    An include with nothing before its wildcard has no directory to fall back to,
+    so it is returned as it came. Reducing it would land on the workspace root and
+    list everything under it, which is far worse than resolving nothing.
     """
     wildcard = include.find("*")
     if wildcard == -1:
         return include
     base = include[:wildcard]
-    return base if base.endswith("/") else base.rsplit("/", 1)[0] + "/"
+    if base.endswith("/"):
+        return base
+    parent = base.rsplit("/", 1)[0]
+    return f"{parent}/" if parent else include
 
 
 def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # noqa: UP006

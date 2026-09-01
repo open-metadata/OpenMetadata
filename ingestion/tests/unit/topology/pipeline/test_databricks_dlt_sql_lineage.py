@@ -920,3 +920,34 @@ class TestNullLibrariesInSpec:
     def test_an_empty_libraries_list_still_reaches_the_source_path_fallback(self):
         spec = {"catalog": CATALOG, "schema": SCHEMA, "libraries": [], "configuration": {"source_path": "/src/"}}
         assert self._listed_paths(spec) == ["/src/"]
+
+
+class TestWildcardWithNoDirectory:
+    """
+    An include whose wildcard has nothing before it has no directory to reduce to.
+    Falling back to `/` would list the whole workspace, which costs far more than
+    resolving nothing at all.
+    """
+
+    def test_a_bare_wildcard_is_returned_unchanged(self):
+        for include in ("**", "*", "*.sql", "?.sql"):
+            assert glob_base_directory(include) == include, include
+
+    def test_an_include_with_a_directory_still_reduces(self):
+        assert glob_base_directory("/tx/**") == "/tx/"
+        assert glob_base_directory("/tx/staging*") == "/tx/"
+        assert glob_base_directory("/tx/") == "/tx/"
+
+    def test_a_concrete_path_is_still_left_alone(self):
+        assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
+
+    def test_the_workspace_root_is_never_expanded(self):
+        """The listing must start where the include points, never at `/`."""
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        source.client = MagicMock()
+        source.client.list_workspace_objects.return_value = []
+        library = DLTLibrarySource(path=glob_base_directory("**"))
+        source._expand_workspace_directory(library)
+        listed = [call.args[0] for call in source.client.list_workspace_objects.call_args_list]
+        assert "/" not in listed
