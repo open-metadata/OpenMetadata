@@ -59,11 +59,13 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -1188,6 +1190,14 @@ class SnowflakeSource(
         )
         return self._execute_semantic_query(query)
 
+    def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045
+        view_fqn = fqn._build(self.context.get().database_service, database, schema, view)  # pyright: ignore[reportAttributeAccessIssue]
+        entity = self.metadata.get_by_name(entity=Table, fqn=view_fqn)
+        reference = None
+        if entity is not None:
+            reference = EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
+        return reference
+
     def yield_table_metrics(
         self,
         table_name_and_type: Tuple[str, TableType],  # noqa: UP006
@@ -1210,6 +1220,14 @@ class SnowflakeSource(
                 )
                 if not metric_rows:
                     return
+                # This view's own CreateTableRequest is still in the sink's bulk buffer
+                # (Metric requests are written immediately, Table requests batch), so
+                # without a flush the lookup below 404s on every first run and the
+                # metrics lose their assets[] back-reference. Gated on metric_rows: the
+                # stage runs for every table, and flushing per table would negate the
+                # bulk sink for every connector.
+                yield Either(right=Barrier(reason=f"semantic_view_metrics:{schema}.{view}"))  # pyright: ignore[reportCallIssue]
+                view_ref = self._semantic_view_reference(database, schema, view)
                 for metric_row in metric_rows:
                     yield Either(  # pyright: ignore[reportCallIssue]
                         right=build_metric_request(
@@ -1220,6 +1238,7 @@ class SnowflakeSource(
                             metric_row,
                             dimension_rows,
                             fact_rows,
+                            view_ref,
                         )
                     )
             except Exception as exc:  # pylint: disable=broad-except

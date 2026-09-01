@@ -202,8 +202,7 @@ export const scrollLogViewerToTail = async (
     }
 
     await page.mouse.wheel(0, deltaY);
-    // Let each wheel commit: back-to-back wheels coalesce, and then the loop
-    // travels far less than its budget suggests.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- pacing synthetic input, not waiting for state: back-to-back wheel events coalesce in the browser, so without a gap the loop travels far less than its budget suggests
     await page.waitForTimeout(60);
   }
 

@@ -16,8 +16,8 @@ import {
   DEFAULT_DOMAIN_VALUE,
   DOMAIN_STORAGE_KEY,
 } from '../constants/constants';
-import type { EntityReference } from '../generated/entity/type';
-import type { DomainStore } from '../interface/store.interface';
+import { EntityReference } from '../generated/entity/type';
+import { DomainStore } from '../interface/store.interface';
 
 export const useDomainStore = create<DomainStore>()(
   persist(

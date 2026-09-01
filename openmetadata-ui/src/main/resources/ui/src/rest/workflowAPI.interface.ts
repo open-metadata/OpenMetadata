@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 export interface WorkflowInstanceFromApplicationParams {
-  limit?: number;
-  offset?: string;
   startTs: number;
   endTs: number;
   workflowDefinitionName: string;
@@ -20,8 +18,6 @@ export interface WorkflowInstanceFromApplicationParams {
 }
 
 export interface WorkflowInstanceStateParams {
-  limit?: number;
-  offset?: string;
   startTs: number;
   endTs: number;
 }
