@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.jena.query.Query;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,8 @@ import org.openmetadata.service.rdf.RdfWriteMode;
  */
 @DisplayName("JenaFusekiStorage helper tests")
 class JenaFusekiStorageTest {
+
+  private static final String RDF_TYPE_URI = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
   @Nested
   @DisplayName("configuration defaults")
@@ -393,6 +396,58 @@ class JenaFusekiStorageTest {
       assertFalse(update.contains("DELETE"));
       assertTrue(update.startsWith("INSERT DATA"));
       assertTrue(update.contains("orders"));
+    }
+
+    @Test
+    @DisplayName("reconcile update carries exactly one WHERE-bearing operation")
+    void reconcileUpdateHasSingleWhereBearingOperation() {
+      UUID entityId = UUID.randomUUID();
+      String entityUri = "https://open-metadata.org/entity/table/" + entityId;
+      Model model = ModelFactory.createDefaultModel();
+      Resource entity = model.createResource(entityUri);
+      entity.addProperty(
+          model.createProperty("http://www.w3.org/2000/01/rdf-schema#label"), "orders");
+      entity.addProperty(
+          model.createProperty(RDF_TYPE_URI),
+          model.createResource("https://open-metadata.org/ontology/Table"));
+
+      String update = JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model);
+
+      // Two WHERE-bearing operations in one request make Fuseki answer 400 ("Bad request:
+      // null") whenever a server-side update timeout is configured - the timeout controller
+      // governs one execution per request. The literal sweep and the predicate-scoped URI
+      // delete are therefore merged into a single filter rather than chained with ';'.
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertEquals(1, countOccurrences(update, "DELETE"), update);
+      // Both deletion concerns still expressed, now as one disjunction.
+      assertTrue(update.contains("!isIRI(?o)"), update);
+      assertTrue(update.contains("?p IN ("), update);
+    }
+
+    @Test
+    @DisplayName("delete filter degrades to the literal sweep when no predicates are managed")
+    void reconcileUpdateWithoutManagedPredicatesSweepsLiteralsOnly() {
+      String entityUri = "https://open-metadata.org/entity/table/" + UUID.randomUUID();
+      Model model = ModelFactory.createDefaultModel();
+      model
+          .createResource(entityUri)
+          .addProperty(
+              model.createProperty("https://open-metadata.org/ontology/unmanaged"), "value");
+
+      String update = JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model);
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertTrue(update.contains("!isIRI(?o)"), update);
+    }
+
+    private int countOccurrences(String haystack, String needle) {
+      int count = 0;
+      int from = 0;
+      while ((from = haystack.indexOf(needle, from)) >= 0) {
+        count++;
+        from += needle.length();
+      }
+      return count;
     }
   }
 

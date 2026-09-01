@@ -984,39 +984,39 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private static String buildPredicateScopedDelete(String entityUri, Set<String> predicates) {
-    // Always delete literal-/blank-node-valued triples regardless of predicate.
-    // Predicates that emit literals (description, displayName, name, ...) may
-    // SHRINK TO EMPTY between writes — the new translator output simply omits
-    // the triple — and the old literal would persist unless we sweep it here.
-    // Hook-managed URI triples (om:owns / om:contains / lineage / etc.) are
-    // safe because the FILTER below requires isIRI(?o) for them to qualify.
-    String literalSweep =
-        String.format(
-            "DELETE { GRAPH <%s> { <%s> ?p ?o } } "
-                + "WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(!isIRI(?o)) } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
-    if (predicates.isEmpty()) {
-      return literalSweep;
-    }
-    StringBuilder filterIn = new StringBuilder();
-    boolean first = true;
-    for (String pred : predicates) {
-      if (!first) {
-        filterIn.append(", ");
+    // ONE operation, not two. Everything this must remove is expressed as a single filter:
+    //
+    //   !isIRI(?o)      literal-/blank-node-valued triples, whatever the predicate. Predicates
+    //                   that emit literals (description, displayName, name, ...) may SHRINK TO
+    //                   EMPTY between writes - the new translator output simply omits the triple -
+    //                   and the old literal would persist unless swept here.
+    //   ?p IN (...)     URI-valued triples for predicates the translator owns, so its fresh output
+    //                   replaces the prior values. Hook-managed URI predicates (om:UPSTREAM,
+    //                   om:owns / om:contains, lineage, ...) are absent from the set and survive.
+    //
+    // The two used to be separate DELETE...WHERE operations chained with ';'. They cannot be:
+    // Fuseki rejects an update request carrying more than one WHERE-bearing operation with
+    // "400 Bad Request" (logged server-side as "Bad request: null") whenever arq:updateTimeout
+    // is configured, because the timeout controller governs a single execution per request.
+    // Operations without a WHERE (INSERT DATA) are unaffected and may still be chained.
+    // Merging is exactly equivalent - !isIRI(?o) || (isIRI(?o) && ?p IN (P)) reduces to
+    // !isIRI(?o) || ?p IN (P) - and it scans the entity's triples once instead of twice.
+    String filter =
+        predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
+    return String.format(
+        "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(%s) } }",
+        KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filter);
+  }
+
+  private static String iriList(Set<String> predicates) {
+    StringBuilder list = new StringBuilder();
+    for (String predicate : predicates) {
+      if (!list.isEmpty()) {
+        list.append(", ");
       }
-      first = false;
-      filterIn.append('<').append(pred).append('>');
+      list.append('<').append(predicate).append('>');
     }
-    // Chain the literal sweep + the predicate-scoped URI delete in one update.
-    // The literal sweep on its own would leave stale URI triples for
-    // translator predicates that disappeared from the new model (rare, but
-    // possible if a JSON-LD context predicate is removed); the predicate-scoped
-    // URI delete on its own would leave stale literals as Copilot flagged.
-    return literalSweep
-        + "; "
-        + String.format(
-            "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(isIRI(?o) && ?p IN (%s)) } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
+    return list.toString();
   }
 
   static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {

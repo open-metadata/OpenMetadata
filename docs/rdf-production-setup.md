@@ -13,11 +13,32 @@ memory starves the page cache and usually reduces throughput.
   verified against a pinned SHA-512 checksum at build time.
 - **Runs as non-root user `fuseki` (uid/gid 1000).** On Kubernetes set `fsGroup: 1000` (the shipped
   manifest does) so the persistent volume is writable.
-- **Launched with `--config=/fuseki/config.ttl`, not `--loc`.** The assembler file is what enables a
-  server-side update timeout: `arq:updateTimeout` (set to 120 s, deliberately above the client's
-  60 s request timeout) makes Fuseki itself abort a runaway UPDATE. This setting is
-  config-file-only — `--timeout` on the command line applies to queries, never updates — which is
-  the reason the launch moved to `--config`. Note the dataset location: `config.ttl` uses
+
+  **Upgrading an existing deployment requires a one-time chown.** A volume written by the previous
+  root-running image stays owned by uid 0, and the container refuses to start against it — by
+  design, since the alternative is a server that runs but cannot write. The startup log says so
+  explicitly (`/fuseki-data ... is not writable by uid 1000`). For Docker Compose, with the stack
+  stopped:
+
+  ```bash
+  docker run --rm -v <project>_fuseki-tdb2-data:/data alpine chown -R 1000:1000 /data
+  ```
+
+  On Kubernetes, `fsGroup: 1000` handles this at mount time and no manual step is needed.
+- **Launched with `--config=/fuseki/config.ttl`, not `--loc`.** The assembler file is what enables
+  `tdb2:unionDefaultGraph`, which `--loc` cannot express and which the SPARQL playground and MCP
+  knowledge-graph tools depend on — OpenMetadata writes into named graphs, so without it a plain
+  `?s ?p ?o` returns nothing.
+
+  **There is deliberately no server-side update timeout.** `arq:updateTimeout` looks like the
+  missing bound on runaway UPDATEs (`--timeout` covers queries only), but when it is set Fuseki
+  answers **400 Bad Request** to any update request carrying more than one WHERE-bearing operation,
+  logging only `Bad request: null`. Reconcile writes chain one `DELETE ... WHERE` per entity, so
+  every live entity update and every bulk reconcile chunk fails while the insert-only reindex still
+  succeeds — the projection reports `DEGRADED` with no obvious cause. Runaway updates stay bounded
+  by the client's `requestTimeoutMs` and the circuit breaker. Do not re-add it.
+
+  Note the dataset location: `config.ttl` uses
   `/fuseki-data/openmetadata`, whereas the old `--loc=/fuseki-data` launch wrote TDB2 files directly
   into `/fuseki-data`. Upgrading from that layout requires moving the files (below) — the locations
   are deliberately not the same.
@@ -389,7 +410,7 @@ Two scripts turn the guidance above into checks against a real stack:
 # Add the runaway-UPDATE check: submits a deliberately expensive UPDATE and asserts
 # the server aborts it near arq:updateTimeout. Takes ~2 minutes, and is the direct
 # proof that the --config launch (not --loc) is in effect.
-./docker/docker-compose-quickstart/test-rdf-services.sh --with-timeout-test
+./docker/docker-compose-quickstart/test-rdf-services.sh
 ```
 
 ```bash
