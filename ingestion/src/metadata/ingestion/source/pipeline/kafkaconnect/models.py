@@ -77,6 +77,17 @@ class KafkaConnectDatasetDetails(BaseModel):
     schema: Optional[str] = None  # noqa: UP045
     parent_container: Optional[str] = None  # noqa: UP045
     container_name: Optional[str] = None  # noqa: UP045
+    source_topic: Optional[str] = Field(  # noqa: UP045
+        default=None,
+        description="Topic this dataset was derived from. Set by resolvers that know the "
+        "topic->table pairing, so matching does not have to re-derive it by name.",
+    )
+    fully_qualified: bool = Field(
+        default=False,
+        description="True when database is a real Snowflake-style name, so the table FQN uses "
+        "the database slot even when schema is missing. CDC resolvers leave this False because their "
+        "'database' is a logical server name.",
+    )
     column_mappings: List[KafkaConnectColumnMapping] = Field(  # noqa: UP006
         default_factory=list, description="Column-level mappings if available"
     )

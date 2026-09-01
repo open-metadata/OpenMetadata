@@ -38,13 +38,25 @@ class ConnectorConfigKeys:
         "snowflake.topic2table.map",  # Snowflake Sink: Critical mapping (e.g., "topicA:tableA, topicB:tableB")
     ]
 
+    # Both key forms the Snowflake sink accepts, most specific first. Spliced into the
+    # generic lists below and read by SnowflakeSinkResolver, so the dedicated resolver
+    # cannot recognise fewer keys than the generic key-list search it replaces.
+    SNOWFLAKE_DATABASE_KEYS = [  # noqa: RUF012
+        "snowflake.database.name",  # Snowflake: The target database
+        "snowflake.database",  # Snowflake: Variation
+    ]
+
+    SNOWFLAKE_SCHEMA_KEYS = [  # noqa: RUF012
+        "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
+        "snowflake.schema",  # Snowflake variation
+    ]
+
     DATABASE_KEYS = [  # noqa: RUF012
         "database",  # Generic: Common in simple JDBC configs
         "db.name",  # Generic: Common variation
         "database.dbname",  # PostgreSQL/JDBC: The physical database name
         "topic.prefix",  # Debezium: The "Logical Server Name".
-        "snowflake.database.name",  # Snowflake: The target database
-        "snowflake.database",  # Snowflake: Variation
+        *SNOWFLAKE_DATABASE_KEYS,
         "defaultDataset",  # BigQuery: The Dataset (Equivalent to a Database/Schema)
         "mongodb.database",  # MongoDB: The specific database to watch/write to
         "cassandra.keyspace",  # Cassandra: Keyspace is the Cassandra equivalent of a Database
@@ -58,8 +70,7 @@ class ConnectorConfigKeys:
     ]
 
     SCHEMA_KEYS = [  # noqa: RUF012
-        "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
-        "snowflake.schema",  # Snowflake variation
+        *SNOWFLAKE_SCHEMA_KEYS,
         "schema.name",  # Generic JDBC: Schema namespace
     ]
 
@@ -118,6 +129,10 @@ CONNECTOR_CLASS_TO_SERVICE_TYPE = {
     "MongoDbCdcSource": "MongoDB",
     "OracleCdcSource": "Oracle",
     "Db2CdcSource": "Db2",
+    # Confluent Cloud reports the short plugin name; self-managed Connect reports the Java class.
+    "SnowflakeSink": "Snowflake",
+    "SnowflakeSinkConnector": "Snowflake",
+    "SnowflakeStreamingSinkConnector": "Snowflake",
 }
 
 # Map service types to hostname config keys
@@ -127,6 +142,20 @@ SERVICE_TYPE_HOSTNAME_KEYS = {
     "Mssql": ["database.hostname"],
     "MongoDB": ["mongodb.connection.uri", "connection.uri"],
     "Oracle": ["database.hostname"],
+    "Snowflake": ["snowflake.url.name"],
+}
+
+# Service connection attributes probed, in order, for the host identifying a service.
+# Most connections expose hostPort or host; Snowflake exposes neither and identifies
+# the deployment by `account`.
+SERVICE_CONNECTION_HOST_ATTRIBUTES = ["hostPort", "host", "account"]
+
+# Domain suffixes a connector may append to the host stored on the service connection.
+# Confluent reports "<account>.snowflakecomputing.com" for snowflake.url.name while the
+# OpenMetadata Snowflake service stores the bare "<account>", so the suffix must not
+# defeat the comparison. Values must be lowercase: hosts are lowercased before matching.
+SERVICE_TYPE_HOST_DOMAIN_SUFFIXES = {
+    "Snowflake": [".snowflakecomputing.com"],
 }
 
 # Map service types to broker/endpoint config keys for messaging services
