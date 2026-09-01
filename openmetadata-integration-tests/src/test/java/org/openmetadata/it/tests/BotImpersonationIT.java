@@ -387,6 +387,29 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_getPersonalAccessToken_whileImpersonating_rejected(TestNamespace ns) {
+    // Listing returns the raw jwtToken; an impersonating bot could otherwise exfiltrate the
+    // target's PAT and authenticate as them outside the impersonation flow.
+    User target = createRegularUser(ns, "listtarget");
+    User botUser = createBotUser(ns, "listpat");
+    createBot(ns.prefix("imp_listpat_bot"), botUser, true);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asTarget = impersonationClient(botToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asTarget
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/security/token", null),
+            "Listing personal access tokens while impersonating must be rejected");
+    assertTrue(
+        denied.getMessage().contains("while impersonated by"),
+        "List must be blocked by the impersonation guard: " + denied.getMessage());
+  }
+
+  @Test
   void test_revokePersonalAccessToken_whileImpersonating_rejected(TestNamespace ns) {
     // The create path already blocks minting a PAT under impersonation; revoke is the same
     // self-scoped operation and must be blocked too, even for a bot otherwise allowed to

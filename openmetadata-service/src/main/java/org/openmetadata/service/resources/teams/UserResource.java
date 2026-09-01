@@ -1785,6 +1785,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)")
           @QueryParam("username")
           String userName) {
+    rejectImpersonatedTokenOperation(securityContext, "list personal access tokens");
     limits.enforceLimits(
         securityContext,
         getResourceContext(),
@@ -1800,8 +1801,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
-  // Impersonation must never create, revoke, or invalidate a target's tokens or sessions: the
-  // effective principal is the impersonated user, so these self-scoped operations would act on the
+  // Impersonation must never create, list, revoke, or invalidate a target's tokens or sessions:
+  // listing returns the raw jwtToken, so a read is itself credential exfiltration. The effective
+  // principal is the impersonated user, so these self-scoped operations would act on the
   // target rather than the caller. Reject them outright regardless of the bot's impersonation
   // grant.
   private void rejectImpersonatedTokenOperation(SecurityContext securityContext, String action) {
