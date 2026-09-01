@@ -125,7 +125,9 @@ const DomainDetailPage = () => {
       try {
         const response = await patchDomains(activeDomain.id, jsonPatch);
 
-        setActiveDomain(response);
+        // Merge response with existing cached data so fields not returned
+        // by the PATCH endpoint (extension, votes, certification) are preserved.
+        setActiveDomain((prev) => (prev ? { ...prev, ...response } : response));
 
         if (activeDomain?.name !== updatedData.name) {
           navigate(getDomainPath(response.fullyQualifiedName));
