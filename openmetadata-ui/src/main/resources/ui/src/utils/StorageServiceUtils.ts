@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/services/storageService';
@@ -23,17 +24,11 @@ type SchemaLoader = () => Promise<SchemaModule>;
 const storageSchemaLoaders: Partial<Record<StorageServiceType, SchemaLoader>> =
   {
     [StorageServiceType.S3]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/storage/s3Connection.json'
-      ),
+      loadConnectionSchema('connections/storage/s3Connection.json'),
     [StorageServiceType.Gcs]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/storage/gcsConnection.json'
-      ),
+      loadConnectionSchema('connections/storage/gcsConnection.json'),
     [StorageServiceType.CustomStorage]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/storage/customStorageConnection.json'
-      ),
+      loadConnectionSchema('connections/storage/customStorageConnection.json'),
   };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

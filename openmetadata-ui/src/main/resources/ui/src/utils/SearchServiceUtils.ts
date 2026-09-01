@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
@@ -22,17 +23,11 @@ type SchemaLoader = () => Promise<SchemaModule>;
 
 const searchSchemaLoaders: Partial<Record<SearchServiceType, SchemaLoader>> = {
   [SearchServiceType.ElasticSearch]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json'
-    ),
+    loadConnectionSchema('connections/search/elasticSearchConnection.json'),
   [SearchServiceType.OpenSearch]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/search/openSearchConnection.json'
-    ),
+    loadConnectionSchema('connections/search/openSearchConnection.json'),
   [SearchServiceType.CustomSearch]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/search/customSearchConnection.json'
-    ),
+    loadConnectionSchema('connections/search/customSearchConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

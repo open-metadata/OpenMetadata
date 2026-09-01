@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
@@ -24,21 +25,13 @@ const metadataSchemaLoaders: Partial<
   Record<MetadataServiceType, SchemaLoader>
 > = {
   [MetadataServiceType.Atlas]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/metadata/atlasConnection.json'
-    ),
+    loadConnectionSchema('connections/metadata/atlasConnection.json'),
   [MetadataServiceType.Amundsen]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/metadata/amundsenConnection.json'
-    ),
+    loadConnectionSchema('connections/metadata/amundsenConnection.json'),
   [MetadataServiceType.OpenMetadata]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/metadata/openMetadataConnection.json'
-    ),
+    loadConnectionSchema('connections/metadata/openMetadataConnection.json'),
   [MetadataServiceType.AlationSink]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/metadata/alationSinkConnection.json'
-    ),
+    loadConnectionSchema('connections/metadata/alationSinkConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

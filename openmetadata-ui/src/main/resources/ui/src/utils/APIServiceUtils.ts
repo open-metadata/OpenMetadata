@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { APIServiceType } from '../generated/entity/services/apiService';
@@ -21,7 +22,7 @@ type SchemaLoader = () => Promise<SchemaModule>;
 
 const apiSchemaLoaders: Partial<Record<APIServiceType, SchemaLoader>> = {
   [APIServiceType.REST]: () =>
-    import('../jsons/connectionSchemas/connections/api/restConnection.json'),
+    loadConnectionSchema('connections/api/restConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

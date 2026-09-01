@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
@@ -23,21 +24,13 @@ type SchemaLoader = () => Promise<SchemaModule>;
 const mlmodelSchemaLoaders: Partial<Record<MlModelServiceType, SchemaLoader>> =
   {
     [MlModelServiceType.Mlflow]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json'
-      ),
+      loadConnectionSchema('connections/mlmodel/mlflowConnection.json'),
     [MlModelServiceType.Sklearn]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json'
-      ),
+      loadConnectionSchema('connections/mlmodel/sklearnConnection.json'),
     [MlModelServiceType.CustomMlModel]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json'
-      ),
+      loadConnectionSchema('connections/mlmodel/customMlModelConnection.json'),
     [MlModelServiceType.SageMaker]: () =>
-      import(
-        '../jsons/connectionSchemas/connections/mlmodel/sageMakerConnection.json'
-      ),
+      loadConnectionSchema('connections/mlmodel/sageMakerConnection.json'),
   };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

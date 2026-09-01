@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -24,201 +25,103 @@ const databaseSchemaLoaders: Partial<
   Record<DatabaseServiceType, SchemaLoader>
 > = {
   [DatabaseServiceType.Athena]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/athenaConnection.json'
-    ),
+    loadConnectionSchema('connections/database/athenaConnection.json'),
   [DatabaseServiceType.AzureSQL]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/azureSQLConnection.json'
-    ),
+    loadConnectionSchema('connections/database/azureSQLConnection.json'),
   [DatabaseServiceType.BigQuery]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/bigQueryConnection.json'
-    ),
+    loadConnectionSchema('connections/database/bigQueryConnection.json'),
   [DatabaseServiceType.BigTable]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/bigTableConnection.json'
-    ),
+    loadConnectionSchema('connections/database/bigTableConnection.json'),
   [DatabaseServiceType.Clickhouse]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/clickhouseConnection.json'
-    ),
+    loadConnectionSchema('connections/database/clickhouseConnection.json'),
   [DatabaseServiceType.Cockroach]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/cockroachConnection.json'
-    ),
+    loadConnectionSchema('connections/database/cockroachConnection.json'),
   [DatabaseServiceType.Databricks]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/databricksConnection.json'
-    ),
+    loadConnectionSchema('connections/database/databricksConnection.json'),
   [DatabaseServiceType.Datalake]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/datalakeConnection.json'
-    ),
+    loadConnectionSchema('connections/database/datalakeConnection.json'),
   [DatabaseServiceType.Db2]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/db2Connection.json'
-    ),
+    loadConnectionSchema('connections/database/db2Connection.json'),
   [DatabaseServiceType.DeltaLake]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json'
-    ),
+    loadConnectionSchema('connections/database/deltaLakeConnection.json'),
   [DatabaseServiceType.Doris]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/dorisConnection.json'
-    ),
+    loadConnectionSchema('connections/database/dorisConnection.json'),
   [DatabaseServiceType.StarRocks]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/starrocksConnection.json'
-    ),
+    loadConnectionSchema('connections/database/starrocksConnection.json'),
   [DatabaseServiceType.Druid]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/druidConnection.json'
-    ),
+    loadConnectionSchema('connections/database/druidConnection.json'),
   [DatabaseServiceType.DynamoDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json'
-    ),
+    loadConnectionSchema('connections/database/dynamoDBConnection.json'),
   [DatabaseServiceType.Exasol]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/exasolConnection.json'
-    ),
+    loadConnectionSchema('connections/database/exasolConnection.json'),
   [DatabaseServiceType.Glue]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/glueConnection.json'
-    ),
+    loadConnectionSchema('connections/database/glueConnection.json'),
   [DatabaseServiceType.Hive]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/hiveConnection.json'
-    ),
+    loadConnectionSchema('connections/database/hiveConnection.json'),
   [DatabaseServiceType.Impala]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/impalaConnection.json'
-    ),
+    loadConnectionSchema('connections/database/impalaConnection.json'),
   [DatabaseServiceType.MariaDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mariaDBConnection.json'
-    ),
+    loadConnectionSchema('connections/database/mariaDBConnection.json'),
   [DatabaseServiceType.Mssql]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mssqlConnection.json'
-    ),
+    loadConnectionSchema('connections/database/mssqlConnection.json'),
   [DatabaseServiceType.Mysql]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mysqlConnection.json'
-    ),
+    loadConnectionSchema('connections/database/mysqlConnection.json'),
   [DatabaseServiceType.Oracle]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/oracleConnection.json'
-    ),
+    loadConnectionSchema('connections/database/oracleConnection.json'),
   [DatabaseServiceType.Postgres]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/postgresConnection.json'
-    ),
+    loadConnectionSchema('connections/database/postgresConnection.json'),
   [DatabaseServiceType.Presto]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/prestoConnection.json'
-    ),
+    loadConnectionSchema('connections/database/prestoConnection.json'),
   [DatabaseServiceType.QuestDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/questdbConnection.json'
-    ),
+    loadConnectionSchema('connections/database/questdbConnection.json'),
   [DatabaseServiceType.Redshift]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/redshiftConnection.json'
-    ),
+    loadConnectionSchema('connections/database/redshiftConnection.json'),
   [DatabaseServiceType.Salesforce]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/salesforceConnection.json'
-    ),
+    loadConnectionSchema('connections/database/salesforceConnection.json'),
   [DatabaseServiceType.SingleStore]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/singleStoreConnection.json'
-    ),
+    loadConnectionSchema('connections/database/singleStoreConnection.json'),
   [DatabaseServiceType.Snowflake]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/snowflakeConnection.json'
-    ),
+    loadConnectionSchema('connections/database/snowflakeConnection.json'),
   [DatabaseServiceType.SQLite]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sqliteConnection.json'
-    ),
+    loadConnectionSchema('connections/database/sqliteConnection.json'),
   [DatabaseServiceType.Synapse]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/synapseConnection.json'
-    ),
+    loadConnectionSchema('connections/database/synapseConnection.json'),
   [DatabaseServiceType.Trino]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/trinoConnection.json'
-    ),
+    loadConnectionSchema('connections/database/trinoConnection.json'),
   [DatabaseServiceType.Vertica]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/verticaConnection.json'
-    ),
+    loadConnectionSchema('connections/database/verticaConnection.json'),
   [DatabaseServiceType.CustomDatabase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json'
-    ),
+    loadConnectionSchema('connections/database/customDatabaseConnection.json'),
   [DatabaseServiceType.DomoDatabase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json'
-    ),
+    loadConnectionSchema('connections/database/domoDatabaseConnection.json'),
   [DatabaseServiceType.SapHana]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sapHanaConnection.json'
-    ),
+    loadConnectionSchema('connections/database/sapHanaConnection.json'),
   [DatabaseServiceType.SapERP]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sapErpConnection.json'
-    ),
+    loadConnectionSchema('connections/database/sapErpConnection.json'),
   [DatabaseServiceType.MongoDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mongoDBConnection.json'
-    ),
+    loadConnectionSchema('connections/database/mongoDBConnection.json'),
   [DatabaseServiceType.Cassandra]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/cassandraConnection.json'
-    ),
+    loadConnectionSchema('connections/database/cassandraConnection.json'),
   [DatabaseServiceType.Couchbase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/couchbaseConnection.json'
-    ),
+    loadConnectionSchema('connections/database/couchbaseConnection.json'),
   [DatabaseServiceType.PinotDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/pinotDBConnection.json'
-    ),
+    loadConnectionSchema('connections/database/pinotDBConnection.json'),
   [DatabaseServiceType.Greenplum]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/greenplumConnection.json'
-    ),
+    loadConnectionSchema('connections/database/greenplumConnection.json'),
   [DatabaseServiceType.UnityCatalog]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json'
-    ),
+    loadConnectionSchema('connections/database/unityCatalogConnection.json'),
   [DatabaseServiceType.SAS]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sasConnection.json'
-    ),
+    loadConnectionSchema('connections/database/sasConnection.json'),
   [DatabaseServiceType.Teradata]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/teradataConnection.json'
-    ),
+    loadConnectionSchema('connections/database/teradataConnection.json'),
   [DatabaseServiceType.Timescale]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/timescaleConnection.json'
-    ),
+    loadConnectionSchema('connections/database/timescaleConnection.json'),
   [DatabaseServiceType.BurstIQ]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/burstIQConnection.json'
-    ),
+    loadConnectionSchema('connections/database/burstIQConnection.json'),
   [DatabaseServiceType.MicrosoftFabric]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/microsoftFabricConnection.json'
-    ),
+    loadConnectionSchema('connections/database/microsoftFabricConnection.json'),
   [DatabaseServiceType.Iomete]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/iometeConnection.json'
-    ),
+    loadConnectionSchema('connections/database/iometeConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

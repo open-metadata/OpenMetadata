@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
+import type {
+  DashboardConnection} from '../generated/entity/services/dashboardService';
 import {
-  DashboardConnection,
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 
@@ -27,81 +29,43 @@ const dashboardSchemaLoaders: Partial<
   Record<DashboardServiceType, SchemaLoader>
 > = {
   [DashboardServiceType.Looker]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/lookerConnection.json'),
   [DashboardServiceType.Metabase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/metabaseConnection.json'),
   [DashboardServiceType.Mode]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/modeConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/modeConnection.json'),
   [DashboardServiceType.PowerBI]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/powerBIConnection.json'),
   [DashboardServiceType.Redash]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/redashConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/redashConnection.json'),
   [DashboardServiceType.Superset]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/supersetConnection.json'),
   [DashboardServiceType.Sigma]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/sigmaConnection.json'),
   [DashboardServiceType.Omni]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/omniConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/omniConnection.json'),
   [DashboardServiceType.Tableau]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/tableauConnection.json'),
   [DashboardServiceType.DomoDashboard]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/domoDashboardConnection.json'),
   [DashboardServiceType.CustomDashboard]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/customDashboardConnection.json'),
   [DashboardServiceType.QuickSight]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/quickSightConnection.json'),
   [DashboardServiceType.QlikSense]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/qlikSenseConnection.json'),
   [DashboardServiceType.QlikCloud]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/qlikCloudConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/qlikCloudConnection.json'),
   [DashboardServiceType.Lightdash]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/lightdashConnection.json'),
   [DashboardServiceType.MicroStrategy]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/microStrategyConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/microStrategyConnection.json'),
   [DashboardServiceType.Grafana]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/grafanaConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/grafanaConnection.json'),
   [DashboardServiceType.Hex]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/hexConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/hexConnection.json'),
   [DashboardServiceType.Ssrs]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/dashboard/ssrsConnection.json'
-    ),
+    loadConnectionSchema('connections/dashboard/ssrsConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

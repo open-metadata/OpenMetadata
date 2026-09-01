@@ -11,33 +11,23 @@
  *  limitations under the License.
  */
 
-import { useEffect, useState } from 'react';
+// Every emoji PNG resolved to its final asset URL at build time. `?url` +
+// `eager: true` means Vite emits each PNG as a static asset (no JS chunk) and
+// inlines a URL string into this map. The old `await import(`../assets/img/
+// ${fileName}.png`)` bundled a chunk for every PNG under `assets/img/**` —
+// ~100 wasted chunks for the two emoji callers we actually have. Narrow this
+// glob if additional callers need images from other subdirectories.
+const emojiUrls = import.meta.glob<string>(
+  '../assets/img/emojis/*.png',
+  { eager: true, query: '?url', import: 'default' }
+);
 
 const useImage = (fileName: string) => {
-  const [loading, setLoading] = useState<boolean>(true);
-
-  const [error, setError] = useState<Error | null>(null);
-
-  const [image, setImage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchImage = async () => {
-      try {
-        const response = await import(`../assets/img/${fileName}.png`);
-        setImage(response.default);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchImage();
-  }, [fileName]);
+  const image = emojiUrls[`../assets/img/${fileName}.png`] ?? null;
 
   return {
-    loading,
-    error,
+    loading: false,
+    error: null as Error | null,
     image,
   };
 };
