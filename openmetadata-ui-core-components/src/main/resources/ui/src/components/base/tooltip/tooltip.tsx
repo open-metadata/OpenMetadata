@@ -86,6 +86,13 @@ interface TooltipProps
    * @default false
    */
   triggerIsDisabled?: boolean;
+  /**
+   * tabIndex forwarded to the auto-generated focusable wrapper. Set to -1
+   * when the tooltip trigger must NOT appear in the tab order (e.g. chips
+   * inside a data-grid cell where keyboard focus belongs to the cell, not its
+   * children). The element remains hoverable so the tooltip still shows.
+   */
+  triggerTabIndex?: number;
 }
 
 export const Tooltip = ({
@@ -107,6 +114,7 @@ export const Tooltip = ({
   triggerClassName,
   onTriggerPress,
   triggerIsDisabled = false,
+  triggerTabIndex,
   ...tooltipProps
 }: TooltipProps) => {
   const resolvedDelay = delay ?? 300;
@@ -132,6 +140,7 @@ export const Tooltip = ({
     <AriaButton
       className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
       isDisabled={triggerIsDisabled}
+      tabIndex={triggerTabIndex}
       onPress={onTriggerPress}>
       {children}
     </AriaButton>
