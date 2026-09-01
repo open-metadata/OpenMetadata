@@ -34,7 +34,7 @@ services:
         condition: service_healthy
 
   fuseki:
-    # Build from the in-repo Dockerfile (Fuseki 5.6.0) instead of the
+    # Build from the in-repo Dockerfile (Fuseki 6.2.0) instead of the
     # unmaintained `stain/jena-fuseki` Docker Hub image, which capped at 5.1.0
     # and never picked up the 2025 admin-side Fuseki CVE fixes (CVE-2025-49656,
     # CVE-2025-50151 — both fixed in Jena 5.5.0). The `image:` tag below names
@@ -43,7 +43,7 @@ services:
     build:
       context: ../rdf-store
       dockerfile: Dockerfile
-    image: openmetadata-fuseki:5.6.0
+    image: openmetadata-fuseki:6.2.0
     container_name: openmetadata-fuseki
     hostname: fuseki
     ports:
