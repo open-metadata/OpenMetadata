@@ -402,11 +402,57 @@ export default [
 
   // Permission access restrictions: components and pages must use permission
   // utilities instead of raw access. Guides the permission-refactor sweep (#6036).
+  //
+  // no-raw-permission-access promoted to 'error': Tasks 6-9 drove this rule's
+  // findings (MemberExpression, and now ObjectPattern destructuring) to 0
+  // across src/components and src/pages — verified at promotion time.
   {
     files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
     ignores: ['**/*.test.*'],
     rules: {
-      'openmetadata-permissions/no-raw-permission-access': 'warn',
+      'openmetadata-permissions/no-raw-permission-access': 'error',
+
+      // getPrioritizedEditPermission/getPrioritizedViewPermission are
+      // field-priority helpers meant to be consumed through the permission
+      // core (useEntityPermissions / getDerivedPermissionFlags), which
+      // expose the same prioritization as named canEditX/canViewX flags and
+      // a can(Operation.X) escape hatch. Calling the raw helpers directly
+      // from a component reimplements that logic ad hoc outside the core.
+      // DEFAULT_ENTITY_PERMISSION is deliberately NOT banned: it is the
+      // sanctioned fallback/placeholder object used throughout the already-
+      // converted code (e.g. before a permissions fetch resolves), unlike
+      // the two prioritization helpers.
+      //
+      // Deviation from the task brief: the brief assumed this would land at
+      // 'error', with the sweep having already driven direct call sites to
+      // (near) zero. Verification at promotion time found 40 files (45
+      // import specifiers) still importing these two functions directly
+      // from components/pages — not "a few, small" stragglers, and
+      // concentrated in a category the sweep never touched (the per-entity
+      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
+      // etc. — plus a handful of widgets and hooks). Converting 40 files'
+      // worth of permission derivation is its own sweep-scale task
+      // (mirroring Task 8), not something to fold silently into a
+      // lint-hardening/promotion task. Landing this specific restriction at
+      // 'warn' follows the repo's own documented convention (see the "warn
+      // tier" comment above) for a real, counted backlog that is not zero
+      // yet; promote to 'error' once a follow-up sweep clears it.
+      'no-restricted-imports': [
+        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        {
+          patterns: [
+            {
+              regex: '(^|/)utils/PermissionsUtils$',
+              importNames: [
+                'getPrioritizedEditPermission',
+                'getPrioritizedViewPermission',
+              ],
+              message:
+                'getPrioritizedEditPermission/getPrioritizedViewPermission are field-priority helpers for the permission core. Use the named canEditX/canViewX flags, or the can(Operation.X) escape hatch, from useEntityPermissions/getDerivedPermissionFlags instead.',
+            },
+          ],
+        },
+      ],
     },
   },
 
