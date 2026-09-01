@@ -160,15 +160,32 @@ REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
 
 LOOKER_TAG_CATEGORY = "LookerTags"
 
-# A stage processor is called once per produced entity and gets no "end of stream" hook,
-# but the buffer must be flushed exactly once, after the last explore. `list_datamodels`
-# appends this sentinel so `yield_bulk_datamodel` can recognise that point.
-#
-# It replaces a `processed_count >= total_explores` counter: the total was taken from every
-# explore in every model, while the producer skips models that fail the filter and explores
-# whose fetch raises, so one filtered explore left the count permanently short and standalone
-# views were never processed at all. Same pattern as omni/metadata.py.
-DATAMODEL_LINEAGE_SENTINEL = object()
+
+class _EndOfExplores:
+    """Producer-side end-of-stream marker for the bulk data-model stage.
+
+    A stage processor is called once per produced entity and gets no "end of stream" hook,
+    but the buffer must be flushed exactly once, after the last explore. `list_datamodels`
+    appends this so `yield_bulk_datamodel` can recognise that point.
+
+    It cannot be a `Barrier`: producer yields are the stage processor's *input* and never
+    reach the sink, so a Barrier here would be handed to `yield_bulk_datamodel` as `model`
+    and flush nothing. The real Barrier is yielded from `_yield_bulk_datamodel_lineage`, on
+    the `Either(right=...)` output channel the sink actually reads.
+
+    It replaces a `processed_count >= total_explores` counter: the total was taken from every
+    explore in every model, while the producer skips models that fail the filter and explores
+    whose fetch raises, so one filtered explore left the count permanently short and
+    standalone views were never processed at all.
+    """
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "<end of explores>"
+
+
+DATAMODEL_LINEAGE_SENTINEL = _EndOfExplores()
 
 
 class ExploreRef(NamedTuple):

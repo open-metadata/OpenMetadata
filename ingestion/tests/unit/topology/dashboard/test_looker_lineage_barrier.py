@@ -316,6 +316,66 @@ class TestLookerLineageBarrier:
         assert status.records == []
 
 
+class TestProducerClosesTheStream:
+    """`list_datamodels` must always close with the sentinel.
+
+    Without it `_yield_bulk_datamodel_lineage` never runs and the whole lineage phase
+    vanishes silently — no error, no edges. Nothing else in the suite covers this, so
+    dropping the yield used to be an undetectable regression.
+    """
+
+    def _models(self, looker, explore_side_effect=None):
+        looker.client.all_lookml_models = MagicMock(
+            return_value=[SimpleNamespace(name="m1", project_name="p", explores=[SimpleNamespace(name="e1")])]
+        )
+        looker.client.lookml_model_explore = MagicMock(
+            side_effect=explore_side_effect or (lambda **_: SimpleNamespace(name="e1", model_name="m1"))
+        )
+
+    def test_sentinel_is_yielded_last(self, looker):
+        self._models(looker)
+
+        produced = list(looker.list_datamodels())
+
+        assert produced[-1] is DATAMODEL_LINEAGE_SENTINEL
+        assert sum(1 for p in produced if p is DATAMODEL_LINEAGE_SENTINEL) == 1
+
+    def test_sentinel_is_yielded_when_a_single_explore_fetch_fails(self, looker):
+        """`fetch_lookml_explores` swallows this one, so the stream just ends early."""
+        self._models(looker, explore_side_effect=Exception("explore 500"))
+
+        produced = list(looker.list_datamodels())
+
+        assert produced == [DATAMODEL_LINEAGE_SENTINEL]
+
+    def test_sentinel_is_yielded_when_the_model_listing_itself_blows_up(self, looker):
+        """The outer handler must not swallow the sentinel with the error.
+
+        Standalone views and the lineage of whatever was already yielded still need
+        drawing, so the sentinel lives after the `except`, not inside the `try`.
+        """
+        looker.client.all_lookml_models = MagicMock(side_effect=Exception("looker api down"))
+
+        produced = list(looker.list_datamodels())
+
+        assert produced == [DATAMODEL_LINEAGE_SENTINEL]
+
+    def test_no_sentinel_when_data_models_are_disabled(self, looker):
+        """Nothing was written, so there is nothing to flush or resolve."""
+        looker.source_config.includeDataModels = False
+
+        assert list(looker.list_datamodels()) == []
+
+    def test_the_sentinel_is_not_a_barrier(self, looker):
+        """Producer yields are the stage's input and never reach the sink.
+
+        A Barrier here would be handed to `yield_bulk_datamodel` as `model` and flush
+        nothing; the real Barrier goes out on the Either channel instead.
+        """
+        assert not isinstance(DATAMODEL_LINEAGE_SENTINEL, Barrier)
+        assert repr(DATAMODEL_LINEAGE_SENTINEL) == "<end of explores>"
+
+
 class TestLookerMissingDataModel:
     """A data model that genuinely fails to create must not crash the stage."""
 
