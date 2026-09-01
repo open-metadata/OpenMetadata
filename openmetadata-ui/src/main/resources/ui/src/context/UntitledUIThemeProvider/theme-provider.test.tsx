@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ThemeProvider, useTheme } from './theme-provider';
 
 const ThemeProbe = () => {
@@ -38,9 +38,25 @@ const renderProvider = () =>
   );
 
 const setSystemTheme = (theme: 'light' | 'dark') => {
+  let changeListener: ((event: MediaQueryListEvent) => void) | undefined;
+  const mediaQuery = {
+    matches: theme === 'dark',
+    addEventListener: jest.fn(
+      (_event: string, listener: (event: MediaQueryListEvent) => void) => {
+        changeListener = listener;
+      }
+    ),
+    removeEventListener: jest.fn(),
+  };
+
   window.matchMedia = jest
     .fn()
-    .mockReturnValue({ matches: theme === 'dark' } as MediaQueryList);
+    .mockReturnValue(mediaQuery as unknown as MediaQueryList);
+
+  return (nextTheme: 'light' | 'dark') => {
+    mediaQuery.matches = nextTheme === 'dark';
+    changeListener?.({ matches: mediaQuery.matches } as MediaQueryListEvent);
+  };
 };
 
 describe('ThemeProvider', () => {
@@ -70,6 +86,22 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
     expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+  });
+
+  it('follows system color scheme changes until a preference is selected', () => {
+    const changeSystemTheme = setSystemTheme('light');
+    renderProvider();
+
+    act(() => changeSystemTheme('dark'));
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveClass('dark-mode');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+    act(() => changeSystemTheme('dark'));
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
   });
 
   it('persists explicit dark and light selections', () => {

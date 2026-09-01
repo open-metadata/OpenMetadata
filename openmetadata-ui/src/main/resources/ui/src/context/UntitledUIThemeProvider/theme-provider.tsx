@@ -26,6 +26,31 @@ import {
 } from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
+
+const getStoredTheme = (storageKey: string): Theme | null => {
+  if (typeof globalThis.localStorage === 'undefined') {
+    return null;
+  }
+
+  const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme;
+  }
+
+  localStorage.removeItem(storageKey);
+
+  return null;
+};
+
+const getSystemTheme = (): Theme | null => {
+  if (typeof globalThis.matchMedia !== 'function') {
+    return null;
+  }
+
+  return globalThis.matchMedia(SYSTEM_THEME_QUERY).matches ? 'dark' : 'light';
+};
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -238,25 +263,9 @@ export const ThemeProvider = ({
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof globalThis.localStorage !== 'undefined') {
-      const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        return savedTheme;
-      }
-
-      localStorage.removeItem(storageKey);
-    }
-
-    if (typeof globalThis.matchMedia === 'function') {
-      return globalThis.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-    }
-
-    return defaultTheme;
-  });
+  const [theme, setThemeState] = useState<Theme>(
+    () => getStoredTheme(storageKey) ?? getSystemTheme() ?? defaultTheme
+  );
 
   const setTheme = useCallback(
     (nextTheme: Theme) => {
@@ -276,6 +285,28 @@ export const ThemeProvider = ({
     root.classList.toggle(darkModeClass, theme === 'dark');
     root.style.colorScheme = theme;
   }, [theme, darkModeClass]);
+
+  useEffect(() => {
+    if (typeof globalThis.matchMedia !== 'function') {
+      return;
+    }
+
+    const systemTheme = globalThis.matchMedia(SYSTEM_THEME_QUERY);
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      // A stored value means the user or desktop shell has explicitly opted
+      // out of following later OS changes.
+      if (getStoredTheme(storageKey) !== null) {
+        return;
+      }
+
+      setThemeState(event.matches ? 'dark' : 'light');
+    };
+
+    systemTheme.addEventListener('change', handleSystemThemeChange);
+
+    return () =>
+      systemTheme.removeEventListener('change', handleSystemThemeChange);
+  }, [storageKey]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
