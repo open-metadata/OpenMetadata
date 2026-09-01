@@ -3130,6 +3130,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     for (EntityDAO.EntityIdFqnPair row : affected) {
+      bumpWriteEpoch(entityType, row.id);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
       if (row.fqn != null) {
         CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, row.fqn));
@@ -3165,6 +3166,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || id == null) {
       return;
     }
+    bumpWriteEpoch(entityType, id);
     // Skip every Redis op for entity types that are never cached. Bot/domain/data-product
     // deletes cascade through many addRelationship/deleteRelationship calls; without this
     // short-circuit each cascade pays for a pub/sub publish + multiple DELs that touch keys
@@ -9690,6 +9692,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
+      bumpWriteEpoch(entityType, id);
       // Evict the Guava L1 so future reads reload from Redis/DB.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));

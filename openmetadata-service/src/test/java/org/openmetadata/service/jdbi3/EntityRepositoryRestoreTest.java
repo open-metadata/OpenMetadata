@@ -282,6 +282,39 @@ class EntityRepositoryRestoreTest {
   }
 
   @Test
+  void invalidateCacheForEntity_advancesLoaderEpochBeforeEvictingReferencedEntity() {
+    UUID id = UUID.randomUUID();
+    long epochBefore = EntityRepository.readEpochById(Entity.PIPELINE, id);
+
+    EntityRepository.invalidateCacheForEntity(Entity.PIPELINE, id, "service.pipeline");
+
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, id) > epochBefore,
+        "Reference and tag invalidation must reject in-flight stale cache loads");
+  }
+
+  @Test
+  void renameCascadeInvalidation_advancesLoaderEpochForEveryDescendant() {
+    UUID childId = UUID.randomUUID();
+    UUID grandchildId = UUID.randomUUID();
+    long childEpochBefore = EntityRepository.readEpochById(Entity.PIPELINE, childId);
+    long grandchildEpochBefore = EntityRepository.readEpochById(Entity.PIPELINE, grandchildId);
+    List<EntityDAO.EntityIdFqnPair> descendants =
+        List.of(
+            new EntityDAO.EntityIdFqnPair(childId, "service.child"),
+            new EntityDAO.EntityIdFqnPair(grandchildId, "service.child.grandchild"));
+
+    EntityRepository.finishInvalidateCacheForRenameCascade(Entity.PIPELINE, descendants);
+
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, childId) > childEpochBefore,
+        "Rename invalidation must reject an in-flight stale child load");
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, grandchildId) > grandchildEpochBefore,
+        "Rename invalidation must reject an in-flight stale grandchild load");
+  }
+
+  @Test
   void listEntityHistoryByTimestamp_retainsSnapshotWhoseParentWasDeletedConcurrently() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
