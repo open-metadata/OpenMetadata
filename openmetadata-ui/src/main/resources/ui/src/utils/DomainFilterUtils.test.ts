@@ -20,7 +20,15 @@ describe('getQueryFilterToIncludeDomain', () => {
 
   const getMustClauses = (
     ...args: Parameters<typeof getQueryFilterToIncludeDomain>
-  ) => getQueryFilterToIncludeDomain(...args).query.bool.must;
+  ) => {
+    const must = getQueryFilterToIncludeDomain(...args).query.bool?.must;
+
+    if (Array.isArray(must)) {
+      return must;
+    }
+
+    return must ? [must] : [];
+  };
 
   it('should scope results to the domain by default', () => {
     const must = getMustClauses(domainFqn, dataProductFqn);
@@ -66,8 +74,18 @@ describe('getQueryFilterToIncludeDomain', () => {
     });
   });
 
-  it('should not add a domain clause when the domain list is empty', () => {
+  it('should fail closed with an empty terms query when domain is required but no domain is present', () => {
     const must = getMustClauses([], dataProductFqn, true);
+
+    // An empty `terms` query matches no documents, so a domainless Data
+    // Product scopes to zero assets instead of every domain.
+    expect(must).toContainEqual({
+      terms: { 'domains.fullyQualifiedName': [] },
+    });
+  });
+
+  it('should not add any domain clause when domain is not required', () => {
+    const must = getMustClauses([], dataProductFqn, false);
 
     expect(must.some((clause) => 'term' in clause || 'terms' in clause)).toBe(
       false

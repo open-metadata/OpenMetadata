@@ -44,7 +44,10 @@ export const getQueryFilterToIncludeDomain = (
           'domains.fullyQualifiedName': domainFQNs[0],
         },
       });
-    } else if (domainFQNs.length > 1) {
+    } else {
+      // For 0 FQNs this is an empty `terms` query, which matches no documents.
+      // That keeps the rule fail-closed: a domainless Data Product scopes to
+      // zero assets rather than silently listing assets from every domain.
       must.push({
         terms: {
           'domains.fullyQualifiedName': domainFQNs,

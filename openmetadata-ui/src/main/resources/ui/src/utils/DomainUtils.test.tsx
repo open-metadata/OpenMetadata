@@ -17,6 +17,18 @@ import {
   isDomainExist,
 } from '../utils/DomainFilterUtils';
 
+const mustClausesOf = (
+  result: ReturnType<typeof getQueryFilterToIncludeDomain>
+) => {
+  const must = result.query.bool?.must;
+
+  if (Array.isArray(must)) {
+    return must;
+  }
+
+  return must ? [must] : [];
+};
+
 jest.mock('../hooks/useDomainStore');
 jest.mock('./RouterUtils');
 
@@ -186,13 +198,13 @@ describe('isDomainExist', () => {
 
       const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
 
-      const firstMust = result.query.bool.must[0] as {
+      const firstMust = mustClausesOf(result)[0] as {
         term: { 'domains.fullyQualifiedName': string };
       };
 
       expect(firstMust.term['domains.fullyQualifiedName']).toBe(domainFqn);
 
-      const secondMust = result.query.bool.must[1] as {
+      const secondMust = mustClausesOf(result)[1] as {
         bool: {
           must_not: Array<{
             term: { 'dataProducts.fullyQualifiedName': string };
@@ -211,7 +223,7 @@ describe('isDomainExist', () => {
 
       const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
 
-      const thirdMust = result.query.bool.must[2] as {
+      const thirdMust = mustClausesOf(result)[2] as {
         bool: {
           must_not: Array<{
             terms: { entityType: EntityType[] };
@@ -234,15 +246,18 @@ describe('isDomainExist', () => {
 
       const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
 
-      // An empty domain FQN is dropped, so no domain-scoping clause is added
-      // and the data-product exclusion becomes the first `must` clause.
-      const hasDomainClause = result.query.bool.must.some(
-        (clause) => 'term' in clause || 'terms' in clause
-      );
+      // An empty domain FQN fails closed: it produces an empty `terms` query
+      // (which matches nothing) rather than an all-domains search.
+      expect(mustClausesOf(result)).toContainEqual({
+        terms: { 'domains.fullyQualifiedName': [] },
+      });
 
-      expect(hasDomainClause).toBe(false);
-
-      const firstMust = result.query.bool.must[0] as {
+      const dataProductMust = mustClausesOf(result).find(
+        (clause) =>
+          'bool' in clause &&
+          Array.isArray(clause.bool?.must_not) &&
+          'term' in (clause.bool.must_not[0] ?? {})
+      ) as {
         bool: {
           must_not: Array<{
             term: { 'dataProducts.fullyQualifiedName': string };
@@ -251,7 +266,7 @@ describe('isDomainExist', () => {
       };
 
       expect(
-        firstMust.bool.must_not[0].term['dataProducts.fullyQualifiedName']
+        dataProductMust.bool.must_not[0].term['dataProducts.fullyQualifiedName']
       ).toBe('');
     });
   });
