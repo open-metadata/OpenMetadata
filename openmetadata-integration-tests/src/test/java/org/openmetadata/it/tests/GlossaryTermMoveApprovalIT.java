@@ -119,7 +119,12 @@ public class GlossaryTermMoveApprovalIT {
   // repointed first.
   @Test
   @Disabled(
-      "1.13: pending backport of #28902 (EntityRepository L1 cache stale-after-write race on pg-es-redis). Term FQN read after move remains stale until L1 TTL. Re-enable when write-epoch fix lands on 1.13.")
+      "1.13 pg-es-redis: async glossary-term move fails to commit FQN change within 2 min."
+          + " Root cause is NOT the #28902 L1 cache race — the 2 min Awaitility window vastly"
+          + " exceeds the 30 s L1 TTL, so the entry would refresh long before the timeout."
+          + " Failure sits in the AsyncService.getExecutorService() moveGlossaryTerm task on this"
+          + " lane (silent failure or starvation of the workflow-follow / tag-usage / index"
+          + " updates). Not yet isolated. Re-enable once the async-move failure is root-caused.")
   void test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved(TestNamespace ns)
       throws Exception {
     Glossary glossary = createGlossary(ns);
@@ -153,7 +158,12 @@ public class GlossaryTermMoveApprovalIT {
   // Deterministic via by-id resolution (see the parent-move test).
   @Test
   @Disabled(
-      "1.13: pending backport of #28902 (EntityRepository L1 cache stale-after-write race on pg-es-redis). Term FQN read after move remains stale until L1 TTL. Re-enable when write-epoch fix lands on 1.13.")
+      "1.13 pg-es-redis: async glossary-term move fails to commit FQN change within 2 min."
+          + " Root cause is NOT the #28902 L1 cache race — the 2 min Awaitility window vastly"
+          + " exceeds the 30 s L1 TTL, so the entry would refresh long before the timeout."
+          + " Failure sits in the AsyncService.getExecutorService() moveGlossaryTerm task on this"
+          + " lane (silent failure or starvation of the workflow-follow / tag-usage / index"
+          + " updates). Not yet isolated. Re-enable once the async-move failure is root-caused.")
   void test_approveApprovalTaskAfterMovingAncestorToGlossaryRoot_drivesMovedTermToApproved(
       TestNamespace ns) throws Exception {
     Glossary glossary = createGlossary(ns);

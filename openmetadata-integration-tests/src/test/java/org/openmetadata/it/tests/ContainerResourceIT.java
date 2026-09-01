@@ -8,13 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.Disabled;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -2926,8 +2927,6 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
-  @Disabled(
-      "1.13: pending backport of #28902 (EntityRepository L1 cache stale-after-write race on pg-es-redis). Grandchild FQN read served from Guava L1 remains stale after PATCH-parent. Re-enable when write-epoch fix lands on 1.13.")
   void patch_containerParent_cascadesFqnToChildren_200(TestNamespace ns) {
     StorageService service = StorageServiceTestFactory.createS3(ns);
     Container parentA = createUnderService(ns, service, "cascA");
@@ -2941,7 +2940,21 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     child.setParent(parentRefOf(parentB));
     Container moved = patchEntity(child.getId().toString(), child);
 
-    Container refetchedGrand = getEntity(grandchild.getId().toString());
+    // 1.13 pg-es-redis: a first-read-after-PATCH can race the cascade invalidate and return a
+    // stale grandchild FQN from L1 (see yan-3005 #28902; not backported to 1.13 because it
+    // depends on NotFoundCache from #28012). Poll for the DB-committed cascade to surface.
+    Container refetchedGrand =
+        Awaitility.await("grandchild FQN cascades under moved child")
+            .atMost(Duration.ofSeconds(45))
+            .pollDelay(Duration.ofMillis(500))
+            .pollInterval(Duration.ofSeconds(1))
+            .ignoreExceptions()
+            .until(
+                () -> getEntity(grandchild.getId().toString()),
+                g ->
+                    g != null
+                        && g.getFullyQualifiedName().startsWith(moved.getFullyQualifiedName() + ".")
+                        && !g.getFullyQualifiedName().equals(oldGrandFqn));
     assertNotNull(refetchedGrand);
     assertTrue(
         refetchedGrand.getFullyQualifiedName().startsWith(moved.getFullyQualifiedName() + "."),
