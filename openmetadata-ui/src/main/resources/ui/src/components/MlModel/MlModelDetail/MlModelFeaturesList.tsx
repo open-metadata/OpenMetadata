@@ -91,7 +91,8 @@ const MlModelFeaturesList = () => {
 
   // Ungated: isDeleted is threaded separately to each TableTags/TableDescription call as
   // `isReadOnly` below (SearchIndexFieldsTab.tsx/TopicSchema.tsx precedent), never folded
-  // into these edit flags.
+  // into these edit flags. Also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
   const { canEditTags, canEditGlossaryTerms, canEditDescription } = useMemo(
     () => getDerivedPermissionFlags(permissions),
     [permissions]

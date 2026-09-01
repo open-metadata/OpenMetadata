@@ -150,6 +150,8 @@ export const useTestCaseDetailPage = ({
   // useTestCaseIncidentHeader.ts (Task 8 Batch 6) read testCasePermission back off the
   // store as a raw OperationPermission and derive their own flags, so the store must keep
   // receiving the raw object, not just the named flags this hook consumes locally.
+  // canEditDisplayName is an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
   const {
     permissions: testCasePermission,
     isLoading: isPermissionLoading,

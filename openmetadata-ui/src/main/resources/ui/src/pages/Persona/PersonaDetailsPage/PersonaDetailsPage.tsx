@@ -83,6 +83,8 @@ export const PersonaDetailsPage = () => {
 
   // Personas aren't soft-deletable through this page (ManageButton is passed a hardcoded
   // `deleted={false}` below), so this call is deliberately ungated — no `deleted` option.
+  // canEditDescription is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
   const {
     canEditAll,
     canEditDescription,

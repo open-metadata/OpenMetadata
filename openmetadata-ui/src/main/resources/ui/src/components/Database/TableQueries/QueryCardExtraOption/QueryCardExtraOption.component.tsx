@@ -46,8 +46,13 @@ const QueryCardExtraOption = ({
 }: QueryCardExtraOptionProps) => {
   // Derive named flags instead of destructuring raw EditAll off `permission`.
   // EditQueries has no dedicated canEditX flag, so `can(Operation.X)` is the
-  // sanctioned escape hatch — it applies the same EditAll-priority fallback
-  // as the old `EditAll || EditQueries` expression.
+  // sanctioned escape hatch. This is NOT the same computation as the old raw
+  // `EditAll || EditQueries` OR — it's the prioritized (field-over-EditAll)
+  // derivation: an explicit EditQueries value, when present, wins outright
+  // over EditAll (explicit-deny-wins when EditQueries is false, same
+  // precedent as canViewBasic, Task 6 Finding 1); EditAll is only a fallback
+  // for when the EditQueries key is absent. See the file's tests for the
+  // scenario where this diverges from the old raw OR.
   const { canDelete, can } = useMemo(
     () => getDerivedPermissionFlags(permission),
     [permission]

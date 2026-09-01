@@ -115,6 +115,9 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   // FQN, no `deleted` gating — old code never ANDed any of the flags below with the suite's
   // own `deleted` field. `isLoading`/`permissionsError` replace the old
   // fetchTestSuitePermission's manual setIsLoading(true/false) + try/catch pair.
+  // canEditOwners/canEditDescription are also an explicit-deny-wins fix, same precedent as
+  // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
+  // grant.
   const {
     permissions: testSuitePermissions,
     isLoading,

@@ -99,6 +99,9 @@ const StoredProcedurePage = () => {
   // separate `deleted` field is passed straight through to
   // getStoredProcedureDetailsPageTabs instead), so this call is deliberately ungated — no
   // `deleted` option — to avoid introducing gating that wasn't there before.
+  // editCustomAttributePermission/editLineagePermission are also an explicit-deny-wins fix,
+  // same precedent as canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a
+  // broader EditAll grant.
   const {
     permissions: storedProcedurePermissions,
     isLoading: permissionsLoading,

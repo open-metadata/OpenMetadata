@@ -89,6 +89,8 @@ const PoliciesDetailPage = () => {
   // the old raw expressions here never referenced it (policies aren't soft-deleted through
   // this page) — matching the ungated-site rule (TagPage.tsx/StoredProcedurePage.tsx
   // precedent, RolesDetailPage.tsx sibling), not passing `deleted` here.
+  // canEditDisplayName is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
   const {
     error: permissionsError,
     canEditDisplayName: editDisplayNamePermission,

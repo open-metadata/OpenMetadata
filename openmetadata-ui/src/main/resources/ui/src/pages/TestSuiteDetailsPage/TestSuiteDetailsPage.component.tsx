@@ -97,7 +97,9 @@ const TestSuiteDetailsPage = () => {
   // Consumer via the hook's raw `testSuitePermissions: OperationPermission` field (Task 8
   // rule 2) — derive named flags locally instead of reading `.EditAll`/`.ViewAll`/`.ViewBasic`
   // directly. No `deleted` argument: none of the reads below were ever ANDed with
-  // `testSuite?.deleted` in the old code.
+  // `testSuite?.deleted` in the old code. Also an explicit-deny-wins fix, same precedent as
+  // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
+  // grant.
   const flags = useMemo(
     () => getDerivedPermissionFlags(testSuitePermissions),
     [testSuitePermissions]
