@@ -708,13 +708,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   ]);
 
   useEffect(() => {
-    if (
+    const hasRequiredTestSelection =
       !isEditMode &&
       selectedTableFqn &&
       selectedTestDefinition &&
-      selectedTestLevel &&
-      !isTestNameManuallyEdited
-    ) {
+      selectedTestLevel;
+    if (hasRequiredTestSelection && !isTestNameManuallyEdited) {
       const dynamicName = generateDynamicTestName();
       if (dynamicName) {
         form.setValue('testName', dynamicName);
@@ -1004,6 +1003,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  const canShowSchedulerSection =
+    !showOnlyParameter && !isEditMode && selectedTableFqn;
+
   return (
     <div
       className="test-case-form-v1 drawer-mode test-case-form-body"
@@ -1176,23 +1178,20 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         </div>
       )}
 
-      {!showOnlyParameter &&
-        !isEditMode &&
-        selectedTableFqn &&
-        canCreatePipeline && (
-          <div {...pipelineDoc}>
-            <TestCaseSchedulerSection
-              canCreatePipeline={canCreatePipeline}
-              form={form}
-              hasTestSuite={hasTestSuite}
-              schedulerOptions={schedulerOptions}
-              selectedTableData={selectedTableData}
-              table={table}
-              testSuite={testSuite}
-              onActiveFieldChange={onActiveFieldChange}
-            />
-          </div>
-        )}
+      {canShowSchedulerSection && canCreatePipeline && (
+        <div {...pipelineDoc}>
+          <TestCaseSchedulerSection
+            canCreatePipeline={canCreatePipeline}
+            form={form}
+            hasTestSuite={hasTestSuite}
+            schedulerOptions={schedulerOptions}
+            selectedTableData={selectedTableData}
+            table={table}
+            testSuite={testSuite}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </div>
+      )}
     </div>
   );
 };

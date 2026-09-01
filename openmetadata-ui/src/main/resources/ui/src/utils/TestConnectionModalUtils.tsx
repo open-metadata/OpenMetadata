@@ -626,14 +626,15 @@ export function ConnectionCapabilitySection(
             const isExpandableState =
               !!r &&
               (state === 'passed' || state === 'failed' || state === 'warning');
+            const hasCommandOrSummary =
+              !isEmpty(r?.executedCommand) || !isEmpty(r?.resultSummary);
+            const hasMessageDetails =
+              !isEmpty(r?.message) ||
+              !isEmpty(r?.errorLog) ||
+              !isEmpty(r?.diagnosis);
 
             return (
-              isExpandableState &&
-              (!isEmpty(r?.executedCommand) ||
-                !isEmpty(r?.resultSummary) ||
-                !isEmpty(r?.message) ||
-                !isEmpty(r?.errorLog) ||
-                !isEmpty(r?.diagnosis))
+              isExpandableState && (hasCommandOrSummary || hasMessageDetails)
             );
           })
           .map((s) => s.name)

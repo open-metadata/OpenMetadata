@@ -152,6 +152,13 @@ function DestinationSelectItemV2({
     [id, setValue]
   );
 
+  const showInternalDestinationConfig =
+    destinationType && isInternalDestinationSelected;
+  const isTeamsOrUsersDestination =
+    destinationType === SubscriptionCategory.Teams ||
+    destinationType === SubscriptionCategory.Users;
+  const showDownstreamAlert = destinationType && subscriptionType;
+
   return (
     <div
       className="tw:flex tw:gap-4"
@@ -195,10 +202,9 @@ function DestinationSelectItemV2({
             />
           )}
 
-          {destinationType && isInternalDestinationSelected && (
+          {showInternalDestinationConfig && (
             <>
-              {(destinationType === SubscriptionCategory.Teams ||
-                destinationType === SubscriptionCategory.Users) && (
+              {isTeamsOrUsersDestination && (
                 <DestinationConfigField
                   fieldName={id}
                   type={destinationType as SubscriptionCategory}
@@ -246,7 +252,7 @@ function DestinationSelectItemV2({
                 />
               </Grid.Item>
 
-              {destinationType && subscriptionType && (
+              {showDownstreamAlert && (
                 <Grid.Item span={24}>
                   <Alert
                     closable

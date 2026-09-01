@@ -336,7 +336,13 @@ export const getDestinationConfigField = (
     case SubscriptionType.Slack:
     case SubscriptionType.MSTeams:
     case SubscriptionType.GChat:
-    case SubscriptionType.Webhook:
+    case SubscriptionType.Webhook: {
+      const isWebhookBasedType =
+        type === SubscriptionType.Webhook ||
+        type === SubscriptionType.Slack ||
+        type === SubscriptionType.MSTeams ||
+        type === SubscriptionType.GChat;
+
       return (
         <>
           <Col span={12}>
@@ -356,10 +362,7 @@ export const getDestinationConfigField = (
               />
             </Form.Item>
           </Col>
-          {(type === SubscriptionType.Webhook ||
-            type === SubscriptionType.Slack ||
-            type === SubscriptionType.MSTeams ||
-            type === SubscriptionType.GChat) && (
+          {isWebhookBasedType && (
             <Col span={24}>
               <Collapse
                 className="webhook-config-collapse"
@@ -799,6 +802,7 @@ export const getDestinationConfigField = (
           )}
         </>
       );
+    }
     case SubscriptionType.Email:
       return (
         <Col span={12}>
