@@ -492,7 +492,7 @@ jobs:
 
       - name: Render consolidated job summary and gate on results
         if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}
           CACHE_KEYS_RESULT: ${{ needs.playwright.outputs.cache_keys_result }}
