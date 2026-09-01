@@ -142,10 +142,9 @@ describe('DomainDetailPage', () => {
     });
   });
 
-  it('should merge PATCH response with cached domain, preserving fields not in the response', async () => {
-    const domainWithExtension: Domain = {
+  it('should invalidate the domain query after a successful PATCH to refetch full fields', async () => {
+    const domainWithTags: Domain = {
       ...DOMAINS_LIST[0],
-      extension: { customField: 'value' },
       tags: [
         {
           tagFQN: 'PII.Sensitive',
@@ -175,7 +174,7 @@ describe('DomainDetailPage', () => {
       version: 0.5,
     } as Domain;
 
-    mockGetDomainByName.mockResolvedValue(domainWithExtension);
+    mockGetDomainByName.mockResolvedValue(domainWithTags);
     mockPatchDomains.mockResolvedValue(patchResponse);
 
     const { queryClient } = renderWithQueryClient(
@@ -183,6 +182,8 @@ describe('DomainDetailPage', () => {
         <DomainDetailPage />
       </MemoryRouter>
     );
+
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
     await waitFor(() => {
       expect(mockGetDomainByName).toHaveBeenCalled();
@@ -197,9 +198,9 @@ describe('DomainDetailPage', () => {
     expect(onUpdateProp).toBeDefined();
 
     const updatedDomain: Domain = {
-      ...domainWithExtension,
+      ...domainWithTags,
       tags: [
-        ...(domainWithExtension.tags ?? []),
+        ...(domainWithTags.tags ?? []),
         {
           tagFQN: 'PersonalData.Personal',
           source: 'Classification',
@@ -214,16 +215,12 @@ describe('DomainDetailPage', () => {
     });
 
     expect(mockPatchDomains).toHaveBeenCalledTimes(1);
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: expect.arrayContaining(['domain', 'test-domain']),
+      })
+    );
 
-    const queries = queryClient.getQueriesData<Domain>({
-      queryKey: ['domain', 'test-domain'],
-    });
-    const cachedDomain = queries[0]?.[1];
-
-    expect(cachedDomain?.tags).toHaveLength(2);
-    expect(cachedDomain?.version).toBe(0.5);
-    expect(
-      (cachedDomain as Domain & { extension: unknown })?.extension
-    ).toEqual({ customField: 'value' });
+    invalidateSpy.mockRestore();
   });
 });
