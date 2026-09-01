@@ -80,7 +80,7 @@ const selectTagSuggestion = async ({
 
   logTaskDebug('selectTagSuggestion:start', searchText, tagTestId);
   if (!(await tagsInput.isVisible().catch(() => false))) {
-    await tagSelector.click({ force: true }).catch(() => undefined);
+    await tagSelector.click().catch(() => undefined);
   }
 
   await expect(tagsInput).toBeVisible({ timeout: 5000 });
@@ -142,12 +142,12 @@ const clickDropdownMenuItem = async ({
 
   if (await isMenuItemVisible()) {
     if (await roleMenuItem.isVisible().catch(() => false)) {
-      await roleMenuItem.click({ force: true });
+      await roleMenuItem.click();
 
       return;
     }
 
-    await cssMenuItem.click({ force: true });
+    await cssMenuItem.click();
 
     return;
   }
@@ -172,7 +172,7 @@ const clickDropdownMenuItem = async ({
 
   for (let attempt = 0; attempt < 3; attempt++) {
     logTaskDebug('clickDropdownMenuItem:openAttempt', attempt + 1);
-    await resolvedTrigger.click({ force: true }).catch(() => undefined);
+    await resolvedTrigger.click().catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
@@ -191,7 +191,7 @@ const clickDropdownMenuItem = async ({
       break;
     }
 
-    await fallbackTrigger.click({ force: true }).catch(() => undefined);
+    await fallbackTrigger.click().catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
@@ -199,13 +199,13 @@ const clickDropdownMenuItem = async ({
   }
 
   if (await roleMenuItem.isVisible().catch(() => false)) {
-    await roleMenuItem.click({ force: true });
+    await roleMenuItem.click();
 
     return;
   }
 
   await expect(cssMenuItem).toBeVisible();
-  await cssMenuItem.click({ force: true });
+  await cssMenuItem.click();
 };
 
 export const formatTaskFieldValue = (value: string) => {
@@ -613,7 +613,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
     await expect(commentInput).toBeVisible({ timeout: 5000 });
     await commentInput.scrollIntoViewIfNeeded().catch(() => undefined);
     logTaskDebug('addCommentToTask:openingEditor');
-    await commentInput.click({ force: true }).catch(() => undefined);
+    await commentInput.click().catch(() => undefined);
 
     const editorAppearedAfterClick = await editor
       .waitFor({ state: 'visible', timeout: 10000 })
@@ -627,7 +627,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
 
   await expect(editor).toBeVisible({ timeout: 15000 });
   logTaskDebug('addCommentToTask:editorVisible');
-  await editor.click({ force: true });
+  await editor.click();
   await editor.type(comment);
   logTaskDebug('addCommentToTask:commentEntered');
 
@@ -685,7 +685,7 @@ export const closeTaskFromDetails = async (page: Page) => {
 
     if (primaryLabel?.match(/reject|decline|close/i)) {
       const taskActionResponse = waitForTaskActionResponse(page);
-      await workflowPrimaryButton.click({ force: true });
+      await workflowPrimaryButton.click();
       await taskActionResponse;
       await waitForPageLoaded(page);
       logTaskDebug('closeTaskFromDetails:workflowPrimaryDone');
@@ -755,7 +755,7 @@ export const approveTaskFromDetails = async (page: Page) => {
   const clickAndWait = async (button: Locator) => {
     const taskActionResponse = waitForTaskActionResponse(page);
     await button.scrollIntoViewIfNeeded().catch(() => undefined);
-    await button.click({ force: true });
+    await button.click();
 
     await visibleTaskModal
       .waitFor({ state: 'visible', timeout: 3000 })

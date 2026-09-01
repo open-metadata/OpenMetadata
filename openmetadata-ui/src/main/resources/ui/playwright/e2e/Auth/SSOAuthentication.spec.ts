@@ -264,7 +264,9 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate again — app should handle the error gracefully
       await page.goto('/');
-      await page.waitForTimeout(5000);
+      // The app rendering while still authenticated is the positive signal that
+      // it handled the failure; assert the URL only once that has happened.
+      await verifyAuthenticated(page);
 
       const url = page.url();
 
@@ -306,13 +308,12 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       await page.goto('/');
-      await page.waitForTimeout(5000);
-
-      const refreshFlag = await page.evaluate(() => {
-        return localStorage.getItem('refreshInProgress');
-      });
-
-      expect(refreshFlag).not.toBe('true');
+      await expect
+        .poll(
+          () => page.evaluate(() => localStorage.getItem('refreshInProgress')),
+          { timeout: 30_000 }
+        )
+        .not.toBe('true');
     });
 
     test('should handle concurrent renewal attempts gracefully', async ({
@@ -325,9 +326,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         localStorage.setItem('refreshInProgress', 'true');
       });
 
-      await page.waitForTimeout(2000);
       await page.goto('/');
-      await page.waitForTimeout(5000);
+      // The app rendering while still authenticated is the positive signal that
+      // it handled the failure; assert the URL only once that has happened.
+      await verifyAuthenticated(page);
 
       const url = page.url();
 
@@ -422,9 +424,13 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate to a page that makes multiple parallel API calls
       await page.goto('/');
-      await page.waitForTimeout(10000);
+      // Wait for the renewal to actually land, then assert it did not repeat.
+      await expect
+        .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
+          timeout: 30_000,
+        })
+        .toBeGreaterThanOrEqual(1);
 
-      // The refresh should have happened at most once despite multiple 401s
       const metricsAfter = await getMetrics(request);
 
       // Token endpoint should have been called (for refresh), but not N times
@@ -493,7 +499,9 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       // Navigate — app should not crash even if silent renewal cannot use
       // a refresh token (it falls back to iframe/popup)
       await page.goto('/');
-      await page.waitForTimeout(5000);
+      // The app rendering while still authenticated is the positive signal that
+      // it handled the failure; assert the URL only once that has happened.
+      await verifyAuthenticated(page);
 
       const url = page.url();
 
@@ -533,12 +541,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Allow async IndexedDB cleanup to complete (WebKit needs more time
       // because the OIDC logout redirect chain can interrupt pending writes)
-      await page.waitForTimeout(2000);
-
-      // Verify auth state is cleared
-      const tokenAfter = await getStoredToken(page);
-
-      expect(tokenAfter).toBe('');
+      // Verify auth state is cleared; IndexedDB cleanup is async.
+      await expect
+        .poll(() => getStoredToken(page), { timeout: 30_000 })
+        .toBe('');
 
       const refreshFlag = await page.evaluate(() => {
         return localStorage.getItem('refreshInProgress');
@@ -568,11 +574,9 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       // Open a second tab
       const page2 = await context.newPage();
       await page2.goto('/');
-      await page2.waitForTimeout(3000);
-
-      const tab2TokenBefore = await getStoredToken(page2);
-
-      expect(tab2TokenBefore).toBe(originalToken);
+      await expect
+        .poll(() => getStoredToken(page2), { timeout: 30_000 })
+        .toBe(originalToken);
 
       await resetMetrics(request);
 
@@ -596,16 +600,21 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Trigger the 401 in tab 1
       await page.goto('/activity-feed');
-      await page.waitForTimeout(10000);
+      // The renewal reaching the mock is the observable signal for the 401 retry.
+      await expect
+        .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
+          timeout: 30_000,
+        })
+        .toBeGreaterThanOrEqual(1);
 
       // Check that tab 2 can still access the app
       await page2.goto('/');
-      await page2.waitForTimeout(5000);
-
-      const tab2TokenAfter = await getStoredToken(page2);
-
       // Tab 2 should have a valid token (either same or refreshed)
-      expect(tab2TokenAfter.length).toBeGreaterThan(0);
+      await expect
+        .poll(() => getStoredToken(page2).then((t) => t.length), {
+          timeout: 30_000,
+        })
+        .toBeGreaterThan(0);
 
       await page2.close();
     });
@@ -638,11 +647,16 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await resetMetrics(request);
 
       // Wait for the token to expire and proactive renewal to trigger
-      await page.waitForTimeout(8000);
+      // The renewal landing on the mock is the signal; no fixed sleep needed.
+      await expect
+        .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
+          timeout: 30_000,
+        })
+        .toBeGreaterThanOrEqual(1);
 
       // Hard reload — this forces the app to read from IndexedDB (no in-memory cache)
       await page.reload({ waitUntil: 'networkidle' });
-      await page.waitForTimeout(3000);
+      await verifyAuthenticated(page);
 
       const url = page.url();
 
@@ -681,7 +695,12 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await setTokenExpiry(request, 5);
       await resetMetrics(request);
 
-      await page.waitForTimeout(8000);
+      // The renewal landing on the mock is the signal; no fixed sleep needed.
+      await expect
+        .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
+          timeout: 30_000,
+        })
+        .toBeGreaterThanOrEqual(1);
 
       // Observe the Authorization header on the next API call using waitForRequest
       // (non-intercepting — works reliably in both Chromium and WebKit)
@@ -736,7 +755,6 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
     }) => {
       await performOidcLogin(page);
       await verifyAuthenticated(page);
-      await page.waitForTimeout(2000);
 
       // Set refreshInProgress BEFORE writing expired token to block the
       // TOKEN_UPDATE broadcast from triggering auto-refresh
@@ -788,7 +806,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         });
       });
 
-      // Wait for TOKEN_UPDATE broadcast to be handled (blocked by flag)
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting that the TOKEN_UPDATE broadcast is BLOCKED by refreshInProgress. The expected outcome is that nothing happens, and a non-event cannot be polled for: any condition would already hold at t=0. Elapsed time is the only instrument.
       await page.waitForTimeout(1000);
 
       // Remove the lock so visibilitychange handler can trigger refreshToken()
@@ -805,16 +823,18 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       // Wait for the async handler to complete
-      await page.waitForTimeout(3000);
-
-      // Verify the handler detected the expired token and attempted refresh.
       // The deployed handler logs "[VisibilityHandler] token length: X isExpired: true"
-      const handlerDetectedExpiry = logs.some(
-        (l) =>
-          l.includes('[VisibilityHandler]') && l.includes('isExpired: true')
-      );
-
-      expect(handlerDetectedExpiry).toBe(true);
+      await expect
+        .poll(
+          () =>
+            logs.some(
+              (l) =>
+                l.includes('[VisibilityHandler]') &&
+                l.includes('isExpired: true')
+            ),
+          { timeout: 30_000 }
+        )
+        .toBe(true);
     });
 
     test('should reschedule timer when tab becomes visible with valid token', async ({
@@ -831,8 +851,6 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await page.evaluate(() => {
         document.dispatchEvent(new Event('visibilitychange'));
       });
-
-      await page.waitForTimeout(2000);
 
       // App should still be authenticated (handler didn't break anything)
       await verifyAuthenticated(page);
@@ -859,12 +877,12 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       expect(initialToken.length).toBeGreaterThan(0);
 
-      // Wait 10 seconds to simulate idle period
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- the idle period IS the test input, not a wait for a condition. page.clock could fake it, but installing a fake clock here would also fake the token exp checks this test exercises.
       await page.waitForTimeout(10000);
 
       // Navigate to a different page
       await page.goto('/explore/tables');
-      await page.waitForTimeout(5000);
+      await verifyAuthenticated(page);
 
       // Should still be authenticated
       const url = page.url();
