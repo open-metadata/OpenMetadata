@@ -44,6 +44,14 @@ export interface UseBulkEntityPermissionsResult {
  * no-permission instead of failing the list. When the bulk permissions API
  * (OpenMetadata#30586) lands, swap the per-row queryFn for one batched fetch
  * here — call sites are unaffected.
+ *
+ * Deliberately asymmetric with useEntityPermissions: no `deleted` option
+ * (a list mixes deleted and non-deleted rows, so gating can't be one value
+ * for the whole call — apply `deleted` per row via
+ * `getDerivedPermissionFlags(permission, row.deleted)` at the call site
+ * instead of here), and no `error` (a failed row already degrades silently
+ * to DEFAULT_ENTITY_PERMISSION above; surfacing per-row fetch errors, like
+ * per-row gating, is the caller's job).
  */
 export const useBulkEntityPermissions = (
   resource: ResourceEntity,

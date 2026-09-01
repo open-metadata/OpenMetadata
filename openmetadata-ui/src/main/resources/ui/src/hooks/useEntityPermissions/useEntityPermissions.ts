@@ -47,7 +47,13 @@ export interface UseEntityPermissionsOptions {
 export interface UseEntityPermissionsResult extends DerivedPermissionFlags {
   permissions: OperationPermission;
   isLoading: boolean;
-  error: unknown | null;
+  /**
+   * `unknown`, not `unknown | null` (the union was redundant — `unknown`
+   * already subsumes `null`). React Query's `error` is `Error | null`; the
+   * `?? null` below only normalizes an `undefined` pre-fetch state into the
+   * same `null` "no error" value, it doesn't widen the type.
+   */
+  error: unknown;
   refresh: () => Promise<void>;
 }
 

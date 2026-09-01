@@ -78,7 +78,11 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       setUrlPathnameExpiryAfterRoute(urlPathname);
       navigate(urlPathname);
     }
-  }, [history]);
+    // `navigate` is the actual dependency this callback reads (the router's
+    // navigate function) — `history` was never declared in this file and
+    // wasn't the global `window.history` either; it was a stale reference
+    // left over from the pre-react-router-v6 API.
+  }, [navigate]);
 
   /**
    * Fetch permission for logged in user

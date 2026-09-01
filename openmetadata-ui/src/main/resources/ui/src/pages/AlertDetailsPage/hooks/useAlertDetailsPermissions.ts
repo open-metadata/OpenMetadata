@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMemo } from 'react';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { AlertDetailsPermissions } from '../AlertDetailsPage.interface';
@@ -27,28 +28,41 @@ export function useAlertDetailsPermissions(fqn: string) {
     enabled: Boolean(fqn),
   });
 
-  const permissions: AlertDetailsPermissions = {
-    // Bare OR (ViewBasic || ViewAll) — unchanged from the old derivation,
-    // both are a plain OR here (unlike the edit flags below).
-    viewPermission: hasViewAccess,
-    editPermission: canEditAll,
-    // INTENTIONAL BEHAVIOR CHANGE (Task 9): the old derivation was a bare
-    // `EditAll || EditOwners` / `EditAll || EditDescription` OR, which let a
-    // blanket EditAll grant override an explicit per-field deny. The fold
-    // moves to getDerivedPermissionFlags' prioritized derivation — an
-    // explicit false on the field-specific key now wins over EditAll, same
-    // as the canViewBasic precedent documented in PermissionDerivation.ts
-    // (a raw/bare-OR read there would regress a real "field key present,
-    // explicitly denied" case). See useAlertDetailsPermissions.test.tsx's
-    // "intentional change" describe block for the characterization evidence
-    // (RED against the old bare-OR code, green here).
-    editOwnersPermission: canEditOwners,
-    editDescriptionPermission: canEditDescription,
-    deletePermission: canDelete,
-  };
+  // Wrapped in useMemo to match the core hooks' contract (useEntityPermissions/
+  // useBulkEntityPermissions both return a referentially stable object across
+  // unrelated re-renders) — without it, this hook returned a fresh object
+  // literal on every render regardless of whether any flag actually changed.
+  return useMemo(() => {
+    const permissions: AlertDetailsPermissions = {
+      // Bare OR (ViewBasic || ViewAll) — unchanged from the old derivation,
+      // both are a plain OR here (unlike the edit flags below).
+      viewPermission: hasViewAccess,
+      editPermission: canEditAll,
+      // INTENTIONAL BEHAVIOR CHANGE (Task 9): the old derivation was a bare
+      // `EditAll || EditOwners` / `EditAll || EditDescription` OR, which let a
+      // blanket EditAll grant override an explicit per-field deny. The fold
+      // moves to getDerivedPermissionFlags' prioritized derivation — an
+      // explicit false on the field-specific key now wins over EditAll, same
+      // as the canViewBasic precedent documented in PermissionDerivation.ts
+      // (a raw/bare-OR read there would regress a real "field key present,
+      // explicitly denied" case). See useAlertDetailsPermissions.test.tsx's
+      // "intentional change" describe block for the characterization evidence
+      // (RED against the old bare-OR code, green here).
+      editOwnersPermission: canEditOwners,
+      editDescriptionPermission: canEditDescription,
+      deletePermission: canDelete,
+    };
 
-  return {
-    ...permissions,
-    loading: isLoading,
-  };
+    return {
+      ...permissions,
+      loading: isLoading,
+    };
+  }, [
+    hasViewAccess,
+    canEditAll,
+    canEditOwners,
+    canEditDescription,
+    canDelete,
+    isLoading,
+  ]);
 }
