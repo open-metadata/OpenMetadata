@@ -242,6 +242,30 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_nonAdminRole_deniesAdminTargetOnAdminOnlyEndpoint(TestNamespace ns) {
+    // GET /v1/system/settings is guarded only by authorizeAdmin, which short-circuits on the
+    // effective subject's isAdmin(). Without the impersonation check on that path a bot could
+    // borrow the impersonated admin's privileges while its own policy denies admin targets.
+    User botUser = createBotUser(ns, "adminguard");
+    createBot(ns.prefix("imp_adminguard_bot"), botUser, true);
+    swapImpersonationRole(botUser, BOT_NON_ADMIN_IMPERSONATION_ROLE);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asAdmin = impersonationClient(botToken, "admin");
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/system/settings", null),
+            "Admin-only endpoints must enforce the bot's impersonation policy");
+    assertTrue(
+        denied.getMessage().contains("not authorized to impersonate"),
+        "Error should state the target is not allowed: " + denied.getMessage());
+  }
+
+  @Test
   void test_applicationBotRole_impersonatesIncludingAdmin(TestNamespace ns) {
     // Backward compatibility: existing application bots use ApplicationBotImpersonationRole
     // (ApplicationBotImpersonationPolicy = allow Impersonate on All, no deny rules). The new

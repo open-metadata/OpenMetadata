@@ -2320,6 +2320,41 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_updateUser_selfPartialRoleShedding_allowed(TestNamespace ns) throws Exception {
+    // Dropping one of several roles is a privilege reduction, not an elevation, so it must not
+    // require admin even though the resulting role set still differs from the current one.
+    // The name must equal the email local part: JwtFilter resolves the caller's username from the
+    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
+    String userName = "roleshedder" + ns.shortPrefix();
+    String dataStewardRoleId = getRoleId("DataSteward");
+    String dataConsumerRoleId = getRoleId("DataConsumer");
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@test.com")
+                .withRoles(
+                    List.of(
+                        UUID.fromString(dataStewardRoleId), UUID.fromString(dataConsumerRoleId))));
+    OpenMetadataClient userClient =
+        SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+
+    String shedBody =
+        "{\"name\":\""
+            + user.getName()
+            + "\",\"email\":\""
+            + user.getEmail()
+            + "\",\"roles\":[\""
+            + dataConsumerRoleId
+            + "\"]}";
+    userClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", shedBody);
+
+    List<EntityReference> roles = Users.get(user.getId().toString(), "roles").getRoles();
+    assertEquals(1, roles.size(), "Only the retained role should remain");
+    assertEquals(dataConsumerRoleId, roles.get(0).getId().toString());
+  }
+
+  @Test
   void test_createUser_adminOrBot_forbiddenForNonAdmin(TestNamespace ns) {
     String adminAttempt = ns.prefix("adminAttempt");
     String adminUserBody =

@@ -813,16 +813,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext);
-    } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
+    } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
-      // however that is not supported for User.
+      // however that is not supported for User. The principal name comes from the token unmodified
+      // while user.getName() is normalized to lower case, so this comparison ignores case.
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
-    } else if (existingUser != null && hasRoleElevation(existingUser.getRoles(), user.getRoles())) {
+    } else if (existingUser != null && hasRoleElevation(existingUser, user)) {
       // Self-updates skip generic authorization, so gaining roles needs an explicit admin check.
-      // Shedding roles stays allowed.
       authorizer.authorizeAdmin(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
@@ -1132,7 +1132,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
   private static final String IS_BOT_PATCH_PATH = "/isBot";
-  private static final String ROLES_PATCH_PATH_SEGMENT = "/roles";
+  private static final String ROLES_FIELD = "roles";
+  private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
 
   // A root-level operation (path "") replaces the whole user document, so it requires the
   // same admin authorization as the privilege fields it can change.
@@ -1143,10 +1144,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
         || path.contains(ROLES_PATCH_PATH_SEGMENT);
   }
 
-  private static boolean hasRoleElevation(
-      List<EntityReference> currentRoles, List<EntityReference> updatedRoles) {
-    Set<UUID> updatedRoleIds = roleIds(updatedRoles);
-    return !updatedRoleIds.isEmpty() && !updatedRoleIds.equals(roleIds(currentRoles));
+  // Elevation is gaining a role the user does not already hold. Shedding roles - all of them or
+  // only some - is a privilege reduction and stays allowed without an admin check.
+  private boolean hasRoleElevation(User existingUser, User updatedUser) {
+    Set<UUID> updatedRoleIds = roleIds(updatedUser.getRoles());
+    if (updatedRoleIds.isEmpty()) {
+      return false;
+    }
+    // existingUser comes from findByNameOrNull(), which sets core fields only, so its roles are
+    // always null - they have to be loaded before they can be compared against.
+    List<EntityReference> currentRoles =
+        repository.get(null, existingUser.getId(), getFields(ROLES_FIELD), ALL, false).getRoles();
+    return !roleIds(currentRoles).containsAll(updatedRoleIds);
   }
 
   private static Set<UUID> roleIds(List<EntityReference> roles) {
