@@ -34,6 +34,8 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 
 /**
  * End-to-end integration test for the AI Context Platform's Mode A (get_entity_details with
@@ -167,45 +169,59 @@ class AIContextMcpIT extends McpTestBase {
         new CreateMetric()
             .withName("aicontext_revenue_" + suffix)
             .withDescription("Total revenue from completed orders.")
-            .withMetricExpression(new MetricExpression().withCode(METRIC_CODE))
-            .withAssets(
-                List.of(new EntityReference().withId(ordersTable.getId()).withType("table")));
-    return post("metrics", createMetric, Metric.class);
+            .withMetricExpression(new MetricExpression().withCode(METRIC_CODE));
+    Metric metric = post("metrics", createMetric, Metric.class);
+    addAsset(metric, ordersTable);
+    return metric;
   }
 
   @Test
-  void metricAssets_updateViaPatchRewiresTheEdge() throws Exception {
+  void metricAssets_bulkOperationsRewireTheEdge() throws Exception {
     Metric metric =
         post(
             "metrics",
             new CreateMetric()
                 .withName("aicontext_patch_metric_" + suffix)
-                .withDescription("Metric whose applied assets get rewired.")
-                .withAssets(
-                    List.of(new EntityReference().withId(ordersTable.getId()).withType("table"))),
+                .withDescription("Metric whose applied assets get rewired."),
             Metric.class);
+    addAsset(metric, ordersTable);
 
-    String rewirePatch =
-        String.format(
-            "[{\"op\":\"add\",\"path\":\"/assets\",\"value\":[{\"id\":\"%s\",\"type\":\"table\"}]}]",
-            customersTable.getId());
-    patch("metrics/" + metric.getId(), rewirePatch);
+    put(
+        "metrics/" + metric.getName() + "/assets/remove",
+        new BulkAssets().withAssets(List.of(tableReference(ordersTable))),
+        BulkOperationResult.class);
+    addAsset(metric, customersTable);
 
-    JsonNode updated = get("metrics/name/" + metric.getName() + "?fields=assets", JsonNode.class);
-    JsonNode assets = updated.get("assets");
+    JsonNode assets = assetsOf(metric);
     assertThat(assets).isNotNull();
     assertThat(assets.size()).isEqualTo(1);
-    assertThat(assets.get(0).get("id").asText()).isEqualTo(customersTable.getId().toString());
+    assertThat(assets.get(0).path("asset").path("id").asText())
+        .isEqualTo(customersTable.getId().toString());
   }
 
   @Test
   void metricAssets_roundTripsThroughApi() throws Exception {
-    JsonNode metric =
-        get("metrics/name/" + revenueMetric.getName() + "?fields=assets", JsonNode.class);
-    JsonNode assets = metric.get("assets");
+    JsonNode assets = assetsOf(revenueMetric);
     assertThat(assets).isNotNull();
     assertThat(assets.isArray()).isTrue();
-    assertThat(assets.get(0).get("id").asText()).isEqualTo(ordersTable.getId().toString());
+    assertThat(assets.get(0).path("asset").path("id").asText())
+        .isEqualTo(ordersTable.getId().toString());
+  }
+
+  private static void addAsset(Metric metric, Table table) throws Exception {
+    put(
+        "metrics/" + metric.getName() + "/assets/add",
+        new BulkAssets().withAssets(List.of(tableReference(table))),
+        BulkOperationResult.class);
+  }
+
+  private static EntityReference tableReference(Table table) {
+    return new EntityReference().withId(table.getId()).withType("table");
+  }
+
+  private static JsonNode assetsOf(Metric metric) throws Exception {
+    return get("metrics/" + metric.getId() + "/assets?limit=100&offset=0", JsonNode.class)
+        .path("data");
   }
 
   @Test

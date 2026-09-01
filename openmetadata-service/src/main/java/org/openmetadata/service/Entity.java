@@ -180,6 +180,7 @@ public final class Entity {
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRIC = "metric";
+  public static final String METRIC_GROUP = "metricGroup";
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
@@ -210,6 +211,9 @@ public final class Entity {
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
+  public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
+  public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";
   public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";

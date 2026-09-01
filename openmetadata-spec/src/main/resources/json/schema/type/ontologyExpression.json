@@ -1,0 +1,92 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyExpression.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyExpression",
+  "description": "A recursive OWL class expression represented without untyped maps.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyExpression",
+  "definitions": {
+    "expressionKind": {
+      "description": "Kind of recursive class expression.",
+      "javaType": "org.openmetadata.schema.type.OntologyExpressionKind",
+      "type": "string",
+      "enum": ["NAMED_CLASS", "INTERSECTION", "UNION", "ONE_OF", "RESTRICTION"]
+    },
+    "restrictionKind": {
+      "description": "Supported OWL restriction operator.",
+      "javaType": "org.openmetadata.schema.type.OntologyRestrictionKind",
+      "type": "string",
+      "enum": ["SOME", "ONLY", "VALUE", "MIN", "MAX", "EXACT"]
+    },
+    "literal": {
+      "description": "A typed OWL literal.",
+      "javaType": "org.openmetadata.schema.type.OntologyLiteral",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "datatypeIri": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "kind": {
+      "$ref": "#/definitions/expressionKind"
+    },
+    "classIri": {
+      "description": "Class IRI when kind is NAMED_CLASS.",
+      "type": "string",
+      "format": "uri"
+    },
+    "operands": {
+      "description": "Nested expressions for intersection and union expressions. Minimum operand counts are enforced per expression kind by the OWL profile guard.",
+      "type": "array",
+      "items": {
+        "$ref": "ontologyExpression.json"
+      }
+    },
+    "individualIris": {
+      "description": "Named individuals used by an enumeration expression. Presence is enforced per expression kind by the OWL profile guard.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "uniqueItems": true
+    },
+    "propertyIri": {
+      "description": "Property constrained by a restriction.",
+      "type": "string",
+      "format": "uri"
+    },
+    "restrictionKind": {
+      "$ref": "#/definitions/restrictionKind"
+    },
+    "filler": {
+      "description": "Class expression qualifying a restriction.",
+      "$ref": "ontologyExpression.json"
+    },
+    "cardinality": {
+      "description": "Non-negative cardinality for MIN, MAX, and EXACT restrictions.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "individualIri": {
+      "description": "Individual value for an object has-value restriction.",
+      "type": "string",
+      "format": "uri"
+    },
+    "literal": {
+      "description": "Literal value for a data has-value restriction.",
+      "$ref": "#/definitions/literal"
+    }
+  },
+  "required": ["kind"],
+  "additionalProperties": false
+}

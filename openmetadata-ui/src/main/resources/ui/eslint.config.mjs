@@ -174,7 +174,7 @@ export default [
           withinDescribe: 'it',
         },
       ],
-      'jest/no-disabled-tests': 'warn',
+      'jest/no-disabled-tests': 'error',
       'jest-formatting/padding-around-all': 'error',
 
       // TypeScript rules
@@ -396,6 +396,57 @@ export default [
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  {
+    files: [
+      'src/components/Metric/**/*.{js,jsx,ts,tsx}',
+      'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
+      'src/components/DataAssets/DataAssetsHeader/StatItem.component.tsx',
+      'src/components/common/Table/TableV2.tsx',
+      'src/components/common/Table/TableV2Utils.ts',
+      'src/context/LimitsProvider/useLimitsStore.ts',
+      'src/pages/MetricsPage/**/*.{js,jsx,ts,tsx}',
+      'src/hooks/useMetric*.{js,jsx,ts,tsx}',
+      'src/hoc/LimitWrapper.tsx',
+      'src/rest/metricGroupsAPI.ts',
+      'src/rest/metricsAPI.ts',
+      'src/utils/ToastUtils.ts',
+      'src/utils/MetricEntityUtils/**/*.{js,jsx,ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message: 'Metric workflows use icons from @untitledui/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*'],
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              group: ['@ant-design/icons/*'],
+              allowTypeImports: true,
+              message: 'Metric workflows use icons from @untitledui/icons.',
+            },
+          ],
+        },
+      ],
     },
   },
 
