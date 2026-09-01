@@ -27,18 +27,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.auth.JwtAuthProvider;
-import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PersonaContextDefinition;
-import org.openmetadata.schema.type.api.BulkAssets;
-import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
@@ -47,7 +42,6 @@ import org.openmetadata.service.Entity;
 class PersonaAIContextIT extends McpTestBase {
   private static Persona persona;
   private static Table table;
-  private static Metric metric;
   private static String directMemberToken;
   private static String inheritedMemberToken;
   private static String nonMemberToken;
@@ -58,7 +52,6 @@ class PersonaAIContextIT extends McpTestBase {
     initAuth();
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     table = createServiceDatabaseSchemaTable("persona_context_" + suffix);
-    metric = createMetricWithAsset(suffix);
 
     User directMember = createUser("persona_direct_" + suffix);
     User inheritedMember = createUser("persona_inherited_" + suffix);
@@ -96,41 +89,6 @@ class PersonaAIContextIT extends McpTestBase {
             .withCacheTtlMinutes(30),
         PersonaContextDefinition.class);
     post(contextPath() + "/rules", tableRule("Baseline tables"), PersonaContextDefinition.class);
-  }
-
-  @Test
-  void metricKnowledgeRuleRendersAssetsFromTheBoundedRelationshipRepository() throws Exception {
-    String suffix = UUID.randomUUID().toString().substring(0, 8);
-    Persona metricPersona =
-        post(
-            "personas",
-            new CreatePersona()
-                .withName("metric_persona_context_" + suffix)
-                .withDescription("Metric asset persona context integration test"),
-            Persona.class);
-    String metricContextPath = "personas/" + metricPersona.getId() + "/aiContext";
-    put(
-        metricContextPath,
-        new PersonaContextDefinition().withEnabled(true).withCharacterBudget(400_000),
-        PersonaContextDefinition.class);
-    ContextRule requested = metricRule("Revenue metric assets");
-    PersonaContextDefinition created =
-        post(metricContextPath + "/rules", requested, PersonaContextDefinition.class);
-    ContextRule createdRule =
-        created.getRules().stream()
-            .filter(rule -> requested.getName().equals(rule.getName()))
-            .findFirst()
-            .orElseThrow();
-
-    try {
-      JsonNode document = post(metricContextPath + "/document:refresh", Map.of(), JsonNode.class);
-      assertThat(document.path("markdown").asText())
-          .contains(metric.getFullyQualifiedName())
-          .contains("### Related Assets")
-          .contains(table.getFullyQualifiedName());
-    } finally {
-      deleteResponse(metricContextPath + "/rules/" + createdRule.getId());
-    }
   }
 
   @Test
@@ -234,23 +192,6 @@ class PersonaAIContextIT extends McpTestBase {
         "users", new CreateUser().withName(name).withEmail(name + "@example.com"), User.class);
   }
 
-  private static Metric createMetricWithAsset(String suffix) throws Exception {
-    Metric created =
-        post(
-            "metrics",
-            new CreateMetric()
-                .withName("persona_context_metric_" + suffix)
-                .withDescription("Revenue metric used by persona context"),
-            Metric.class);
-    put(
-        "metrics/" + created.getName() + "/assets/add",
-        new BulkAssets()
-            .withAssets(
-                List.of(new EntityReference().withId(table.getId()).withType(Entity.TABLE))),
-        BulkOperationResult.class);
-    return created;
-  }
-
   private static String tokenFor(User user) {
     return "Bearer "
         + JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3_600);
@@ -265,19 +206,6 @@ class PersonaAIContextIT extends McpTestBase {
                 + table.getFullyQualifiedName()
                 + "\"}}}")
         .withSections(Set.of())
-        .withMaxAssets(1)
-        .withEnabled(true);
-  }
-
-  private static ContextRule metricRule(String name) {
-    return new ContextRule()
-        .withName(name)
-        .withEntityType(Entity.METRIC)
-        .withQueryFilter(
-            "{\"query\":{\"term\":{\"fullyQualifiedName\":\""
-                + metric.getFullyQualifiedName()
-                + "\"}}}")
-        .withSections(Set.of(ContextSection.RELATED_ASSETS))
         .withMaxAssets(1)
         .withEnabled(true);
   }

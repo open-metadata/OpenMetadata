@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface WorkflowInstanceFromApplicationParams {
-  startTs: number;
-  endTs: number;
-  workflowDefinitionName: string;
-  entityLink: string;
+@import (reference) '../../../styles/variables.less';
+.metric-header-info-popover {
+  min-width: 250px;
+  .ant-popover-inner-content {
+    padding: 0;
+  }
+  .selectable-list-item.active {
+    background-color: var(--om-legacy-color-f2f6fc);
+  }
 }
-
-export interface WorkflowInstanceStateParams {
-  startTs: number;
-  endTs: number;
+.ant-btn.ant-btn-text.edit-metrics {
+  border: 1px solid @border-light;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--om-radius-sm);
+  svg {
+    color: @grey-600;
+  }
+}
+.metric-header-info-container {
+  max-width: 148px;
 }
