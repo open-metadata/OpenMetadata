@@ -14,6 +14,13 @@ import test, { expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  APPLICATION_LIST,
+  expectApplicationInstalled,
+  expectApplicationNotInstalled,
+  findApplicationCard,
+  openApplicationDetails,
+} from '../../utils/applications';
+import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
@@ -47,47 +54,13 @@ const installSearchIndexApplication = async (page: Page) => {
 
   expect(response.status()).toBe(200);
 
-  // Wait for at least one app card to be rendered before polling.
-  await page
-    .locator('[data-testid$="-application-card"]')
-    .first()
-    .waitFor({ state: 'visible' });
+  const marketplaceCard = await findApplicationCard(
+    page,
+    'search-indexing-application-card',
+    APPLICATION_LIST.marketplace
+  );
 
-  // Paginate through marketplace pages until the card is found.
-  let cardFound = await page
-    .locator('[data-testid="search-indexing-application-card"]')
-    .isVisible();
-
-  while (!cardFound) {
-    const nextButton = page.locator('[data-testid="next"]');
-
-    const isNextButtonVisible = await nextButton.isVisible();
-
-    if (!isNextButtonVisible || (await nextButton.isDisabled())) {
-      throw new Error(
-        'search-indexing-application-card not found in marketplace and next button is disabled'
-      );
-    }
-
-    const nextPageResponse = page.waitForResponse('/api/v1/apps/marketplace*');
-    await nextButton.click();
-    await nextPageResponse;
-
-    // Wait for the next page's cards to render before re-checking.
-    await page
-      .locator('[data-testid$="-application-card"]')
-      .first()
-      .waitFor({ state: 'visible' });
-
-    cardFound = await page
-      .locator('[data-testid="search-indexing-application-card"]')
-      .isVisible();
-  }
-
-  await page
-    .getByTestId('search-indexing-application-card')
-    .getByTestId('config-btn')
-    .click();
+  await marketplaceCard.getByTestId('config-btn').click();
 
   await page.getByTestId('install-application').waitFor({ state: 'visible' });
   await page.getByTestId('install-application').click();
@@ -117,9 +90,7 @@ const installSearchIndexApplication = async (page: Page) => {
 
   await getApplications;
 
-  await expect(
-    page.getByTestId('search-indexing-application-card')
-  ).toBeVisible();
+  await expectApplicationInstalled(page, 'search-indexing-application-card');
 };
 
 const verifyLastExecutionStatus = async (page: Page) => {
@@ -291,11 +262,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const statusAPI = page.waitForResponse(
         '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
       );
-      await page
-        .locator(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        )
-        .click();
+      await openApplicationDetails(page, 'search-indexing-application-card');
       const statusResponse = await statusAPI;
 
       expect(statusResponse.status()).toBe(200);
@@ -431,11 +398,10 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await toastNotification(page, 'Application uninstalled successfully');
 
-      const card1 = page.locator(
-        '[data-testid="search-indexing-application-card"]'
+      await expectApplicationNotInstalled(
+        page,
+        'search-indexing-application-card'
       );
-
-      await expect(card1).toBeHidden();
     });
 
     await test.step('Install application', async () => {
@@ -446,9 +412,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await test.step('Run application and rerun with table-only config', async () => {
         test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
 
-        await page.click(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        );
+        await openApplicationDetails(page, 'search-indexing-application-card');
 
         const previousRunStartTime = await getLatestRunStartTime(page);
         const triggerPipelineResponse = page.waitForResponse(

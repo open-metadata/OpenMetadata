@@ -20,6 +20,8 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/ui';
 import { Plus, Trash01, X } from '@untitledui/icons';
+import DOMPurify from 'dompurify';
+import parse from 'html-react-parser';
 import { isArray, isEmpty } from 'lodash';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -136,11 +138,11 @@ export const generateSearchDropdownLabel = (
           <span
             className="dropdown-option-label tw:truncate tw:block"
             title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
+            <span>
+              {parse(
+                DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
+              )}
+            </span>
           </span>
           {option.description && (
             <span

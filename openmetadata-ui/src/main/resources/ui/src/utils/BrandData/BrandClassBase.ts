@@ -25,6 +25,25 @@ class BrandClassBase {
     return { src: LogoSrc, svg: Logo };
   }
 
+  /**
+   * Brand logo for the expanded app-mode (AI) sidebar header. Defaults
+   * to the standard wordmark; a downstream build (e.g. Collate) overrides this
+   * to show its sidebar-specific full logo without affecting the NavBar/login
+   * brand from `getLogo()`.
+   */
+  public getSidebarLogo() {
+    return this.getLogo();
+  }
+
+  /**
+   * Compact brand mark for the collapsed app-mode (AI) sidebar rail.
+   * Defaults to the standard monogram; overridable per build independently of
+   * `getMonogram()`.
+   */
+  public getSidebarMonogram() {
+    return this.getMonogram();
+  }
+
   public getReleaseLink(version: string) {
     const versionWithV = 'v' + version;
 
