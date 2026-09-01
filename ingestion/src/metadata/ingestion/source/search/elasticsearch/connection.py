@@ -136,9 +136,7 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext | None:
         )
         return ssl_context  # noqa: RET504
 
-    raise ValueError(
-        "Elasticsearch SSL certificate configuration must include a CA certificate or a client certificate"
-    )
+    return create_ssl_context(verify=True)
 
 
 def _cleanup_staging_dir(staging_dir: str | None) -> None:

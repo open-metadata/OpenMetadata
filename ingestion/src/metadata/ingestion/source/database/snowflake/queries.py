@@ -78,15 +78,16 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-SNOWFLAKE_SESSION_TAG_QUERY = "ALTER SESSION SET QUERY_TAG='{query_tag}'"
+
+def _snowflake_string_literal(value: str) -> str:
+    """Escape quotes and backslashes that Snowflake interprets inside string literals."""
+    escaped = value.replace("\\", "\\\\").replace("'", "''")
+    return f"'{escaped}'"
 
 
 def set_session_tag_query(query_tag: str) -> str:
     """Return the ALTER SESSION statement setting QUERY_TAG to the given value."""
-    # Snowflake reads backslash escapes inside the literal, so those double first;
-    # an unescaped quote would otherwise start a further ALTER SESSION assignment.
-    escaped = query_tag.replace("\\", "\\\\").replace("'", "''")
-    return SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=escaped)
+    return f"ALTER SESSION SET QUERY_TAG={_snowflake_string_literal(query_tag)}"
 
 
 SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
@@ -539,9 +540,18 @@ ORDER BY PROCEDURE_START_TIME DESC
     """
 )
 
-SNOWFLAKE_GET_TABLE_DDL = """
-SELECT GET_DDL('TABLE', :table_name) AS \"text\"
+SNOWFLAKE_GET_DDL = """
+SELECT GET_DDL({object_type}, {object_name}) AS \"text\"
 """
+
+
+def build_get_ddl_query(object_type: str, object_name: str) -> str:
+    """Render GET_DDL arguments as escaped literals because Snowflake rejects binds here."""
+    return SNOWFLAKE_GET_DDL.format(
+        object_type=_snowflake_string_literal(object_type),
+        object_name=_snowflake_string_literal(object_name),
+    )
+
 
 SNOWFLAKE_GET_VIEW_DEFINITION = """
 SELECT table_name "view_name",
@@ -549,18 +559,6 @@ SELECT table_name "view_name",
     view_definition "view_def"
 FROM information_schema.views
 WHERE view_definition is not null
-"""
-
-SNOWFLAKE_GET_VIEW_DDL = """
-SELECT GET_DDL('VIEW', :view_name) AS \"text\"
-"""
-
-SNOWFLAKE_GET_STREAM_DEFINITION = """
-SELECT GET_DDL('STREAM', :stream_name) AS \"text\"
-"""
-
-SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION = """
-SELECT GET_DDL('SEMANTIC_VIEW', :semantic_view_name) AS \"text\"
 """
 
 SNOWFLAKE_QUERY_LOG_QUERY = """

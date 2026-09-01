@@ -22,7 +22,7 @@ import sqlalchemy.types as sqltypes
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Connection, reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
@@ -45,20 +45,17 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
-    SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION,
     SNOWFLAKE_GET_SEMANTIC_VIEWS,
     SNOWFLAKE_GET_STAGES,
-    SNOWFLAKE_GET_STREAM_DEFINITION,
     SNOWFLAKE_GET_STREAM_NAMES,
-    SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TABLE_NAMES,
-    SNOWFLAKE_GET_VIEW_DDL,
     SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
+    build_get_ddl_query,
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -268,23 +265,23 @@ def _get_query_parameters(
     include_transient_tables: Optional[bool] = False,  # noqa: UP045
     include_views: Optional[bool] = False,  # noqa: UP045
 ):
-    """Returns the proper query parameters depending if the extraction is Incremental or Full"""
-    parameters = {
-        "schema": fqn.unquote_name(schema),
+    """Return SQL-format values separately from driver bind values."""
+    format_parameters = {
         "include_transient_tables": ("TRUE" if include_transient_tables else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'"),
         "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
     }
+    bind_parameters = {"schema": fqn.unquote_name(schema)}
 
     if incremental and incremental.enabled:
         database, _ = self._current_database_schema(connection)  # pylint: disable=W0212
-        parameters = {
-            **parameters,
+        format_parameters["account_usage"] = account_usage or "SNOWFLAKE.ACCOUNT_USAGE"
+        bind_parameters = {
+            **bind_parameters,
             "date": incremental.start_timestamp,
             "database": database,
-            "account_usage": account_usage or "SNOWFLAKE.ACCOUNT_USAGE",
         }
 
-    return parameters
+    return format_parameters, bind_parameters
 
 
 def get_table_names(self, connection, schema: str, **kw):
@@ -293,7 +290,7 @@ def get_table_names(self, connection, schema: str, **kw):
     account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
-    parameters = _get_query_parameters(
+    format_parameters, bind_parameters = _get_query_parameters(
         self,
         connection,
         schema,
@@ -305,7 +302,7 @@ def get_table_names(self, connection, schema: str, **kw):
 
     query = queries["default"]
 
-    cursor = connection.execute(text(query.format(**parameters)), parameters)
+    cursor = connection.execute(text(query.format(**format_parameters)), bind_parameters)
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -337,14 +334,20 @@ def get_view_names(self, connection, schema, **kw):
     account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental, account_usage)
+    format_parameters, bind_parameters = _get_query_parameters(
+        self,
+        connection,
+        schema,
+        incremental,
+        account_usage,
+    )
 
     if kw.get("materialized_views"):
         query = queries["materialized_views"]
     else:
         query = queries["views"]
 
-    cursor = connection.execute(text(query.format(**parameters)), parameters)
+    cursor = connection.execute(text(query.format(**format_parameters)), bind_parameters)
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1]) for row in cursor]
     )
@@ -459,6 +462,21 @@ def build_semantic_view_column(entry: dict) -> dict:
     }
 
 
+def _fetch_ddl(connection: Connection, object_type: str, object_name: str) -> Optional[str]:  # noqa: UP045
+    cursor = None
+    try:
+        cursor = connection.execute(text(build_get_ddl_query(object_type, object_name)))
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception as exc:
+        logger.warning(f"Failed to fetch DDL for {object_type} [{object_name}]: {exc}")
+    finally:
+        if cursor is not None:
+            cursor.close()
+    return None
+
+
 @reflection.cache
 def get_view_definition(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     view_definition = get_view_definition_wrapper(
@@ -477,18 +495,7 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):  # pyl
 
     schema = schema or self.default_schema_name
     view_name = _qualified_identifier(schema, table_name)
-    cursor = None
-    try:
-        cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL), {"view_name": view_name})
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception as exc:
-        logger.warning(f"Failed to fetch DDL for view [{view_name}]: {exc}")
-    finally:
-        if cursor is not None:
-            cursor.close()
-    return None
+    return _fetch_ddl(connection, "VIEW", view_name)
 
 
 @reflection.cache
@@ -500,17 +507,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
     """
     schema = schema or self.default_schema_name
     stream_name = _qualified_identifier(schema, stream_name)
-    cursor = connection.execute(
-        text(SNOWFLAKE_GET_STREAM_DEFINITION),
-        {"stream_name": stream_name},
-    )
-    try:
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception:
-        pass
-    return None
+    return _fetch_ddl(connection, "STREAM", stream_name)
 
 
 @reflection.cache
@@ -520,17 +517,7 @@ def get_semantic_view_definition(  # pylint: disable=unused-argument
     """Gets the semantic view definition (DDL)."""
     schema = schema or self.default_schema_name
     semantic_view_name = _qualified_identifier(schema, semantic_view_name)
-    cursor = connection.execute(
-        text(SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION),
-        {"semantic_view_name": semantic_view_name},
-    )
-    try:
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception:
-        pass
-    return None
+    return _fetch_ddl(connection, "SEMANTIC_VIEW", semantic_view_name)
 
 
 @reflection.cache
@@ -869,11 +856,4 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
     """
     schema = schema or self.default_schema_name
     table_name = _qualified_identifier(schema, table_name)
-    cursor = connection.execute(text(SNOWFLAKE_GET_TABLE_DDL), {"table_name": table_name})
-    try:
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception:
-        pass
-    return None
+    return _fetch_ddl(connection, "TABLE", table_name)

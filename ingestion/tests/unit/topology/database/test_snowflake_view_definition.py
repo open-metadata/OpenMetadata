@@ -9,9 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Tests for the Snowflake view-definition fallback."""
+"""Tests for Snowflake DDL retrieval."""
 
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.ingestion.source.database.snowflake import utils as snowflake_utils
 
@@ -35,6 +38,40 @@ def test_view_definition_fallback_closes_result():
         )
 
     assert result == "SELECT 1"
+    execute_args = connection.execute.call_args.args
+    assert len(execute_args) == 1
+    assert "GET_DDL('VIEW', '\"ANALYTICS\".\"ORDERS_VIEW\"')" in str(execute_args[0])
+    cursor.close.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    ("getter", "object_type"),
+    [
+        (snowflake_utils.get_stream_definition, "STREAM"),
+        (snowflake_utils.get_semantic_view_definition, "SEMANTIC_VIEW"),
+        (snowflake_utils.get_table_ddl, "TABLE"),
+    ],
+)
+def test_ddl_getters_use_literal_object_names_and_close_result(
+    getter: Callable[..., str | None],
+    object_type: str,
+):
+    dialect = MagicMock(default_schema_name="PUBLIC")
+    connection = MagicMock()
+    cursor = connection.execute.return_value
+    cursor.fetchone.return_value = ("DDL",)
+
+    result = getter(
+        dialect,
+        connection,
+        "ORDERS_OBJECT",
+        schema="ANALYTICS",
+    )
+
+    assert result == "DDL"
+    execute_args = connection.execute.call_args.args
+    assert len(execute_args) == 1
+    assert f"GET_DDL('{object_type}', '\"ANALYTICS\".\"ORDERS_OBJECT\"')" in str(execute_args[0])
     cursor.close.assert_called_once_with()
 
 

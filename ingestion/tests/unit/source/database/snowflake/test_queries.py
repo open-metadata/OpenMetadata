@@ -9,18 +9,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Unit tests for the Snowflake session query tag statement"""
+"""Unit tests for safe Snowflake query construction."""
 
 from unittest.mock import Mock
 
 import pytest
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 
-from metadata.ingestion.source.database.snowflake.queries import set_session_tag_query
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
+)
+from metadata.ingestion.source.database.snowflake.queries import (
+    build_get_ddl_query,
+    set_session_tag_query,
+)
 from metadata.ingestion.source.database.snowflake.utils import (
     _qualified_identifier,
     _quote_identifier,
     get_table_names,
+    get_view_names,
 )
 
 
@@ -63,6 +70,19 @@ def test_identifier_helpers_escape_embedded_double_quotes():
     )
 
 
+def test_get_ddl_query_keeps_object_name_inside_one_string_literal():
+    object_name = _qualified_identifier(
+        "sales\\archive",
+        "orders' ); DROP TABLE secret; --",
+    )
+
+    query = build_get_ddl_query("TABLE", object_name)
+
+    assert "GET_DDL('TABLE'," in query
+    assert "'\"sales\\\\archive\".\"orders'' ); DROP TABLE secret; --\"'" in query
+    assert ":object_name" not in query
+
+
 def test_table_name_query_binds_catalog_schema_name():
     dialect = SnowflakeDialect()
     connection = Mock()
@@ -73,4 +93,28 @@ def test_table_name_query_binds_catalog_schema_name():
 
     statement, parameters = connection.execute.call_args.args
     assert schema not in str(statement)
-    assert parameters["schema"] == schema
+    assert parameters == {"schema": schema}
+
+
+def test_incremental_view_query_only_passes_actual_bind_parameters():
+    dialect = SnowflakeDialect()
+    dialect._current_database_schema = Mock(return_value=("ANALYTICS", "PUBLIC"))
+    connection = Mock()
+    connection.execute.return_value = []
+    incremental = IncrementalConfig(enabled=True, start_timestamp=123456789)
+
+    get_view_names(
+        dialect,
+        connection,
+        schema="PUBLIC",
+        incremental=incremental,
+        account_usage="GOVERNANCE.ACCOUNT_USAGE",
+    )
+
+    statement, parameters = connection.execute.call_args.args
+    assert "GOVERNANCE.ACCOUNT_USAGE.tables" in str(statement)
+    assert parameters == {
+        "database": "ANALYTICS",
+        "schema": "PUBLIC",
+        "date": 123456789,
+    }
