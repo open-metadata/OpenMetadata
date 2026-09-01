@@ -27,13 +27,6 @@ ON CONFLICT (stateId) DO UPDATE SET
   updatedAt = EXCLUDED.updatedAt,
   latestRecordId = EXCLUDED.latestRecordId;
 
--- Existing metrics predate the approval workflow and must remain usable. Explicit
--- workflow statuses are preserved, and this update is idempotent.
-UPDATE metric_entity
-SET json = jsonb_set(json::jsonb, '{entityStatus}', '"Approved"'::jsonb)
-WHERE json->>'entityStatus' IS NULL
-   OR json->>'entityStatus' = 'Unprocessed';
-
 -- Invalidate pre-2.1 projection success records. RDF status remains REBUILDING until a new
 -- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
 DELETE FROM apps_extension_time_series

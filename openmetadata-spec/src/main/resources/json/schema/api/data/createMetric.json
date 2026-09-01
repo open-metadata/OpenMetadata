@@ -73,29 +73,11 @@
     "assets": {
       "description": "Data assets (tables, dashboards, etc.) this metric is computed on or applies to.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null,
-      "deprecated": true,
-      "$comment": "@deprecated Use PUT /v1/metrics/{name}/assets/add to link assets after creating the metric"
-    },
-    "parent": {
-      "description": "Fully qualified name of the parent metric this metric is a variant of.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
-    "metricGroup": {
-      "description": "Fully qualified name of the Metric Group this metric hierarchy belongs to. Children inherit their parent's group.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "default": null
     },
     "owners": {
       "description": "Owners of this metric",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
-    "experts": {
-      "description": "List of fully qualified user names for users who are experts in this metric.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
       "default": null
     },
     "reviewers": {

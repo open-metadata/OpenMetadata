@@ -102,14 +102,6 @@ import {
 } from './RouterUtils';
 import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
-
-/**
- * Entities whose lifecycle is driven by a governance approval workflow, so their entity status is
- * meaningful enough to surface in the page header.
- */
-const ENTITY_STATUS_SUPPORTED_TYPES: ReadonlySet<EntityType> = new Set([
-  EntityType.METRIC,
-]);
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 const SERVICE_ROUTE_CATEGORIES: Set<string> = new Set(
@@ -743,14 +735,8 @@ class EntityUtilClassBase {
     );
   }
 
-  /**
-   * Whether the entity header should carry a Draft / In review / Approved badge.
-   *
-   * Only entities that actually run an approval workflow qualify — for everything else the status
-   * is always `Unprocessed`, and a badge saying so is noise.
-   */
-  public shouldShowEntityStatus(entityType: string): boolean {
-    return ENTITY_STATUS_SUPPORTED_TYPES.has(entityType as EntityType);
+  public shouldShowEntityStatus(_entityType: string): boolean {
+    return false;
   }
 
   public getEntityTypes(): string[] {
