@@ -224,6 +224,7 @@ class PatchEntityToolTest {
         "persona",
         "testCase",
         "testSuite",
+        "task",
         "user",
         "workflow"
       })

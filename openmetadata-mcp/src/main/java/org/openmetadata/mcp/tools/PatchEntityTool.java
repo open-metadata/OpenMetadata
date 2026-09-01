@@ -46,6 +46,8 @@ public class PatchEntityTool implements McpTool {
   private static final String VALUE_KEY = "value";
   private static final String FROM_KEY = "from";
 
+  // These resources perform lifecycle work outside EntityRepository.patch(). Any resource that
+  // adds custom PATCH behavior must be assessed here before patch_entity can support it safely.
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
           Entity.APPLICATION,
@@ -56,6 +58,7 @@ public class PatchEntityTool implements McpTool {
           Entity.PERSONA,
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
+          Entity.TASK,
           Entity.USER,
           Entity.WORKFLOW);
 
