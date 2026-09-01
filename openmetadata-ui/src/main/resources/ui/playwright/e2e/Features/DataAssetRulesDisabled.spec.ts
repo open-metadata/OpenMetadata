@@ -819,3 +819,56 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  `Data Product Domain Validation Rule Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    const assetDomain = new Domain();
+    const productDomain = new Domain();
+    const crossDomainDataProduct = new DataProduct([productDomain]);
+    const crossTable = new TableClass();
+
+    test.beforeAll('Setup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await assetDomain.create(apiContext);
+      await productDomain.create(apiContext);
+      await crossDomainDataProduct.create(apiContext);
+      await crossTable.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await crossTable.delete(apiContext);
+      await crossDomainDataProduct.delete(apiContext);
+      await productDomain.delete(apiContext);
+      await assetDomain.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should allow assigning a Data Product from a different domain', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await crossTable.visitEntityPage(page);
+
+      await assignDomain(page, assetDomain.responseData);
+
+      await assignDataProduct(page, assetDomain.responseData, [
+        crossDomainDataProduct.responseData,
+      ]);
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-list')
+          .getByTestId(
+            `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
+          )
+      ).toBeVisible();
+    });
+  }
+);
