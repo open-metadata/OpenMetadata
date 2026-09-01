@@ -12,6 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import { HelmetProvider } from 'react-helmet-async';
 import { PageType } from '../../generated/system/ui/page';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -83,9 +84,11 @@ let queryClient: QueryClient;
 
 const renderDataMarketplacePage = () =>
   render(
-    <QueryClientProvider client={queryClient}>
-      <DataMarketplacePage />
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <DataMarketplacePage />
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 
 describe('DataMarketplacePage component', () => {

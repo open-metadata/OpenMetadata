@@ -10210,6 +10210,55 @@ public interface CollectionDAO {
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {
+    String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+    String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+    String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+
+    /**
+     * Purges the profiler history left behind by a hard-deleted table, bounded to profiles recorded
+     * at or before {@code deletedAt}.
+     *
+     * <p>profiler_data_time_series is keyed by FQN hash and carries no table id, so a purge running
+     * after the FQN has been reused cannot otherwise tell the dead table's rows from its successor's.
+     * Everything the successor records happens after the delete, so the watermark makes this purge
+     * safe to run at any later point, and idempotent when it runs more than once.
+     */
+    default int deleteTableProfilerData(String tableFqn, long deletedAt) {
+      String table = getTimeSeriesTableName();
+      int deleted = deleteByFqnHash(table, tableFqn, TABLE_PROFILE_EXTENSION, deletedAt);
+      deleted += deleteByFqnHash(table, tableFqn, SYSTEM_PROFILE_EXTENSION, deletedAt);
+      deleted += deleteColumnProfiles(table, tableFqn, deletedAt);
+      return deleted;
+    }
+
+    @SqlUpdate(
+        "DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+            + "AND timestamp <= :deletedAt")
+    int deleteByFqnHash(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("deletedAt") long deletedAt);
+
+    @SqlUpdate(
+        "DELETE FROM <table> WHERE entityFQNHash LIKE :hashPrefix AND extension = :extension "
+            + "AND timestamp <= :deletedAt")
+    int deleteByFqnHashPrefix(
+        @Define("table") String table,
+        @Bind("hashPrefix") String hashPrefix,
+        @Bind("extension") String extension,
+        @Bind("deletedAt") long deletedAt);
+
+    /**
+     * Column profiles are keyed by the (possibly nested) column FQN, so they sit under the table's
+     * hash rather than on it. The prefix is built from MD5 segments, which cannot contain a LIKE
+     * wildcard, so it needs no escaping.
+     */
+    private int deleteColumnProfiles(String table, String tableFqn, long deletedAt) {
+      String hashPrefix = FullyQualifiedName.buildHash(tableFqn) + Entity.SEPARATOR + "%";
+      return deleteByFqnHashPrefix(table, hashPrefix, TABLE_COLUMN_PROFILE_EXTENSION, deletedAt);
+    }
+
     @Override
     default String getTimeSeriesTableName() {
       return "profiler_data_time_series";
@@ -10268,16 +10317,31 @@ public interface CollectionDAO {
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
 
+    // A table FQN is always service.database.schema.table, so table_entity.fqnHash is always four
+    // '.'-joined MD5 segments -- exactly 131 characters. A column profile is keyed by the column
+    // FQN, whose hash extends that with at least one more segment (more for nested columns), so
+    // truncating to 131 yields its parent table's hash, and is a no-op for table-level rows that
+    // are already that length. Comparing the raw hash never matched, which silently purged every
+    // column profile of every live table on each run (issue #27041).
+    //
+    // Resolving the parent from the outer row keeps a single equality, so both planners serve this
+    // as a hash anti-join. Correlating the other way (entityFQNHash LIKE te.fqnHash || '.%') builds
+    // the pattern from the inner row, leaving no equijoin key, and degrades to a nested loop over
+    // table_entity per profiler row: 32s vs 106ms on Postgres 15, 76s vs 247ms on MySQL 8 over 5k
+    // tables / 105k rows. 1.9.9/postgres/postDataMigrationSQLScript.sql resolves the same parent
+    // for the same reason, noting it is "much faster than LIKE".
+    String PARENT_TABLE_HASH = "LEFT(pdts.entityFQNHash, 131)";
+
     // profiler_data_time_series has no id column (unique key is
     // entityFQNHash + extension + operation + timestamp), so we limit by
     // row count using single-table DELETE+LIMIT on MySQL and ctid IN (...) on Postgres.
     // This bounds the rows deleted per batch, matching the other orphan-cleanup queries.
     @ConnectionAwareSqlUpdate(
         value =
-            "DELETE FROM profiler_data_time_series "
+            "DELETE FROM profiler_data_time_series AS pdts "
                 + "WHERE NOT EXISTS ("
-                + "  SELECT 1 FROM table_entity te "
-                + "  WHERE te.fqnHash = profiler_data_time_series.entityFQNHash"
+                + "  SELECT 1 FROM table_entity te WHERE te.fqnHash = "
+                + PARENT_TABLE_HASH
                 + ") "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -10287,8 +10351,8 @@ public interface CollectionDAO {
                 + "WHERE ctid IN ("
                 + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
                 + "  WHERE NOT EXISTS ("
-                + "    SELECT 1 FROM table_entity te "
-                + "    WHERE te.fqnHash = pdts.entityFQNHash"
+                + "    SELECT 1 FROM table_entity te WHERE te.fqnHash = "
+                + PARENT_TABLE_HASH
                 + "  ) "
                 + "  LIMIT :limit"
                 + ")",

@@ -309,3 +309,87 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  `Data Product Domain Validation Rule Enabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    const assetDomain = new Domain();
+    const productDomain = new Domain();
+    const sameDomainDataProduct = new DataProduct([assetDomain]);
+    const otherDomainDataProduct = new DataProduct([productDomain]);
+    const crossTable = new TableClass();
+
+    test.beforeAll('Setup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await assetDomain.create(apiContext);
+      await productDomain.create(apiContext);
+      await sameDomainDataProduct.create(apiContext);
+      await otherDomainDataProduct.create(apiContext);
+      await crossTable.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await crossTable.delete(apiContext);
+      await sameDomainDataProduct.delete(apiContext);
+      await otherDomainDataProduct.delete(apiContext);
+      await productDomain.delete(apiContext);
+      await assetDomain.delete(apiContext);
+      await afterAction();
+    });
+
+    // With the "Data Product Domain Validation" rule enabled, the Data Product
+    // dropdown stays scoped to the asset's domain, so a Data Product from a
+    // different domain is not offered.
+    test('should not list Data Products from a different domain', async ({
+      page,
+    }) => {
+      await authenticateAdminPage(page);
+      await crossTable.visitEntityPage(page);
+
+      await assignDomainWidget(page, assetDomain.responseData);
+
+      await page
+        .getByTestId('KnowledgePanel.DataProducts')
+        .getByTestId('data-products-container')
+        .getByTestId('add-data-product')
+        .click();
+
+      const selectorInput = page.locator(
+        '[data-testid="data-product-selector"] input'
+      );
+      const sameDomainFqn =
+        sameDomainDataProduct.responseData.fullyQualifiedName;
+      const otherDomainFqn =
+        otherDomainDataProduct.responseData.fullyQualifiedName;
+
+      // Positive control: a Data Product in the asset's domain is listed.
+      await expect(async () => {
+        const searchResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
+        );
+        await selectorInput.clear();
+        await selectorInput.fill(sameDomainDataProduct.data.displayName);
+        await searchResponse;
+        await expect(page.getByTestId(`tag-${sameDomainFqn}`)).toBeVisible({
+          timeout: 2_000,
+        });
+      }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+      // Scoped to the asset's domain, so a Data Product from another domain is
+      // not offered.
+      const otherSearchResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
+      );
+      await selectorInput.clear();
+      await selectorInput.fill(otherDomainDataProduct.data.displayName);
+      await otherSearchResponse;
+
+      await expect(page.getByTestId(`tag-${otherDomainFqn}`)).not.toBeVisible();
+    });
+  }
+);

@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToExplorePage } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToExplorePage,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
@@ -22,7 +27,11 @@ import {
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
-import { test } from '../fixtures/pages';
+
+// Dedicated admin user so that completed search-export background jobs
+// accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let searchExportUser: UserClass;
 
 const startAsyncExport = async (page: Page) => {
   const exportAsyncPromise = page.waitForResponse(
@@ -96,12 +105,24 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
           headers: { 'Content-Type': 'application/json-patch+json' },
         }
       );
+    }
 
+    searchExportUser = new UserClass(undefined, true);
+    await searchExportUser.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (searchExportUser) {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await searchExportUser.delete(apiContext);
       await afterAction();
     }
   });
 
   test.beforeEach(async ({ page }) => {
+    await searchExportUser.login(page);
     await redirectToExplorePage(page);
   });
 
@@ -165,7 +186,6 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
   test('Search mode visible export downloads CSV with tab-specific row count', async ({
     page,
-    browser,
   }) => {
     test.slow();
 
@@ -192,7 +212,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     const jobId = await startAsyncExport(page);
 
     await test.step('CSV row count matches the displayed tab count', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await getApiContext(page);
       const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
       expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -244,7 +264,6 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
   test('Filtered search visible export downloads CSV with the filtered record count', async ({
     page,
-    browser,
   }) => {
     test.slow();
 
@@ -313,7 +332,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     const jobId = await startAsyncExport(page);
 
     await test.step('CSV row count matches the filtered record count', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await getApiContext(page);
       const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
       expect(countCsvResponseRows(csvText)).toBe(filteredCount);
@@ -324,7 +343,6 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
   test('Browse mode visible export downloads CSV with current page row count', async ({
     page,
-    browser,
   }) => {
     test.slow();
 
@@ -369,7 +387,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     const jobId = await startAsyncExport(page);
 
     await test.step('CSV row count matches the displayed page count', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await getApiContext(page);
       const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
       expect(countCsvResponseRows(csvText)).toBe(expectedCount);

@@ -356,14 +356,7 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [
-    allDocuments,
-    isDocumentsLoading,
-    previewFile,
-    searchParams,
-    t,
-    setSearchParams,
-  ]);
+  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');
