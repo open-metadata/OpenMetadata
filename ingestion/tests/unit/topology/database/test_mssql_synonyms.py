@@ -12,6 +12,9 @@
 
 from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
@@ -486,6 +489,11 @@ class TestMssqlSourcePrepare:
 
 class TestIncludeSynonymsFlag:
     """includeSynonyms gates the sweep so an opted-out service runs no synonym queries."""
+
+    def test_defaults_to_disabled(self):
+        # Synonym discovery is opt-in: a service configured before the field existed, or by
+        # anyone who never touched the toggle, must not start paying for the sweep.
+        assert MssqlConnection(hostPort="localhost:1433", database="db").includeSynonyms is False
 
     def test_disabled_skips_the_sweep_entirely(self):
         source = MagicMock(spec=MssqlSource)

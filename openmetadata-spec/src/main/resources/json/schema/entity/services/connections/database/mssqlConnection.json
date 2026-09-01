@@ -92,7 +92,7 @@
       "title": "Include Synonyms",
       "description": "Discover SQL Server synonyms and record them as alternate names (aliases) on the table they resolve to. Also enables alias resolution when building lineage.",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
