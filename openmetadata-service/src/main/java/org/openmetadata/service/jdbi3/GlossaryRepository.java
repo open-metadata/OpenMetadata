@@ -29,7 +29,8 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTermRelations;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
 import java.io.IOException;
@@ -37,7 +38,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -580,46 +580,21 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private void updateAssetIndexes(Glossary original, Glossary updated) {
-    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
-    // its latest value.
-    GlossaryTermRepository repository =
-        (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-    Set<String> targetFQNHashesFromDb =
-        new HashSet<>(
-            daoCollection
-                .tagUsageDAO()
-                .getTargetFQNHashForTagPrefix(updated.getFullyQualifiedName()));
-    List<GlossaryTerm> childTerms = getAllTerms(updated);
-
-    for (GlossaryTerm child : childTerms) {
-      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
-          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
+    String oldFqn = original.getFullyQualifiedName();
+    String newFqn = updated.getFullyQualifiedName();
+    // Sync propagate glossary rename to search:
+    //  1. update the glossary's own doc,
+    //  2. update every descendant term's doc,
+    //  3. rewrite the tagFQN prefix on assets tagged with terms from this glossary.
+    // Pre-#29253-style fire-and-forget reindexAcrossIndices races the rename's DB commit and
+    // can clobber the post-commit write with a stale pre-commit read on pg-opensearch.
+    searchRepository.updateEntity(updated.getEntityReference());
+    for (GlossaryTerm child : getAllTerms(updated)) {
+      searchRepository.updateEntity(child.getEntityReference());
     }
-
-    // List of entity references tagged with the glossary term
-    Map<String, EntityReference> targetFQNFromES =
-        repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
-    List<EntityReference> childrenTerms =
-        searchRepository.getEntitiesContainingFQNFromES(
-            original.getFullyQualifiedName(),
-            getTermCount(updated),
-            GLOSSARY_TERM_SEARCH_INDEX); // get old value of children term from ES
-    for (EntityReference child : childrenTerms) {
-      targetFQNFromES.putAll( // List of entity references tagged with the children term
-          repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
-      searchRepository.updateEntity(child); // update es index of child term
-      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
-    }
-
-    searchRepository.updateEntityIndex(original); // update es index of child term
     searchRepository
         .getSearchClient()
-        .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices("glossary.name", original.getEntityReference());
+        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
   }
 
   private void updateEntityLinksOnGlossaryRename(String oldFqn, String newFqn, Glossary updated) {

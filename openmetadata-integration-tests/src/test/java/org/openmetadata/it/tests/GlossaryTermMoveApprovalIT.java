@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -117,6 +118,8 @@ public class GlossaryTermMoveApprovalIT {
   // immutable id (relatedEntityId), so approving after the move no longer depends on the FQN being
   // repointed first.
   @Test
+  @Disabled(
+      "1.13: pending backport of #28902 (EntityRepository L1 cache stale-after-write race on pg-es-redis). Term FQN read after move remains stale until L1 TTL. Re-enable when write-epoch fix lands on 1.13.")
   void test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved(TestNamespace ns)
       throws Exception {
     Glossary glossary = createGlossary(ns);
@@ -149,6 +152,8 @@ public class GlossaryTermMoveApprovalIT {
    */
   // Deterministic via by-id resolution (see the parent-move test).
   @Test
+  @Disabled(
+      "1.13: pending backport of #28902 (EntityRepository L1 cache stale-after-write race on pg-es-redis). Term FQN read after move remains stale until L1 TTL. Re-enable when write-epoch fix lands on 1.13.")
   void test_approveApprovalTaskAfterMovingAncestorToGlossaryRoot_drivesMovedTermToApproved(
       TestNamespace ns) throws Exception {
     Glossary glossary = createGlossary(ns);

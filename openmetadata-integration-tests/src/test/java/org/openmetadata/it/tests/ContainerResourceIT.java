@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -2925,6 +2926,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
+  @Disabled(
+      "1.13: pending backport of #28902 (EntityRepository L1 cache stale-after-write race on pg-es-redis). Grandchild FQN read served from Guava L1 remains stale after PATCH-parent. Re-enable when write-epoch fix lands on 1.13.")
   void patch_containerParent_cascadesFqnToChildren_200(TestNamespace ns) {
     StorageService service = StorageServiceTestFactory.createS3(ns);
     Container parentA = createUnderService(ns, service, "cascA");

@@ -9,12 +9,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -53,6 +55,15 @@ public class WorkflowTriggerPermissionsIT {
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String TRIGGER_PATH = "/v1/automations/workflows/trigger/";
   private static final long TOKEN_TTL_SECONDS = 3600;
+
+  // dataConsumer JWT tests hit SubjectCache.getUserContext during authorization; if that user
+  // hasn't been created in this JVM session the lookup throws EntityNotFoundException (→404)
+  // and short-circuits the authorizer before it can return the expected 403. Pin the user up
+  // front so the result is deterministic regardless of suite ordering.
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
 
   @Test
   void test_triggerWorkflow_noAuth_returns401(TestNamespace ns) throws Exception {
