@@ -27,7 +27,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 // Canonical names: these DAO interfaces were split out of CollectionDAO into SearchReindexDAOs.
-// CollectionDAO still inherits them, so inline references compile, but JLS 7.5 requires an import to
+// CollectionDAO still inherits them, so inline references compile, but JLS 7.5 requires an import
+// to
 // name the owning interface.
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;

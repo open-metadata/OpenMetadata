@@ -19,7 +19,6 @@ import java.util.Set;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.indexes.TaggableIndex;
 
 /**
@@ -38,6 +37,49 @@ public final class TagDocInvariant implements DocInvariant {
   private static final Set<String> DEPENDS_ON = Set.of("tags");
   private static final Set<String> PRODUCES =
       Set.of("tags", "tier", "classificationTags", "glossaryTags");
+
+  /**
+   * The painless rendering of this invariant, and its canonical home.
+   *
+   * <p>It lives here rather than on {@code SearchClient} so that {@link PainlessComposer} can compose
+   * {@code SearchClient}'s own script constants. While the text lived there, composing them meant
+   * {@code SearchClient} initialising against itself — the constant would be read back through this
+   * class before its own initialiser had run. {@code SearchClient.TAG_RESEPARATION_SCRIPT} now
+   * delegates here, so the dependency runs one way only.
+   *
+   * <p>Note the conditional {@code tier} assignment. Live indexing lifts Tier out of {@code tags[]}
+   * into the dedicated {@code tier} field, so a document touched by a tag-mutating script almost never
+   * carries Tier in {@code tags[]}; assigning {@code tier = null} whenever no Tier was seen would wipe
+   * the live-indexed value. That was found by {@code GlossaryRenameCascade.spec.ts} after the fact,
+   * which is the whole argument for this rule having one home.
+   */
+  public static final String PAINLESS_POSTLUDE =
+      """
+      def newTags = new ArrayList();
+      def tier = null;
+      def classTags = new ArrayList();
+      def glossTags = new ArrayList();
+      if (ctx._source.containsKey('tags') && ctx._source.tags != null) {
+        for (def t : ctx._source.tags) {
+          if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
+          if (t.tagFQN.startsWith('Tier.')) {
+            tier = t;
+          } else {
+            newTags.add(t);
+          }
+          if (t.containsKey('source')) {
+            if (t.source == 'Classification') { classTags.add(t.tagFQN); }
+            else if (t.source == 'Glossary') { glossTags.add(t.tagFQN); }
+          }
+        }
+        ctx._source.tags = newTags;
+        if (tier != null) {
+          ctx._source.tier = tier;
+        }
+        ctx._source.classificationTags = classTags;
+        ctx._source.glossaryTags = glossTags;
+      }
+      """;
 
   private TagDocInvariant() {}
 
@@ -81,6 +123,6 @@ public final class TagDocInvariant implements DocInvariant {
 
   @Override
   public String painlessPostlude() {
-    return SearchClient.TAG_RESEPARATION_SCRIPT;
+    return PAINLESS_POSTLUDE;
   }
 }
