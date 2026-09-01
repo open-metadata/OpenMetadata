@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * A governed ontology modeling pattern available to Ontology Studio.
+ * A governed ontology modeling pattern available to Ontology.
  */
 export interface OntologyPatternTemplate {
     description:       string;
