@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -561,31 +563,45 @@ class DefaultAuthorizerTest {
   }
 
   @Test
-  void authorizeImpersonationRequiresBotsAndUsesImpersonateOperation() {
-    SecurityContext userSecurityContext = securityContext("analyst");
-    SecurityContext botSecurityContext = securityContext("ingestion-bot");
-    SecurityContext flaglessBotSecurityContext = securityContext("flagless-bot");
-    SubjectContext userContext = subjectContext("analyst", false, false, null);
+  void authorizeRequestsEnforcesImpersonationAuthorization() {
+    SecurityContext securityContext = securityContext("owner");
+    User ownerUser = new User().withName("owner").withIsAdmin(true);
+    User analystUser = new User().withName("analyst").withIsBot(false);
     User botUser = new User().withName("ingestion-bot").withIsBot(true);
     botUser.setAllowImpersonation(true);
+    User flaglessBotUser = new User().withName("flagless-bot").withIsBot(true);
     SubjectContext botContext = new SubjectContext(botUser, null);
-    SubjectContext flaglessBotContext = subjectContext("flagless-bot", false, true, null);
     EntityRepository<?> repository = mock(EntityRepository.class);
+    List<AuthRequest> requests = List.of();
     AtomicReference<ResourceContextInterface> capturedResourceContext = new AtomicReference<>();
     AtomicReference<OperationContext> capturedOperationContext = new AtomicReference<>();
 
-    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+    try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
         MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
         MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
-      mockedSubjectContext
-          .when(() -> SubjectContext.getSubjectContext("analyst"))
-          .thenReturn(userContext);
+      mockedAuthorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(
+              new SubjectContext(ownerUser, null),
+              new SubjectContext(ownerUser, "analyst"),
+              new SubjectContext(ownerUser, "flagless-bot"),
+              new SubjectContext(ownerUser, "ingestion-bot"));
       mockedSubjectContext
           .when(() -> SubjectContext.getSubjectContext("ingestion-bot"))
           .thenReturn(botContext);
-      mockedSubjectContext
-          .when(() -> SubjectContext.getSubjectContext("flagless-bot"))
-          .thenReturn(flaglessBotContext);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(eq(Entity.USER), eq("analyst"), anyString(), any()))
+          .thenReturn(analystUser);
+      mockedEntity
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.USER), eq("flagless-bot"), anyString(), any()))
+          .thenReturn(flaglessBotUser);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(eq(Entity.USER), eq("ingestion-bot"), anyString(), any()))
+          .thenReturn(botUser);
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(repository);
       mockedPolicyEvaluator
           .when(
@@ -601,19 +617,26 @@ class DefaultAuthorizerTest {
                 return null;
               });
 
-      AuthorizationException exception =
+      assertDoesNotThrow(
+          () -> authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY));
+      assertNull(capturedResourceContext.get(), "Non-impersonated requests skip authorization");
+
+      AuthorizationException nonBotException =
           assertThrows(
               AuthorizationException.class,
-              () -> authorizer.authorizeImpersonation(userSecurityContext, "owner"));
-      assertEquals("Only bot users can impersonate", exception.getMessage());
+              () ->
+                  authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY));
+      assertTrue(nonBotException.getMessage().contains("does not have impersonation enabled"));
 
       AuthorizationException flaglessException =
           assertThrows(
               AuthorizationException.class,
-              () -> authorizer.authorizeImpersonation(flaglessBotSecurityContext, "owner"));
+              () ->
+                  authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY));
       assertTrue(flaglessException.getMessage().contains("does not have impersonation enabled"));
 
-      assertDoesNotThrow(() -> authorizer.authorizeImpersonation(botSecurityContext, "owner"));
+      assertDoesNotThrow(
+          () -> authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY));
       assertNotNull(capturedResourceContext.get());
       assertNotNull(capturedOperationContext.get());
       assertEquals(Entity.USER, capturedResourceContext.get().getResource());

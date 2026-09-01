@@ -108,6 +108,10 @@ public class DefaultAuthorizer implements Authorizer {
       SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
+    if (subjectContext.impersonatedBy() != null) {
+      checkImpersonationAuthorization(subjectContext);
+    }
+
     if (subjectContext.isAdmin()) {
       return;
     }
@@ -165,24 +169,6 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean shouldMaskPasswords(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return !subjectContext.isBot();
-  }
-
-  public void authorizeImpersonation(SecurityContext securityContext, String targetUser) {
-    String botName = SecurityUtil.getUserName(securityContext);
-    SubjectContext botContext = SubjectContext.getSubjectContext(botName);
-
-    if (!botContext.isBot()) {
-      throw new AuthorizationException("Only bot users can impersonate");
-    }
-    if (!Boolean.TRUE.equals(botContext.user().getAllowImpersonation())) {
-      throw new AuthorizationException("Bot " + botName + " does not have impersonation enabled");
-    }
-
-    OperationContext operationContext =
-        new OperationContext(Entity.USER, MetadataOperation.IMPERSONATE);
-    ResourceContextInterface resourceContext = new ResourceContext<>(Entity.USER, null, targetUser);
-
-    PolicyEvaluator.hasPermission(botContext, resourceContext, operationContext);
   }
 
   /** In 1.2, evaluate policies here instead of just checking the subject */

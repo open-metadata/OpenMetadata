@@ -21,6 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -44,6 +48,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
@@ -2155,6 +2162,225 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .users()
                 .generateToken(regularUser.getId(), JWTTokenExpiry.Seven),
         "Admin should not be able to generate token for regular user");
+  }
+
+  // ===================================================================
+  // AUTHORIZATION HARDENING TESTS
+  // Root JSON Patch replacement and personal access token constraints
+  // ===================================================================
+
+  private static final ObjectMapper PATCH_MAPPER = new ObjectMapper();
+
+  @Test
+  void test_patchUser_rootReplacement_forbiddenForNonAdmin(TestNamespace ns) {
+    User testUser = getLoggedInUser(SdkClients.testUserClient());
+    ArrayNode rootPatch = rootReplacementOps(userJsonWithField(testUser, "isBot", true));
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH, "/v1/users/" + testUser.getId(), rootPatch));
+    assertEquals(403, exception.getStatusCode());
+
+    User afterPatch = Users.get(testUser.getId().toString(), "isBot");
+    assertFalse(
+        Boolean.TRUE.equals(afterPatch.getIsBot()),
+        "isBot must stay false when the root replacement patch is rejected");
+  }
+
+  @Test
+  void test_patchUser_rootReplacement_allowedForAdmin(TestNamespace ns) {
+    String userName = ns.prefix("rootPatchTarget");
+    User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
+    String displayName = ns.prefix("rootPatchedDisplayName");
+    ArrayNode rootPatch = rootReplacementOps(userJsonWithField(user, "displayName", displayName));
+
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), rootPatch);
+
+    assertTrue(response.contains(displayName), "Admin root replacement patch should be applied");
+  }
+
+  @Test
+  void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
+    // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
+    // username from the token's email claim, and BotTokenCache is keyed by that name.
+    String localPart = "patbot" + ns.shortPrefix();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    User botUser =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@test.com")
+                .withIsBot(true)
+                .withAuthenticationMechanism(authMechanism));
+
+    JWTAuthMechanism botToken =
+        SdkClients.adminClient().users().generateToken(botUser.getId(), JWTTokenExpiry.Seven);
+    OpenMetadataClient botClient =
+        new OpenMetadataClient(
+            OpenMetadataConfig.builder()
+                .serverUrl(SdkClients.getServerUrl())
+                .accessToken(botToken.getJWTToken())
+                .build());
+    String tokenRequest =
+        "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}";
+
+    OpenMetadataException directException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                botClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users/security/token", tokenRequest));
+    assertEquals(
+        400,
+        directException.getStatusCode(),
+        "Bots cannot own personal access tokens: " + directException.getMessage());
+
+    RequestOptions impersonateAdmin =
+        RequestOptions.builder().header("X-Impersonate-User", "admin").build();
+    OpenMetadataException impersonatedException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                botClient
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users/security/token",
+                        tokenRequest,
+                        impersonateAdmin));
+    assertEquals(
+        403,
+        impersonatedException.getStatusCode(),
+        "Impersonated personal access token creation must be rejected: "
+            + impersonatedException.getMessage());
+  }
+
+  @Test
+  void test_createPersonalAccessToken_regularUser_ok(TestNamespace ns) {
+    String response =
+        SdkClients.testUserClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}");
+
+    assertTrue(response.contains("jwtToken"), "Regular users can create their own personal tokens");
+  }
+
+  @Test
+  void test_updateUser_selfRoleElevation_forbidden(TestNamespace ns) throws Exception {
+    User testUser = getLoggedInUser(SdkClients.testUserClient());
+    String dataStewardRoleId = getRoleId("DataSteward");
+
+    String elevateBody =
+        "{\"name\":\""
+            + testUser.getName()
+            + "\",\"email\":\""
+            + testUser.getEmail()
+            + "\",\"roles\":[\""
+            + dataStewardRoleId
+            + "\"]}";
+    OpenMetadataException elevateException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", elevateBody));
+    assertEquals(
+        403,
+        elevateException.getStatusCode(),
+        "Role elevation must be rejected: " + elevateException.getMessage());
+
+    // Self-updates that do not gain roles stay allowed
+    String selfUpdateBody =
+        "{\"name\":\""
+            + testUser.getName()
+            + "\",\"email\":\""
+            + testUser.getEmail()
+            + "\",\"description\":\"self update without role change\"}";
+    String response =
+        SdkClients.testUserClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.PUT, "/v1/users", selfUpdateBody);
+    assertTrue(response.contains("self update without role change"));
+  }
+
+  @Test
+  void test_createUser_adminOrBot_forbiddenForNonAdmin(TestNamespace ns) {
+    String adminAttempt = ns.prefix("adminAttempt");
+    String adminUserBody =
+        "{\"name\":\""
+            + adminAttempt
+            + "\",\"email\":\""
+            + toValidEmail(adminAttempt)
+            + "\",\"isAdmin\":true}";
+    OpenMetadataException adminException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", adminUserBody));
+    assertEquals(403, adminException.getStatusCode());
+
+    String botAttempt = ns.prefix("botAttempt");
+    String botUserBody =
+        "{\"name\":\""
+            + botAttempt
+            + "\",\"email\":\""
+            + toValidEmail(botAttempt)
+            + "\",\"isBot\":true}";
+    OpenMetadataException botException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", botUserBody));
+    assertEquals(403, botException.getStatusCode());
+  }
+
+  private String getRoleId(String roleName) throws Exception {
+    String roleJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/roles/name/" + roleName, null);
+    return PATCH_MAPPER.readTree(roleJson).get("id").asText();
+  }
+
+  private User getLoggedInUser(OpenMetadataClient client) {
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
+  }
+
+  private ObjectNode userJsonWithField(User user, String field, Object value) {
+    ObjectNode userJson = PATCH_MAPPER.valueToTree(user);
+    userJson.set(field, PATCH_MAPPER.valueToTree(value));
+    return userJson;
+  }
+
+  private ArrayNode rootReplacementOps(JsonNode value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ObjectNode operation = ops.addObject();
+    operation.put("op", "replace");
+    operation.put("path", "");
+    operation.set("value", value);
+    return ops;
   }
 
   // ===================================================================

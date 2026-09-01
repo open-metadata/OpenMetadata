@@ -151,6 +151,7 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -679,6 +680,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
+    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
@@ -816,6 +820,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
+    } else if (existingUser != null && hasRoleElevation(existingUser.getRoles(), user.getRoles())) {
+      // Self-updates skip generic authorization, so gaining roles needs an explicit admin check.
+      // Shedding roles stays allowed.
+      authorizer.authorizeAdmin(securityContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
@@ -1081,12 +1089,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
           JsonPatch patch) {
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
-      if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
-        String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
-          authorizer.authorizeAdmin(securityContext);
-          continue;
-        }
+      if (!patchOpObject.containsKey("path")) {
+        continue;
+      }
+      String path = patchOpObject.getString("path");
+      if (isPrivilegedUserPatchPath(path)) {
+        authorizer.authorizeAdmin(securityContext);
+        continue;
+      }
+      if (patchOpObject.containsKey("value")) {
         // Check if updating personaPreferences - users can only update their own
         if (path.startsWith("/personaPreferences")) {
           String authenticatedUserName = securityContext.getUserPrincipal().getName();
@@ -1117,6 +1128,32 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
     }
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
+  private static final String IS_BOT_PATCH_PATH = "/isBot";
+  private static final String ROLES_PATCH_PATH_SEGMENT = "/roles";
+
+  // A root-level operation (path "") replaces the whole user document, so it requires the
+  // same admin authorization as the privilege fields it can change.
+  private static boolean isPrivilegedUserPatchPath(String path) {
+    return path.isEmpty()
+        || path.equals(IS_ADMIN_PATCH_PATH)
+        || path.equals(IS_BOT_PATCH_PATH)
+        || path.contains(ROLES_PATCH_PATH_SEGMENT);
+  }
+
+  private static boolean hasRoleElevation(
+      List<EntityReference> currentRoles, List<EntityReference> updatedRoles) {
+    Set<UUID> updatedRoleIds = roleIds(updatedRoles);
+    return !updatedRoleIds.isEmpty() && !updatedRoleIds.equals(roleIds(currentRoles));
+  }
+
+  private static Set<UUID> roleIds(List<EntityReference> roles) {
+    if (nullOrEmpty(roles)) {
+      return Set.of();
+    }
+    return roles.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */
@@ -1795,6 +1832,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
         getResourceContext(),
         new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (!nullOrEmpty(impersonatedBy)) {
+      throw new AuthorizationException(
+          "Cannot create a personal access token for user "
+              + userName
+              + " while impersonated by "
+              + impersonatedBy);
+    }
     User user =
         repository.getByName(
             null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
