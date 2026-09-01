@@ -265,7 +265,7 @@ test.describe(
         restoreTestCaseDescription
       );
       await expect(page.getByTestId('parameter-container')).toContainText(
-        'Column Count'
+        'columnCount'
       );
       await expect(page.getByTestId('parameter-container')).toContainText('4');
       await expect(

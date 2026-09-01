@@ -617,13 +617,31 @@ test.describe(
           .fill('External test for read-only validation');
 
         const entityTypeSelect = page.getByTestId('entity-type');
-        await entityTypeSelect.getByRole('button').click();
+        const entityTypeTrigger = entityTypeSelect.getByRole('button');
+
+        // The documentation panel reacts to focus and rerenders the form. Let
+        // that update settle before the mouse press so React Aria does not
+        // cancel the press when CI is under load.
+        await entityTypeTrigger.focus();
+        await expect(entityTypeTrigger).toBeFocused();
+        await entityTypeTrigger.click();
         const tableOption = page.getByRole('option', {
           name: 'TABLE',
           exact: true,
         });
         await expect(tableOption).toBeVisible();
-        await tableOption.click();
+
+        // React Aria can replace an option node while Playwright checks click
+        // actionability. Its screen position remains stable, matching a user's
+        // mouse selection without retaining a stale option node.
+        const tableOptionBox = await tableOption.boundingBox();
+        if (!tableOptionBox) {
+          throw new Error('TABLE option is visible but has no layout box');
+        }
+        await page.mouse.click(
+          tableOptionBox.x + tableOptionBox.width / 2,
+          tableOptionBox.y + tableOptionBox.height / 2
+        );
 
         await expect(entityTypeSelect).toContainText('TABLE');
 
