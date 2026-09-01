@@ -715,6 +715,12 @@ describe('TableV2 — pixel columns stretch to fill', () => {
     ]);
   });
 
+  it('treats scroll x: true as no width at all', () => {
+    // AntD's `x: true` means "allow sideways scroll, size by content" — it is
+    // not a width, so it must not pin the columns or stop them stretching.
+    expect(widthsFor({ scroll: { x: true } }).header).toEqual(['75%', '25%']);
+  });
+
   it('keeps pixels while columns are resizable', () => {
     // A resizable table measures its own columns, so the values come from the
     // resize state rather than the props — what matters is the unit: a drag
