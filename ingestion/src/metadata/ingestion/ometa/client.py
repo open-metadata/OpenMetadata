@@ -185,7 +185,7 @@ class ClientConfig(ConfigModel):
     retry: Optional[int] = 3  # noqa: UP045
     retry_wait: Optional[int] = 30  # noqa: UP045
     limit_codes: List[int] = [429]  # noqa: RUF012, UP006
-    retry_codes: List[int] = [504]  # noqa: RUF012, UP006
+    retry_codes: List[int] = [503, 504]  # noqa: RUF012, UP006
     auth_token: Optional[Callable] = None  # noqa: UP045
     access_token: Optional[str] = None  # noqa: UP045
     expires_in: Optional[int] = None  # noqa: UP045
@@ -365,7 +365,7 @@ class REST:
         Returns the body json in the 200 status.
 
         When ``raw`` is set, returns the ``Response`` after the same retry/limit
-        decisions (504/429 still retry) instead of the decoded body, so the caller
+        decisions (retries on 503/504; 429 triggers limit handling) instead of the decoded body, so the caller
         can read a status the error handling below would otherwise drop.
         """
         retry_codes = self._retry_codes
