@@ -56,6 +56,10 @@ module.exports = {
   setupFilesAfterEnv: ['./src/setupTests.js'],
   clearMocks: true,
   moduleNameMapper: {
+    // Mock `*.assets.ts` wrappers around `import.meta.glob(...)` — Vite-only
+    // syntax that ts-jest cannot parse. The stub returns `{}` for every named
+    // export so consumers hit their empty-map fallback branch.
+    '\\.assets$': '<rootDir>/src/test/unit/mocks/glob.mock.js',
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|mp4|MP4|webm|WEBM|less|LESS|css|CSS)$':

@@ -12,15 +12,15 @@
  */
 
 // Every emoji PNG resolved to its final asset URL at build time. `?url` +
-// `eager: true` means Vite emits each PNG as a static asset (no JS chunk) and
-// inlines a URL string into this map. The old `await import(`../assets/img/
-// ${fileName}.png`)` bundled a chunk for every PNG under `assets/img/**` —
-// ~100 wasted chunks for the two emoji callers we actually have. Narrow this
-// glob if additional callers need images from other subdirectories.
-const emojiUrls = import.meta.glob<string>(
-  '../assets/img/emojis/*.png',
-  { eager: true, query: '?url', import: 'default' }
-);
+// `eager: true` in `useImage.assets.ts` means Vite emits each PNG as a static
+// asset (no JS chunk) and inlines a URL string into this map. The old
+// `await import(`../assets/img/${fileName}.png`)` bundled a chunk for every
+// PNG under `assets/img/**` — ~100 wasted chunks for the two emoji callers we
+// actually have. The map lives in a separate file so ts-jest can mock it (see
+// jest.config.js `moduleNameMapper` — `import.meta.glob` is Vite-only syntax
+// that ts-jest cannot parse). Narrow the glob in `useImage.assets.ts` if
+// additional callers need images from other subdirectories.
+import { emojiUrls } from './useImage.assets';
 
 const useImage = (fileName: string) => {
   const image = emojiUrls[`../assets/img/${fileName}.png`] ?? null;

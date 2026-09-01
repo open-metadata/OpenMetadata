@@ -14,11 +14,8 @@
 import { loadConnectionSchema } from './loadConnectionSchema';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
-import type {
-  DashboardConnection} from '../generated/entity/services/dashboardService';
-import {
-  DashboardServiceType,
-} from '../generated/entity/services/dashboardService';
+import type { DashboardConnection } from '../generated/entity/services/dashboardService';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
@@ -49,7 +46,9 @@ const dashboardSchemaLoaders: Partial<
   [DashboardServiceType.DomoDashboard]: () =>
     loadConnectionSchema('connections/dashboard/domoDashboardConnection.json'),
   [DashboardServiceType.CustomDashboard]: () =>
-    loadConnectionSchema('connections/dashboard/customDashboardConnection.json'),
+    loadConnectionSchema(
+      'connections/dashboard/customDashboardConnection.json'
+    ),
   [DashboardServiceType.QuickSight]: () =>
     loadConnectionSchema('connections/dashboard/quickSightConnection.json'),
   [DashboardServiceType.QlikSense]: () =>

@@ -45,7 +45,9 @@ const pipelineSchemaLoaders: Partial<
   [PipelineServiceType.CustomPipeline]: () =>
     loadConnectionSchema('connections/pipeline/customPipelineConnection.json'),
   [PipelineServiceType.DatabricksPipeline]: () =>
-    loadConnectionSchema('connections/pipeline/databricksPipelineConnection.json'),
+    loadConnectionSchema(
+      'connections/pipeline/databricksPipelineConnection.json'
+    ),
   [PipelineServiceType.Spline]: () =>
     loadConnectionSchema('connections/pipeline/splineConnection.json'),
   [PipelineServiceType.OpenLineage]: () =>
