@@ -227,7 +227,7 @@ function KeyValueList({
         )}
       </div>
       {fields.map((field, index) => (
-        <div className="tw:flex tw:items-start tw:gap-2" key={field.id}>
+        <div className="tw:flex tw:items-center tw:gap-2" key={field.id}>
           <div className="tw:grid tw:flex-1 tw:grid-cols-2 tw:gap-2">
             <Controller
               control={control}

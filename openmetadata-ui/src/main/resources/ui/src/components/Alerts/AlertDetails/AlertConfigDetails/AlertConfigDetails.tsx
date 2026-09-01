@@ -217,7 +217,13 @@ function AlertConfigDetails({
               </Form.Item>
             )}
             values={{ destinations, readTimeout, resources, timeout }}
-            onChange={(values) => form.setFieldsValue(values)}
+            onChange={(values) => {
+              // Keep this adapter replacement-based even in view mode so the
+              // core form cannot be rehydrated with stale nested config.
+              Object.entries(values).forEach(([name, value]) =>
+                form.setFieldValue(name, value)
+              );
+            }}
           />
         </Col>
         {!isEmpty(extraFormWidgets) && (

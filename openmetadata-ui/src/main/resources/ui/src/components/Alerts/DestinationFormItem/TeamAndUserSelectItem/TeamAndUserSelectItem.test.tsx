@@ -24,6 +24,7 @@ import TeamAndUserSelectItem from './TeamAndUserSelectItem';
 import { TeamAndUserSelectItemProps } from './TeamAndUserSelectItem.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Badge: ({
     children,
     'data-testid': tid,
@@ -190,6 +191,29 @@ describe('TeamAndUserSelectItem', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the dropdown outside an overflow-constrained container', async () => {
+    renderWithForm(
+      <div data-testid="overflow-container">
+        <TeamAndUserSelectItem {...MOCK_PROPS} />
+      </div>
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(screen.getByTestId('overflow-container')).not.toContainElement(
+      screen.getByTestId(
+        `team-user-select-dropdown-${MOCK_PROPS.destinationNumber}`
+      )
+    );
+  });
+
   it('does not open the dropdown when disabled', () => {
     renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} isDisabled />);
 
@@ -271,7 +295,7 @@ describe('TeamAndUserSelectItem', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(document.body);
+      fireEvent.pointerDown(document.body);
     });
 
     expect(

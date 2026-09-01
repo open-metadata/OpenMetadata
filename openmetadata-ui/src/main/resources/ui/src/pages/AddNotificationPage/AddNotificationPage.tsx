@@ -419,7 +419,15 @@ const AddNotificationPage = () => {
                                 resources,
                                 timeout,
                               }}
-                              onChange={(values) => form.setFieldsValue(values)}
+                              onChange={(values) => {
+                                // Each shared field must be replaced at its root. Ant's
+                                // bulk setter deep-merges destination array entries and
+                                // would restore config removed by a type change.
+                                Object.entries(values).forEach(
+                                  ([name, value]) =>
+                                    form.setFieldValue(name, value)
+                                );
+                              }}
                             />
                           </Col>
 

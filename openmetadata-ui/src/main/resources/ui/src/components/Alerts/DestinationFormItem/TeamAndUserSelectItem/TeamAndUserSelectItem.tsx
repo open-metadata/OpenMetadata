@@ -16,6 +16,7 @@ import {
   BadgeWithButton,
   Checkbox,
   Input,
+  Popover,
 } from '@openmetadata/ui-core-components';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -107,21 +108,28 @@ function TeamAndUserSelectItem({
   }, [searchText, entityType, debouncedSearch, isDisabled]);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const clickedOutsideDropdown = !dropdownRef.current?.contains(
-        e.target as Node
-      );
-      const clickedInsideTrigger = triggerRef.current?.contains(
-        e.target as Node
-      );
-      if (clickedOutsideDropdown && !clickedInsideTrigger) {
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+
+      // This picker uses a custom controlled trigger instead of DialogTrigger,
+      // so close in the capture phase before a parent can stop propagation.
+      if (
+        !dropdownRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
         setIsDropdownOpen(false);
         setSearchText('');
       }
     };
-    document.addEventListener('click', handleOutsideClick);
 
-    return () => document.removeEventListener('click', handleOutsideClick);
+    document.addEventListener('pointerdown', handleOutsidePointerDown, true);
+
+    return () =>
+      document.removeEventListener(
+        'pointerdown',
+        handleOutsidePointerDown,
+        true
+      );
   }, []);
 
   return (
@@ -174,9 +182,21 @@ function TeamAndUserSelectItem({
         )}
       </div>
 
-      {isDropdownOpen && (
+      <Popover
+        isNonModal
+        className="tw:w-(--trigger-width)"
+        containerClassName="tw:p-2"
+        data-react-aria-top-layer="true"
+        isOpen={isDropdownOpen}
+        placement="bottom left"
+        triggerRef={triggerRef}
+        onOpenChange={(isOpen) => {
+          setIsDropdownOpen(isOpen);
+          if (!isOpen) {
+            setSearchText('');
+          }
+        }}>
         <div
-          className="tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-2 tw:shadow-lg"
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={dropdownRef}>
           <Input
@@ -224,7 +244,7 @@ function TeamAndUserSelectItem({
             )}
           </div>
         </div>
-      )}
+      </Popover>
     </div>
   );
 }

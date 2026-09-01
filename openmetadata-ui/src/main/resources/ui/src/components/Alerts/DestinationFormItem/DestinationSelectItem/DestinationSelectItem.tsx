@@ -20,7 +20,7 @@ import {
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { X } from '@untitledui/icons';
-import { isEmpty, isEqual, isUndefined, omitBy, startCase } from 'lodash';
+import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +54,7 @@ function DestinationSelectItem({
   onConfigExpandedChange,
 }: Readonly<DestinationSelectItemProps>) {
   const { t } = useTranslation();
-  const { control, setValue } = useFormContext();
+  const { control, setValue, unregister } = useFormContext();
 
   const destinationItem =
     useWatch({ name: `destinations.${id}`, control }) ?? {};
@@ -83,7 +83,7 @@ function DestinationSelectItem({
     const { type, category, config } = destinationItem;
     const current = destinationsWithStatus?.find((d) =>
       isEqual(
-        { type, category, config: omitBy(config, isUndefined) },
+        { type, category, config: normalizeDestinationConfig(config) },
         {
           type: d.type,
           category: d.category,
@@ -109,26 +109,34 @@ function DestinationSelectItem({
         return;
       }
       const isInternal = checkIfDestinationIsInternal(value);
-      setValue(`destinations.${id}`, { destinationType: value });
-      setValue(`destinations.${id}.destinationType`, value, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-      setValue(
-        `destinations.${id}.category`,
-        isInternal ? value : SubscriptionCategory.External
-      );
-
-      if (!isInternal) {
-        setValue(`destinations.${id}.type`, value);
-      }
-
       const configField = getConfigFieldFromDestinationType(value);
-      if (configField) {
-        setValue(`destinations.${id}.config.${configField}`, true);
-      }
+
+      // Replacing a parent object does not remove values owned by mounted RHF
+      // descendants. Unregister destination-specific fields first so changing
+      // type cannot carry endpoint, receiver, or downstream values forward.
+      unregister([
+        `destinations.${id}.config`,
+        `destinations.${id}.downstreamDepth`,
+        `destinations.${id}.notifyDownstream`,
+        `destinations.${id}.type`,
+      ]);
+      setValue(
+        `destinations.${id}`,
+        {
+          destinationType: value,
+          category: isInternal ? value : SubscriptionCategory.External,
+          type: isInternal ? undefined : value,
+          config: configField ? { [configField]: true } : undefined,
+          downstreamDepth: undefined,
+          notifyDownstream: undefined,
+        },
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        }
+      );
     },
-    [id, setValue]
+    [id, setValue, unregister]
   );
 
   const handleNotifyDownstreamChange = useCallback(
@@ -203,6 +211,7 @@ function DestinationSelectItem({
               fieldName={id}
               isConfigExpanded={isConfigExpanded}
               isViewMode={isViewMode}
+              key={destinationType}
               type={destinationType as SubscriptionType}
               onConfigExpandedChange={onConfigExpandedChange}
             />
@@ -216,6 +225,7 @@ function DestinationSelectItem({
                   fieldName={id}
                   isConfigExpanded={isConfigExpanded}
                   isViewMode={isViewMode}
+                  key={destinationType}
                   type={destinationType as SubscriptionCategory}
                   onConfigExpandedChange={onConfigExpandedChange}
                 />

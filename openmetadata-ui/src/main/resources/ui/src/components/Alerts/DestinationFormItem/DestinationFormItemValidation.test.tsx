@@ -121,6 +121,38 @@ function AntFormFocusHarness() {
   );
 }
 
+function AntFormDestinationChangeHarness() {
+  const [form] = Form.useForm<DestinationFormFields>();
+  const destinations = Form.useWatch('destinations', form);
+  const resources = Form.useWatch('resources', form);
+
+  return (
+    <Form<DestinationFormFields>
+      form={form}
+      initialValues={{
+        destinations: OAUTH_DESTINATION_VALUES.destinations,
+        resources: ['table'],
+      }}>
+      <DestinationFormItemFormBridge
+        renderValidationField={(validate) => (
+          <Form.Item
+            hidden
+            name="destinations"
+            rules={[{ validator: validate }]}>
+            <DestinationFormFieldRegistrar />
+          </Form.Item>
+        )}
+        values={{ destinations, resources }}
+        onChange={(values) => {
+          Object.entries(values).forEach(([name, value]) =>
+            form.setFieldValue(name, value)
+          );
+        }}
+      />
+    </Form>
+  );
+}
+
 describe('DestinationFormItem validation', () => {
   it('shows the minimum destination error when required submission is blocked', async () => {
     const onFinish = jest.fn();
@@ -173,5 +205,24 @@ describe('DestinationFormItem validation', () => {
     );
 
     expect(document.activeElement).toBe(tokenUrlInput);
+  });
+
+  it('clears registered config fields when the destination changes', async () => {
+    render(<AntFormDestinationChangeHarness />);
+
+    fireEvent.click(
+      (
+        await screen.findByTestId('destination-category-select-0')
+      ).querySelector('button') as HTMLElement
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'G Chat' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText(
+          'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX'
+        )
+      ).toHaveValue('')
+    );
   });
 });

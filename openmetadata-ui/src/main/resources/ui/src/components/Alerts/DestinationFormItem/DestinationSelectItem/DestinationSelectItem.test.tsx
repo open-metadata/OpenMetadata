@@ -19,7 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { forwardRef, ReactNode } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import {
   Status,
   SubscriptionCategory,
@@ -212,6 +212,7 @@ jest.mock('../../../../utils/Alerts/AlertsUtil', () => ({
 }));
 
 jest.mock('../../../../utils/Alerts/AlertsUtilPure', () => ({
+  ...jest.requireActual('../../../../utils/Alerts/AlertsUtilPure'),
   getFilteredDestinationOptions: jest
     .fn()
     .mockImplementation((key: string) =>
@@ -223,19 +224,40 @@ jest.mock('../../../../utils/Alerts/AlertsUtilPure', () => ({
     { value: 'ActivityFeed', disabled: false },
     { value: 'Email', disabled: false },
   ]),
-  normalizeDestinationConfig: jest.fn().mockImplementation((c) => c),
 }));
 
-jest.mock('./DestinationConfigField/DestinationConfigField', () =>
-  jest
+jest.mock('./DestinationConfigField/DestinationConfigField', () => {
+  const { Controller: MockController, useFormContext: useMockFormContext } =
+    jest.requireActual('react-hook-form');
+
+  return jest
     .fn()
-    .mockImplementation(({ isViewMode }: { isViewMode?: boolean }) => (
-      <div
-        data-testid="destination-config-field"
-        data-view-mode={String(Boolean(isViewMode))}
-      />
-    ))
-);
+    .mockImplementation(
+      ({
+        fieldName,
+        isViewMode,
+      }: {
+        fieldName: number;
+        isViewMode?: boolean;
+      }) => {
+        const { control } = useMockFormContext();
+
+        return (
+          <div
+            data-testid="destination-config-field"
+            data-view-mode={String(Boolean(isViewMode))}>
+            <MockController
+              control={control}
+              name={`destinations.${fieldName}.config.endpoint`}
+              render={({ field }: { field: { value?: string } }) => (
+                <span data-testid="registered-endpoint">{field.value}</span>
+              )}
+            />
+          </div>
+        );
+      }
+    );
+});
 
 const MOCK_PROPS: DestinationSelectItemProps = {
   selectorKey: 0,
@@ -269,6 +291,29 @@ function renderValidationForm(onSubmit: jest.Mock) {
             Submit
           </button>
         </form>
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
+function renderWithDestinationValue(
+  defaultValues: Record<string, unknown> = {}
+) {
+  function Wrapper() {
+    const methods = useForm({ defaultValues });
+    const destination = useWatch({
+      control: methods.control,
+      name: 'destinations.0',
+    });
+
+    return (
+      <FormProvider {...methods}>
+        <DestinationSelectItem {...MOCK_PROPS} />
+        <output data-testid="destination-value">
+          {JSON.stringify(destination)}
+        </output>
       </FormProvider>
     );
   }
@@ -518,6 +563,80 @@ describe('DestinationSelectItem', () => {
     await waitFor(() => {
       expect(screen.getByTestId('alert-success')).toBeInTheDocument();
     });
+  });
+
+  it('shows status when empty advanced fields were omitted from the test request', async () => {
+    const destinationsWithStatus = [
+      {
+        type: SubscriptionType.GChat,
+        category: SubscriptionCategory.External,
+        config: {
+          endpoint: 'https://chat.googleapis.com',
+          httpMethod: 'POST',
+        },
+        statusDetails: {
+          status: Status.Failed,
+          statusCode: 500,
+          reason: 'Connection refused',
+        },
+      },
+    ];
+
+    renderWithForm(
+      <DestinationSelectItem
+        {...MOCK_PROPS}
+        destinationsWithStatus={destinationsWithStatus}
+      />,
+      {
+        destinations: [
+          {
+            type: SubscriptionType.GChat,
+            category: SubscriptionCategory.External,
+            config: {
+              endpoint: 'https://chat.googleapis.com',
+              headers: [],
+              httpMethod: 'POST',
+              queryParams: [],
+            },
+          },
+        ],
+      }
+    );
+
+    expect(await screen.findByTestId('alert-error')).toBeInTheDocument();
+  });
+
+  it('clears destination-specific values when destination type changes', async () => {
+    renderWithDestinationValue({
+      destinations: [
+        {
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+          category: SubscriptionCategory.External,
+          config: {
+            endpoint: 'https://hooks.slack.com',
+            headers: [{ key: 'Authorization', value: 'secret' }],
+          },
+          downstreamDepth: 3,
+          notifyDownstream: true,
+        },
+      ],
+    });
+
+    fireEvent.change(
+      screen.getByTestId(`destination-category-select-${MOCK_PROPS.id}`),
+      { target: { value: SubscriptionType.Email } }
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('destination-value')).toHaveTextContent(
+        JSON.stringify({
+          destinationType: SubscriptionType.Email,
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Email,
+        })
+      )
+    );
   });
 
   it('shows loading skeleton when destination status is loading', async () => {
