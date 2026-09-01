@@ -96,3 +96,44 @@ describe('Table selection', () => {
     expect(rows[1]).toHaveAttribute('data-selected');
   });
 });
+
+describe('Table', () => {
+  it('can omit the selection cell for a full-width synthetic row', () => {
+    render(
+      <Table
+        aria-label="Metrics"
+        selectionBehavior="toggle"
+        selectionMode="multiple">
+        <Table.Header>
+          <Table.Head id="metric" label="Metric" />
+          <Table.Head id="description" label="Description" />
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="metric-row">
+            <Table.Cell>Gross margin</Table.Cell>
+            <Table.Cell>Margin after costs</Table.Cell>
+          </Table.Row>
+          <Table.Row hideSelectionCell id="group-row">
+            <Table.Cell colSpan={3}>Profitability</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const metricRow = screen.getByText('Gross margin').closest('tr');
+    const groupRow = screen.getByText('Profitability').closest('tr');
+
+    expect(metricRow).not.toBeNull();
+    expect(groupRow).not.toBeNull();
+    expect(
+      within(metricRow as HTMLElement).getByRole('checkbox')
+    ).toBeVisible();
+    expect(
+      within(groupRow as HTMLElement).queryByRole('checkbox')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Profitability').closest('td')).toHaveAttribute(
+      'colspan',
+      '3'
+    );
+  });
+});

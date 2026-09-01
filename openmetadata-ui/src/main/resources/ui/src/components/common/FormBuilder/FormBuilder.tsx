@@ -47,6 +47,11 @@ export interface Props extends FormProps {
   capitalizeOptionLabel?: boolean;
 }
 
+const renderSelectWidget = (
+  props: WidgetProps,
+  capitalizeOptionLabel?: boolean
+) => <SelectWidget {...props} capitalizeOptionLabel={capitalizeOptionLabel} />;
+
 const FormBuilder = forwardRef<Form, Props>(
   (
     {
@@ -91,12 +96,8 @@ const FormBuilder = forwardRef<Form, Props>(
       queryBuilder: QueryBuilderWidget,
       code: CodeWidget,
       ...(useSelectWidget && {
-        SelectWidget: (props: WidgetProps) => (
-          <SelectWidget
-            {...props}
-            capitalizeOptionLabel={capitalizeOptionLabel}
-          />
-        ),
+        SelectWidget: (props: WidgetProps) =>
+          renderSelectWidget(props, capitalizeOptionLabel),
       }),
       ...widgetsOverride,
     };

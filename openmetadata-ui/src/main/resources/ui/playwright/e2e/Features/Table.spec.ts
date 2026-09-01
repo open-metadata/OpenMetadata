@@ -606,9 +606,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
+    const saveTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('saveAssociatedTag').click();
-
-    await page.waitForResponse('api/v1/columns/name/*');
+    await saveTagResponse;
 
     await expect(
       page
@@ -655,9 +655,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
+    const removeTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('saveAssociatedTag').click();
-
-    await page.waitForResponse('api/v1/columns/name/*');
+    await removeTagResponse;
 
     await expect(
       page

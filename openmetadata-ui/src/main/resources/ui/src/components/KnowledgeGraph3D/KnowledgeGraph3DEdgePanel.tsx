@@ -65,6 +65,7 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
           : LINK_ONTOLOGY_COLOR;
 
         return (
+          // eslint-disable-next-line react/no-array-index-key -- path may revisit a node; index disambiguates
           <div key={`${step}-${index}`}>
             <div className="tw:flex tw:items-center tw:gap-2.5">
               <span

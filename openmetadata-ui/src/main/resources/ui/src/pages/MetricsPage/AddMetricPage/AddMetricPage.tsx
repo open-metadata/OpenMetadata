@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,248 +10,223 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { omit, startCase } from 'lodash';
-import { FocusEvent, lazy, useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import CustomUnitSelect from '../../../components/common/CustomUnitSelect/CustomUnitSelect';
-import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { OPEN_METADATA } from '../../../constants/service-guide.constant';
-import { CSMode } from '../../../enums/codemirror.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import {
-  CreateMetric,
+  Alert,
+  Box,
+  Breadcrumbs,
+  Button,
+  Card,
+  Input,
+  Select,
+  TextArea,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ArrowLeft, Plus } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import type { FormEvent } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import MetricGroupSelect from '../../../components/Metric/MetricGroupSelect/MetricGroupSelect';
+import MetricReferencePicker from '../../../components/Metric/MetricReferencePicker/MetricReferencePicker';
+import { ROUTES } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import type { CreateMetric } from '../../../generated/api/data/createMetric';
+import {
   Language,
   MetricGranularity,
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
-import { withPageLayout } from '../../../hoc/withPageLayout';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import type { EntityReference } from '../../../generated/entity/type';
+import {
+  createMetricGroup,
+  deleteMetricGroup,
+} from '../../../rest/metricGroupsAPI';
 import { createMetric } from '../../../rest/metricsAPI';
-import { generateFormFields } from '../../../utils/formUtils';
+import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../../components/Database/SchemaEditor/SchemaEditor'))
-);
+interface MetricFormState {
+  name: string;
+  displayName: string;
+  description: string;
+  granularity?: MetricGranularity;
+  metricType?: MetricType;
+  language: Language;
+  code: string;
+  unitOfMeasurement?: UnitOfMeasurement;
+  customUnitOfMeasurement: string;
+  metricGroup?: string;
+  isNewMetricGroup: boolean;
+  owners: EntityReference[];
+  reviewers: EntityReference[];
+  experts: EntityReference[];
+  domains: EntityReference[];
+  relatedMetrics: EntityReference[];
+}
 
-const AddMetricPage = () => {
-  const navigate = useNavigate();
-  const [form] = Form.useForm();
+const INITIAL_FORM: MetricFormState = {
+  name: '',
+  displayName: '',
+  description: '',
+  language: Language.SQL,
+  code: '',
+  customUnitOfMeasurement: '',
+  isNewMetricGroup: false,
+  owners: [],
+  reviewers: [],
+  experts: [],
+  domains: [],
+  relatedMetrics: [],
+};
+
+interface AddMetricPageProps {
+  pageTitle?: string;
+}
+
+const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
   const { t } = useTranslation();
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [activeField, setActiveField] = useState<string>('');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const parentMetricFqn = searchParams.get('parent') ?? undefined;
+  const [values, setValues] = useState<MetricFormState>(INITIAL_FORM);
+  const [isCreating, setIsCreating] = useState(false);
+  const [nameError, setNameError] = useState<string>();
+  const [codeError, setCodeError] = useState<string>();
+  const [customUnitError, setCustomUnitError] = useState<string>();
+  const title =
+    pageTitle ?? t('label.add-new-entity', { entity: t('label.metric') });
 
-  const { breadcrumb, title } = useMemo(() => {
-    const title = t('label.add-new-entity', {
-      entity: t('label.metric'),
-    });
+  const setField = <K extends keyof MetricFormState>(
+    key: K,
+    value: MetricFormState[K]
+  ) => setValues((current) => ({ ...current, [key]: value }));
 
-    return {
-      breadcrumb: [
-        {
-          name: t('label.metric-plural'),
-          url: ROUTES.METRICS,
-        },
-        {
-          name: title,
-          url: '',
-        },
-      ],
-      title,
-    };
-  }, []);
+  const breadcrumbs = useMemo(
+    () => [
+      { id: 'metrics', label: t('label.metric-plural'), href: ROUTES.METRICS },
+      { id: 'add-metric', label: title },
+    ],
+    [t, title]
+  );
 
-  const formFields: FieldProp[] = useMemo(() => {
-    return [
-      {
-        name: 'name',
-        id: 'root/name',
-        label: t('label.name'),
-        required: true,
-        placeholder: t('label.name'),
-        type: FieldTypes.TEXT,
-        props: {
-          'data-testid': 'name',
-        },
-        rules: NAME_FIELD_RULES,
-      },
-      {
-        name: 'displayName',
-        id: 'root/displayName',
-        label: t('label.display-name'),
-        required: false,
-        placeholder: t('label.display-name'),
-        type: FieldTypes.TEXT,
-        props: {
-          'data-testid': 'display-name',
-        },
-      },
-      {
-        name: 'description',
-        required: false,
-        label: t('label.description'),
-        id: 'root/description',
-        type: FieldTypes.DESCRIPTION,
-        props: {
-          'data-testid': 'description',
-          initialValue: '',
-          height: '200px',
-        },
-        rules: [
-          {
-            whitespace: true,
-            message: t('label.field-required', {
-              field: t('label.description'),
-            }),
-          },
-        ],
-      },
-      {
-        name: 'granularity',
-        required: false,
-        label: t('label.granularity'),
-        id: 'root/granularity',
-        type: FieldTypes.SELECT,
-        props: {
-          'data-testid': 'granularity',
-          options: Object.values(MetricGranularity).map((granularity) => ({
-            key: granularity,
-            label: startCase(granularity.toLowerCase()),
-            value: granularity,
-          })),
-          placeholder: `${t('label.select-field', {
-            field: t('label.granularity'),
-          })}`,
-          showSearch: true,
-          filterOption: (input: string, option: { label: string }) => {
-            return (option?.label ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase());
-          },
-        },
-      },
-      {
-        name: 'metricType',
-        required: false,
-        label: t('label.metric-type'),
-        id: 'root/metricType',
-        type: FieldTypes.SELECT,
-        props: {
-          'data-testid': 'metricType',
-          options: Object.values(MetricType).map((metricType) => ({
-            key: metricType,
-            label: startCase(metricType.toLowerCase()),
-            value: metricType,
-          })),
-          placeholder: `${t('label.select-field', {
-            field: t('label.metric-type'),
-          })}`,
-          showSearch: true,
-          filterOption: (input: string, option: { label: string }) => {
-            return (option?.label ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase());
-          },
-        },
-      },
-      {
-        name: 'language',
-        required: false,
-        label: t('label.language'),
-        id: 'root/language',
-        type: FieldTypes.SELECT,
-        props: {
-          'data-testid': 'language',
-          options: Object.values(Language).map((language) => ({
-            key: language,
-            label: language,
-            value: language,
-          })),
-          placeholder: `${t('label.select-field', {
-            field: t('label.language'),
-          })}`,
-          showSearch: true,
-          filterOption: (input: string, option: { label: string }) => {
-            return (option?.label ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase());
-          },
-        },
-      },
-    ];
-  }, []);
+  const handleMetricGroupChange = (
+    metricGroup?: string,
+    isNewMetricGroup = false
+  ) =>
+    setValues((current) => ({
+      ...current,
+      metricGroup,
+      isNewMetricGroup,
+    }));
 
-  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
-    let activeField = '';
-    const isDescription = event.target.classList.contains('ProseMirror');
-    const isMetricExpression =
-      event.target.classList.contains('CodeMirror') ||
-      event.target.id === 'root/language';
-
-    if (isDescription) {
-      activeField = 'root/description';
-    } else if (isMetricExpression) {
-      activeField = 'root/metricExpression';
-    } else {
-      activeField = event.target.id;
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = values.name.trim();
+    const expressionCode = values.code.trim();
+    const requiredNameError = name
+      ? undefined
+      : t('label.field-required', {
+          field: t('label.name'),
+        });
+    const requiredCodeError = expressionCode
+      ? undefined
+      : t('label.field-required', {
+          field: t('label.code'),
+        });
+    const requiredCustomUnitError =
+      values.unitOfMeasurement === UnitOfMeasurement.Other &&
+      !values.customUnitOfMeasurement.trim()
+        ? t('label.field-required', {
+            field: t('label.unit-of-measurement'),
+          })
+        : undefined;
+    setNameError(requiredNameError);
+    setCodeError(requiredCodeError);
+    setCustomUnitError(requiredCustomUnitError);
+    if (requiredNameError || requiredCodeError || requiredCustomUnitError) {
+      return;
     }
 
-    setActiveField(activeField);
-  }, []);
-
-  const handleUnitOfMeasurementChange = (
-    unitOfMeasurement: string,
-    customUnitOfMeasurement?: string
-  ) => {
-    form.setFieldsValue({
-      unitOfMeasurement,
-      customUnitOfMeasurement,
-    });
-  };
-
-  const handleSubmit = async (
-    values: Exclude<CreateMetric, 'metricExpression'> & {
-      code?: string;
-      language?: Language;
-      customUnitOfMeasurement?: string;
-    }
-  ) => {
     setIsCreating(true);
+    let createdGroupId: string | undefined;
     try {
-      const createMetricPayload: CreateMetric = {
-        ...omit(values, ['code', 'language']),
-        metricExpression: {
-          code: values.code,
-          language: values.language,
-        },
-      };
-
-      if (
-        values.unitOfMeasurement === UnitOfMeasurement.Other &&
-        values.customUnitOfMeasurement
-      ) {
-        createMetricPayload.customUnitOfMeasurement =
-          values.customUnitOfMeasurement;
+      let metricGroup = parentMetricFqn ? undefined : values.metricGroup;
+      if (metricGroup && values.isNewMetricGroup) {
+        const group = await createMetricGroup({ name: metricGroup });
+        createdGroupId = group.id;
+        metricGroup = group.fullyQualifiedName ?? group.name;
       }
 
-      const response = await createMetric(createMetricPayload);
+      const payload: CreateMetric = {
+        name,
+        ...(values.displayName.trim()
+          ? { displayName: values.displayName.trim() }
+          : {}),
+        ...(values.description.trim()
+          ? { description: values.description.trim() }
+          : {}),
+        ...(values.granularity ? { granularity: values.granularity } : {}),
+        ...(values.metricType ? { metricType: values.metricType } : {}),
+        ...(values.unitOfMeasurement
+          ? { unitOfMeasurement: values.unitOfMeasurement }
+          : {}),
+        ...(values.unitOfMeasurement === UnitOfMeasurement.Other &&
+        values.customUnitOfMeasurement.trim()
+          ? { customUnitOfMeasurement: values.customUnitOfMeasurement.trim() }
+          : {}),
+        ...(metricGroup ? { metricGroup } : {}),
+        ...(parentMetricFqn ? { parent: parentMetricFqn } : {}),
+        ...(values.owners.length ? { owners: values.owners } : {}),
+        ...(values.reviewers.length ? { reviewers: values.reviewers } : {}),
+        ...(values.experts.length
+          ? {
+              experts: values.experts.map(
+                ({ fullyQualifiedName, name }) =>
+                  fullyQualifiedName ?? name ?? ''
+              ),
+            }
+          : {}),
+        ...(values.domains.length
+          ? {
+              domains: values.domains.map(
+                ({ fullyQualifiedName, name }) =>
+                  fullyQualifiedName ?? name ?? ''
+              ),
+            }
+          : {}),
+        ...(values.relatedMetrics.length
+          ? {
+              relatedMetrics: values.relatedMetrics.map(
+                ({ fullyQualifiedName, name }) =>
+                  fullyQualifiedName ?? name ?? ''
+              ),
+            }
+          : {}),
+        metricExpression: {
+          language: values.language,
+          code: expressionCode,
+        },
+      };
+      const metric = await createMetric(payload);
       navigate(
         getEntityDetailsPath(
           EntityType.METRIC,
-          response.fullyQualifiedName ?? ''
+          metric.fullyQualifiedName ?? metric.name
         )
       );
     } catch (error) {
+      if (createdGroupId) {
+        try {
+          await deleteMetricGroup(createdGroupId, true);
+        } catch {
+          // The create failure remains the actionable error; cleanup can be retried by an admin.
+        }
+      }
       showErrorToast(error as AxiosError);
     } finally {
       setIsCreating(false);
@@ -259,104 +234,267 @@ const AddMetricPage = () => {
   };
 
   return (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto',
-        allowScroll: true,
-        children: (
-          <div data-testid="add-metric-container">
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Col>
-
-              <Col span={24}>
-                <Typography.Title
-                  className="m-b-0"
-                  data-testid="heading"
-                  level={5}>
-                  {title}
-                </Typography.Title>
-              </Col>
-              <Col span={24}>
-                <Form
-                  form={form}
-                  layout="vertical"
-                  onFinish={handleSubmit}
-                  onFocus={handleFieldFocus}>
-                  {generateFormFields(formFields)}
-                  <Form.Item
-                    label={t('label.unit-of-measurement')}
-                    name="unitOfMeasurement">
-                    <CustomUnitSelect
-                      customValue={form.getFieldValue(
-                        'customUnitOfMeasurement'
-                      )}
-                      dataTestId="unitOfMeasurement"
+    <main
+      className="tw:min-h-full tw:bg-secondary tw:px-4 tw:py-6 tw:md:px-6"
+      data-testid="add-metric-container">
+      <DocumentTitle title={title} />
+      <Box
+        className="tw:mx-auto tw:w-full tw:max-w-5xl"
+        direction="col"
+        gap={5}>
+        <Breadcrumbs autoCollapse items={breadcrumbs} size="sm" />
+        <Box direction="col" gap={1}>
+          <Typography size="display-xs" weight="semibold">
+            <h1 data-testid="heading">{title}</h1>
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.metric-description')}
+          </Typography>
+        </Box>
+        <Box className="tw:grid tw:grid-cols-1 tw:items-start tw:gap-5 tw:lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <Card>
+            <Card.Content>
+              <form noValidate onSubmit={handleSubmit}>
+                <Box direction="col" gap={5}>
+                  <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
+                    <Input
+                      isRequired
+                      hint={nameError}
+                      inputDataTestId="name"
+                      isInvalid={Boolean(nameError)}
+                      label={t('label.name')}
+                      placeholder={t('label.name')}
+                      value={values.name}
+                      onChange={(name) => {
+                        setField('name', name);
+                        setNameError(undefined);
+                      }}
+                    />
+                    <Input
+                      inputDataTestId="display-name"
+                      label={t('label.display-name')}
+                      placeholder={t('label.display-name')}
+                      value={values.displayName}
+                      onChange={(displayName) =>
+                        setField('displayName', displayName)
+                      }
+                    />
+                  </Box>
+                  <TextArea
+                    label={t('label.description')}
+                    placeholder={t('label.description')}
+                    rows={5}
+                    value={values.description}
+                    onChange={(description) =>
+                      setField('description', description)
+                    }
+                  />
+                  <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
+                    <Select
+                      label={t('label.metric-type')}
+                      placeholder={t('label.select-field', {
+                        field: t('label.metric-type'),
+                      })}
+                      selectedKey={values.metricType ?? null}
+                      onSelectionChange={(key) =>
+                        setField('metricType', key as MetricType)
+                      }>
+                      {Object.values(MetricType).map((metricType) => (
+                        <Select.Item
+                          id={metricType}
+                          key={metricType}
+                          label={getMetricEnumLabel(t, metricType)}
+                        />
+                      ))}
+                    </Select>
+                    <Select
+                      label={t('label.granularity')}
+                      placeholder={t('label.select-field', {
+                        field: t('label.granularity'),
+                      })}
+                      selectedKey={values.granularity ?? null}
+                      onSelectionChange={(key) =>
+                        setField('granularity', key as MetricGranularity)
+                      }>
+                      {Object.values(MetricGranularity).map((granularity) => (
+                        <Select.Item
+                          id={granularity}
+                          key={granularity}
+                          label={getMetricEnumLabel(t, granularity)}
+                        />
+                      ))}
+                    </Select>
+                    <Select
+                      label={t('label.unit-of-measurement')}
                       placeholder={t('label.select-field', {
                         field: t('label.unit-of-measurement'),
                       })}
-                      onChange={handleUnitOfMeasurementChange}
-                    />
-                  </Form.Item>
-                  <Form.Item hidden name="customUnitOfMeasurement">
-                    <input type="hidden" />
-                  </Form.Item>
-                  <Form.Item
-                    data-testid="expression-code-container"
-                    label={t('label.code')}
-                    name="code"
-                    trigger="onChange">
-                    <SchemaEditor
-                      className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-                      mode={{ name: CSMode.SQL }}
-                      showCopyButton={false}
-                    />
-                  </Form.Item>
-                  <Row justify="end">
-                    <Col>
-                      <Button
-                        data-testid="back-button"
-                        type="link"
-                        onClick={() => navigate(ROUTES.METRICS)}>
-                        {t('label.back')}
-                      </Button>
-                    </Col>
-                    <Col>
-                      <Button
-                        data-testid="create-button"
-                        htmlType="submit"
-                        loading={isCreating}
-                        type="primary">
-                        {t('label.create')}
-                      </Button>
-                    </Col>
-                  </Row>
-                </Form>
-              </Col>
-            </Row>
-          </div>
-        ),
-        minWidth: 700,
-        flex: 0.7,
-      }}
-      pageTitle={title}
-      secondPanel={{
-        className: 'service-doc-panel content-resizable-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-        children: (
-          <ServiceDocPanel
-            activeField={activeField}
-            serviceName="MetricEntity"
-            serviceType={OPEN_METADATA}
-          />
-        ),
-      }}
-    />
+                      selectedKey={values.unitOfMeasurement ?? null}
+                      onSelectionChange={(key) => {
+                        setField('unitOfMeasurement', key as UnitOfMeasurement);
+                        setCustomUnitError(undefined);
+                      }}>
+                      {Object.values(UnitOfMeasurement).map((unit) => (
+                        <Select.Item
+                          id={unit}
+                          key={unit}
+                          label={getMetricEnumLabel(t, unit)}
+                        />
+                      ))}
+                    </Select>
+                    {values.unitOfMeasurement === UnitOfMeasurement.Other && (
+                      <Input
+                        isRequired
+                        hint={customUnitError}
+                        inputDataTestId="custom-unit"
+                        isInvalid={Boolean(customUnitError)}
+                        label={t('label.enter-custom-unit-of-measurement')}
+                        value={values.customUnitOfMeasurement}
+                        onChange={(customUnitOfMeasurement) => {
+                          setField(
+                            'customUnitOfMeasurement',
+                            customUnitOfMeasurement
+                          );
+                          setCustomUnitError(undefined);
+                        }}
+                      />
+                    )}
+                  </Box>
+                  {parentMetricFqn ? (
+                    <Alert
+                      data-testid="metric-group-inherited"
+                      title={t('label.parent-metric')}
+                      variant="brand">
+                      {parentMetricFqn}
+                    </Alert>
+                  ) : (
+                    <Box
+                      data-testid="metric-group-field"
+                      direction="col"
+                      gap={2}>
+                      <Typography size="text-sm" weight="medium">
+                        {t('label.metric-group')}
+                      </Typography>
+                      <MetricGroupSelect
+                        value={values.metricGroup}
+                        onChange={handleMetricGroupChange}
+                      />
+                      <Typography className="tw:text-tertiary" size="text-xs">
+                        {t('message.metric-group-optional')}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Card size="sm">
+                    <Card.Header title={t('label.metadata')} />
+                    <Card.Content>
+                      <Box direction="col" gap={3}>
+                        <MetricReferencePicker
+                          label={t('label.owner-plural')}
+                          searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
+                          selected={values.owners}
+                          onChange={(owners) => setField('owners', owners)}
+                        />
+                        <MetricReferencePicker
+                          label={t('label.reviewer-plural')}
+                          searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
+                          selected={values.reviewers}
+                          onChange={(reviewers) =>
+                            setField('reviewers', reviewers)
+                          }
+                        />
+                        <MetricReferencePicker
+                          label={t('label.expert-plural')}
+                          searchIndexes={[SearchIndex.USER]}
+                          selected={values.experts}
+                          onChange={(experts) => setField('experts', experts)}
+                        />
+                        <MetricReferencePicker
+                          label={t('label.domain-plural')}
+                          searchIndexes={[SearchIndex.DOMAIN]}
+                          selected={values.domains}
+                          onChange={(domains) => setField('domains', domains)}
+                        />
+                        <MetricReferencePicker
+                          label={t('label.related-metric-plural')}
+                          searchIndexes={[SearchIndex.METRIC]}
+                          selected={values.relatedMetrics}
+                          onChange={(relatedMetrics) =>
+                            setField('relatedMetrics', relatedMetrics)
+                          }
+                        />
+                      </Box>
+                    </Card.Content>
+                  </Card>
+                  <Card color="brandOutlined" size="sm">
+                    <Card.Header title={t('label.expression')} />
+                    <Card.Content>
+                      <Box direction="col" gap={4}>
+                        <Select
+                          label={t('label.language')}
+                          selectedKey={values.language}
+                          onSelectionChange={(key) =>
+                            setField('language', key as Language)
+                          }>
+                          {Object.values(Language).map((language) => (
+                            <Select.Item
+                              id={language}
+                              key={language}
+                              label={getMetricEnumLabel(t, language)}
+                            />
+                          ))}
+                        </Select>
+                        <TextArea
+                          isRequired
+                          data-testid="metric-code"
+                          hint={codeError}
+                          isInvalid={Boolean(codeError)}
+                          label={t('label.code')}
+                          rows={8}
+                          textAreaRef={undefined}
+                          value={values.code}
+                          onChange={(code) => {
+                            setField('code', code);
+                            setCodeError(undefined);
+                          }}
+                        />
+                      </Box>
+                    </Card.Content>
+                  </Card>
+                  <Box gap={3} justify="end">
+                    <Button
+                      color="secondary"
+                      data-testid="back-button"
+                      iconLeading={ArrowLeft}
+                      type="button"
+                      onPress={() => navigate(ROUTES.METRICS)}>
+                      {t('label.back')}
+                    </Button>
+                    <Button
+                      color="primary"
+                      data-testid="create-button"
+                      iconLeading={Plus}
+                      isDisabled={isCreating}
+                      isLoading={isCreating}
+                      type="submit">
+                      {t('label.create')}
+                    </Button>
+                  </Box>
+                </Box>
+              </form>
+            </Card.Content>
+          </Card>
+          <Card className="tw:sticky tw:top-4" color="brand" size="sm">
+            <Card.Header title={t('label.metric')} />
+            <Card.Content>
+              <Typography className="tw:text-secondary" size="text-sm">
+                {t('message.metric-description')}
+              </Typography>
+            </Card.Content>
+          </Card>
+        </Box>
+      </Box>
+    </main>
   );
 };
 
-export default withPageLayout(AddMetricPage);
+export default AddMetricPage;
