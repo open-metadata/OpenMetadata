@@ -40,6 +40,7 @@ import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtil
 import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
 type ListMenuItemProps = {
   listItems: EntityReference[];
@@ -89,6 +90,17 @@ const renderLimitedListMenuItem = ({
         ],
       ];
 };
+
+const renderProfileDropdown = (menu: ReactNode) => (
+  <>
+    {menu}
+    {/* Ant Design closes Dropdown after any Menu selection, so the theme control
+        lives in the footer to let users see the theme change in place. */}
+    <div className="profile-dropdown w-68 tw:border-t tw:border-secondary tw:bg-primary tw:px-4 tw:py-3">
+      <ThemeModeSwitcher className="tw:w-full" />
+    </div>
+  </>
+);
 
 export const UserProfileIcon = () => {
   const { currentUser, selectedPersona, setSelectedPersona } =
@@ -414,6 +426,7 @@ export const UserProfileIcon = () => {
 
   return (
     <Dropdown
+      dropdownRender={renderProfileDropdown}
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],

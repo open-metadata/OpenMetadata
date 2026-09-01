@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   BrandColors,
   Theme,
@@ -39,7 +46,7 @@ interface ThemeProviderProps {
    */
   darkModeClass?: string;
   /**
-   * The default theme to use if no theme is stored in localStorage.
+   * The fallback theme when neither storage nor a system preference is available.
    * @default "light"
    */
   defaultTheme?: Theme;
@@ -231,8 +238,8 @@ export const ThemeProvider = ({
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof globalThis !== 'undefined') {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof globalThis.localStorage !== 'undefined') {
       const savedTheme = localStorage.getItem(storageKey) as Theme | null;
 
       if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -242,20 +249,33 @@ export const ThemeProvider = ({
       localStorage.removeItem(storageKey);
     }
 
+    if (typeof globalThis.matchMedia === 'function') {
+      return globalThis.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+    }
+
     return defaultTheme;
   });
+
+  const setTheme = useCallback(
+    (nextTheme: Theme) => {
+      // System-derived initialization stays ephemeral so later visits can keep
+      // following the OS until the user or desktop shell makes an explicit choice.
+      if (typeof globalThis.localStorage !== 'undefined') {
+        localStorage.setItem(storageKey, nextTheme);
+      }
+      setThemeState(nextTheme);
+    },
+    [storageKey]
+  );
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
 
     root.classList.toggle(darkModeClass, theme === 'dark');
-
-    if (theme === 'dark') {
-      localStorage.setItem(storageKey, theme);
-    } else {
-      localStorage.removeItem(storageKey);
-    }
-  }, [theme, darkModeClass, storageKey]);
+    root.style.colorScheme = theme;
+  }, [theme, darkModeClass]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
@@ -276,7 +296,7 @@ export const ThemeProvider = ({
 
   const values = useMemo(
     () => ({ theme, brandColors, setTheme }),
-    [theme, brandColors]
+    [theme, brandColors, setTheme]
   );
 
   return (
