@@ -2099,8 +2099,9 @@ export const navigateAndSelectGlossaryTermInTree = async (
 ) => {
   // Expand glossary
   const glossaryNode = page.locator(`[data-nodeid="${glossaryName}"]`);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
   await glossaryNode.click();
-  await page.waitForResponse('/api/v1/glossaryTerms?*');
+  await glossaryTermsResponse;
 
   // Expand parent if provided
   if (parentTermFqn) {

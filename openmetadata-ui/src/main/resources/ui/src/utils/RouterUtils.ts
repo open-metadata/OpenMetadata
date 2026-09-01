@@ -52,6 +52,15 @@ import { getPartialNameFromFQN } from './FqnUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
 
+/**
+ * The landing page is reachable at two paths: `/` (rendered in place, where
+ * post-login lands) and the explicit `/my-data` link. Anything that keys off
+ * "am I on the landing page" must accept both, or it silently changes behavior
+ * depending on how the user got there.
+ */
+export const isLandingPagePath = (pathname: string): boolean =>
+  pathname === ROUTES.HOME || pathname === ROUTES.MY_DATA;
+
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
     Object.keys(IN_PAGE_SEARCH_ROUTES).find((route) => pathname.includes(route))

@@ -1,0 +1,23 @@
+{
+  "allowConfiguration": true,
+  "appConfiguration": {
+    "force": false
+  },
+  "appScreenshots": [],
+  "appType": "internal",
+  "className": "org.openmetadata.service.apps.bundles.rdf.RdfInferenceApp",
+  "description": "Materializes enabled inference rules into durable per-rule named graphs inside Apache Jena Fuseki.",
+  "developer": "OpenMetadata",
+  "developerUrl": "https://open-metadata.org",
+  "displayName": "RDF Inference Materialization",
+  "features": "Durable dirty-state tracking, zero-JVM-triple CONSTRUCT execution, and per-rule inferred named graphs.",
+  "name": "RdfInferenceApp",
+  "permission": "All",
+  "privacyPolicyUrl": "https://open-metadata.org",
+  "runtime": {
+    "enabled": true
+  },
+  "scheduleType": "ScheduledOrManual",
+  "supportEmail": "support@open-metadata.org",
+  "supportsInterrupt": false
+}

@@ -41,6 +41,17 @@ import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">
+    {t('label.plus-count-more', {
+      count,
+    })}
+  </span>
+);
+
 const UserProfileRoles = ({
   userRoles,
   updateUserDetails,
@@ -284,13 +295,9 @@ const UserProfileRoles = ({
                     filterOption={false}
                     loading={isRolesLoading}
                     maxTagCount={3}
-                    maxTagPlaceholder={(omittedValues) => (
-                      <span className="max-tag-text">
-                        {t('label.plus-count-more', {
-                          count: omittedValues.length,
-                        })}
-                      </span>
-                    )}
+                    maxTagPlaceholder={(omittedValues) =>
+                      renderMaxTagPlaceholder(omittedValues.length, t)
+                    }
                     mode="multiple"
                     open={isDropdownOpen}
                     options={useRolesOption}
