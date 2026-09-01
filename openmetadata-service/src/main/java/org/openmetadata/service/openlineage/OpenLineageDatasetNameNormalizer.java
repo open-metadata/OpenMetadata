@@ -46,6 +46,8 @@ import org.openmetadata.schema.api.lineage.openlineage.SymlinksFacet;
 public final class OpenLineageDatasetNameNormalizer {
 
   private static final String GLUE_TABLE_PREFIX = "table/";
+  private static final String GLUE_ARN_PREFIX = "arn:aws:glue:";
+  private static final int GLUE_ARN_ACCOUNT_INDEX = 4;
   private static final String HIVE_WAREHOUSE_DB_SUFFIX = ".db";
   private static final int MAX_SLASH_SEGMENTS = 3;
 
@@ -56,6 +58,25 @@ public final class OpenLineageDatasetNameNormalizer {
 
   /** A dot-form table-name candidate together with the namespace of the identifier it came from. */
   public record DatasetCandidate(String tableName, String namespace) {}
+
+  /**
+   * Returns the AWS account id (Glue "catalog id") carried by a Glue symlink namespace
+   * {@code arn:aws:glue:<region>:<accountId>[:<resource>]}, or null for any other namespace.
+   *
+   * <p>A Glue symlink name is always {@code table/<database>/<table>}, so it never carries the
+   * catalog segment, while the Glue connector ingests the catalog id as the OpenMetadata database
+   * name. The ARN is therefore the only account signal a Glue-sourced event has.
+   */
+  public static String extractGlueCatalogId(String namespace) {
+    String result = null;
+    if (!nullOrEmpty(namespace) && namespace.toLowerCase(Locale.ROOT).startsWith(GLUE_ARN_PREFIX)) {
+      String[] fields = namespace.split(":");
+      if (fields.length > GLUE_ARN_ACCOUNT_INDEX && !fields[GLUE_ARN_ACCOUNT_INDEX].isEmpty()) {
+        result = fields[GLUE_ARN_ACCOUNT_INDEX];
+      }
+    }
+    return result;
+  }
 
   /** Returns true when the namespace is a cloud object-storage URI (Glue/Iceberg physical path). */
   public static boolean isStorageNamespace(String namespace) {
