@@ -29,10 +29,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
 
@@ -104,5 +107,73 @@ class PersonaContextCacheTest {
         .setIfAbsent(eq(keys.personaContextLock(personaId)), any(), any(Duration.class));
     verify(provider, never()).set(anyString(), anyString(), any(Duration.class));
     verify(provider, never()).deleteIfValue(eq(keys.personaContextLock(personaId)), anyString());
+  }
+
+  @Test
+  void remoteInvalidationDropsTheLocalDocument() {
+    UUID personaId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    AtomicInteger builds = new AtomicInteger();
+    PersonaContextCache cache = cacheThatCountsBuilds(personaId, builds);
+    Persona persona = personaFor(personaId);
+
+    assertEquals(PersonaContextCache.CacheStatus.MISS, cache.get(persona, false).status());
+    assertEquals(PersonaContextCache.CacheStatus.HIT, cache.get(persona, false).status());
+    assertEquals(1, builds.get());
+
+    // A peer edited the persona: the local entry is keyed by a definition hash this pod is the
+    // only one that can compute, so the drop has to match on the persona id alone.
+    cache.invalidate(Entity.PERSONA, personaId, "analyst");
+
+    assertEquals(PersonaContextCache.CacheStatus.MISS, cache.get(persona, false).status());
+    assertEquals(2, builds.get());
+  }
+
+  @Test
+  void remoteRefreshDropsTheLocalDocumentAndOtherEntitiesLeaveItAlone() {
+    UUID personaId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    AtomicInteger builds = new AtomicInteger();
+    PersonaContextCache cache = cacheThatCountsBuilds(personaId, builds);
+    Persona persona = personaFor(personaId);
+
+    assertEquals(PersonaContextCache.CacheStatus.MISS, cache.get(persona, false).status());
+
+    cache.invalidate(Entity.TABLE, personaId, "service.database.schema.table");
+    cache.invalidate(Entity.PERSONA, null, "analyst");
+    assertEquals(PersonaContextCache.CacheStatus.HIT, cache.get(persona, false).status());
+    assertEquals(1, builds.get());
+
+    cache.invalidate(CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT, personaId, "analyst");
+
+    assertEquals(PersonaContextCache.CacheStatus.MISS, cache.get(persona, false).status());
+    assertEquals(2, builds.get());
+  }
+
+  private static Persona personaFor(UUID personaId) {
+    return new Persona()
+        .withId(personaId)
+        .withName("analyst")
+        .withContextDefinition(new PersonaContextDefinition());
+  }
+
+  /** A cache whose Redis is up but always empty, so every local miss falls through to a build. */
+  private static PersonaContextCache cacheThatCountsBuilds(UUID personaId, AtomicInteger builds) {
+    CacheProvider provider = mock(CacheProvider.class);
+    CacheKeys keys = new CacheKeys("om:test");
+    PersonaContextBuilder.MaterializedPersonaContext materialized =
+        new PersonaContextBuilder.MaterializedPersonaContext(
+            new PersonaContext().withGeneratedAt(1L), "compiled context");
+
+    when(provider.available()).thenReturn(true);
+    when(provider.mget(anyList())).thenReturn(List.of(Optional.empty(), Optional.empty()));
+    when(provider.setIfAbsent(eq(keys.personaContextLock(personaId)), any(), any(Duration.class)))
+        .thenReturn(true);
+
+    return new PersonaContextCache(provider, keys) {
+      @Override
+      protected PersonaContextBuilder.MaterializedPersonaContext build(Persona ignored) {
+        builds.incrementAndGet();
+        return materialized;
+      }
+    };
   }
 }

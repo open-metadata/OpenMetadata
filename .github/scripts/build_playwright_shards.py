@@ -30,6 +30,7 @@ FULL_PROJECTS = {
     "GlobalSettings",
     "SystemCertificationTags",
     "IntakeForm",
+    "AdvancedSearch",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -46,6 +47,7 @@ PROJECT_LANES = {
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
+    "AdvancedSearch": "advanced-search",
 }
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
@@ -60,15 +62,29 @@ LANE_WORKERS = {
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
-# The chromium lane has outgrown a 19-minute shard: at the COMMON_MAX_SHARDS
-# ceiling the heaviest shard is predicted at 19.2m, so full-mode planning aborts
-# and every merge-queue run fails before a single test runs. The binding limit
-# is the 25m `timeout` wrapper around `npx playwright test`, against which 21m
-# leaves ~4m; the 35m playwright-ci job clock is looser still, since
-# it also has to cover ~5-8m of setup and teardown around that wrapper.
-COMMON_SHARD_BUDGET_MS = 21 * 60 * 1000
+# Chromium shard budget, derived from the predicted→actual execution tail
+# rather than from the average. Measured on merge_group run 32219260486
+# (23 chromium shards, fresh auto-refreshed baseline): actual/predicted
+# execution ratio has median 0.96 — predictions are well calibrated — but
+# the tail reaches 1.08 on a healthy run and 1.23 on a noisy one
+# (chromium-01 in run 32209040146 was SIGTERM'd by the 25-minute wrapper
+# with 162/164 tests already passed). The binding constraint is that
+# budget × worst-tail-ratio must stay under the 1500-second wrapper:
+#   21 min × 1.23 = 1550 s  → dead shard, all tests green (the outage)
+#   19 min × 1.23 = 1402 s  → 98 s of margin
+#   19 min × 1.32 = 1500 s  → break-even; tolerated tail is 1.32
+# 21 min was a stop-gap (#30784) to fit the lane under the old 24-shard
+# ceiling; the ceiling is now 28 (below), which is what actually makes a
+# 19-minute budget feasible again.
+COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
-COMMON_MAX_SHARDS = 24
+# Raised 24 → 28 together with the budget revert above. Current chromium
+# content (~71,700 predicted worker-seconds) needs 25 shards at a
+# 19-minute budget — over the old cap, which is exactly why #30784 had to
+# raise the budget instead. 28 leaves ~12% content-growth headroom before
+# planning aborts; if the lane grows past that, split heavy suites (see
+# AUDITED_PARALLEL_SUITES) before considering another cap raise.
+COMMON_MAX_SHARDS = 28
 # Weight assigned to a test that has no timing evidence in `timing-baseline.json`
 # (or in any additional history payloads). Bumped from 20 s → 30 s alongside the
 # all-zero-history fix in `load_history`: a suite re-enabled after being
@@ -78,6 +94,9 @@ COMMON_MAX_SHARDS = 24
 # suite. 30 s preserves a reasonable margin so the first plan after re-enable
 # does not silently over-pack the shard.
 FALLBACK_TEST_MS = 30_000
+CHECKED_IN_TIMING_BASELINE = (
+    Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
+)
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     # Six long-running tests (each 5-10 min per test.setTimeout) inside one
@@ -348,6 +367,22 @@ def load_history(
     return weights, identity_weights
 
 
+def load_history_with_baseline(
+    paths: list[Path], baseline: Path = CHECKED_IN_TIMING_BASELINE
+) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
+    """Use seeded timings only when downloaded history has no matching evidence."""
+    resolved_baseline = baseline.resolve()
+    weights, identity_weights = load_history(
+        [path for path in paths if path.resolve() != resolved_baseline]
+    )
+    baseline_weights, baseline_identity_weights = load_history([baseline])
+    for test_id, weight in baseline_weights.items():
+        weights.setdefault(test_id, weight)
+    for identity, weight in baseline_identity_weights.items():
+        identity_weights.setdefault(identity, weight)
+    return weights, identity_weights
+
+
 def apply_history_weights(
     units: list[Unit],
     test_weights: dict[str, int],
@@ -534,6 +569,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
+        "advanced-search",
         "domain-isolation",
         "global-state",
         "import-export",
@@ -650,7 +686,7 @@ def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
-    test_weights, identity_weights = load_history(args.history)
+    test_weights, identity_weights = load_history_with_baseline(args.history)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

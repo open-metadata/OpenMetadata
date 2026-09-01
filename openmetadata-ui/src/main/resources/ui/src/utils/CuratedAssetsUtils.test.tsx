@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -40,7 +40,7 @@ jest.mock('./RouterUtils', () => ({
   getExplorePath: jest.fn().mockReturnValue('/explore'),
 }));
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
+jest.mock('@react-awesome-query-builder/ui', () => ({
   Utils: {
     checkTree: jest.fn().mockReturnValue({}),
     loadTree: jest.fn().mockReturnValue({}),

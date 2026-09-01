@@ -199,10 +199,12 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
+  MessagingServiceType.Nats,
   DashboardServiceType.SapS4Hana,
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
   PipelineServiceType.Prefect,
+  DatabaseServiceType.Iomete,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

@@ -16,16 +16,6 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const closeWelcomeScreenIfVisible = async (page: Page) => {
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-};
-
 /**
  * Navigate the given (already-logged-in) user to the Explore page, search for an
  * entity by FQN, and assert whether its result card is shown — used to verify
@@ -37,7 +27,6 @@ export const exploreShouldShowEntity = async (
   displayName: string,
   shouldSee: boolean
 ) => {
-  await closeWelcomeScreenIfVisible(page);
   await redirectToHomePage(page);
 
   const exploreRes = page.waitForResponse('/api/v1/search/query?*');
@@ -85,7 +74,6 @@ export const exploreTreeCategories = async (
   page: Page,
   { visible, hidden }: { visible: string[]; hidden: string[] }
 ) => {
-  await closeWelcomeScreenIfVisible(page);
   await redirectToHomePage(page);
 
   const exploreRes = page.waitForResponse('/api/v1/search/query?*');
@@ -172,15 +160,6 @@ export const searchForEntityShouldWork = async (
   page: Page,
   entityName: string
 ) => {
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
 
@@ -213,15 +192,6 @@ export const searchForEntityShouldWorkShowNoResult = async (
   displayName: string,
   page: Page
 ) => {
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
 

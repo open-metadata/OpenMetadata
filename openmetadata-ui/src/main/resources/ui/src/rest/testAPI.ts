@@ -71,7 +71,10 @@ export type ListTestCaseParams = ListParams & {
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'testCaseStatus'
+> & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;
@@ -86,6 +89,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -144,12 +148,24 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCaseBySearch = async (
-  params?: ListTestCaseParamsBySearch
+  params?: ListTestCaseParamsBySearch,
+  config?: { signal?: AbortSignal }
 ) => {
+  // The search endpoint accepts comma-separated statuses, while Axios' default
+  // array format uses brackets that the JAX-RS query parameter does not bind.
+  const serializedParams = Array.isArray(params?.testCaseStatus)
+    ? {
+        ...params,
+        testCaseStatus: params.testCaseStatus.length
+          ? params.testCaseStatus.join(',')
+          : undefined,
+      }
+    : params;
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     `${testCaseUrl}/search/list`,
     {
-      params,
+      params: serializedParams,
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 
@@ -409,7 +425,8 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
 
 export const getTestSuiteByName = async (
   name: string,
-  params?: ListTestCaseParams
+  params?: ListTestCaseParams,
+  config?: { signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
@@ -423,6 +440,7 @@ export const getTestSuiteByName = async (
         includeRelations:
           params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 

@@ -8,9 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,12 +26,15 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.feed.CreatePost;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -36,7 +43,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.Tables;
@@ -62,8 +71,11 @@ import org.openmetadata.service.Entity;
 public class ActivityResourceIT {
 
   private static final String ACTIVITY_PATH = "/v1/activity";
+  private static final String CONVERSATIONS_PATH = "/v1/conversations";
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  private static final RequestOptions PATCH_OPTIONS =
+      RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
 
   @BeforeAll
   public static void setup() {
@@ -115,6 +127,277 @@ public class ActivityResourceIT {
 
     assertThrows(
         ForbiddenException.class, () -> insertActivityEvent(SdkClients.user1Client(), event));
+  }
+
+  @Test
+  void test_activityRepliesCreateLazilyAndRemainIsolatedByEventId(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "activity-replies");
+    String about = "<#E::table::" + table.getFullyQualifiedName() + ">";
+    ActivityEvent firstActivity = createTestActivityEventWithAbout(table, about);
+    ActivityEvent secondActivity = createTestActivityEventWithAbout(table, about);
+
+    ConversationReplyList empty =
+        listActivityReplies(SdkClients.adminClient(), firstActivity.getId(), 20, null, null);
+    assertTrue(empty.getData().isEmpty());
+    assertEquals(0, empty.getPaging().getTotal());
+
+    ConversationReply firstReply =
+        addActivityReply(SdkClients.adminClient(), firstActivity.getId(), "First reply");
+    ConversationReply secondReply =
+        addActivityReply(SdkClients.adminClient(), firstActivity.getId(), "Second reply");
+    assertEquals(firstActivity.getId(), firstReply.getConversationId());
+    assertEquals(firstActivity.getId(), secondReply.getConversationId());
+
+    ConversationReplyList firstReplies =
+        listActivityReplies(SdkClients.adminClient(), firstActivity.getId(), 20, null, null);
+    ConversationReplyList secondReplies =
+        listActivityReplies(SdkClients.adminClient(), secondActivity.getId(), 20, null, null);
+    assertEquals(
+        List.of("First reply", "Second reply"),
+        firstReplies.getData().stream().map(ConversationReply::getMessage).toList());
+    assertTrue(secondReplies.getData().isEmpty(), "Activities with the same about stay isolated");
+  }
+
+  @Test
+  void test_concurrentFirstActivityRepliesReuseOneContainer(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "concurrent-activity-replies");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    int replyCount = 10;
+    List<CompletableFuture<ConversationReply>> writes =
+        IntStream.range(0, replyCount)
+            .mapToObj(
+                index ->
+                    CompletableFuture.supplyAsync(
+                        () -> {
+                          try {
+                            return addActivityReply(
+                                SdkClients.adminClient(),
+                                activity.getId(),
+                                "Concurrent activity reply " + index);
+                          } catch (Exception exception) {
+                            throw new IllegalStateException(exception);
+                          }
+                        }))
+            .toList();
+    CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new)).join();
+
+    ConversationReplyList replies =
+        listActivityReplies(SdkClients.adminClient(), activity.getId(), 100, null, null);
+    assertEquals(replyCount, replies.getPaging().getTotal());
+    assertEquals(
+        replyCount, replies.getData().stream().map(ConversationReply::getId).distinct().count());
+  }
+
+  @Test
+  void test_activityReplyPaginationAndMissingActivity(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-cursor");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    for (int index = 0; index < 5; index++) {
+      addActivityReply(SdkClients.adminClient(), activity.getId(), "Reply " + index);
+    }
+
+    ConversationReplyList firstPage =
+        listActivityReplies(SdkClients.adminClient(), activity.getId(), 2, null, null);
+    ConversationReplyList secondPage =
+        listActivityReplies(
+            SdkClients.adminClient(), activity.getId(), 2, firstPage.getPaging().getAfter(), null);
+
+    assertEquals(2, firstPage.getData().size());
+    assertEquals(2, secondPage.getData().size());
+    assertTrue(
+        firstPage.getData().stream()
+            .map(ConversationReply::getId)
+            .noneMatch(
+                secondPage.getData().stream().map(ConversationReply::getId).toList()::contains));
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            listActivityReplies(
+                SdkClients.adminClient(),
+                activity.getId(),
+                2,
+                secondPage.getPaging().getAfter(),
+                secondPage.getPaging().getBefore()));
+
+    UUID missingActivityId = UUID.randomUUID();
+    ApiException listMissing =
+        assertThrows(
+            ApiException.class,
+            () -> listActivityReplies(SdkClients.adminClient(), missingActivityId, 20, null, null));
+    ApiException replyToMissing =
+        assertThrows(
+            ApiException.class,
+            () ->
+                addActivityReply(
+                    SdkClients.adminClient(), missingActivityId, "Missing activity reply"));
+    assertEquals(404, listMissing.getStatusCode());
+    assertEquals(404, replyToMissing.getStatusCode());
+  }
+
+  @Test
+  void test_activityRepliesHideInaccessibleTargets(TestNamespace ns) throws Exception {
+    Domain allowedDomain = createDomain(ns, "activity-reply-allowed-domain");
+    Domain blockedDomain = createDomain(ns, "activity-reply-blocked-domain");
+    Table blockedTable = createTableInDomain(ns, "activity-reply-blocked-table", blockedDomain);
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            blockedTable,
+            "<#E::table::" + blockedTable.getFullyQualifiedName() + ">",
+            blockedDomain);
+    OpenMetadataClient domainOnlyClient = createDomainOnlyActivityUserClient(allowedDomain);
+
+    ApiException listHidden =
+        assertThrows(
+            ApiException.class,
+            () -> listActivityReplies(domainOnlyClient, activity.getId(), 20, null, null));
+    ApiException replyHidden =
+        assertThrows(
+            ApiException.class,
+            () -> addActivityReply(domainOnlyClient, activity.getId(), "Hidden reply"));
+    assertEquals(404, listHidden.getStatusCode());
+    assertEquals(404, replyHidden.getStatusCode());
+  }
+
+  @Test
+  void test_activityReplyContainersAreNotPublicConversationRoots(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "activity-private-container");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    addActivityReply(SdkClients.adminClient(), activity.getId(), "Container reply");
+    JsonNode patch =
+        MAPPER
+            .createArrayNode()
+            .add(
+                MAPPER
+                    .createObjectNode()
+                    .put("op", "replace")
+                    .put("path", "/resolved")
+                    .put("value", true));
+
+    ApiException getContainer =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        CONVERSATIONS_PATH + "/" + activity.getId(),
+                        null,
+                        RequestOptions.builder().build()));
+    ApiException patchContainer =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        CONVERSATIONS_PATH + "/" + activity.getId(),
+                        patch,
+                        PATCH_OPTIONS));
+    ApiException deleteContainer =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.DELETE,
+                        CONVERSATIONS_PATH + "/" + activity.getId(),
+                        null,
+                        RequestOptions.builder().build()));
+    assertEquals(404, getContainer.getStatusCode());
+    assertEquals(404, patchContainer.getStatusCode());
+    assertEquals(404, deleteContainer.getStatusCode());
+  }
+
+  @Test
+  void test_nonAdminCanReplyWhenActivityAndTargetAreVisible(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-permission");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+
+    ConversationReply reply =
+        addActivityReply(SdkClients.user2Client(), activity.getId(), "Data consumer reply");
+    assertEquals("shared_user2", reply.getAuthor().getName());
+    assertEquals(
+        1,
+        listActivityReplies(SdkClients.user2Client(), activity.getId(), 20, null, null)
+            .getPaging()
+            .getTotal());
+  }
+
+  @Test
+  void test_activityRepliesSupportEditDeleteAndReactions(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-mutations");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    ConversationReply reply =
+        addActivityReply(SdkClients.adminClient(), activity.getId(), "Original reply");
+
+    ConversationReply patched =
+        patchConversationReply(
+            SdkClients.adminClient(), activity.getId(), reply.getId(), "Edited reply");
+    assertEquals("Edited reply", patched.getMessage());
+
+    ConversationReply reacted =
+        putConversationReplyReaction(
+            SdkClients.adminClient(), activity.getId(), reply.getId(), ReactionType.ROCKET);
+    assertEquals(1, reacted.getReactions().size());
+
+    ConversationReply reactionRemoved =
+        deleteConversationReplyReaction(
+            SdkClients.adminClient(), activity.getId(), reply.getId(), ReactionType.ROCKET);
+    assertTrue(reactionRemoved.getReactions().isEmpty());
+
+    deleteConversationReply(SdkClients.adminClient(), activity.getId(), reply.getId());
+    assertTrue(
+        listActivityReplies(SdkClients.adminClient(), activity.getId(), 20, null, null)
+            .getData()
+            .isEmpty());
+  }
+
+  @Test
+  void test_activityRepliesRemainReadableButBecomeImmutableAfterTargetDeletion(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "deleted-activity-target");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    ConversationReply reply =
+        addActivityReply(SdkClients.adminClient(), activity.getId(), "Reply before deletion");
+
+    SdkClients.adminClient()
+        .tables()
+        .delete(table.getId().toString(), Map.of("hardDelete", "true"));
+
+    ConversationReplyList replies =
+        listActivityReplies(SdkClients.adminClient(), activity.getId(), 20, null, null);
+    assertEquals(
+        List.of(reply.getId()), replies.getData().stream().map(ConversationReply::getId).toList());
+    assertThrows(
+        InvalidRequestException.class,
+        () -> addActivityReply(SdkClients.adminClient(), activity.getId(), "Late reply"));
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            patchConversationReply(
+                SdkClients.adminClient(), activity.getId(), reply.getId(), "Late edit"));
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            putConversationReplyReaction(
+                SdkClients.adminClient(), activity.getId(), reply.getId(), ReactionType.HEART));
   }
 
   // ==================== Pagination Tests ====================
@@ -335,13 +618,11 @@ public class ActivityResourceIT {
     Domain domain = SdkClients.adminClient().domains().create(createDomain);
 
     // Create a table in that domain by setting domain on the service
-    org.openmetadata.schema.api.services.CreateDatabaseService createService =
-        new org.openmetadata.schema.api.services.CreateDatabaseService()
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
             .withName(ns.prefix("domain-db-service"))
-            .withServiceType(
-                org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType
-                    .Postgres)
-            .withDomains(java.util.List.of(domain.getFullyQualifiedName()));
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     DatabaseService service = SdkClients.adminClient().databaseServices().create(createService);
     Database database =
         Databases.create()
@@ -382,6 +663,20 @@ public class ActivityResourceIT {
     assertFalse(
         events.getData().stream().anyMatch(e -> blockedEvent.getId().equals(e.getId())),
         "Domain-only user should not see activity from blocked domain");
+  }
+
+  @Test
+  void test_domainOnlyUserWithoutDomainsSeesNoActivity(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "activity-no-access-domain");
+    Table table = createTableInDomain(ns, "no-access-activity-table", domain);
+    ActivityEvent event = createTestActivityEvent(table, domain);
+
+    ActivityEventList events =
+        listActivityEvents(createDomainOnlyActivityUserClient(null), 200, 30);
+
+    assertFalse(
+        events.getData().stream().anyMatch(value -> event.getId().equals(value.getId())),
+        "A domain-only user with no assigned domains must not fall back to an unfiltered feed");
   }
 
   @Test
@@ -541,7 +836,7 @@ public class ActivityResourceIT {
 
     // Execute multiple concurrent requests
     List<ActivityEventList> results =
-        java.util.stream.IntStream.range(0, 10)
+        IntStream.range(0, 10)
             .parallel()
             .mapToObj(
                 i -> {
@@ -652,6 +947,54 @@ public class ActivityResourceIT {
             .filter(r -> r.getReactionType() == ReactionType.THUMBS_UP)
             .count();
     assertEquals(2, thumbsUpCount, "Two different users should be able to add same reaction");
+  }
+
+  @Test
+  void test_concurrentReactionsDoNotOverwriteOtherUsers(TestNamespace ns) throws Exception {
+    ActivityEvent event = createTestActivityEvent(createTestTable(ns, "reaction-concurrency"));
+    List<Map.Entry<OpenMetadataClient, ReactionType>> reactionsByUser =
+        List.of(
+            Map.entry(SdkClients.adminClient(), ReactionType.HEART),
+            Map.entry(SdkClients.user2Client(), ReactionType.ROCKET),
+            Map.entry(SdkClients.testUserClient(), ReactionType.THUMBS_UP));
+
+    List<CompletableFuture<ActivityEvent>> writes =
+        reactionsByUser.stream()
+            .map(
+                reaction ->
+                    CompletableFuture.supplyAsync(
+                        () -> {
+                          try {
+                            return addReaction(
+                                reaction.getKey(), event.getId(), reaction.getValue());
+                          } catch (Exception exception) {
+                            throw new IllegalStateException(exception);
+                          }
+                        }))
+            .toList();
+    CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new)).join();
+
+    ActivityEvent updated =
+        addReaction(SdkClients.adminClient(), event.getId(), ReactionType.HEART);
+    assertEquals(
+        reactionsByUser.size(),
+        updated.getReactions().size(),
+        "Concurrent activity reactions must be serialized without lost updates");
+  }
+
+  @Test
+  void test_reactionHidesActivityOutsideUsersDomains(TestNamespace ns) throws Exception {
+    Domain allowedDomain = createDomain(ns, "reaction-allowed-domain");
+    Domain blockedDomain = createDomain(ns, "reaction-blocked-domain");
+    Table blockedTable = createTableInDomain(ns, "reaction-blocked-activity-table", blockedDomain);
+    ActivityEvent blockedEvent = createTestActivityEvent(blockedTable, blockedDomain);
+    OpenMetadataClient domainOnlyClient = createDomainOnlyActivityUserClient(allowedDomain);
+
+    ApiException hidden =
+        assertThrows(
+            ApiException.class,
+            () -> addReaction(domainOnlyClient, blockedEvent.getId(), ReactionType.HEART));
+    assertEquals(404, hidden.getStatusCode());
   }
 
   // ==================== My Feed Tests ====================
@@ -884,13 +1227,11 @@ public class ActivityResourceIT {
   private Table createTableInDomain(
       TestNamespace ns, String tableName, Domain domain, List<EntityReference> owners)
       throws Exception {
-    org.openmetadata.schema.api.services.CreateDatabaseService createService =
-        new org.openmetadata.schema.api.services.CreateDatabaseService()
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
             .withName(ns.prefix(tableName + "-service"))
-            .withServiceType(
-                org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType
-                    .Postgres)
-            .withDomains(java.util.List.of(domain.getFullyQualifiedName()));
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
 
     DatabaseService service = SdkClients.adminClient().databaseServices().create(createService);
     Database database =
@@ -931,8 +1272,10 @@ public class ActivityResourceIT {
             .withName(userName)
             .withEmail(email)
             .withDescription("Domain-only activity test user")
-            .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
             .withRoles(List.of(domainOnlyRole.getId(), elevatedRole.getId()));
+    if (allowedDomain != null) {
+      request.withDomains(List.of(allowedDomain.getFullyQualifiedName()));
+    }
 
     SdkClients.adminClient().users().create(request);
     return SdkClients.createClient(email, email, new String[] {});
@@ -1074,6 +1417,113 @@ public class ActivityResourceIT {
     return MAPPER.readValue(response, ActivityEvent.class);
   }
 
+  private ConversationReply addActivityReply(
+      OpenMetadataClient client, UUID activityId, String message) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                ACTIVITY_PATH + "/" + activityId + "/replies",
+                new CreatePost().withMessage(message),
+                RequestOptions.builder().build());
+    return MAPPER.readValue(response, ConversationReply.class);
+  }
+
+  private ConversationReply patchConversationReply(
+      OpenMetadataClient client, UUID conversationId, UUID replyId, String message)
+      throws Exception {
+    JsonNode patch =
+        MAPPER
+            .createArrayNode()
+            .add(
+                MAPPER
+                    .createObjectNode()
+                    .put("op", "replace")
+                    .put("path", "/message")
+                    .put("value", message));
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                CONVERSATIONS_PATH + "/" + conversationId + "/replies/" + replyId,
+                patch,
+                PATCH_OPTIONS);
+    return MAPPER.readValue(response, ConversationReply.class);
+  }
+
+  private ConversationReply putConversationReplyReaction(
+      OpenMetadataClient client, UUID conversationId, UUID replyId, ReactionType reactionType)
+      throws Exception {
+    return mutateConversationReplyReaction(
+        client, HttpMethod.PUT, conversationId, replyId, reactionType);
+  }
+
+  private ConversationReply deleteConversationReplyReaction(
+      OpenMetadataClient client, UUID conversationId, UUID replyId, ReactionType reactionType)
+      throws Exception {
+    return mutateConversationReplyReaction(
+        client, HttpMethod.DELETE, conversationId, replyId, reactionType);
+  }
+
+  private ConversationReply mutateConversationReplyReaction(
+      OpenMetadataClient client,
+      HttpMethod method,
+      UUID conversationId,
+      UUID replyId,
+      ReactionType reactionType)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                method,
+                CONVERSATIONS_PATH
+                    + "/"
+                    + conversationId
+                    + "/replies/"
+                    + replyId
+                    + "/reaction/"
+                    + reactionType.value(),
+                null,
+                RequestOptions.builder().build());
+    return MAPPER.readValue(response, ConversationReply.class);
+  }
+
+  private void deleteConversationReply(OpenMetadataClient client, UUID conversationId, UUID replyId)
+      throws Exception {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            CONVERSATIONS_PATH + "/" + conversationId + "/replies/" + replyId,
+            null,
+            RequestOptions.builder().build());
+  }
+
+  private ConversationReplyList listActivityReplies(
+      OpenMetadataClient client, UUID activityId, int limit, String after, String before)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("limit", String.valueOf(limit));
+    if (after != null) {
+      options.queryParam("after", after);
+    }
+    if (before != null) {
+      options.queryParam("before", before);
+    }
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                ACTIVITY_PATH + "/" + activityId + "/replies",
+                null,
+                options.build());
+    return MAPPER.readValue(response, ConversationReplyList.class);
+  }
+
   private ActivityEventList getMyFeed(OpenMetadataClient client, int limit, int days)
       throws Exception {
     return getMyFeed(client, limit, days, null);
@@ -1189,6 +1639,30 @@ public class ActivityResourceIT {
     }
 
     public void setData(List<ActivityEvent> data) {
+      this.data = data;
+    }
+
+    public Paging getPaging() {
+      return paging;
+    }
+
+    public void setPaging(Paging paging) {
+      this.paging = paging;
+    }
+  }
+
+  public static class ConversationReplyList {
+    @JsonProperty("data")
+    private List<ConversationReply> data;
+
+    @JsonProperty("paging")
+    private Paging paging;
+
+    public List<ConversationReply> getData() {
+      return data;
+    }
+
+    public void setData(List<ConversationReply> data) {
       this.data = data;
     }
 

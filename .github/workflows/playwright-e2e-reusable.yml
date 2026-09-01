@@ -64,6 +64,15 @@ on:
         required: false
         type: boolean
         default: true
+      retries:
+        description: >-
+          Playwright per-test retry count, exported to playwright.config.ts as
+          PLAYWRIGHT_RETRIES on the shard test step only (the fixture populator
+          and bundle-smoke keep the config default). The default matches the
+          config's CI default of 1; release-branch nightlies raise it to 2.
+        required: false
+        type: number
+        default: 1
       send_slack_notification:
         description: Post a Slack summary once the run finishes.
         required: false
@@ -145,7 +154,7 @@ concurrency:
   # a postgres run and a mysql run for the same ref don't fight — the caller
   # workflows drive different events/schedules and share this reusable.
   group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   # Fork-vs-same-repo PR arbitration. GitHub fires BOTH pull_request and
@@ -401,7 +410,7 @@ jobs:
         id: restore-distribution
         # Actions cache isolates PR writes to the PR merge ref. PRs may read a
         # default-branch entry, but cannot replace the cache used by main/nightly.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.DISTRIBUTION_CACHE_DIR }}
           key: playwright-distribution-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.distribution }}
@@ -431,7 +440,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -484,7 +493,7 @@ jobs:
       - name: Save OpenMetadata distribution cache
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.DISTRIBUTION_CACHE_DIR }}
           key: playwright-distribution-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.distribution }}
@@ -592,22 +601,62 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
-          cache: yarn
-          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      # setup-node's built-in `cache: yarn` is exact-key only — a yarn.lock
+      # change leaves the cache completely cold and yarn re-fetches all
+      # ~2000 tarballs from the registry, maximizing exposure to transient
+      # registry 5xx (run 32222855561: a single 502 on one tarball killed
+      # planning for the whole queue entry). An explicit cache with
+      # restore-keys falls back to the most recent lockfile's cache, so a
+      # lockfile change only fetches the delta.
+      # RESTORE-ONLY on purpose: this workflow runs on ephemeral refs
+      # (merge-queue branches, PR merge refs) whose exact cache key can
+      # never be re-used by another run — saving here produced a ~700 MB
+      # duplicate per job, blew straight through the repo's 10 GB cache
+      # budget (17.5 GB observed, 49/50 caches on ephemeral refs), and
+      # LRU-evicted every main-scoped cache within ~30 minutes. That
+      # eviction is what kept turning cache "hits" into cold registry
+      # fetches. The main-scoped copy is saved exclusively by
+      # populate-playwright-apt-cache.yml on main.
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           corepack enable
-          yarn --ignore-scripts --frozen-lockfile
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
+      # These two steps SEED the run-scoped browser cache for the 30+ shard
+      # jobs downstream: the plan job finishes before any shard starts, so
+      # on a yarn.lock change the new browser-cache key is populated exactly
+      # once here instead of every shard downloading ~250 MB of Chromium in
+      # parallel. `--list` itself never launches a browser, so a seeding
+      # failure must not fail planning — shards self-install as a fallback.
       - name: Seed Playwright browser cache
-        uses: actions/cache@v5
+        continue-on-error: true
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
       - name: Install cached Chromium
+        continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: npx playwright install chromium
 
@@ -655,6 +704,7 @@ jobs:
             --project=GlobalSettings \
             --project=SystemCertificationTags \
             --project=IntakeForm \
+            --project=AdvancedSearch \
             --project=search-nightly \
             > "$RUNNER_TEMP/playwright-test-list.json"
 
@@ -717,7 +767,7 @@ jobs:
         id: restore-fixture
         # The content hash excludes the commit SHA so compatible main/nightly
         # fixtures can be reused across commits. Cache ref scoping keeps PR saves isolated.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
@@ -740,7 +790,7 @@ jobs:
       - name: Restore ingestion image cache
         id: restore-ingestion
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
@@ -865,19 +915,39 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
-          cache: yarn
-          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      # restore-keys fallback + retry — see the rationale on the
+      # plan-playwright job's yarn cache step.
+      - name: Restore yarn package cache
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install fixture-state dependencies
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           corepack enable
-          yarn --ignore-scripts --frozen-lockfile
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
+      # Restore-only — same churn rationale as the yarn cache above. The
+      # main-scoped copy is saved by populate-playwright-apt-cache.yml; the
+      # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -957,12 +1027,28 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$APT_DEPS_CACHE_HIT" != "true" ]]; then
+            # `timeout` only signals the direct child (npx/node) — the
+            # underlying apt-get survives the SIGTERM and keeps holding
+            # /var/lib/apt/lists/lock, so a retry without reaping dies
+            # instantly on "Could not get lock ... held by process N"
+            # (run 32233411840). The same stale lock can be left behind by
+            # a timed-out cache-apt-pkgs action earlier in this job, so
+            # reap BEFORE the first attempt too.
+            reap_apt() {
+              sudo killall -9 apt apt-get dpkg 2>/dev/null || true
+              sudo rm -f /var/lib/apt/lists/lock \
+                /var/cache/apt/archives/lock \
+                /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend
+              sudo dpkg --configure -a 2>/dev/null || true
+            }
             install_deps() {
               timeout --signal=TERM --kill-after=30s 8m \
                 npx playwright install-deps chromium
             }
+            reap_apt
             if ! install_deps; then
-              echo "::warning::install-deps chromium failed on first attempt; sleeping 15s and retrying once before failing the workflow" >&2
+              echo "::warning::install-deps chromium failed on first attempt; reaping orphaned apt processes and retrying once before failing the workflow" >&2
+              reap_apt
               sleep 15
               install_deps
             fi
@@ -1038,7 +1124,7 @@ jobs:
       - name: Save golden fixture cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
@@ -1046,7 +1132,7 @@ jobs:
       - name: Save ingestion image cache
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
@@ -1079,11 +1165,11 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # Budget breakdown: 20 min planner shard target + up to 25 min playwright
-    # timeout wrapper (line ~1090) + ~5-8 min for setup (env, node, browser,
-    # bundle verify) and teardown/artifact upload. 30 min was tight enough
-    # that slow shards were being cancelled by the job clock while playwright
-    # itself still had time on the inner wrapper; 35 gives real headroom.
+    # Budget breakdown: up to 30 min playwright hang-protection wrapper on
+    # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
+    # and teardown/artifact upload. The job clock must clear the inner
+    # wrapper plus setup/teardown so a slow-but-finishing shard is never
+    # cancelled here while playwright still has wrapper time left.
     #
     # This ceiling only works when the sub-budgets it composes actually hold.
     # `Install Playwright Browsers` carries its own `timeout 5m` for exactly
@@ -1091,7 +1177,7 @@ jobs:
     # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
     # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
     # sync when adjusting this outer ceiling.
-    timeout-minutes: 35
+    timeout-minutes: 40
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -1209,19 +1295,45 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
-          cache: yarn
-          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      # restore-keys fallback + retry — see the rationale on the
+      # plan-playwright job's yarn cache step.
+      # RESTORE-ONLY on purpose: this workflow runs on ephemeral refs
+      # (merge-queue branches, PR merge refs) whose exact cache key can
+      # never be re-used by another run — saving here produced a ~700 MB
+      # duplicate per job, blew straight through the repo's 10 GB cache
+      # budget (17.5 GB observed, 49/50 caches on ephemeral refs), and
+      # LRU-evicted every main-scoped cache within ~30 minutes. That
+      # eviction is what kept turning cache "hits" into cold registry
+      # fetches. The main-scoped copy is saved exclusively by
+      # populate-playwright-apt-cache.yml on main.
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install dependencies
         id: install-dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           corepack enable
-          yarn --ignore-scripts --frozen-lockfile
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
+      # Restore-only — same churn rationale as the yarn cache above.
       - name: Restore Playwright browser cache
         id: restore-browser
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1284,8 +1396,27 @@ jobs:
           APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
         run: |
           if [[ "$APT_DEPS_CACHE_HIT" != "true" ]]; then
-            timeout --signal=TERM --kill-after=30s 8m \
-              npx playwright install-deps chromium
+            # See the reap_apt rationale on the fixture-builder install step:
+            # `timeout` orphans the underlying apt-get, whose stale lock
+            # otherwise kills any retry (run 32233411840).
+            reap_apt() {
+              sudo killall -9 apt apt-get dpkg 2>/dev/null || true
+              sudo rm -f /var/lib/apt/lists/lock \
+                /var/cache/apt/archives/lock \
+                /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend
+              sudo dpkg --configure -a 2>/dev/null || true
+            }
+            install_deps() {
+              timeout --signal=TERM --kill-after=30s 8m \
+                npx playwright install-deps chromium
+            }
+            reap_apt
+            if ! install_deps; then
+              echo "::warning::install-deps chromium failed on first attempt; reaping orphaned apt processes and retrying once before failing the shard" >&2
+              reap_apt
+              sleep 15
+              install_deps
+            fi
           else
             echo "apt deps cache hit — skipping install-deps (files already restored; apt would re-download from the mirror)"
           fi
@@ -1335,8 +1466,17 @@ jobs:
           fi
           jq '{shardId, lane, workers, predictedWorkerMs, predictedExecutionMs, testCount, projects, files: (.files | length)}' "$plan_file"
           started_at=$(date +%s)
+          # HANG PROTECTION ONLY — not a budget. The planner packs shards to
+          # ~19 min predicted; the 1500 s execution BUDGET is evaluated (and
+          # signalled, never enforced) by evaluate_playwright_performance.py.
+          # This wrapper exists solely so a truly wedged playwright process
+          # cannot hold the job until the 40-min job clock. It must stay well
+          # above the budget: at the old 25m it killed chromium-12 five
+          # seconds after its last test PASSED (run 32500973433 — one wedged
+          # retry teardown ate 9 min), destroying the results artifact and
+          # ejecting a green PR.
           set +e
-          timeout --signal=TERM --kill-after=30s 25m \
+          timeout --signal=TERM --kill-after=30s 30m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
@@ -1351,6 +1491,7 @@ jobs:
           PW_SHARD_ID: ${{ matrix.shardId }}
           PW_SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
           PW_WORKERS: ${{ matrix.workers }}
+          PLAYWRIGHT_RETRIES: ${{ inputs.retries }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
@@ -1638,14 +1779,39 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
-          cache: yarn
-          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      # restore-keys fallback + retry — see the rationale on the
+      # plan-playwright job's yarn cache step.
+      # RESTORE-ONLY on purpose: this workflow runs on ephemeral refs
+      # (merge-queue branches, PR merge refs) whose exact cache key can
+      # never be re-used by another run — saving here produced a ~700 MB
+      # duplicate per job, blew straight through the repo's 10 GB cache
+      # budget (17.5 GB observed, 49/50 caches on ephemeral refs), and
+      # LRU-evicted every main-scoped cache within ~30 minutes. That
+      # eviction is what kept turning cache "hits" into cold registry
+      # fetches. The main-scoped copy is saved exclusively by
+      # populate-playwright-apt-cache.yml on main.
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           corepack enable
-          yarn --ignore-scripts --frozen-lockfile
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Download blob reports
         uses: actions/download-artifact@v7

@@ -60,11 +60,13 @@ test.beforeAll(async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          type: 'domain',
-          id: EntityDataClass.domain1.responseData.id,
-        },
+        path: '/domains',
+        value: [
+          {
+            type: 'domain',
+            id: EntityDataClass.domain1.responseData.id,
+          },
+        ],
       },
     ],
   });

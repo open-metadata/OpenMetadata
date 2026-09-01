@@ -1,0 +1,26 @@
+{
+  "abbreviation": "ISA-95",
+  "bundled": true,
+  "description": "A compact OpenMetadata starter subset of ANSI/ISA-95 manufacturing operations concepts.",
+  "id": "isa-95",
+  "license": "MIT",
+  "licenseUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+  "modules": [
+    {
+      "conceptCount": 9,
+      "dependencies": [],
+      "description": "The ISA-95 role-based equipment hierarchy and resource model.",
+      "format": "turtle",
+      "id": "manufacturing-operations",
+      "name": "Manufacturing operations",
+      "relationshipCount": 7,
+      "resourcePath": "rdf/ontology-packs/isa-95/manufacturing-operations.ttl",
+      "selectedByDefault": true,
+      "sha256": "fa7329eb8fc629b07d02cab1ef5256ddc48626c93dfcc4f5684d3ab05ef600bc"
+    }
+  ],
+  "name": "ISA-95",
+  "sourceUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+  "standard": "ANSI/ISA-95",
+  "version": "2025Q1-om1"
+}

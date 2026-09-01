@@ -876,6 +876,21 @@ describe('DataQualityUtils', () => {
       ].forEach((field) => expect(query).toContain(field));
     });
 
+    it('uses a terms query when multiple test case statuses are selected', () => {
+      const statuses = [TestCaseStatus.Success, TestCaseStatus.Queued];
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          testCaseStatus: statuses,
+        },
+      });
+
+      expect(result).toContainEqual({
+        terms: {
+          'testCaseResult.testCaseStatus': statuses,
+        },
+      });
+    });
+
     it('matches test cases with a missing dimension for No Dimension', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {

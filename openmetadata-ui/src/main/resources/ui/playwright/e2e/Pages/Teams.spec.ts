@@ -58,6 +58,7 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
+  openAddTeamModal,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
@@ -192,9 +193,7 @@ test.describe('Teams Page', () => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
-      await page.getByTestId('add-team').waitFor();
-
-      await page.getByTestId('add-team').click();
+      await openAddTeamModal(page);
 
       const newTeamData = await createTeam(page, true);
 
@@ -427,9 +426,7 @@ test.describe('Teams Page', () => {
   test('Create a new public team', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page.getByTestId('add-team').waitFor();
-
-    await page.getByTestId('add-team').click();
+    await openAddTeamModal(page);
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
@@ -856,6 +853,35 @@ test.describe('Teams Page', () => {
     await team.visitTeamPage(page);
 
     await expect(page.getByTestId('team-user-count')).toContainText('3');
+
+    await afterAction();
+  });
+
+  test('Total User Count should update after a member is deactivated', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+
+    await user.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw-stale-count-${id}`,
+      displayName: `pw stale count ${id}`,
+      description: 'playwright team for userCount staleness',
+      teamType: 'Group',
+      users: [user.responseData.id],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('1');
+
+    await user.delete(apiContext, false);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('0');
 
     await afterAction();
   });

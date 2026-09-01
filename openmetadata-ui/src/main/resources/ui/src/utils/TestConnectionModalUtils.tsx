@@ -296,6 +296,7 @@ function renderColoredLines(
   keyPrefix = ''
 ): JSX.Element[] {
   return text.split('\n').map((line, index) => (
+    // eslint-disable-next-line react/no-array-index-key -- static log lines split by newline, fixed order, may repeat
     <span className={`tw:block ${colorClass}`} key={`${keyPrefix}${index}`}>
       {line || ' '}
     </span>

@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
 import './source-list.less';
 
 const SourceList = ({ feature }: { feature: MlFeature }) => {
@@ -32,7 +33,14 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
   return (
     <div className="m-t-sm">
       <Space className="m-b-xs">
-        <span onClick={() => setIsActive((prev) => !prev)}>
+        <span
+          aria-label={isActive ? t('label.collapse') : t('label.expand')}
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsActive((prev) => !prev)}
+          onKeyDown={handleKeyboardActivation(() =>
+            setIsActive((prev) => !prev)
+          )}>
           {isActive ? (
             <DownOutlined className="text-xs text-primary cursor-pointer" />
           ) : (
@@ -47,7 +55,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
         feature.featureSources?.map((source, i) => (
           <Row
             className="feature-source-info"
-            key={`${source.fullyQualifiedName}${i}`}
+            key={source.fullyQualifiedName}
             wrap={false}>
             <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -142,6 +142,7 @@ export interface ExploreQuickFilterField {
   searchKey?: string;
   dropdownClassName?: string;
   singleSelect?: boolean;
+  sourceFields?: string;
 }
 
 // Type for all the explore tab entities

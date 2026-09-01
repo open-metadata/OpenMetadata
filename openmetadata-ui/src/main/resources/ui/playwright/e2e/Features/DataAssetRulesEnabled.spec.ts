@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -54,6 +54,13 @@ import {
   assignGlossaryTerm,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import {
+  expectMetricMetadataSelections,
+  getPersistedMetricMetadata,
+  openMetricMetadataEditor,
+  saveMetricMetadata,
+  selectMetricMetadataReference,
+} from '../../utils/metricMetadata';
 import { test } from '../fixtures/pages';
 
 const entities = [
@@ -100,6 +107,119 @@ const createdDataProducts: DataProduct[] = [];
 const glossary = new Glossary();
 const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
+
+const requireFixtureValue = (
+  value: string | undefined,
+  fixtureName: string
+) => {
+  if (!value) {
+    throw new Error(`${fixtureName} was not created`);
+  }
+
+  return value;
+};
+
+const verifyEnabledMetricMetadataRules = async (
+  page: Page,
+  apiContext: APIRequestContext,
+  metric: MetricClass
+) => {
+  const metricId = requireFixtureValue(metric.entityResponseData.id, 'Metric');
+  const firstUserName = user.getUserDisplayName();
+  const secondUserName = user2.getUserDisplayName();
+  const teamName = requireFixtureValue(team.responseData.displayName, 'Team');
+  const firstDomainName = requireFixtureValue(
+    domain.responseData.displayName,
+    'First domain'
+  );
+  const secondDomainName = requireFixtureValue(
+    domain2.responseData.displayName,
+    'Second domain'
+  );
+  const firstDataProductName = requireFixtureValue(
+    createdDataProducts[0]?.responseData.displayName,
+    'First data product'
+  );
+  const secondDataProductName = requireFixtureValue(
+    createdDataProducts[1]?.responseData.displayName,
+    'Second data product'
+  );
+  const dialog = await openMetricMetadataEditor(page);
+
+  let ownersGroup = await selectMetricMetadataReference(
+    dialog,
+    'Owners',
+    firstUserName
+  );
+  ownersGroup = await selectMetricMetadataReference(
+    dialog,
+    'Owners',
+    secondUserName
+  );
+  await expectMetricMetadataSelections(ownersGroup, [
+    firstUserName,
+    secondUserName,
+  ]);
+  ownersGroup = await selectMetricMetadataReference(dialog, 'Owners', teamName);
+  await expectMetricMetadataSelections(
+    ownersGroup,
+    [teamName],
+    [firstUserName, secondUserName]
+  );
+
+  await selectMetricMetadataReference(dialog, 'Domains', secondDomainName);
+  const domainsGroup = await selectMetricMetadataReference(
+    dialog,
+    'Domains',
+    firstDomainName
+  );
+  await expectMetricMetadataSelections(
+    domainsGroup,
+    [firstDomainName],
+    [secondDomainName]
+  );
+
+  await selectMetricMetadataReference(
+    dialog,
+    'Data Products',
+    firstDataProductName
+  );
+  const dataProductsGroup = await selectMetricMetadataReference(
+    dialog,
+    'Data Products',
+    secondDataProductName
+  );
+  await expectMetricMetadataSelections(
+    dataProductsGroup,
+    [secondDataProductName],
+    [firstDataProductName]
+  );
+
+  await saveMetricMetadata(page, dialog, metricId);
+
+  const persisted = await getPersistedMetricMetadata(apiContext, metricId);
+  expect(persisted.owners?.map(({ id }) => id)).toEqual([
+    requireFixtureValue(team.responseData.id, 'Team'),
+  ]);
+  expect(persisted.domains?.map(({ id }) => id)).toEqual([
+    requireFixtureValue(domain.responseData.id, 'First domain'),
+  ]);
+  expect(persisted.dataProducts?.map(({ id }) => id)).toEqual([
+    requireFixtureValue(
+      createdDataProducts[1]?.responseData.id,
+      'Second data product'
+    ),
+  ]);
+
+  const metadataRail = page.getByTestId('metric-metadata-rail');
+  await expect(metadataRail).toContainText(teamName);
+  await expect(metadataRail).not.toContainText(firstUserName);
+  await expect(metadataRail).not.toContainText(secondUserName);
+  await expect(metadataRail).toContainText(firstDomainName);
+  await expect(metadataRail).not.toContainText(secondDomainName);
+  await expect(metadataRail).toContainText(secondDataProductName);
+  await expect(metadataRail).not.toContainText(firstDataProductName);
+};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
@@ -155,6 +275,19 @@ test.describe(
 
         const { apiContext, afterAction } = await performAdminLogin(browser);
         await entity.create(apiContext);
+
+        if (entity instanceof MetricClass) {
+          try {
+            await authenticateAdminPage(page);
+            await entity.visitEntityPage(page);
+            await verifyEnabledMetricMetadataRules(page, apiContext, entity);
+          } finally {
+            await afterAction();
+          }
+
+          return;
+        }
+
         await afterAction();
 
         await authenticateAdminPage(page);
@@ -284,7 +417,7 @@ test.describe(
         );
 
         // Assign second domain (should REPLACE first, not add to it)
-        await assignDomainWidget(page, testDomain2.responseData);
+        await assignDomainWidget(page, testDomain2.responseData, false, true);
 
         // Verify second domain is visible
         await expect(page.getByTestId('domain-link')).toContainText(
@@ -306,6 +439,90 @@ test.describe(
         await testDomain2.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  `Data Product Domain Validation Rule Enabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    const assetDomain = new Domain();
+    const productDomain = new Domain();
+    const sameDomainDataProduct = new DataProduct([assetDomain]);
+    const otherDomainDataProduct = new DataProduct([productDomain]);
+    const crossTable = new TableClass();
+
+    test.beforeAll('Setup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await assetDomain.create(apiContext);
+      await productDomain.create(apiContext);
+      await sameDomainDataProduct.create(apiContext);
+      await otherDomainDataProduct.create(apiContext);
+      await crossTable.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await crossTable.delete(apiContext);
+      await sameDomainDataProduct.delete(apiContext);
+      await otherDomainDataProduct.delete(apiContext);
+      await productDomain.delete(apiContext);
+      await assetDomain.delete(apiContext);
+      await afterAction();
+    });
+
+    // With the "Data Product Domain Validation" rule enabled, the Data Product
+    // dropdown stays scoped to the asset's domain, so a Data Product from a
+    // different domain is not offered.
+    test('should not list Data Products from a different domain', async ({
+      page,
+    }) => {
+      await authenticateAdminPage(page);
+      await crossTable.visitEntityPage(page);
+
+      await assignDomainWidget(page, assetDomain.responseData);
+
+      await page
+        .getByTestId('KnowledgePanel.DataProducts')
+        .getByTestId('data-products-container')
+        .getByTestId('add-data-product')
+        .click();
+
+      const selectorInput = page.locator(
+        '[data-testid="data-product-selector"] input'
+      );
+      const sameDomainFqn =
+        sameDomainDataProduct.responseData.fullyQualifiedName;
+      const otherDomainFqn =
+        otherDomainDataProduct.responseData.fullyQualifiedName;
+
+      // Positive control: a Data Product in the asset's domain is listed.
+      await expect(async () => {
+        const searchResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
+        );
+        await selectorInput.clear();
+        await selectorInput.fill(sameDomainDataProduct.data.displayName);
+        await searchResponse;
+        await expect(page.getByTestId(`tag-${sameDomainFqn}`)).toBeVisible({
+          timeout: 2_000,
+        });
+      }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+      // Scoped to the asset's domain, so a Data Product from another domain is
+      // not offered.
+      const otherSearchResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
+      );
+      await selectorInput.clear();
+      await selectorInput.fill(otherDomainDataProduct.data.displayName);
+      await otherSearchResponse;
+
+      await expect(page.getByTestId(`tag-${otherDomainFqn}`)).not.toBeVisible();
     });
   }
 );

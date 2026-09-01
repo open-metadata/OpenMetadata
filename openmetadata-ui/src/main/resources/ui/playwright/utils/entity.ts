@@ -36,7 +36,6 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
-  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -94,15 +93,6 @@ export const visitEntityPage = async (data: {
 
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -141,7 +131,6 @@ export const visitEntityPageByFqn = async (data: {
 }) => {
   const { page, endpoint, fqn } = data;
   await waitForAllLoadersToDisappear(page);
-  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
@@ -1528,7 +1517,6 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
@@ -1995,6 +1983,25 @@ export const checkForEditActions = async ({
   entityType: string;
   deleted?: boolean;
 }) => {
+  if (entityType === EntityTypeEndpoint.METRIC) {
+    await expect(page.getByTestId('manage-button')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Share' })).toBeVisible();
+
+    if (deleted) {
+      await expect(
+        page.getByRole('button', { name: /Follow(?:ing)?/ })
+      ).not.toBeVisible();
+      await expect(page.getByTestId('edit-metric-metadata')).not.toBeVisible();
+    } else {
+      await expect(
+        page.getByRole('button', { name: /Follow(?:ing)?/ })
+      ).toBeEnabled();
+      await expect(page.getByTestId('edit-metric-metadata')).toBeVisible();
+    }
+
+    return;
+  }
+
   for (const {
     containerSelector,
     elementSelector,
@@ -2141,6 +2148,20 @@ export const deletedEntityCommonChecks = async ({
   }
 
   await page.click('[data-testid="manage-button"]');
+
+  if (endPoint === EntityTypeEndpoint.METRIC) {
+    await expect(page.getByTestId('delete-button')).toBeVisible();
+    if (deleted) {
+      await expect(page.getByTestId('restore-button')).toBeVisible();
+      await expect(page.getByTestId('version-button')).not.toBeVisible();
+    } else {
+      await expect(page.getByTestId('restore-button')).not.toBeVisible();
+      await expect(page.getByTestId('version-button')).toBeVisible();
+    }
+    await clickOutside(page);
+
+    return;
+  }
 
   if (deleted) {
     // only two menu options (restore and delete) should be present

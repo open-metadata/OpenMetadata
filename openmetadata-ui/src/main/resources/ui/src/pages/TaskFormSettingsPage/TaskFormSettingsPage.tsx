@@ -225,10 +225,10 @@ const TaskFormSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.GOVERNANCE,
-        'Task Forms',
+        t('label.task-form-plural'),
         GlobalSettingOptions.TASK_FORMS
       ),
-    []
+    [t]
   );
 
   const setSchemaEditors = (schema: TaskFormSchema) => {
@@ -470,7 +470,9 @@ const TaskFormSettingsPage = () => {
     }
   };
 
-  const pageTitle =
+  // The heading for the schema being edited — distinct from the document
+  // title, which names the settings page itself.
+  const schemaHeading =
     watchedDisplayName?.trim() ||
     watchedName?.trim() ||
     selectedSchema.displayName ||
@@ -485,7 +487,7 @@ const TaskFormSettingsPage = () => {
     .join(' / ');
 
   return (
-    <PageLayoutV1 pageTitle="Task Forms">
+    <PageLayoutV1 pageTitle={t('label.task-form-plural')}>
       <div
         className="task-form-settings-page"
         data-testid="task-form-settings-page">
@@ -557,7 +559,7 @@ const TaskFormSettingsPage = () => {
                   <Typography.Title
                     className="task-form-settings-hero__title"
                     level={2}>
-                    {pageTitle}
+                    {schemaHeading}
                   </Typography.Title>
                   <Typography.Paragraph className="task-form-settings-hero__description">
                     {pageDescription}

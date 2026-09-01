@@ -132,8 +132,10 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry on CI only; PLAYWRIGHT_RETRIES (set per workflow via the reusable's
+   * `retries` input) overrides the CI default of 1. The parens are semantic:
+   * without them `?? CI ? 1 : 0` collapses every override to 1. */
+  retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
@@ -183,6 +185,11 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      name: 'ontology-rdf-setup',
+      testMatch: '**/ontology-rdf.setup.ts',
+      dependencies: ['entity-data-setup'],
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -208,6 +215,7 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
         '**/VisualRegression/**',
@@ -245,7 +253,7 @@ export default defineConfig({
         '**/SSORenewal.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
     },
@@ -285,9 +293,11 @@ export default defineConfig({
     {
       name: 'Ontology RDF',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
+      fullyParallel: false,
+      workers: 1,
     },
     {
       name: 'DataAssetRulesEnabled',
@@ -415,6 +425,17 @@ export default defineConfig({
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+    },
+    // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
+    // waitForResponse/debounce flow is not interleaved with other chromium shards.
+    {
+      name: 'AdvancedSearch',
+      testMatch: '**/AdvancedSearch.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: entityDependencies,
+      grep: shardGrep,
+      fullyParallel: true,
+      teardown: entityTeardown,
     },
   ],
 

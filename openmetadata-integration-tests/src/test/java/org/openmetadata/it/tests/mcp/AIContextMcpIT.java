@@ -34,9 +34,11 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 
 /**
- * End-to-end integration test for the AI Context Platform's Mode A ({@code get_asset_context} MCP
+ * End-to-end integration test for the AI Context Platform's Mode A (get_entity_details with
  * tool) against the real application: a table with a foreign key, an attached Approved glossary
  * term, a linked Context Center article, and a metric applied to the table must all surface in one
  * tool call, as the LLM-ready markdown document.
@@ -167,53 +169,73 @@ class AIContextMcpIT extends McpTestBase {
         new CreateMetric()
             .withName("aicontext_revenue_" + suffix)
             .withDescription("Total revenue from completed orders.")
-            .withMetricExpression(new MetricExpression().withCode(METRIC_CODE))
-            .withAssets(
-                List.of(new EntityReference().withId(ordersTable.getId()).withType("table")));
-    return post("metrics", createMetric, Metric.class);
+            .withMetricExpression(new MetricExpression().withCode(METRIC_CODE));
+    Metric metric = post("metrics", createMetric, Metric.class);
+    addAsset(metric, ordersTable);
+    return metric;
   }
 
   @Test
-  void metricAssets_updateViaPatchRewiresTheEdge() throws Exception {
+  void metricAssets_bulkOperationsRewireTheEdge() throws Exception {
     Metric metric =
         post(
             "metrics",
             new CreateMetric()
                 .withName("aicontext_patch_metric_" + suffix)
-                .withDescription("Metric whose applied assets get rewired.")
-                .withAssets(
-                    List.of(new EntityReference().withId(ordersTable.getId()).withType("table"))),
+                .withDescription("Metric whose applied assets get rewired."),
             Metric.class);
+    addAsset(metric, ordersTable);
 
-    String rewirePatch =
-        String.format(
-            "[{\"op\":\"add\",\"path\":\"/assets\",\"value\":[{\"id\":\"%s\",\"type\":\"table\"}]}]",
-            customersTable.getId());
-    patch("metrics/" + metric.getId(), rewirePatch);
+    put(
+        "metrics/" + metric.getName() + "/assets/remove",
+        new BulkAssets().withAssets(List.of(tableReference(ordersTable))),
+        BulkOperationResult.class);
+    addAsset(metric, customersTable);
 
-    JsonNode updated = get("metrics/name/" + metric.getName() + "?fields=assets", JsonNode.class);
-    JsonNode assets = updated.get("assets");
+    JsonNode assets = assetsOf(metric);
     assertThat(assets).isNotNull();
     assertThat(assets.size()).isEqualTo(1);
-    assertThat(assets.get(0).get("id").asText()).isEqualTo(customersTable.getId().toString());
+    assertThat(assets.get(0).path("asset").path("id").asText())
+        .isEqualTo(customersTable.getId().toString());
   }
 
   @Test
   void metricAssets_roundTripsThroughApi() throws Exception {
-    JsonNode metric =
-        get("metrics/name/" + revenueMetric.getName() + "?fields=assets", JsonNode.class);
-    JsonNode assets = metric.get("assets");
+    JsonNode assets = assetsOf(revenueMetric);
     assertThat(assets).isNotNull();
     assertThat(assets.isArray()).isTrue();
-    assertThat(assets.get(0).get("id").asText()).isEqualTo(ordersTable.getId().toString());
+    assertThat(assets.get(0).path("asset").path("id").asText())
+        .isEqualTo(ordersTable.getId().toString());
+  }
+
+  private static void addAsset(Metric metric, Table table) throws Exception {
+    put(
+        "metrics/" + metric.getName() + "/assets/add",
+        new BulkAssets().withAssets(List.of(tableReference(table))),
+        BulkOperationResult.class);
+  }
+
+  private static EntityReference tableReference(Table table) {
+    return new EntityReference().withId(table.getId()).withType("table");
+  }
+
+  private static JsonNode assetsOf(Metric metric) throws Exception {
+    return get("metrics/" + metric.getId() + "/assets?limit=100&offset=0", JsonNode.class)
+        .path("data");
   }
 
   @Test
   void getAssetContext_returnsStructuralAndAttachedKnowledgeAsMarkdown() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_asset_context",
-            Map.of("entityType", "table", "fqn", ordersTable.getFullyQualifiedName()));
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "table",
+                "fqn",
+                ordersTable.getFullyQualifiedName(),
+                "include",
+                List.of("context")));
     JsonNode response = executeMcpRequest(toolCall);
 
     String text = response.get("result").get("content").get(0).get("text").asText();
@@ -233,18 +255,22 @@ class AIContextMcpIT extends McpTestBase {
   void getAssetContext_jsonFormatCarriesForeignKeysAndKnowledge() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_asset_context",
+            "get_entity_details",
             Map.of(
                 "entityType",
                 "table",
                 "fqn",
                 ordersTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
                 "format",
                 "json"));
     JsonNode response = executeMcpRequest(toolCall);
 
     JsonNode context =
-        OBJECT_MAPPER.readTree(response.get("result").get("content").get(0).get("text").asText());
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
     JsonNode foreignKeys = context.path("assetContext").path("table").path("foreignKeys");
     assertThat(foreignKeys.isArray()).isTrue();
     assertThat(foreignKeys.get(0).path("referredColumns").get(0).asText())
@@ -258,18 +284,22 @@ class AIContextMcpIT extends McpTestBase {
   void getAssetContext_excerptsLongArticleAndTruncationFlagIsSet() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_asset_context",
+            "get_entity_details",
             Map.of(
                 "entityType",
                 "table",
                 "fqn",
                 ordersTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
                 "format",
                 "json"));
     JsonNode response = executeMcpRequest(toolCall);
 
     JsonNode context =
-        OBJECT_MAPPER.readTree(response.get("result").get("content").get(0).get("text").asText());
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
     JsonNode longArticle = findArticle(context.path("articles"), longArticleFqn);
     assertThat(longArticle).isNotNull();
     assertThat(longArticle.path("contentTruncated").asBoolean()).isTrue();
@@ -286,7 +316,8 @@ class AIContextMcpIT extends McpTestBase {
   void getKnowledgeContent_returnsFullBodyForTruncatedArticle() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_knowledge_content", Map.of("entityType", "page", "fqn", longArticleFqn));
+            "get_entity_details",
+            Map.of("entityType", "page", "fqn", longArticleFqn, "include", List.of("content")));
     JsonNode response = executeMcpRequest(toolCall);
 
     String text = response.get("result").get("content").get(0).get("text").asText();

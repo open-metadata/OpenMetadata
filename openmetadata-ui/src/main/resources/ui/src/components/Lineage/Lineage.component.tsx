@@ -13,19 +13,12 @@
 
 import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import {
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import type { DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Edge, Node } from 'reactflow';
 import ReactFlow, {
   Background,
-  Edge,
   MiniMap,
-  Node,
   Panel,
   ReactFlowProvider,
 } from 'reactflow';
@@ -43,9 +36,9 @@ import { nodeTypes } from '../../utils/EntityLineageUtils';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
-import { SourceType } from '../SearchedData/SearchedData.interface';
+import type { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
-import { LineageProps } from './Lineage.interface';
+import type { LineageProps } from './Lineage.interface';
 import LineageSkeleton from './LineageSkeleton.component';
 
 const Lineage = ({
@@ -170,13 +163,15 @@ const Lineage = ({
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
   return (
-    <Card className="lineage-card card-padding-0" data-testid="lineage-details">
-      <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary ">
+    <Card
+      className="lineage-card card-padding-0 tw:flex tw:flex-col"
+      data-testid="lineage-details">
+      <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary tw:shrink-0">
         {header}
       </div>
 
       <div
-        className="lineage-container"
+        className="lineage-container tw:flex-1 tw:min-h-0 tw:overflow-hidden"
         data-testid="lineage-container"
         id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>
