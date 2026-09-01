@@ -386,6 +386,60 @@ public class BotImpersonationIT {
         "Rejected non-admin revoke must leave the grant intact");
   }
 
+  @Test
+  void test_revokePersonalAccessToken_whileImpersonating_rejected(TestNamespace ns) {
+    // The create path already blocks minting a PAT under impersonation; revoke is the same
+    // self-scoped operation and must be blocked too, even for a bot otherwise allowed to
+    // impersonate the target (the default policy permits regular users).
+    User target = createRegularUser(ns, "revoketarget");
+    User botUser = createBotUser(ns, "revokepat");
+    createBot(ns.prefix("imp_revokepat_bot"), botUser, true);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asTarget = impersonationClient(botToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asTarget
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users/security/token/revoke?removeAll=false",
+                        "{\"tokenIds\":[\"" + UUID.randomUUID() + "\"]}"),
+            "Revoking a personal access token while impersonating must be rejected");
+    assertTrue(
+        denied.getMessage().contains("while impersonated by"),
+        "Revoke must be blocked by the impersonation guard: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_withRotatedBotToken_rejected(TestNamespace ns) {
+    // Bot tokens are revoked by rotation (the stored token changes). A leaked, since-rotated token
+    // must not keep working just because an X-Impersonate-User header is attached.
+    User target = createRegularUser(ns, "rotatetarget");
+    User botUser = createBotUser(ns, "rotate");
+    createBot(ns.prefix("imp_rotate_bot"), botUser, true);
+
+    String oldToken =
+        SdkClients.adminClient()
+            .users()
+            .generateToken(botUser.getId(), JWTTokenExpiry.Seven)
+            .getJWTToken();
+    // Rotate: the previously issued token is now stale.
+    SdkClients.adminClient().users().generateToken(botUser.getId(), JWTTokenExpiry.Ninety);
+
+    OpenMetadataClient asTarget = impersonationClient(oldToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () -> asTarget.users().getByName(target.getName()),
+            "A rotated bot token must not authenticate even with an impersonation header");
+    assertTrue(
+        denied.getMessage().contains("does not match the current bot's token"),
+        "Rotated bot token must be rejected by bot-token validation: " + denied.getMessage());
+  }
+
   private Bot putBot(
       OpenMetadataClient client, String botName, User botUser, Boolean allowImpersonation) {
     CreateBot request =

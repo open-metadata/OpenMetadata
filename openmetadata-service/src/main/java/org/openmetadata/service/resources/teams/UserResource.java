@@ -610,6 +610,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context HttpServletRequest httpServletRequest,
       @Context HttpServletResponse httpServletResponse,
       @Valid LogoutRequest request) {
+    rejectImpersonatedTokenOperation(securityContext, "log out");
     Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
     JwtTokenCacheManager.getInstance()
         .markLogoutEventForToken(
@@ -1799,6 +1800,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
+  // Impersonation must never create, revoke, or invalidate a target's tokens or sessions: the
+  // effective principal is the impersonated user, so these self-scoped operations would act on the
+  // target rather than the caller. Reject them outright regardless of the bot's impersonation
+  // grant.
+  private void rejectImpersonatedTokenOperation(SecurityContext securityContext, String action) {
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (!nullOrEmpty(impersonatedBy)) {
+      throw new AuthorizationException(
+          "Cannot "
+              + action
+              + " for user "
+              + securityContext.getUserPrincipal().getName()
+              + " while impersonated by "
+              + impersonatedBy);
+    }
+  }
+
   @PUT
   @Path("/security/token/revoke")
   @Operation(
@@ -1826,6 +1844,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("false")
           boolean removeAll,
       @Valid RevokePersonalTokenRequest request) {
+    rejectImpersonatedTokenOperation(securityContext, "revoke a personal access token");
     if (!CommonUtil.nullOrEmpty(userName)) {
       authorizer.authorizeAdmin(securityContext);
     } else {
@@ -1870,15 +1889,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         securityContext,
         getResourceContext(),
         new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    rejectImpersonatedTokenOperation(securityContext, "create a personal access token");
     String userName = securityContext.getUserPrincipal().getName();
-    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-    if (!nullOrEmpty(impersonatedBy)) {
-      throw new AuthorizationException(
-          "Cannot create a personal access token for user "
-              + userName
-              + " while impersonated by "
-              + impersonatedBy);
-    }
     User user =
         repository.getByName(
             null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
