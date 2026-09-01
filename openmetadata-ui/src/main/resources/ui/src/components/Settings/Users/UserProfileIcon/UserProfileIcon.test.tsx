@@ -307,6 +307,11 @@ describe('UserProfileIcon', () => {
     const switcher = await screen.findByRole('switch', {
       name: 'label.dark-mode',
     });
+    const profileDropdown = screen
+      .getByText('label.logout')
+      .closest('.profile-dropdown');
+
+    expect(profileDropdown).toContainElement(switcher);
 
     fireEvent.click(switcher);
 
