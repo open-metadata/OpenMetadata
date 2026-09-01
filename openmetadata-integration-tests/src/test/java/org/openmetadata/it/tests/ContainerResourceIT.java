@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -2927,8 +2926,6 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
         "PII tag must survive parent reassignment");
   }
 
-  @Disabled(
-      "Blocked on the unbackported 1.13 L1-cache invalidation fix (#28902); container FQN cascade reads stale state")
   @Test
   void patch_containerParent_cascadesFqnToChildren_200(TestNamespace ns) {
     StorageService service = StorageServiceTestFactory.createS3(ns);
