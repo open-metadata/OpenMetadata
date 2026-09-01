@@ -52,3 +52,15 @@ DESTINATION_TYPE_LOOKUP = {
     AirbyteDestination.MSSQL.value: AirbyteDestination.MSSQL,
     "mssql": AirbyteDestination.MSSQL,
 }
+
+# Object-store connectors map to a Container, not a Table, so they are resolved by path
+# rather than through the TYPE_LOOKUP maps. Holds the connector display name ("S3", as
+# the internal API reports it) and the public-API slug ("s3").
+# ponytail: S3 only — GCS/Azure use different config keys and URI schemes, add them
+# alongside a scheme lookup when there is a real connection to test against.
+S3_CONNECTOR_TYPES = frozenset({"S3", "s3"})
+
+# The S3 source and destination connectors name their bucket/prefix fields differently.
+S3_SOURCE_BUCKET_KEY = "bucket"
+S3_DESTINATION_BUCKET_KEY = "s3_bucket_name"
+S3_DESTINATION_PATH_KEY = "s3_bucket_path"

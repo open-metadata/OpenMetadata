@@ -70,6 +70,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "apiServiceNames": {
+          "title": "API Service Names List",
+          "description": "List of API Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
