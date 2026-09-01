@@ -159,9 +159,14 @@ REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
 
 LOOKER_TAG_CATEGORY = "LookerTags"
 
-# Appended by `list_datamodels` after the last explore. Seeing it means every data model
-# of the bulk stage has been yielded, so the sink buffer can be flushed and the models
-# resolved before any lineage is drawn. See `_yield_bulk_datamodel_lineage`.
+# A stage processor is called once per produced entity and gets no "end of stream" hook,
+# but the buffer must be flushed exactly once, after the last explore. `list_datamodels`
+# appends this sentinel so `yield_bulk_datamodel` can recognise that point.
+#
+# It replaces a `processed_count >= total_explores` counter: the total was taken from every
+# explore in every model, while the producer skips models that fail the filter and explores
+# whose fetch raises, so one filtered explore left the count permanently short and standalone
+# views were never processed at all. Same pattern as omni/metadata.py.
 DATAMODEL_LINEAGE_SENTINEL = object()
 
 
