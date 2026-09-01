@@ -89,17 +89,6 @@ const renderLimitedListMenuItem = ({
       ];
 };
 
-const renderProfileDropdown = (menu: ReactNode) => (
-  <>
-    {menu}
-    {/* Ant Design closes Dropdown after any Menu selection, so the theme control
-        lives in the footer to let users see the theme change in place. */}
-    <div className="profile-dropdown w-68 tw:border-t tw:border-secondary tw:bg-primary tw:px-4 tw:py-3">
-      <ThemeModeSwitcher className="tw:w-full" />
-    </div>
-  </>
-);
-
 export const UserProfileIcon = () => {
   const { currentUser, selectedPersona, setSelectedPersona } =
     useApplicationStore();
@@ -375,6 +364,14 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
       ...navbarUtilClassBase.getUserProfileExtraItems(),
+      // A group label keeps the embedded switch non-selectable so Ant Design
+      // does not close the dropdown while the user previews the new theme.
+      {
+        key: 'theme-mode',
+        icon: '',
+        label: <ThemeModeSwitcher className="tw:w-full" />,
+        type: 'group',
+      },
       {
         type: 'divider',
       },
@@ -409,7 +406,6 @@ export const UserProfileIcon = () => {
 
   return (
     <Dropdown
-      dropdownRender={renderProfileDropdown}
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
