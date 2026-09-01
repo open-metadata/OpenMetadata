@@ -407,7 +407,7 @@ def parse_service_connection(config_dict: dict) -> None:
         if source_type is None:
             raise InvalidWorkflowException("Missing type in the serviceConnection config")
 
-        logger.debug("Parsing the workflow configuration for %s ingestion", source_type)
+        logger.debug("Error parsing the Workflow Configuration for %s ingestion", source_type)
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)
@@ -610,7 +610,7 @@ def parse_automation_workflow_gracefully(
         if source_type is None:
             raise InvalidWorkflowException("Missing type in the connection config")  # noqa: B904
 
-        logger.debug("Parsing the workflow configuration for %s ingestion", source_type)
+        logger.debug("Error parsing the Workflow Configuration for %s ingestion", source_type)
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)

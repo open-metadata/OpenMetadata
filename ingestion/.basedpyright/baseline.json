@@ -36362,6 +36362,14 @@
                     "endColumn": 94,
                     "lineCount": 1
                 }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 34,
+                    "endColumn": 48,
+                    "lineCount": 1
+                }
             }
         ],
         "./src/metadata/ingestion/source/database/dynamodb/service_spec.py": [
