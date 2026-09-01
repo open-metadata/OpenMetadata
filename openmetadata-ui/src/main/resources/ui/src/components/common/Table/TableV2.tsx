@@ -24,7 +24,6 @@
  *  - expandable        → tree/nested rows via record.children, plus expandedRowRender
  *  - onRow             → onClick and onDoubleClick are forwarded to the row element
  *  - onCell            → onClick, data-*, colSpan forwarded to the underlying td element
- *                        (colSpan: 0 skips the cell, matching AntD's covered-cell convention)
  *  - filterIcon/filterDropdown/onFilter → filter state managed internally; confirm/close close the dropdown
  *
  * Test contract — these hooks are stable and tests may rely on them:
@@ -1482,13 +1481,6 @@ const TableV2 = <T extends object>(
                             actualIndex
                           ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
                           {};
-
-                        // AntD's convention: colSpan 0 means "this cell is covered by an earlier
-                        // cell's span". Rendering it anyway would add a column to the row and
-                        // knock every following cell out of alignment.
-                        if (cellHandlerProps.colSpan === 0) {
-                          return null;
-                        }
 
                         return (
                           <UntitledTable.Cell

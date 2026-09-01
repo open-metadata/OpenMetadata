@@ -10,124 +10,191 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Edit03, Plus } from '@untitledui/icons';
-import type { FC } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { Button, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { EntityType } from '../../../enums/entity.enum';
-import type { Metric } from '../../../generated/entity/data/metric';
+import { Metric } from '../../../generated/entity/data/metric';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import type { RelatedMetricOption } from './RelatedMetricsForm';
+import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
 const RelatedMetrics: FC = () => {
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const { data: metric, onUpdate, permissions } = useGenericContext<Metric>();
-  const relatedMetrics = metric.relatedMetrics ?? [];
-  const visibleMetrics = isExpanded
-    ? relatedMetrics
-    : relatedMetrics.slice(0, 5);
-  const initialOptions = useMemo<RelatedMetricOption[]>(
-    () =>
-      relatedMetrics.map((reference) => ({
-        label: getEntityName(reference),
-        value: reference.id,
-        reference,
-      })),
-    [relatedMetrics]
+  const [isEdit, setIsEdit] = useState(false);
+  const [isShowMore, setIsShowMore] = useState(false);
+  const {
+    data: metricDetails,
+    onUpdate: onMetricUpdate,
+    permissions,
+  } = useGenericContext<Metric>();
+
+  const {
+    defaultValue,
+    initialOptions,
+    visibleRelatedMetrics,
+    hiddenRelatedMetrics,
+    relatedMetrics,
+  } = useMemo(() => {
+    const relatedMetrics = metricDetails['relatedMetrics'] ?? [];
+
+    const initialOptions: DataAssetOption[] = relatedMetrics.map((item) => {
+      return {
+        displayName: getEntityName(item),
+        reference: item,
+        label: getEntityName(item),
+        value: item.id,
+      };
+    });
+
+    const defaultValue = relatedMetrics.map((item) => item.id);
+    const visibleRelatedMetrics = relatedMetrics.slice(0, 5);
+    const hiddenRelatedMetrics = relatedMetrics.slice(5);
+
+    return {
+      initialOptions,
+      defaultValue,
+      visibleRelatedMetrics,
+      hiddenRelatedMetrics,
+      relatedMetrics,
+    };
+  }, [metricDetails]);
+
+  const showMoreLessElement = useMemo(() => {
+    return (
+      <Typography.Text
+        className="cursor-pointer text-xs text-primary underline"
+        data-testid={`show-${isShowMore ? 'less' : 'more'}`}
+        onClick={() => setIsShowMore(!isShowMore)}>
+        {isShowMore ? t('label.show-less') : t('label.show-more')}
+      </Typography.Text>
+    );
+  }, [isShowMore, hiddenRelatedMetrics]);
+
+  const getRelatedMetricListing = useCallback(
+    (relatedMetrics: EntityReference[]) => {
+      return relatedMetrics.map((item) => {
+        return (
+          <div
+            className="right-panel-list-item flex items-center justify-between"
+            data-testid={getEntityName(item)}
+            key={item.id}>
+            <div className="flex items-center">
+              <Link
+                className="font-medium"
+                to={entityUtilClassBase.getEntityLink(
+                  item.type,
+                  item.fullyQualifiedName ?? ''
+                )}>
+                <Button
+                  className="metric-entity-button flex-center p-0 m--ml-1"
+                  icon={
+                    <div className="entity-button-icon m-r-xs">
+                      {getEntityIcon(item.type)}
+                    </div>
+                  }
+                  title={getEntityName(item)}
+                  type="text">
+                  <Typography.Text
+                    className="w-72 text-left text-xs"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(item)}
+                  </Typography.Text>
+                </Button>
+              </Link>
+            </div>
+          </div>
+        );
+      });
+    },
+    []
   );
 
-  const handleSubmit = useCallback(
-    async (options: RelatedMetricOption[]) => {
+  const handleRelatedMetricUpdate = useCallback(
+    async (updatedAssets: DataAssetOption[]) => {
       try {
-        await onUpdate?.(
-          {
-            ...metric,
-            relatedMetrics: options.map(({ reference }) => reference),
-          },
-          'relatedMetrics'
+        const updatedRelatedMetrics = updatedAssets.map(
+          (item) => item.reference
         );
-        setIsEditing(false);
-      } catch (error) {
-        showErrorToast(error instanceof Error ? error.message : String(error));
 
-        throw error;
+        const updateMetricData = {
+          ...metricDetails,
+          relatedMetrics: updatedRelatedMetrics,
+        };
+
+        await onMetricUpdate?.(updateMetricData, 'relatedMetrics');
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEdit(false);
       }
     },
-    [metric, onUpdate]
+    [onMetricUpdate, relatedMetrics]
+  );
+
+  const headerExtra =
+    !isEdit &&
+    permissions.EditAll &&
+    !metricDetails.deleted &&
+    (isEmpty(relatedMetrics) ? (
+      <WidgetPlusButton
+        data-testid="add-related-metrics-container"
+        title={t('label.add-entity', {
+          entity: t('label.related-metric-plural'),
+        })}
+        onClick={() => setIsEdit(true)}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-related-metrics"
+        title={t('label.edit-entity', {
+          entity: t('label.related-metric-plural'),
+        })}
+        onClick={() => setIsEdit(true)}
+      />
+    ));
+
+  const content = isEdit ? (
+    <RelatedMetricsForm
+      defaultValue={defaultValue}
+      initialOptions={initialOptions}
+      metricFqn={metricDetails.fullyQualifiedName ?? ''}
+      onCancel={() => setIsEdit(false)}
+      onSubmit={handleRelatedMetricUpdate}
+    />
+  ) : (
+    !isEmpty(relatedMetrics) && (
+      <div
+        className="metric-entity-list-body"
+        data-testid="metric-entity-list-body">
+        {getRelatedMetricListing(visibleRelatedMetrics)}
+        {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
+        {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
+      </div>
+    )
   );
 
   return (
-    <Card data-testid="related-metrics-card">
-      <Card.Header
-        extra={
-          !isEditing && permissions.EditAll && !metric.deleted ? (
-            <Button
-              aria-label={t(relatedMetrics.length ? 'label.edit' : 'label.add')}
-              color="secondary"
-              data-testid={
-                relatedMetrics.length
-                  ? 'edit-related-metrics'
-                  : 'add-related-metrics-container'
-              }
-              iconLeading={relatedMetrics.length ? Edit03 : Plus}
-              onPress={() => setIsEditing(true)}
-            />
-          ) : undefined
-        }
-        title={t('label.related-metric-plural')}
-      />
-      <Card.Content>
-        {isEditing ? (
-          <RelatedMetricsForm
-            defaultValue={relatedMetrics.map(({ id }) => id)}
-            initialOptions={initialOptions}
-            metricFqn={metric.fullyQualifiedName ?? ''}
-            onCancel={() => setIsEditing(false)}
-            onSubmit={handleSubmit}
-          />
-        ) : visibleMetrics.length ? (
-          <Box direction="col" gap={2}>
-            {visibleMetrics.map((reference) => (
-              <Link
-                className="tw:text-sm tw:font-medium tw:text-brand-secondary tw:outline-brand hover:tw:text-brand-secondary_hover focus-visible:tw:outline-2 focus-visible:tw:outline-offset-2"
-                data-testid={getEntityName(reference)}
-                key={reference.id}
-                to={getEntityDetailsPath(
-                  EntityType.METRIC,
-                  reference.fullyQualifiedName ?? ''
-                )}>
-                {getEntityName(reference)}
-              </Link>
-            ))}
-            {relatedMetrics.length > 5 && (
-              <Button
-                color="link-color"
-                data-testid={`show-${isExpanded ? 'less' : 'more'}`}
-                onPress={() => setIsExpanded((expanded) => !expanded)}>
-                {isExpanded ? t('label.show-less') : t('label.show-more')}
-              </Button>
-            )}
-          </Box>
-        ) : (
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {t('label.empty-dash')}
-          </Typography>
-        )}
-      </Card.Content>
-    </Card>
+    <WidgetCard
+      forceExpand={isEdit}
+      headerExtra={headerExtra}
+      isExpandDisabled={isEmpty(relatedMetrics) && !isEdit}
+      title={t('label.related-metric-plural')}>
+      {content}
+    </WidgetCard>
   );
 };
 

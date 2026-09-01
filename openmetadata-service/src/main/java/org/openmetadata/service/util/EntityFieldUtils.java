@@ -109,9 +109,7 @@ public class EntityFieldUtils {
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
       if (!originalJson.equals(updatedJson)) {
         EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-        // Workflow patches must bypass session consolidation because replaying an asynchronously
-        // loaded entity can restore stale relationship values over a concurrent user patch.
-        entityRepository.patch(null, entity.getId(), user, patch, null, "*", impersonatedBy);
+        entityRepository.patch(null, entity.getId(), user, patch, null, impersonatedBy);
         ChangeEvent changeEvent =
             new ChangeEvent()
                 .withId(UUID.randomUUID())
