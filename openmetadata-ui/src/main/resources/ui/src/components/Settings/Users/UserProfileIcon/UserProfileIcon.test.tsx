@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -26,12 +27,16 @@ jest.mock('../../../../hooks/authHooks', () => ({
     onLogoutHandler: jest.fn(),
   }),
 }));
+jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
+  __esModule: true,
+  default: () => <span>app-mode-switcher</span>,
+}));
 jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
   __esModule: true,
   default: {
     getUserProfileExtraItems: jest
       .fn()
-      .mockReturnValue([{ key: 'app-mode', label: 'app-mode-extra-item' }]),
+      .mockReturnValue([{ key: 'extra-item', label: 'app-mode-extra-item' }]),
   },
 }));
 const translationState = {
@@ -129,7 +134,9 @@ const createMockStoreData = (overrides = {}) => ({
 });
 
 const MockWrapper = ({ children }: { children: React.ReactNode }) => (
-  <BrowserRouter>{children}</BrowserRouter>
+  <BrowserRouter>
+    <ThemeProvider>{children}</ThemeProvider>
+  </BrowserRouter>
 );
 
 describe('UserProfileIcon', () => {
@@ -139,6 +146,12 @@ describe('UserProfileIcon', () => {
     jest.clearAllMocks();
     mockUseApplicationStore.mockReturnValue(createMockStoreData());
     translationState.language = 'en';
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.removeProperty('color-scheme');
   });
 
   const openDropdown = () => {
@@ -278,5 +291,27 @@ describe('UserProfileIcon', () => {
     expect(screen.getByText('Rollen')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
     expect(screen.getByText('Abmelden')).toBeInTheDocument();
+  });
+
+  it('updates the theme from the profile dropdown', async () => {
+    localStorage.setItem('ui-theme', 'light');
+
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    const dropdownTrigger = openDropdown();
+
+    const switcher = await screen.findByRole('switch', {
+      name: 'label.dark-mode',
+    });
+
+    fireEvent.click(switcher);
+
+    expect(switcher).toBeChecked();
+    expect(dropdownTrigger).toHaveClass('ant-dropdown-open');
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 });
