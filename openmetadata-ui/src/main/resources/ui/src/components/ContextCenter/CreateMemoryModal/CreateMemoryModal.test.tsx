@@ -88,6 +88,10 @@ jest.mock('antd', () => ({
   ),
 }));
 
+jest.mock('../../../utils/ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Alert: jest.fn(({ title }: { title: string }) => (
     <div role="alert">{title}</div>
