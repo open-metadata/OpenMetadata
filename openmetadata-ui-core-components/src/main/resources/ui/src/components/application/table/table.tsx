@@ -40,7 +40,7 @@ import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
-import { cx } from '@/utils/cx';
+import { cx, sortCx } from '@/utils/cx';
 
 export const TableRowActionsDropdown = () => {
   const { t } = useCoreTranslation();
@@ -74,6 +74,67 @@ export const TableRowActionsDropdown = () => {
 type TableSize = 'compact' | 'sm' | 'md';
 
 const DEFAULT_TABLE_SIZE: TableSize = 'md';
+
+/**
+ * Every size-dependent class in one place, keyed by size rather than derived
+ * through a chain of ternaries at each use. Adding `lg` is then a matter of one
+ * more entry here — with the compiler naming any slot left unfilled — instead of
+ * hunting down each `size === …` and guessing which branch the new size wants.
+ * Same shape as `input.tsx`'s `sizes` map.
+ */
+/**
+ * Kept out of `TABLE_SIZES`: `sortCx` widens its values to `string`, which would
+ * lose the literal union the control's own prop expects.
+ */
+const SELECTION_CONTROL_SIZE: Record<TableSize, 'sm' | 'md'> = {
+  compact: 'sm',
+  sm: 'sm',
+  md: 'md',
+};
+
+interface TableSizeStyles {
+  cardHeader: string;
+  cardTitle: string;
+  headerHeight: string;
+  headerSelectionColumn: string;
+  headPadding: string;
+  rowHeight: string;
+  rowSelectionCell: string;
+  cellPadding: string;
+}
+
+const TABLE_SIZES: Record<TableSize, TableSizeStyles> = sortCx({
+  compact: {
+    cardHeader: 'tw:py-5 tw:md:px-6',
+    cardTitle: 'tw:text-lg',
+    headerHeight: 'tw:h-8',
+    headerSelectionColumn: 'tw:w-9 tw:md:pl-5',
+    headPadding: 'tw:px-4',
+    rowHeight: 'tw:h-10',
+    rowSelectionCell: 'tw:md:pl-5',
+    cellPadding: 'tw:px-4 tw:py-2',
+  },
+  sm: {
+    cardHeader: 'tw:py-4 tw:md:px-5',
+    cardTitle: 'tw:text-md',
+    headerHeight: 'tw:h-9',
+    headerSelectionColumn: 'tw:w-9 tw:md:pl-5',
+    headPadding: 'tw:px-6',
+    rowHeight: 'tw:h-14',
+    rowSelectionCell: 'tw:md:pl-5',
+    cellPadding: 'tw:px-5 tw:py-3',
+  },
+  md: {
+    cardHeader: 'tw:py-5 tw:md:px-6',
+    cardTitle: 'tw:text-lg',
+    headerHeight: 'tw:h-11',
+    headerSelectionColumn: 'tw:w-11 tw:md:pl-6',
+    headPadding: 'tw:px-6',
+    rowHeight: 'tw:h-18',
+    rowSelectionCell: 'tw:md:pl-6',
+    cellPadding: 'tw:px-6 tw:py-4',
+  },
+});
 
 /**
  * Defaults to `null` rather than a filled-in object: a non-null default would
@@ -131,7 +192,7 @@ const TableCardHeader = ({
     <div
       className={cx(
         'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:md:flex-row',
-        size === 'sm' ? 'tw:py-4 tw:md:px-5' : 'tw:py-5 tw:md:px-6',
+        TABLE_SIZES[size].cardHeader,
         className
       )}>
       <div className="tw:flex tw:flex-1 tw:flex-col tw:gap-0.5">
@@ -139,7 +200,7 @@ const TableCardHeader = ({
           <h2
             className={cx(
               'tw:font-semibold tw:text-primary',
-              size === 'sm' ? 'tw:text-md' : 'tw:text-lg'
+              TABLE_SIZES[size].cardTitle
             )}>
             {title}
           </h2>
@@ -232,7 +293,7 @@ const TableHeader = <T extends object>({
         cx(
           'tw:bg-secondary',
           stickyHeader ? 'tw:sticky tw:top-0 tw:z-10' : 'tw:relative',
-          size === 'compact' ? 'tw:h-8' : size === 'sm' ? 'tw:h-9' : 'tw:h-11',
+          TABLE_SIZES[size].headerHeight,
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
@@ -245,11 +306,11 @@ const TableHeader = <T extends object>({
         <AriaColumn
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
-            size === 'md' ? 'tw:w-11 tw:md:pl-6' : 'tw:w-9 tw:md:pl-5'
+            TABLE_SIZES[size].headerSelectionColumn
           )}>
           {selectionMode === 'multiple' && (
             <div className="tw:flex tw:items-start">
-              <Checkbox size={size === 'md' ? 'md' : 'sm'} slot="selection" />
+              <Checkbox size={SELECTION_CONTROL_SIZE[size]} slot="selection" />
             </div>
           )}
         </AriaColumn>
@@ -291,7 +352,7 @@ const TableHead = ({
           // `ring-offset-bg-primary` is dropped: it set an offset *colour* while
           // --tw-ring-offset-width defaults to 0px, so it never rendered.
           'tw:relative tw:p-0 tw:py-2 tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-focus-ring',
-          size === 'compact' ? 'tw:px-4' : 'tw:px-6',
+          TABLE_SIZES[size].headPadding,
           selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
           state.allowsSorting && 'tw:cursor-pointer',
           typeof className === 'function' ? className(state) : className
@@ -364,11 +425,7 @@ const TableRow = <T extends object>({
       className={(state) =>
         cx(
           'tw:relative tw:outline-focus-ring tw:transition-colors tw:after:pointer-events-none tw:hover:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          size === 'compact'
-            ? 'tw:h-10'
-            : size === 'sm'
-            ? 'tw:h-14'
-            : 'tw:h-18',
+          TABLE_SIZES[size].rowHeight,
           highlightSelectedRow && 'tw:selected:bg-secondary',
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
@@ -381,7 +438,7 @@ const TableRow = <T extends object>({
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
-            size === 'md' ? 'tw:md:pl-6' : 'tw:md:pl-5'
+            TABLE_SIZES[size].rowSelectionCell
           )}>
           <div className="tw:flex tw:items-end">
             {selectionMode === 'single' ? (
@@ -408,12 +465,12 @@ const TableRow = <T extends object>({
                     isDisabled={isDisabled}
                     isFocusVisible={isFocusVisible}
                     isSelected={isSelected}
-                    size={size === 'md' ? 'md' : 'sm'}
+                    size={SELECTION_CONTROL_SIZE[size]}
                   />
                 )}
               </AriaCheckbox>
             ) : (
-              <Checkbox size={size === 'md' ? 'md' : 'sm'} slot="selection" />
+              <Checkbox size={SELECTION_CONTROL_SIZE[size]} slot="selection" />
             )}
           </div>
         </AriaCell>
@@ -444,9 +501,7 @@ const TableCell = ({ className, children, ...props }: TableCellProps) => {
       className={(state) =>
         cx(
           'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          size === 'compact' && 'tw:px-4 tw:py-2',
-          size === 'sm' && 'tw:px-5 tw:py-3',
-          size === 'md' && 'tw:px-6 tw:py-4',
+          TABLE_SIZES[size].cellPadding,
 
           selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
 
