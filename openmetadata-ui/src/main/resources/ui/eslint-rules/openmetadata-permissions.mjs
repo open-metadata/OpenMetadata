@@ -25,11 +25,20 @@ export const rules = {
           'member access (x.EditAll, x?.EditAll) or by destructuring ' +
           '(const { EditAll } = x). The Operation enum itself is exempt, ' +
           'including any local alias created by `import { Operation as Op }`. ' +
-          'Known limitation: computed/bracket access (perms[Operation.EditAll]) ' +
-          'is intentionally NOT flagged — it is the sanctioned dynamic-key ' +
-          'pattern used by PermissionDerivation.ts and similar core utils, and ' +
-          'it cannot be distinguished statically from arbitrary computed member ' +
-          'access without false positives. See #6036.',
+          'Known limitations: (1) computed/bracket access ' +
+          '(perms[Operation.EditAll]) is intentionally NOT flagged — it is ' +
+          'the sanctioned dynamic-key pattern used by PermissionDerivation.ts ' +
+          'and similar core utils, and it cannot be distinguished statically ' +
+          'from arbitrary computed member access without false positives. ' +
+          '(2) Only the three field-priority props in RAW_PERMISSION_PROPS ' +
+          '(EditAll, ViewAll, ViewBasic) are guarded — raw access to any ' +
+          'other OperationPermission field (e.g. Delete, EditDescription) is ' +
+          'not detected by this rule. (3) Enforcement is scoped by ' +
+          'eslint.config.mjs to `src/components/**/*.{ts,tsx}` and ' +
+          '`src/pages/**/*.{ts,tsx}` only — utils and hooks are outside this ' +
+          "rule's glob and can read the same raw props unflagged. Widening " +
+          'either the guarded-prop set or the glob is a separate follow-up, ' +
+          'not covered by this rule today. See #6036.',
       },
       messages: {
         rawPermissionAccess:
