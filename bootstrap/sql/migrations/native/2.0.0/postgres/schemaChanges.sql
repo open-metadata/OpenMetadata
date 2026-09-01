@@ -546,15 +546,3 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 --      AND sqlstatement LIKE '%idx\_profiler\_data\_time\_series\_fqnhash\_pattern%' ESCAPE '\';
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiler_data_time_series_fqnhash_pattern
     ON profiler_data_time_series (entityFQNHash text_pattern_ops);
-
--- Alerts must not fire for pipeline executions that finished before the alert existed (#31782).
--- Stamp the alerting watermark on subscriptions that already have a consumer offset; subscriptions
--- without one are stamped when that row is first created. 'timestamp' is deliberately untouched:
--- change_event_consumers derives a NOT NULL generated column from it.
-UPDATE change_event_consumers
-SET json = jsonb_set(
-    json,
-    '{startingTimestamp}',
-    to_jsonb((EXTRACT(EPOCH FROM now()) * 1000)::bigint))
-WHERE extension = 'eventSubscription.Offset'
-  AND json ->> 'startingTimestamp' IS NULL;
