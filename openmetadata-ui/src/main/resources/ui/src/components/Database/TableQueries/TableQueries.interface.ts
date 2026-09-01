@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DefaultOptionType } from 'antd/lib/select';
+import type { DefaultOptionType } from 'antd/lib/select';
 import { HTMLAttributes } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../enums/common.enum';

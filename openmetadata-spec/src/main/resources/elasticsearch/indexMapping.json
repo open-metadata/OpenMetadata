@@ -230,7 +230,7 @@
     "indexName": "query_search_index",
     "indexMappingFile": "/elasticsearch/%s/query_index_mapping.json",
     "alias": "query",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "mlmodel": {
@@ -298,6 +298,15 @@
     ],
     "childAliases": []
   },
+  "metricGroup": {
+    "indexName": "metric_group_search_index",
+    "indexMappingFile": "/elasticsearch/%s/metric_group_index_mapping.json",
+    "alias": "metricGroup",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
   "glossary": {
     "indexName": "glossary_search_index",
     "indexMappingFile": "/elasticsearch/%s/glossary_index_mapping.json",
@@ -319,6 +328,15 @@
       "glossary",
       "dataAsset",
       "dataAssetEmbeddings"
+    ],
+    "childAliases": []
+  },
+  "relationshipType": {
+    "indexName": "relationship_type_search_index",
+    "indexMappingFile": "/elasticsearch/relationship_type_index_mapping.json",
+    "alias": "relationshipType",
+    "parentAliases": [
+      "all"
     ],
     "childAliases": []
   },

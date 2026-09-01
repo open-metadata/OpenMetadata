@@ -73,3 +73,8 @@ playwright/output/
 
 # Playwright test fixtures (may contain intentionally malformed files)
 playwright/test-data/
+
+# ESLint suppressions ratchet: rewritten by ESLint itself on every
+# --suppress-all / --prune-suppressions run in ESLint's own format. Letting
+# Prettier reformat it would make the two tools fight and churn forever.
+eslint-suppressions.json

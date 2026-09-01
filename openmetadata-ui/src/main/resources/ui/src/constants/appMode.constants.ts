@@ -14,11 +14,11 @@
 /**
  * Generic AppMode primitives.
  *
- * The active mode is a string. OM core stays mode-agnostic — it knows
- * about the abstraction (a current mode value, a registry to look up
- * mode-specific routes, a boot resolver) but never names specific modes.
- * Consumers (plugins, themes) register their modes at runtime through
- * `useAppRoutesRegistry`.
+ * The active mode is a string, tracked via `sessionStorage`/`localStorage`
+ * and resolved through the precedence chain in `useAppMode.ts`. OSS
+ * `AppRouter` renders the AI shell directly when the resolved mode
+ * matches `AI_APP_MODE` (see below) — there is no runtime
+ * registry or plugin-registration step in between.
  *
  * The active mode is scoped to a tab via `sessionStorage`, keyed by the
  * value below. The stored payload is a tuple:
@@ -28,7 +28,8 @@
  * `personaAppMode` snapshots what the resolver saw from the persona doc
  * at write time, so the resolver can tell whether the persona has
  * something new to say (invalidate the session) or not (keep the tab's
- * chosen mode). See `useResolvedAppMode` for the precedence logic.
+ * chosen mode). See `resolveEffectiveAppMode` in `useAppMode.ts` for the
+ * precedence logic.
  */
 
 export const APP_MODE_SESSION_KEY = 'omAppMode';
@@ -58,11 +59,10 @@ export const APP_MODE_HINT_TTL_MS = 60_000;
 export const DEFAULT_APP_MODE = 'default';
 
 /**
- * Runtime mode key registered by the Collate plugin via
- * `useAppRoutesRegistry.registerRoutes('ai', ...)`. Core does not itself
- * know how to render AI routes — this identifier only exists here so the
- * persona-scoped App Mode preference can translate the admin-facing enum
- * value into what plugins listen for. If no plugin registers this key,
- * `AppRouter` falls back to the default mode's routes automatically.
+ * Runtime mode key for the AI app-mode shell. `AppRouter` renders
+ * `AppModeRoutes` directly whenever the resolved mode equals this value,
+ * and falls back to the default mode's routes otherwise. This identifier
+ * also lets the persona-scoped App Mode preference translate the
+ * admin-facing `AppMode` enum value into the runtime mode string.
  */
 export const AI_APP_MODE = 'ai';
