@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/api/data/ontologyPackManifest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OntologyPackManifest",
-  "description": "Typed, versioned catalogue manifest for an Ontology Studio library pack.",
+  "description": "Typed, versioned catalogue manifest for an Ontology library pack.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.OntologyPackManifest",
   "properties": {
