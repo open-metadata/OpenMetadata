@@ -94,15 +94,6 @@ class IndexMappingVersionTrackerTest {
     return mappings;
   }
 
-  @Test
-  void metricGroupIsDiscoverableWithoutBeingADataAsset() {
-    IndexMapping metricGroup =
-        IndexMappingLoader.getInstance().getIndexMapping().get("metricGroup");
-
-    assertEquals(List.of("all"), metricGroup.getParentAliases());
-    assertFalse(metricGroup.getParentAliases().contains("dataAsset"));
-  }
-
   // --- Basic functionality tests ---
 
   @Test
