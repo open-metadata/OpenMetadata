@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -46,9 +47,13 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteConnectionModel,
+    AirbyteDestinationResponse,
+    AirbyteSourceResponse,
+    AirbyteStream,
     AirbyteWorkspace,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
@@ -59,7 +64,13 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
-from .utils import get_destination_table_details, get_source_table_details  # noqa: TID252
+from .utils import (  # noqa: TID252
+    get_destination_container_path,
+    get_destination_table_details,
+    get_source_container_path,
+    get_source_table_details,
+    is_object_store_connector,
+)
 
 logger = ingestion_logger()
 
@@ -314,86 +325,234 @@ class AirbyteSource(PipelineServiceSource):
         logger.debug(f"Source connection response: {source_connection}")
         logger.debug(f"Destination connection response: {destination_connection}")
 
-        source_name = source_connection.sourceName
-        destination_name = destination_connection.destinationName
+        # The public API reports the connector as `sourceType`/`destinationType`, so reading
+        # `sourceName`/`destinationName` directly makes every diagnostic log read "type: None".
+        source_name = source_connection.resolved_type
+        destination_name = destination_connection.resolved_type
 
-        streams = (
-            pipeline_details.connection.syncCatalog.streams
-            if pipeline_details.connection.syncCatalog and pipeline_details.connection.syncCatalog.streams
-            else []
+        streams = pipeline_details.connection.resolved_streams
+        if not streams:
+            logger.warning(
+                "Skipping lineage for connection [%s] — Airbyte returned no streams for it",
+                pipeline_details.connection.connectionId,
+            )
+            return
+
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.get().pipeline_service,
+            pipeline_name=self.context.get().pipeline,
         )
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        pipeline_reference = EntityReference(id=pipeline_entity.id.root, type="pipeline")
 
-        for entry in streams:
-            stream = entry.stream
-            if not stream:
-                continue
-
-            source_table_details = get_source_table_details(stream, source_connection)
-            destination_table_details = get_destination_table_details(stream, destination_connection)
-
-            if not source_table_details or not destination_table_details:
-                continue
-
-            from_fqn = self._get_table_fqn(source_table_details)
-            to_fqn = self._get_table_fqn(destination_table_details)
-
-            if not from_fqn:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" source table: [{source_table_details.database or '*'}]"
-                    f".[{source_table_details.schema}].[{source_table_details.name}]"
-                    f" (type: {source_name}) not found in openmetadata"
-                )
-                continue
-            if not to_fqn:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" destination table: [{destination_table_details.database or '*'}]"
-                    f".[{destination_table_details.schema}].[{destination_table_details.name}]"
-                    f" (type: {destination_name}) not found in openmetadata"
-                )
-                continue
-
-            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-            to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
-
-            if not from_entity:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" source table (fqn: [{from_fqn}], type: {source_name}) not found"
-                    " in openmetadata"
-                )
-                continue
-            if not to_entity:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" destination table (fqn: [{to_fqn}], type: {destination_name}) not found"
-                    " in openmetadata"
-                )
-                continue
-
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
+        for stream in streams:
+            to_reference = self._get_destination_entity_reference(
+                stream, destination_connection, pipeline_name, destination_name
             )
-            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
-            lineage_details = LineageDetails(
-                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
-                source=LineageSource.PipelineLineage,
-            )
+            if not to_reference:
+                continue
+
+            from_reference = self._get_source_entity_reference(stream, source_connection, pipeline_name, source_name)
+
+            # An API (or otherwise unsupported) source has no OpenMetadata entity to anchor
+            # the upstream side. Anchoring on the pipeline still records where the data
+            # landed instead of dropping the edge entirely.
+            if from_reference is None:
+                from_reference = pipeline_reference
+                lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
+            else:
+                lineage_details = LineageDetails(
+                    pipeline=pipeline_reference,
+                    source=LineageSource.PipelineLineage,
+                )
 
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),
-                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                        fromEntity=from_reference,
+                        toEntity=to_reference,
                         lineageDetails=lineage_details,
                     )
                 )
             )
+
+    def _get_source_entity_reference(
+        self,
+        stream: AirbyteStream,
+        source_connection: AirbyteSourceResponse,
+        pipeline_name: str,
+        source_name: Optional[str],  # noqa: UP045
+    ) -> Optional[EntityReference]:  # noqa: UP045
+        """
+        Resolve the table a stream is read from, or None when the source connector has no
+        OpenMetadata counterpart (API connectors, unsupported databases).
+        """
+        # Object stores must be checked first: they resolve to a Container, and letting
+        # them fall through would match them against an unrelated API collection.
+        if is_object_store_connector(source_connection.resolved_type):
+            container_path = get_source_container_path(stream, source_connection)
+            return self._get_container_entity_reference(container_path, pipeline_name) if container_path else None
+
+        source_table_details = get_source_table_details(stream, source_connection)
+        if not source_table_details:
+            # Not relational and not an object store. Only an explicitly configured API
+            # service may claim it; otherwise the connector is simply unsupported.
+            return self._get_api_entity_reference(stream, pipeline_name)
+
+        from_fqn = self._get_table_fqn(source_table_details)
+        if not from_fqn:
+            logger.warning(
+                "While extracting lineage: [%s], source table: [%s].[%s].[%s] (type: %s) not found in openmetadata",
+                pipeline_name,
+                source_table_details.database or "*",
+                source_table_details.schema,
+                source_table_details.name,
+                source_name,
+            )
+            return None
+
+        from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+        if not from_entity:
+            logger.warning(
+                "While extracting lineage: [%s], source table (fqn: [%s], type: %s) not found in openmetadata",
+                pipeline_name,
+                from_fqn,
+                source_name,
+            )
+            return None
+
+        return EntityReference(id=from_entity.id, type="table")
+
+    def _get_destination_entity_reference(
+        self,
+        stream: AirbyteStream,
+        destination_connection: AirbyteDestinationResponse,
+        pipeline_name: str,
+        destination_name: Optional[str],  # noqa: UP045
+    ) -> Optional[EntityReference]:  # noqa: UP045
+        """
+        Resolve the entity a stream is written to.
+
+        Object-store destinations land in a Container addressed by S3 path; every other
+        supported destination lands in a Table addressed by FQN.
+        """
+        if is_object_store_connector(destination_connection.resolved_type):
+            container_path = get_destination_container_path(stream, destination_connection)
+            return self._get_container_entity_reference(container_path, pipeline_name) if container_path else None
+
+        destination_table_details = get_destination_table_details(stream, destination_connection)
+        if not destination_table_details:
+            # Not relational and not an object store. Only an explicitly configured API
+            # service may claim it; otherwise the connector is simply unsupported.
+            return self._get_api_entity_reference(stream, pipeline_name)
+
+        to_fqn = self._get_table_fqn(destination_table_details)
+        if not to_fqn:
+            logger.warning(
+                "While extracting lineage: [%s], destination table: [%s].[%s].[%s] (type: %s)"
+                " not found in openmetadata",
+                pipeline_name,
+                destination_table_details.database or "*",
+                destination_table_details.schema,
+                destination_table_details.name,
+                destination_name,
+            )
+            return None
+
+        to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+        if not to_entity:
+            logger.warning(
+                "While extracting lineage: [%s], destination table (fqn: [%s], type: %s) not found in openmetadata",
+                pipeline_name,
+                to_fqn,
+                destination_name,
+            )
+            return None
+
+        return EntityReference(id=to_entity.id, type="table")
+
+    def _get_api_entity_reference(self, stream: AirbyteStream, pipeline_name: str) -> Optional[EntityReference]:  # noqa: UP045
+        """
+        Resolve the API collection a stream is read from or written to.
+
+        Airbyte API connectors expose no endpoint URL in their configuration, so the stream
+        name is the only join key available. That key is weak: Airbyte ships many connectors
+        that are neither relational nor object stores (Kafka, MongoDB, Pinecone, /dev/null),
+        and matching those on name alone would invent lineage to an unrelated API.
+
+        Resolution is therefore opt-in: it only runs when ``apiServiceNames`` names the API
+        services this pipeline actually talks to, and only when the match is unambiguous.
+        """
+        api_services = self.get_api_service_names()
+        if not api_services:
+            logger.debug(
+                "Skipping API lineage for stream [%s] in pipeline [%s]:"
+                " set lineageInformation.apiServiceNames to enable it",
+                stream.name,
+                pipeline_name,
+            )
+            return None
+
+        collections = [
+            collection
+            for collection in self.metadata.es_search_from_fqn(
+                entity_type=APICollection,
+                fqn_search_string=f"*.{stream.name}",
+            )
+            or []
+            if collection.service and model_str(collection.service.name) in api_services
+        ]
+
+        if len(collections) != 1:
+            logger.warning(
+                "While extracting lineage: [%s], stream [%s] matched %d API collections;"
+                " skipping. Set lineageInformation.apiServiceNames to disambiguate.",
+                pipeline_name,
+                stream.name,
+                len(collections),
+            )
+            return None
+
+        logger.debug(
+            "Resolved Airbyte stream [%s] to API collection [%s]",
+            stream.name,
+            model_str(collections[0].fullyQualifiedName),
+        )
+        return EntityReference(id=collections[0].id, type="apiCollection")
+
+    def _get_container_entity_reference(self, container_path: str, pipeline_name: str) -> Optional[EntityReference]:  # noqa: UP045
+        """
+        Look up the Container an object-store path maps to, as Glue and KafkaConnect do.
+
+        Falls back to the bucket-level container because a storage manifest often registers
+        only the bucket, leaving the per-stream prefix un-ingested.
+        """
+        storage_services = self.get_storage_service_names()
+        bucket_root = "/".join(container_path.split("/")[:3])
+
+        for candidate in dict.fromkeys([container_path, bucket_root]):
+            for container in self.metadata.es_search_container_by_path(full_path=candidate) or []:
+                if not container:
+                    continue
+                if storage_services and container.service and model_str(container.service.name) not in storage_services:
+                    continue
+                logger.debug(
+                    "Resolved Airbyte destination path [%s] to container [%s]",
+                    container_path,
+                    model_str(container.fullyQualifiedName),
+                )
+                return EntityReference(id=container.id, type="container")
+
+        logger.warning(
+            "While extracting lineage: [%s], destination container for path [%s] not found in"
+            " openmetadata. Ensure the storage service holding this bucket has been ingested.",
+            pipeline_name,
+            container_path,
+        )
+        return None
 
     def get_pipelines_list(self) -> Iterable[AirbytePipelineDetails]:
         """

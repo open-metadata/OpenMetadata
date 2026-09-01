@@ -20,6 +20,10 @@ from metadata.utils.logger import ingestion_logger
 
 from .constants import (  # noqa: TID252
     DESTINATION_TYPE_LOOKUP,
+    S3_CONNECTOR_TYPES,
+    S3_DESTINATION_BUCKET_KEY,
+    S3_DESTINATION_PATH_KEY,
+    S3_SOURCE_BUCKET_KEY,
     SOURCE_TYPE_LOOKUP,
     AirbyteDestination,
     AirbyteSource,
@@ -57,6 +61,71 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
         schema=source_schema,
         database=source_database,
     )
+
+
+def is_object_store_connector(resolved_type: Optional[str]) -> bool:  # noqa: UP045
+    """
+    Whether the connector reads from or writes to an object store rather than a database.
+    """
+    return (resolved_type or "") in S3_CONNECTOR_TYPES
+
+
+def _build_s3_uri(bucket_name: Optional[str], *segments: Optional[str]) -> Optional[str]:  # noqa: UP045
+    """
+    Join a bucket and path segments into a canonical ``s3://`` URI with no trailing slash.
+    """
+    if not bucket_name:
+        return None
+    parts = [str(segment).strip("/") for segment in segments if segment]
+    return "/".join([f"s3://{bucket_name.strip('/')}", *[part for part in parts if part]])
+
+
+def get_source_container_path(stream: AirbyteStream, source_connection: AirbyteSourceResponse) -> Optional[str]:  # noqa: UP045
+    """
+    Build the S3 URI an object-store source reads a stream from.
+
+    The S3 source scopes each stream with per-stream ``globs`` rather than a single
+    prefix, so lineage anchors on the bucket. Returns None for non-object-store sources
+    so the caller can fall back to table lineage.
+    """
+    if not is_object_store_connector(source_connection.resolved_type):
+        return None
+
+    bucket_name = source_connection.resolved_configuration.get(S3_SOURCE_BUCKET_KEY)
+    if not bucket_name:
+        logger.warning(
+            "Airbyte S3 source [%s] has no %s; cannot resolve storage lineage",
+            source_connection.resolved_type,
+            S3_SOURCE_BUCKET_KEY,
+        )
+        return None
+
+    return _build_s3_uri(bucket_name)
+
+
+def get_destination_container_path(
+    stream: AirbyteStream, destination_connection: AirbyteDestinationResponse
+) -> Optional[str]:  # noqa: UP045
+    """
+    Build the S3 URI an object-store destination writes a stream to.
+
+    Airbyte lays streams out as ``s3://<bucket>/<bucket_path>/<stream>``. Returns None
+    for non-object-store destinations so the caller can fall back to table lineage.
+    """
+    if not is_object_store_connector(destination_connection.resolved_type):
+        return None
+
+    destination_config = destination_connection.resolved_configuration
+    bucket_name = destination_config.get(S3_DESTINATION_BUCKET_KEY)
+    if not bucket_name:
+        logger.warning(
+            "Airbyte S3 destination [%s] has no %s; cannot resolve storage lineage",
+            destination_connection.resolved_type,
+            S3_DESTINATION_BUCKET_KEY,
+        )
+        return None
+
+    return _build_s3_uri(bucket_name, destination_config.get(S3_DESTINATION_PATH_KEY), stream.name)
 
 
 def get_destination_table_details(

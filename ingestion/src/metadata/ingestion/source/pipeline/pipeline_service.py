@@ -471,6 +471,16 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
+    def get_api_service_names(self) -> List[str]:  # noqa: UP006
+        """
+        Get the list of api service names
+        """
+        return (
+            (self.source_config.lineageInformation.apiServiceNames or [])
+            if self.source_config.lineageInformation
+            else []
+        )
+
     def prepare(self):
         """
         Method to implement any required logic before starting the ingestion process
