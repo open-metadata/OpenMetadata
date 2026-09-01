@@ -502,6 +502,18 @@ const TableV2 = <T extends object>(
     [rest.staticVisibleColumns, defaultVisibleColumns]
   );
 
+  /**
+   * `scroll.x` only counts as a width when it is one. AntD accepts
+   * `scroll={{ x: true }}` to mean "allow sideways scroll, size by content" —
+   * treating that `true` as a width set `width: true` on the table (dropped by
+   * React) and, worse, switched on the pixel min-width floors, pinning every
+   * sized column on a table that was never going to overflow.
+   */
+  const scrollWidth =
+    typeof scroll?.x === 'number' || typeof scroll?.x === 'string'
+      ? scroll.x
+      : undefined;
+
   const scrollStyle = useMemo((): React.CSSProperties => {
     if (!scroll) {
       return {};
@@ -557,7 +569,7 @@ const TableV2 = <T extends object>(
    * keep their relative proportions either way.
    */
   const pixelWidthTotal = useMemo((): number | null => {
-    if (scroll?.x || rest.resizableColumns) {
+    if (scrollWidth !== undefined || rest.resizableColumns) {
       return null;
     }
     const widths = propsColumns.map((col) => (col as ColumnType<T>).width);
@@ -574,7 +586,7 @@ const TableV2 = <T extends object>(
     // 259. Reserving the checkbox's width out of the total instead makes it
     // absorb the leftover and balloon to ~195px.
     return total > 0 ? total : null;
-  }, [propsColumns, scroll?.x, rest.resizableColumns]);
+  }, [propsColumns, scrollWidth, rest.resizableColumns]);
 
   const toColumnWidth = useCallback(
     (width: number | string | undefined) =>
@@ -1273,9 +1285,9 @@ const TableV2 = <T extends object>(
                 // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
                 // table is squeezed into its container instead, and columns
                 // that cannot wrap spill over their neighbours.
-                scroll?.x
+                scrollWidth !== undefined
                   ? {
-                      width: scroll.x as string | number,
+                      width: scrollWidth,
                       minWidth: '100%',
                     }
                   : undefined
@@ -1331,7 +1343,8 @@ const TableV2 = <T extends object>(
                               // percentage floor is worse still: rounded up per
                               // column it totals over 100% and raises a
                               // scrollbar on a table that fits.
-                              ...(scroll?.x && typeof colWidth === 'number'
+                              ...(scrollWidth !== undefined &&
+                              typeof colWidth === 'number'
                                 ? { minWidth: colWidth }
                                 : {}),
                             }
@@ -1404,8 +1417,8 @@ const TableV2 = <T extends object>(
                       </div>
                       {rest.resizableColumns && (
                         <ColumnResizer
-                          className="tw:absolute tw:right-0 tw:top-1/4 tw:h-1/2 tw:w-2 tw:cursor-col-resize 
-                        tw:touch-none tw:after:absolute tw:after:left-1/2 tw:after:h-full tw:after:w-px tw:after:-translate-x-1/2 tw:after:content-[''] 
+                          className="tw:absolute tw:right-0 tw:top-1/4 tw:h-1/2 tw:w-2 tw:cursor-col-resize
+                        tw:touch-none tw:after:absolute tw:after:left-1/2 tw:after:h-full tw:after:w-px tw:after:-translate-x-1/2 tw:after:content-['']
                         tw:after:bg-border-secondary tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-border-brand"
                         />
                       )}
@@ -1528,7 +1541,7 @@ const TableV2 = <T extends object>(
                                     ),
                                     // Scrollable pixel columns only — see the
                                     // header cell.
-                                    ...(scroll?.x &&
+                                    ...(scrollWidth !== undefined &&
                                     typeof colType.width === 'number'
                                       ? { minWidth: colType.width }
                                       : {}),
@@ -1613,6 +1626,20 @@ const TableV2 = <T extends object>(
                                     actualIndex
                                   )}
                                 </div>
+                              ) : showExpandInCell ? (
+                                // Same shrink permission without imposing
+                                // `truncate`: a flex item's min-width is `auto`,
+                                // so a nowrap value the call site ellipsizes
+                                // itself (an AntD Typography link, say) could
+                                // never shrink to the cell and painted across
+                                // the neighbouring columns instead.
+                                <div className="tw:min-w-0 tw:flex-1">
+                                  {resolveCellValue(
+                                    colType,
+                                    record,
+                                    actualIndex
+                                  )}
+                                </div>
                               ) : (
                                 resolveCellValue(colType, record, actualIndex)
                               )}
@@ -1658,7 +1685,7 @@ const TableV2 = <T extends object>(
           (clientPagination.serverTotal ?? filteredDataSource.length) <=
             clientPagination.pageSize
         ) ? (
-        <div className="tw:px-4 tw:pb-4">
+        <div>
           {/*
             The core pager rather than NextPrevious: it navigates by page
             number instead of one step at a time, and it is react-aria rather

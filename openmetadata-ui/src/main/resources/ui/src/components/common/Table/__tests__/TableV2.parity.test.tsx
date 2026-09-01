@@ -715,6 +715,12 @@ describe('TableV2 — pixel columns stretch to fill', () => {
     ]);
   });
 
+  it('treats scroll x: true as no width at all', () => {
+    // AntD's `x: true` means "allow sideways scroll, size by content" — it is
+    // not a width, so it must not pin the columns or stop them stretching.
+    expect(widthsFor({ scroll: { x: true } }).header).toEqual(['75%', '25%']);
+  });
+
   it('keeps pixels while columns are resizable', () => {
     // A resizable table measures its own columns, so the values come from the
     // resize state rather than the props — what matters is the unit: a drag
@@ -848,6 +854,49 @@ describe('TableV2 — size drives cell padding', () => {
 
     expect(cell.className).toContain('tw:p-8');
     expect(cell.className).not.toContain('tw:py-4 tw:pl-6 tw:pr-4');
+  });
+});
+
+/**
+ * TableV2-only: the expander turns the first cell into a flex row, and a flex
+ * item's min-width defaults to `auto` — a nowrap value the call site ellipsizes
+ * itself (an AntD Typography link) could then never shrink to the cell and
+ * painted across the neighbouring columns. The value slot must carry `min-w-0`
+ * whether or not the column also asks TableV2 to truncate.
+ */
+describe('TableV2 — expander cells let their value shrink', () => {
+  const firstCellDiv = (ellipsis?: boolean) => {
+    const { unmount } = render(
+      <TableV2
+        columns={[{ dataIndex: 'a', ellipsis, key: 'a', title: 'A' }]}
+        dataSource={[{ a: 'x'.repeat(400), children: [] }]}
+        expandable={{ rowExpandable: () => true }}
+        pagination={false}
+        rowKey="a"
+      />
+    );
+    const cell = document.querySelector('tbody td') as HTMLElement;
+    // jsdom's `:scope` parser trips over React Aria's `:`-laden ids, so walk.
+    const wrapper = cell.firstElementChild as HTMLElement;
+    const value = wrapper.lastElementChild as HTMLElement;
+    const cls = value.className;
+    unmount();
+
+    return cls;
+  };
+
+  it('without column ellipsis, the slot may shrink but not truncate', () => {
+    const cls = firstCellDiv();
+
+    expect(cls).toContain('tw:min-w-0');
+    expect(cls).not.toContain('tw:truncate');
+  });
+
+  it('with column ellipsis, it shrinks and truncates', () => {
+    const cls = firstCellDiv(true);
+
+    expect(cls).toContain('tw:min-w-0');
+    expect(cls).toContain('tw:truncate');
   });
 });
 
