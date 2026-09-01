@@ -613,8 +613,7 @@ class AuthenticationCodeFlowHandlerTest {
     // signin instead.
     AuthenticationCodeFlowHandler handler =
         assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
-    assertDoesNotThrow(
-        () -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
+    assertDoesNotThrow(() -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
     when(request.getSession(false)).thenReturn(null);
 
     handler.handleCallback(request, response);
