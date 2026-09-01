@@ -102,7 +102,9 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -209,6 +211,7 @@ public class IngestionPipelineResource
     return listOf(
         MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
         MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS,
+        MetadataOperation.DEPLOY,
         MetadataOperation.TRIGGER);
   }
 
@@ -757,6 +760,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY);
     return deployPipelineInternal(id, uriInfo, securityContext);
   }
 
@@ -781,6 +785,8 @@ public class IngestionPipelineResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid List<UUID> pipelineIdList) {
+    pipelineIdList.forEach(
+        id -> authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY));
 
     return pipelineIdList.stream()
         .map(
@@ -846,6 +852,8 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizePipelineOperation(
+        securityContext, id, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
@@ -855,7 +863,9 @@ public class IngestionPipelineResource
     }
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
-    Response response = createOrUpdate(uriInfo, securityContext, pipeline);
+    Response response =
+        createOrUpdateAfterPipelineOperation(
+            uriInfo, securityContext, pipeline, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -1503,9 +1513,30 @@ public class IngestionPipelineResource
     PipelineServiceClientResponse status =
         repository.deployIngestionPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
-      createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+      createOrUpdateAfterPipelineOperation(
+          uriInfo, securityContext, ingestionPipeline, MetadataOperation.DEPLOY);
     }
     return status;
+  }
+
+  private void authorizePipelineOperation(
+      SecurityContext securityContext, UUID id, MetadataOperation operation) {
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+  }
+
+  // Requiring EditAll to persist the runner's result would reject an allowed action after its
+  // external side effect has already happened.
+  private Response createOrUpdateAfterPipelineOperation(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      IngestionPipeline ingestionPipeline,
+      MetadataOperation operation) {
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    AuthRequest authRequest =
+        new AuthRequest(operationContext, getResourceContextById(ingestionPipeline.getId()));
+    return createOrUpdate(
+        uriInfo, securityContext, List.of(authRequest), AuthorizationLogic.ALL, ingestionPipeline);
   }
 
   public PipelineServiceClientResponse triggerPipelineInternal(
