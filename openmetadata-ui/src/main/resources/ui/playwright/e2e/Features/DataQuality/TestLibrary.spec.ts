@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
@@ -26,6 +26,22 @@ const TEST_DEFINITION_DISPLAY_NAME = `Aaro Custom Test Definition ${uuid()}`;
 const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition ${uuid()}`;
 const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
+
+const selectOptionWithMouse = async (page: Page, option: Locator) => {
+  await expect(option).toBeVisible();
+
+  // React Aria can replace an option node while Playwright checks click
+  // actionability. Its screen position remains stable, matching a user's mouse
+  // selection without retaining a stale option node.
+  const optionBox = await option.boundingBox();
+  if (!optionBox) {
+    throw new Error('Visible select option has no layout box');
+  }
+  await page.mouse.click(
+    optionBox.x + optionBox.width / 2,
+    optionBox.y + optionBox.height / 2
+  );
+};
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -629,19 +645,7 @@ test.describe(
           name: 'TABLE',
           exact: true,
         });
-        await expect(tableOption).toBeVisible();
-
-        // React Aria can replace an option node while Playwright checks click
-        // actionability. Its screen position remains stable, matching a user's
-        // mouse selection without retaining a stale option node.
-        const tableOptionBox = await tableOption.boundingBox();
-        if (!tableOptionBox) {
-          throw new Error('TABLE option is visible but has no layout box');
-        }
-        await page.mouse.click(
-          tableOptionBox.x + tableOptionBox.width / 2,
-          tableOptionBox.y + tableOptionBox.height / 2
-        );
+        await selectOptionWithMouse(page, tableOption);
 
         await expect(entityTypeSelect).toContainText('TABLE');
 
@@ -658,19 +662,29 @@ test.describe(
           platformsField.getByText('OpenMetadata', { exact: true })
         ).toBeHidden();
 
-        await platformsField.locator('input[role="combobox"]').fill('dbt');
+        const platformsInput = platformsField.locator('input[role="combobox"]');
         const dbtOption = page.getByRole('option', {
           name: 'dbt',
           exact: true,
         });
-        await expect(dbtOption).toBeVisible();
-        await dbtOption.click();
+        await platformsInput.fill('dbt');
+
+        // Atomic fill can schedule closure of React Aria's focus-opened popup.
+        // Establish a closed state before reopening it so that pending close
+        // cannot race the mouse selection.
+        await page.getByTestId('form-heading').click();
+        await expect(dbtOption).toBeHidden();
+        await platformsInput.focus();
+        await expect(platformsInput).toBeFocused();
+        await platformsInput.click();
+        await selectOptionWithMouse(page, dbtOption);
         await expect(
           platformsField.getByText('dbt', { exact: true })
         ).toBeVisible();
-        // Close the still-open platforms dropdown (a single Escape dismisses the
-        // combobox popover, not the drawer) so the fields below are clickable.
-        await page.keyboard.press('Escape');
+
+        // Continue to the next field by mouse, which also dismisses the
+        // multi-select popover without relying on keyboard interaction.
+        await page.getByTestId('description').locator('textarea').click();
         await expect(dbtOption).toBeHidden();
 
         // Add a parameter to verify DQ Dimension can still be set on a subsequent edit
