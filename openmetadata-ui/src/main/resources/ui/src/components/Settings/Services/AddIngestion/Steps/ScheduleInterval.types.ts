@@ -15,6 +15,22 @@ export interface ScheduleIntervalHandle {
   submit: () => void;
 }
 
+export interface ScheduleIntervalProps {
+  value?: string;
+  onChange?: (value: string | undefined) => void;
+  disabled?: boolean;
+  includePeriodOptions?: string[];
+  defaultSchedule?: string;
+  entity?: string;
+  /**
+   * Notifies the owner of the submit action whether the scheduler currently
+   * holds a usable value. A custom cron that is empty or malformed is reported
+   * as invalid so the form can block submission - an empty schedule is only
+   * valid through the On Demand card.
+   */
+  onValidityChange?: (isValid: boolean) => void;
+}
+
 export interface WorkflowExtraConfig {
   cron?: string;
   enableDebugLog?: boolean;

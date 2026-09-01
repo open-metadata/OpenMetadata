@@ -10,36 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../../styles/variables.less';
 
-.schedule-interval {
-  .schedule-interval-fields {
-    display: flex;
-    flex-direction: column;
-    gap: @margin-md;
+import {
+  CRON_FIELD_ERROR_KEYS,
+  CRON_FIELD_PATTERNS,
+} from './ScheduleInterval.constants';
+
+export const validateCronExpression = (cron: string): string | undefined => {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== CRON_FIELD_PATTERNS.length) {
+    return 'message.cron-invalid-field-count';
   }
 
-  .frequency-button-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: @margin-sm;
-  }
-
-  label {
-    font-weight: var(--om-font-weight-medium);
-  }
-
-  .cron-expression-card {
-    display: flex;
-    align-items: center;
-    gap: @margin-sm;
-    padding: @padding-sm @padding-md;
-
-    .cron-expression-card-icon {
-      height: 20px;
-      width: 20px;
-      flex-shrink: 0;
-      color: @grey-600;
+  for (let i = 0; i < parts.length; i++) {
+    if (!CRON_FIELD_PATTERNS[i].test(parts[i])) {
+      return CRON_FIELD_ERROR_KEYS[i];
     }
   }
-}
+
+  return undefined;
+};

@@ -29,12 +29,7 @@ import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-
 import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
   DAY_IN_MONTH_OPTIONS,
-  DAY_OF_MONTH_PATTERN,
-  DAY_OF_WEEK_PATTERN,
   DAY_OPTIONS,
-  HOUR_PATTERN,
-  MINUTE_PATTERN,
-  MONTH_PATTERN,
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
@@ -46,69 +41,14 @@ import {
 } from '../../../../../utils/CronExpressionUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
-import './schedule-interval.less';
-import { StateValue } from './ScheduleInterval.types';
+import {
+  FREQUENCY_LABEL_KEYS,
+  PERIOD_CUSTOM,
+  SELECTED_FREQUENCY_CLASS,
+} from './ScheduleInterval.constants';
+import { ScheduleIntervalProps, StateValue } from './ScheduleInterval.types';
+import { validateCronExpression } from './ScheduleInterval.utils';
 import ScheduleSelectionCards from './ScheduleSelectionCards';
-
-export interface ScheduleIntervalProps {
-  value?: string;
-  onChange?: (value: string | undefined) => void;
-  disabled?: boolean;
-  includePeriodOptions?: string[];
-  defaultSchedule?: string;
-  entity?: string;
-  /**
-   * Notifies the owner of the submit action whether the scheduler currently
-   * holds a usable value. A custom cron that is empty or malformed is reported
-   * as invalid so the form can block submission - an empty schedule is only
-   * valid through the On Demand card.
-   */
-  onValidityChange?: (isValid: boolean) => void;
-}
-
-const PERIOD_CUSTOM = 'custom';
-
-const CRON_FIELD_PATTERNS = [
-  MINUTE_PATTERN,
-  HOUR_PATTERN,
-  DAY_OF_MONTH_PATTERN,
-  MONTH_PATTERN,
-  DAY_OF_WEEK_PATTERN,
-];
-
-const validateCronExpression = (cron: string): string | undefined => {
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) {
-    return 'message.cron-invalid-field-count';
-  }
-
-  const fieldErrorKeys = [
-    'message.cron-invalid-minute-field',
-    'message.cron-invalid-hour-field',
-    'message.cron-invalid-day-of-month-field',
-    'message.cron-invalid-month-field',
-    'message.cron-invalid-day-of-week-field',
-  ];
-
-  for (let i = 0; i < parts.length; i++) {
-    if (!CRON_FIELD_PATTERNS[i].test(parts[i])) {
-      return fieldErrorKeys[i];
-    }
-  }
-
-  return undefined;
-};
-
-const FREQUENCY_LABEL_KEYS: Record<string, string> = {
-  hour: 'label.hourly',
-  day: 'label.daily',
-  week: 'label.weekly',
-  month: 'label.monthly',
-  custom: 'label.custom',
-};
-
-const SELECTED_FREQUENCY_CLASS =
-  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:after:outline-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
 
 const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   value,
@@ -360,11 +300,11 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
       : t('message.pipeline-will-trigger-manually');
 
     return (
-      <Card className="cron-expression-card tw:bg-secondary" size="sm">
-        <Clock className="cron-expression-card-icon" />
-        <Typography className="expression-text" size="text-sm">
-          {cronStringValue}
-        </Typography>
+      <Card
+        className="tw:flex tw:items-center tw:gap-3 tw:bg-secondary tw:px-4 tw:py-3"
+        size="sm">
+        <Clock className="tw:size-5 tw:shrink-0 tw:text-utility-gray-600" />
+        <Typography size="text-sm">{cronStringValue}</Typography>
       </Card>
     );
   }, [cronString, cronHumanText, entity, t]);
@@ -391,7 +331,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   }, [value, initialDefaultSchedule]);
 
   return (
-    <div className="schedule-interval">
+    <div>
       <Grid gap="4">
         <Grid.Item span={24}>
           <ScheduleSelectionCards
@@ -406,14 +346,12 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
         {selectedSchedular === SchedularOptions.SCHEDULE && (
           <Grid.Item span={24}>
             <div
-              className="schedule-interval-fields"
+              className="tw:flex tw:flex-col tw:gap-4"
               data-testid="cron-container">
-              <div
-                className="frequency-field"
-                data-testid="frequency-container">
+              <div data-testid="frequency-container">
                 {/* eslint-disable-next-line jsx-a11y/label-has-for -- button group, not a single control */}
-                <label>{t('label.frequency')}</label>
-                <div className="frequency-button-group m-t-xs">
+                <label className="tw:font-medium">{t('label.frequency')}</label>
+                <div className="tw:mt-2 tw:flex tw:flex-wrap tw:gap-3">
                   {frequencyOptions.map((option) => (
                     <Button
                       aria-pressed={selectedPeriod === option.id}
@@ -440,10 +378,10 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 {showWeekSelect && (
                   <Grid.Item span={8}>
                     {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
-                    <label>{t('label.day')}</label>
+                    <label className="tw:font-medium">{t('label.day')}</label>
                     <Select
                       aria-label={t('label.day')}
-                      className="w-full m-t-xs"
+                      className="tw:mt-2 tw:w-full"
                       data-testid="day-options"
                       isDisabled={disabled}
                       items={dayOptions}
@@ -466,10 +404,10 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 {showMonthSelect && (
                   <Grid.Item span={8}>
                     {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
-                    <label>{t('label.date')}</label>
+                    <label className="tw:font-medium">{t('label.date')}</label>
                     <Select
                       aria-label={t('label.date')}
-                      className="w-full m-t-xs"
+                      className="tw:mt-2 tw:w-full"
                       data-testid="date-options"
                       isDisabled={disabled}
                       items={dateOptions}
@@ -492,10 +430,10 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 {showTimePicker && (
                   <Grid.Item span={8}>
                     {/* eslint-disable-next-line jsx-a11y/label-has-for -- TimePicker below has its own aria-label */}
-                    <label>{t('label.time')}</label>
+                    <label className="tw:font-medium">{t('label.time')}</label>
                     <TimePicker
                       aria-label={t('label.time')}
-                      className="m-t-xs"
+                      className="tw:mt-2"
                       data-testid="time-picker"
                       isDisabled={disabled}
                       value={timeValue}
@@ -514,10 +452,12 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 {showMinuteOnly && (
                   <Grid.Item span={8}>
                     {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
-                    <label>{t('label.minute')}</label>
+                    <label className="tw:font-medium">
+                      {t('label.minute')}
+                    </label>
                     <Select
                       aria-label={t('label.minute')}
-                      className="w-full m-t-xs"
+                      className="tw:mt-2 tw:w-full"
                       data-testid="minute-options"
                       isDisabled={disabled}
                       items={minuteOptions}
@@ -542,10 +482,10 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 {showCustomInput && (
                   <Grid.Item span={24}>
                     {/* eslint-disable-next-line jsx-a11y/label-has-for -- Input below has its own aria-label */}
-                    <label>{t('label.cron')}</label>
+                    <label className="tw:font-medium">{t('label.cron')}</label>
                     <Input
                       aria-label={t('label.cron')}
-                      className="m-t-xs"
+                      className="tw:mt-2"
                       data-testid="custom-cron-input"
                       isDisabled={disabled}
                       placeholder="0 0 * * *"
