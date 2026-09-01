@@ -15,15 +15,11 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 import static org.openmetadata.service.util.EntityUtil.mergeTags;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ClassInfoList;
-import io.github.classgraph.ScanResult;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Modifier;
@@ -65,10 +61,10 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -85,6 +81,8 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.ClasspathScanIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -106,7 +104,7 @@ public final class Entity {
   @Getter @Setter private static TokenRepository tokenRepository;
   @Getter @Setter private static PolicyRepository policyRepository;
   @Getter @Setter private static RoleRepository roleRepository;
-  @Getter @Setter private static FeedRepository feedRepository;
+  @Getter @Setter private static ConversationRepository conversationRepository;
   @Getter @Setter private static LineageRepository lineageRepository;
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
@@ -188,6 +186,7 @@ public final class Entity {
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String TASK = "task";
+  public static final String CONVERSATION = "conversation";
   public static final String CHART = "chart";
   public static final String APPLICATION = "app";
   public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
@@ -213,6 +212,9 @@ public final class Entity {
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
+  public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
+  public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";
   public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";
@@ -447,6 +449,7 @@ public final class Entity {
     searchRepository = null;
     entityRelationshipRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
+    SeedDataGate.getInstance().reset();
     EntityIndexCapabilityRegistry.clear();
   }
 
@@ -961,35 +964,28 @@ public final class Entity {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
   private static List<Class<?>> getRepositories() {
-    try (ScanResult scanResult =
-        new ClassGraph()
-            .enableAnnotationInfo()
-            .acceptPackages(PACKAGES.toArray(new String[0]))
-            .scan()) {
-      ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
+    List<Class<?>> unnamedRepositories = new ArrayList<>();
+    Map<String, Class<?>> namedRepositories = new HashMap<>();
 
-      List<Class<?>> unnamedRepositories = new ArrayList<>();
-      Map<String, Class<?>> namedRepositories = new HashMap<>();
+    for (Class<?> clz :
+        ClasspathScanIndex.getInstance().getClassesWithAnnotation(Repository.class)) {
+      Repository annotation = clz.getAnnotation(Repository.class);
+      String name = annotation.name();
 
-      for (Class<?> clz : classList.loadClasses()) {
-        Repository annotation = clz.getAnnotation(Repository.class);
-        String name = annotation.name();
-
-        if (name.isEmpty()) {
-          unnamedRepositories.add(clz);
-        } else {
-          Class<?> existing = namedRepositories.get(name);
-          if (existing == null
-              || annotation.priority() < existing.getAnnotation(Repository.class).priority()) {
-            namedRepositories.put(name, clz);
-          }
+      if (name.isEmpty()) {
+        unnamedRepositories.add(clz);
+      } else {
+        Class<?> existing = namedRepositories.get(name);
+        if (existing == null
+            || annotation.priority() < existing.getAnnotation(Repository.class).priority()) {
+          namedRepositories.put(name, clz);
         }
       }
-
-      List<Class<?>> result = new ArrayList<>(unnamedRepositories);
-      result.addAll(namedRepositories.values());
-      return result;
     }
+
+    List<Class<?>> result = new ArrayList<>(unnamedRepositories);
+    result.addAll(namedRepositories.values());
+    return result;
   }
 
   public static <T extends FieldInterface> void populateEntityFieldTags(

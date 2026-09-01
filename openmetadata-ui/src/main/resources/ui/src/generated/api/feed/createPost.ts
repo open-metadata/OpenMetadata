@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Create post request
+ * Request to create a reply.
  */
 export interface CreatePost {
     /**
-     * Message in Markdown format. See markdown support for more details.
+     * Reply in Markdown format. See markdown support for more details.
      */
     message: string;
 }

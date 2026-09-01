@@ -46,6 +46,7 @@ public interface PipelineServiceClientInterface {
 
   String DEPLOYMENT_ERROR = "DEPLOYMENT_ERROR";
   String TRIGGER_ERROR = "TRIGGER_ERROR";
+  String LOGS_ERROR_KEY = "error";
 
   /**
    * Task key that metadata-style ingestion logs are returned under. Defined once because several
@@ -143,7 +144,8 @@ public interface PipelineServiceClientInterface {
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
   PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline);
 
-  /* Get the all last run logs of a deployed pipeline */
+  /* Get the all last run logs of a deployed pipeline. Implementations use LOGS_ERROR_KEY when
+   * logs cannot be retrieved so callers do not render the failure as pipeline output. */
   Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get logs for a specific pipeline run identified by runId.

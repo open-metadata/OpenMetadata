@@ -16,7 +16,6 @@ from metadata.generated.schema.entity.services.connections.database.dorisConnect
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisScheme,
 )
-from metadata.ingestion.connections.builders import get_connection_url_common
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.doris.connection import DorisConnection
 
@@ -25,7 +24,7 @@ def test_doris_connection_is_base_connection():
     assert issubclass(DorisConnection, BaseConnection)
 
 
-def test_basic_auth_builds_expected_url():
+def test_basic_auth_builds_doris_engine():
     connection = DorisConnectionConfig(
         username="openmetadata_user",
         password="openmetadata_password",
@@ -33,10 +32,9 @@ def test_basic_auth_builds_expected_url():
         databaseSchema="openmetadata_db",
         scheme=DorisScheme.doris,
     )
-    # Assert via the URL builder, not .client: the doris dialect (pydoris-custom,
-    # mysqlclient DBAPI) is installed --no-deps in runtime images only and is
-    # absent from the unit-test environment.
-    assert (
-        get_connection_url_common(connection)
-        == "doris://openmetadata_user:openmetadata_password@localhost:9030/openmetadata_db"
-    )
+    with DorisConnection(connection) as owned:
+        assert owned.client.dialect.name == "pydoris"
+        assert (
+            owned.client.url.render_as_string(hide_password=False)
+            == "doris://openmetadata_user:openmetadata_password@localhost:9030/openmetadata_db"
+        )

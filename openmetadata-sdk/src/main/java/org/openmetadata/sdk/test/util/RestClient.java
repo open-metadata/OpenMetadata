@@ -26,6 +26,7 @@ import org.apache.http.client.HttpResponseException;
 import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.client.RequestEntityProcessing;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.auth.JwtAuthProvider;
 
@@ -44,11 +45,16 @@ public class RestClient {
   private static final Client SHARED_CLIENT;
 
   static {
+    // BUFFERED (not Jersey's default CHUNKED) keeps request entities repeatable, so Apache
+    // HttpClient can transparently replay a request whose pooled connection the server had
+    // already half-closed. Chunked bodies surface that race as a hard
+    // NonRepeatableRequestException instead, flaking ITs at random.
     ClientConfig clientConfig =
         new ClientConfig()
             .connectorProvider(new ApacheConnectorProvider())
             .property(ClientProperties.CONNECT_TIMEOUT, CONNECT_TIMEOUT_MILLIS)
-            .property(ClientProperties.READ_TIMEOUT, READ_TIMEOUT_MILLIS);
+            .property(ClientProperties.READ_TIMEOUT, READ_TIMEOUT_MILLIS)
+            .property(ClientProperties.REQUEST_ENTITY_PROCESSING, RequestEntityProcessing.BUFFERED);
     SHARED_CLIENT = ClientBuilder.newBuilder().withConfig(clientConfig).build();
   }
 

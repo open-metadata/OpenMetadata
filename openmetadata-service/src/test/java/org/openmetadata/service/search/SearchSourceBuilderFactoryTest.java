@@ -662,6 +662,110 @@ public class SearchSourceBuilderFactoryTest {
     return writer.toString();
   }
 
+  /**
+   * The data quality builders also serve {@code /v1/search/query} and {@code /v1/search/export},
+   * whose {@code q} is a documented Lucene expression. Without {@code freeText} they must keep
+   * {@code query_string}, or a field-scoped query silently becomes literal text and returns 0 hits
+   * with HTTP 200.
+   */
+  @Test
+  public void testDataQualitySearchPreservesLuceneSyntaxForSearchQueryEndpoint() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String luceneExpression = "testSuite.name.keyword:my_suite AND NOT entityFQN:archived";
+
+    String osQuery =
+        osFactory
+            .getSearchSourceBuilderV2("test_case_search_index", luceneExpression, 0, 10)
+            .query()
+            .toJsonString();
+    String esQuery =
+        esFactory
+            .getSearchSourceBuilderV2("test_suite_search_index", luceneExpression, 0, 10)
+            .query()
+            .toString();
+
+    for (String builtQuery : List.of(osQuery, esQuery)) {
+      assertTrue(
+          builtQuery.contains(luceneExpression),
+          "Lucene syntax must reach the engine verbatim for /v1/search/query: " + builtQuery);
+      assertTrue(
+          builtQuery.contains("query_string"),
+          "/v1/search/query must keep the Lucene parser: " + builtQuery);
+      assertFalse(
+          builtQuery.contains("simple_query_string"),
+          "simple_query_string would make the Lucene expression literal: " + builtQuery);
+    }
+  }
+
+  /**
+   * The mirror of the above: the data quality list endpoints document {@code q} as free text, so
+   * they must use the parser that cannot throw on user input. A pasted URL is the reproduction from
+   * the original report.
+   */
+  @Test
+  public void testDataQualitySearchUsesSimpleQueryStringForFreeText() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String pastedUrl = "https://localhost:8585/table/orders";
+
+    String osQuery =
+        osFactory
+            .buildDataQualitySearchBuilderV2("test_case_search_index", pastedUrl, 0, 10, true)
+            .query()
+            .toJsonString();
+    String esQuery =
+        esFactory
+            .buildDataQualitySearchBuilderV2("test_suite_search_index", pastedUrl, 0, 10, true)
+            .query()
+            .toString();
+
+    for (String builtQuery : List.of(osQuery, esQuery)) {
+      assertTrue(
+          builtQuery.contains("simple_query_string"),
+          "Free-text q must use the parser that never throws: " + builtQuery);
+      assertFalse(
+          builtQuery.contains("\"query_string\""),
+          "query_string is what produced the query_shard_exception: " + builtQuery);
+      assertTrue(
+          builtQuery.contains(pastedUrl),
+          "The term must reach the engine unmangled, with no escaping: " + builtQuery);
+      assertTrue(
+          builtQuery.contains("\"NONE\""),
+          "flags=NONE is what makes reserved characters literal: " + builtQuery);
+    }
+  }
+
+  /**
+   * Substring matching used to come from the UI wrapping the term in {@code *…*}. With {@code q}
+   * literal there is no wildcard, so the {@code *.substring} ngram fields are the only thing
+   * matching mid-token; if they drop out of the field list, searching "alues" for
+   * "column_values_to_be_between" silently stops working.
+   */
+  @Test
+  public void testDataQualitySearchQueriesTheSubstringFields() {
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String esQuery =
+        esFactory
+            .buildDataQualitySearchBuilderV2("test_case_search_index", "alues", 0, 10, true)
+            .query()
+            .toString();
+
+    assertTrue(esQuery.contains("name.substring"), esQuery);
+    assertTrue(esQuery.contains("displayName.substring"), esQuery);
+    // The ngram fields are only precise because every gram of the query must match. Under the
+    // default OR a 3-gram overlap would be enough, so "orders" would surface "border_check".
+    assertTrue(
+        esQuery.contains("\"operator\":\"and\""),
+        "ngram matching must require all grams, or substring search becomes noisy: " + esQuery);
+  }
+
   @Test
   public void testEmptyAndWildcardQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);

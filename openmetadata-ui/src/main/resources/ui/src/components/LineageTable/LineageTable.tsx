@@ -18,7 +18,6 @@ import {
   Card,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -81,6 +80,7 @@ import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder'
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
+import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
@@ -961,14 +961,17 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames({ isFullScreen }, 'lineage-card')}
+      className={classNames(
+        { isFullScreen },
+        'lineage-card tw:flex tw:flex-col'
+      )}
       data-testid="lineage-card-table"
       variant="default">
       <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
         {cardHeader}
       </div>
 
-      <Card.Content className="tw:p-5 lineage-container">
+      <Card.Content className="tw:p-5 lineage-container tw:overflow-y-auto">
         <TableV2
           bordered
           className="h-full"

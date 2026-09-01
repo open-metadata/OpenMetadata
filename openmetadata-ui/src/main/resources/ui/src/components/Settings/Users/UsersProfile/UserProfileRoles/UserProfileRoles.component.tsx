@@ -14,7 +14,14 @@
 import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -33,6 +40,17 @@ import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
+
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">
+    {t('label.plus-count-more', {
+      count,
+    })}
+  </span>
+);
 
 const UserProfileRoles = ({
   userRoles,
@@ -108,7 +126,7 @@ const UserProfileRoles = ({
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
 
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<ComponentRef<typeof Select> | null>(null);
 
   const handleRolesSave = async () => {
     setIsLoading(true);
@@ -277,18 +295,14 @@ const UserProfileRoles = ({
                     filterOption={false}
                     loading={isRolesLoading}
                     maxTagCount={3}
-                    maxTagPlaceholder={(omittedValues) => (
-                      <span className="max-tag-text">
-                        {t('label.plus-count-more', {
-                          count: omittedValues.length,
-                        })}
-                      </span>
-                    )}
+                    maxTagPlaceholder={(omittedValues) =>
+                      renderMaxTagPlaceholder(omittedValues.length, t)
+                    }
                     mode="multiple"
                     open={isDropdownOpen}
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
-                    ref={dropdownRef as any}
+                    ref={dropdownRef}
                     tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}

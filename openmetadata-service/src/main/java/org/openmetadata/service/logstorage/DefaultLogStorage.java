@@ -32,7 +32,8 @@ import org.openmetadata.service.exception.UnhandledServerException;
 @Slf4j
 public class DefaultLogStorage implements LogStorageInterface {
 
-  private static final Set<String> PAGING_KEYS = Set.of("total", "after");
+  private static final Set<String> PAGING_KEYS =
+      Set.of("total", "after", PipelineServiceClientInterface.LOGS_ERROR_KEY);
 
   private PipelineServiceClientInterface pipelineServiceClient;
 
@@ -54,10 +55,14 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public InputStream getLogInputStream(String pipelineFQN, UUID runId) {
+  public InputStream getLogInputStream(String pipelineFQN, UUID runId) throws IOException {
     // For default implementation, we delegate to the pipeline service client
     // The runId is not used here as the pipeline service client only supports getting latest logs
     Map<String, Object> logs = getLogs(pipelineFQN, runId, null, Integer.MAX_VALUE);
+    String error = (String) logs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+    if (error != null) {
+      throw new IOException(error);
+    }
     String logContent = (String) logs.get("logs");
     return new ByteArrayInputStream(logContent.getBytes(StandardCharsets.UTF_8));
   }
@@ -80,6 +85,11 @@ public class DefaultLogStorage implements LogStorageInterface {
 
       // Convert the response to match our interface
       Map<String, Object> result = new HashMap<>();
+      String error = clientLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+      if (error != null) {
+        result.put(PipelineServiceClientInterface.LOGS_ERROR_KEY, error);
+        return result;
+      }
       result.put("logs", extractLogContent(clientLogs));
       result.put("after", clientLogs.get("after"));
       result.put("total", clientLogs.getOrDefault("total", "0"));

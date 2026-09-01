@@ -19,7 +19,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { PagingResponse } from 'Models';
 import { MemoryRouter } from 'react-router-dom';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import {
@@ -55,12 +57,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('../../common/ResizablePanels/ResizableLeftPanels', () =>
-  jest.fn(({ firstPanel, secondPanel }: any) => (
-    <div>
-      <div data-testid="left-panel">{firstPanel.children}</div>
-      <div data-testid="right-panel">{secondPanel.children}</div>
-    </div>
-  ))
+  jest.fn(
+    ({
+      firstPanel,
+      secondPanel,
+    }: {
+      firstPanel: { children: React.ReactNode };
+      secondPanel: { children: React.ReactNode };
+    }) => (
+      <div>
+        <div data-testid="left-panel">{firstPanel.children}</div>
+        <div data-testid="right-panel">{secondPanel.children}</div>
+      </div>
+    )
+  )
 );
 
 jest.mock('../../Domain/DomainDetails/DomainDetails.component', () =>
@@ -68,7 +78,7 @@ jest.mock('../../Domain/DomainDetails/DomainDetails.component', () =>
 );
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(({ onClick }: any) => (
+  jest.fn(({ onClick }: { onClick: () => void }) => (
     <button data-testid="error-placeholder" onClick={onClick}>
       Add Domain
     </button>
@@ -111,7 +121,8 @@ jest.mock('../../../utils/StringUtils', () => ({
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(
-    (entity: any) => entity?.displayName || entity?.name || ''
+    (entity: { displayName?: string; name?: string }) =>
+      entity?.displayName || entity?.name || ''
   ),
 }));
 
@@ -184,31 +195,53 @@ describe('DomainTreeView', () => {
 
     // Wire up Tree mock to capture callbacks on each render
     const { Tree } = jest.requireMock('@openmetadata/ui-core-components');
-    const TreeMock = Tree as jest.MockedFunction<any>;
+    const TreeMock = Tree as jest.Mock & {
+      ExpandButton: jest.Mock;
+      Header: jest.Mock;
+      Item: jest.Mock;
+      ItemContent: jest.Mock;
+      Section: jest.Mock;
+    };
 
     TreeMock.mockImplementation(
-      ({ children, onSelectionChange, onExpandedChange, onAction }: any) => {
+      ({
+        children,
+        onSelectionChange,
+        onExpandedChange,
+        onAction,
+      }: {
+        children: React.ReactNode;
+        onSelectionChange?: (keys: Set<string>) => void;
+        onExpandedChange?: (keys: Set<string>) => void;
+        onAction?: (key: string) => void;
+      }) => {
         capturedCallbacks = { onAction, onExpandedChange, onSelectionChange };
 
         return <div data-testid="mock-tree">{children}</div>;
       }
     );
     TreeMock.ExpandButton = jest.fn(() => null);
-    TreeMock.Header = jest.fn(({ children }: any) => <div>{children}</div>);
-    TreeMock.Item = jest.fn(({ children, id }: any) => (
-      <div data-testid={`tree-item-${id}`}>{children}</div>
-    ));
-    TreeMock.ItemContent = jest.fn(({ children }: any) => (
+    TreeMock.Header = jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     ));
-    TreeMock.Section = jest.fn(({ children }: any) => <div>{children}</div>);
+    TreeMock.Item = jest.fn(
+      ({ children, id }: { children: React.ReactNode; id: string }) => (
+        <div data-testid={`tree-item-${id}`}>{children}</div>
+      )
+    );
+    TreeMock.ItemContent = jest.fn(
+      ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+    );
+    TreeMock.Section = jest.fn(
+      ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+    );
 
     // Default API responses
     mockGetDomainChildrenPaginated.mockResolvedValue(
-      PAGINATED_ROOT_RESPONSE as any
+      PAGINATED_ROOT_RESPONSE as unknown as PagingResponse<Domain[]>
     );
-    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0] as any);
-    mockSearchDomains.mockResolvedValue(DOMAINS_LIST as any);
+    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0]);
+    mockSearchDomains.mockResolvedValue(DOMAINS_LIST);
   });
 
   // -------------------------------------------------------------------------
@@ -255,7 +288,7 @@ describe('DomainTreeView', () => {
       mockGetDomainChildrenPaginated.mockResolvedValue({
         data: [],
         paging: { total: 0 },
-      } as any);
+      } as unknown as PagingResponse<Domain[]>);
       renderComponent();
 
       expect(
@@ -267,7 +300,7 @@ describe('DomainTreeView', () => {
       mockGetDomainChildrenPaginated.mockResolvedValue({
         data: [],
         paging: { total: 0 },
-      } as any);
+      } as unknown as PagingResponse<Domain[]>);
       const openAddDomainDrawer = jest.fn();
       renderComponent({ openAddDomainDrawer });
       fireEvent.click(await screen.findByTestId('error-placeholder'));
@@ -347,7 +380,7 @@ describe('DomainTreeView', () => {
       mockGetDomainChildrenPaginated.mockResolvedValueOnce({
         data: [DOMAIN_WITH_MANY_CHILDREN],
         paging: { total: 1 },
-      } as any);
+      } as unknown as PagingResponse<Domain[]>);
       renderComponent();
       await waitFor(() =>
         expect(mockGetDomainChildrenPaginated).toHaveBeenCalled()
@@ -401,9 +434,11 @@ describe('DomainTreeView', () => {
         .mockResolvedValueOnce({
           data: [DOMAIN_WITH_MANY_CHILDREN],
           paging: { total: 1 },
-        } as any)
+        } as unknown as PagingResponse<Domain[]>)
         // Children response: 1 child, total 20 → hasMoreChildren = true
-        .mockResolvedValue(CHILD_RESPONSE_WITH_MORE as any);
+        .mockResolvedValue(
+          CHILD_RESPONSE_WITH_MORE as unknown as PagingResponse<Domain[]>
+        );
 
       renderComponent();
       await waitFor(() =>

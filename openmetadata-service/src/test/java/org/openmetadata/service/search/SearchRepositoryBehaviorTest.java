@@ -89,6 +89,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
@@ -262,7 +263,10 @@ class SearchRepositoryBehaviorTest {
 
       for (String entityType : MOCK_ENTITY_TYPES) {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
-        EntityRepository<?> mockRepo = mock(EntityRepository.class);
+        EntityRepository<?> mockRepo =
+            Entity.QUERY.equals(entityType)
+                ? mock(QueryRepository.class)
+                : mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
         doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
@@ -1387,6 +1391,11 @@ class SearchRepositoryBehaviorTest {
             "cluster_table_search_index",
             entity.getId().toString(),
             new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
+    final UUID entityId = entity.getId();
+    final String entityFqn = entity.getFullyQualifiedName();
+    QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
+    verify(queryRepository)
+        .forEachQueryBatchForDomainSource(eq(Entity.TABLE), eq(entityId), eq(entityFqn), any());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
@@ -1602,7 +1611,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void inheritedFieldChangesAddTagsMarksThemAsDerived() throws Exception {
+  void inheritedFieldChangesAddTagsMarksThemAsPropagated() throws Exception {
     EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag1 =
@@ -1634,14 +1643,17 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(data.get("tagAdded"));
     List<TagLabel> addedTags = (List<TagLabel>) data.get("tagAdded");
     assertEquals(2, addedTags.size());
-    assertTrue(addedTags.stream().allMatch(t -> t.getLabelType() == TagLabel.LabelType.DERIVED));
+    // PROPAGATED, not DERIVED: DERIVED means "recomputed on read from the glossary term's own
+    // classification tags" and is stripped by every write path, so it cannot survive a round
+    // trip. See TagLabelUtil.isSystemGenerated and Entity.propagatedParentTags.
+    assertTrue(addedTags.stream().allMatch(t -> t.getLabelType() == TagLabel.LabelType.PROPAGATED));
     assertEquals("PII.Sensitive", addedTags.get(0).getTagFQN());
     assertEquals("Tier.Tier1", addedTags.get(1).getTagFQN());
   }
 
   @Test
   @SuppressWarnings("unchecked")
-  void inheritedFieldChangesDeleteTagsMarksThemAsDerived() throws Exception {
+  void inheritedFieldChangesDeleteTagsMarksThemAsPropagated() throws Exception {
     EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
@@ -1668,7 +1680,7 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(data.get("tagDeleted"));
     List<TagLabel> deletedTags = (List<TagLabel>) data.get("tagDeleted");
     assertEquals(1, deletedTags.size());
-    assertEquals(TagLabel.LabelType.DERIVED, deletedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.PROPAGATED, deletedTags.get(0).getLabelType());
     assertEquals("PII.Sensitive", deletedTags.get(0).getTagFQN());
   }
 
@@ -1710,11 +1722,11 @@ class SearchRepositoryBehaviorTest {
 
     assertEquals(1, addedTags.size());
     assertEquals("PII.NonSensitive", addedTags.get(0).getTagFQN());
-    assertEquals(TagLabel.LabelType.DERIVED, addedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.PROPAGATED, addedTags.get(0).getLabelType());
 
     assertEquals(1, deletedTags.size());
     assertEquals("PII.Sensitive", deletedTags.get(0).getTagFQN());
-    assertEquals(TagLabel.LabelType.DERIVED, deletedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.PROPAGATED, deletedTags.get(0).getLabelType());
   }
 
   @Test
@@ -2011,8 +2023,14 @@ class SearchRepositoryBehaviorTest {
   @Test
   void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityReference queryDomain =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("analytics");
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
+    when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
 
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -2041,11 +2059,13 @@ class SearchRepositoryBehaviorTest {
     assertTrue(script.contains("ctx._source.description = params.description;"));
     assertTrue(script.contains("ctx._source.usageSummary = params.usageSummary;"));
     assertTrue(script.contains("ctx._source.queryUsedIn = params.queryUsedIn;"));
+    assertTrue(script.contains("ctx._source.domains = params.domains;"));
     assertEquals(1234L, params.get("updatedAt"));
     assertEquals("Updated query description", params.get(Entity.FIELD_DESCRIPTION));
     assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
+    assertEquals(List.of(queryDomain), params.get(Entity.FIELD_DOMAINS));
   }
 
   @Test
@@ -2558,9 +2578,10 @@ class SearchRepositoryBehaviorTest {
         .updateChildren(
             SearchClient.GLOBAL_SEARCH_ALIAS,
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                "domain.id", domain.getId().toString()),
+                "domains.id", domain.getId().toString()),
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT,
+                Map.of("id", domain.getId().toString())));
     verify(searchClient)
         .deleteEntityByFields(
             List.of("cluster_domain_search_index"),
@@ -2999,7 +3020,7 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.4, 0.6);
+    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
   }
 
   @Test
