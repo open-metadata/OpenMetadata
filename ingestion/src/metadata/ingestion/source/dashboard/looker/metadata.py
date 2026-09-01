@@ -99,6 +99,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import ProgressMode
@@ -158,6 +159,11 @@ REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
 
 LOOKER_TAG_CATEGORY = "LookerTags"
 
+# Appended by `list_datamodels` after the last explore. Seeing it means every data model
+# of the bulk stage has been yielded, so the sink buffer can be flushed and the models
+# resolved before any lineage is drawn. See `_yield_bulk_datamodel_lineage`.
+DATAMODEL_LINEAGE_SENTINEL = object()
+
 
 def clean_dashboard_name(name: str) -> str:
     """
@@ -215,6 +221,14 @@ class LookerSource(DashboardServiceSource):
         self._parsed_views: dict[str, str] | None = {}
         self._unparsed_views: dict[str, str] | None = {}
         self._derived_dependencies = nx.DiGraph()
+
+        # Data models yielded by the bulk stage but not yet written by the sink. They are
+        # resolved in `_yield_bulk_datamodel_lineage`, after the Barrier has flushed them.
+        self._pending_explores: list[str] = []
+        self._pending_views: list[tuple[str, str]] = []
+        self._processed_view_names: set[str] = set()
+        self._pending_view_lineage: list[tuple[LookMlView, LookmlModelExplore, str]] = []
+        self._pending_standalone_lineage: list[tuple[LookMlView, str, str, str]] = []
 
         self._added_lineage: dict | None = {}
 
@@ -403,9 +417,12 @@ class LookerSource(DashboardServiceSource):
 
         return self._repo_credentials
 
-    def list_datamodels(self) -> Iterable[LookmlModelExplore]:
+    def list_datamodels(self) -> Iterable:
         """
-        Fetch explores with the SDK
+        Fetch explores with the SDK.
+
+        Yields `LookmlModelExplore`s followed by `DATAMODEL_LINEAGE_SENTINEL`, hence the
+        untyped `Iterable`.
         """
         if self.source_config.includeDataModels:
             # First, pick up all the LookML Models
@@ -431,6 +448,10 @@ class LookerSource(DashboardServiceSource):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Unexpected error fetching LookML models - {err}")
+
+            # Always close the stream, even when the explore fetch blew up: standalone
+            # views and the lineage of whatever was yielded still need to be drawn.
+            yield DATAMODEL_LINEAGE_SENTINEL
 
     def _reconcilable_explore_total(self, all_lookml_models: Sequence[LookmlModel]) -> int:
         """Count the explores that ``fetch_lookml_explores`` would actually
@@ -501,8 +522,9 @@ class LookerSource(DashboardServiceSource):
         if not first_project:
             return
 
-        # Get the first model name for naming purposes
-        first_model_name = self._all_lookml_models[0].name if self._all_lookml_models else "default"
+        # Get the first model name for naming purposes. An unnamed model would otherwise
+        # build data models called "None_<view>_view".
+        first_model_name = (self._all_lookml_models[0].name if self._all_lookml_models else None) or "default"
 
         project_parser = self._project_parsers.get(first_project)
         if not project_parser:
@@ -510,8 +532,9 @@ class LookerSource(DashboardServiceSource):
 
         # Iterate through all cached views
         for view_name, view in project_parser._views_cache.items():
-            # Skip if view was already processed
-            if view_name in self._views_cache:
+            # Skip if view was already processed. `_views_cache` is only filled after the
+            # Barrier flush, so the explore pass records its views here as it goes.
+            if view_name in self._processed_view_names:
                 logger.debug(f"View [{view_name}] already processed, skipping")
                 continue
 
@@ -555,12 +578,11 @@ class LookerSource(DashboardServiceSource):
                 self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=data_model_request)
 
-                # Build and cache the view model
-                view_data_model = self._build_data_model(datamodel_view_name)
-                self._views_cache[view.name] = view_data_model
-
-                # Add lineage for standalone views
-                yield from self._add_standalone_view_lineage(view, first_project, first_model_name)
+                # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
+                # once the Barrier has committed this request.
+                self._pending_views.append((view.name, datamodel_view_name))
+                self._processed_view_names.add(view.name)
+                self._pending_standalone_lineage.append((view, first_project, first_model_name, datamodel_view_name))
 
             except ValidationError as err:
                 yield Either(
@@ -609,15 +631,15 @@ class LookerSource(DashboardServiceSource):
 
     def yield_bulk_datamodel(self, model: LookmlModelExplore) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
-        Get the Explore and View information and prepare
-        the model creation request.
+        Get the Explore and View information and prepare the model creation request.
 
-        After processing all explores, this method also processes standalone views
-        from the repository that aren't associated with any explore.
+        This stage only *writes*: the created data models are still buffered in the sink,
+        so nothing here may read them back. Resolution and lineage happen once the
+        producer's sentinel arrives, in `_yield_bulk_datamodel_lineage`.
         """
-        # Initialize the flag to track if we've started processing standalone views
-        if not hasattr(self, "_standalone_views_processed"):
-            self._standalone_views_processed = False
+        if model is DATAMODEL_LINEAGE_SENTINEL:
+            yield from self._yield_bulk_datamodel_lineage()
+            return
 
         try:
             datamodel_name = build_datamodel_name(model.model_name, model.name)
@@ -651,15 +673,8 @@ class LookerSource(DashboardServiceSource):
                 self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
 
-                # build datamodel by our hand since ack_sink=False
-                self.context.get().dataModel = self._build_data_model(datamodel_name)
-                self._view_data_model = copy.deepcopy(self.context.get().dataModel)
-
-                # Maybe use the project_name as key too?
-                # Save the explores for when we create the lineage with the dashboards and views
-                self._explores_cache[explore_datamodel.name.root] = (
-                    self.context.get().dataModel
-                )  # This is the newly created explore
+                # Resolved after the Barrier flush; see `_resolve_pending_datamodels`.
+                self._pending_explores.append(explore_datamodel.name.root)
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
@@ -697,23 +712,62 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-        finally:
-            # After processing the last explore, process standalone views
-            # This is a sentinel pattern - we check if this is the last model
-            if not self._standalone_views_processed and hasattr(self, "_all_lookml_models"):
-                # Count how many explores we've processed
-                if not hasattr(self, "_explores_processed_count"):
-                    self._explores_processed_count = 0
-                self._explores_processed_count += 1
 
-                # Calculate total explores
-                total_explores = sum(len(m.explores) if m.explores else 0 for m in self._all_lookml_models)
+    def _yield_bulk_datamodel_lineage(self) -> Iterable[Either]:
+        """Close the bulk data-model stage: write what is left, then draw lineage.
 
-                # If this is the last explore, process standalone views
-                if self._explores_processed_count >= total_explores:
-                    self._standalone_views_processed = True
-                    logger.info("All explores processed, now processing standalone views")
-                    yield from self.yield_standalone_datamodels()
+        Standalone views are yielded here too, so a single Barrier covers every data
+        model of the stage. Resolving them all up front also means view-to-view
+        `extends` lineage can find its parents in `_views_cache`.
+        """
+        yield from self.yield_standalone_datamodels()
+
+        # The data models above are still in the sink's bulk buffer. Commit them before
+        # anything looks them up by name, or every lookup below comes back empty.
+        yield Either(right=Barrier(reason="looker_datamodel_lineage_flush"))  # pyright: ignore[reportCallIssue]
+
+        resolved = self._resolve_pending_datamodels()
+
+        for view, explore, datamodel_view_name in self._pending_view_lineage:
+            self._view_data_model = resolved.get(datamodel_view_name)
+            yield from self.add_view_lineage(view, explore)
+        self._pending_view_lineage = []
+
+        for view, project_name, model_name, datamodel_view_name in self._pending_standalone_lineage:
+            self._view_data_model = resolved.get(datamodel_view_name)
+            yield from self._add_standalone_view_lineage(view, project_name, model_name)
+        self._pending_standalone_lineage = []
+
+    def _resolve_pending_datamodels(self) -> Dict[str, Optional[DashboardDataModel]]:  # noqa: UP006, UP045
+        """Fetch the data models written by this stage, keyed by their data model name.
+
+        A view joined from several explores is yielded once per explore, so the same
+        name is fetched only once and the caches keep the last-writer-wins semantics
+        the interleaved implementation had.
+        """
+        resolved: Dict[str, Optional[DashboardDataModel]] = {}  # noqa: UP006, UP045
+
+        def resolve(data_model_name: str) -> Optional[DashboardDataModel]:  # noqa: UP045
+            if data_model_name not in resolved:
+                try:
+                    resolved[data_model_name] = self._build_data_model(data_model_name)
+                except Exception as err:
+                    # One flaky lookup must not cost every other view its lineage; the
+                    # None lands in the caches and the lineage builders skip that view.
+                    logger.warning(f"Error fetching data model [{data_model_name}]: {err}")
+                    logger.debug(traceback.format_exc())
+                    resolved[data_model_name] = None
+            return resolved[data_model_name]
+
+        for datamodel_name in self._pending_explores:
+            self._explores_cache[datamodel_name] = resolve(datamodel_name)
+        self._pending_explores = []
+
+        for view_name, datamodel_view_name in self._pending_views:
+            self._views_cache[view_name] = resolve(datamodel_view_name)
+        self._pending_views = []
+
+        return resolved
 
     def _get_explore_sql(self, explore: LookmlModelExplore) -> str | None:
         """
@@ -778,10 +832,13 @@ class LookerSource(DashboardServiceSource):
                     else None,
                 )
                 yield Either(right=data_model_request)
-                self._view_data_model = self._build_data_model(datamodel_view_name)
-                self._views_cache[view.name] = self._view_data_model
                 self.register_record_datamodel(datamodel_request=data_model_request)
-                yield from self.add_view_lineage(view, explore)
+
+                # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
+                # once the Barrier has committed this request.
+                self._pending_views.append((view.name, datamodel_view_name))
+                self._processed_view_names.add(view.name)
+                self._pending_view_lineage.append((view, explore, datamodel_view_name))
             else:
                 logger.warning(
                     f"Cannot find the view [{view_name}] in the configured repositories. "
@@ -950,9 +1007,14 @@ class LookerSource(DashboardServiceSource):
         This handles view-to-table lineage and view-to-view lineage via extends.
         """
         try:
-            # Set the current view data model for lineage processing
-            datamodel_view_name = f"{model_name}_{view.name}_view"
-            self._view_data_model = self._build_data_model(datamodel_view_name)
+            # `_yield_bulk_datamodel_lineage` resolves and sets `_view_data_model` after
+            # the Barrier flush; a miss means the data model never made it to the server.
+            if not self._view_data_model:
+                logger.warning(
+                    f"Skipping lineage for standalone view [{view.name}]: its data model "
+                    f"[{model_name}_{view.name}_view] was not found in OpenMetadata."
+                )
+                return
 
             # Handle view-to-view lineage via extends
             if view.extends__all:
@@ -1041,6 +1103,15 @@ class LookerSource(DashboardServiceSource):
         Add the lineage source -> view -> explore
         """
         try:
+            # `_yield_bulk_datamodel_lineage` resolves and sets `_view_data_model` after
+            # the Barrier flush; a miss means the data model never made it to the server.
+            if not self._view_data_model:
+                logger.warning(
+                    f"Skipping lineage for view [{view.name}] of explore [{explore.name}]: "
+                    "its data model was not found in OpenMetadata."
+                )
+                return
+
             # This is the name we store in the cache
             explore_name = build_datamodel_name(explore.model_name, explore.name)
             explore_model = self._explores_cache.get(explore_name)
