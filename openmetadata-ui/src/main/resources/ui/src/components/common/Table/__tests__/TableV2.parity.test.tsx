@@ -688,3 +688,36 @@ describe('TableV2 — cells centre their content vertically', () => {
     expect((cell as HTMLElement).className).toContain('tw:align-top');
   });
 });
+
+/**
+ * TableV2-only: the core `Table.Head` lays its label, tooltip and sort arrow out
+ * in a flex group, and a flex container ignores `text-align`. AntD's header is
+ * plain text, so `text-align` alone carried it there and there is nothing to
+ * compare against on the legacy side.
+ */
+describe('TableV2 — an aligned header justifies its flex group', () => {
+  const headerOf = (align?: 'center' | 'right') => {
+    render(
+      <TableV2
+        columns={[{ align, dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    return screen.getByRole('columnheader', { name: /Name/ }) as HTMLElement;
+  };
+
+  it('pushes a right-aligned header to the end', () => {
+    expect(headerOf('right').className).toContain('tw:[&>div]:justify-end');
+  });
+
+  it('centres a centre-aligned header', () => {
+    expect(headerOf('center').className).toContain('tw:[&>div]:justify-center');
+  });
+
+  it('leaves an unaligned header alone', () => {
+    expect(headerOf().className).not.toContain('justify-');
+  });
+});
