@@ -19,6 +19,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -186,6 +187,29 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
+    // 6. Reject edge conditions that could inject into the generated JUEL expression
+    validateEdgeConditions(workflowDefinition);
+  }
+
+  /**
+   * Rejects edge conditions containing characters that could break out of the quoted JUEL string
+   * literal the condition is embedded into (${var == 'condition'}) and inject arbitrary expression
+   * syntax (GHSA-cq2r-82mr-xv2h). Node references are guarded separately in {@link #validateNodeIds}.
+   */
+  private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getEdges() == null) {
+      return;
+    }
+    String workflowName = workflowDefinition.getName();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      String condition = edge.getCondition();
+      if (condition != null && !WorkflowExpressionValidator.isSafeCondition(condition)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s' has an edge with an unsafe condition: '%s'",
+                workflowName, condition));
+      }
+    }
   }
 
   /**
@@ -437,6 +461,14 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       if (!nodeIds.add(nodeId)) {
         throw BadRequestException.of(
             String.format("Workflow '%s' has duplicate node ID: '%s'", workflowName, nodeId));
+      }
+
+      // Node names become JUEL variable-name prefixes on conditional edges; reject any that could
+      // break out of the generated expression (GHSA-cq2r-82mr-xv2h).
+      if (!WorkflowExpressionValidator.isSafeNodeReference(nodeId)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s' has a node with an unsafe name: '%s'", workflowName, nodeId));
       }
 
       // Check if node ID clashes with workflow name
