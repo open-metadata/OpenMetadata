@@ -147,6 +147,7 @@ export const ROUTES = {
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
+  SPARQL_PLAYGROUND: '/governance/sparql',
   WORKFLOWS: '/workflows',
   WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',
@@ -228,6 +229,8 @@ export const ROUTES = {
 
   DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
   DATA_MARKETPLACE: '/data-marketplace',
+  DATA_MARKETPLACE_DATA_ACCESS_REQUESTS:
+    '/data-marketplace/data-access-requests',
 
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,

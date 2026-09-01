@@ -163,8 +163,8 @@ jest.mock('recharts', () => ({
   ),
   Pie: ({ data }: { data: { name: string; value: number }[] }) => (
     <div data-length={data.length} data-testid="pie">
-      {data.map((item, index) => (
-        <div data-testid={`pie-cell-${item.name}`} key={index}>
+      {data.map((item) => (
+        <div data-testid={`pie-cell-${item.name}`} key={item.name}>
           {item.name}: {item.value}
         </div>
       ))}

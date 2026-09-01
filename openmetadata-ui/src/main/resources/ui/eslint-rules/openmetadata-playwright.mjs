@@ -60,6 +60,10 @@ const resolveMatcherText = (argument, sourceCode) => {
  */
 const requireAggregationWaitHelper = {
   meta: {
+    docs: {
+      description:
+        'Require waitForAggregation instead of waiting on search/aggregate directly',
+    },
     messages: {
       rawAggregationWait:
         'Use waitForAggregation from playwright/utils/searchAggregation instead of waiting on search/aggregate directly — a wait that names only the endpoint or field also matches the dropdown-open request and can resolve early.',
