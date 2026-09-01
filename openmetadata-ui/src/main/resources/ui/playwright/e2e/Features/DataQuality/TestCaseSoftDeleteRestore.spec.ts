@@ -229,7 +229,7 @@ test.describe(
       // action inside the dialog is the reliable signal that it is interactive.
       await expect(restoreButton).toBeVisible();
       await expect(confirmationModal.getByTestId('body-text')).toContainText(
-        restoreTestCaseName
+        restoreTestCaseDisplayName
       );
 
       const restoreResponse = page.waitForResponse(

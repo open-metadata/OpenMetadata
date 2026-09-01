@@ -546,6 +546,28 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
   });
 
+  it('should show the source URL tooltip when the link receives focus', async () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'http://test-source.com',
+        }}
+      />
+    );
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Tab' });
+      sourceUrlButton.focus();
+    });
+
+    expect(sourceUrlButton).toHaveFocus();
+    expect(await screen.findByText('label.source-url')).toBeVisible();
+  });
+
   it('should not render source URL button when sourceUrl is not present', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
