@@ -170,6 +170,29 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
   }
 
+  protected Response addFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  protected Response deleteFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  private void authorizeFollowerMutation(SecurityContext securityContext, UUID userId) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.user().getId().equals(userId)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
+  }
+
   protected List<MetadataOperation> getEntitySpecificOperations() {
     return null;
   }

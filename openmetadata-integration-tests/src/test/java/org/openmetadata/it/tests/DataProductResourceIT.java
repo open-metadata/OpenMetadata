@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -215,6 +216,61 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   // ===================================================================
   // DATA PRODUCT-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void put_addFollowerForAnotherUser_403(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class,
+            () -> addFollower(SdkClients.user2Client(), dataProduct.getId(), testUser3().getId()));
+
+    assertEquals(403, exception.getStatusCode());
+    assertFalse(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  @Test
+  void delete_removeFollowerForAnotherUser_403(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    addFollower(SdkClients.user3Client(), dataProduct.getId(), testUser3().getId());
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                deleteFollower(SdkClients.user2Client(), dataProduct.getId(), testUser3().getId()));
+
+    assertEquals(403, exception.getStatusCode());
+    assertTrue(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  private void addFollower(OpenMetadataClient client, UUID dataProductId, UUID userId) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProductId + "/followers",
+            userId,
+            ChangeEvent.class);
+  }
+
+  private void deleteFollower(OpenMetadataClient client, UUID dataProductId, UUID userId) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/dataProducts/" + dataProductId + "/followers/" + userId,
+            null,
+            ChangeEvent.class);
+  }
+
+  private boolean hasFollower(UUID dataProductId, UUID userId) {
+    DataProduct dataProduct = getEntityWithFields(dataProductId.toString(), "followers");
+    return dataProduct.getFollowers() != null
+        && dataProduct.getFollowers().stream()
+            .anyMatch(follower -> userId.equals(follower.getId()));
+  }
 
   @Test
   void post_dataProductWithStyle_200_OK(TestNamespace ns) {
