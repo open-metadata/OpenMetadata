@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { EntityInfoItemV1 } from './CommonEntitySummaryInfoV1.interface';
 
@@ -25,14 +26,14 @@ jest.mock('react-i18next', () => ({
 jest.mock('@ant-design/icons/lib/components/Icon', () => {
   return jest
     .fn()
-    .mockImplementation((props: any) => (
+    .mockImplementation((props: Record<string, string>) => (
       <span data-testid={props['data-testid'] || 'icon'} />
     ));
 });
 
 // Mock Link from react-router-dom to avoid Router dependency
 jest.mock('react-router-dom', () => ({
-  Link: ({ to, children }: any) => (
+  Link: ({ to, children }: { to?: unknown; children?: ReactNode }) => (
     <a data-testid="internal-link" href={typeof to === 'string' ? to : '/'}>
       {children}
     </a>

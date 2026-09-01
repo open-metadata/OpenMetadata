@@ -23,8 +23,6 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -46,11 +44,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -71,11 +67,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -993,75 +985,6 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
-      return new RecognizerFeedbackTaskWorkflow(threadContext);
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  private boolean isRecognizerFeedbackTask(UUID taskId) {
-    try {
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread thread = feedRepository.get(taskId);
-      return thread.getTask() != null && thread.getTask().getFeedback() != null;
-    } catch (Exception e) {
-      LOG.debug("Failed to check if task is recognizer feedback task", e);
-    }
-    return false;
-  }
-
-  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
-    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      Tag tag = (Tag) threadContext.getAboutEntity();
-      EntityRepository.checkUpdatedByTaskAssignee(threadContext.getThread(), user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveLegacyThreadTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn(
-            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
-            taskId);
-        try {
-          org.openmetadata.schema.type.RecognizerFeedback feedback =
-              threadContext.getThread().getTask().getFeedback();
-          if (feedback != null) {
-            RecognizerFeedbackRepository repo =
-                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-
-            boolean approved =
-                resolveTask.getNewValue() != null
-                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
-            if (approved) {
-              repo.applyFeedback(feedback, user);
-            } else {
-              repo.rejectFeedback(feedback, user, null);
-            }
-          }
-        } catch (Exception e) {
-          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
-        }
-      }
-
-      return tag;
-    }
-  }
-
   public class TagUpdater extends EntityUpdater {
     private boolean renameProcessed = false;
 
@@ -1163,12 +1086,13 @@ public class TagRepository extends EntityRepository<Tag> {
         // Capture the descendants so the post-write pass can re-evict any entry a racing reader
         // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
         // The pass below runs after updateFqn but inside this transaction — see
-        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit
+        // window.
         List<EntityDAO.EntityIdFqnPair> renamedTags =
-            invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+            EntityRepository.invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
         // Drop cached entity JSON / bundle for every entity tagged with this tag (or any
         // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-        invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
+        EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
         daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
         daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
@@ -1183,7 +1107,7 @@ public class TagRepository extends EntityRepository<Tag> {
                 PolicyConditionUpdater.renamePrefixInCondition(
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-        finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+        EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
       }
 
       if (classificationChanged) {
@@ -1236,16 +1160,15 @@ public class TagRepository extends EntityRepository<Tag> {
     private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      ConversationRepository conversations = Entity.getConversationRepository();
+      conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
       List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
 
       for (EntityReference child : childTags) {
-        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        Entity.getFeedRepository()
-            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+        String childNewFqn = child.getFullyQualifiedName();
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        conversations.updateEntityReference(child, childOldFqn);
       }
     }
 
@@ -1253,7 +1176,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }

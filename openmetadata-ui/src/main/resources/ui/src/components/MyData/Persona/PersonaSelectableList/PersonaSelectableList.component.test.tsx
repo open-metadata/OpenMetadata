@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityReference } from '../../../../generated/entity/type';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
@@ -53,13 +54,27 @@ jest.mock('antd', () => {
   return {
     ...antd,
     // Render the popover content inline so the Select mounts without a click.
-    Popover: ({ children, content }: any) => (
+    Popover: ({
+      children,
+      content,
+    }: {
+      children?: ReactNode;
+      content?: ReactNode;
+    }) => (
       <div>
         {children}
         {content}
       </div>
     ),
-    Select: ({ options, onSearch, onChange }: any) => {
+    Select: ({
+      options,
+      onSearch,
+      onChange,
+    }: {
+      options?: { label: string; value: string }[];
+      onSearch?: (value: string) => void;
+      onChange?: (value: string[]) => void;
+    }) => {
       latestOnChange = onChange;
 
       return (

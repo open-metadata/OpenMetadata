@@ -22,11 +22,12 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
-import jsoncParser from 'jsonc-eslint-parser';
+import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
   // Base recommended configs
@@ -44,7 +45,7 @@ export default [
       'mock-api/**',
       'src/antlr/generated/**',
       'src/generated/antlr/**',
-      'src/jsons/connectionSchemas/**',
+      'src/jsons/**',
       'src/generated/**',
       'coverage/**',
       'playwright/doc-generator/**',
@@ -171,7 +172,7 @@ export default [
           withinDescribe: 'it',
         },
       ],
-      'jest/no-disabled-tests': 'warn',
+      'jest/no-disabled-tests': 'error',
       'jest-formatting/padding-around-all': 'error',
 
       // TypeScript rules
@@ -197,7 +198,11 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
       // for no longer reproduces — verified running against this config, where
@@ -339,19 +344,25 @@ export default [
       'sonarjs/no-nested-conditional': 'warn', // 16
       'sonarjs/no-nested-functions': 'warn', // 18
 
-      // Security. Near-zero today — promote to error once confirmed at zero
-      // across the whole tree, not just a sample.
-      'sonarjs/no-clear-text-protocols': 'warn', // 18
-      'sonarjs/no-hardcoded-passwords': 'warn', // 0 in sample
-      'sonarjs/no-hardcoded-ip': 'warn', // 0 in sample
+      // Security. Enforced in production code. Test fixtures, mock data, and
+      // the sample-entity constants files legitimately embed http:// self-links,
+      // localhost IPs, and dummy credentials — those paths are exempted in a
+      // dedicated override below (matching how SonarQube excludes test sources
+      // from security scanning), so production stays clean at error.
+      'sonarjs/no-clear-text-protocols': 'error',
+      'sonarjs/no-hardcoded-passwords': 'error',
+      'sonarjs/no-hardcoded-ip': 'error',
       'sonarjs/no-invariant-returns': 'warn', // 0 in sample
 
       // React correctness and re-render cost — the enforceable slice of
-      // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 93 across 59 files
-      'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
-      'react/no-unstable-nested-components': 'warn', // 25 across 23 files
-      'react/no-danger': 'warn', // 0 in sample
+      // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
+      // stable keys, hoisted components, memoized context values; documented
+      // disables only where no real fix exists (static never-reordered lists,
+      // dangerouslySetInnerHTML on sanitized content). Promoted to error.
+      'react/no-array-index-key': 'error',
+      'react/jsx-no-constructed-context-values': 'error',
+      'react/no-unstable-nested-components': 'error',
+      'react/no-danger': 'error',
       // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
       // removed / narrowed where safe, documented disables where the value is
       // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
@@ -382,6 +393,57 @@ export default [
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  {
+    files: [
+      'src/components/Metric/**/*.{js,jsx,ts,tsx}',
+      'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
+      'src/components/DataAssets/DataAssetsHeader/StatItem.component.tsx',
+      'src/components/common/Table/TableV2.tsx',
+      'src/components/common/Table/TableV2Utils.ts',
+      'src/context/LimitsProvider/useLimitsStore.ts',
+      'src/pages/MetricsPage/**/*.{js,jsx,ts,tsx}',
+      'src/hooks/useMetric*.{js,jsx,ts,tsx}',
+      'src/hoc/LimitWrapper.tsx',
+      'src/rest/metricGroupsAPI.ts',
+      'src/rest/metricsAPI.ts',
+      'src/utils/ToastUtils.ts',
+      'src/utils/MetricEntityUtils/**/*.{js,jsx,ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message: 'Metric workflows use icons from @untitledui/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*'],
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              group: ['@ant-design/icons/*'],
+              allowTypeImports: true,
+              message: 'Metric workflows use icons from @untitledui/icons.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -441,9 +503,15 @@ export default [
   // Playwright tests
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
+    // The local plugin lives under playwright/ but is a linter, not a test:
+    // applying rules like no-positional-locator to its own source is
+    // meaningless, and its RuleTester fixtures deliberately contain the exact
+    // anti-patterns those rules look for.
+    ignores: ['**/playwright/eslint-rules/**'],
     plugins: {
       'openmetadata-playwright': openMetadataPlaywright,
       playwright,
+      'om-playwright': omPlaywright,
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
@@ -505,6 +573,12 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+      'playwright/missing-playwright-await': 'error',
+      'playwright/valid-expect': 'error',
+      'playwright/no-element-handle': 'error',
+      'playwright/no-eval': 'error',
+      'playwright/prefer-web-first-assertions': 'error',
+      'playwright/no-useless-await': 'error',
 
       // A facet aggregation wait must name the value it is waiting for, not just
       // the endpoint or field: a dropdown fires one aggregation when it opens and
@@ -514,17 +588,49 @@ export default [
       // playwright/utils/searchAggregation.ts.
       'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
 
-      // Playwright rules — aspirational (warn): existing violations to fix over time
-      'playwright/missing-playwright-await': 'warn',
-      'playwright/valid-expect': 'warn',
-      'playwright/no-wait-for-timeout': 'warn',
-      'playwright/no-force-option': 'warn',
-      'playwright/no-element-handle': 'warn',
-      'playwright/no-eval': 'warn',
-      'playwright/no-skipped-test': 'warn',
-      'playwright/prefer-web-first-assertions': 'warn',
-      'playwright/no-useless-await': 'warn',
-      'playwright/no-wait-for-selector': 'warn',
+      // Playwright rules — promoted to error behind the suppressions ratchet
+      // (see eslint-suppressions.json): existing violations are snapshotted,
+      // new ones fail lint.
+      'playwright/no-wait-for-timeout': 'error',
+      'playwright/no-force-option': 'error',
+      'playwright/no-skipped-test': 'error',
+      'playwright/no-wait-for-selector': 'error',
+
+      // Local OpenMetadata Playwright rules.
+      'om-playwright/no-awaited-wait-for-response': 'error',
+      'om-playwright/no-blanket-test-slow': 'error',
+      'om-playwright/no-positional-locator': 'error',
+      'om-playwright/justified-rule-disable': 'error',
+    },
+  },
+
+  // Custom rules that only make sense on e2e spec files
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    plugins: {
+      'om-playwright': omPlaywright,
+    },
+    rules: {
+      'om-playwright/require-assertion-per-test': 'error',
+    },
+  },
+
+  // Local ESLint plugin (playwright/eslint-rules/**): plain ESM, matching the
+  // repo's other rule plugins in eslint-rules/. Excluded from the Playwright
+  // test rules above, and needs the Node globals its RuleTester and node:test
+  // usage rely on.
+  //
+  // scripts/*.mjs is build-time tooling that runs under Node directly. It had
+  // no config block, so `process`/`console` were undefined there — an error
+  // only reachable when a scripts/ file lands in a changed-file lint, which the
+  // merge queue guarantees and a PR event does not. The .js tooling alongside
+  // it is CommonJS and needs a different fix; left alone deliberately.
+  {
+    files: ['playwright/eslint-rules/**/*.mjs', 'scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
 
@@ -578,6 +684,29 @@ export default [
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  // Security rules (clear-text protocols, hardcoded IPs/passwords) target
+  // production code paths. Test fixtures and mock data legitimately embed
+  // sample http:// self-links (mirroring backend responses), localhost IPs, and
+  // dummy credentials — exempt them, matching how SonarQube excludes test
+  // sources from security scanning. mockTourData is a 100%-mock guided-tour
+  // fixture whose sample links point at the local dev server (http://localhost),
+  // so it is exempt too; production constants files are NOT — their sample URLs
+  // were fixed to https and the rules stay enforced there.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx}',
+      'src/**/mocks/**/*.{ts,tsx}',
+      'src/**/__mocks__/**/*.{ts,tsx}',
+      'src/constants/mockTourData.constants.ts',
+    ],
+    rules: {
+      'sonarjs/no-clear-text-protocols': 'off',
+      'sonarjs/no-hardcoded-ip': 'off',
+      'sonarjs/no-hardcoded-passwords': 'off',
     },
   },
 ];

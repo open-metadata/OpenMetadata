@@ -65,10 +65,16 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
 jest.mock('antd', () => {
   const actual = jest.requireActual('antd');
 
-  const MockTreeSelect = ({ treeData = [], onChange }: any) => {
+  const MockTreeSelect = ({
+    treeData = [],
+    onChange,
+  }: {
+    treeData?: { value: string; title?: React.ReactNode }[];
+    onChange: (value: string[]) => void;
+  }) => {
     return (
       <div data-testid="mock-tree-select">
-        {treeData.map((opt: any) => (
+        {treeData.map((opt) => (
           <button
             data-testid={`${opt.value}-option`}
             key={opt.value}
