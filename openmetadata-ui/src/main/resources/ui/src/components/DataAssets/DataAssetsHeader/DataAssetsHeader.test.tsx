@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -518,6 +519,46 @@ describe('DataAssetsHeader component', () => {
 
     expect(getDataQualityLineage).toHaveBeenCalledWith('fullyQualifiedName', {
       upstreamDepth: 1,
+    });
+
+    mockIsAlertSupported = false;
+  });
+
+  it('should navigate from the accessible DQ failure alert control', async () => {
+    mockIsAlertSupported = true;
+    jest.mocked(getEntityDetailsPath).mockReturnValueOnce('/lineage');
+    jest.mocked(getDataQualityLineage).mockResolvedValueOnce({
+      entity: {
+        id: 'current-entity',
+        type: EntityType.TABLE,
+        fullyQualifiedName: 'fullyQualifiedName',
+      },
+      nodes: [
+        {
+          id: 'upstream-entity',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'upstreamFullyQualifiedName',
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <DataAssetsHeader isDqAlertSupported {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const alertButton = await screen.findByRole('button', {
+      name: 'label.check-upstream-failure',
+    });
+
+    expect(within(alertButton).queryByRole('link')).not.toBeInTheDocument();
+
+    fireEvent.click(alertButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      pathname: '/lineage',
+      search: 'layers%5B0%5D=DataObservability',
     });
 
     mockIsAlertSupported = false;
