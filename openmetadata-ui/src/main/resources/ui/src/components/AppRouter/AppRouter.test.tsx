@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
-import { act, ComponentType } from 'react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
+import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useAppModeStore, writeAppMode } from '../../hooks/useAppMode';
-import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
+import { useAppMode } from '../../hooks/useAppMode';
+import { isAppModeSessionActive } from '../../utils/appModeSession';
 import AppRouter from './AppRouter';
 
 jest.mock('./AuthenticatedApp', () => ({
@@ -30,7 +28,12 @@ jest.mock('./AuthenticatedApp', () => ({
 
 jest.mock('./AuthenticatedRoutes', () => ({
   __esModule: true,
-  AuthenticatedRoutes: () => <div data-testid="default-authenticated-routes" />,
+  AuthenticatedRoutes: () => <div data-testid="classic-shell" />,
+}));
+
+jest.mock('../platform/ai-shell/AppModeRoutes/AppModeRoutes', () => ({
+  __esModule: true,
+  default: () => <div data-testid="classicv1-shell" />,
 }));
 
 jest.mock('../../pages/PageNotFound/PageNotFound', () => ({
@@ -69,13 +72,23 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(),
 }));
 
+jest.mock('../../hooks/useAppMode', () => ({
+  useAppMode: jest.fn(),
+}));
+
+jest.mock('../../utils/appModeSession', () => ({
+  isAppModeSessionActive: jest.fn(),
+}));
+
 const mockUseApplicationStore = useApplicationStore as unknown as jest.Mock;
+const mockUseAppMode = useAppMode as unknown as jest.Mock;
+const mockIsAppModeSessionActive =
+  isAppModeSessionActive as unknown as jest.Mock;
 
 const setAuthState = (overrides: {
   isAuthenticated?: boolean;
   isApplicationLoading?: boolean;
   isAuthenticating?: boolean;
-  applicationsLoaded?: boolean;
   currentUser?: Record<string, unknown>;
 }) => {
   const state = {
@@ -83,12 +96,9 @@ const setAuthState = (overrides: {
     isAuthenticated: true,
     isApplicationLoading: false,
     isAuthenticating: false,
-    applicationsLoaded: true,
     ...overrides,
   };
 
-  // Honour the selector so individual fields (notably `applicationsLoaded`,
-  // which gates route registration) can be varied independently.
   mockUseApplicationStore.mockImplementation((selector?: unknown) =>
     typeof selector === 'function'
       ? (selector as (s: typeof state) => unknown)(state)
@@ -96,138 +106,78 @@ const setAuthState = (overrides: {
   );
 };
 
-const ModeRoutesMock: ComponentType = () => (
-  <div data-testid="custom-mode-routes" />
-);
-
-const makeQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: Infinity, staleTime: Infinity },
-    },
-  });
-
 const renderRouter = () =>
   render(
-    <QueryClientProvider client={makeQueryClient()}>
-      <MemoryRouter>
-        <AppRouter />
-      </MemoryRouter>
-    </QueryClientProvider>
+    <MemoryRouter>
+      <AppRouter />
+    </MemoryRouter>
   );
 
-describe('AppRouter — App Mode routing integration', () => {
+describe('AppRouter — mode-based shell selection', () => {
   beforeEach(() => {
     mockUseApplicationStore.mockReset();
-    globalThis.window.localStorage.clear();
-    act(() => {
-      useAppRoutesRegistry.setState({ routes: {} });
-      useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
-    });
+    mockUseAppMode.mockReset();
+    mockIsAppModeSessionActive.mockReset();
+    mockIsAppModeSessionActive.mockReturnValue(false);
   });
 
-  it('renders the default AuthenticatedRoutes when no mode is registered', async () => {
+  it('renders the AI shell in ai mode', async () => {
     setAuthState({ isAuthenticated: true });
+    mockUseAppMode.mockReturnValue(AI_APP_MODE);
 
     renderRouter();
 
-    expect(
-      await screen.findByTestId('default-authenticated-routes')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('custom-mode-routes')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('classicv1-shell')).toBeInTheDocument();
+    expect(screen.queryByTestId('classic-shell')).not.toBeInTheDocument();
   });
 
-  it('wraps the rendered routes in AuthenticatedApp for an authenticated user', async () => {
+  it('renders Classic in default mode', async () => {
     setAuthState({ isAuthenticated: true });
+    mockUseAppMode.mockReturnValue('default');
+
+    renderRouter();
+
+    expect(await screen.findByTestId('classic-shell')).toBeInTheDocument();
+    expect(screen.queryByTestId('classicv1-shell')).not.toBeInTheDocument();
+  });
+
+  it('renders the AI shell in default mode when an app-mode session is active', async () => {
+    setAuthState({ isAuthenticated: true });
+    mockUseAppMode.mockReturnValue('default');
+    mockIsAppModeSessionActive.mockReturnValue(true);
+
+    renderRouter();
+
+    expect(await screen.findByTestId('classicv1-shell')).toBeInTheDocument();
+    expect(screen.queryByTestId('classic-shell')).not.toBeInTheDocument();
+  });
+
+  it('wraps the rendered shell in AuthenticatedApp for an authenticated user', async () => {
+    setAuthState({ isAuthenticated: true });
+    mockUseAppMode.mockReturnValue('default');
 
     renderRouter();
 
     expect(await screen.findByTestId('authenticated-app')).toBeInTheDocument();
   });
 
-  it('renders a registered mode component when the active mode has a registration', async () => {
-    setAuthState({ isAuthenticated: true });
-    writeAppMode('ai');
-    act(() => {
-      useAppRoutesRegistry.getState().registerRoutes('ai', ModeRoutesMock);
-    });
+  it('shows the full-screen loader while the application is loading', () => {
+    setAuthState({ isAuthenticated: false, isApplicationLoading: true });
+    mockUseAppMode.mockReturnValue('default');
 
     renderRouter();
 
-    expect(await screen.findByTestId('custom-mode-routes')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('default-authenticated-routes')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('full-screen-loader')).toBeInTheDocument();
   });
 
-  it('falls back to the default AuthenticatedRoutes when the active mode has no registration', async () => {
-    setAuthState({ isAuthenticated: true });
-    writeAppMode('ai');
+  it('renders the unauthenticated router when the user is not authenticated', async () => {
+    setAuthState({ isAuthenticated: false });
+    mockUseAppMode.mockReturnValue('default');
 
     renderRouter();
 
     expect(
-      await screen.findByTestId('default-authenticated-routes')
+      await screen.findByTestId('unauthenticated-router')
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('custom-mode-routes')).not.toBeInTheDocument();
-  });
-
-  it('holds a loader instead of the default routes while a non-default mode is still registering', async () => {
-    // `applications` not loaded yet — the owning plugin registers its routes in
-    // an effect gated on that, so the registry is legitimately empty here.
-    setAuthState({ isAuthenticated: true, applicationsLoaded: false });
-    writeAppMode('ai');
-
-    renderRouter();
-
-    expect(await screen.findByTestId('full-screen-loader')).toBeInTheDocument();
-    // Rendering the default routes here would mount their `path="*"`
-    // catch-all, which navigates to /404 and destroys the requested URL.
-    expect(
-      screen.queryByTestId('default-authenticated-routes')
-    ).not.toBeInTheDocument();
-  });
-
-  it('renders the mode routes once the owning plugin registers them after applications load', async () => {
-    setAuthState({ isAuthenticated: true, applicationsLoaded: false });
-    writeAppMode('ai');
-
-    renderRouter();
-
-    expect(await screen.findByTestId('full-screen-loader')).toBeInTheDocument();
-
-    act(() => {
-      useAppRoutesRegistry.getState().registerRoutes('ai', ModeRoutesMock);
-    });
-
-    expect(await screen.findByTestId('custom-mode-routes')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('default-authenticated-routes')
-    ).not.toBeInTheDocument();
-  });
-
-  it('swaps to the registered mode component when the AppMode changes mid-session', async () => {
-    setAuthState({ isAuthenticated: true });
-    act(() => {
-      useAppRoutesRegistry.getState().registerRoutes('ai', ModeRoutesMock);
-    });
-
-    renderRouter();
-
-    expect(
-      await screen.findByTestId('default-authenticated-routes')
-    ).toBeInTheDocument();
-
-    act(() => {
-      writeAppMode('ai');
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('custom-mode-routes')).toBeInTheDocument();
-    });
-
-    expect(
-      screen.queryByTestId('default-authenticated-routes')
-    ).not.toBeInTheDocument();
   });
 });
