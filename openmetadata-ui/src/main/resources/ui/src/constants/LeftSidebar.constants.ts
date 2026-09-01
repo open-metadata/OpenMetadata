@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01, LayersThree01 } from '@untitledui/icons';
+import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
@@ -41,7 +41,7 @@ import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/doc
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke } from '../utils/IconUtils';
+import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
 import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
@@ -51,13 +51,6 @@ type UntitledIconType = React.ComponentType<{
 }>;
 
 const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
-
-// Same glyph the Ontology Studio page header uses, restroked to 1.2 to match
-// the sidebar's other icons.
-const OntologyStudioIcon = createIconWithStroke(
-  LayersThree01 as UntitledIconType,
-  1.2
-);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,

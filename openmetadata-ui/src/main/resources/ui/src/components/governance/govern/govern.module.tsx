@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { LayersThree01 } from '@untitledui/icons';
 import { ReactComponent as ClassificationActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-active.svg';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-default.svg';
 import { ReactComponent as GlossaryActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-active.svg';
@@ -23,6 +22,7 @@ import { ReactComponent as MetricsIcon } from '../../../assets/svg/ask-collate-n
 import { ReactComponent as WorkflowsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-active.svg';
 import { ReactComponent as WorkflowsIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-default.svg';
 import { ROUTES } from '../../../constants/constants';
+import { OntologyStudioIcon } from '../../../utils/IconUtils';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
@@ -63,7 +63,7 @@ export const governModule: AppModule = {
           },
           {
             key: 'ontology-explorer',
-            icon: LayersThree01,
+            icon: OntologyStudioIcon,
             labelKey: 'label.ontology-studio',
             path: ROUTES.ONTOLOGY_EXPLORER,
           },
