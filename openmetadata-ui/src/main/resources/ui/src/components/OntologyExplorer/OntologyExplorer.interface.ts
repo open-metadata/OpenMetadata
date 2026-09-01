@@ -71,6 +71,7 @@ export interface OntologyNode {
   originalNode?: OntologyNode;
   isDraft?: boolean;
   isOptimistic?: boolean;
+  isDataModeSeed?: boolean;
 }
 
 export interface OntologyEdge {
