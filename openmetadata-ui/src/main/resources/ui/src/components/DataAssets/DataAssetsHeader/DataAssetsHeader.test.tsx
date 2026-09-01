@@ -26,7 +26,6 @@ import {
   StorageServiceType,
 } from '../../../generated/entity/data/container';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
-import type { Metric } from '../../../generated/entity/data/metric';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
@@ -47,7 +46,7 @@ import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
-const mockProps = {
+const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
     name: 'testContainer',
@@ -72,7 +71,7 @@ const mockProps = {
   onVersionClick: jest.fn(),
   onTierUpdate: jest.fn(),
   onOwnerUpdate: jest.fn(),
-} satisfies DataAssetsHeaderProps;
+};
 
 const mockNavigate = jest.fn();
 
@@ -181,15 +180,6 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
-
-jest.mock('../../Metric/MetricHeaderInfo/MetricHeaderInfo', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ metricDetails }: { metricDetails: Metric }) => (
-      <div data-testid="metric-header-info">{metricDetails.name}</div>
-    )),
-}));
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
@@ -334,27 +324,6 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
-  it('should render the read-only metric header information', () => {
-    const metric: Metric = {
-      fullyQualifiedName: 'metric.orders-count',
-      id: 'metric-id',
-      name: 'orders-count',
-    };
-
-    render(
-      <DataAssetsHeader
-        {...mockProps}
-        dataAsset={metric}
-        entityType={EntityType.METRIC}
-        onMetricUpdate={jest.fn().mockResolvedValue(undefined)}
-      />
-    );
-
-    expect(screen.getByTestId('metric-header-info')).toHaveTextContent(
-      'orders-count'
-    );
-  });
-
   it('should render an explicitly supplied breadcrumb trail', () => {
     const tableHeaderProps = {
       ...mockProps,
@@ -767,16 +736,13 @@ describe('DataAssetsHeader component', () => {
     render(
       <DataAssetsHeader
         {...mockProps}
-        dataAsset={
-          {
-            ...mockProps.dataAsset,
-            style: {
-              color: '#123456',
-              iconURL: 'https://example.com/icon.svg',
-            },
-          } as Container
-        }
-        entityType={EntityType.CONTAINER}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          style: {
+            color: '#123456',
+            iconURL: 'https://example.com/icon.svg',
+          },
+        }}
         onStyleUpdate={onStyleUpdate}
       />
     );

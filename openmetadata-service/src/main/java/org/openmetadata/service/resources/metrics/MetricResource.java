@@ -13,10 +13,6 @@
 
 package org.openmetadata.service.resources.metrics;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,48 +45,28 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateMetric;
-import org.openmetadata.schema.api.data.MetricAssetDirection;
-import org.openmetadata.schema.api.data.MetricHierarchyContext;
-import org.openmetadata.schema.api.data.MetricHierarchyItem;
-import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Metric;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission;
-import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.schema.type.api.BulkAssets;
-import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.MetricRepository.MetricCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/metrics")
@@ -106,8 +82,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
   private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS =
-      "owners,experts,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts,parent,children,childrenCount,metricGroup";
-  private static final String ROOT_METRICS_PARENT = "null";
+      "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
     super(Entity.METRIC, authorizer, limits);
@@ -121,61 +96,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   public static class MetricsList extends ResultList<Metric> {
     /* Required for serde */
-  }
-
-  public static class MetricHierarchyList extends ResultList<MetricHierarchyItem> {
-    /* Required for serde */
-  }
-
-  public static class MetricAssetsList extends ResultList<MetricAssetDirection> {
-    /* Required for serde */
-  }
-
-  @GET
-  @Path("/hierarchy")
-  @Operation(
-      operationId = "listMetricHierarchy",
-      summary = "List top-level Metric hierarchy entries",
-      description =
-          "Returns Metric Groups and standalone root Metrics in one stable, offset-paged list.")
-  public ResultList<MetricHierarchyItem> listHierarchy(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Case-insensitive name search") @QueryParam("q") String query,
-      @DefaultValue("20") @Min(1) @Max(1000) @QueryParam("limit") int limit,
-      @DefaultValue("0") @Min(0) @QueryParam("offset") int offset) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
-    ResultList<MetricHierarchyItem> result;
-    if (canListHierarchyWithoutFiltering(securityContext)) {
-      result = repository.listHierarchy(limit, offset, query);
-    } else {
-      result =
-          repository.listHierarchy(
-              limit,
-              offset,
-              query,
-              metric -> canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC),
-              group -> canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC));
-    }
-    return result;
-  }
-
-  private boolean canListHierarchyWithoutFiltering(SecurityContext securityContext) {
-    String user = securityContext.getUserPrincipal().getName();
-    return hasUnconditionalView(authorizer.getPermission(securityContext, user, Entity.METRIC))
-        && hasUnconditionalView(
-            authorizer.getPermission(securityContext, user, Entity.METRIC_GROUP));
-  }
-
-  static boolean hasUnconditionalView(ResourcePermission resourcePermission) {
-    return resourcePermission != null
-        && listOrEmpty(resourcePermission.getPermissions()).stream()
-            .anyMatch(
-                permission ->
-                    MetadataOperation.VIEW_BASIC.equals(permission.getOperation())
-                        && Permission.Access.ALLOW.equals(permission.getAccess())
-                        && permission.getRule() == null);
   }
 
   @GET
@@ -220,52 +140,10 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include,
-      @Parameter(
-              description =
-                  "Filter by hierarchy position. Omit to list every metric, pass the literal "
-                      + "`null` to list only metrics that have no parent, or pass a parent "
-                      + "metric's fully qualified name to list its immediate children.",
-              schema = @Schema(type = "string", example = "net_sales"))
-          @QueryParam("parent")
-          String parent,
-      @Parameter(
-              description = "Filter metrics by approval status.",
-              schema = @Schema(type = "string", example = "Approved"))
-          @QueryParam("entityStatus")
-          String entityStatus) {
+          Include include) {
     ListFilter filter = new ListFilter(include);
-    addHierarchyFilter(filter, parent);
-    if (!nullOrEmpty(entityStatus)) {
-      filter.addQueryParam("entityStatus", entityStatus);
-    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-  }
-
-  Response buildBulkOperationResponse(BulkOperationResult result) {
-    if (result.getStatus() == ApiStatus.FAILURE) {
-      return Response.status(Response.Status.BAD_REQUEST).entity(result).build();
-    }
-    return Response.ok().entity(result).build();
-  }
-
-  /**
-   * Metric fully qualified names are flat, so the generic {@code parent} ListFilter key — which
-   * builds an fqnHash prefix condition — would match nothing. The parent FQN is resolved to an id
-   * up front and handed to MetricDAO under a key that filters on CONTAINS edges instead.
-   */
-  void addHierarchyFilter(ListFilter filter, String parent) {
-    if (nullOrEmpty(parent)) {
-      return;
-    }
-    if (ROOT_METRICS_PARENT.equals(parent)) {
-      filter.addQueryParam("rootMetrics", Boolean.TRUE.toString());
-    } else {
-      EntityReference parentRef =
-          Entity.getEntityReferenceByName(Entity.METRIC, parent, NON_DELETED);
-      filter.addQueryParam("parentMetricId", parentRef.getId().toString());
-    }
   }
 
   @GET
@@ -310,31 +188,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @QueryParam("includeRelations")
           String includeRelations) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
-  }
-
-  @GET
-  @Path("/{id}/hierarchy")
-  @Operation(
-      operationId = "getMetricHierarchyContext",
-      summary = "Get the hierarchy context for one Metric")
-  public MetricHierarchyContext getHierarchyContext(
-      @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
-      @DefaultValue("20") @Min(0) @Max(1000) @QueryParam("childLimit") int childLimit,
-      @DefaultValue("0") @Min(0) @QueryParam("childOffset") int childOffset,
-      @DefaultValue("20") @Min(0) @Max(1000) @QueryParam("siblingLimit") int siblingLimit,
-      @DefaultValue("0") @Min(0) @QueryParam("siblingOffset") int siblingOffset) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository.getHierarchyContext(
-        id,
-        childLimit,
-        childOffset,
-        siblingLimit,
-        siblingOffset,
-        metric -> canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC),
-        group -> canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC));
   }
 
   @GET
@@ -458,8 +311,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(metric, false);
-    authorizeHierarchyDestinations(securityContext, null, metric);
     return create(uriInfo, securityContext, metric);
   }
 
@@ -483,19 +334,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    preauthorizeHierarchyUpdate(securityContext, metric);
     return createOrUpdate(uriInfo, securityContext, metric);
-  }
-
-  private void preauthorizeHierarchyUpdate(SecurityContext securityContext, Metric metric) {
-    repository.setFullyQualifiedName(metric);
-    Metric original =
-        repository.findByNameOrNull(metric.getFullyQualifiedName(), Include.NON_DELETED);
-    repository.prepareInternal(metric, true);
-    if (original != null) {
-      original = repository.get(null, original.getId(), repository.getFields("parent,metricGroup"));
-    }
-    authorizeHierarchyChange(securityContext, original, metric);
   }
 
   @PUT
@@ -525,11 +364,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateMetric> createRequests) {
-    for (CreateMetric create : listOrEmpty(createRequests)) {
-      preauthorizeHierarchyUpdate(
-          securityContext,
-          mapper.createToEntity(create, securityContext.getUserPrincipal().getName()));
-    }
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
@@ -693,10 +527,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    validateMetricPatch(patch);
-    if (patchMutatesHierarchy(patch)) {
-      preauthorizeHierarchyPatch(securityContext, id, patch);
-    }
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -726,106 +556,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    validateMetricPatch(patch);
-    if (patchMutatesHierarchy(patch)) {
-      preauthorizeHierarchyPatch(securityContext, fqn, patch);
-    }
     return patchInternal(uriInfo, securityContext, fqn, patch);
-  }
-
-  private void preauthorizeHierarchyPatch(
-      SecurityContext securityContext, UUID metricId, JsonPatch patch) {
-    Metric original = repository.get(null, metricId, repository.getFields("parent,metricGroup"));
-    authorizePatchedHierarchy(securityContext, original, patch);
-  }
-
-  private void preauthorizeHierarchyPatch(
-      SecurityContext securityContext, String metricFqn, JsonPatch patch) {
-    Metric original =
-        repository.getByName(null, metricFqn, repository.getFields("parent,metricGroup"));
-    authorizePatchedHierarchy(securityContext, original, patch);
-  }
-
-  private void authorizePatchedHierarchy(
-      SecurityContext securityContext, Metric original, JsonPatch patch) {
-    Metric updated = JsonUtils.applyPatch(original, patch, Metric.class);
-    repository.prepareInternal(updated, true);
-    authorizeHierarchyChange(securityContext, original, updated);
-  }
-
-  private void authorizeHierarchyChange(
-      SecurityContext securityContext, Metric original, Metric updated) {
-    boolean changed = original == null || hierarchyMembershipChanged(original, updated);
-    if (changed) {
-      if (original != null) {
-        authorizeHierarchyMutation(securityContext, original.getId());
-      }
-      authorizeHierarchyDestinations(securityContext, original, updated);
-    }
-  }
-
-  void authorizeHierarchyDestinations(
-      SecurityContext securityContext, Metric original, Metric updated) {
-    for (EntityReference destination : hierarchyDestinations(original, updated)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(
-              destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
-    }
-  }
-
-  static List<EntityReference> hierarchyDestinations(Metric original, Metric updated) {
-    List<EntityReference> destinations = new ArrayList<>();
-    if (original == null || hierarchyMembershipChanged(original, updated)) {
-      if (updated.getParent() != null) {
-        destinations.add(updated.getParent());
-      }
-      if (updated.getMetricGroup() != null) {
-        destinations.add(updated.getMetricGroup());
-      }
-    }
-    return destinations;
-  }
-
-  private void authorizeHierarchyMutation(SecurityContext securityContext, UUID metricId) {
-    for (EntityReference metric : repository.hierarchySubtree(metricId)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
-  }
-
-  static boolean hierarchyMembershipChanged(Metric original, Metric updated) {
-    return !sameReference(original.getParent(), updated.getParent())
-        || !sameReference(original.getMetricGroup(), updated.getMetricGroup());
-  }
-
-  private static boolean sameReference(EntityReference left, EntityReference right) {
-    return left == right
-        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
-  }
-
-  static boolean patchMutatesHierarchy(JsonPatch patch) {
-    Set<String> fields = JsonUtils.extractPatchedFields(patch);
-    return fields.contains("parent") || fields.contains("metricGroup");
-  }
-
-  static void validateMetricPatch(JsonPatch patch) {
-    Set<String> fields = JsonUtils.extractPatchedFields(patch);
-    if (fields.contains("assets")) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "assets"));
-    }
-    if (fields.contains("children")) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "children"));
-    }
-    if (fields.contains("childrenCount")) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "childrenCount"));
-    }
   }
 
   @PUT
@@ -929,19 +660,13 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recursively delete this metric and its child metrics. (Default = `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -957,19 +682,13 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public Response deleteByIdAsync(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recursively delete this metric and its child metrics. (Default = `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -990,17 +709,11 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
-              description =
-                  "Recursively delete this metric and its child metrics. (Default = `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
-      @Parameter(
               description = "Fully qualified name of the Metric",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -1025,234 +738,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  @PUT
-  @Path("/{name}/assets/add")
-  @Operation(
-      operationId = "bulkAddMetricAssets",
-      summary = "Link data assets to a metric",
-      description = "Link the given data assets to the metric identified by name.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(
-            responseCode = "400",
-            description = "All operations failed",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(responseCode = "404", description = "Metric for instance {name} is not found")
-      })
-  public Response bulkAddAssets(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Metric", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    AuthorizedBulk authorized = authorizeAssets(securityContext, request);
-    BulkOperationResult result =
-        authorized.request().getAssets().isEmpty()
-            ? emptyBulkResult(request)
-            : repository.bulkAddAssets(
-                name, authorized.request(), securityContext.getUserPrincipal().getName());
-    return buildBulkOperationResponse(mergeAuthorizationFailures(result, authorized.failures()));
-  }
-
-  @PUT
-  @Path("/{name}/assets/remove")
-  @Operation(
-      operationId = "bulkRemoveMetricAssets",
-      summary = "Unlink data assets from a metric",
-      description = "Unlink the given data assets from the metric identified by name.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(
-            responseCode = "400",
-            description = "All operations failed",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(responseCode = "404", description = "Metric for instance {name} is not found")
-      })
-  public Response bulkRemoveAssets(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Metric", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    AuthorizedBulk authorized = authorizeAssets(securityContext, request);
-    BulkOperationResult result =
-        authorized.request().getAssets().isEmpty()
-            ? emptyBulkResult(request)
-            : repository.bulkRemoveAssets(
-                name, authorized.request(), securityContext.getUserPrincipal().getName());
-    return buildBulkOperationResponse(mergeAuthorizationFailures(result, authorized.failures()));
-  }
-
-  @GET
-  @Path("/{id}/assets")
-  @Operation(
-      operationId = "getMetricAssets",
-      summary = "List a metric's linked assets with their lineage direction",
-      description =
-          "List the data assets linked to a metric. Each asset is annotated with whether it is "
-              + "upstream of the metric, downstream of it, or has no lineage edge to it.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Linked assets with direction",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = MetricAssetsList.class))),
-        @ApiResponse(responseCode = "404", description = "Metric for instance {id} is not found")
-      })
-  public ResultList<MetricAssetDirection> getAssets(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @DefaultValue("20") @Min(1) @Max(1000) @QueryParam("limit") int limit,
-      @DefaultValue("0") @Min(0) @QueryParam("offset") int offset,
-      @Parameter(description = "Case-insensitive asset name search") @QueryParam("q") String query,
-      @Parameter(description = "Filter by linked entity type") @QueryParam("entityType")
-          String assetEntityType,
-      @Parameter(description = "Filter by lineage direction") @QueryParam("direction")
-          MetricAssetDirection.Direction direction) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    repository.get(null, id, repository.getFields("id"));
-    return repository.listAssets(
-        id,
-        limit,
-        offset,
-        query,
-        assetEntityType,
-        direction,
-        asset -> canViewAsset(securityContext, asset));
-  }
-
-  @GET
-  @Path("/{id}/observability")
-  @Operation(
-      operationId = "getMetricObservability",
-      summary = "Get a metric's health rollup",
-      description =
-          "Compute the metric's health from the data quality of the upstream assets it is computed "
-              + "on, together with a plain-English explanation of how that health was reached. "
-              + "Downstream assets consume the metric rather than feed it, so they are excluded.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The metric's health rollup",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = MetricObservability.class))),
-        @ApiResponse(responseCode = "404", description = "Metric for instance {id} is not found")
-      })
-  public MetricObservability getObservability(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    repository.get(null, id, repository.getFields("id"));
-    List<MetricAssetDirection> linkedAssets = repository.getAssetsWithDirection(id);
-    Set<UUID> visibleAssets = new HashSet<>();
-    for (MetricAssetDirection linked : linkedAssets) {
-      if (canViewAsset(securityContext, linked.getAsset())) {
-        visibleAssets.add(linked.getAsset().getId());
-      }
-    }
-    return repository.getObservability(id, linkedAssets, visibleAssets);
-  }
-
-  private boolean canViewAsset(SecurityContext securityContext, EntityReference asset) {
-    return canAccessEntity(securityContext, asset, MetadataOperation.VIEW_BASIC);
-  }
-
-  private boolean canAccessEntity(
-      SecurityContext securityContext, EntityReference entity, MetadataOperation operation) {
-    boolean result = true;
-    try {
-      OperationContext operationContext = new OperationContext(entity.getType(), operation);
-      authorizer.authorize(
-          securityContext,
-          operationContext,
-          new ResourceContext<>(entity.getType(), entity.getId(), entity.getFullyQualifiedName()));
-    } catch (AuthorizationException
-        | EntityNotFoundException
-        | IllegalArgumentException exception) {
-      result = false;
-    }
-    return result;
-  }
-
-  private AuthorizedBulk authorizeAssets(SecurityContext securityContext, BulkAssets request) {
-    List<EntityReference> allowed = new ArrayList<>();
-    List<BulkResponse> failures = new ArrayList<>();
-    for (EntityReference asset : listOrEmpty(request.getAssets())) {
-      if (canViewAsset(securityContext, asset)) {
-        allowed.add(asset);
-      } else {
-        failures.add(
-            new BulkResponse()
-                .withRequest(asset)
-                .withMessage("Not authorized to view the requested asset"));
-      }
-    }
-    BulkAssets authorized = new BulkAssets().withAssets(allowed).withDryRun(request.getDryRun());
-    return new AuthorizedBulk(authorized, failures);
-  }
-
-  BulkOperationResult emptyBulkResult(BulkAssets request) {
-    return new BulkOperationResult()
-        .withDryRun(Boolean.TRUE.equals(request.getDryRun()))
-        .withStatus(ApiStatus.SUCCESS);
-  }
-
-  BulkOperationResult mergeAuthorizationFailures(
-      BulkOperationResult result, List<BulkResponse> authorizationFailures) {
-    List<BulkResponse> failures = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
-    failures.addAll(authorizationFailures);
-    result.setFailedRequest(failures);
-    result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + authorizationFailures.size());
-    result.setNumberOfRowsProcessed(
-        result.getNumberOfRowsProcessed() + authorizationFailures.size());
-    if (result.getNumberOfRowsPassed() == 0 && !failures.isEmpty()) {
-      result.setStatus(ApiStatus.FAILURE);
-    } else if (!failures.isEmpty()) {
-      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
-    }
-    return result;
-  }
-
-  private record AuthorizedBulk(BulkAssets request, List<BulkResponse> failures) {}
-
   @GET
   @Path("/customUnits")
   @Operation(
@@ -1270,9 +755,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                     array = @ArraySchema(schema = @Schema(type = "string"))))
       })
   public Response getCustomUnitsOfMeasurement(@Context SecurityContext securityContext) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
     List<String> customUnits = repository.getDistinctCustomUnitsOfMeasurement();
     return Response.ok(customUnits).build();
   }
