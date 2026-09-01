@@ -21,7 +21,10 @@ import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
+import {
+  getOptionsFromAggregationBucket,
+  getQuickFilterSourceFields,
+} from '../../utils/AdvancedSearchPureUtils';
 import {
   getCombinedQueryFilterObject,
   getQuickFilterWithDeletedFlag,
@@ -127,7 +130,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         sourceFields
       );
 
-      buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
+      buckets =
+        res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
     }
 
     setOptions(
@@ -254,7 +258,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
             onSearch={(value, key) =>
@@ -263,7 +267,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
           />
@@ -293,7 +297,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
             onSearch={(value, key) =>
@@ -302,7 +306,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
           />

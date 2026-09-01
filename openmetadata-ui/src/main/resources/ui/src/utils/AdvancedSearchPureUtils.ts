@@ -22,6 +22,7 @@ import {
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
+  QUICK_FILTER_SOURCE_FIELDS,
   TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
@@ -42,6 +43,7 @@ import type {
   TopicSearchSource,
 } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
+import { extractSourceValue } from './SearchPureUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -207,59 +209,95 @@ export const getServiceOptions = (
     : option.text;
 };
 
-const extractSourceValue = (
-  src: Record<string, unknown>,
+export const getQuickFilterSourceFields = (
+  field: ExploreQuickFilterField
+): string | undefined =>
+  field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
+
+const findSourceLabel = (
+  sources: unknown[],
   path: string,
   bucketKey: string
 ): string | undefined => {
-  const parts = path.split('.');
-  let val: unknown = src;
-
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
-    if (Array.isArray(val)) {
-      // When we hit an array mid-traversal, find the element whose resolved
-      // leaf value case-insensitively equals the bucket key, falling back to [0].
-      const remainingPath = parts.slice(i).join('.');
-      const match = (val as unknown[]).find((item) => {
-        const leaf = extractSourceValue(
-          item as Record<string, unknown>,
-          remainingPath,
-          bucketKey
-        );
-
-        return leaf?.toLowerCase() === bucketKey.toLowerCase();
-      });
-      const chosen = match ?? (val as unknown[])[0];
-      if (chosen === undefined) {
-        return undefined;
-      }
-
-      return extractSourceValue(
-        chosen as Record<string, unknown>,
-        remainingPath,
-        bucketKey
-      );
-    } else if (val && typeof val === 'object' && part in (val as object)) {
-      val = (val as Record<string, unknown>)[part];
-    } else {
-      return undefined;
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') {
+      continue;
+    }
+    const value = extractSourceValue(
+      source as Record<string, unknown>,
+      path,
+      bucketKey
+    );
+    if (value?.toLowerCase() === bucketKey.toLowerCase()) {
+      return value;
     }
   }
 
-  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"])
-  if (Array.isArray(val)) {
-    const strings = (val as unknown[]).filter(
-      (item): item is string => typeof item === 'string'
-    );
-    const match = strings.find(
-      (s) => s.toLowerCase() === bucketKey.toLowerCase()
-    );
+  return undefined;
+};
 
-    return match ?? strings[0];
+/**
+ * Rewrites the labels of already-selected quick-filter values.
+ *
+ * Only the lowercased bucket key survives a round trip through the URL, so a
+ * reloaded or shared listing would render its chips and checked options in
+ * lowercase. `resolveLabel` supplies the original casing for one value; a field
+ * keeps its identity when nothing resolves, so an unchanged filter set does not
+ * re-render. Values that already carry a resolved label are left alone.
+ */
+export const applyQuickFilterLabels = (
+  fields: ExploreQuickFilterField[],
+  resolveLabel: (
+    field: ExploreQuickFilterField,
+    optionKey: string
+  ) => string | undefined
+): ExploreQuickFilterField[] =>
+  fields.map((field) => {
+    if (isEmpty(field.value)) {
+      return field;
+    }
+
+    let hasResolvedLabel = false;
+    const value = (field.value ?? []).map((option) => {
+      // A label that already differs from the key came from the dropdown, where
+      // the aggregation resolved it against `_source`.
+      if (option.label !== option.key) {
+        return option;
+      }
+
+      const label = resolveLabel(field, option.key);
+      if (!label || label === option.key) {
+        return option;
+      }
+      hasResolvedLabel = true;
+
+      return { ...option, label };
+    });
+
+    return hasResolvedLabel ? { ...field, value } : field;
+  });
+
+/**
+ * Recovers selected-value casing from the rows currently listed: every hit of a
+ * filtered result set carries the value that matched in its `_source`, so no
+ * extra request is needed for the common case. A value whose only matching row
+ * sits on another page stays unresolved here — see `useQuickFilterLabels`.
+ */
+export const hydrateQuickFilterLabels = (
+  fields: ExploreQuickFilterField[],
+  sources: unknown[]
+): ExploreQuickFilterField[] => {
+  if (isEmpty(sources)) {
+    return fields;
   }
 
-  return typeof val === 'string' ? val : undefined;
+  return applyQuickFilterLabels(fields, (field, optionKey) => {
+    const sourceFields = getQuickFilterSourceFields(field);
+
+    return sourceFields
+      ? findSourceLabel(sources, sourceFields, optionKey)
+      : undefined;
+  });
 };
 
 export const getOptionsFromAggregationBucket = (
