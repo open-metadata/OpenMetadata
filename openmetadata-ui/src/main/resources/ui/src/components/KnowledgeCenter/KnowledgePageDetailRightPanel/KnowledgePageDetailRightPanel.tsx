@@ -47,7 +47,8 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   updatePageTag,
   handleRelatedEntitiesUpdate,
 }) => {
-  const { entityRules, data, onUpdate } = useGenericContext<KnowledgePage>();
+  const { entityRules, isRulesLoaded, data, onUpdate } =
+    useGenericContext<KnowledgePage>();
 
   const handleDataProductsSave = useCallback(
     async (selectedDataProducts: DataProduct[]) => {
@@ -96,6 +97,9 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
             dataProducts={data?.dataProducts ?? []}
             hasPermission={canEditAll}
             multiple={entityRules?.canAddMultipleDataProducts}
+            requireDomainForDataProduct={
+              !isRulesLoaded || entityRules?.requireDomainForDataProduct
+            }
             onSave={handleDataProductsSave}
           />
         </div>

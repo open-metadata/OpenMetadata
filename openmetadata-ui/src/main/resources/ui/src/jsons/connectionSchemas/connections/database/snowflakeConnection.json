@@ -1,0 +1,503 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SnowflakeConnection",
+  "description": "Snowflake Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SnowflakeConnection",
+  "definitions": {
+    "snowflakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Snowflake"
+      ],
+      "default": "Snowflake"
+    },
+    "snowflakeScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "snowflake"
+      ],
+      "default": "snowflake"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Snowflake",
+      "type": "string",
+      "enum": [
+        "Snowflake"
+      ]
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "default": "snowflake",
+      "type": "string",
+      "enum": [
+        "snowflake"
+      ]
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Snowflake. This user should have privileges to read all the metadata in Snowflake.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Snowflake.",
+      "type": "string",
+      "format": "password"
+    },
+    "account": {
+      "title": "Account",
+      "description": "If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp",
+      "type": "string"
+    },
+    "role": {
+      "title": "Role",
+      "description": "Snowflake Role.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "warehouse": {
+      "title": "Warehouse",
+      "description": "Snowflake warehouse.",
+      "type": "string"
+    },
+    "queryTag": {
+      "title": "Query Tag",
+      "description": "Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session.",
+      "type": "string"
+    },
+    "accountUsageSchema": {
+      "title": "Account Usage Schema Name",
+      "description": "Full name of the schema where the account usage data is stored.",
+      "type": "string",
+      "default": "SNOWFLAKE.ACCOUNT_USAGE"
+    },
+    "privateKey": {
+      "title": "Private Key",
+      "description": "Connection to Snowflake instance via Private Key",
+      "type": "string",
+      "format": "password",
+      "uiFieldType": "fileOrInput",
+      "recommended": true
+    },
+    "snowflakePrivatekeyPassphrase": {
+      "title": "Snowflake Passphrase Key",
+      "description": "Snowflake Passphrase Key used with Private Key",
+      "type": "string",
+      "format": "password"
+    },
+    "includeTransientTables": {
+      "title": "Include Transient Tables",
+      "description": "Ingest transient tables alongside permanent ones.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeStreams": {
+      "title": "Include Streams",
+      "description": "Ingest Snowflake streams as data assets.",
+      "type": "boolean",
+      "default": false
+    },
+    "includeStages": {
+      "title": "Include Stages",
+      "description": "Ingest external and internal stages.",
+      "type": "boolean",
+      "default": false
+    },
+    "includeSemanticViews": {
+      "title": "Include Semantic Views",
+      "description": "Ingest Snowflake semantic views as data assets.",
+      "type": "boolean",
+      "default": false
+    },
+    "clientSessionKeepAlive": {
+      "title": "Client Session Keep Alive",
+      "description": "Keep the session alive for long-running scans.",
+      "type": "boolean",
+      "default": false
+    },
+    "useAccessHistory": {
+      "title": "Use Access History for Lineage",
+      "description": "Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage. ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.",
+      "type": "boolean",
+      "default": true
+    },
+    "accessHistoryChunkSize": {
+      "title": "Access History Chunk Size (Days)",
+      "description": "Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage' is enabled. The lineage time window is split into chunks of this many days to keep each Snowflake query bounded and avoid client/server timeouts over long windows. Lower this value if queries still time out on very busy accounts.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^information_schema$"
+        ]
+      },
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^snowflake$"
+        ]
+      },
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsIncrementalMetadataExtraction": {
+      "title": "Supports Incremental Metadata Extraction",
+      "description": "Supports Incremental Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsLineageExtraction": {
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDBTExtraction": {
+      "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "description": "The source service supports the database concept in its hierarchy",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsSystemProfile": {
+      "title": "Supports System Profile",
+      "description": "The source database supports system profiles for tables such as last update.",
+      "type": "boolean",
+      "default": false
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "description": "Storage config to store sample data",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "title": "No Sample Data Storage Config",
+              "type": "object",
+              "additionalProperties": false
+            },
+            {
+              "title": "Sample Data Storage Config",
+              "description": "Storage config to store sample data",
+              "type": "object",
+              "properties": {
+                "bucketName": {
+                  "title": "Bucket Name",
+                  "description": "Bucket Name",
+                  "type": "string",
+                  "default": ""
+                },
+                "prefix": {
+                  "title": "Prefix",
+                  "description": "Prefix of the data source.",
+                  "type": "string",
+                  "default": ""
+                },
+                "filePathPattern": {
+                  "title": "File Path Pattern",
+                  "description": "Provide the pattern of the path where the generated sample data file needs to be stored.",
+                  "type": "string",
+                  "default": "{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet"
+                },
+                "overwriteData": {
+                  "title": "Overwrite Sample Data",
+                  "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
+                  "type": "boolean",
+                  "default": true
+                },
+                "storageConfig": {
+                  "oneOf": [
+                    {
+                      "title": "AWS S3 Storage Config",
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "AWS credentials configs.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+                      "properties": {
+                        "enabled": {
+                          "title": "Enable IAM Auth",
+                          "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "awsAccessKeyId": {
+                          "title": "AWS Access Key ID",
+                          "description": "AWS Access key ID.",
+                          "type": "string"
+                        },
+                        "awsSecretAccessKey": {
+                          "title": "AWS Secret Access Key",
+                          "description": "AWS Secret Access Key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "awsRegion": {
+                          "title": "AWS Region",
+                          "description": "AWS Region",
+                          "type": "string"
+                        },
+                        "awsSessionToken": {
+                          "title": "AWS Session Token",
+                          "description": "AWS Session Token.",
+                          "type": "string"
+                        },
+                        "endPointURL": {
+                          "title": "Endpoint URL",
+                          "description": "EndPoint URL for the AWS",
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "profileName": {
+                          "title": "Profile Name",
+                          "description": "The name of a profile to use with the boto session.",
+                          "type": "string"
+                        },
+                        "assumeRoleArn": {
+                          "title": "Role Arn for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                          "type": "string"
+                        },
+                        "assumeRoleSessionName": {
+                          "title": "Role Session Name for Assume Role",
+                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                          "type": "string",
+                          "default": "OpenMetadataSession"
+                        },
+                        "assumeRoleSourceIdentity": {
+                          "title": "Source Identity for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "awsRegion"
+                      ]
+                    },
+                    {
+                      "title": "OpenMetadata Storage",
+                      "type": "object",
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsDataDiff": {
+      "title": "Supports Data Diff Extraction.",
+      "description": "Supports the data diff data qualty specification.",
+      "type": "boolean",
+      "default": true
+    },
+    "creditCost": {
+      "title": "Cost of Credit",
+      "description": "Cost of credit for the Snowflake account.",
+      "type": "number",
+      "default": 3.3
+    },
+    "snowflakeSourceHost": {
+      "title": "Snowflake Source Host",
+      "description": "Snowflake source host for the Snowflake account.",
+      "type": "string",
+      "default": "app.snowflake.com"
+    },
+    "policyAgentConfig": {
+      "title": "Policy Agent Config",
+      "description": "Policy agent configuration for access control extraction.",
+      "default": {
+        "enabled": true,
+        "supportsColumnAccess": false,
+        "supportsFullAccess": true,
+        "supportsMaskedAccess": true
+      },
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.PolicyAgentConfig",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "Enable policy agent extraction.",
+          "type": "boolean"
+        },
+        "supportsColumnAccess": {
+          "title": "Supports Column Access",
+          "description": "Supports column-level access policy extraction.",
+          "type": "boolean"
+        },
+        "supportsFullAccess": {
+          "title": "Supports Full Access",
+          "description": "Supports full access policy extraction.",
+          "type": "boolean"
+        },
+        "supportsMaskedAccess": {
+          "title": "Supports Masked Access",
+          "description": "Supports masked access policy extraction.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "username",
+    "account",
+    "warehouse"
+  ]
+}

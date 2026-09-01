@@ -747,7 +747,11 @@ test.describe('Mention notifications in Notification Box', () => {
             new URL(response.url()).pathname
           ) && response.request().method() === 'PUT'
       );
-      await message.locator('[data-testid="add-reactions"]').click();
+      await message
+        .locator('[data-testid="feed-card-footer"]')
+        .filter({ has: user1Page.locator('[data-testid="reply-button"]') })
+        .locator('[data-testid="add-reactions"]')
+        .click();
       await user1Page.locator('[title="rocket"]').click();
       await reactionResponse;
 

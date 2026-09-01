@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isArray, isEmpty } from 'lodash';
+import { PagingResponse } from 'Models';
 import {
   useCallback,
   useEffect,
@@ -27,7 +33,6 @@ import {
   NextPreviousProps,
   PagingHandlerParams,
 } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
@@ -37,16 +42,10 @@ import {
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../../generated/tests/testSuite';
-import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -56,11 +55,19 @@ import {
   DataQualityPageTabs,
   DataQualitySubTabs,
 } from '../../../pages/DataQuality/DataQualityPage.interface';
-import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
+import {
+  testSuiteDetailsQueryFn,
+  testSuiteDetailsQueryKey,
+  testSuiteIngestionPipelinesQueryFn,
+  testSuiteIngestionPipelinesQueryKey,
+  testSuiteTestCasesQueryFn,
+  testSuiteTestCasesQueryKey,
+  testSuiteTestCasesQueryKeyPrefix,
+  TEST_SUITE_TEST_CASE_FIELDS,
+} from '../../../rest/queries/testSuiteQuery';
 import {
   addTestCasesToLogicalTestSuiteBulk,
   getListTestCaseBySearch,
-  getTestSuiteByName,
   ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../../rest/testAPI';
@@ -74,7 +81,6 @@ import { UseTestSuiteDetailsPageResult } from '../TestSuiteDetailsPage.interface
 import {
   isTestCaseListSynchronized,
   isUnfilteredTestCaseRequest,
-  shouldResetTestCaseLoading,
 } from '../TestSuiteDetailsPage.utils';
 
 /**
@@ -84,23 +90,31 @@ import {
  */
 export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
   const { permissions: globalPermissions } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
+  // Query keys isolate stale GET responses, but a bulk mutation can still
+  // finish after navigation and must not start follow-up work for the old suite.
   const activeTestSuiteFQN = useRef(testSuiteFQN);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>(EntityTabs.TEST_CASES);
   const { showModal } = useEntityExportModalProvider();
 
-  const [testSuite, setTestSuite] = useState<TestSuite>();
-  const [isTestCaseLoading, setIsTestCaseLoading] = useState(true);
-  const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
-  const testCaseRequestId = useRef(0);
-  const testSuiteRequestId = useRef(0);
-  const authoritativeTestCaseCount = useRef<{
-    testSuiteFQN: string;
-    total: number;
-  }>();
+  // Keep the raw value for the controlled input and normalize it only when
+  // deriving the query key and API request.
+  const [testCaseSearchQuery, setTestCaseSearchQuery] = useState('');
+  const [testCaseRequestParams, setTestCaseRequestParams] =
+    useState<ListTestCaseParamsBySearch>({
+      ...DEFAULT_SORT_ORDER,
+      offset: 0,
+    });
+  // Suite relationships update before the search index; retain the REST total
+  // until the keyed list query observes the indexed rows.
+  const [authoritativeTestCaseCount, setAuthoritativeTestCaseCount] =
+    useState<number>();
+  const [isSynchronizingTestCases, setIsSynchronizingTestCases] =
+    useState(false);
 
   const {
     currentPage,
@@ -111,48 +125,27 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     handlePagingChange,
     showPagination,
   } = usePaging();
+  const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
+    useState<boolean>(false);
+
   // The owning fetch for this page's permissions (Task 8 conversion): single resource, by
   // FQN, no `deleted` gating — old code never ANDed any of the flags below with the suite's
-  // own `deleted` field. `isLoading`/`permissionsError` replace the old
-  // fetchTestSuitePermission's manual setIsLoading(true/false) + try/catch pair.
+  // own `deleted` field. `isPermissionLoading`/`testSuitePermissionError` replace both the
+  // old fetchTestSuitePermission's manual setIsLoading(true/false) + try/catch pair, and the
+  // raw `useQuery<OperationPermission>` upstream introduced for the same purpose — this hook
+  // is already React Query-backed internally, so no extra fetch mechanism is needed.
   // canEditOwners/canEditDescription are also an explicit-deny-wins fix, same precedent as
   // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
   // grant.
   const {
     permissions: testSuitePermissions,
-    isLoading,
-    error: permissionsError,
+    isLoading: isPermissionLoading,
+    error: testSuitePermissionError,
     hasViewAccess,
     canEditAll,
     canEditOwners,
     canEditDescription,
   } = useEntityPermissions(ResourceEntity.TEST_SUITE, testSuiteFQN);
-  const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
-    useState<boolean>(false);
-  const [sortOptions, setSortOptions] =
-    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
-  const [ingestionPipelineCount, setIngestionPipelineCount] =
-    useState<number>(0);
-
-  const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
-
-  // The suite page mounts no GenericProvider, so the description
-  // attribution must be fetched directly instead of read from context.
-  const { changeSummary, refetch: refetchChangeSummary } = useChangeSummary(
-    EntityType.TEST_SUITE,
-    testSuite?.id ?? '',
-    { limit: 1000 }
-  );
-
-  const { testSuiteDescription, testSuiteId, testOwners } = useMemo(() => {
-    return {
-      testOwners: testSuite?.owners,
-      testSuiteId: testSuite?.id ?? '',
-      testSuiteDescription: testSuite?.description ?? '',
-    };
-  }, [testSuite]);
 
   // Public shape kept identical (Task 8: the page consumer isn't in this same commit's
   // scope for a prop-contract migration) — only the source of each value changes, from raw
@@ -172,6 +165,99 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     canEditDescription,
     testSuitePermissions?.Delete,
   ]);
+
+  const testSuiteQueryKey = useMemo(
+    () => testSuiteDetailsQueryKey(testSuiteFQN),
+    [testSuiteFQN]
+  );
+  const {
+    data: testSuite,
+    error: testSuiteError,
+    isLoading: isTestSuiteLoading,
+  } = useQuery({
+    queryKey: testSuiteQueryKey,
+    queryFn: testSuiteDetailsQueryFn(testSuiteFQN),
+    enabled: Boolean(testSuiteFQN && permissions.hasViewPermission),
+  });
+
+  // The suite page mounts no GenericProvider, so the description
+  // attribution must be fetched directly instead of read from context.
+  const { changeSummary, refetch: refetchChangeSummary } = useChangeSummary(
+    EntityType.TEST_SUITE,
+    testSuite?.id ?? '',
+    { limit: 1000 }
+  );
+
+  const testOwners = testSuite?.owners;
+  const testSuiteId = testSuite?.id ?? '';
+  const testSuiteDescription = testSuite?.description ?? '';
+  const normalizedTestCaseSearchQuery = testCaseSearchQuery.trim() || undefined;
+
+  const testCaseQueryParams = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      fields: TEST_SUITE_TEST_CASE_FIELDS,
+      testSuiteId,
+      ...testCaseRequestParams,
+      q: normalizedTestCaseSearchQuery,
+      limit: pageSize,
+    }),
+    [
+      testSuiteId,
+      testCaseRequestParams,
+      normalizedTestCaseSearchQuery,
+      pageSize,
+    ]
+  );
+  const testCaseQueryKey = useMemo(
+    () => testSuiteTestCasesQueryKey(testSuiteId, testCaseQueryParams),
+    [testSuiteId, testCaseQueryParams]
+  );
+  const {
+    data: testCaseResponse,
+    error: testCaseError,
+    isFetching: isTestCaseQueryFetching,
+    refetch: refetchTestCases,
+  } = useQuery({
+    queryKey: testCaseQueryKey,
+    queryFn: testSuiteTestCasesQueryFn(testCaseQueryParams),
+    enabled: Boolean(testSuiteId),
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: ingestionPipelineResponse, error: ingestionPipelineError } =
+    useQuery({
+      queryKey: testSuiteIngestionPipelinesQueryKey(testSuiteFQN),
+      queryFn: testSuiteIngestionPipelinesQueryFn(testSuiteFQN),
+      enabled: Boolean(testSuiteId),
+    });
+
+  const isUnfilteredTestCaseList = isUnfilteredTestCaseRequest({
+    ...testCaseRequestParams,
+    q: normalizedTestCaseSearchQuery,
+  });
+  const testCasePaging = useMemo(() => {
+    const responsePaging = testCaseResponse?.paging ?? { total: 0 };
+    const shouldUseAuthoritativeTotal =
+      isUnfilteredTestCaseList &&
+      authoritativeTestCaseCount !== undefined &&
+      responsePaging.total < authoritativeTestCaseCount;
+
+    return {
+      ...responsePaging,
+      total: shouldUseAuthoritativeTotal
+        ? authoritativeTestCaseCount
+        : responsePaging.total,
+    };
+  }, [
+    testCaseResponse?.paging,
+    isUnfilteredTestCaseList,
+    authoritativeTestCaseCount,
+  ]);
+
+  const testCaseResult = testCaseResponse?.data ?? [];
+  const ingestionPipelineCount = ingestionPipelineResponse?.paging.total ?? 0;
+  const isTestCaseLoading = isTestCaseQueryFetching || isSynchronizingTestCases;
+  const isLoading = isPermissionLoading || isTestSuiteLoading;
 
   const extraDropdownContent = useMemo(() => {
     const bulkImportExportTestCasePermission = {
@@ -199,6 +285,23 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     );
   }, [globalPermissions, testSuite, navigate, showModal]);
 
+  const slashedBreadCrumb = useMemo(
+    () => [
+      {
+        name: t('label.test-suite-plural'),
+        url: observabilityRouterClassBase.getDataQualityPagePath(
+          DataQualityPageTabs.TEST_SUITES,
+          DataQualitySubTabs.BUNDLE_SUITES
+        ),
+      },
+      {
+        name: getEntityName(testSuite),
+        url: '',
+      },
+    ],
+    [testSuite, t]
+  );
+
   const incidentUrlState = useMemo(() => {
     return [
       {
@@ -215,136 +318,124 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         ),
       },
     ];
-  }, [testSuite]);
+  }, [testSuite, t]);
 
-  const saveAndUpdateTestSuiteData = (updatedData: TestSuite) => {
-    const jsonPatch = compare(testSuite as TestSuite, updatedData);
+  const saveAndUpdateTestSuiteData = useCallback(
+    (updatedData: TestSuite) => {
+      const jsonPatch = compare(testSuite as TestSuite, updatedData);
 
-    return updateTestSuiteById(testSuiteId as string, jsonPatch);
-  };
-
-  const fetchIngestionPipelineCount = useCallback(
-    async (
-      shouldFetch: boolean,
-      isCurrentRequest: () => boolean
-    ): Promise<void> => {
-      if (!shouldFetch || !isCurrentRequest()) {
-        return;
-      }
-
-      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
-        arrQueryFields: [],
-        testSuite: testSuiteFQN,
-        pipelineType: [PipelineType.TestSuite],
-        limit: 0,
-      });
-
-      if (isCurrentRequest()) {
-        setIngestionPipelineCount(ingestionPipelinePaging.total);
-      }
+      return updateTestSuiteById(testSuiteId, jsonPatch);
     },
-    [testSuiteFQN]
+    [testSuite, testSuiteId]
   );
 
-  const fetchTestCasesWithTotal = useCallback(
-    async (
-      param?: ListTestCaseParamsBySearch,
-      keepLoading = false,
-      shouldFetchIngestionPipelines = true
-    ): Promise<number | undefined> => {
-      const requestId = ++testCaseRequestId.current;
-      const requestedTestSuiteFQN = testSuiteFQN;
-      const isCurrentRequest = () =>
-        requestId === testCaseRequestId.current &&
-        requestedTestSuiteFQN === activeTestSuiteFQN.current;
-      setIsTestCaseLoading(true);
-      try {
-        const response = await getListTestCaseBySearch({
-          fields: [
-            TabSpecificField.TEST_CASE_RESULT,
-            TabSpecificField.TEST_DEFINITION,
-            TabSpecificField.TESTSUITE,
-            TabSpecificField.INCIDENT_ID,
-            TabSpecificField.INCIDENT_STATUS,
-          ],
-          testSuiteId,
-          ...sortOptions,
-          ...param,
-          limit: pageSize,
-        });
-        await fetchIngestionPipelineCount(
-          shouldFetchIngestionPipelines,
-          isCurrentRequest
-        );
+  // useEntityPermissions fetches reactively (React Query, keyed on resource+FQN) — no manual
+  // trigger effect needed. This replaces the old fetchTestSuitePermission's try/catch
+  // showErrorToast with the same user-facing behavior: a permission-fetch failure still
+  // surfaces a toast.
+  useEffect(() => {
+    if (testSuitePermissionError) {
+      showErrorToast(testSuitePermissionError as AxiosError);
+    }
+  }, [testSuitePermissionError]);
 
-        if (!isCurrentRequest()) {
-          return;
-        }
+  useEffect(() => {
+    if (testSuiteError) {
+      showErrorToast(
+        testSuiteError as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
+      );
+    }
+  }, [testSuiteError, t]);
 
-        const authoritativeSnapshot = authoritativeTestCaseCount.current;
-        const isUnfilteredRequest = isUnfilteredTestCaseRequest(param);
-        const shouldUseAuthoritativeTotal =
-          isUnfilteredRequest &&
-          authoritativeSnapshot?.testSuiteFQN === testSuiteFQN &&
-          response.paging.total < authoritativeSnapshot.total;
-        setTestCaseResult(response.data);
-        handlePagingChange({
-          ...response.paging,
-          total: shouldUseAuthoritativeTotal
-            ? authoritativeSnapshot.total
-            : response.paging.total,
-        });
+  useEffect(() => {
+    if (testCaseError) {
+      showErrorToast(
+        testCaseError as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.test-case-plural'),
+        })
+      );
+    }
+  }, [testCaseError, t]);
 
-        if (
-          authoritativeSnapshot &&
-          isUnfilteredRequest &&
-          !shouldUseAuthoritativeTotal
-        ) {
-          authoritativeTestCaseCount.current = undefined;
-        }
+  useEffect(() => {
+    if (ingestionPipelineError) {
+      showErrorToast(ingestionPipelineError as AxiosError);
+    }
+  }, [ingestionPipelineError]);
 
-        return response.paging.total;
-      } catch {
-        if (!isCurrentRequest()) {
-          return;
-        }
+  useEffect(() => {
+    handlePagingChange(testCasePaging);
 
-        setTestCaseResult([]);
-        showErrorToast(
-          t('server.entity-fetch-error', {
-            entity: t('label.test-case-plural'),
-          })
-        );
-      } finally {
-        if (shouldResetTestCaseLoading(isCurrentRequest, keepLoading)) {
-          setIsTestCaseLoading(false);
-        }
-      }
-    },
-    [
-      testSuiteId,
-      testSuiteFQN,
-      sortOptions,
-      pageSize,
-      handlePagingChange,
-      fetchIngestionPipelineCount,
-      t,
-    ]
-  );
+    if (
+      isUnfilteredTestCaseList &&
+      authoritativeTestCaseCount !== undefined &&
+      (testCaseResponse?.paging.total ?? 0) >= authoritativeTestCaseCount
+    ) {
+      setAuthoritativeTestCaseCount(undefined);
+    }
+  }, [
+    testCasePaging,
+    handlePagingChange,
+    isUnfilteredTestCaseList,
+    authoritativeTestCaseCount,
+    testCaseResponse?.paging.total,
+  ]);
 
   const fetchTestCases = useCallback(
     async (param?: ListTestCaseParamsBySearch) => {
-      await fetchTestCasesWithTotal(param);
+      if (!param) {
+        await refetchTestCases();
+
+        return;
+      }
+
+      setTestCaseRequestParams((current) => ({
+        ...current,
+        ...param,
+      }));
     },
-    [fetchTestCasesWithTotal]
+    [refetchTestCases]
+  );
+
+  const handleTestCaseSearch = useCallback(
+    (query: string) => {
+      setTestCaseSearchQuery(query);
+      handlePageChange(INITIAL_PAGING_VALUE);
+      setTestCaseRequestParams((current) => ({
+        ...current,
+        offset: 0,
+      }));
+    },
+    [handlePageChange]
+  );
+
+  const fetchIndexedTestCaseTotal = useCallback(
+    async (targetTestSuiteId: string) => {
+      const response = await getListTestCaseBySearch({
+        testSuiteId: targetTestSuiteId,
+        limit: 1,
+      });
+
+      return response.paging.total;
+    },
+    []
   );
 
   const refreshTestCasesUntilIndexed = useCallback(
     async (
       authoritativeTotal: number | undefined,
-      isCurrentTestSuite: () => boolean
+      isCurrentTestSuite: () => boolean,
+      targetTestSuiteId: string
     ) => {
-      setIsTestCaseLoading(true);
+      if (!isCurrentTestSuite()) {
+        return;
+      }
+
+      setIsSynchronizingTestCases(true);
       try {
         for (
           let attempt = 0;
@@ -355,17 +446,25 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             return;
           }
 
-          const indexedTotal = await fetchTestCasesWithTotal(
-            undefined,
-            true,
-            attempt === 0
-          );
+          // A transient failure polling the index (e.g. a dropped request)
+          // must not abandon the refresh — fall through to the invalidate
+          // below so the list still catches up to whatever is indexed now,
+          // instead of silently going stale.
+          let indexedTotal: number | undefined;
+          try {
+            // Polling reads only the index total so it cannot supersede or
+            // commit over a search, sort, or paging request made meanwhile.
+            indexedTotal = await fetchIndexedTestCaseTotal(targetTestSuiteId);
+          } catch {
+            break;
+          }
 
-          if (
-            !isCurrentTestSuite() ||
-            isTestCaseListSynchronized(indexedTotal, authoritativeTotal)
-          ) {
+          if (!isCurrentTestSuite()) {
             return;
+          }
+
+          if (isTestCaseListSynchronized(indexedTotal, authoritativeTotal)) {
+            break;
           }
 
           if (attempt < TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS - 1) {
@@ -374,75 +473,30 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             );
           }
         }
+
+        if (isCurrentTestSuite()) {
+          // Invalidating the suite prefix refetches whichever search, sort, or
+          // page query is active when indexing completes.
+          await queryClient.invalidateQueries({
+            queryKey: testSuiteTestCasesQueryKeyPrefix(targetTestSuiteId),
+          });
+        }
       } finally {
         if (isCurrentTestSuite()) {
-          setIsTestCaseLoading(false);
+          setIsSynchronizingTestCases(false);
         }
       }
     },
-    [fetchTestCasesWithTotal]
+    [fetchIndexedTestCaseTotal, queryClient]
   );
 
   const handleSortTestCase = useCallback(
     async (apiParams?: ListTestCaseParamsBySearch) => {
-      setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
       await fetchTestCases({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
       handlePageChange(INITIAL_PAGING_VALUE);
     },
     [fetchTestCases, handlePageChange]
   );
-
-  const fetchTestSuiteByName = useCallback(async () => {
-    const requestId = ++testSuiteRequestId.current;
-    const requestedTestSuiteFQN = testSuiteFQN;
-    const isCurrentRequest = () =>
-      requestId === testSuiteRequestId.current &&
-      requestedTestSuiteFQN === activeTestSuiteFQN.current;
-
-    try {
-      const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.TESTS,
-        ],
-        include: Include.All,
-      });
-
-      if (!isCurrentRequest()) {
-        return;
-      }
-
-      setSlashedBreadCrumb([
-        {
-          name: t('label.test-suite-plural'),
-          url: observabilityRouterClassBase.getDataQualityPagePath(
-            DataQualityPageTabs.TEST_SUITES,
-            DataQualitySubTabs.BUNDLE_SUITES
-          ),
-        },
-        {
-          name: getEntityName(response),
-          url: '',
-        },
-      ]);
-      setTestSuite(response);
-
-      return response;
-    } catch (error) {
-      if (!isCurrentRequest()) {
-        return;
-      }
-
-      setTestSuite(undefined);
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.test-suite'),
-        })
-      );
-    }
-  }, [testSuiteFQN, t]);
 
   const handleAddTestCaseSubmit = useCallback(
     async (payload: {
@@ -465,7 +519,10 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
 
         setIsTestCaseModalOpen(false);
-        const updatedTestSuite = await fetchTestSuiteByName();
+        const updatedTestSuite = await queryClient.fetchQuery({
+          queryKey: testSuiteDetailsQueryKey(submittedTestSuiteFQN),
+          queryFn: testSuiteDetailsQueryFn(submittedTestSuiteFQN),
+        });
 
         if (!isCurrentTestSuite()) {
           return;
@@ -474,19 +531,13 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         const authoritativeTotal = updatedTestSuite?.tests?.length;
 
         if (authoritativeTotal !== undefined) {
-          authoritativeTestCaseCount.current = {
-            testSuiteFQN,
-            total: authoritativeTotal,
-          };
-          handlePagingChange((currentPaging) => ({
-            ...currentPaging,
-            total: authoritativeTotal,
-          }));
+          setAuthoritativeTestCaseCount(authoritativeTotal);
         }
 
         await refreshTestCasesUntilIndexed(
           authoritativeTotal,
-          isCurrentTestSuite
+          isCurrentTestSuite,
+          testSuiteId
         );
       } catch (error) {
         if (isCurrentTestSuite()) {
@@ -494,23 +545,20 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
       }
     },
-    [
-      testSuiteId,
-      testSuiteFQN,
-      fetchTestSuiteByName,
-      refreshTestCasesUntilIndexed,
-      handlePagingChange,
-    ]
+    [testSuiteId, testSuiteFQN, queryClient, refreshTestCasesUntilIndexed]
   );
 
-  const updateTestSuiteData = async (updatedTestSuite: TestSuite) => {
-    try {
-      const res = await saveAndUpdateTestSuiteData(updatedTestSuite);
-      setTestSuite(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const updateTestSuiteData = useCallback(
+    async (updatedTestSuite: TestSuite) => {
+      try {
+        const response = await saveAndUpdateTestSuiteData(updatedTestSuite);
+        queryClient.setQueryData(testSuiteQueryKey, response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [queryClient, saveAndUpdateTestSuiteData, testSuiteQueryKey]
+  );
 
   const onUpdateOwner = useCallback(
     async (updatedOwners: TestSuite['owners']) => {
@@ -520,7 +568,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
       await updateTestSuiteData({ ...testSuite, owners: updatedOwners });
     },
-    [testSuite]
+    [testSuite, updateTestSuiteData]
   );
 
   const handleDomainUpdate = useCallback(
@@ -545,7 +593,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
       await updateTestSuiteData(updatedTestSuite);
     },
-    [testSuite]
+    [testSuite, updateTestSuiteData]
   );
 
   const onDescriptionUpdate = useCallback(
@@ -557,7 +605,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             updatedTestSuite as TestSuite
           );
           if (response) {
-            setTestSuite(response);
+            queryClient.setQueryData(testSuiteQueryKey, response);
             refetchChangeSummary();
           } else {
             throw t('server.unexpected-response');
@@ -567,7 +615,14 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
       }
     },
-    [testSuite, t, refetchChangeSummary]
+    [
+      testSuite,
+      t,
+      refetchChangeSummary,
+      saveAndUpdateTestSuiteData,
+      queryClient,
+      testSuiteQueryKey,
+    ]
   );
 
   const handleDisplayNameChange = useCallback(
@@ -585,63 +640,70 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
               updatedTestSuite as TestSuite
             );
 
-            setTestSuite(response);
+            queryClient.setQueryData(testSuiteQueryKey, response);
           }
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [testSuite]
+    [testSuite, saveAndUpdateTestSuiteData, queryClient, testSuiteQueryKey]
   );
 
-  const handleTestCasePaging = ({ currentPage }: PagingHandlerParams) => {
-    if (currentPage) {
-      handlePageChange(currentPage);
-      fetchTestCases({
-        offset: (currentPage - 1) * pageSize,
-      });
-    }
-  };
+  const handleTestCasePaging = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      if (currentPage) {
+        handlePageChange(currentPage);
+        fetchTestCases({
+          offset: (currentPage - 1) * pageSize,
+        });
+      }
+    },
+    [fetchTestCases, handlePageChange, pageSize]
+  );
 
-  const handleTestSuiteUpdate = useCallback((testCase?: TestCase) => {
-    if (testCase) {
-      setTestCaseResult((prev) =>
-        prev.map((test) =>
-          test.id === testCase.id ? { ...test, ...testCase } : test
-        )
-      );
-    }
-  }, []);
+  const handleTestSuiteUpdate = useCallback(
+    (testCase?: TestCase) => {
+      if (testCase) {
+        queryClient.setQueryData<PagingResponse<TestCase[]>>(
+          testCaseQueryKey,
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  data: current.data.map((item) =>
+                    item.id === testCase.id ? { ...item, ...testCase } : item
+                  ),
+                }
+              : current
+        );
+      }
+    },
+    [queryClient, testCaseQueryKey]
+  );
 
   useLayoutEffect(() => {
     activeTestSuiteFQN.current = testSuiteFQN;
-    testCaseRequestId.current += 1;
-    testSuiteRequestId.current += 1;
-    authoritativeTestCaseCount.current = undefined;
+    setAuthoritativeTestCaseCount(undefined);
+    setTestCaseSearchQuery('');
+    setTestCaseRequestParams({
+      ...DEFAULT_SORT_ORDER,
+      offset: 0,
+    });
+    setIsSynchronizingTestCases(false);
+    setIsTestCaseModalOpen(false);
   }, [testSuiteFQN]);
 
-  useEffect(() => {
-    if (hasViewAccess) {
-      fetchTestSuiteByName();
-    }
-  }, [hasViewAccess, testSuiteFQN]);
-
-  // useEntityPermissions fetches reactively (React Query, keyed on resource+FQN) — no manual
-  // trigger effect needed. This replaces the old fetchTestSuitePermission's try/catch
-  // showErrorToast with the same user-facing behavior: a permission-fetch failure still
-  // surfaces a toast.
-  useEffect(() => {
-    if (permissionsError) {
-      showErrorToast(permissionsError as AxiosError);
-    }
-  }, [permissionsError]);
-
-  useEffect(() => {
-    if (testSuiteId) {
-      fetchTestCases({ testSuiteId });
-    }
-  }, [testSuiteId, pageSize]);
+  const handleTestCasePageSizeChange = useCallback(
+    (size: number) => {
+      setTestCaseRequestParams((current) => ({
+        ...current,
+        offset: 0,
+      }));
+      handlePageSizeChange(size);
+    },
+    [handlePageSizeChange]
+  );
 
   const pagingData: NextPreviousProps = useMemo(
     () => ({
@@ -649,10 +711,16 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       currentPage,
       pageSize,
       paging,
-      onShowSizeChange: handlePageSizeChange,
+      onShowSizeChange: handleTestCasePageSizeChange,
       pagingHandler: handleTestCasePaging,
     }),
-    [currentPage, paging, pageSize, handlePageSizeChange, handleTestCasePaging]
+    [
+      currentPage,
+      paging,
+      pageSize,
+      handleTestCasePageSizeChange,
+      handleTestCasePaging,
+    ]
   );
 
   return {
@@ -663,6 +731,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     isLoading,
     isTestCaseLoading,
     testCaseResult,
+    testCaseSearchQuery,
     testSuitePermissions,
     permissions,
     extraDropdownContent,
@@ -679,6 +748,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     fetchTestCases,
+    handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
     onUpdateOwner,

@@ -189,8 +189,15 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
-    useGenericContext<GenericEntity>();
+  const {
+    data,
+    type,
+    entityRules,
+    isRulesLoaded,
+    onUpdate,
+    permissions,
+    isVersionView,
+  } = useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
   const updatedData = useMemo(() => {
@@ -370,6 +377,9 @@ export const CommonWidgets = ({
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
         multiple={entityRules.canAddMultipleDataProducts}
+        requireDomainForDataProduct={
+          !isRulesLoaded || entityRules.requireDomainForDataProduct
+        }
         onSave={handleDataProductsSave}
       />
     );
@@ -377,6 +387,9 @@ export const CommonWidgets = ({
     dataProducts,
     domains,
     editDataProductPermission,
+    entityRules.canAddMultipleDataProducts,
+    entityRules.requireDomainForDataProduct,
+    isRulesLoaded,
     handleDataProductsSave,
   ]);
 

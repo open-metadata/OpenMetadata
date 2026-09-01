@@ -120,6 +120,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
                         ? 'tw:text-utility-error-300'
                         : 'tw:text-utility-success-200'
                     }`}
+                    // eslint-disable-next-line react/no-array-index-key -- stack-trace lines, may repeat
                     key={idx}>
                     {line}
                   </div>

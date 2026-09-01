@@ -222,30 +222,80 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: 'mlmodel' }));
 });
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => mockParams),
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => mockParams),
 }));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({
+    fqn: 'mlflow_svc.eta_predictions',
+    entityFqn: 'mlflow_svc.eta_predictions',
+  }),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: 'testUser' },
+  }),
+}));
+
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: undefined,
+    isLoading: false,
+  }),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest.fn().mockResolvedValue({
+      ViewAll: true,
+      ViewBasic: true,
+    }),
+  })),
+}));
+
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  getFeedCounts: jest.fn(),
+}));
+
+jest.mock('../../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((component) => component),
+}));
+
+jest.mock('../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock(
+  '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  () => ({
+    DataAssetsHeader: jest.fn().mockReturnValue(<div>DataAssetsHeader</div>),
+  })
+);
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockReturnValue(<div>GenericTab</div>),
+}));
+
+jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
+  EntityLineageTab: jest.fn().mockReturnValue(<div>EntityLineageTab</div>),
+}));
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
+});
 
 jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
-});
-
-jest.mock('../../common/EntityDescription/Description', () => {
-  return jest.fn().mockReturnValue(<p>Description</p>);
-});
-
-jest.mock('../../Lineage/Lineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-});
-
-jest.mock('./MlModelFeaturesList', () => {
-  return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);
-});
-
-jest.mock('../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
-  return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
 jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
@@ -263,67 +313,21 @@ jest.mock('../../../utils/TablePureUtils', () => {
   };
 });
 
-jest.mock('../../ActivityFeed/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor.component</p>);
-});
-
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-// --- Additional mocks for the permission-conversion tests below. The pre-existing suite
-// above is (and was already, before this conversion) `describe.skip`'d and never renders the
-// component for real, so it never needed these; the two new, non-skipped tests do.
-jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest
-    .fn()
-    .mockReturnValue({ entityFqn: 'mlflow_svc.eta_predictions' }),
-}));
-
-jest.mock('../../../hooks/useCustomPages', () => ({
-  useCustomPages: jest
-    .fn()
-    .mockReturnValue({ customizedPage: null, isLoading: false }),
-}));
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest
-    .fn()
-    .mockReturnValue({ currentUser: { id: 'test-user-id' } }),
-}));
-
-jest.mock('../../../utils/useRequiredParams', () => ({
-  useRequiredParams: jest.fn().mockReturnValue({ tab: EntityTabs.FEATURES }),
-}));
-
-jest.mock(
-  '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
-  () => ({
-    DataAssetsHeader: jest
-      .fn()
-      .mockImplementation(() => <p>DataAssetsHeader</p>),
-  })
-);
-
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
-  GenericProvider: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-}));
-
-jest.mock('../../../hoc/LimitWrapper', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-
-jest.mock('../../../utils/MlModel/MlModelClassBase', () => ({
-  __esModule: true,
-  default: {
-    getMlModelDetailPageTabs: jest.fn().mockReturnValue([]),
-  },
-}));
-
+// --- Additional mocks for the permission-conversion tests below, on top of the shared
+// mocks above. `useFqn`, `useCustomPages`, `useApplicationStore`, `useRequiredParams`,
+// `DataAssetsHeader`, `GenericProvider`, `LimitWrapper` and `FeedUtilsPure` are already
+// mocked above and reused as-is — re-registering them here would silently win (last
+// `jest.mock` call for a given path wins) and diverge from the suite below. In particular,
+// `useRequiredParams` must stay the dynamic `mockParams`-backed mock above: the suite below
+// mutates `mockParams.tab` per test to switch tabs, and `MlModelClassBase` is deliberately
+// left unmocked so the real tab list renders for both suites — a static override here would
+// break every tab-switching assertion below.
 jest.mock('../../../rest/mlModelAPI', () => ({
   restoreMlmodel: jest.fn().mockResolvedValue({ version: 1 }),
 }));
@@ -335,12 +339,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn().mockReturnValue('/mlmodel/path'),
-}));
-
-jest.mock('../../../utils/FeedUtilsPure', () => ({
-  fetchEntityActivityCountInto: jest.fn(),
-  fetchEntityTaskCountsInto: jest.fn(),
-  getFeedCounts: jest.fn(),
 }));
 
 describe('MlModelDetail permissions', () => {
@@ -417,26 +415,20 @@ describe('MlModelDetail permissions', () => {
   });
 });
 
-describe.skip('Test MlModel entity detail component', () => {
+describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {
+    mockParams.tab = EntityTabs.FEATURES;
     const { container } = render(<MlModelDetailComponent {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
-
+    const dataAssetsHeader = await findByText(container, 'DataAssetsHeader');
     const entityTabs = await findByTestId(container, 'tabs');
-    const entityFeatureList = await findByText(
-      container,
-      /MlModelFeaturesList/i
-    );
-    const entityDescription = await findByText(container, /Description/i);
+    const featuresTab = await findByText(container, 'GenericTab');
 
-    expect(detailContainer).toBeInTheDocument();
-
+    expect(dataAssetsHeader).toBeInTheDocument();
     expect(entityTabs).toBeInTheDocument();
-    expect(entityFeatureList).toBeInTheDocument();
-    expect(entityDescription).toBeInTheDocument();
+    expect(featuresTab).toBeInTheDocument();
   });
 
   it('Should render hyper parameter and ml store table for details tab', async () => {
@@ -456,13 +448,13 @@ describe.skip('Test MlModel entity detail component', () => {
       }
     );
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const entityTabs = await findByTestId(container, 'tabs');
     const emptyTablePlaceholder = await findAllByText(
       container,
       'ErrorPlaceHolder'
     );
 
-    expect(detailContainer).toBeInTheDocument();
+    expect(entityTabs).toBeInTheDocument();
     expect(emptyTablePlaceholder).toHaveLength(2);
   });
 
@@ -472,7 +464,6 @@ describe.skip('Test MlModel entity detail component', () => {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
     const hyperMetereTable = await findByTestId(
       container,
       'hyperparameters-table'
@@ -480,7 +471,6 @@ describe.skip('Test MlModel entity detail component', () => {
 
     const mlStoreTable = await findByTestId(container, 'model-store-table');
 
-    expect(detailContainer).toBeInTheDocument();
     expect(hyperMetereTable).toBeInTheDocument();
     expect(mlStoreTable).toBeInTheDocument();
   });
@@ -491,9 +481,9 @@ describe.skip('Test MlModel entity detail component', () => {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'lineage-details');
+    const lineageTab = await findByText(container, 'EntityLineageTab');
 
-    expect(detailContainer).toBeInTheDocument();
+    expect(lineageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {
@@ -520,19 +510,12 @@ describe.skip('Test MlModel entity detail component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
-    const entityInfo = await findByText(container, /EntityPageInfo/i);
+    const dataAssetsHeader = await findByText(container, 'DataAssetsHeader');
     const entityTabs = await findByTestId(container, 'tabs');
-    const entityFeatureList = await findByText(
-      container,
-      /MlModelFeaturesList/i
-    );
-    const entityDescription = await findByText(container, /Description/i);
+    const featuresTab = await findByText(container, 'GenericTab');
 
-    expect(detailContainer).toBeInTheDocument();
-    expect(entityInfo).toBeInTheDocument();
+    expect(dataAssetsHeader).toBeInTheDocument();
     expect(entityTabs).toBeInTheDocument();
-    expect(entityFeatureList).toBeInTheDocument();
-    expect(entityDescription).toBeInTheDocument();
+    expect(featuresTab).toBeInTheDocument();
   });
 });

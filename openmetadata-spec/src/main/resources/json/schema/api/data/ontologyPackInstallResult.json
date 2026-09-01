@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackInstallResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPackInstallResult",
+  "description": "Aggregated result of a verified ontology library pack installation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackInstallResult",
+  "properties": {
+    "packId": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "moduleIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "targetGlossaryName": {
+      "type": "string"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "conceptCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "relationshipCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "importResults": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyImportResult.json"
+      }
+    },
+    "installation": {
+      "description": "Durable installation provenance returned for a committed install.",
+      "$ref": "../../type/ontologyPackInstallation.json"
+    }
+  },
+  "required": [
+    "packId",
+    "version",
+    "moduleIds",
+    "targetGlossaryName",
+    "dryRun",
+    "conceptCount",
+    "relationshipCount",
+    "importResults"
+  ],
+  "additionalProperties": false
+}

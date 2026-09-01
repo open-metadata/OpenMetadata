@@ -29,6 +29,7 @@ export interface UseTestSuiteDetailsPageResult {
   isLoading: boolean;
   isTestCaseLoading: boolean;
   testCaseResult: TestCase[];
+  testCaseSearchQuery: string;
   testSuitePermissions: OperationPermission;
   permissions: {
     hasViewPermission?: boolean;
@@ -51,6 +52,7 @@ export interface UseTestSuiteDetailsPageResult {
   canAddMultipleUserOwners: boolean;
   canAddMultipleTeamOwner: boolean;
   fetchTestCases: (param?: ListTestCaseParamsBySearch) => Promise<void>;
+  handleTestCaseSearch: (query: string) => void;
   handleSortTestCase: (apiParams?: ListTestCaseParamsBySearch) => Promise<void>;
   handleAddTestCaseSubmit: (payload: {
     selectAll: boolean;

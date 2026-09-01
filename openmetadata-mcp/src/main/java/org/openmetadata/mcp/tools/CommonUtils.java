@@ -183,7 +183,7 @@ public class CommonUtils {
    * fully qualified name, on top of the CREATE check the calling tool has already performed.
    *
    * <p>The {@code create_*} tools authorize CREATE against a {@code CreateResourceContext} for the
-   * new entity and then call {@code EntityRepository.createOrUpdate}, which updates in place when the
+   * new entity and may call {@code EntityRepository.createOrUpdate}, which updates in place when the
    * name is taken. A caller holding Create but not Edit could therefore overwrite an entity owned by
    * somebody else, discarding its description, owners and tags. This closes that gap.
    *
@@ -197,14 +197,16 @@ public class CommonUtils {
    * err on; the practical cost is that a caller holding only edit rights cannot use these tools to
    * update an existing entity.
    *
-   * <p>Call after the name is resolved and before {@code createOrUpdate}. The existence lookup uses
-   * {@link Include#ALL} to match {@code createOrUpdate}, which finds a soft-deleted entity and
-   * restores it rather than creating a new one.
+   * <p>Call after the name is resolved. Use the result to route a free name through {@code create}
+   * and an existing one through {@code createOrUpdate}; this prevents a concurrent creator from
+   * turning create-only authorization into an overwrite. The existence lookup uses {@link
+   * Include#ALL} because {@code createOrUpdate} restores a soft-deleted entity.
    *
    * @param entityType the entity type being written, e.g. {@link Entity#TAG}
    * @param entity the entity carrying the resolved fully qualified name
+   * @return whether an entity exists under the resolved name
    */
-  public static void authorizeOverwrite(
+  public static boolean authorizeOverwrite(
       Authorizer authorizer,
       CatalogSecurityContext securityContext,
       String entityType,
@@ -219,6 +221,7 @@ public class CommonUtils {
           new ResourceContext<>(entityType, null, fqn, Include.ALL);
       authorizer.authorize(securityContext, editContext, existing);
     }
+    return overwritesExisting;
   }
 
   /**

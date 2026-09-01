@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -28,6 +22,7 @@ import {
   getTestSuiteByName,
   updateTestSuiteById,
 } from '../../rest/testAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
@@ -333,12 +328,13 @@ jest.mock(
   '../../components/Database/Profiler/DataQualityTab/DataQualityTab',
   () => {
     return jest.fn().mockImplementation((props) => {
-      const { onTestUpdate } = props;
+      const { onTestUpdate, tableHeader } = props;
       mockDataQualityTab(props);
 
       return (
         <div>
           DataQualityTab.component
+          {tableHeader}
           <button
             data-testid="update-test-btn"
             onClick={() =>
@@ -578,7 +574,7 @@ describe('TestSuiteDetailsPage component', () => {
 
   describe('Render & Initial State', () => {
     it('component should render without crashing', async () => {
-      render(<TestSuiteDetailsPage />);
+      renderWithQueryClient(<TestSuiteDetailsPage />);
 
       expect(
         await screen.findByText('HeaderBreadcrumb.component')
@@ -586,7 +582,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     it('should render all required UI elements', async () => {
-      render(<TestSuiteDetailsPage />);
+      renderWithQueryClient(<TestSuiteDetailsPage />);
 
       expect(
         await screen.findByText('HeaderBreadcrumb.component')
@@ -611,28 +607,52 @@ describe('TestSuiteDetailsPage component', () => {
       ).toBeInTheDocument();
     });
 
+    it('should search the suite test cases from the table header', async () => {
+      renderWithQueryClient(<TestSuiteDetailsPage />);
+
+      const searchInput = await screen.findByTestId(
+        'test-suite-test-case-search'
+      );
+      mockGetListTestCaseBySearch.mockClear();
+
+      fireEvent.change(searchInput, { target: { value: 'test_case_2' } });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({ offset: 0, q: 'test_case_2' }),
+          expect.objectContaining({ signal: expect.anything() })
+        );
+      });
+    });
+
     it('should show loader while loading', async () => {
       setMockPermissions({}, { isLoading: true });
 
-      render(<TestSuiteDetailsPage />);
+      renderWithQueryClient(<TestSuiteDetailsPage />);
 
       expect(screen.getByText('Loader.component')).toBeInTheDocument();
     });
 
     it('should fetch test suite data on mount', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
-      expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-        fields: ['owners', 'domains', 'tests'],
-        include: 'all',
+      await waitFor(() => {
+        expect(mockGetTestSuiteByName).toHaveBeenCalledWith(
+          'testSuiteFQN',
+          {
+            fields: ['owners', 'domains', 'tests'],
+            include: 'all',
+          },
+          expect.objectContaining({ signal: expect.anything() })
+        );
       });
     });
 
     it('should fetch permissions on mount', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(mockUseEntityPermissions).toHaveBeenCalledWith(
@@ -644,7 +664,7 @@ describe('TestSuiteDetailsPage component', () => {
     describe('observabilityRouterClassBase migration', () => {
       it('DataQualityTab breadcrumbData should include test suite item with url from observabilityRouterClassBase.getTestSuitePath', async () => {
         await act(async () => {
-          render(<TestSuiteDetailsPage />);
+          renderWithQueryClient(<TestSuiteDetailsPage />);
         });
 
         await waitFor(() => {
@@ -679,7 +699,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(
@@ -695,7 +715,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -707,7 +727,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should show add test case button if user has EditAll permission', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(
@@ -723,7 +743,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(
@@ -740,7 +760,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -754,7 +774,7 @@ describe('TestSuiteDetailsPage component', () => {
   describe('User Interactions - Test Case Management', () => {
     it('should open add test case modal when button is clicked', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const addButton = await screen.findByTestId('add-test-case-btn');
@@ -769,7 +789,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should close modal when cancel is clicked', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const addButton = await screen.findByTestId('add-test-case-btn');
@@ -789,7 +809,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should refetch test cases after adding new ones', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       // Clear previous calls
@@ -814,7 +834,7 @@ describe('TestSuiteDetailsPage component', () => {
   describe('Add test cases — bulk API (IDS vs All mode)', () => {
     const openAddTestCaseModal = async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
       const addButton = await screen.findByTestId('add-test-case-btn');
       await act(async () => {
@@ -901,7 +921,7 @@ describe('TestSuiteDetailsPage component', () => {
   describe('User Interactions - Updates', () => {
     it('should handle owner update', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const updateOwnerBtn = await screen.findByTestId('update-owner-btn');
@@ -916,7 +936,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should handle domain update', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const updateDomainBtn = await screen.findByTestId('update-domain-btn');
@@ -931,7 +951,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should handle description update', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const editDescriptionBtn = await screen.findByTestId(
@@ -948,7 +968,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should handle test case update', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const updateTestBtn = await screen.findByTestId('update-test-btn');
@@ -971,7 +991,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await screen.findByTestId('test-cases');
@@ -986,7 +1006,8 @@ describe('TestSuiteDetailsPage component', () => {
             'incidentStatus',
           ],
           testSuiteId: 'test-suite-id',
-        })
+        }),
+        expect.objectContaining({ signal: expect.anything() })
       );
     });
 
@@ -996,7 +1017,7 @@ describe('TestSuiteDetailsPage component', () => {
         paging: { total: 5 },
       });
 
-      render(<TestSuiteDetailsPage />);
+      renderWithQueryClient(<TestSuiteDetailsPage />);
 
       await waitFor(() =>
         expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
@@ -1018,7 +1039,7 @@ describe('TestSuiteDetailsPage component', () => {
       mockGetTestSuiteByName.mockResolvedValue(customTestSuite);
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -1035,7 +1056,7 @@ describe('TestSuiteDetailsPage component', () => {
       mockGetTestSuiteByName.mockRejectedValue(error);
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -1049,7 +1070,7 @@ describe('TestSuiteDetailsPage component', () => {
       );
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -1062,7 +1083,7 @@ describe('TestSuiteDetailsPage component', () => {
       setMockPermissions({}, { error });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -1075,7 +1096,7 @@ describe('TestSuiteDetailsPage component', () => {
       mockAddTestCasesToLogicalTestSuiteBulk.mockRejectedValue(error);
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const addButton = await screen.findByTestId('add-test-case-btn');
@@ -1098,7 +1119,7 @@ describe('TestSuiteDetailsPage component', () => {
       mockUpdateTestSuiteById.mockRejectedValue(error);
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const updateOwnerBtn = await screen.findByTestId('update-owner-btn');
@@ -1115,12 +1136,12 @@ describe('TestSuiteDetailsPage component', () => {
       mockGetTestSuiteByName.mockResolvedValue(undefined);
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       // Component should still render without crashing
       expect(
-        screen.getByText('HeaderBreadcrumb.component')
+        await screen.findByText('HeaderBreadcrumb.component')
       ).toBeInTheDocument();
     });
 
@@ -1131,7 +1152,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       await waitFor(() => {
@@ -1145,7 +1166,7 @@ describe('TestSuiteDetailsPage component', () => {
   describe('Tabs & Navigation', () => {
     it('should render test cases tab by default', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(await screen.findByTestId('test-cases')).toBeInTheDocument();
@@ -1153,7 +1174,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should render pipeline tab', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(await screen.findByTestId('pipeline')).toBeInTheDocument();
@@ -1161,13 +1182,15 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should navigate after delete action', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       // The afterDeleteAction is passed to ManageButton
       // We can't directly test it without triggering the delete,
       // but we can verify the component renders
-      expect(screen.getByText('ManageButton.component')).toBeInTheDocument();
+      expect(
+        await screen.findByText('ManageButton.component')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1179,7 +1202,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(await screen.findByTestId('owner-label')).toBeInTheDocument();
@@ -1192,7 +1215,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(
@@ -1207,7 +1230,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(
@@ -1222,7 +1245,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       expect(
@@ -1232,7 +1255,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should handle test cases with no IDs', async () => {
       await act(async () => {
-        render(<TestSuiteDetailsPage />);
+        renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
       const addButton = await screen.findByTestId('add-test-case-btn');

@@ -847,11 +847,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             renderEmptyState={() =>
               isLoading ? (
                 <div className="tw:p-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {Array.from(
+                    { length: 5 },
+                    (_, i) => `data-quality-skeleton-${i}`
+                  ).map((skeletonKey) => (
                     <Skeleton
                       className="tw:mb-2"
                       height={40}
-                      key={i}
+                      key={skeletonKey}
                       width="100%"
                     />
                   ))}
