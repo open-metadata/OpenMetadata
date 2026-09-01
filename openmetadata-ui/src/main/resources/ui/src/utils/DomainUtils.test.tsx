@@ -234,13 +234,15 @@ describe('isDomainExist', () => {
 
       const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);
 
+      // An empty domain FQN is dropped, so no domain-scoping clause is added
+      // and the data-product exclusion becomes the first `must` clause.
+      const hasDomainClause = result.query.bool.must.some(
+        (clause) => 'term' in clause || 'terms' in clause
+      );
+
+      expect(hasDomainClause).toBe(false);
+
       const firstMust = result.query.bool.must[0] as {
-        term: { 'domains.fullyQualifiedName': string };
-      };
-
-      expect(firstMust.term['domains.fullyQualifiedName']).toBe('');
-
-      const secondMust = result.query.bool.must[1] as {
         bool: {
           must_not: Array<{
             term: { 'dataProducts.fullyQualifiedName': string };
@@ -249,7 +251,7 @@ describe('isDomainExist', () => {
       };
 
       expect(
-        secondMust.bool.must_not[0].term['dataProducts.fullyQualifiedName']
+        firstMust.bool.must_not[0].term['dataProducts.fullyQualifiedName']
       ).toBe('');
     });
   });
