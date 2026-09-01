@@ -616,3 +616,35 @@ describe('TableV2 — the pager reaches the parent', () => {
     );
   });
 });
+
+/**
+ * TableV2-only: AntD sizes columns through a `<col>` element, so there is no
+ * shared attribute to compare. What matters is that it sets no per-column
+ * min-width — a percentage floor rounds up on every column and the total then
+ * exceeds the container, raising a scrollbar on a table that fits.
+ */
+describe('TableV2 — column width floors', () => {
+  const renderWith = (width: number | string) => {
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'a', key: 'a', title: 'A', width },
+          { dataIndex: 'b', key: 'b', title: 'B' },
+        ]}
+        dataSource={[{ a: '1', b: '2' }]}
+        pagination={false}
+        rowKey="a"
+      />
+    );
+
+    return document.querySelector('thead th') as HTMLElement;
+  };
+
+  it('floors a pixel width so the column keeps its size', () => {
+    expect(renderWith(250).style.minWidth).toBe('250px');
+  });
+
+  it('leaves a percentage width unfloored', () => {
+    expect(renderWith('32%').style.minWidth).toBe('');
+  });
+});
