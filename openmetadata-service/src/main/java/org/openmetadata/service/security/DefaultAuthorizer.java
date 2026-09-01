@@ -14,7 +14,6 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
@@ -22,13 +21,11 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -252,59 +249,6 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private void checkImpersonationAuthorization(SubjectContext subjectContext) {
-    User bot = getImpersonatingBot(subjectContext.impersonatedBy());
-
-    if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
-      LOG.warn(
-          "Impersonation denied: bot={} does not have allowImpersonation enabled", bot.getName());
-      throw new AuthorizationException(
-          "Bot " + bot.getName() + " does not have impersonation enabled");
-    }
-
-    authorizeImpersonationTarget(bot.getName(), subjectContext.user());
-  }
-
-  private User getImpersonatingBot(String botName) {
-    User bot;
-    try {
-      bot = Entity.getEntityByName(Entity.USER, botName, "id,name,isBot,allowImpersonation", ALL);
-    } catch (Exception e) {
-      LOG.error("Failed to get bot user: {}", botName, e);
-      throw new AuthorizationException("Bot user not found: " + botName);
-    }
-    if (bot == null) {
-      LOG.warn("Impersonation denied: bot user {} was not found", botName);
-      throw new AuthorizationException("Bot user not found: " + botName);
-    }
-    return bot;
-  }
-
-  /**
-   * Evaluates the bot's policies for the {@code Impersonate} operation with the target user as the
-   * resource. Policies scope who can be impersonated - for example, a deny rule with the {@code
-   * isAdminUser()} condition blocks impersonating admins.
-   */
-  private void authorizeImpersonationTarget(String botName, User targetUser) {
-    SubjectContext botSubjectContext = SubjectContext.getSubjectContext(botName);
-    OperationContext operationContext =
-        new OperationContext(Entity.USER, MetadataOperation.IMPERSONATE);
-    ResourceContextInterface targetResourceContext = targetUserResourceContext(targetUser);
-    try {
-      PolicyEvaluator.hasPermission(botSubjectContext, targetResourceContext, operationContext);
-    } catch (AuthorizationException e) {
-      LOG.warn(
-          "Impersonation denied: bot={} is not authorized to impersonate user={}",
-          botName,
-          targetUser.getName());
-      throw new AuthorizationException(
-          "Bot " + botName + " is not authorized to impersonate user " + targetUser.getName());
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private ResourceContextInterface targetUserResourceContext(User targetUser) {
-    EntityRepository<User> userRepository =
-        (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
-    return new ResourceContext<>(Entity.USER, targetUser, userRepository);
+    ImpersonationAuthorizer.authorize(subjectContext.impersonatedBy(), subjectContext.user());
   }
 }
