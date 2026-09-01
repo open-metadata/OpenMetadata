@@ -349,8 +349,22 @@ const ALIGN_CLASS: Record<string, string> = {
   right: 'tw:text-right',
 };
 
+/**
+ * A header cell is not laid out by `text-align`: the core `Table.Head` puts its
+ * label, tooltip and sort arrow in a flex group, and flex items ignore the
+ * property. Aligning the header means justifying that group — `& > div` is it —
+ * or a right-aligned column keeps its title on the left of its own values.
+ */
+const HEADER_ALIGN_CLASS: Record<string, string> = {
+  center: 'tw:[&>div]:justify-center',
+  right: 'tw:[&>div]:justify-end',
+};
+
 const getAlignClass = (align?: string) =>
   align ? ALIGN_CLASS[align] : undefined;
+
+const getHeaderAlignClass = (align?: string) =>
+  align ? HEADER_ALIGN_CLASS[align] : undefined;
 
 const COLUMN_ID_PREFIX = 'col:';
 
@@ -1233,7 +1247,8 @@ const TableV2 = <T extends object>(
                       allowsSorting={!!colType.sorter}
                       className={classNames(
                         'tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary',
-                        getAlignClass(colType.align)
+                        getAlignClass(colType.align),
+                        getHeaderAlignClass(colType.align)
                       )}
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
