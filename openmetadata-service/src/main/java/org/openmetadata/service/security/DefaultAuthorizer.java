@@ -139,7 +139,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorizeAdmin(String adminName) {
-    SubjectContext subjectContext = getSubjectContext(adminName);
+    SubjectContext subjectContext = subjectContextForUserName(adminName);
     if (subjectContext.isAdmin()) {
       return;
     }
@@ -183,8 +183,12 @@ public class DefaultAuthorizer implements Authorizer {
    * Resolves the effective subject from a username, for the call sites that only have the effective
    * user name rather than the {@link SecurityContext}. The impersonating bot is not carried by the
    * name, so it is read from the request's {@link ImpersonationContext}.
+   *
+   * <p>Deliberately not an overload of {@code getSubjectContext}: that name is statically imported
+   * and stubbed with untyped {@code any()} matchers across the codebase, where a second overload
+   * makes the call ambiguous.
    */
-  public static SubjectContext getSubjectContext(String userName) {
+  private static SubjectContext subjectContextForUserName(String userName) {
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (impersonatedBy == null) {
       return SubjectContext.getSubjectContext(userName);
