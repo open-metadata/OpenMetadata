@@ -32,9 +32,9 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
-import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
-import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
@@ -120,7 +120,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.search.PropagationDescriptor;
@@ -1282,12 +1282,12 @@ public class TableRepository extends EntityRepository<Table> {
       return latestProfiles;
     }
 
-    List<CollectionDAO.ProfilerDataTimeSeriesDAO.LatestExtensionRecord> records =
+    List<TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.LatestExtensionRecord> records =
         daoCollection
             .profilerDataTimeSeriesDao()
             .getLatestExtensionsBatch(columnFqns, TABLE_COLUMN_PROFILE_EXTENSION);
 
-    for (CollectionDAO.ProfilerDataTimeSeriesDAO.LatestExtensionRecord record : records) {
+    for (TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.LatestExtensionRecord record : records) {
       EntityProfile entityProfile = JsonUtils.readValue(record.json(), EntityProfile.class);
       if (entityProfile != null) {
         latestProfiles.put(record.entityFQNHash(), entityProfile);
@@ -1451,7 +1451,8 @@ public class TableRepository extends EntityRepository<Table> {
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
     // merged tags/dataModel instead of stale pre-merge JSON.
-    invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
+    EntityRepository.invalidateCacheForEntity(
+        entityType, table.getId(), table.getFullyQualifiedName());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1731,7 +1732,7 @@ public class TableRepository extends EntityRepository<Table> {
    * has committed means a rolled-back delete can never purge a live table's history, since those
    * rows legitimately predate the attempt. Bounding the purge to profiles recorded at or before the
    * delete means it cannot touch a successor table created at the same FQN, whose profiles are all
-   * recorded later -- see {@link CollectionDAO.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
+   * recorded later -- see {@link TimeSeriesDAOs.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
    */
   @Override
   protected void postDelete(Table table, boolean hardDelete) {

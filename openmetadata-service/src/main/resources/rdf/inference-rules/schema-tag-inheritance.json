@@ -1,0 +1,10 @@
+{
+  "name": "schema-tag-inheritance",
+  "displayName": "Schema → table → column tag inheritance",
+  "description": "Propagate tags down the containment hierarchy: a tag on a DatabaseSchema is inherited by every Table in that schema, and a tag on a Table is inherited by every Column. Inferred tags are marked om:inferredTagSource pointing to the parent that supplied them.",
+  "ruleType": "CONSTRUCT",
+  "priority": 300,
+  "enabled": true,
+  "tags": ["governance"],
+  "ruleBody": "PREFIX om: <https://open-metadata.org/ontology/>\nCONSTRUCT {\n  ?descendant om:hasTag ?tag .\n  ?descendant om:inferredTagSource ?ancestor\n}\nWHERE {\n  {\n    ?ancestor a om:DatabaseSchema ;\n              om:hasTag ?tag .\n    ?descendant om:belongsToSchema ?ancestor .\n  } UNION {\n    ?ancestor a om:Table ;\n              om:hasTag ?tag .\n    ?ancestor om:hasColumn ?descendant .\n  }\n}"
+}

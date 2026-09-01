@@ -14,7 +14,6 @@
 import {
   isTestCaseListSynchronized,
   isUnfilteredTestCaseRequest,
-  shouldResetTestCaseLoading,
 } from './TestSuiteDetailsPage.utils';
 
 describe('TestSuiteDetailsPage.utils', () => {
@@ -54,22 +53,6 @@ describe('TestSuiteDetailsPage.utils', () => {
       (indexedTotal, authoritativeTotal, expected) => {
         expect(
           isTestCaseListSynchronized(indexedTotal, authoritativeTotal)
-        ).toBe(expected);
-      }
-    );
-  });
-
-  describe('shouldResetTestCaseLoading', () => {
-    it.each([
-      [true, false, true],
-      [false, false, false],
-      [true, true, false],
-      [false, true, false],
-    ])(
-      'should report request-current %s and keep-loading %s as reset-loading: %s',
-      (isCurrentRequest, keepLoading, expected) => {
-        expect(
-          shouldResetTestCaseLoading(() => isCurrentRequest, keepLoading)
         ).toBe(expected);
       }
     );

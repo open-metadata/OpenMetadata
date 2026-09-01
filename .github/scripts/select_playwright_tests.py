@@ -169,7 +169,7 @@ def main() -> None:
             # @knowledge-graph, Auth, nightly, VisualRegression, …). A directly
             # changed delegated spec already routes to delegatedChangedSpecs
             # above; this also drops ones pulled in by a source->spec mapping
-            # glob (e.g. `OntologyExplorer*.spec.ts` matching the RDF spec), which
+            # glob (e.g. `OntologyStudio*.spec.ts` matching the RDF spec), which
             # otherwise plan a postgres shard with zero runnable tests.
             "selectors": [
                 {"spec": spec, "projects": sorted(projects)}
