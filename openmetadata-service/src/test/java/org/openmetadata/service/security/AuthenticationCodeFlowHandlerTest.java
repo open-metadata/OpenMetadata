@@ -45,6 +45,7 @@ import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import com.sun.net.httpserver.HttpServer;
 import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -606,15 +607,20 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallbackWithoutSessionReturnsErrorResponse() {
+  void handleCallbackWithoutSessionClearsCookieAndRedirectsToSignin() throws Exception {
+    // Hotfix #30304: a missing session used to return 500 and strand the browser on a dead
+    // cookie in a login loop; the handler now clears the cookie and redirects to interactive
+    // signin instead.
     AuthenticationCodeFlowHandler handler =
         assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
-    assertDoesNotThrow(() -> when(response.getOutputStream()).thenReturn(outputStream));
+    assertDoesNotThrow(
+        () -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
     when(request.getSession(false)).thenReturn(null);
 
     handler.handleCallback(request, response);
 
-    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    verify(response).addCookie(any(Cookie.class));
+    verify(response).sendRedirect("https://openmetadata.example.com/signin");
   }
 
   @Test
@@ -959,19 +965,24 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleRefreshWithoutCredentialsFallsBackToLogout() throws Exception {
+  void handleRefreshWithoutCredentialsResponds401AndLeavesSessionIntact() throws Exception {
+    // Hotfix #30304: refresh with no credentials on the session no longer invalidates + redirects
+    // to /logout (would kill a login in flight on the same session and loop the user). It responds
+    // 401 with a JSON body and leaves the session/cookie intact.
     AuthenticationCodeFlowHandler handler =
         assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
-    assertDoesNotThrow(() -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
     when(request.getSession(false)).thenReturn(session);
     when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
         .thenReturn(null);
     when(session.getId()).thenReturn("missing-credentials-session");
+    when(response.getOutputStream()).thenReturn(outputStream);
 
     handler.handleRefresh(request, response);
 
-    verify(session).invalidate();
-    verify(response).sendRedirect("https://openmetadata.example.com/logout");
+    verify(session, org.mockito.Mockito.never()).invalidate();
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(response).setContentType("application/json");
+    verify(outputStream).print(org.mockito.ArgumentMatchers.contains("Session expired"));
   }
 
   @Test
