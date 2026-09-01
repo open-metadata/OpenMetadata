@@ -20,9 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.FieldBoost;
-import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.type.SemanticsRule;
 
@@ -83,91 +80,5 @@ class MigrationUtilTest {
 
     assertTrue(MigrationUtil.addQueryDomainRuleExemption(settings));
     assertEquals(1, queryCount(multiDomain));
-  }
-
-  private FieldBoost fieldBoost(String field, double boost, FieldBoost.MatchType matchType) {
-    FieldBoost fieldBoost = new FieldBoost();
-    fieldBoost.setField(field);
-    fieldBoost.setBoost(boost);
-    fieldBoost.setMatchType(matchType);
-    return fieldBoost;
-  }
-
-  private AssetTypeConfiguration tableConfig(
-      List<FieldBoost> searchFields, List<String> highlightFields) {
-    AssetTypeConfiguration config = new AssetTypeConfiguration();
-    config.setAssetType("table");
-    config.setSearchFields(new ArrayList<>(searchFields));
-    config.setHighlightFields(new ArrayList<>(highlightFields));
-    return config;
-  }
-
-  private SearchSettings settingsWithTableConfig(AssetTypeConfiguration tableConfig) {
-    SearchSettings settings = new SearchSettings();
-    settings.setAssetTypeConfigurations(new ArrayList<>(List.of(tableConfig)));
-    return settings;
-  }
-
-  @Test
-  void addsMissingAliasSearchFieldsAndHighlightField() {
-    SearchSettings currentSettings =
-        settingsWithTableConfig(
-            tableConfig(
-                new ArrayList<>(List.of(fieldBoost("name", 10.0, FieldBoost.MatchType.PHRASE))),
-                new ArrayList<>(List.of("name", "description"))));
-    SearchSettings defaultSettings =
-        settingsWithTableConfig(
-            tableConfig(
-                List.of(
-                    fieldBoost("name", 10.0, FieldBoost.MatchType.PHRASE),
-                    fieldBoost("aliases", 5.0, FieldBoost.MatchType.STANDARD),
-                    fieldBoost("aliases.keyword", 10.0, FieldBoost.MatchType.EXACT)),
-                List.of("name", "description", "aliases")));
-
-    boolean changed =
-        MigrationUtil.mergeAliasesIntoTableConfiguration(currentSettings, defaultSettings);
-
-    assertTrue(changed);
-    AssetTypeConfiguration mergedConfig = currentSettings.getAssetTypeConfigurations().getFirst();
-    assertTrue(
-        mergedConfig.getSearchFields().stream().anyMatch(f -> "aliases".equals(f.getField())));
-    assertTrue(
-        mergedConfig.getSearchFields().stream()
-            .anyMatch(f -> "aliases.keyword".equals(f.getField())));
-    assertTrue(mergedConfig.getHighlightFields().contains("aliases"));
-  }
-
-  @Test
-  void aliasesMergeIsIdempotentWhenAlreadyPresent() {
-    List<FieldBoost> fields =
-        List.of(
-            fieldBoost("name", 10.0, FieldBoost.MatchType.PHRASE),
-            fieldBoost("aliases", 5.0, FieldBoost.MatchType.STANDARD),
-            fieldBoost("aliases.keyword", 10.0, FieldBoost.MatchType.EXACT));
-    SearchSettings currentSettings =
-        settingsWithTableConfig(tableConfig(fields, List.of("name", "aliases")));
-    SearchSettings defaultSettings =
-        settingsWithTableConfig(tableConfig(fields, List.of("name", "aliases")));
-
-    boolean changed =
-        MigrationUtil.mergeAliasesIntoTableConfiguration(currentSettings, defaultSettings);
-
-    assertFalse(changed);
-  }
-
-  @Test
-  void doesNothingWhenTableConfigurationMissing() {
-    SearchSettings currentSettings = new SearchSettings();
-    currentSettings.setAssetTypeConfigurations(new ArrayList<>());
-    SearchSettings defaultSettings =
-        settingsWithTableConfig(
-            tableConfig(
-                List.of(fieldBoost("aliases", 5.0, FieldBoost.MatchType.STANDARD)),
-                List.of("aliases")));
-
-    boolean changed =
-        MigrationUtil.mergeAliasesIntoTableConfiguration(currentSettings, defaultSettings);
-
-    assertFalse(changed);
   }
 }

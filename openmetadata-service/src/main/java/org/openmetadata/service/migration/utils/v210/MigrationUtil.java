@@ -13,17 +13,11 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
@@ -45,15 +39,11 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 /**
- * Migration utilities for 2.1.0: the Conversation V2 cutover, legacy thread archival, alignment of
- * stored hybrid search weights with the shipped defaults, and the table {@code aliases} search
- * settings backfill.
+ * Migration utilities for 2.1.0: the Conversation V2 cutover, legacy thread archival, and alignment
+ * of stored hybrid search weights with the shipped defaults.
  */
 @Slf4j
 public class MigrationUtil {
-  private static final String TABLE_ASSET_TYPE = "table";
-  private static final String ALIASES_FIELD = "aliases";
-  private static final String ALIASES_KEYWORD_FIELD = "aliases.keyword";
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String CREATE_CONVERSATION_RULE_NAME =
       "DataConsumerPolicy-CreateConversation-Rule";
@@ -268,111 +258,5 @@ public class MigrationUtil {
 
   private static boolean weightIs(Double weight, double expected) {
     return weight != null && Math.abs(weight - expected) < WEIGHT_TOLERANCE;
-  }
-
-  /**
-   * Backfills the {@code aliases} / {@code aliases.keyword} searchFields and the {@code aliases}
-   * highlightField onto the {@code table} assetTypeConfiguration of an already-installed
-   * instance's stored searchSettings. searchSettings.json is seed data: the additive merge that
-   * runs on startup only adds whole missing asset types, so a cluster upgrading from a pre-2.1.0
-   * baseline keeps its old {@code table} entry forever and alias search silently returns zero
-   * results even though the index document and mapping already carry the field. Idempotent; safe
-   * to call on every reprocessing pass.
-   */
-  public static void addAliasesSearchSettings() {
-    try {
-      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-      if (searchSettings == null) {
-        LOG.warn(
-            "Search settings not found in database. "
-                + "Default settings will be loaded on next startup which includes table aliases.");
-        return;
-      }
-
-      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
-      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
-      if (defaultSettings == null) {
-        LOG.error("Failed to load default search settings from file, skipping aliases migration");
-        return;
-      }
-
-      if (mergeAliasesIntoTableConfiguration(currentSettings, defaultSettings)) {
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info("Added 'aliases' search field and highlight field to table search settings");
-      } else {
-        LOG.info("Table search settings already include 'aliases'; no updates needed");
-      }
-    } catch (Exception e) {
-      LOG.error("Error adding aliases search settings to table configuration", e);
-    }
-  }
-
-  static boolean mergeAliasesIntoTableConfiguration(
-      SearchSettings currentSettings, SearchSettings defaultSettings) {
-    boolean changed = false;
-    AssetTypeConfiguration currentTableConfig = findTableConfiguration(currentSettings);
-    AssetTypeConfiguration defaultTableConfig = findTableConfiguration(defaultSettings);
-    if (currentTableConfig != null && defaultTableConfig != null) {
-      changed |= mergeMissingAliasSearchFields(currentTableConfig, defaultTableConfig);
-      changed |= mergeMissingAliasHighlightField(currentTableConfig, defaultTableConfig);
-    }
-    return changed;
-  }
-
-  private static AssetTypeConfiguration findTableConfiguration(SearchSettings settings) {
-    AssetTypeConfiguration match = null;
-    if (settings != null) {
-      for (AssetTypeConfiguration config : listOrEmpty(settings.getAssetTypeConfigurations())) {
-        if (TABLE_ASSET_TYPE.equals(config.getAssetType())) {
-          match = config;
-          break;
-        }
-      }
-    }
-    return match;
-  }
-
-  private static boolean mergeMissingAliasSearchFields(
-      AssetTypeConfiguration currentConfig, AssetTypeConfiguration defaultConfig) {
-    boolean added = false;
-    List<FieldBoost> currentFields = currentConfig.getSearchFields();
-    if (currentFields == null) {
-      currentFields = new ArrayList<>();
-      currentConfig.setSearchFields(currentFields);
-    }
-
-    Set<String> existingFieldNames = new HashSet<>();
-    for (FieldBoost field : currentFields) {
-      existingFieldNames.add(field.getField());
-    }
-
-    for (FieldBoost defaultField : listOrEmpty(defaultConfig.getSearchFields())) {
-      boolean isAliasField =
-          ALIASES_FIELD.equals(defaultField.getField())
-              || ALIASES_KEYWORD_FIELD.equals(defaultField.getField());
-      if (isAliasField && !existingFieldNames.contains(defaultField.getField())) {
-        currentFields.add(defaultField);
-        existingFieldNames.add(defaultField.getField());
-        added = true;
-      }
-    }
-    return added;
-  }
-
-  private static boolean mergeMissingAliasHighlightField(
-      AssetTypeConfiguration currentConfig, AssetTypeConfiguration defaultConfig) {
-    boolean added = false;
-    List<String> currentHighlights = currentConfig.getHighlightFields();
-    if (currentHighlights == null) {
-      currentHighlights = new ArrayList<>();
-      currentConfig.setHighlightFields(currentHighlights);
-    }
-
-    if (!currentHighlights.contains(ALIASES_FIELD)
-        && listOrEmpty(defaultConfig.getHighlightFields()).contains(ALIASES_FIELD)) {
-      currentHighlights.add(ALIASES_FIELD);
-      added = true;
-    }
-    return added;
   }
 }

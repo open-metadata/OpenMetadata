@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.postgres.v1135;
 
 import static org.openmetadata.service.migration.utils.v1135.DataInsightChartMigration.alignDataAssetChartScope;
+import static org.openmetadata.service.migration.utils.v1135.TableAliasesSearchSettingsMigration.addAliasesSearchSettings;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,11 @@ public class Migration extends MigrationProcessImpl {
       alignDataAssetChartScope();
     } catch (Exception e) {
       LOG.error("v1135: failed to align the data asset scope of the Data Insights charts", e);
+    }
+    try {
+      addAliasesSearchSettings();
+    } catch (Exception e) {
+      LOG.error("v1135: failed to backfill the table 'aliases' search settings", e);
     }
   }
 }

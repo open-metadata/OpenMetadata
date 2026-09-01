@@ -14,7 +14,6 @@
 package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
-import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addAliasesSearchSettings;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
@@ -45,10 +44,5 @@ public class Migration extends MigrationProcessImpl {
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
     exemptQueryFromMultiDomainRules();
-
-    // Backfill the 'aliases' searchField/highlightField onto the table assetTypeConfiguration
-    // for clusters upgrading from a pre-2.1.0 baseline. See v210.MigrationUtil for why the
-    // additive settings merge alone does not reach it.
-    addAliasesSearchSettings();
   }
 }
