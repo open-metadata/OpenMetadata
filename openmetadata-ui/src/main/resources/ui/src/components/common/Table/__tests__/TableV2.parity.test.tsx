@@ -829,15 +829,35 @@ describe('TableV2 — size drives cell padding', () => {
 });
 
 /**
- * TableV2-only: AntD sets no vertical-align at all, so its cells take the
- * browser default for a `td`, which centres them. jsdom does not apply that UA
- * rule, so there is nothing to read off the legacy side — the contract is that
- * TableV2 does not override it in the other direction.
+ * TableV2-only: the app's own stylesheet sets
+ * `.ant-table-cell { vertical-align: top }`, so every legacy table tops its
+ * cells — stock AntD sets none, which is what made the browser default look
+ * like the contract. jsdom applies no stylesheet, so there is nothing to read
+ * off the legacy side; the contract is the class TableV2 emits.
  */
-describe('TableV2 — cells centre their content vertically', () => {
-  it('does not top-align by default', () => {
+describe('TableV2 — cells top-align their content', () => {
+  it('tops both the header and the body cell', () => {
     render(
       <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const cell = screen.getAllByRole('row')[1].querySelector('td, th');
+    const header = screen.getByRole('columnheader', { name: /Name/ });
+
+    expect((cell as HTMLElement).className).toContain('tw:align-top');
+    expect((cell as HTMLElement).className).not.toContain('tw:align-middle');
+    expect(header.className).toContain('tw:align-top');
+  });
+
+  it('still lets a call site choose its own alignment', () => {
+    render(
+      <TableV2
+        cellClassName="tw:p-2 tw:align-middle"
         columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
         dataSource={[{ name: 'alpha' }]}
         pagination={false}
@@ -849,22 +869,6 @@ describe('TableV2 — cells centre their content vertically', () => {
 
     expect((cell as HTMLElement).className).toContain('tw:align-middle');
     expect((cell as HTMLElement).className).not.toContain('tw:align-top');
-  });
-
-  it('still lets a call site choose its own alignment', () => {
-    render(
-      <TableV2
-        cellClassName="tw:p-2 tw:align-top"
-        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
-        dataSource={[{ name: 'alpha' }]}
-        pagination={false}
-        rowKey="name"
-      />
-    );
-
-    const cell = screen.getAllByRole('row')[1].querySelector('td, th');
-
-    expect((cell as HTMLElement).className).toContain('tw:align-top');
   });
 });
 
