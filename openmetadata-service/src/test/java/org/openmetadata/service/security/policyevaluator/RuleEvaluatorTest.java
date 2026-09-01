@@ -345,21 +345,6 @@ class RuleEvaluatorTest {
   }
 
   @Test
-  void test_isOwner_listContextDefersInsteadOfDenying() {
-    // A list request resolves no concrete entity, so isOwner() defers by returning true (mirroring
-    // hasDomain()'s no-entity handling). This keeps a !isOwner() Deny rule from matching and
-    // blocking the whole listing from the owner too.
-    ResourceContextInterface listContext = mock(ResourceContextInterface.class);
-    Mockito.when(listContext.getEntity()).thenReturn(null);
-
-    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, listContext);
-    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
-
-    assertTrue(parseExpression("isOwner()").getValue(ctx, Boolean.class));
-    assertFalse(parseExpression("!isOwner()").getValue(ctx, Boolean.class));
-  }
-
-  @Test
   void test_isReviewer() {
     GlossaryRepository glossaryRepository = stubIndexingPolicy(mock(GlossaryRepository.class));
     Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);

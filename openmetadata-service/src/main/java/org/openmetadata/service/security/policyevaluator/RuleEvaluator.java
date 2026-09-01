@@ -77,12 +77,6 @@ public class RuleEvaluator {
     if (subjectContext == null || resourceContext == null) {
       return false;
     }
-    // A list request resolves no concrete entity, so ownership can't be evaluated. Defer to the
-    // per-entity check by returning true; false would let a !isOwner() Deny match and hide the
-    // whole listing from the owner too. Mirrors hasDomain()'s handling of the no-entity case.
-    if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
-      return true;
-    }
     return subjectContext.isOwner(resourceContext.getOwners());
   }
 
