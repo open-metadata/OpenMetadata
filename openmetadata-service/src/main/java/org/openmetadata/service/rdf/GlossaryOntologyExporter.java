@@ -568,7 +568,7 @@ public final class GlossaryOntologyExporter {
     final Dataset dataset = DatasetFactory.createTxnMem();
     final Model annex = ModelFactory.createDefaultModel();
     try {
-      RDFParser.fromString(nQuads).lang(Lang.NQUADS).parse(dataset.asDatasetGraph());
+      RDFParser.fromString(nQuads, Lang.NQUADS).parse(dataset.asDatasetGraph());
       annex.add(dataset.getDefaultModel());
       dataset.listNames().forEachRemaining(name -> annex.add(dataset.getNamedModel(name)));
     } finally {
