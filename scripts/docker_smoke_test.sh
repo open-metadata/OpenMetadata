@@ -114,11 +114,11 @@ else
   pass "image ships no package manager outside busybox's applets"
 fi
 
-version="$(docker run --rm --entrypoint /opt/java/openjdk/bin/java "$IMAGE" -version 2>&1 || true)"
+version="$(docker run --rm --entrypoint java "$IMAGE" -version 2>&1 || true)"
 if echo "$version" | grep -q 'version "21'; then
-  pass "the jlink runtime starts and reports Java 21"
+  pass "the java runtime starts and reports Java 21"
 else
-  fail "the jlink runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
+  fail "the java runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
 fi
 
 # Why the base is cc-debian13 and not base-debian12, cc-debian12 or alpine.
@@ -157,7 +157,7 @@ fi
 # -Xlog:gc writes here on every startup, and so do the logback file appenders in
 # conf/openmetadata.yaml. There is no mkdir in the image, so the directory has to
 # arrive already created and already owned by 65532.
-docker run --name "$CONTAINER" --entrypoint /opt/java/openjdk/bin/java "$IMAGE" \
+docker run --name "$CONTAINER" --entrypoint java "$IMAGE" \
   -Xlog:gc:file=/opt/openmetadata/logs/smoke-gc.log -version >/dev/null 2>&1 || true
 if docker cp "$CONTAINER:/opt/openmetadata/logs/smoke-gc.log" "$WORKDIR_TMP/gc.log" >/dev/null 2>&1 &&
    [ -s "$WORKDIR_TMP/gc.log" ]; then
