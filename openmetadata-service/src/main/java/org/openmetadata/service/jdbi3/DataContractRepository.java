@@ -1178,8 +1178,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * deployed and never reads it again, so a contract deployed once keeps running with the token it
    * was born with. Re-deploying on every validation rewrites that configuration with a freshly
    * minted token, which is what makes a rotated or expired token self-healing (issue #24806).
-   * Failing to refresh an already deployed pipeline is not fatal: the previously deployed DAG is
-   * still runnable, which is exactly what callers got before the refresh existed.
+   * Refreshing an already deployed pipeline is best-effort so that an installation which validated
+   * fine before this refresh existed cannot start failing because of it. That fallback assumes the
+   * deploy left the previous DAG artifacts usable, which holds for every failure that reaches a
+   * decision before Airflow rewrites them - transport failures, a payload the deploy endpoint
+   * rejects, and a DagBag reparse failure, which happens only after both files have been written in
+   * full with the new token. It does not hold if the write itself fails part way through
+   * (DagDeployer.store_airflow_pipeline_config and store_and_validate_dag_file truncate in place and
+   * validate afterwards), which can leave a half-written config or DAG file. That hazard is not
+   * introduced here - every deploy caller runs the same non-atomic code - but this is the only
+   * caller that does not surface it, so a persistent failure shows up as a WARN plus a failing DAG
+   * run rather than an aborted validation.
    */
   private void refreshDeployedPipelineBeforeRun(IngestionPipeline pipeline, TestSuite testSuite) {
     boolean alreadyDeployed = Boolean.TRUE.equals(pipeline.getDeployed());
