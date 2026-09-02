@@ -46,6 +46,11 @@ const SamlCallback = withPageSuspenseFallback(
   lazy(() => import('../../pages/SamlCallback'))
 );
 
+// DEV-ONLY — remove before shipping
+const TagPreviewPage = withPageSuspenseFallback(
+  lazy(() => import('../../pages/TagPreviewPage/TagPreviewPage'))
+);
+
 export const AuthenticatedRoutes = () => {
   const { currentUser } = useApplicationStore(
     useShallow((state) => ({
@@ -90,6 +95,9 @@ export const AuthenticatedRoutes = () => {
           <Route key={`${plugin.name}-app-${route.path}`} {...route} />
         ));
       })}
+
+      {/* DEV-ONLY preview — remove before shipping */}
+      <Route element={<TagPreviewPage />} path="/tag-preview" />
 
       <Route element={<AppContainer />} path="*" />
     </Routes>
