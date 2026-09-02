@@ -12,8 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Form } from 'antd';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   HTTPMethod,
   SubscriptionCategory,
@@ -21,7 +20,6 @@ import {
   Type,
 } from '../../../generated/events/eventSubscription';
 import DestinationFormItemFormBridge, {
-  DestinationFormFieldRegistrar,
   DestinationFormFields,
 } from './DestinationFormItemFormBridge';
 
@@ -80,77 +78,28 @@ function ValidationHarness({ isRequired, onFinish }: ValidationHarnessProps) {
   );
 }
 
-function AntFormFocusHarness() {
-  const [form] = Form.useForm<DestinationFormFields>();
-  const destinations = Form.useWatch('destinations', form);
-  const readTimeout = Form.useWatch('readTimeout', form);
-  const resources = Form.useWatch('resources', form);
-  const timeout = Form.useWatch('timeout', form);
-  const didEchoFocusChange = useRef(false);
+function ParentFormFocusHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>(
+    OAUTH_DESTINATION_VALUES
+  );
 
   return (
-    <Form<DestinationFormFields>
-      form={form}
-      initialValues={OAUTH_DESTINATION_VALUES}>
+    <>
       <output data-testid="parent-token-url">
-        {destinations?.[0]?.config?.authType?.tokenUrl}
+        {values.destinations?.[0]?.config?.authType?.tokenUrl}
       </output>
-      <DestinationFormItemFormBridge
-        renderValidationField={(validate) => (
-          <Form.Item
-            hidden
-            name="destinations"
-            rules={[{ validator: validate }]}>
-            <DestinationFormFieldRegistrar />
-          </Form.Item>
-        )}
-        values={{ destinations, readTimeout, resources, timeout }}
-        onChange={(values) => {
-          const tokenUrl = values.destinations?.[0]?.config?.authType?.tokenUrl;
-
-          if (
-            tokenUrl === 'https://auth.example.com/oauth/token/v2' &&
-            !didEchoFocusChange.current
-          ) {
-            didEchoFocusChange.current = true;
-            form.setFieldsValue(values);
-          }
-        }}
-      />
-    </Form>
+      <DestinationFormItemFormBridge values={values} onChange={setValues} />
+    </>
   );
 }
 
-function AntFormDestinationChangeHarness() {
-  const [form] = Form.useForm<DestinationFormFields>();
-  const destinations = Form.useWatch('destinations', form);
-  const resources = Form.useWatch('resources', form);
+function ParentFormDestinationChangeHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>({
+    destinations: OAUTH_DESTINATION_VALUES.destinations,
+    resources: ['table'],
+  });
 
-  return (
-    <Form<DestinationFormFields>
-      form={form}
-      initialValues={{
-        destinations: OAUTH_DESTINATION_VALUES.destinations,
-        resources: ['table'],
-      }}>
-      <DestinationFormItemFormBridge
-        renderValidationField={(validate) => (
-          <Form.Item
-            hidden
-            name="destinations"
-            rules={[{ validator: validate }]}>
-            <DestinationFormFieldRegistrar />
-          </Form.Item>
-        )}
-        values={{ destinations, resources }}
-        onChange={(values) => {
-          Object.entries(values).forEach(([name, value]) =>
-            form.setFieldValue(name, value)
-          );
-        }}
-      />
-    </Form>
-  );
+  return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
 }
 
 describe('DestinationFormItem validation', () => {
@@ -182,7 +131,7 @@ describe('DestinationFormItem validation', () => {
   });
 
   it('keeps a destination input focused when the parent form echoes its value', async () => {
-    render(<AntFormFocusHarness />);
+    render(<ParentFormFocusHarness />);
 
     fireEvent.click(
       await screen.findByRole('button', {
@@ -208,7 +157,7 @@ describe('DestinationFormItem validation', () => {
   });
 
   it('clears registered config fields when the destination changes', async () => {
-    render(<AntFormDestinationChangeHarness />);
+    render(<ParentFormDestinationChangeHarness />);
 
     fireEvent.click(
       (
