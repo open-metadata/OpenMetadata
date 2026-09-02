@@ -106,6 +106,14 @@ interface GlossaryTermChildrenCountBadgeProps {
   isActive?: boolean;
 }
 
+// Single source of truth for the 'all' sentinel handling, shared between
+// GlossaryTermTab's own fetch and the value pushed to useGlossaryStore's
+// termsStatusFilter so the two never drift.
+export const getEntityStatusParamFromSelection = (
+  selectedStatus: string[]
+): string | undefined =>
+  selectedStatus.includes('all') ? undefined : selectedStatus.join(',');
+
 // Renders the direct-children count with the same entityStatus filter the Terms
 // table applies, so the tab badge always matches what the table actually lists
 // instead of the unfiltered, all-descendants `childrenCount` field. Kept inline

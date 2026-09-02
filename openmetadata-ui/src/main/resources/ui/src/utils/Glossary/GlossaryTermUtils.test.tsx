@@ -25,7 +25,10 @@ import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import glossaryTermClassBase, {
   GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
-import { getGlossaryTermDetailPageTabs } from './GlossaryTermUtils';
+import {
+  getEntityStatusParamFromSelection,
+  getGlossaryTermDetailPageTabs,
+} from './GlossaryTermUtils';
 
 const mockGetCountBadge = getCountBadge as jest.Mock;
 
@@ -818,5 +821,25 @@ describe('getGlossaryTermDetailPageTabs', () => {
       expect(renderedKeys).toContain(EntityTabs.RELATIONS_GRAPH);
       expect(registeredIds).toContain(EntityTabs.RELATIONS_GRAPH);
     });
+  });
+});
+
+describe('getEntityStatusParamFromSelection', () => {
+  it('returns undefined when "all" is selected, regardless of other selections', () => {
+    expect(getEntityStatusParamFromSelection(['all'])).toBeUndefined();
+    expect(
+      getEntityStatusParamFromSelection(['all', 'Approved'])
+    ).toBeUndefined();
+  });
+
+  it('joins the selected statuses into a comma-separated string when "all" is not selected', () => {
+    expect(getEntityStatusParamFromSelection(['Approved'])).toBe('Approved');
+    expect(getEntityStatusParamFromSelection(['Approved', 'In Review'])).toBe(
+      'Approved,In Review'
+    );
+  });
+
+  it('returns an empty string for an empty selection', () => {
+    expect(getEntityStatusParamFromSelection([])).toBe('');
   });
 });

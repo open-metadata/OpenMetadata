@@ -389,17 +389,9 @@ test.describe(
             `${child.data.name}-reject-btn`
           );
           await expect(rejectButton).toBeVisible({ timeout: 60_000 });
-          await rejectButton.click();
-
-          await reviewerPage
-            .getByTestId('glossary-term-reject-comment')
-            .locator('textarea')
-            .fill('Rejecting via automated test');
 
           const taskResolve = waitForTaskResolveResponse(reviewerPage);
-          await reviewerPage
-            .getByTestId('confirm-reject-glossary-term')
-            .click();
+          await rejectButton.click();
           await taskResolve;
 
           await toastNotification(
