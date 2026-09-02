@@ -21,7 +21,8 @@ Kept free of any `clickhouse_sqlalchemy` import so that it costs nothing to load
 """
 
 import re
-from typing import Iterable, List, NamedTuple, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import NamedTuple
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
@@ -62,7 +63,7 @@ _QUOTES = ("`", '"', "'")
 class MaterializedViewTarget(NamedTuple):
     """Table a materialized view writes its rows into"""
 
-    schema_name: Optional[str]  # noqa: UP045
+    schema_name: str | None
     table_name: str
 
 
@@ -71,7 +72,7 @@ def _is_keyword(token: str, keyword: str) -> bool:
     return not token.startswith(_QUOTES) and token.upper() == keyword
 
 
-def _identifier(token: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _identifier(token: str | None) -> str | None:
     """The token's name, unquoted and unescaped, or None when it is not an identifier"""
     if not token:
         return None
@@ -83,8 +84,8 @@ def _identifier(token: Optional[str]) -> Optional[str]:  # noqa: UP045
 
 
 def get_materialized_view_target_table(
-    view_definition: Optional[str],  # noqa: UP045
-) -> Optional[MaterializedViewTarget]:  # noqa: UP045
+    view_definition: str | None,
+) -> MaterializedViewTarget | None:
     """
     Return the table named by the `TO <schema>.<table>` clause of a materialized view.
 
@@ -131,7 +132,7 @@ def get_mv_target_lineage(
     metadata: OpenMetadata,
     view: TableView,
     view_entity: Table,
-    service_names: List[str],  # noqa: UP006
+    service_names: list[str],
     masked_query: str,
 ) -> Iterable[Either[LineageRequest]]:
     """

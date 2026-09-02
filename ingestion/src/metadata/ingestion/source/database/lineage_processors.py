@@ -346,7 +346,7 @@ def query_lineage_processor(
                     )
 
 
-def _writes_into_view(lineage_request: LineageRequest, view_fqn: Optional[str]) -> bool:  # noqa: UP045
+def _writes_into_view(lineage_request: LineageRequest, view_fqn: str | None) -> bool:
     """
     Whether a view lineage edge points at the view being processed.
 
@@ -381,7 +381,7 @@ def view_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-    extension: Optional[ViewLineageExtension] = None,  # noqa: UP045
+    extension: ViewLineageExtension | None = None,
 ) -> None:
     """
     Generate lineage for a list of views

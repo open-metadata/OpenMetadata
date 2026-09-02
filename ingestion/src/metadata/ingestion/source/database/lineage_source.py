@@ -428,7 +428,7 @@ class LineageSource(QueryParserSource, ABC):
                 continue
             yield view
 
-    def get_view_lineage_extension(self) -> Optional[ViewLineageExtension]:  # noqa: UP045
+    def get_view_lineage_extension(self) -> ViewLineageExtension | None:
         """
         Extra view lineage this source contributes on top of what the SQL parsers report.
 
