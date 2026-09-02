@@ -337,7 +337,7 @@ export default [
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
-      'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
+      'sonarjs/cyclomatic-complexity': 'error', // cleared tree-wide; blocks regressions
       'sonarjs/expression-complexity': 'warn', // 15
       'sonarjs/no-nested-conditional': 'warn', // 16
       'sonarjs/no-nested-functions': 'warn', // 18
