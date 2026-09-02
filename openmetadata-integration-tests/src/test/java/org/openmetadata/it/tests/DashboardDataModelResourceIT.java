@@ -166,6 +166,13 @@ public class DashboardDataModelResourceIT
   }
 
   @Override
+  protected String getEntityServiceFqn(DashboardDataModel entity) {
+    return entity == null || entity.getService() == null
+        ? null
+        : entity.getService().getFullyQualifiedName();
+  }
+
+  @Override
   protected DashboardDataModel getEntityWithFields(String id, String fields) {
     return SdkClients.adminClient().dashboardDataModels().get(id, fields);
   }
