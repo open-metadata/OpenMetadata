@@ -7,6 +7,8 @@ on:
     paths:
       - 'openmetadata-spec/src/main/resources/json/schema/**'
       - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/jsons/**'
+      - 'openmetadata-ui/src/main/resources/ui/parseSchemas.js'
   workflow_dispatch:
     inputs:
       branch:
@@ -145,11 +147,27 @@ jobs:
           ln -sf ../../../../../node_modules .
           ./json2ts-generate-all.sh -l true
 
+      - name: Generate dereferenced JSON schemas
+        run: |
+          cd openmetadata-ui/src/main/resources/ui
+          # json2ts-generate-all.sh resolves quicktype through the root node_modules
+          # symlink above, but parseSchemas.js needs the UI package's own dependencies
+          # (@apidevtools/json-schema-ref-parser, fs-extra), which are not hoisted to
+          # the root. Drop the symlink and install the UI workspace for real.
+          # --frozen-lockfile pins the versions a contributor resolves locally, so the
+          # committed output is byte-identical whoever regenerates it; --ignore-scripts
+          # skips preinstall (core-components build) and postinstall (js-antlr), neither
+          # of which parseSchemas.js needs.
+          rm -f node_modules
+          yarn install --frozen-lockfile --ignore-scripts
+          yarn parse-schema
+
       - name: Check for changes
         id: git-check
         continue-on-error: true
         run: |
-          git add openmetadata-ui/src/main/resources/ui/src/generated/
+          git add openmetadata-ui/src/main/resources/ui/src/generated/ \
+                  openmetadata-ui/src/main/resources/ui/src/jsons/
           git diff --cached --quiet
 
       - name: Configure Git
@@ -164,7 +182,7 @@ jobs:
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref || github.event.inputs.branch }}
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
         run: |
-          git commit -m "Update generated TypeScript types"
+          git commit -m "Update generated TypeScript types and dereferenced schemas"
           # checkout ran with persist-credentials: false, so re-attach the token to origin.
           # Pushing to a bare URL instead would break --force-with-lease: it has no
           # remote-tracking ref to lease against and the push is rejected as "stale info".
@@ -177,9 +195,11 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           body: |
-            ## ✅ TypeScript Types Auto-Updated
+            ## ✅ Generated Sources Auto-Updated
 
-            The generated TypeScript types have been automatically updated based on JSON schema changes in this PR.
+            The generated TypeScript types (`src/generated/`) and dereferenced JSON
+            schemas (`src/jsons/`) have been automatically updated based on JSON schema
+            changes in this PR.
 
       - name: Create PR comment for fork repository
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
@@ -187,18 +207,19 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           body: |
-            ## ⚠️ TypeScript Types Need Update
+            ## ⚠️ Generated Sources Need Update
 
-            **The generated TypeScript types are out of sync with the JSON schema changes.**
+            **The generated TypeScript types and/or dereferenced JSON schemas are out of sync with the JSON schema changes.**
 
-            Since this is a pull request from a forked repository, the types cannot be automatically committed.
-            Please generate and commit the types manually:
+            Since this is a pull request from a forked repository, they cannot be automatically committed.
+            Please generate and commit them manually:
 
             ```bash
             cd openmetadata-ui/src/main/resources/ui
             ./json2ts-generate-all.sh -l true
-            git add src/generated/
-            git commit -m "Update generated TypeScript types"
+            yarn parse-schema
+            git add src/generated/ src/jsons/
+            git commit -m "Update generated TypeScript types and dereferenced schemas"
             git push
             ```
 

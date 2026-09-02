@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -62,6 +64,63 @@ public class CommonUtils {
       }
     }
     return teamsOrUsers;
+  }
+
+  /**
+   * Resolves owner names and fails on any that do not resolve, instead of dropping them.
+   *
+   * <p>{@link #getTeamsOrUsers} returns only what it could resolve and says nothing about the rest:
+   * {@code findByNameOrNull} returning null is not an exception, so nothing is thrown or logged.
+   * On an update that is data loss - one misspelled name resolves to an empty list, a {@code set}
+   * writes it, and every existing owner is deleted with a success response.
+   *
+   * @param owners the raw {@code owners} parameter, a string or list of strings
+   * @param paramName the parameter name to quote in the error
+   */
+  public static List<EntityReference> requireTeamsOrUsers(Object owners, String paramName) {
+    List<String> requested =
+        JsonUtils.readOrConvertValues(owners, String.class).stream().distinct().toList();
+    List<EntityReference> resolved = getTeamsOrUsers(owners);
+    Set<String> found =
+        resolved.stream().map(ref -> comparableName(ref.getName())).collect(Collectors.toSet());
+    List<String> missing =
+        requested.stream().filter(name -> !found.contains(comparableName(name))).toList();
+    if (!missing.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Parameter '%s': no user or team found for %s. Nothing was changed. Look the name up"
+                  + " with search_metadata (entityType='user' or 'team') and use the 'name' it"
+                  + " returns.",
+              paramName, missing));
+    }
+    return resolved;
+  }
+
+  /**
+   * The current owners whose names the caller named, for removals.
+   *
+   * <p>Removal must not go through {@link #requireTeamsOrUsers}: an owner who has been deleted no
+   * longer resolves, so requiring resolution would make the stale reference a caller most wants to
+   * clear the one they cannot. Matching what the entity already holds needs no directory lookup.
+   */
+  public static List<EntityReference> matchOwnersByName(
+      Object owners, List<EntityReference> existing) {
+    Set<String> wanted =
+        JsonUtils.readOrConvertValues(owners, String.class).stream()
+            .map(CommonUtils::comparableName)
+            .collect(Collectors.toSet());
+    return existing == null
+        ? List.of()
+        : existing.stream().filter(ref -> wanted.contains(comparableName(ref.getName()))).toList();
+  }
+
+  /** Owner names are compared case-insensitively and unquoted, so {@code "a.b"} matches {@code a.b}. */
+  private static String comparableName(String name) {
+    String result = name == null ? "" : name.trim();
+    if (result.length() > 1 && result.charAt(0) == '"' && result.endsWith("\"")) {
+      result = result.substring(1, result.length() - 1);
+    }
+    return result.toLowerCase(Locale.ROOT);
   }
 
   /**
@@ -124,7 +183,7 @@ public class CommonUtils {
    * fully qualified name, on top of the CREATE check the calling tool has already performed.
    *
    * <p>The {@code create_*} tools authorize CREATE against a {@code CreateResourceContext} for the
-   * new entity and then call {@code EntityRepository.createOrUpdate}, which updates in place when the
+   * new entity and may call {@code EntityRepository.createOrUpdate}, which updates in place when the
    * name is taken. A caller holding Create but not Edit could therefore overwrite an entity owned by
    * somebody else, discarding its description, owners and tags. This closes that gap.
    *
@@ -138,14 +197,16 @@ public class CommonUtils {
    * err on; the practical cost is that a caller holding only edit rights cannot use these tools to
    * update an existing entity.
    *
-   * <p>Call after the name is resolved and before {@code createOrUpdate}. The existence lookup uses
-   * {@link Include#ALL} to match {@code createOrUpdate}, which finds a soft-deleted entity and
-   * restores it rather than creating a new one.
+   * <p>Call after the name is resolved. Use the result to route a free name through {@code create}
+   * and an existing one through {@code createOrUpdate}; this prevents a concurrent creator from
+   * turning create-only authorization into an overwrite. The existence lookup uses {@link
+   * Include#ALL} because {@code createOrUpdate} restores a soft-deleted entity.
    *
    * @param entityType the entity type being written, e.g. {@link Entity#TAG}
    * @param entity the entity carrying the resolved fully qualified name
+   * @return whether an entity exists under the resolved name
    */
-  public static void authorizeOverwrite(
+  public static boolean authorizeOverwrite(
       Authorizer authorizer,
       CatalogSecurityContext securityContext,
       String entityType,
@@ -160,6 +221,7 @@ public class CommonUtils {
           new ResourceContext<>(entityType, null, fqn, Include.ALL);
       authorizer.authorize(securityContext, editContext, existing);
     }
+    return overwritesExisting;
   }
 
   /**

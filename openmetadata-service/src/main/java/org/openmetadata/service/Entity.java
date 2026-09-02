@@ -59,10 +59,10 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -102,7 +102,7 @@ public final class Entity {
   @Getter @Setter private static TokenRepository tokenRepository;
   @Getter @Setter private static PolicyRepository policyRepository;
   @Getter @Setter private static RoleRepository roleRepository;
-  @Getter @Setter private static FeedRepository feedRepository;
+  @Getter @Setter private static ConversationRepository conversationRepository;
   @Getter @Setter private static LineageRepository lineageRepository;
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
@@ -184,6 +184,7 @@ public final class Entity {
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String TASK = "task";
+  public static final String CONVERSATION = "conversation";
   public static final String CHART = "chart";
   public static final String APPLICATION = "app";
   public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
@@ -209,6 +210,9 @@ public final class Entity {
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
+  public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
+  public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";
   public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";

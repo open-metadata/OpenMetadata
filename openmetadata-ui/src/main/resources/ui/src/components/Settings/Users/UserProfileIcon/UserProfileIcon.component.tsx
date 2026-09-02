@@ -37,6 +37,7 @@ import {
   getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
+import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
@@ -367,6 +368,15 @@ export const UserProfileIcon = () => {
             </span>
           </div>
         ),
+        type: 'group',
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'app-mode',
+        icon: '',
+        label: <InterfaceModeMenuItem />,
         type: 'group',
       },
       ...navbarUtilClassBase.getUserProfileExtraItems(),

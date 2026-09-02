@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Request } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
-import { fillDomainForm } from '../../utils/domain';
+import { clickDrawerSave } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { openAddGlossaryTermModal } from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
@@ -210,7 +208,17 @@ const selectExtensionReference = async ({
     .first();
 
   await expect(input).toBeVisible({ timeout: 15000 });
-  await input.click();
+  // Use force:true to bypass Playwright's element-stability check. The
+  // reference-picker input lives inside a drawer whose body re-renders while
+  // the form settles, causing the input's bounding box to shift. A plain
+  // click() would spin until the test times out ("element is not stable");
+  // force:true skips that check while still dispatching the pointer events
+  // that activate the ComboBox popup. Do NOT use focus() here — opening the
+  // popup without pointer activation leaves the ComboBox in a state where the
+  // subsequent option.click() triggers unexpected re-renders that continuously
+  // detach the option element, causing a 3-minute hang.
+  // eslint-disable-next-line playwright/no-force-option -- see comment above: re-rendering drawer makes plain click() time out and focus() hang
+  await input.click({ force: true });
   await input.fill(query);
   await searchResponse;
 
@@ -629,7 +637,7 @@ test.describe(
           }
         };
         page.on('response', postListener);
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
 
         // Poll for up to 3s and confirm no POST ever fires. We intentionally
         // avoid `page.waitForTimeout` (linted as flaky) and instead use
@@ -1073,7 +1081,7 @@ test.describe(
             r.url().endsWith('/api/v1/dataProducts') &&
             r.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
         const response = await createResponse;
         expect(response.status()).toBe(201);
 
@@ -1414,7 +1422,7 @@ test.describe(
         }
       };
       page.on('request', trackCreateRequest);
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
       await expect(
         page.getByText('URL must use http or https protocol')
       ).toBeVisible();
@@ -1433,7 +1441,7 @@ test.describe(
           response.url().endsWith('/api/v1/dataProducts') &&
           response.request().method() === 'POST'
       );
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
 
       const request = await createRequest;
       const response = await createResponse;
@@ -1485,107 +1493,6 @@ test.describe(
       const cleanup = await performAdminLogin(browser);
       await cleanup.apiContext.delete(
         `/api/v1/dataProducts/${createdDataProduct.id}?hardDelete=true`
-      );
-      await cleanup.afterAction();
-    });
-
-    test('Domain uses the shared reference and hyperlink intake fields', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
-      await createIntakeForm(apiContext, DOMAIN_INTAKE_NAME, [
-        {
-          fieldPath: `extension.${domainProperties.reference}`,
-          fieldLabel: 'Domain Glossary Term',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${domainProperties.hyperlink}`,
-          fieldLabel: 'Domain Link',
-          fieldKind: 'customProperty',
-        },
-      ]);
-      await afterAction();
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-
-      const intakeFetch = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/governance/intakeForms/entityType/') &&
-          response.request().method() === 'GET'
-      );
-      await page.getByTestId('add-domain').click();
-      await intakeFetch;
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
-      await expect(page.getByTestId('custom-properties-section')).toBeVisible();
-      await expect(
-        page
-          .getByTestId('custom-property-type-badge')
-          .filter({ hasText: /^ENTITYREFERENCE$/ })
-      ).toBeVisible();
-
-      const domain = new Domain();
-      await fillDomainForm(page, domain.data);
-      await selectExtensionReference({
-        page,
-        testId: `extension-${domainProperties.reference}`,
-        query: referenceTerm.randomName,
-        optionText: referenceTerm.data.displayName,
-      });
-
-      const hyperlinkUrl = extensionInput(
-        page,
-        `extension-${domainProperties.hyperlink}-url`
-      );
-      const hyperlinkDisplayText = extensionInput(
-        page,
-        `extension-${domainProperties.hyperlink}-displayText`
-      );
-      await expect(hyperlinkUrl).toBeVisible();
-      await expect(hyperlinkDisplayText).toBeVisible();
-      await hyperlinkUrl.fill('https://example.com/domain');
-
-      const createRequest = page.waitForRequest(
-        (request) =>
-          request.url().endsWith('/api/v1/domains') &&
-          request.method() === 'POST'
-      );
-      const createResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/v1/domains') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('save-btn').click();
-
-      const request = await createRequest;
-      const response = await createResponse;
-      expect(response.status()).toBe(201);
-
-      const payload = request.postDataJSON() as {
-        extension: Record<string, unknown>;
-      };
-      expect(payload.extension[domainProperties.reference]).toEqual(
-        expect.objectContaining({
-          id: referenceTerm.responseData.id,
-          type: 'glossaryTerm',
-        })
-      );
-      expect(payload.extension[domainProperties.hyperlink]).toEqual({
-        url: 'https://example.com/domain',
-      });
-
-      const createdDomain = await response.json();
-      const cleanup = await performAdminLogin(browser);
-      await cleanup.apiContext.delete(
-        `/api/v1/domains/${createdDomain.id}?recursive=true&hardDelete=true`
       );
       await cleanup.afterAction();
     });

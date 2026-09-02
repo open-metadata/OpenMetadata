@@ -87,6 +87,11 @@ public class QLeverStorage implements RdfStorageInterface {
   }
 
   @Override
+  public long getTripleCount(String graphUri) {
+    throw new UnsupportedOperationException("QLever storage not yet implemented");
+  }
+
+  @Override
   public void clearGraph(String graphUri) {
     throw new UnsupportedOperationException("QLever storage not yet implemented");
   }

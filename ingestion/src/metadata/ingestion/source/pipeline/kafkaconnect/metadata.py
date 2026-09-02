@@ -15,7 +15,7 @@ KafkaConnect source to extract metadata from OM UI
 import re
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Pattern  # noqa: UP035
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -247,13 +247,13 @@ class KafkaconnectSource(PipelineServiceSource):
                     continue
 
                 service_config = service.connection.config
+                bootstrap_servers = getattr(service_config, "bootstrapServers", None)
 
                 # Extract bootstrapServers from Kafka connection
-                if hasattr(service_config, "bootstrapServers") and service_config.bootstrapServers:
+                if bootstrap_servers:
                     # Parse service brokers into hostnames (no protocol, no port)
                     service_brokers = set(  # noqa: C401
-                        self._extract_hostname(broker.strip()).lower()
-                        for broker in service_config.bootstrapServers.split(",")
+                        self._extract_hostname(broker.strip()).lower() for broker in bootstrap_servers.split(",")
                     )
 
                     # Check if any broker hostname matches
@@ -1015,7 +1015,6 @@ class KafkaconnectSource(PipelineServiceSource):
         Search for topics matching a regex pattern.
         Used for S3 sink connectors with topics.regex config.
         """
-        import re  # pylint: disable=import-outside-toplevel
 
         topics_found = []
 
@@ -1300,34 +1299,45 @@ class KafkaconnectSource(PipelineServiceSource):
         effective_messaging_service: Optional[str],  # noqa: UP045
     ) -> List[KafkaConnectTopics]:  # noqa: UP006
         """
-        Resolve topics for a source connector, trying in order: Debezium outbox
-        EventRouter pattern matching, CDC topic names from config, then a prefix
-        search in the messaging service.
-        """
-        topics_to_process = []
-        has_event_router = self._has_outbox_event_router(pipeline_details.config)
-        if has_event_router:
-            logger.info("Detected Debezium outbox EventRouter - resolving topics by routing pattern")
-            topics_to_process = self._resolve_outbox_topics(
-                connector_config=pipeline_details.config or {},
-                messaging_service_name=effective_messaging_service,
-            )
+        Resolve topics for a source connector from configuration alone.
 
-        if not topics_to_process and has_event_router:
-            # The EventRouter rewrites the topic before publish, so the pre-transform
-            # "{prefix}.{schema}.{table}" name provably names no real topic. Falling back
-            # to it only produced misleading "topic not found" warnings.
+        Only names that configuration determines are produced here. An outbox EventRouter
+        whose ``route.topic.replacement`` still carries a ``${...}`` token picks its
+        destination from a row value, so no name is derivable and the connector resolves
+        nothing rather than guessing.
+
+        Two guesses were removed because neither can attribute a topic to a table:
+
+        - A wildcard built from ``route.topic.replacement`` describes a superset. Two
+          connectors routing into one namespace reduce to the same pattern while owning
+          disjoint topics, so generating from it gave each of them the other's edges.
+        - The ``topic.prefix`` namespace scan assumes a topic name still encodes its
+          source table, which holds only while no router rewrites it. Reached by an
+          EventRouter connector it linked the outbox table to whichever internal topics
+          shared the prefix.
+
+        The runtime's own active-topic list (KIP-558) is the only source that knows a
+        row-derived routed name, and it is consulted before this method is ever called.
+        """
+        if self._has_outbox_event_router(pipeline_details.config):
+            static_topic = self._static_outbox_topic(pipeline_details.config or {})
+            if static_topic:
+                logger.info(f"Outbox EventRouter routes every event to '{static_topic}'")
+                return [KafkaConnectTopics(name=static_topic)]
+
             logger.warning(
                 f"Outbox EventRouter topics could not be resolved for '{pipeline_details.name}'. "
-                "The routed topic name is derived from row data and is not derivable from the "
-                "connector config; set an explicit static prefix in route.topic.replacement, or "
-                "ensure the routed topics are ingested in the messaging service."
+                "Its route.topic.replacement resolves per row, so the destination is not derivable "
+                "from the connector config and no lineage is emitted. Enable topic.tracking.enable "
+                "on the Connect workers so the runtime can report the connector's real topics. "
+                "Confluent Cloud does not expose that endpoint for managed connectors."
             )
-        elif not topics_to_process:
-            topics_to_process = self._parse_cdc_topics_from_config(
-                pipeline_details=pipeline_details,
-                database_server_name=database_server_name,
-            )
+            return []
+
+        topics_to_process = self._parse_cdc_topics_from_config(
+            pipeline_details=pipeline_details,
+            database_server_name=database_server_name,
+        )
 
         if not topics_to_process and effective_messaging_service:
             logger.info(
@@ -1339,6 +1349,25 @@ class KafkaconnectSource(PipelineServiceSource):
             )
 
         return topics_to_process
+
+    def _static_outbox_topic(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+        """
+        The destination of an outbox EventRouter whose ``route.topic.replacement`` holds
+        no ``${...}`` token.
+
+        Such a replacement names one fixed topic for every routed event, which makes it
+        as deterministic as any other config-declared name. Only a replacement that still
+        interpolates a row value is unresolvable. Any RegexRouter later in the chain is
+        applied so the name matches the topic that is actually published.
+
+        Returns None when the key is absent: an absent replacement means the routed name
+        is unknown, and synthesising Debezium's default would invent a claim.
+        """
+        transform = self._event_router_transform(connector_config)
+        replacement = connector_config.get(f"transforms.{transform}.route.topic.replacement") if transform else None
+        if not replacement or "${" in replacement:
+            return None
+        return apply_topic_routing_transforms(replacement, connector_config)
 
     def _has_outbox_event_router(self, connector_config: Optional[dict]) -> bool:  # noqa: UP045
         """Return True if the connector uses a Debezium outbox EventRouter SMT."""
@@ -1352,41 +1381,6 @@ class KafkaconnectSource(PipelineServiceSource):
                     break
         return has_event_router
 
-    def _build_outbox_topic_pattern(self, connector_config: dict) -> Optional[Pattern]:  # noqa: UP045
-        """
-        Build a regex matching topics produced by a Debezium outbox EventRouter.
-
-        The routed topic comes from ``route.topic.replacement``, whose ``${...}``
-        tokens (e.g. ``${routedByValue}``) are row-level values unknown at
-        ingestion time, so they become wildcards. Any RegexRouter in the chain is
-        applied to the template so the two transforms compose.
-        """
-        pattern = None
-        transform = self._event_router_transform(connector_config)
-        template = (
-            connector_config.get(f"transforms.{transform}.route.topic.replacement", "outbox.event.${routedByValue}")
-            if transform
-            else None
-        )
-        if template:
-            routed_value_token = "routedByValuePlaceholderToken"
-            templated = re.sub(r"\$\{[^}]*\}", routed_value_token, template)
-            templated = apply_topic_routing_transforms(templated, connector_config)
-            static_text = re.sub(r"[^A-Za-z0-9]", "", templated.replace(routed_value_token, ""))
-            if not static_text:
-                logger.warning(
-                    f"Outbox route.topic.replacement '{template}' has no static text; refusing to build a "
-                    "near-catch-all pattern that would link the outbox table to unrelated topics."
-                )
-            else:
-                escaped = re.escape(templated).replace(routed_value_token, ".*")
-                try:
-                    pattern = re.compile(f"^{escaped}$")
-                except re.error as exc:
-                    logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")
-
-        return pattern
-
     def _event_router_transform(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
         """Return the name of the connector's Debezium outbox EventRouter transform, if any."""
         transform_name = None
@@ -1396,35 +1390,6 @@ class KafkaconnectSource(PipelineServiceSource):
                 transform_name = transform
                 break
         return transform_name
-
-    def _resolve_outbox_topics(
-        self,
-        connector_config: dict,
-        messaging_service_name: Optional[str],  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
-        """
-        Resolve Debezium outbox topics by matching the EventRouter routing pattern
-        against topics already ingested in the messaging service.
-        """
-        topics_found = []
-        pattern = self._build_outbox_topic_pattern(connector_config)
-
-        if not pattern:
-            logger.debug("No outbox EventRouter pattern could be derived from connector config")
-        elif not messaging_service_name:
-            logger.warning(
-                "Cannot resolve outbox topics without a messaging service. "
-                "Ensure the messaging service is configured and topics are ingested."
-            )
-        else:
-            for topic in self._get_service_topics(messaging_service_name):
-                topic_name = model_str(topic.name)
-                if pattern.match(topic_name):
-                    topics_found.append(KafkaConnectTopics(name=topic_name, fqn=model_str(topic.fullyQualifiedName)))
-                    logger.debug(f"Matched outbox topic: {topic_name}")
-            logger.info(f"Resolved {len(topics_found)} outbox topic(s) via EventRouter pattern '{pattern.pattern}'")
-
-        return topics_found
 
     def _get_service_topics(self, messaging_service_name: str) -> List[Topic]:  # noqa: UP006
         """Return all topics for a messaging service, caching per service name."""

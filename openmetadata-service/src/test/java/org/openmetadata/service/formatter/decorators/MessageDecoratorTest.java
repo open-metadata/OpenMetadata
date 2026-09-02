@@ -36,26 +36,22 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
-import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskDetails;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.util.FeedUtils;
 
 class MessageDecoratorTest {
 
@@ -100,72 +96,48 @@ class MessageDecoratorTest {
   }
 
   @Test
-  void buildThreadUrlUsesActivityTabsAndSpecialEntityRoutes() {
-    Table table = new Table().withFullyQualifiedName("service.sales.orders");
-    TestCase testCase = new TestCase().withFullyQualifiedName("quality.row_count");
-
-    assertEquals(
-        "table|service.sales.orders|activity_feed/tasks",
-        decorator.buildThreadUrl(ThreadType.Task, Entity.TABLE, table));
-    assertEquals(
-        "table|service.sales.orders|activity_feed/all",
-        decorator.buildThreadUrl(ThreadType.Conversation, Entity.TABLE, table));
-    assertEquals(
-        "test-case|quality.row_count|issues",
-        decorator.buildThreadUrl(ThreadType.Task, Entity.TEST_CASE, testCase));
-    assertEquals(
-        "glossary|Business.Term|activity_feed/all",
-        decorator.buildThreadUrl(
-            ThreadType.Conversation,
-            Entity.GLOSSARY_TERM,
-            new Table().withFullyQualifiedName("Business.Term")));
-    assertEquals(
-        "tags|PII|",
-        decorator.buildThreadUrl(
-            ThreadType.Conversation,
-            Entity.TAG,
-            new Table().withFullyQualifiedName("PII.Sensitive")));
-  }
-
-  @Test
-  void getFqnForChangeEventEntityPrefersEventPayloadAndHandlesThreadFallbacks() {
+  void getFqnForChangeEventEntityPrefersEventPayloadAndHandlesConversationFallbacks() {
     ChangeEvent directEvent =
         new ChangeEvent()
             .withEntityType(Entity.TABLE)
             .withEntityFullyQualifiedName("service.sales.orders");
     assertEquals("service.sales.orders", MessageDecorator.getFQNForChangeEventEntity(directEvent));
 
-    Thread threadWithoutEntityRef = new Thread().withId(UUID.randomUUID());
+    Conversation conversationWithoutEntityRef =
+        new Conversation().withId(UUID.randomUUID()).withAbout("<#E::table::missing>");
     Table table = new Table().withFullyQualifiedName("service.sales.customers");
 
-    ChangeEvent threadEventWithoutRef = new ChangeEvent().withEntityType(Entity.THREAD);
+    ChangeEvent conversationEventWithoutRef =
+        new ChangeEvent()
+            .withEntityType(Entity.CONVERSATION)
+            .withEntity(conversationWithoutEntityRef);
     ChangeEvent entityEvent = new ChangeEvent().withEntityType(Entity.TABLE);
 
     try (MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class)) {
       alerts
-          .when(() -> AlertsRuleEvaluator.getThreadEntity(threadEventWithoutRef))
-          .thenReturn(threadWithoutEntityRef);
+          .when(() -> AlertsRuleEvaluator.getConversation(conversationEventWithoutRef))
+          .thenReturn(conversationWithoutEntityRef);
       alerts.when(() -> AlertsRuleEvaluator.getEntity(entityEvent)).thenReturn(table);
 
       assertEquals(
-          threadWithoutEntityRef.getId().toString(),
-          MessageDecorator.getFQNForChangeEventEntity(threadEventWithoutRef));
+          conversationWithoutEntityRef.getId().toString(),
+          MessageDecorator.getFQNForChangeEventEntity(conversationEventWithoutRef));
       assertEquals(
           "service.sales.customers", MessageDecorator.getFQNForChangeEventEntity(entityEvent));
     }
   }
 
   @Test
-  void buildOutgoingMessageDispatchesToEntityOrThreadHandlers() {
+  void buildOutgoingMessageDispatchesToEntityOrConversationHandlers() {
     ChangeEvent entityEvent = new ChangeEvent().withEntityType(Entity.TABLE);
-    ChangeEvent threadEvent = new ChangeEvent().withEntityType(Entity.THREAD);
+    ChangeEvent conversationEvent = new ChangeEvent().withEntityType(Entity.CONVERSATION);
     ChangeEvent unsupportedEvent = new ChangeEvent().withEntityType("unknown");
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getEntityList).thenReturn(Set.of(Entity.TABLE));
 
       assertEquals("entity", decorator.buildOutgoingMessage("publisher", entityEvent));
-      assertEquals("thread", decorator.buildOutgoingMessage("publisher", threadEvent));
+      assertEquals("thread", decorator.buildOutgoingMessage("publisher", conversationEvent));
       assertThrows(
           IllegalArgumentException.class,
           () -> decorator.buildOutgoingMessage("publisher", unsupportedEvent));
@@ -200,22 +172,23 @@ class MessageDecoratorTest {
     ChangeEvent testCaseEvent =
         new ChangeEvent().withEntityType(Entity.TEST_CASE).withEntity(testCase).withUserName("bob");
 
-    Thread first = new Thread().withMessage("First message");
-    Thread second = new Thread().withMessage("Second message");
+    FormattedMessage first = new FormattedMessage().withMessage("First message");
+    FormattedMessage second = new FormattedMessage().withMessage("Second message");
 
     try (MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<FeedUtils> feedUtils = mockStatic(FeedUtils.class)) {
+        MockedStatic<ActivityMessageFormatter> activityFormatter =
+            mockStatic(ActivityMessageFormatter.class)) {
       alerts.when(() -> AlertsRuleEvaluator.getEntity(tableEvent)).thenReturn(table);
       alerts.when(() -> AlertsRuleEvaluator.getEntity(queryEvent)).thenReturn(table);
       alerts.when(() -> AlertsRuleEvaluator.getEntity(testCaseEvent)).thenReturn(testCase);
-      feedUtils
-          .when(() -> FeedUtils.getThreadWithMessage(decorator, tableEvent))
+      activityFormatter
+          .when(() -> ActivityMessageFormatter.format(decorator, tableEvent))
           .thenReturn(List.of(first, second));
-      feedUtils
-          .when(() -> FeedUtils.getThreadWithMessage(decorator, queryEvent))
+      activityFormatter
+          .when(() -> ActivityMessageFormatter.format(decorator, queryEvent))
           .thenReturn(List.of(first));
-      feedUtils
-          .when(() -> FeedUtils.getThreadWithMessage(decorator, testCaseEvent))
+      activityFormatter
+          .when(() -> ActivityMessageFormatter.format(decorator, testCaseEvent))
           .thenReturn(List.of(first));
 
       OutgoingMessage tableMessage = decorator.createEntityMessage("publisher", tableEvent);
@@ -235,42 +208,33 @@ class MessageDecoratorTest {
   }
 
   @Test
-  void createThreadMessageBuildsConversationAndTaskPayloads() {
+  void createThreadMessageBuildsConversationPayloads() {
     Table table = new Table().withFullyQualifiedName("service.sales.orders");
-    MessageDecoratorTest.RecordingDecorator decorator = new RecordingDecorator();
-
-    Thread conversation =
-        new Thread()
-            .withType(ThreadType.Conversation)
+    Conversation conversation =
+        new Conversation()
+            .withId(UUID.randomUUID())
             .withAbout("<#E::table::service.sales.orders>")
-            .withCreatedBy("alice")
+            .withCreatedBy(new EntityReference().withType(Entity.USER).withName("alice"))
             .withMessage("Initial <#E::table::service.sales.orders>")
-            .withPosts(
-                List.of(new Post().withId(UUID.randomUUID()).withFrom("bob").withMessage("Reply")));
+            .withReplies(
+                List.of(
+                    new ConversationReply()
+                        .withId(UUID.randomUUID())
+                        .withAuthor(new EntityReference().withType(Entity.USER).withName("bob"))
+                        .withMessage("Reply")));
 
     ChangeEvent conversationEvent =
-        new ChangeEvent().withEntityType(Entity.THREAD).withEventType(EventType.POST_CREATED);
-
-    TaskDetails taskDetails =
-        new TaskDetails()
-            .withId(42)
-            .withType(TaskType.RequestDescription)
-            .withAssignees(
-                List.of(new EntityReference().withType(Entity.TEAM).withName("dataStewards")))
-            .withStatus(TaskStatus.Open);
-    Thread task =
-        new Thread()
-            .withType(ThreadType.Task)
-            .withAbout("<#E::table::service.sales.orders>")
-            .withCreatedBy("alice")
-            .withTask(taskDetails);
-    ChangeEvent taskEvent =
-        new ChangeEvent().withEntityType(Entity.THREAD).withEventType(EventType.THREAD_CREATED);
+        new ChangeEvent()
+            .withEntityType(Entity.CONVERSATION)
+            .withEntity(conversation)
+            .withEventType(EventType.POST_CREATED)
+            .withUserName("bob");
 
     try (MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class);
         MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      alerts.when(() -> AlertsRuleEvaluator.getThread(conversationEvent)).thenReturn(conversation);
-      alerts.when(() -> AlertsRuleEvaluator.getThread(taskEvent)).thenReturn(task);
+      alerts
+          .when(() -> AlertsRuleEvaluator.getConversation(conversationEvent))
+          .thenReturn(conversation);
       entity
           .when(
               () ->
@@ -279,135 +243,12 @@ class MessageDecoratorTest {
                       eq(""),
                       eq(Include.ALL)))
           .thenReturn(table);
-      entity
-          .when(
-              () ->
-                  Entity.getEntity(
-                      any(org.openmetadata.service.resources.feeds.MessageParser.EntityLink.class),
-                      eq("id"),
-                      eq(Include.ALL)))
-          .thenReturn(table);
-
       OutgoingMessage conversationMessage =
           decorator.createThreadMessage("publisher", conversationEvent);
       assertEquals(
-          "[publisher] @alice posted a message on asset table|service.sales.orders|activity_feed/all",
+          "[publisher] @bob posted a message on asset table|service.sales.orders|",
           conversationMessage.getHeader());
-      assertEquals(
-          List.of("@alice : Initial @service.sales.orders", "@bob : Reply"),
-          conversationMessage.getMessages());
-
-      OutgoingMessage taskMessage = decorator.createThreadMessage("publisher", taskEvent);
-      assertEquals(
-          "[publisher] @alice created a Task for table table|service.sales.orders|activity_feed/tasks",
-          taskMessage.getHeader());
-      assertEquals(
-          List.of(
-              "Task Type : RequestDescription",
-              "Assignees : '@dataStewards'",
-              "Current Status : Open"),
-          taskMessage.getMessages());
-    }
-  }
-
-  @Test
-  void createThreadMessageCoversAnnouncementAndTaskResolutionEvents() {
-    Table table = new Table().withFullyQualifiedName("service.sales.orders");
-    RecordingDecorator decorator = new RecordingDecorator();
-
-    Thread announcement =
-        new Thread()
-            .withType(ThreadType.Announcement)
-            .withAbout("<#E::table::service.sales.orders>")
-            .withCreatedBy("alice")
-            .withUpdatedBy("bob")
-            .withAnnouncement(
-                new AnnouncementDetails()
-                    .withDescription("Pipeline maintenance")
-                    .withStartTime(1_735_689_600L)
-                    .withEndTime(1_735_776_000L));
-    ChangeEvent announcementCreated =
-        new ChangeEvent().withEntityType(Entity.THREAD).withEventType(EventType.THREAD_CREATED);
-    ChangeEvent announcementDeleted =
-        new ChangeEvent().withEntityType(Entity.THREAD).withEventType(EventType.ENTITY_DELETED);
-
-    TaskDetails taskDetails =
-        new TaskDetails()
-            .withId(84)
-            .withType(TaskType.RequestDescription)
-            .withAssignees(List.of(new EntityReference().withType(Entity.USER).withName("alice")))
-            .withStatus(TaskStatus.Closed);
-    Thread closedTask =
-        new Thread()
-            .withType(ThreadType.Task)
-            .withAbout("<#E::table::service.sales.orders>")
-            .withCreatedBy("alice")
-            .withTask(taskDetails)
-            .withPosts(List.of(new Post().withFrom("bob").withMessage("Resolved")));
-    ChangeEvent taskClosed =
-        new ChangeEvent().withEntityType(Entity.THREAD).withEventType(EventType.TASK_CLOSED);
-
-    try (MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      alerts
-          .when(() -> AlertsRuleEvaluator.getThread(announcementCreated))
-          .thenReturn(announcement);
-      alerts
-          .when(() -> AlertsRuleEvaluator.getThread(announcementDeleted))
-          .thenReturn(announcement);
-      alerts.when(() -> AlertsRuleEvaluator.getThread(taskClosed)).thenReturn(closedTask);
-      entity
-          .when(
-              () ->
-                  Entity.getEntity(
-                      any(org.openmetadata.service.resources.feeds.MessageParser.EntityLink.class),
-                      eq(""),
-                      eq(Include.ALL)))
-          .thenReturn(table);
-      entity
-          .when(
-              () ->
-                  Entity.getEntity(
-                      any(org.openmetadata.service.resources.feeds.MessageParser.EntityLink.class),
-                      eq("id"),
-                      eq(Include.ALL)))
-          .thenReturn(table);
-
-      OutgoingMessage announcementMessage =
-          decorator.createThreadMessage("publisher", announcementCreated);
-      assertEquals(
-          "[publisher] **@alice** posted an **Announcement**", announcementMessage.getHeader());
-      assertTrue(announcementMessage.getMessages().getFirst().contains("Pipeline maintenance"));
-
-      OutgoingMessage deletedAnnouncementMessage =
-          decorator.createThreadMessage("publisher", announcementDeleted);
-      assertEquals(
-          "[publisher] **@bob** posted an update on  **Announcement**",
-          deletedAnnouncementMessage.getHeader());
-      assertEquals(
-          List.of("Announcement Deleted: Pipeline maintenance"),
-          deletedAnnouncementMessage.getMessages());
-
-      OutgoingMessage closedTaskMessage = decorator.createThreadMessage("publisher", taskClosed);
-      assertEquals(
-          "[publisher] @alice closed Task with Id : 84 for Asset table|service.sales.orders|activity_feed/tasks",
-          closedTaskMessage.getHeader());
-      assertEquals(List.of("Current Status : Closed"), closedTaskMessage.getMessages());
-    }
-  }
-
-  @Test
-  void getThreadAssetsUrlReturnsEmptyWhenEntityLookupFails() {
-    org.openmetadata.service.resources.feeds.MessageParser.EntityLink link =
-        new org.openmetadata.service.resources.feeds.MessageParser.EntityLink(
-            Entity.TABLE, "service.sales.orders");
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity
-          .when(() -> Entity.getEntity(link, "id", Include.ALL))
-          .thenThrow(new IllegalStateException("boom"));
-
-      assertEquals("", decorator.getThreadAssetsUrl(ThreadType.Task, link));
+      assertEquals(List.of("@bob : Reply"), conversationMessage.getMessages());
     }
   }
 

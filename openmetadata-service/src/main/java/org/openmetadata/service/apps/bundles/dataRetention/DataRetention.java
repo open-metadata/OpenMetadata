@@ -6,7 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -25,7 +25,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
@@ -47,19 +46,19 @@ public class DataRetention extends AbstractNativeApplication {
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
   private IndexingError failureDetails = null;
 
-  private final FeedRepository feedRepository;
-
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
 
+  private final DataRetentionExtensionRegistry extensionRegistry;
+
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
-    this.feedRepository = Entity.getFeedRepository();
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.extensionRegistry = DataRetentionExtensionRegistry.discover();
   }
 
   @Override
@@ -108,6 +107,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("change_events", new StepStats());
     entityStats.withAdditionalProperty("consumers_dlq", new StepStats());
     entityStats.withAdditionalProperty("activity_threads", new StepStats());
+    entityStats.withAdditionalProperty("activity_comments", new StepStats());
 
     // Add stats for relationship and hierarchy cleanup
     entityStats.withAdditionalProperty("orphaned_relationships", new StepStats());
@@ -178,11 +178,25 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
     cleanChangeEvents(retentionPeriod);
 
-    int threadRetentionPeriod = config.getActivityThreadsRetentionPeriod();
-    LOG.info(
-        "Starting cleanup for activity threads with retention period: {} days.",
-        threadRetentionPeriod);
-    cleanActivityThreads(threadRetentionPeriod);
+    Integer threadRetentionPeriod = config.getActivityThreadsRetentionPeriod();
+    if (isRetentionEnabled(threadRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for activity threads with retention period: {} days.",
+          threadRetentionPeriod);
+      cleanActivityThreads(threadRetentionPeriod);
+    } else {
+      LOG.info("Activity threads are retained indefinitely.");
+    }
+
+    Integer activityCommentsRetentionPeriod = config.getActivityCommentsRetentionPeriod();
+    if (isRetentionEnabled(activityCommentsRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for activity comments with retention period: {} days.",
+          activityCommentsRetentionPeriod);
+      cleanActivityComments(activityCommentsRetentionPeriod);
+    } else {
+      LOG.info("Activity comments are retained indefinitely.");
+    }
 
     int testCaseResultsRetentionPeriod = config.getTestCaseResultsRetentionPeriod();
     LOG.info(
@@ -200,6 +214,27 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    LOG.info("Starting cleanup for registered retention extensions.");
+    cleanExtensions(config);
+  }
+
+  /** Runs every {@link DataRetentionExtension} on the classpath, after the built-in cleanups. */
+  private void cleanExtensions(DataRetentionConfiguration config) {
+    List<RetentionStep> steps =
+        extensionRegistry.resolveSteps(config, this::recordExtensionFailure);
+
+    for (RetentionStep step : steps) {
+      LOG.info("Initiating extension cleanup: {}.", step.statsKey());
+      executeWithStatsTracking(step.statsKey(), () -> step.deleter().deleteBatch(BATCH_SIZE));
+    }
+
+    LOG.info("Extension cleanup complete for {} step(s).", steps.size());
+  }
+
+  private void recordExtensionFailure(Throwable ex) {
+    internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+    recordFirstFailure(ex);
   }
 
   @Transaction
@@ -207,20 +242,27 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Initiating activity threads cleanup: Retention = {} days.", retentionPeriod);
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
-    List<UUID> threadIdsToDelete =
-        feedRepository.fetchConversationThreadIdsOlderThan(cutoffMillis, BATCH_SIZE);
-
-    if (threadIdsToDelete.isEmpty()) {
-      LOG.info(
-          "No activity threads found older than retention period of {} days, skipping cleanup.",
-          retentionPeriod);
-      return;
-    }
-
     executeWithStatsTracking(
-        "activity_threads", () -> feedRepository.deleteThreadsInBatch(threadIdsToDelete));
+        "activity_threads",
+        () ->
+            Entity.getConversationRepository()
+                .deleteExpiredUserConversations(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Activity threads cleanup complete.");
+  }
+
+  @Transaction
+  private void cleanActivityComments(int retentionPeriod) {
+    LOG.info("Initiating activity comments cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executeWithStatsTracking(
+        "activity_comments",
+        () ->
+            Entity.getConversationRepository()
+                .deleteExpiredActivityConversations(cutoffMillis, BATCH_SIZE));
+
+    LOG.info("Activity comments cleanup complete.");
   }
 
   @Transaction
@@ -429,74 +471,42 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Audit logs cleanup complete.");
   }
 
-  // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
-  // rows per entity per run — well above any healthy catalog's orphan count. A buggy
-  // delete query that always returns a non-zero count (e.g., rows it can't actually
-  // delete due to FK constraints) would otherwise spin forever and block the rest of
-  // the DataRetention job.
-  private static final int MAX_ORPHAN_CLEANUP_ITERATIONS = 1000;
-
   private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
-    int totalDeleted = 0;
-    int totalFailed = 0;
-    boolean stoppedByCondition = false;
-
-    for (int iteration = 0; iteration < MAX_ORPHAN_CLEANUP_ITERATIONS; iteration++) {
-      try {
-        int deleted = deleteFunction.get();
-        totalDeleted += deleted;
-        if (deleted == 0) {
-          stoppedByCondition = true;
-          break;
-        }
-      } catch (Exception ex) {
-        LOG.error("Failed to clean orphan time-series rows for {}", entity, ex);
-        totalFailed += BATCH_SIZE;
-        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-
-        recordFirstFailure(ex);
-        stoppedByCondition = true;
-        break;
-      }
-    }
-
-    if (!stoppedByCondition) {
-      LOG.warn(
-          "Orphan cleanup for {} hit the iteration cap ({}) before draining; "
-              + "remaining rows will be retried on the next DataRetention run.",
-          entity,
-          MAX_ORPHAN_CLEANUP_ITERATIONS);
-    }
-
-    updateStats(entity, totalDeleted, totalFailed);
+    drainInBatches(entity, deleteFunction, deleted -> deleted == 0);
   }
 
   private void executeWithStatsTracking(String entity, Supplier<Integer> deleteFunction) {
-    int totalDeleted = 0;
-    int totalFailed = 0;
+    drainInBatches(entity, deleteFunction, deleted -> deleted < BATCH_SIZE);
+  }
 
-    while (true) {
-      try {
-        int deleted = deleteFunction.get();
-        totalDeleted += deleted;
-        if (deleted < BATCH_SIZE) break;
-      } catch (Exception ex) {
-        LOG.error("Failed to clean entity: {}", entity, ex);
-        totalFailed += BATCH_SIZE;
-        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+  private void drainInBatches(
+      String entity, Supplier<Integer> deleteFunction, IntPredicate drainedWhen) {
+    BatchDrain.Result result = BatchDrain.drain(deleteFunction, drainedWhen, BATCH_SIZE);
 
-        recordFirstFailure(ex);
-        break;
-      }
+    if (result.failure() != null) {
+      LOG.error("Failed to clean entity: {}", entity, result.failure());
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      recordFirstFailure(result.failure());
+    }
+    if (result.hitIterationCap()) {
+      LOG.warn(
+          "Cleanup for {} hit the iteration cap ({}) before draining; "
+              + "remaining rows will be retried on the next DataRetention run.",
+          entity,
+          BatchDrain.MAX_ITERATIONS);
     }
 
-    updateStats(entity, totalDeleted, totalFailed);
+    updateStats(entity, result.deleted(), result.failed());
   }
 
   private long getRetentionCutoffMillis(int retentionPeriodInDays) {
     return Instant.now()
         .minusMillis(Duration.ofDays(retentionPeriodInDays).toMillis())
         .toEpochMilli();
+  }
+
+  static boolean isRetentionEnabled(Integer retentionPeriod) {
+    return retentionPeriod != null && retentionPeriod > 0;
   }
 
   private synchronized void updateStats(String entity, int successCount, int failureCount) {
@@ -518,13 +528,13 @@ public class DataRetention extends AbstractNativeApplication {
     jobStats.setFailedRecords(jobStats.getFailedRecords() + failureCount);
   }
 
-  private void recordFirstFailure(Exception ex) {
+  private void recordFirstFailure(Throwable ex) {
     if (failureDetails == null) {
       failureDetails = toIndexingError(ex);
     }
   }
 
-  private static IndexingError toIndexingError(Exception ex) {
+  private static IndexingError toIndexingError(Throwable ex) {
     return new IndexingError()
         .withErrorSource(IndexingError.ErrorSource.JOB)
         .withMessage(ex.getMessage())

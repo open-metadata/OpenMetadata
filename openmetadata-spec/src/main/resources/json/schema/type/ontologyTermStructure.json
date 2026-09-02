@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyTermStructure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyTermStructure",
+  "description": "Typed structural state used for application ontology three-way comparison.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyTermStructure",
+  "definitions": {
+    "field": {
+      "javaType": "org.openmetadata.schema.type.OntologyStructuralField",
+      "type": "string",
+      "enum": [
+        "NAME",
+        "DISPLAY_NAME",
+        "DESCRIPTION",
+        "ENTITY_STATUS",
+        "PARENT",
+        "ATTRIBUTES",
+        "CONCEPT_MAPPINGS",
+        "RELATIONSHIPS"
+      ]
+    },
+    "relationship": {
+      "javaType": "org.openmetadata.schema.type.OntologyStructuralRelationship",
+      "type": "object",
+      "properties": {
+        "targetSourceTermId": {
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "relationshipType": {
+          "$ref": "entityReference.json"
+        }
+      },
+      "required": [
+        "targetSourceTermId",
+        "relationshipType"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "$ref": "basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "entityStatus": {
+      "$ref": "status.json"
+    },
+    "parentSourceTermId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyAttribute.json"
+      },
+      "default": []
+    },
+    "conceptMappings": {
+      "type": "array",
+      "items": {
+        "$ref": "conceptMapping.json"
+      },
+      "default": []
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/relationship"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "attributes",
+    "conceptMappings",
+    "relationships"
+  ],
+  "additionalProperties": false
+}
