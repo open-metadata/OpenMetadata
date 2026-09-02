@@ -387,7 +387,10 @@ public class TestCaseResolutionStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResolutionStatus.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatus.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test case failure status for instance {id} is not found")
       })
   public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
@@ -395,7 +398,7 @@ public class TestCaseResolutionStatusResource
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
     TestCaseResolutionStatus testCaseResolutionStatus =
-        repository.getById(testCaseResolutionStatusId);
+        getResolutionStatusOrThrow(testCaseResolutionStatusId);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -615,7 +618,7 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch) {
 
-    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    TestCaseResolutionStatus testCaseResolutionStatus = getResolutionStatusOrThrow(id);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -823,6 +826,22 @@ public class TestCaseResolutionStatusResource
       resourceContext = TestCaseResourceContext.builder().build();
     }
     return resourceContext;
+  }
+
+  /**
+   * {@link org.openmetadata.service.jdbi3.EntityTimeSeriesRepository#getById} answers a missing row
+   * with {@code null}, and both the read and the patch handler have to dereference the record to
+   * resolve the test case the authorization check is scoped to. Resolve it here so an id with no row
+   * — a stale {@code incidentId}, or a stateId passed where a record id belongs — is a 404 rather
+   * than a NullPointerException mapped to a 500.
+   */
+  private TestCaseResolutionStatus getResolutionStatusOrThrow(UUID id) {
+    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    if (testCaseResolutionStatus == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(Entity.TEST_CASE_RESOLUTION_STATUS, id));
+    }
+    return testCaseResolutionStatus;
   }
 
   protected static List<AuthRequest> buildViewAuthRequests(
