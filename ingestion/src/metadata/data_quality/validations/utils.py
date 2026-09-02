@@ -2,7 +2,8 @@
 Data quality validation utility functions.
 """
 
-from typing import Any, Callable, List, Optional, TypeVar, Union  # noqa: UP035
+from collections.abc import Callable
+from typing import Any, TypeVar
 from urllib.parse import quote
 
 from sqlalchemy.engine import URL
@@ -21,12 +22,12 @@ USERNAME_RESERVED_CHARACTERS = ":/?#"
 
 
 def get_test_case_param_value(
-    test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
+    test_case_param_vals: list[TestCaseParameterValue],
     name: str,
     type_: T,
-    default: Optional[R] = None,  # noqa: UP045
-    pre_processor: Optional[Callable] = None,  # noqa: UP045
-) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
+    default: R | None = None,
+    pre_processor: Callable | None = None,
+) -> R | T | None:
     """Return a test case parameter value with the appropriate type casting for the test case definition.
 
     Args:
@@ -49,9 +50,9 @@ def get_test_case_param_value(
 
 
 def get_bool_test_case_param(
-    test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
+    test_case_param_vals: list[TestCaseParameterValue],
     name: str,
-) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
+) -> R | T | None:
     """Return a test case parameter value as a boolean. Boolean values are always False by default.
 
     Args:

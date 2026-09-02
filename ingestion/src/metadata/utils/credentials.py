@@ -16,7 +16,6 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict, List, Optional, Union  # noqa: UP035
 
 from cryptography.hazmat.primitives import serialization
 from google import auth
@@ -132,9 +131,9 @@ def create_credential_tmp_file(credentials: dict) -> str:
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount],  # noqa: UP007
+    gcp_values: GcpCredentialsValues | GcpExternalAccount,
     single_project: bool = False,
-) -> Dict[str, str]:  # noqa: UP006
+) -> dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
@@ -230,8 +229,8 @@ def generate_http_basic_token(username, password):
 
 
 def get_gcp_default_credentials(
-    quota_project_id: Optional[str] = None,  # noqa: UP045
-    scopes: Optional[List[str]] = None,  # noqa: UP006, UP045
+    quota_project_id: str | None = None,
+    scopes: list[str] | None = None,
 ) -> auth.credentials.Credentials:
     """Get the default credentials
 
@@ -246,9 +245,9 @@ def get_gcp_default_credentials(
 
 def get_gcp_impersonate_credentials(
     impersonate_service_account: str,
-    quoted_project_id: Optional[str] = None,  # noqa: UP045
-    scopes: Optional[List[str]] = None,  # noqa: UP006, UP045
-    lifetime: Optional[int] = 3600,  # noqa: UP045
+    quoted_project_id: str | None = None,
+    scopes: list[str] | None = None,
+    lifetime: int | None = 3600,
 ) -> impersonated_credentials.Credentials:
     """Get the credentials to impersonate"""
     scopes = scopes or GOOGLE_CLOUD_SCOPES

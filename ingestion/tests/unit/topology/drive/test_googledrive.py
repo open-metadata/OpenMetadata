@@ -14,7 +14,6 @@ Real Integration Tests for Google Drive Source
 Tests actual method execution with mocked API responses
 """
 
-from typing import Dict, List  # noqa: UP035
 from unittest.mock import MagicMock
 
 import pytest
@@ -102,10 +101,10 @@ class TestGoogleDriveRealMethods:
         source.connection_obj = mock_client
 
         # Initialize caches
-        source._directories_cache: Dict[str, GoogleDriveDirectoryInfo] = {}  # noqa: UP006
+        source._directories_cache: dict[str, GoogleDriveDirectoryInfo] = {}
         source._current_directory_context: str = None
-        source._files_by_parent_cache: Dict[str, List[GoogleDriveFile]] = {}  # noqa: UP006
-        source._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
+        source._files_by_parent_cache: dict[str, list[GoogleDriveFile]] = {}
+        source._directory_fqn_cache: dict[str, str] = {}
         source._root_files_processed: bool = False
 
         # Mock context
