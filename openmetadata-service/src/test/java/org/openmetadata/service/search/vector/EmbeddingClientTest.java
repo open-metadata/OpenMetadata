@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,8 +15,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingClient.EmbeddingResult;
+import org.openmetadata.service.search.vector.client.EmbeddingClient.EmbeddingUsage;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 
 class EmbeddingClientTest {
@@ -254,6 +258,112 @@ class EmbeddingClientTest {
         providerCalls.get(),
         "exactly one recovery probe may reach the provider while half-open");
     assertTrue(client.isAvailable());
+  }
+
+  @Test
+  void testUsageListenerDistinguishesQueryFromDocument() {
+    EmbeddingClient client = new MockEmbeddingClient(8);
+    List<Boolean> queryFlags = new ArrayList<>();
+    client.setUsageListener((modelId, text, usage, query) -> queryFlags.add(query));
+
+    client.embed("a document");
+    client.embedQuery("a question");
+
+    assertEquals(List.of(false, true), queryFlags);
+  }
+
+  @Test
+  void testUsageListenerReceivesModelAndText() {
+    EmbeddingClient client = new MockEmbeddingClient(8);
+    AtomicReference<String> seenModel = new AtomicReference<>();
+    AtomicReference<String> seenText = new AtomicReference<>();
+    client.setUsageListener(
+        (modelId, text, usage, query) -> {
+          seenModel.set(modelId);
+          seenText.set(text);
+        });
+
+    client.embed("the exact input");
+
+    assertEquals("mock-model", seenModel.get());
+    assertEquals("the exact input", seenText.get());
+  }
+
+  @Test
+  void testSubclassOverridingOnlyDoEmbedReportsNoUsage() {
+    // Backward compatibility: an existing client that never heard of doEmbedWithUsage still works,
+    // and reports null usage so consumers know to estimate.
+    EmbeddingClient client = new MockEmbeddingClient(8);
+    AtomicReference<EmbeddingUsage> seen = new AtomicReference<>(new EmbeddingUsage(-1L));
+    client.setUsageListener((modelId, text, usage, query) -> seen.set(usage));
+
+    assertEquals(8, client.embed("text").length);
+
+    assertNull(seen.get(), "a client that reports no usage must surface null, not a fabricated 0");
+  }
+
+  @Test
+  void testUsageListenerReceivesProviderReportedUsage() {
+    EmbeddingClient client =
+        new EmbeddingClient() {
+          @Override
+          protected float[] doEmbed(String text) {
+            return new float[] {1.0f};
+          }
+
+          @Override
+          protected EmbeddingResult doEmbedWithUsage(String text, boolean query) {
+            return new EmbeddingResult(new float[] {2.0f}, new EmbeddingUsage(42L));
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "usage-test";
+          }
+        };
+    AtomicReference<EmbeddingUsage> seen = new AtomicReference<>();
+    client.setUsageListener((modelId, text, usage, query) -> seen.set(usage));
+
+    float[] vector = client.embed("text");
+
+    assertNotNull(seen.get());
+    assertEquals(42L, seen.get().inputTokens());
+    assertEquals(
+        2.0f, vector[0], "the usage-aware path must supply the vector, not the legacy doEmbed");
+  }
+
+  @Test
+  void testUsageListenerNotNotifiedOnFailure() {
+    AtomicInteger calls = new AtomicInteger(0);
+    EmbeddingClient client = failingClient(calls, false);
+    AtomicInteger notifications = new AtomicInteger(0);
+    client.setUsageListener((modelId, text, usage, query) -> notifications.incrementAndGet());
+
+    assertThrows(RuntimeException.class, () -> client.embed("text"));
+
+    assertEquals(0, notifications.get(), "a failed call bills nothing");
+  }
+
+  @Test
+  void testThrowingUsageListenerNeitherFailsEmbedNorOpensCircuit() {
+    // A listener is observability. If a metering bug throws on every call it must not take
+    // embeddings down with it, and must not be mistaken for a provider failure.
+    EmbeddingClient client = new MockEmbeddingClient(8);
+    client.setUsageListener(
+        (modelId, text, usage, query) -> {
+          throw new IllegalStateException("listener is broken");
+        });
+
+    for (int i = 0; i < 6; i++) {
+      assertEquals(8, client.embed("text").length);
+    }
+
+    assertTrue(client.isAvailable(), "listener failures must not count toward the circuit breaker");
   }
 
   private static EmbeddingClient failingClient(AtomicInteger calls, boolean permanent) {

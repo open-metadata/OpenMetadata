@@ -36,6 +36,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   private static final String FIELD_EMBEDDING = "embedding";
   private static final String FIELD_EMBEDDINGS = "embeddings";
   private static final String FIELD_FLOAT = "float";
+  private static final String FIELD_INPUT_TEXT_TOKEN_COUNT = "inputTextTokenCount";
   private static final String COHERE_INPUT_TYPE_SEARCH_DOCUMENT = "search_document";
   private static final String COHERE_INPUT_TYPE_SEARCH_QUERY = "search_query";
   private static final String COHERE_TRUNCATE_END = "END";
@@ -91,6 +92,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       JsonNode extractEmbedding(JsonNode root) {
         return root.get(FIELD_EMBEDDING);
       }
+
+      @Override
+      EmbeddingUsage extractUsage(JsonNode root) {
+        return titanUsage(root);
+      }
     },
     TITAN_V2(OptionalInt.empty(), TITAN_MAX_INPUT_CHARS) {
       @Override
@@ -105,6 +111,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       @Override
       JsonNode extractEmbedding(JsonNode root) {
         return root.get(FIELD_EMBEDDING);
+      }
+
+      @Override
+      EmbeddingUsage extractUsage(JsonNode root) {
+        return titanUsage(root);
       }
     },
     COHERE(OptionalInt.of(COHERE_FIXED_DIMENSION), COHERE_MAX_INPUT_CHARS) {
@@ -136,6 +147,20 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     abstract ObjectNode buildRequest(String text, int dimension, boolean isQuery);
 
     abstract JsonNode extractEmbedding(JsonNode root);
+
+    /**
+     * Input tokens the family's response reports, or {@code null} when it reports none. Cohere on
+     * Bedrock returns no count at all, so consumers that need a number must estimate one.
+     */
+    EmbeddingUsage extractUsage(JsonNode root) {
+      return null;
+    }
+
+    /** Titan families both report the count under the same field. */
+    static EmbeddingUsage titanUsage(JsonNode root) {
+      JsonNode tokens = root.get(FIELD_INPUT_TEXT_TOKEN_COUNT);
+      return tokens != null && tokens.isNumber() ? new EmbeddingUsage(tokens.asLong()) : null;
+    }
 
     OptionalInt fixedDimension() {
       return fixedDimension;
@@ -207,17 +232,27 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
 
   @Override
   protected float[] doEmbed(String text) {
-    return invokeEmbedding(text, false);
+    return invokeEmbedding(text, false).vector();
   }
 
   @Override
   protected float[] doEmbedQuery(String text) {
-    return invokeEmbedding(text, true);
+    return invokeEmbedding(text, true).vector();
   }
 
-  private float[] invokeEmbedding(String text, boolean isQuery) {
+  @Override
+  protected EmbeddingResult doEmbedWithUsage(String text, boolean query) {
+    return invokeEmbedding(text, query);
+  }
+
+  /**
+   * Usage reflects the call that succeeded. An oversized input that AWS rejects with a
+   * ValidationException is not a billable invocation, so the halving retries below contribute
+   * nothing to the count.
+   */
+  private EmbeddingResult invokeEmbedding(String text, boolean isQuery) {
     String input = family.cap(text);
-    float[] embedding = null;
+    EmbeddingResult embedding = null;
     int attempt = 0;
     while (embedding == null) {
       try {
@@ -237,7 +272,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     return embedding;
   }
 
-  private float[] invokeOnce(String text, boolean isQuery) throws IOException {
+  private EmbeddingResult invokeOnce(String text, boolean isQuery) throws IOException {
     String body = buildRequestBody(family, text, dimension, isQuery);
     InvokeModelRequest request =
         InvokeModelRequest.builder()
@@ -247,7 +282,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
             .body(SdkBytes.fromUtf8String(body))
             .build();
     InvokeModelResponse response = bedrockClient.invokeModel(request);
-    return parseEmbeddingResponse(family, response.body().asUtf8String());
+    return parseEmbeddingResult(family, response.body().asUtf8String());
   }
 
   /**
@@ -340,6 +375,10 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   }
 
   static float[] parseEmbeddingResponse(BedrockEmbeddingFamily family, String responseBody) {
+    return parseEmbeddingResult(family, responseBody).vector();
+  }
+
+  static EmbeddingResult parseEmbeddingResult(BedrockEmbeddingFamily family, String responseBody) {
     try {
       JsonNode root = MAPPER.readTree(responseBody);
       JsonNode embeddingNode = family.extractEmbedding(root);
@@ -350,7 +389,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       for (int i = 0; i < embeddingNode.size(); i++) {
         embedding[i] = (float) embeddingNode.get(i).asDouble();
       }
-      return embedding;
+      return new EmbeddingResult(embedding, family.extractUsage(root));
     } catch (IOException e) {
       throw new RuntimeException("Failed to parse Bedrock embedding response", e);
     }
