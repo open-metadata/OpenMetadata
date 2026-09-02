@@ -8,9 +8,7 @@
     "SparkType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "Spark"
-      ],
+      "enum": ["Spark"],
       "default": "Spark"
     }
   },
@@ -20,9 +18,7 @@
       "description": "Service Type",
       "default": "Spark",
       "type": "string",
-      "enum": [
-        "Spark"
-      ]
+      "enum": ["Spark"]
     },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
@@ -49,9 +45,9 @@
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
-      "description": "Supports Metadata Extraction.",
+      "description": "Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not supported.",
       "type": "boolean",
-      "default": true
+      "default": false
     }
   },
   "additionalProperties": false
