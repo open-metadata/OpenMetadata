@@ -165,7 +165,10 @@ The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
 ```yaml
 services:
   fuseki:
-    image: stain/jena-fuseki:5.0.0
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:6.2.0
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"

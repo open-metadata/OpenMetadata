@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
 import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
@@ -153,6 +154,14 @@ export const useListingData = <
   // selectedEntities should be an array of IDs, not entities
   const selectedEntities = selectionState.selectedEntities;
 
+  // The URL carries only the lowercased aggregation key, so the chips and the
+  // checked dropdown options get their casing restored here.
+  const hydratedFilters = useQuickFilterLabels({
+    fields: parsedFilters,
+    sources: dataFetching.entities,
+    index: searchIndex,
+  });
+
   // Refetch function to reload data with current filters
   const refetch = useCallback(() => {
     dataFetching.searchEntities(
@@ -184,7 +193,7 @@ export const useListingData = <
     isSelected: selectionState.isSelected,
     clearSelection: selectionState.clearSelection,
     urlState,
-    parsedFilters,
+    parsedFilters: hydratedFilters,
     actionHandlers,
     filterOptions: {},
     aggregations: getAggregations(dataFetching.aggregations || {}),
