@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import antlr4, { ParseTreeWalker } from 'antlr4';
+import antlr4 from 'antlr4';
+import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
 import EntityLinkSplitListener from '../antlr/EntityLinkSplitListener';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { FqnPart } from '../enums/entity.enum';
