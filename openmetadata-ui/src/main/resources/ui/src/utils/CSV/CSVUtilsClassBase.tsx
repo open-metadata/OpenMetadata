@@ -754,137 +754,145 @@ const getFilteredBulkEditPickerOptions = (
   );
 };
 
+const loadBulkEditDomainOptions = async (searchText: string) => {
+  const response = await getDomainList({ limit: 50 });
+
+  return getFilteredBulkEditPickerOptions(
+    response.data
+      .map((domain) =>
+        getBulkEditPickerOption({
+          color: domain.style?.color,
+          description: getBulkEditOptionContext(t('label.domain')),
+          displayName: domain.displayName,
+          fullyQualifiedName: domain.fullyQualifiedName,
+          kind: 'domain',
+          name: domain.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const loadBulkEditDataProductOptions = async (searchText: string) => {
+  const response = await fetchDataProductsElasticSearch(searchText, [], 1);
+
+  return response.data
+    .map(({ value }) =>
+      getBulkEditPickerOption({
+        color: value.style?.color,
+        description: getBulkEditOptionContext(t('label.data-product')),
+        displayName: value.displayName,
+        fullyQualifiedName: value.fullyQualifiedName,
+        kind: 'dataProduct',
+        name: value.name,
+      })
+    )
+    .filter((option): option is BulkEditPickerOption => Boolean(option));
+};
+
+const loadBulkEditTagOptions = async (searchText: string) => {
+  const [classifications, tags] = await Promise.all([
+    getAllClassifications({ limit: 1 }),
+    getTags({ disabled: false, limit: 50 }),
+  ]);
+
+  if (!classifications.data.length && !tags.data.length) {
+    return [];
+  }
+
+  return getFilteredBulkEditPickerOptions(
+    tags.data
+      .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
+      .map((tag) =>
+        getBulkEditPickerOption({
+          color: tag.style?.color,
+          description: tag.description,
+          displayName: tag.displayName,
+          fullyQualifiedName: tag.fullyQualifiedName,
+          kind: 'tag',
+          name: tag.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const loadBulkEditGlossaryTermOptions = async (searchText: string) => {
+  const [glossaries, glossaryTerms] = await Promise.all([
+    getGlossariesList({ limit: 1 }),
+    getGlossaryTerms({ limit: 50 }),
+  ]);
+
+  if (!glossaries.data.length && !glossaryTerms.data.length) {
+    return [];
+  }
+
+  return getFilteredBulkEditPickerOptions(
+    glossaryTerms.data
+      .map((glossaryTerm) =>
+        getBulkEditPickerOption({
+          color: glossaryTerm.style?.color,
+          description: getBulkEditOptionContext(
+            t('label.glossary'),
+            getEntityName(glossaryTerm.glossary)
+          ),
+          displayName: getBulkEditGlossaryTermHierarchyLabel(glossaryTerm),
+          fullyQualifiedName: glossaryTerm.fullyQualifiedName,
+          kind: 'glossary',
+          name: glossaryTerm.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const loadBulkEditRelatedMetricOptions = async (searchText: string) => {
+  const response = await getMetrics({ fields: 'domains', limit: 50 });
+
+  return getFilteredBulkEditPickerOptions(
+    response.data
+      .map((metric) =>
+        getBulkEditPickerOption({
+          description: getBulkEditOptionContext(
+            t('label.metric'),
+            metric.domains?.map(getEntityName).filter(Boolean).join(', ')
+          ),
+          displayName: metric.displayName,
+          fullyQualifiedName: metric.fullyQualifiedName,
+          kind: 'metric',
+          name: metric.name,
+        })
+      )
+      .filter((option): option is BulkEditPickerOption => Boolean(option)),
+    searchText
+  );
+};
+
+const BULK_EDIT_PICKER_LOADERS: Record<
+  BulkEditPickerColumn,
+  (searchText: string, includeTeams: boolean) => Promise<BulkEditPickerOption[]>
+> = {
+  owner: (searchText, includeTeams) =>
+    loadBulkEditUserOptions(searchText, includeTeams),
+  owners: (searchText, includeTeams) =>
+    loadBulkEditUserOptions(searchText, includeTeams),
+  reviewers: (searchText, includeTeams) =>
+    loadBulkEditUserOptions(searchText, includeTeams),
+  domains: (searchText) => loadBulkEditDomainOptions(searchText),
+  dataProducts: (searchText) => loadBulkEditDataProductOptions(searchText),
+  tags: (searchText) => loadBulkEditTagOptions(searchText),
+  glossaryTerms: (searchText) => loadBulkEditGlossaryTermOptions(searchText),
+  relatedMetrics: (searchText) => loadBulkEditRelatedMetricOptions(searchText),
+};
+
 const loadBulkEditPickerOptions = async (
   columnKey: BulkEditPickerColumn,
   searchText: string,
   includeTeams = false
-) => {
-  switch (columnKey) {
-    case 'owner':
-    case 'owners':
-    case 'reviewers':
-      return loadBulkEditUserOptions(searchText, includeTeams);
-
-    case 'domains': {
-      const response = await getDomainList({ limit: 50 });
-
-      return getFilteredBulkEditPickerOptions(
-        response.data
-          .map((domain) =>
-            getBulkEditPickerOption({
-              color: domain.style?.color,
-              description: getBulkEditOptionContext(t('label.domain')),
-              displayName: domain.displayName,
-              fullyQualifiedName: domain.fullyQualifiedName,
-              kind: 'domain',
-              name: domain.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-
-    case 'dataProducts': {
-      const response = await fetchDataProductsElasticSearch(searchText, [], 1);
-
-      return response.data
-        .map(({ value }) =>
-          getBulkEditPickerOption({
-            color: value.style?.color,
-            description: getBulkEditOptionContext(t('label.data-product')),
-            displayName: value.displayName,
-            fullyQualifiedName: value.fullyQualifiedName,
-            kind: 'dataProduct',
-            name: value.name,
-          })
-        )
-        .filter((option): option is BulkEditPickerOption => Boolean(option));
-    }
-
-    case 'tags': {
-      const [classifications, tags] = await Promise.all([
-        getAllClassifications({ limit: 1 }),
-        getTags({ disabled: false, limit: 50 }),
-      ]);
-
-      if (!classifications.data.length && !tags.data.length) {
-        return [];
-      }
-
-      return getFilteredBulkEditPickerOptions(
-        tags.data
-          .filter(
-            (tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag))
-          )
-          .map((tag) =>
-            getBulkEditPickerOption({
-              color: tag.style?.color,
-              description: tag.description,
-              displayName: tag.displayName,
-              fullyQualifiedName: tag.fullyQualifiedName,
-              kind: 'tag',
-              name: tag.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-
-    case 'glossaryTerms': {
-      const [glossaries, glossaryTerms] = await Promise.all([
-        getGlossariesList({ limit: 1 }),
-        getGlossaryTerms({ limit: 50 }),
-      ]);
-
-      if (!glossaries.data.length && !glossaryTerms.data.length) {
-        return [];
-      }
-
-      return getFilteredBulkEditPickerOptions(
-        glossaryTerms.data
-          .map((glossaryTerm) =>
-            getBulkEditPickerOption({
-              color: glossaryTerm.style?.color,
-              description: getBulkEditOptionContext(
-                t('label.glossary'),
-                getEntityName(glossaryTerm.glossary)
-              ),
-              displayName: getBulkEditGlossaryTermHierarchyLabel(glossaryTerm),
-              fullyQualifiedName: glossaryTerm.fullyQualifiedName,
-              kind: 'glossary',
-              name: glossaryTerm.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-
-    case 'relatedMetrics': {
-      const response = await getMetrics({ fields: 'domains', limit: 50 });
-
-      return getFilteredBulkEditPickerOptions(
-        response.data
-          .map((metric) =>
-            getBulkEditPickerOption({
-              description: getBulkEditOptionContext(
-                t('label.metric'),
-                metric.domains?.map(getEntityName).filter(Boolean).join(', ')
-              ),
-              displayName: metric.displayName,
-              fullyQualifiedName: metric.fullyQualifiedName,
-              kind: 'metric',
-              name: metric.name,
-            })
-          )
-          .filter((option): option is BulkEditPickerOption => Boolean(option)),
-        searchText
-      );
-    }
-  }
-};
+) => BULK_EDIT_PICKER_LOADERS[columnKey](searchText, includeTeams);
 
 const serializeBulkEditPickerValues = (
   columnKey: BulkEditPickerColumn,
@@ -1447,91 +1455,150 @@ const InlineCustomPropertiesEditor = ({
     );
   };
 
+  const renderEnumField = (
+    customProperty: CustomPropertyDefinition,
+    propertyValue: ExtensionDataTypes | undefined
+  ) => {
+    const enumValues = getCustomPropertyConfigValues(
+      customProperty.customPropertyConfig?.config
+    );
+    const selectedValues = getCustomPropertyEnumValues(propertyValue);
+    const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
+    const options = enumValues.map((option) => ({
+      label: option,
+      value: option,
+    }));
+
+    const handleEnumChange = (selectedValue?: string | string[]) => {
+      handleUpdateDraft(
+        customProperty.name,
+        Array.isArray(selectedValue)
+          ? selectedValue
+          : selectedValue
+          ? [selectedValue]
+          : []
+      );
+    };
+
+    return (
+      <Select
+        allowClear
+        showSearch
+        className="bulk-edit-custom-property-enum-select"
+        getPopupContainer={() => document.body}
+        mode={isMultiSelect ? 'multiple' : undefined}
+        optionFilterProp="label"
+        options={options}
+        placeholder={t('label.enum-value-plural')}
+        popupClassName="bulk-edit-custom-property-select-dropdown"
+        value={isMultiSelect ? selectedValues : selectedValues[0]}
+        onChange={handleEnumChange}
+      />
+    );
+  };
+
+  const renderReferenceField = (
+    customProperty: CustomPropertyDefinition,
+    propertyValue: ExtensionDataTypes | undefined,
+    isReferenceList: boolean
+  ) => {
+    const mode = isReferenceList ? 'multiple' : undefined;
+    const initialOptions = getEntityReferenceInitialOptions(propertyValue);
+
+    const handleReferenceChange = (
+      option: DataAssetOption | DataAssetOption[]
+    ) => {
+      if (Array.isArray(option)) {
+        handleUpdateDraft(
+          customProperty.name,
+          option.map((item) => item.reference)
+        );
+
+        return;
+      }
+
+      handleUpdateDraft(
+        customProperty.name,
+        option?.reference ?? (isReferenceList ? [] : '')
+      );
+    };
+
+    return (
+      <DataAssetAsyncSelectList
+        className="bulk-edit-custom-property-reference-select"
+        getPopupContainer={() => document.body}
+        initialOptions={initialOptions}
+        mode={mode}
+        placeholder={
+          isReferenceList
+            ? t('label.entity-reference-plural')
+            : t('label.entity-reference')
+        }
+        popupClassName="bulk-edit-custom-property-select-dropdown"
+        searchIndex={getCustomPropertyReferenceSearchIndex(customProperty)}
+        value={getEntityReferenceSelectValue(propertyValue)}
+        onChange={handleReferenceChange}
+      />
+    );
+  };
+
+  const renderTimeIntervalField = (
+    customProperty: CustomPropertyDefinition,
+    propertyValue: ExtensionDataTypes | undefined
+  ) => {
+    const interval = (isRecord(propertyValue) ? propertyValue : {}) as Partial<{
+      start: number;
+      end: number;
+    }>;
+
+    return (
+      <div className="bulk-edit-custom-property-time-interval">
+        <input
+          aria-label={t('label.start')}
+          className="bulk-edit-custom-property-input"
+          placeholder={t('label.start')}
+          type="number"
+          value={String(interval.start ?? '')}
+          onChange={(event) =>
+            handleUpdateDraft(customProperty.name, {
+              ...interval,
+              start: Number(event.target.value),
+            } as { start: number; end: number })
+          }
+        />
+        <input
+          aria-label={t('label.end')}
+          className="bulk-edit-custom-property-input"
+          placeholder={t('label.end')}
+          type="number"
+          value={String(interval.end ?? '')}
+          onChange={(event) =>
+            handleUpdateDraft(customProperty.name, {
+              ...interval,
+              end: Number(event.target.value),
+            } as { start: number; end: number })
+          }
+        />
+      </div>
+    );
+  };
+
   const renderField = (customProperty: CustomPropertyDefinition) => {
     const propertyType = customProperty.propertyType.name ?? '';
     const propertyValue = draft[customProperty.name];
 
     if (propertyType === 'enum') {
-      const enumValues = getCustomPropertyConfigValues(
-        customProperty.customPropertyConfig?.config
-      );
-      const selectedValues = getCustomPropertyEnumValues(propertyValue);
-      const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
-      const options = enumValues.map((option) => ({
-        label: option,
-        value: option,
-      }));
-
-      const handleEnumChange = (selectedValue?: string | string[]) => {
-        handleUpdateDraft(
-          customProperty.name,
-          Array.isArray(selectedValue)
-            ? selectedValue
-            : selectedValue
-            ? [selectedValue]
-            : []
-        );
-      };
-
-      return (
-        <Select
-          allowClear
-          showSearch
-          className="bulk-edit-custom-property-enum-select"
-          getPopupContainer={() => document.body}
-          mode={isMultiSelect ? 'multiple' : undefined}
-          optionFilterProp="label"
-          options={options}
-          placeholder={t('label.enum-value-plural')}
-          popupClassName="bulk-edit-custom-property-select-dropdown"
-          value={isMultiSelect ? selectedValues : selectedValues[0]}
-          onChange={handleEnumChange}
-        />
-      );
+      return renderEnumField(customProperty, propertyValue);
     }
 
     if (
       propertyType === 'entityReference' ||
       propertyType === 'entityReferenceList'
     ) {
-      const isReferenceList = propertyType === 'entityReferenceList';
-      const mode = isReferenceList ? 'multiple' : undefined;
-      const initialOptions = getEntityReferenceInitialOptions(propertyValue);
-
-      const handleReferenceChange = (
-        option: DataAssetOption | DataAssetOption[]
-      ) => {
-        if (Array.isArray(option)) {
-          handleUpdateDraft(
-            customProperty.name,
-            option.map((item) => item.reference)
-          );
-
-          return;
-        }
-
-        handleUpdateDraft(
-          customProperty.name,
-          option?.reference ?? (isReferenceList ? [] : '')
-        );
-      };
-
-      return (
-        <DataAssetAsyncSelectList
-          className="bulk-edit-custom-property-reference-select"
-          getPopupContainer={() => document.body}
-          initialOptions={initialOptions}
-          mode={mode}
-          placeholder={
-            isReferenceList
-              ? t('label.entity-reference-plural')
-              : t('label.entity-reference')
-          }
-          popupClassName="bulk-edit-custom-property-select-dropdown"
-          searchIndex={getCustomPropertyReferenceSearchIndex(customProperty)}
-          value={getEntityReferenceSelectValue(propertyValue)}
-          onChange={handleReferenceChange}
-        />
+      return renderReferenceField(
+        customProperty,
+        propertyValue,
+        propertyType === 'entityReferenceList'
       );
     }
 
@@ -1550,40 +1617,7 @@ const InlineCustomPropertiesEditor = ({
     }
 
     if (propertyType === 'timeInterval') {
-      const interval = (
-        isRecord(propertyValue) ? propertyValue : {}
-      ) as Partial<{ start: number; end: number }>;
-
-      return (
-        <div className="bulk-edit-custom-property-time-interval">
-          <input
-            aria-label={t('label.start')}
-            className="bulk-edit-custom-property-input"
-            placeholder={t('label.start')}
-            type="number"
-            value={String(interval.start ?? '')}
-            onChange={(event) =>
-              handleUpdateDraft(customProperty.name, {
-                ...interval,
-                start: Number(event.target.value),
-              } as { start: number; end: number })
-            }
-          />
-          <input
-            aria-label={t('label.end')}
-            className="bulk-edit-custom-property-input"
-            placeholder={t('label.end')}
-            type="number"
-            value={String(interval.end ?? '')}
-            onChange={(event) =>
-              handleUpdateDraft(customProperty.name, {
-                ...interval,
-                end: Number(event.target.value),
-              } as { start: number; end: number })
-            }
-          />
-        </div>
-      );
+      return renderTimeIntervalField(customProperty, propertyValue);
     }
 
     return (
@@ -1970,6 +2004,771 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
   )
 );
 
+type CSVCellEditor =
+  | ((
+      props: RenderEditCellProps<Record<string, unknown>, unknown>
+    ) => ReactNode)
+  | undefined;
+
+interface CSVEditorContext {
+  column: string;
+  entityType: EntityType;
+  multipleOwner: {
+    user: boolean;
+    team: boolean;
+  };
+  options: CSVEditorOptions;
+}
+
+type CSVEditorFactory = (ctx: CSVEditorContext) => CSVCellEditor;
+
+const getCsvOwnerEditor: CSVEditorFactory = ({
+  column,
+  entityType,
+  multipleOwner,
+  options,
+}) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor(
+      column as BulkEditPickerColumn,
+      {
+        includeTeams: multipleOwner.team,
+      }
+    );
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row?.[column.key];
+    const owners = value?.split(';') ?? [];
+    const ownerEntityRef = owners.map((owner: string) => {
+      const [type, user] = owner.split(':');
+
+      return {
+        type,
+        name: user,
+        id: user,
+      } as EntityReference;
+    });
+
+    const handleChange = (owners?: EntityReference[]) => {
+      if (!owners || owners.length === 0) {
+        onRowChange({ ...row, [column.key]: '' }, true);
+
+        return;
+      }
+      const ownerText = owners
+        .map((owner) => `${owner.type}:${owner.name}`)
+        .join(';');
+      onRowChange({ ...row, [column.key]: ownerText }, true);
+    };
+
+    return (
+      <UserTeamSelectableList
+        hasPermission
+        multiple={multipleOwner}
+        owner={ownerEntityRef}
+        popoverProps={{
+          open: true,
+        }}
+        onClose={onClose}
+        onUpdate={handleChange}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </UserTeamSelectableList>
+    );
+  };
+};
+
+const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
+  if (options.usePlainTextEditor) {
+    return ({
+      row,
+      onRowChange,
+      onClose,
+      column,
+    }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+      const value = String(row[column.key] ?? '');
+      const handleComplete = (description: string) => {
+        if (description === value) {
+          onClose(false);
+
+          return;
+        }
+
+        onRowChange({ ...row, [column.key]: description }, true);
+        onClose(true);
+      };
+
+      return (
+        <InlineDescriptionEditor
+          value={value}
+          onCancel={() => onClose(false)}
+          onComplete={handleComplete}
+        />
+      );
+    };
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const handleSave = async (description: string) => {
+      onRowChange({ ...row, [column.key]: description }, true);
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        <ModalWithMarkdownEditor
+          visible
+          header="Edit Description"
+          placeholder="Description"
+          value={value}
+          onCancel={() => onClose(false)}
+          onSave={handleSave}
+        />
+      </>
+    );
+  };
+};
+
+const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor('tags');
+  }
+
+  return ({
+    row,
+    rowIdx,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    useMultiContainerFocusTrap({
+      containers: [containerRef.current, dropdownContainerRef.current],
+      active: true,
+    });
+    useEditCellHeightReporter(
+      containerRef,
+      rowIdx,
+      options.onEditCellHeightChange
+    );
+
+    const tags = row[column.key]
+      ? row[column.key]?.split(';').map(
+          (tag: string) =>
+            ({
+              tagFQN: tag,
+              source: TagSource.Classification,
+              name: Fqn.split(tag).pop(),
+            } as TagLabel)
+        )
+      : undefined;
+
+    const handleChange = (tags: TagLabel[]) => {
+      onRowChange({
+        ...row,
+        [column.key]: tags.map((tag) => tag.tagFQN).join(';'),
+      });
+    };
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        <div ref={containerRef}>
+          <InlineEdit
+            onCancel={() => onClose(false)}
+            onSave={() => onClose(true)}>
+            <TagSuggestion
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+              autoFocus
+              dropdownContainerRef={dropdownContainerRef}
+              selectProps={{
+                className: 'react-grid-select-dropdown',
+                getPopupContainer: () => document.body,
+                size: 'small',
+              }}
+              value={tags}
+              onChange={handleChange}
+            />
+          </InlineEdit>
+        </div>
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+};
+
+const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
+  column,
+  entityType,
+  options,
+}) => {
+  if (
+    column === 'glossaryTerms' &&
+    options.usePlainTextEditor &&
+    entityType === EntityType.METRIC
+  ) {
+    return getInlineBulkEditReferencePickerEditor('glossaryTerms');
+  }
+
+  return ({
+    row,
+    rowIdx,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    useMultiContainerFocusTrap({
+      containers: [containerRef.current, dropdownContainerRef.current],
+      active: true,
+    });
+    useEditCellHeightReporter(
+      containerRef,
+      rowIdx,
+      options.onEditCellHeightChange
+    );
+
+    const value = row[column.key];
+    const tags = value ? value?.split(';') : [];
+
+    const handleChange = (option: DefaultOptionType | DefaultOptionType[]) => {
+      if (Array.isArray(option)) {
+        onRowChange({
+          ...row,
+          [column.key]: option.map((tag) => toString(tag.value)).join(';'),
+        });
+      } else {
+        onRowChange({
+          ...row,
+          [column.key]: toString(option.value),
+        });
+      }
+    };
+
+    return (
+      <div ref={containerRef}>
+        <TreeAsyncSelectList
+          defaultValue={tags}
+          dropdownContainerRef={dropdownContainerRef}
+          dropdownMatchSelectWidth={false}
+          optionClassName="tag-select-box"
+          tagType={TagSource.Glossary}
+          onCancel={() => {
+            onClose(false);
+          }}
+          onChange={handleChange}
+          onSubmit={() => onClose(true)}
+        />
+      </div>
+    );
+  };
+};
+
+const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return ({
+      row,
+      onRowChange,
+      onClose,
+      column,
+    }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+      const value = String(row[column.key] ?? '');
+      const handleChange = (selectedValue: string) => {
+        onRowChange({ ...row, [column.key]: selectedValue }, true);
+        onClose(true);
+      };
+
+      return (
+        <KeyDownStopPropagationWrapper>
+          <Select
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+            autoFocus
+            open
+            className="react-grid-select-dropdown bulk-edit-enum-select"
+            data-testid={`${column.key}-select`}
+            dropdownMatchSelectWidth={false}
+            dropdownStyle={{ minWidth: 220 }}
+            getPopupContainer={() => document.body}
+            menuItemSelectedIcon={<Check size={16} />}
+            optionFilterProp="label"
+            options={
+              entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
+                column.key
+              ]
+            }
+            popupClassName="bulk-edit-enum-select-dropdown"
+            size="small"
+            suffixIcon={<ChevronDown size={16} />}
+            value={value || undefined}
+            onChange={handleChange}
+          />
+        </KeyDownStopPropagationWrapper>
+      );
+    };
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const handleChange = async (tag?: Tag) => {
+      onRowChange(
+        {
+          ...row,
+          [column.key]: tag?.fullyQualifiedName,
+        },
+        true
+      );
+    };
+
+    return (
+      <TierCard
+        currentTier={value}
+        popoverProps={{ open: true }}
+        updateTier={handleChange}
+        onClose={() => onClose(false)}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </TierCard>
+    );
+  };
+};
+
+const getCsvCertificationEditor: CSVEditorFactory =
+  () =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
+    const handleChange = async (tag?: Tag) => {
+      onRowChange(
+        {
+          ...row,
+          [column.key]: tag?.fullyQualifiedName,
+        },
+        true
+      );
+    };
+
+    return (
+      <Certification
+        permission
+        currentCertificate={value}
+        popoverProps={{ open: true }}
+        onCertificationUpdate={handleChange}
+        onClose={() => onClose(false)}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </Certification>
+    );
+  };
+
+const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor('domains');
+  }
+
+  return ({
+    row,
+    onRowChange,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const domains = value
+      ? (value?.split(';') ?? []).map((domain: string) => {
+          const fqn = removeOuterEscapes(domain.trim());
+
+          return {
+            type: EntityType.DOMAIN,
+            name: fqn,
+            id: '',
+            fullyQualifiedName: fqn,
+          };
+        })
+      : [];
+
+    const handleChange = async (domain?: EntityReference[]) => {
+      if (!domain || isEmpty(domain)) {
+        onRowChange(
+          {
+            ...row,
+            [column.key]: [],
+          },
+          true
+        );
+
+        return;
+      }
+      onRowChange(
+        {
+          ...row,
+          [column.key]:
+            domain
+              .map((d) => {
+                const fqn = removeOuterEscapes(d.fullyQualifiedName ?? '');
+
+                // Wrap in quotes to match CSV import format; escape any internal " for CSV safety
+                return `"${fqn.replace(/"/g, '""')}"`;
+              })
+              .join(';') ?? '',
+        },
+        true
+      );
+    };
+
+    return (
+      <DomainSelectableList
+        hasPermission
+        multiple
+        getPopupContainer={() => document.body}
+        popoverProps={{ open: true }}
+        selectedDomain={domains}
+        wrapInButton={false}
+        onUpdate={(domain) => handleChange(domain as EntityReference[])}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </DomainSelectableList>
+    );
+  };
+};
+
+const getCsvReviewersEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineBulkEditReferencePickerEditor('reviewers');
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const reviewers = value?.split(';') ?? [];
+    const reviewersEntityRef = reviewers.map((reviewer: string) => {
+      const [type, user] = reviewer.split(':');
+
+      return {
+        type,
+        name: user,
+        id: user,
+      } as EntityReference;
+    });
+
+    const handleChange = (reviewers?: EntityReference[]) => {
+      if (!reviewers || reviewers.length === 0) {
+        onRowChange(
+          {
+            ...row,
+            [column.key]: '',
+          },
+          true
+        );
+
+        return;
+      }
+      const reviewerText = reviewers
+        .map((reviewer) => `${reviewer.type}:${reviewer.name}`)
+        .join(';');
+      onRowChange(
+        {
+          ...row,
+          [column.key]: reviewerText,
+        },
+        true
+      );
+    };
+
+    return (
+      <UserTeamSelectableList
+        hasPermission
+        previewSelected
+        label={t('label.reviewer-plural')}
+        listHeight={200}
+        multiple={{ user: true, team: false }}
+        owner={reviewersEntityRef}
+        popoverProps={{
+          open: true,
+        }}
+        onClose={onClose}
+        onUpdate={handleChange}>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+      </UserTeamSelectableList>
+    );
+  };
+};
+
+const getCsvExtensionEditor: CSVEditorFactory = ({ entityType, options }) => {
+  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+    return getInlineCustomPropertiesEditor(entityType);
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const handleSave = async (extension?: string) => {
+      onRowChange({ ...row, [column.key]: extension }, true);
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        <ModalWithCustomPropertyEditor
+          visible
+          entityType={getCustomPropertyEntityType(entityType)}
+          header="Edit CustomProperty"
+          value={value}
+          onCancel={() => onClose(false)}
+          onSave={handleSave}
+        />
+      </>
+    );
+  };
+};
+
+const getCsvEntityTypeEditor: CSVEditorFactory =
+  () =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const handleChange = (typeValue: string) => {
+      onRowChange({ ...row, [column.key]: typeValue });
+    };
+    const translatedEntityTypeOptions = () =>
+      ENTITY_TYPE_OPTIONS.map((opt) => ({
+        ...opt,
+        label: t(opt.label),
+      }));
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        <InlineEdit
+          onCancel={() => onClose(false)}
+          onSave={() => onClose(true)}>
+          <Select
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+            autoFocus
+            open
+            data-testid="entity-type-select"
+            options={translatedEntityTypeOptions()}
+            size="small"
+            style={{ width: '155px' }}
+            value={value}
+            onChange={handleChange}
+          />
+        </InlineEdit>
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+
+const getCsvMultiSelectEditor: CSVEditorFactory = ({
+  column,
+  entityType,
+  options,
+}) => {
+  if (
+    (column === 'dataProducts' || column === 'relatedMetrics') &&
+    options.usePlainTextEditor &&
+    entityType === EntityType.METRIC
+  ) {
+    return getInlineBulkEditReferencePickerEditor(
+      column as BulkEditPickerColumn
+    );
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const selected = value ? String(value).split(';').filter(Boolean) : [];
+    const handleChange = (values: string[]) => {
+      onRowChange({ ...row, [column.key]: values.join(';') }, true);
+    };
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        <InlineEdit
+          onCancel={() => onClose(false)}
+          onSave={() => onClose(true)}>
+          <Select
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+            autoFocus
+            open
+            className="react-grid-select-dropdown"
+            getPopupContainer={() => document.body}
+            mode="tags"
+            placeholder={t('label.add-entity', {
+              entity: startCase(column.key),
+            })}
+            size="small"
+            value={selected}
+            onChange={handleChange}
+          />
+        </InlineEdit>
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+};
+
+const getCsvExpressionCodeEditor: CSVEditorFactory =
+  () =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const language = (row.expressionLanguage as Language) || Language.SQL;
+    const handleCommit = (code: string, selectedLanguage: Language) => {
+      onRowChange(
+        {
+          ...row,
+          [column.key]: code,
+          expressionLanguage: selectedLanguage,
+        },
+        true
+      );
+      onClose(true);
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{row[column.key]}</ValueRendererOnEditCell>
+        <ExpressionCodeCell
+          language={language}
+          value={String(row[column.key] ?? '')}
+          onCancel={() => onClose(false)}
+          onCommit={handleCommit}
+        />
+      </>
+    );
+  };
+
+const getCsvEnumEditor: CSVEditorFactory =
+  ({ entityType }) =>
+  ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const handleChange = (selectedValue: string) => {
+      onRowChange({ ...row, [column.key]: selectedValue }, true);
+      onClose(true);
+    };
+
+    return (
+      <KeyDownStopPropagationWrapper>
+        <Select
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+          autoFocus
+          open
+          className="react-grid-select-dropdown bulk-edit-enum-select"
+          data-testid={`${column.key}-select`}
+          dropdownMatchSelectWidth={false}
+          dropdownStyle={{ minWidth: 240 }}
+          getPopupContainer={() => document.body}
+          menuItemSelectedIcon={<Check size={16} />}
+          optionFilterProp="label"
+          options={
+            entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
+              column.key
+            ]
+          }
+          popupClassName="bulk-edit-enum-select-dropdown"
+          size="small"
+          suffixIcon={<ChevronDown size={16} />}
+          value={value || undefined}
+          onChange={handleChange}
+        />
+      </KeyDownStopPropagationWrapper>
+    );
+  };
+
+const getCsvCodeEditor: CSVEditorFactory = ({ options }) => {
+  if (options.usePlainTextEditor) {
+    return getInlineTextCellEditor();
+  }
+
+  return ({
+    row,
+    onRowChange,
+    onClose,
+    column,
+  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
+    const value = row[column.key];
+    const handleChange = (value: string) => {
+      onRowChange({ ...row, [column.key]: value });
+    };
+
+    return (
+      <>
+        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        <SchemaModal
+          isFooterVisible
+          visible
+          data={value}
+          editorClass="custom-code-mirror-theme full-screen-editor-height"
+          mode={{ name: CSMode.SQL }}
+          onChange={handleChange}
+          onClose={() => onClose(false)}
+          onSave={() => onClose(true)}
+        />
+      </>
+    );
+  };
+};
+
+const CSV_EDITOR_FACTORIES: Record<string, CSVEditorFactory> = {
+  owner: getCsvOwnerEditor,
+  owners: getCsvOwnerEditor,
+  description: getCsvDescriptionEditor,
+  tags: getCsvTagsEditor,
+  relatedTerms: getCsvGlossaryTermsEditor,
+  glossaryTerms: getCsvGlossaryTermsEditor,
+  tiers: getCsvTiersEditor,
+  certification: getCsvCertificationEditor,
+  domains: getCsvDomainsEditor,
+  reviewers: getCsvReviewersEditor,
+  extension: getCsvExtensionEditor,
+  'entityType*': getCsvEntityTypeEditor,
+  relatedMetrics: getCsvMultiSelectEditor,
+  dataProducts: getCsvMultiSelectEditor,
+  expressionCode: getCsvExpressionCodeEditor,
+  metricType: getCsvEnumEditor,
+  unitOfMeasurement: getCsvEnumEditor,
+  granularity: getCsvEnumEditor,
+  entityStatus: getCsvEnumEditor,
+  code: getCsvCodeEditor,
+};
+
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
     return ['glossaryStatus', 'inspectionQuery'];
@@ -2003,718 +2802,18 @@ class CSVUtilsClassBase {
       team: boolean;
     },
     options: CSVEditorOptions = {}
-  ):
-    | ((
-        props: RenderEditCellProps<Record<string, unknown>, unknown>
-      ) => ReactNode)
-    | undefined {
-    switch (column) {
-      case 'owner':
-      case 'owners':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor(column, {
-            includeTeams: multipleOwner.team,
-          });
-        }
+  ): CSVCellEditor {
+    const factory = CSV_EDITOR_FACTORIES[column];
 
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row?.[column.key];
-          const owners = value?.split(';') ?? [];
-          const ownerEntityRef = owners.map((owner: string) => {
-            const [type, user] = owner.split(':');
-
-            return {
-              type,
-              name: user,
-              id: user,
-            } as EntityReference;
-          });
-
-          const handleChange = (owners?: EntityReference[]) => {
-            if (!owners || owners.length === 0) {
-              onRowChange({ ...row, [column.key]: '' }, true);
-
-              return;
-            }
-            const ownerText = owners
-              .map((owner) => `${owner.type}:${owner.name}`)
-              .join(';');
-            onRowChange({ ...row, [column.key]: ownerText }, true);
-          };
-
-          return (
-            <UserTeamSelectableList
-              hasPermission
-              multiple={multipleOwner}
-              owner={ownerEntityRef}
-              popoverProps={{
-                open: true,
-              }}
-              onClose={onClose}
-              onUpdate={handleChange}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </UserTeamSelectableList>
-          );
-        };
-      case 'description':
-        if (options.usePlainTextEditor) {
-          return ({
-            row,
-            onRowChange,
-            onClose,
-            column,
-          }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-            const value = String(row[column.key] ?? '');
-            const handleComplete = (description: string) => {
-              if (description === value) {
-                onClose(false);
-
-                return;
-              }
-
-              onRowChange({ ...row, [column.key]: description }, true);
-              onClose(true);
-            };
-
-            return (
-              <InlineDescriptionEditor
-                value={value}
-                onCancel={() => onClose(false)}
-                onComplete={handleComplete}
-              />
-            );
-          };
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleSave = async (description: string) => {
-            onRowChange({ ...row, [column.key]: description }, true);
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <ModalWithMarkdownEditor
-                visible
-                header="Edit Description"
-                placeholder="Description"
-                value={value}
-                onCancel={() => onClose(false)}
-                onSave={handleSave}
-              />
-            </>
-          );
-        };
-      case 'tags':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor('tags');
-        }
-
-        return ({
-          row,
-          rowIdx,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const containerRef = useRef<HTMLDivElement | null>(null);
-          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
-          useMultiContainerFocusTrap({
-            containers: [containerRef.current, dropdownContainerRef.current],
-            active: true,
-          });
-          useEditCellHeightReporter(
-            containerRef,
-            rowIdx,
-            options.onEditCellHeightChange
-          );
-
-          const tags = row[column.key]
-            ? row[column.key]?.split(';').map(
-                (tag: string) =>
-                  ({
-                    tagFQN: tag,
-                    source: TagSource.Classification,
-                    name: Fqn.split(tag).pop(),
-                  } as TagLabel)
-              )
-            : undefined;
-
-          const handleChange = (tags: TagLabel[]) => {
-            onRowChange({
-              ...row,
-              [column.key]: tags.map((tag) => tag.tagFQN).join(';'),
-            });
-          };
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <div ref={containerRef}>
-                <InlineEdit
-                  onCancel={() => onClose(false)}
-                  onSave={() => onClose(true)}>
-                  <TagSuggestion
-                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-                    autoFocus
-                    dropdownContainerRef={dropdownContainerRef}
-                    selectProps={{
-                      className: 'react-grid-select-dropdown',
-                      getPopupContainer: () => document.body,
-                      size: 'small',
-                    }}
-                    value={tags}
-                    onChange={handleChange}
-                  />
-                </InlineEdit>
-              </div>
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-      case 'relatedTerms':
-      case 'glossaryTerms':
-        if (
-          column === 'glossaryTerms' &&
-          options.usePlainTextEditor &&
-          entityType === EntityType.METRIC
-        ) {
-          return getInlineBulkEditReferencePickerEditor('glossaryTerms');
-        }
-
-        return ({
-          row,
-          rowIdx,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const containerRef = useRef<HTMLDivElement | null>(null);
-          const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
-          useMultiContainerFocusTrap({
-            containers: [containerRef.current, dropdownContainerRef.current],
-            active: true,
-          });
-          useEditCellHeightReporter(
-            containerRef,
-            rowIdx,
-            options.onEditCellHeightChange
-          );
-
-          const value = row[column.key];
-          const tags = value ? value?.split(';') : [];
-
-          const handleChange = (
-            option: DefaultOptionType | DefaultOptionType[]
-          ) => {
-            if (Array.isArray(option)) {
-              onRowChange({
-                ...row,
-                [column.key]: option
-                  .map((tag) => toString(tag.value))
-                  .join(';'),
-              });
-            } else {
-              onRowChange({
-                ...row,
-                [column.key]: toString(option.value),
-              });
-            }
-          };
-
-          return (
-            <div ref={containerRef}>
-              <TreeAsyncSelectList
-                defaultValue={tags}
-                dropdownContainerRef={dropdownContainerRef}
-                dropdownMatchSelectWidth={false}
-                optionClassName="tag-select-box"
-                tagType={TagSource.Glossary}
-                onCancel={() => {
-                  onClose(false);
-                }}
-                onChange={handleChange}
-                onSubmit={() => onClose(true)}
-              />
-            </div>
-          );
-        };
-      case 'tiers':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return ({
-            row,
-            onRowChange,
-            onClose,
-            column,
-          }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-            const value = String(row[column.key] ?? '');
-            const handleChange = (selectedValue: string) => {
-              onRowChange({ ...row, [column.key]: selectedValue }, true);
-              onClose(true);
-            };
-
-            return (
-              <KeyDownStopPropagationWrapper>
-                <Select
-                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-                  autoFocus
-                  open
-                  className="react-grid-select-dropdown bulk-edit-enum-select"
-                  data-testid={`${column.key}-select`}
-                  dropdownMatchSelectWidth={false}
-                  dropdownStyle={{ minWidth: 220 }}
-                  getPopupContainer={() => document.body}
-                  menuItemSelectedIcon={<Check size={16} />}
-                  optionFilterProp="label"
-                  options={
-                    entityBulkEditConfigClassBase.getEnumColumnOptions(
-                      entityType
-                    )[column.key]
-                  }
-                  popupClassName="bulk-edit-enum-select-dropdown"
-                  size="small"
-                  suffixIcon={<ChevronDown size={16} />}
-                  value={value || undefined}
-                  onChange={handleChange}
-                />
-              </KeyDownStopPropagationWrapper>
-            );
-          };
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = async (tag?: Tag) => {
-            onRowChange(
-              {
-                ...row,
-                [column.key]: tag?.fullyQualifiedName,
-              },
-              true
-            );
-          };
-
-          return (
-            <TierCard
-              currentTier={value}
-              popoverProps={{ open: true }}
-              updateTier={handleChange}
-              onClose={() => onClose(false)}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </TierCard>
-          );
-        };
-
-      case 'certification':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
-          const handleChange = async (tag?: Tag) => {
-            onRowChange(
-              {
-                ...row,
-                [column.key]: tag?.fullyQualifiedName,
-              },
-              true
-            );
-          };
-
-          return (
-            <Certification
-              permission
-              currentCertificate={value}
-              popoverProps={{ open: true }}
-              onCertificationUpdate={handleChange}
-              onClose={() => onClose(false)}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </Certification>
-          );
-        };
-      case 'domains':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor('domains');
-        }
-
-        return ({
-          row,
-          onRowChange,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const domains = value
-            ? (value?.split(';') ?? []).map((domain: string) => {
-                const fqn = removeOuterEscapes(domain.trim());
-
-                return {
-                  type: EntityType.DOMAIN,
-                  name: fqn,
-                  id: '',
-                  fullyQualifiedName: fqn,
-                };
-              })
-            : [];
-
-          const handleChange = async (domain?: EntityReference[]) => {
-            if (!domain || isEmpty(domain)) {
-              onRowChange(
-                {
-                  ...row,
-                  [column.key]: [],
-                },
-                true
-              );
-
-              return;
-            }
-            onRowChange(
-              {
-                ...row,
-                [column.key]:
-                  domain
-                    .map((d) => {
-                      const fqn = removeOuterEscapes(
-                        d.fullyQualifiedName ?? ''
-                      );
-
-                      // Wrap in quotes to match CSV import format; escape any internal " for CSV safety
-                      return `"${fqn.replace(/"/g, '""')}"`;
-                    })
-                    .join(';') ?? '',
-              },
-              true
-            );
-          };
-
-          return (
-            <DomainSelectableList
-              hasPermission
-              multiple
-              getPopupContainer={() => document.body}
-              popoverProps={{ open: true }}
-              selectedDomain={domains}
-              wrapInButton={false}
-              onUpdate={(domain) => handleChange(domain as EntityReference[])}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </DomainSelectableList>
-          );
-        };
-      case 'reviewers':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineBulkEditReferencePickerEditor('reviewers');
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const reviewers = value?.split(';') ?? [];
-          const reviewersEntityRef = reviewers.map((reviewer: string) => {
-            const [type, user] = reviewer.split(':');
-
-            return {
-              type,
-              name: user,
-              id: user,
-            } as EntityReference;
-          });
-
-          const handleChange = (reviewers?: EntityReference[]) => {
-            if (!reviewers || reviewers.length === 0) {
-              onRowChange(
-                {
-                  ...row,
-                  [column.key]: '',
-                },
-                true
-              );
-
-              return;
-            }
-            const reviewerText = reviewers
-              .map((reviewer) => `${reviewer.type}:${reviewer.name}`)
-              .join(';');
-            onRowChange(
-              {
-                ...row,
-                [column.key]: reviewerText,
-              },
-              true
-            );
-          };
-
-          return (
-            <UserTeamSelectableList
-              hasPermission
-              previewSelected
-              label={t('label.reviewer-plural')}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={reviewersEntityRef}
-              popoverProps={{
-                open: true,
-              }}
-              onClose={onClose}
-              onUpdate={handleChange}>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-            </UserTeamSelectableList>
-          );
-        };
-      case 'extension':
-        if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-          return getInlineCustomPropertiesEditor(entityType);
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleSave = async (extension?: string) => {
-            onRowChange({ ...row, [column.key]: extension }, true);
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <ModalWithCustomPropertyEditor
-                visible
-                entityType={getCustomPropertyEntityType(entityType)}
-                header="Edit CustomProperty"
-                value={value}
-                onCancel={() => onClose(false)}
-                onSave={handleSave}
-              />
-            </>
-          );
-        };
-      case 'entityType*':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = (typeValue: string) => {
-            onRowChange({ ...row, [column.key]: typeValue });
-          };
-          const translatedEntityTypeOptions = () =>
-            ENTITY_TYPE_OPTIONS.map((opt) => ({
-              ...opt,
-              label: t(opt.label),
-            }));
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <InlineEdit
-                onCancel={() => onClose(false)}
-                onSave={() => onClose(true)}>
-                <Select
-                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-                  autoFocus
-                  open
-                  data-testid="entity-type-select"
-                  options={translatedEntityTypeOptions()}
-                  size="small"
-                  style={{ width: '155px' }}
-                  value={value}
-                  onChange={handleChange}
-                />
-              </InlineEdit>
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-
-      case 'relatedMetrics':
-      case 'dataProducts':
-        if (
-          (column === 'dataProducts' || column === 'relatedMetrics') &&
-          options.usePlainTextEditor &&
-          entityType === EntityType.METRIC
-        ) {
-          return getInlineBulkEditReferencePickerEditor(column);
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const selected = value
-            ? String(value).split(';').filter(Boolean)
-            : [];
-          const handleChange = (values: string[]) => {
-            onRowChange({ ...row, [column.key]: values.join(';') }, true);
-          };
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <InlineEdit
-                onCancel={() => onClose(false)}
-                onSave={() => onClose(true)}>
-                <Select
-                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-                  autoFocus
-                  open
-                  className="react-grid-select-dropdown"
-                  getPopupContainer={() => document.body}
-                  mode="tags"
-                  placeholder={t('label.add-entity', {
-                    entity: startCase(column.key),
-                  })}
-                  size="small"
-                  value={selected}
-                  onChange={handleChange}
-                />
-              </InlineEdit>
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-
-      case 'expressionCode':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const language = (row.expressionLanguage as Language) || Language.SQL;
-          const handleCommit = (code: string, selectedLanguage: Language) => {
-            onRowChange(
-              {
-                ...row,
-                [column.key]: code,
-                expressionLanguage: selectedLanguage,
-              },
-              true
-            );
-            onClose(true);
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>
-                {row[column.key]}
-              </ValueRendererOnEditCell>
-              <ExpressionCodeCell
-                language={language}
-                value={String(row[column.key] ?? '')}
-                onCancel={() => onClose(false)}
-                onCommit={handleCommit}
-              />
-            </>
-          );
-        };
-
-      case 'metricType':
-      case 'unitOfMeasurement':
-      case 'granularity':
-      case 'entityStatus':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = (selectedValue: string) => {
-            onRowChange({ ...row, [column.key]: selectedValue }, true);
-            onClose(true);
-          };
-
-          return (
-            <KeyDownStopPropagationWrapper>
-              <Select
-                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-                autoFocus
-                open
-                className="react-grid-select-dropdown bulk-edit-enum-select"
-                data-testid={`${column.key}-select`}
-                dropdownMatchSelectWidth={false}
-                dropdownStyle={{ minWidth: 240 }}
-                getPopupContainer={() => document.body}
-                menuItemSelectedIcon={<Check size={16} />}
-                optionFilterProp="label"
-                options={
-                  entityBulkEditConfigClassBase.getEnumColumnOptions(
-                    entityType
-                  )[column.key]
-                }
-                popupClassName="bulk-edit-enum-select-dropdown"
-                size="small"
-                suffixIcon={<ChevronDown size={16} />}
-                value={value || undefined}
-                onChange={handleChange}
-              />
-            </KeyDownStopPropagationWrapper>
-          );
-        };
-
-      case 'code':
-        if (options.usePlainTextEditor) {
-          return getInlineTextCellEditor();
-        }
-
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-          const value = row[column.key];
-          const handleChange = (value: string) => {
-            onRowChange({ ...row, [column.key]: value });
-          };
-
-          return (
-            <>
-              <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-              <SchemaModal
-                isFooterVisible
-                visible
-                data={value}
-                editorClass="custom-code-mirror-theme full-screen-editor-height"
-                mode={{ name: CSMode.SQL }}
-                onChange={handleChange}
-                onClose={() => onClose(false)}
-                onSave={() => onClose(true)}
-              />
-            </>
-          );
-        };
-      default:
-        if (options.usePlainTextEditor) {
-          return getInlineTextCellEditor();
-        }
-
-        return lazyTextEditor;
+    if (factory) {
+      return factory({ column, entityType, multipleOwner, options });
     }
+
+    if (options.usePlainTextEditor) {
+      return getInlineTextCellEditor();
+    }
+
+    return lazyTextEditor;
   }
 }
 

@@ -177,6 +177,67 @@ const PartitionedKeys = withSuspenseFallback(
   <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
+const isDbtTabHidden = (
+  tableDetails?: TableDetailPageTabProps['tableDetails']
+): boolean =>
+  !(
+    tableDetails?.dataModel?.sql ||
+    tableDetails?.dataModel?.rawSql ||
+    tableDetails?.dataModel?.path ||
+    tableDetails?.dataModel?.dbtSourceProject
+  );
+
+const getSampleDataTabChildren = ({
+  isTourOpen,
+  viewSampleDataPermission,
+  deleted,
+  tableDetails,
+  tablePermissions,
+}: Pick<
+  TableDetailPageTabProps,
+  | 'isTourOpen'
+  | 'viewSampleDataPermission'
+  | 'deleted'
+  | 'tableDetails'
+  | 'tablePermissions'
+>) =>
+  !isTourOpen && !viewSampleDataPermission ? (
+    <ErrorPlaceHolder
+      className="border-none"
+      permissionValue={t('label.view-entity', {
+        entity: t('label.sample-data'),
+      })}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  ) : (
+    <SampleDataTableComponent
+      isTableDeleted={deleted}
+      owners={tableDetails?.owners ?? []}
+      permissions={tablePermissions}
+      tableId={tableDetails?.id ?? ''}
+    />
+  );
+
+const getTableQueriesTabChildren = ({
+  viewQueriesPermission,
+  deleted,
+  tableDetails,
+}: Pick<
+  TableDetailPageTabProps,
+  'viewQueriesPermission' | 'deleted' | 'tableDetails'
+>) =>
+  viewQueriesPermission ? (
+    <TableQueries isTableDeleted={deleted} tableId={tableDetails?.id ?? ''} />
+  ) : (
+    <ErrorPlaceHolder
+      className="border-none"
+      permissionValue={t('label.view-entity', {
+        entity: t('label.query-plural'),
+      })}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  );
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
@@ -248,23 +309,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
 
       key: EntityTabs.SAMPLE_DATA,
-      children:
-        !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <SampleDataTableComponent
-            isTableDeleted={deleted}
-            owners={tableDetails?.owners ?? []}
-            permissions={tablePermissions}
-            tableId={tableDetails?.id ?? ''}
-          />
-        ),
+      children: getSampleDataTabChildren({
+        isTourOpen,
+        viewSampleDataPermission,
+        deleted,
+        tableDetails,
+        tablePermissions,
+      }),
     },
     {
       label: (
@@ -281,20 +332,11 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
-      children: viewQueriesPermission ? (
-        <TableQueries
-          isTableDeleted={deleted}
-          tableId={tableDetails?.id ?? ''}
-        />
-      ) : (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.query-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      ),
+      children: getTableQueriesTabChildren({
+        viewQueriesPermission,
+        deleted,
+        tableDetails,
+      }),
     },
     {
       label: (
@@ -372,12 +414,7 @@ export const getTableDetailPageBaseTabs = ({
           name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
         />
       ),
-      isHidden: !(
-        tableDetails?.dataModel?.sql ||
-        tableDetails?.dataModel?.rawSql ||
-        tableDetails?.dataModel?.path ||
-        tableDetails?.dataModel?.dbtSourceProject
-      ),
+      isHidden: isDbtTabHidden(tableDetails),
       key: EntityTabs.DBT,
       children: (
         <QueryViewer

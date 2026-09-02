@@ -73,10 +73,17 @@ const API_ENDPOINT_TASK_FORM_FIELDS = [
   'responseSchema',
 ].join(',');
 
+type BreadcrumbLink = {
+  name: string;
+  url: string;
+  imgSrc?: string;
+  activeTitle?: boolean;
+};
+
 export const getBreadCrumbList = (
   entityData: EntityData,
   entityType: EntityType
-) => {
+): BreadcrumbLink[] => {
   const activeEntity = {
     name: getEntityName(entityData),
     url: entityUtilClassBase.getEntityLink(
@@ -124,106 +131,105 @@ export const getBreadCrumbList = (
     };
   };
 
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.STORED_PROCEDURE: {
-      return [
-        service(ServiceCategory.DATABASE_SERVICES),
-        database,
-        databaseSchema,
-        activeEntity,
-      ];
-    }
+  const apiEndpointBreadcrumbs = (): BreadcrumbLink[] => {
+    const apiCollection = (entityData as APIEndpoint)?.apiCollection;
 
-    case EntityType.TOPIC: {
-      return [service(ServiceCategory.MESSAGING_SERVICES), activeEntity];
-    }
+    return [
+      service(ServiceCategory.API_SERVICES),
+      {
+        name: getEntityName(apiCollection),
+        url: entityUtilClassBase.getEntityLink(
+          entityType,
+          apiCollection?.fullyQualifiedName || ''
+        ),
+      },
+      activeEntity,
+    ];
+  };
 
-    case EntityType.DASHBOARD: {
-      return [service(ServiceCategory.DASHBOARD_SERVICES), activeEntity];
-    }
+  const breadcrumbBuilders: Partial<
+    Record<EntityType, () => BreadcrumbLink[]>
+  > = {
+    [EntityType.TABLE]: () => [
+      service(ServiceCategory.DATABASE_SERVICES),
+      database,
+      databaseSchema,
+      activeEntity,
+    ],
+    [EntityType.STORED_PROCEDURE]: () => [
+      service(ServiceCategory.DATABASE_SERVICES),
+      database,
+      databaseSchema,
+      activeEntity,
+    ],
+    [EntityType.TOPIC]: () => [
+      service(ServiceCategory.MESSAGING_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.DASHBOARD]: () => [
+      service(ServiceCategory.DASHBOARD_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.PIPELINE]: () => [
+      service(ServiceCategory.PIPELINE_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.MLMODEL]: () => [
+      service(ServiceCategory.ML_MODEL_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.SEARCH_INDEX]: () => [
+      service(ServiceCategory.SEARCH_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.DIRECTORY]: () => [
+      service(ServiceCategory.DRIVE_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.DATABASE_SCHEMA]: () => [
+      service(ServiceCategory.DATABASE_SERVICES),
+      database,
+      activeEntity,
+    ],
+    [EntityType.DASHBOARD_DATA_MODEL]: () => [
+      service(ServiceCategory.DASHBOARD_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.CONTAINER]: () => [
+      service(ServiceCategory.STORAGE_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.GLOSSARY]: () =>
+      getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? ''),
+    [EntityType.GLOSSARY_TERM]: () =>
+      getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? ''),
+    [EntityType.API_ENDPOINT]: apiEndpointBreadcrumbs,
+    [EntityType.API_COLLECTION]: () => [
+      service(ServiceCategory.API_SERVICES),
+      activeEntity,
+    ],
+    [EntityType.METRIC]: () => [
+      {
+        name: t('label.metric-plural'),
+        url: ROUTES.METRICS,
+      },
+      {
+        name: getEntityName(entityData),
+        url: '',
+      },
+    ],
+    [EntityType.DATA_PRODUCT]: () => [
+      {
+        name: t('label.data-product-plural'),
+        url: useMarketplaceStore.getState().dataProductBasePath,
+      },
+      activeEntity,
+    ],
+  };
 
-    case EntityType.PIPELINE: {
-      return [service(ServiceCategory.PIPELINE_SERVICES), activeEntity];
-    }
+  const builder = breadcrumbBuilders[entityType];
 
-    case EntityType.MLMODEL: {
-      return [service(ServiceCategory.ML_MODEL_SERVICES), activeEntity];
-    }
-
-    case EntityType.SEARCH_INDEX: {
-      return [service(ServiceCategory.SEARCH_SERVICES), activeEntity];
-    }
-
-    case EntityType.DIRECTORY: {
-      return [service(ServiceCategory.DRIVE_SERVICES), activeEntity];
-    }
-
-    case EntityType.DATABASE_SCHEMA: {
-      return [
-        service(ServiceCategory.DATABASE_SERVICES),
-        database,
-        activeEntity,
-      ];
-    }
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      return [service(ServiceCategory.DASHBOARD_SERVICES), activeEntity];
-    }
-
-    case EntityType.CONTAINER: {
-      return [service(ServiceCategory.STORAGE_SERVICES), activeEntity];
-    }
-
-    case EntityType.GLOSSARY:
-    case EntityType.GLOSSARY_TERM: {
-      return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
-    }
-
-    case EntityType.API_ENDPOINT: {
-      const apiCollection = (entityData as APIEndpoint)?.apiCollection;
-
-      return [
-        service(ServiceCategory.API_SERVICES),
-        {
-          name: getEntityName(apiCollection),
-          url: entityUtilClassBase.getEntityLink(
-            entityType,
-            apiCollection?.fullyQualifiedName || ''
-          ),
-        },
-        activeEntity,
-      ];
-    }
-    case EntityType.API_COLLECTION: {
-      return [service(ServiceCategory.API_SERVICES), activeEntity];
-    }
-
-    case EntityType.METRIC: {
-      return [
-        {
-          name: t('label.metric-plural'),
-          url: ROUTES.METRICS,
-        },
-        {
-          name: getEntityName(entityData),
-          url: '',
-        },
-      ];
-    }
-
-    case EntityType.DATA_PRODUCT: {
-      return [
-        {
-          name: t('label.data-product-plural'),
-          url: useMarketplaceStore.getState().dataProductBasePath,
-        },
-        activeEntity,
-      ];
-    }
-
-    default:
-      return [];
-  }
+  return builder ? builder() : [];
 };
 
 export const fetchEntityDetail = (
@@ -232,26 +238,23 @@ export const fetchEntityDetail = (
   setEntityData: (value: React.SetStateAction<EntityData>) => void,
   setChartData?: (value: React.SetStateAction<Chart[]>) => void
 ) => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      getTableDetailsByFQN(entityFQN, { fields: TableFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
+  const handleError = (err: AxiosError) => showErrorToast(err);
+  const applyEntityData = (res: EntityData) => setEntityData(res);
 
-      break;
-    case EntityType.TOPIC:
+  const fetchHandlers: Partial<Record<EntityType, () => void>> = {
+    [EntityType.TABLE]: () => {
+      getTableDetailsByFQN(entityFQN, { fields: TableFields })
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.TOPIC]: () => {
       getTopicByFqn(entityFQN, {
         fields: TOPIC_TASK_FORM_FIELDS,
       })
-        .then((res) => {
-          setEntityData(res as EntityData);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.DASHBOARD:
+        .then((res) => setEntityData(res as EntityData))
+        .catch(handleError);
+    },
+    [EntityType.DASHBOARD]: () => {
       getDashboardByFqn(entityFQN, { fields: DashboardFields })
         .then((res) => {
           setEntityData(res);
@@ -259,73 +262,46 @@ export const fetchEntityDetail = (
             .then((chart) => {
               setChartData?.(chart);
             })
-            .catch((err: AxiosError) => showErrorToast(err));
+            .catch(handleError);
         })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.PIPELINE:
+        .catch(handleError);
+    },
+    [EntityType.PIPELINE]: () => {
       getPipelineByFqn(entityFQN, { fields: PipelineFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.MLMODEL:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.MLMODEL]: () => {
       getMlModelByFQN(entityFQN, { fields: MlModelFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-
-    case EntityType.DATABASE:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.DATABASE]: () => {
       getDatabaseDetailsByFQN(entityFQN, { fields: DatabaseFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-
-    case EntityType.DATABASE_SCHEMA:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.DATABASE_SCHEMA]: () => {
       getDatabaseSchemaDetailsByFQN(entityFQN, { fields: DatabaseSchemaFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-
-    case EntityType.DASHBOARD_DATA_MODEL:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.DASHBOARD_DATA_MODEL]: () => {
       getDataModelByFqn(entityFQN, { fields: DataModelFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-
-    case EntityType.CONTAINER:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.CONTAINER]: () => {
       getContainerByFQN(entityFQN, { fields: ContainerFields })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-
-    case EntityType.SEARCH_INDEX:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.SEARCH_INDEX]: () => {
       getSearchIndexDetailsByFQN(entityFQN)
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.DATA_PRODUCT:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.DATA_PRODUCT]: () => {
       getDataProductByName(entityFQN, {
         fields: [
           TabSpecificField.OWNERS,
@@ -334,23 +310,17 @@ export const fetchEntityDetail = (
           TabSpecificField.EXTENSION,
         ].join(','),
       })
-        .then((res) => {
-          setEntityData(res as EntityData);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.STORED_PROCEDURE:
+        .then((res) => setEntityData(res as EntityData))
+        .catch(handleError);
+    },
+    [EntityType.STORED_PROCEDURE]: () => {
       getStoredProceduresByFqn(entityFQN, {
         fields: STORED_PROCEDURE_DEFAULT_FIELDS,
       })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.GLOSSARY:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.GLOSSARY]: () => {
       getGlossariesByName(entityFQN, {
         fields: [
           TabSpecificField.OWNERS,
@@ -358,13 +328,10 @@ export const fetchEntityDetail = (
           TabSpecificField.REVIEWERS,
         ].join(','),
       })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    case EntityType.GLOSSARY_TERM:
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.GLOSSARY_TERM]: () => {
       getGlossaryTermByFQN(entityFQN, {
         fields: [
           TabSpecificField.OWNERS,
@@ -372,48 +339,31 @@ export const fetchEntityDetail = (
           TabSpecificField.REVIEWERS,
         ].join(','),
       })
-        .then((res) => {
-          setEntityData(res);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-
-    case EntityType.API_COLLECTION: {
+        .then(applyEntityData)
+        .catch(handleError);
+    },
+    [EntityType.API_COLLECTION]: () => {
       getApiCollectionByFQN(entityFQN, {
         fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
-        .then((res) => {
-          setEntityData(res as EntityData);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    }
-    case EntityType.API_ENDPOINT: {
+        .then((res) => setEntityData(res as EntityData))
+        .catch(handleError);
+    },
+    [EntityType.API_ENDPOINT]: () => {
       getApiEndPointByFQN(entityFQN, {
         fields: API_ENDPOINT_TASK_FORM_FIELDS,
       })
-        .then((res) => {
-          setEntityData(res as EntityData);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-
-      break;
-    }
-    case EntityType.METRIC: {
+        .then((res) => setEntityData(res as EntityData))
+        .catch(handleError);
+    },
+    [EntityType.METRIC]: () => {
       getMetricByFqn(entityFQN, {
         fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
-        .then((res) => {
-          setEntityData(res as EntityData);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .then((res) => setEntityData(res as EntityData))
+        .catch(handleError);
+    },
+  };
 
-      break;
-    }
-
-    default:
-      break;
-  }
+  fetchHandlers[entityType]?.();
 };

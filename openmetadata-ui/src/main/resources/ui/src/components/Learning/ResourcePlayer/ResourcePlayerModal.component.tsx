@@ -23,7 +23,8 @@ import {
 import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
-import React, { useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
+import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
@@ -46,6 +47,177 @@ const FULLSCREEN_PLAYER_CLASS = [
   'tw:[&>*>*]:size-full! tw:[&>*>*]:max-h-none! tw:[&>*>*]:max-w-none! tw:[&>*>*]:aspect-auto!',
 ].join(' ');
 
+const getFormattedDuration = (
+  resource: LearningResource,
+  t: TFunction
+): string | null =>
+  resource.estimatedDuration
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${
+        resource.resourceType === 'Article'
+          ? t('label.min-read')
+          : t('label.min-watch')
+      }`
+    : null;
+
+const getFormattedDate = (resource: LearningResource): string | null =>
+  resource.updatedAt
+    ? DateTime.fromMillis(resource.updatedAt).toFormat('LLL d, yyyy')
+    : null;
+
+const getContextLabel = (pageId: string) =>
+  PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
+
+const getCategoryLabel = (category: string) =>
+  LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
+
+const getCategoryColor = (category: string) =>
+  CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
+
+interface ResourceHeaderProps {
+  resource: LearningResource;
+  isFullScreen: boolean;
+  onFullScreenToggle: () => void;
+  onClose: () => void;
+}
+
+const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
+  resource,
+  isFullScreen,
+  onFullScreenToggle,
+  onClose,
+}) => {
+  const { t } = useTranslation();
+  const categoryTags = resource.categories ?? [];
+
+  return (
+    <Box align="start" className="tw:justify-between" gap={2}>
+      <Box className="tw:flex-1 tw:min-w-0" direction="col">
+        <Typography
+          className="tw:text-primary tw:break-words"
+          size="text-md"
+          weight="semibold">
+          {resource.displayName || resource.name}
+        </Typography>
+
+        {resource.description && (
+          <Typography
+            aria-label={resource.description}
+            className="tw:pt-6 tw:text-[13px] tw:text-tertiary"
+            size="text-sm">
+            {resource.description}
+          </Typography>
+        )}
+
+        {categoryTags.length > 0 && (
+          <Box className="tw:flex-wrap tw:gap-1.5 tw:pt-3">
+            {categoryTags.map((category) => (
+              <Badge
+                color={getCategoryColor(category)}
+                key={category}
+                size="sm"
+                type="color">
+                {getCategoryLabel(category)}
+              </Badge>
+            ))}
+          </Box>
+        )}
+      </Box>
+
+      <Box align="center" className="tw:shrink-0" gap={1}>
+        <ButtonUtility
+          aria-label={
+            isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
+          }
+          color="tertiary"
+          data-testid={isFullScreen ? 'minimize-button' : 'maximize-button'}
+          icon={isFullScreen ? Minimize01 : Maximize01}
+          size="xs"
+          tooltip={
+            isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
+          }
+          onClick={onFullScreenToggle}
+        />
+        <ButtonUtility
+          aria-label={t('label.close')}
+          color="tertiary"
+          data-testid="close-resource-player"
+          icon={XClose}
+          size="xs"
+          onClick={onClose}
+        />
+      </Box>
+    </Box>
+  );
+};
+
+const ResourceHeaderMetaRow: FC<{ resource: LearningResource }> = ({
+  resource,
+}) => {
+  const { t } = useTranslation();
+  const contextItems = resource.contexts ?? [];
+  const formattedDate = getFormattedDate(resource);
+  const formattedDuration = getFormattedDuration(resource, t);
+
+  return (
+    <Box
+      align="center"
+      className="tw:flex-wrap tw:justify-between tw:gap-1.5 tw:pt-3">
+      <Box className="tw:flex-1 tw:min-w-0">
+        {contextItems.length > 0 && (
+          <Box className="tw:flex-wrap tw:gap-2">
+            {contextItems.map((ctx) => (
+              <Badge color="gray" key={ctx.pageId} size="sm" type="color">
+                {getContextLabel(ctx.pageId)}
+              </Badge>
+            ))}
+          </Box>
+        )}
+      </Box>
+      {(formattedDate || formattedDuration) && (
+        <Box align="center" className="tw:shrink-0 tw:gap-1">
+          {formattedDate && (
+            <Typography as="span" className="tw:text-tertiary" size="text-xs">
+              {formattedDate}
+            </Typography>
+          )}
+          {formattedDate && formattedDuration && (
+            <Typography as="span" className="tw:text-quaternary" size="text-xs">
+              |
+            </Typography>
+          )}
+          {formattedDuration && (
+            <Typography as="span" className="tw:text-quaternary" size="text-xs">
+              {formattedDuration}
+            </Typography>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+const ResourceHeader: FC<ResourceHeaderProps> = ({
+  resource,
+  isFullScreen,
+  onFullScreenToggle,
+  onClose,
+}) => (
+  <Box
+    className={classNames(
+      'tw:border-b tw:border-secondary tw:px-6 tw:py-3',
+      isFullScreen && 'tw:shrink-0'
+    )}
+    direction="col">
+    <ResourceHeaderTitleRow
+      isFullScreen={isFullScreen}
+      resource={resource}
+      onClose={onClose}
+      onFullScreenToggle={onFullScreenToggle}
+    />
+    <ResourceHeaderMetaRow resource={resource} />
+  </Box>
+);
+
 export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   open,
   resource,
@@ -67,30 +239,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   }, [open, resource?.id]);
 
   const displayResource = fetchedResource ?? resource;
-
-  const formattedDuration = displayResource.estimatedDuration
-    ? `${Math.floor(displayResource.estimatedDuration / 60)} ${
-        displayResource.resourceType === 'Article'
-          ? t('label.min-read')
-          : t('label.min-watch')
-      }`
-    : null;
-
-  const formattedDate = displayResource.updatedAt
-    ? DateTime.fromMillis(displayResource.updatedAt).toFormat('LLL d, yyyy')
-    : null;
-
-  const categoryTags = displayResource.categories ?? [];
-  const contextItems = displayResource.contexts ?? [];
-
-  const getContextLabel = (pageId: string) =>
-    PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
-
-  const getCategoryLabel = (category: string) =>
-    LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
-
-  const getCategoryColor = (category: string) =>
-    CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
 
   const handleFullScreenToggle = async () => {
     const element = document.getElementById(FULLSCREEN_CONTAINER_ID);
@@ -163,124 +311,12 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
             )}
             direction="col"
             id={FULLSCREEN_CONTAINER_ID}>
-            <Box
-              className={classNames(
-                'tw:border-b tw:border-secondary tw:px-6 tw:py-3',
-                isFullScreen && 'tw:shrink-0'
-              )}
-              direction="col">
-              <Box align="start" className="tw:justify-between" gap={2}>
-                <Box className="tw:flex-1 tw:min-w-0" direction="col">
-                  <Typography
-                    className="tw:text-primary tw:break-words"
-                    size="text-md"
-                    weight="semibold">
-                    {displayResource.displayName || displayResource.name}
-                  </Typography>
-
-                  {displayResource.description && (
-                    <Typography
-                      aria-label={displayResource.description}
-                      className="tw:pt-6 tw:text-[13px] tw:text-tertiary"
-                      size="text-sm">
-                      {displayResource.description}
-                    </Typography>
-                  )}
-
-                  {categoryTags.length > 0 && (
-                    <Box className="tw:flex-wrap tw:gap-1.5 tw:pt-3">
-                      {categoryTags.map((category) => (
-                        <Badge
-                          color={getCategoryColor(category)}
-                          key={category}
-                          size="sm"
-                          type="color">
-                          {getCategoryLabel(category)}
-                        </Badge>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
-
-                <Box align="center" className="tw:shrink-0" gap={1}>
-                  <ButtonUtility
-                    aria-label={
-                      isFullScreen
-                        ? t('label.exit-full-screen')
-                        : t('label.fullscreen')
-                    }
-                    color="tertiary"
-                    data-testid={
-                      isFullScreen ? 'minimize-button' : 'maximize-button'
-                    }
-                    icon={isFullScreen ? Minimize01 : Maximize01}
-                    size="xs"
-                    tooltip={
-                      isFullScreen
-                        ? t('label.exit-full-screen')
-                        : t('label.fullscreen')
-                    }
-                    onClick={handleFullScreenToggle}
-                  />
-                  <ButtonUtility
-                    aria-label={t('label.close')}
-                    color="tertiary"
-                    data-testid="close-resource-player"
-                    icon={XClose}
-                    size="xs"
-                    onClick={onClose}
-                  />
-                </Box>
-              </Box>
-
-              <Box
-                align="center"
-                className="tw:flex-wrap tw:justify-between tw:gap-1.5 tw:pt-3">
-                <Box className="tw:flex-1 tw:min-w-0">
-                  {contextItems.length > 0 && (
-                    <Box className="tw:flex-wrap tw:gap-2">
-                      {contextItems.map((ctx) => (
-                        <Badge
-                          color="gray"
-                          key={ctx.pageId}
-                          size="sm"
-                          type="color">
-                          {getContextLabel(ctx.pageId)}
-                        </Badge>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
-                {(formattedDate || formattedDuration) && (
-                  <Box align="center" className="tw:shrink-0 tw:gap-1">
-                    {formattedDate && (
-                      <Typography
-                        as="span"
-                        className="tw:text-tertiary"
-                        size="text-xs">
-                        {formattedDate}
-                      </Typography>
-                    )}
-                    {formattedDate && formattedDuration && (
-                      <Typography
-                        as="span"
-                        className="tw:text-quaternary"
-                        size="text-xs">
-                        |
-                      </Typography>
-                    )}
-                    {formattedDuration && (
-                      <Typography
-                        as="span"
-                        className="tw:text-quaternary"
-                        size="text-xs">
-                        {formattedDuration}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            </Box>
+            <ResourceHeader
+              isFullScreen={isFullScreen}
+              resource={displayResource}
+              onClose={onClose}
+              onFullScreenToggle={handleFullScreenToggle}
+            />
 
             <Box
               className={classNames(

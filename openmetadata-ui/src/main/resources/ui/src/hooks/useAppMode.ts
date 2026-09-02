@@ -82,6 +82,34 @@ const hasWindow = (): boolean => !isUndefined(globalThis.window);
 // quota-exceeded on writes; storage disabled by browser policy). Treat any
 // failure as "no persistence available" and degrade to the in-memory store
 // — the app still works, refreshes just don't remember the tab's mode.
+const parseSessionTuple = (parsed: unknown): AppModeSession | null => {
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    !('mode' in parsed) ||
+    typeof (parsed as AppModeSession).mode !== 'string'
+  ) {
+    return null;
+  }
+
+  const tuple = parsed as AppModeSession;
+  const personaAppMode =
+    typeof tuple.personaAppMode === 'string' ? tuple.personaAppMode : null;
+  // Preserve `source` when it's one of the known values. Legacy
+  // tuples written before this field existed omit it — treat that
+  // as "manual" via the resolver's `source !== 'boot'` check.
+  const source: AppModeSessionSource | undefined =
+    tuple.source === 'manual' ||
+    tuple.source === 'resolver' ||
+    tuple.source === 'boot'
+      ? tuple.source
+      : undefined;
+
+  return source
+    ? { personaAppMode, mode: tuple.mode, source }
+    : { personaAppMode, mode: tuple.mode };
+};
+
 const readSession = (): AppModeSession | null => {
   if (!hasWindow()) {
     return null;
@@ -96,35 +124,11 @@ const readSession = (): AppModeSession | null => {
     return null;
   }
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      'mode' in parsed &&
-      typeof (parsed as AppModeSession).mode === 'string'
-    ) {
-      const tuple = parsed as AppModeSession;
-      const personaAppMode =
-        typeof tuple.personaAppMode === 'string' ? tuple.personaAppMode : null;
-      // Preserve `source` when it's one of the known values. Legacy
-      // tuples written before this field existed omit it — treat that
-      // as "manual" via the resolver's `source !== 'boot'` check.
-      const source: AppModeSessionSource | undefined =
-        tuple.source === 'manual' ||
-        tuple.source === 'resolver' ||
-        tuple.source === 'boot'
-          ? tuple.source
-          : undefined;
-
-      return source
-        ? { personaAppMode, mode: tuple.mode, source }
-        : { personaAppMode, mode: tuple.mode };
-    }
+    // malformed payloads are treated as absent
+    return parseSessionTuple(JSON.parse(raw) as unknown);
   } catch {
-    // fall through — malformed payloads are treated as absent
+    return null;
   }
-
-  return null;
 };
 
 const writeSession = (tuple: AppModeSession): void => {

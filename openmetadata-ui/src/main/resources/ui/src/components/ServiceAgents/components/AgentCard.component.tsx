@@ -29,7 +29,7 @@ import {
   Database01,
   Terminal,
 } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { useScheduleDescriptionTexts } from '../../../hooks/useScheduleDescriptionTexts';
@@ -53,6 +53,385 @@ import AgentOverflowMenu from './AgentOverflowMenu.component';
 import Metric from './shared/Metric.component';
 import ProgressBar from './shared/ProgressBar.component';
 import StatusPill from './shared/StatusPill.component';
+
+interface AgentStatusFlags {
+  isRunning: boolean;
+  isFailed: boolean;
+  isQueued: boolean;
+  isSuccess: boolean;
+  isNone: boolean;
+  isPaused: boolean;
+  showLastRunMetric: boolean;
+}
+
+const shouldShowLastRunMetric = (
+  isSuccess: boolean,
+  isNone: boolean,
+  agent: Agent
+) => isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
+
+const getAgentStatusFlags = (agent: Agent): AgentStatusFlags => {
+  const isSuccess = agent.status === 'success';
+  const isNone = agent.status === 'none';
+
+  return {
+    isRunning: agent.status === 'running',
+    isFailed: agent.status === 'failed',
+    isQueued: agent.status === 'queued',
+    isSuccess,
+    isNone,
+    // `enabled` defaults to true in the IngestionPipeline schema, so an absent
+    // flag means the agent is running and only an explicit false means paused.
+    isPaused: agent.enabled === false,
+    showLastRunMetric: shouldShowLastRunMetric(isSuccess, isNone, agent),
+  };
+};
+
+interface AgentIdentityProps {
+  agent: Agent;
+  isRunning: boolean;
+  scheduleText: string;
+  showSchedule: boolean;
+}
+
+const AgentIdentity: FC<AgentIdentityProps> = ({
+  agent,
+  isRunning,
+  scheduleText,
+  showSchedule,
+}) => {
+  const { t } = useTranslation();
+  const Icon = AGENT_TYPE_ICON[agent.type] ?? AGENT_TYPE_ICON.Metadata;
+
+  return (
+    <Box
+      align="start"
+      className="tw:w-[30%] tw:min-w-[300px] tw:max-w-[520px] tw:shrink-0 tw:gap-3">
+      <span
+        className={`tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl ${
+          isRunning ? 'tw:bg-brand-primary' : 'tw:bg-tertiary'
+        } ${AGENT_ICON_CLASS[agent.status]}`}>
+        <Icon height={18} width={18} />
+      </span>
+      <div className="tw:min-w-0">
+        <Tooltip placement="top" title={agent.name}>
+          <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
+            <span
+              className="tw:block tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
+              data-testid="pipeline-name">
+              {agent.name}
+            </span>
+          </TooltipTrigger>
+        </Tooltip>
+        <div
+          className="tw:mt-px tw:text-xs tw:text-quaternary"
+          data-testid="pipeline-type">
+          {t(getAgentTypeLabelKey(agent.type))}
+        </div>
+        {showSchedule && (
+          <Tooltip placement="top" title={scheduleText}>
+            <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
+              <span
+                className="tw:mt-px tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-semibold tw:text-secondary"
+                data-testid="agent-schedule">
+                <Calendar className="tw:shrink-0" size={12} />
+                <span className="tw:truncate">{scheduleText}</span>
+              </span>
+            </TooltipTrigger>
+          </Tooltip>
+        )}
+      </div>
+    </Box>
+  );
+};
+
+interface AgentStatusRowProps {
+  agent: Agent;
+  flags: AgentStatusFlags;
+  unitIcon: ReactNode;
+  unitLabel: string;
+  unitVerbLabel: string;
+  etaLabel: string;
+  finishedSuffix: string;
+}
+
+const AgentStatusRow: FC<AgentStatusRowProps> = ({
+  agent,
+  flags,
+  unitIcon,
+  unitLabel,
+  unitVerbLabel,
+  etaLabel,
+  finishedSuffix,
+}) => {
+  const { t } = useTranslation();
+  const { isRunning, isPaused, isQueued, showLastRunMetric } = flags;
+
+  return (
+    <Box align="center" className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
+      {isPaused ? (
+        <Badge
+          className="tw:gap-1.5 tw:font-semibold"
+          color="warning"
+          data-testid="paused-pipeline-badge"
+          size="sm"
+          type="pill-color">
+          <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
+          {t('label.paused')}
+        </Badge>
+      ) : (
+        <>
+          <StatusPill status={agent.status} />
+          {isRunning && (
+            <Metric
+              dataTestId="agent-assets-metric"
+              icon={unitIcon}
+              label={unitVerbLabel}
+              value={fmtNum(agent.assets)}
+            />
+          )}
+          {isRunning && (
+            <Metric
+              dataTestId="agent-eta-metric"
+              icon={<Clock size={15} />}
+              value={etaLabel}
+            />
+          )}
+          {showLastRunMetric && (
+            <Metric
+              icon={unitIcon}
+              label={`${unitLabel}${finishedSuffix}`}
+              value={fmtNum(agent.assets)}
+            />
+          )}
+          {isQueued && agent.after && (
+            <span className="tw:text-sm tw:text-tertiary">
+              {t('label.starts-after')}{' '}
+              <strong className="tw:font-semibold tw:text-secondary">
+                {agent.after}
+              </strong>
+            </span>
+          )}
+        </>
+      )}
+    </Box>
+  );
+};
+
+interface AgentRecentRunsProps {
+  agent: Agent;
+  onRunDetails: (agent: Agent, runId?: string) => void;
+}
+
+const AgentRecentRuns: FC<AgentRecentRunsProps> = ({ agent, onRunDetails }) => {
+  const { t } = useTranslation();
+  // Runs read oldest-to-newest, so the latest one is the rightmost dot.
+  const latestRunIndex = agent.recentRuns.length - 1;
+
+  return (
+    <Box align="center" className="tw:mt-2 tw:gap-2">
+      <span className="tw:text-xs tw:text-quaternary">
+        {t('label.recent-runs-sentence')}
+      </span>
+      <Box className="tw:gap-1">
+        {agent.recentRuns.map((run, index) => (
+          <button
+            aria-label={t('message.run-status-click-details', {
+              status: t(RUN_META[run.status].labelKey),
+            })}
+            className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
+              RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
+            }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
+            data-run-status={run.status}
+            data-testid="agent-run-dot"
+            key={run.id}
+            title={t('message.run-status-click-details', {
+              status: t(RUN_META[run.status].labelKey),
+            })}
+            type="button"
+            onClick={() => onRunDetails(agent, run.id)}
+          />
+        ))}
+      </Box>
+      <Button
+        className="tw:text-xs tw:font-semibold tw:text-brand-tertiary"
+        color="link-color"
+        data-testid="view-run-history-button"
+        size="sm"
+        onClick={() => onRunDetails(agent)}>
+        {t('label.view-run-history')}
+      </Button>
+    </Box>
+  );
+};
+
+interface AgentStatusZoneProps {
+  agent: Agent;
+  flags: AgentStatusFlags;
+  unitIcon: ReactNode;
+  unitLabel: string;
+  unitVerbLabel: string;
+  etaLabel: string;
+  finishedSuffix: string;
+  onRunDetails: (agent: Agent, runId?: string) => void;
+}
+
+const AgentStatusZone: FC<AgentStatusZoneProps> = ({
+  agent,
+  flags,
+  unitIcon,
+  unitLabel,
+  unitVerbLabel,
+  etaLabel,
+  finishedSuffix,
+  onRunDetails,
+}) => {
+  const { isRunning } = flags;
+
+  return (
+    <div className="tw:min-w-0 tw:flex-1">
+      <AgentStatusRow
+        agent={agent}
+        etaLabel={etaLabel}
+        finishedSuffix={finishedSuffix}
+        flags={flags}
+        unitIcon={unitIcon}
+        unitLabel={unitLabel}
+        unitVerbLabel={unitVerbLabel}
+      />
+      {isRunning && (
+        <div data-testid="agent-progress-bar">
+          <ProgressBar pct={agent.pct} status={agent.status} />
+        </div>
+      )}
+      {!isRunning && agent.recentRuns.length > 0 && (
+        <AgentRecentRuns agent={agent} onRunDetails={onRunDetails} />
+      )}
+    </div>
+  );
+};
+
+const AgentIssuesMetrics: FC<{ agent: Agent }> = ({ agent }) => {
+  const { t } = useTranslation();
+
+  if (!(agent.errors > 0 || agent.warnings > 0)) {
+    return null;
+  }
+
+  return (
+    <Box align="center" className="tw:shrink-0 tw:gap-3.5">
+      {agent.errors > 0 && (
+        <Metric
+          dataTestId="agent-errors-metric"
+          icon={<AlertCircle size={15} />}
+          label={t('label.error-plural-lowercase')}
+          tone="error"
+          value={agent.errors}
+        />
+      )}
+      {agent.warnings > 0 && (
+        <Metric
+          dataTestId="agent-warnings-metric"
+          icon={<AlertTriangle size={15} />}
+          label={t('label.warning-plural-lowercase')}
+          tone="warn"
+          value={agent.warnings}
+        />
+      )}
+    </Box>
+  );
+};
+
+interface AgentActionsProps {
+  agent: Agent;
+  allowedActions?: string[];
+  permissions: AgentActionPermissions;
+  isFailed: boolean;
+  isPending: boolean;
+  isUnavailable: boolean;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
+  onLogs: (agent: Agent) => void;
+  onRun: (agent: Agent) => void;
+  onRunDetails: (agent: Agent, runId?: string) => void;
+}
+
+const AgentActions: FC<AgentActionsProps> = ({
+  agent,
+  allowedActions,
+  permissions,
+  isFailed,
+  isPending,
+  isUnavailable,
+  onAction,
+  onLogs,
+  onRun,
+  onRunDetails,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:shrink-0 tw:gap-2">
+      {isFailed && (
+        <Button
+          className="tw:font-semibold"
+          color="primary"
+          data-testid="diagnose-button"
+          iconLeading={<AlertTriangle size={15} />}
+          size="sm"
+          onClick={() => onRunDetails(agent)}>
+          {t('label.diagnose')}
+        </Button>
+      )}
+      {isPending ? (
+        <span
+          aria-busy
+          aria-label={t('label.loading')}
+          aria-live="polite"
+          className="tw:flex tw:items-center tw:gap-2"
+          data-testid="agent-card-actions-skeleton"
+          role="status">
+          <Skeleton height={32} variant="rounded" width={88} />
+          <Skeleton className="tw:size-8.5" variant="rounded" />
+        </span>
+      ) : (
+        <>
+          {!isFailed && (
+            <Button
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+              color="secondary"
+              data-testid="logs-button"
+              iconLeading={<AlignLeft size={15} />}
+              isDisabled={isUnavailable}
+              size="sm"
+              onClick={() => onLogs(agent)}>
+              {t('label.log-plural')}
+            </Button>
+          )}
+          {canRunAgent(agent, permissions) && (
+            <Button
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+              color="secondary"
+              data-testid="run-agent-button"
+              iconLeading={<PlayIcon height={14} width={14} />}
+              isDisabled={isUnavailable}
+              size="sm"
+              onClick={() => onRun(agent)}>
+              {t('label.run')}
+            </Button>
+          )}
+          <AgentOverflowMenu
+            allowedActions={allowedActions}
+            enabled={agent.enabled}
+            isDisabled={isUnavailable}
+            permissions={permissions}
+            status={agent.status}
+            onAction={(action) => onAction(action, agent)}
+          />
+        </>
+      )}
+    </Box>
+  );
+};
 
 interface AgentCardProps {
   agent: Agent;
@@ -81,17 +460,8 @@ const AgentCard: FC<AgentCardProps> = ({
     .filter(Boolean)
     .join(', ');
   const showSchedule = Boolean(agent.schedule) && Boolean(descriptionFirstPart);
-  const Icon = AGENT_TYPE_ICON[agent.type] ?? AGENT_TYPE_ICON.Metadata;
-  const isRunning = agent.status === 'running';
-  const isFailed = agent.status === 'failed';
-  const isQueued = agent.status === 'queued';
-  const isSuccess = agent.status === 'success';
-  const isNone = agent.status === 'none';
-  // `enabled` defaults to true in the IngestionPipeline schema, so an absent
-  // flag means the agent is running and only an explicit false means paused.
-  const isPaused = agent.enabled === false;
-  const showLastRunMetric =
-    isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
+  const flags = getAgentStatusFlags(agent);
+  const { isRunning, isFailed } = flags;
   const finishedSuffix = agent.finishedAt
     ? ` · ${t('label.finished-lowercase')} ${agent.finishedAt}`
     : '';
@@ -104,8 +474,6 @@ const AgentCard: FC<AgentCardProps> = ({
     ) : (
       <Database01 size={15} />
     );
-  // Runs read oldest-to-newest, so the latest one is the rightmost dot.
-  const latestRunIndex = agent.recentRuns.length - 1;
 
   return (
     <Card
@@ -119,225 +487,43 @@ const AgentCard: FC<AgentCardProps> = ({
       )}
       <Box align="center" className="tw:gap-3.5">
         {/* identity */}
-        <Box
-          align="start"
-          className="tw:w-[30%] tw:min-w-[300px] tw:max-w-[520px] tw:shrink-0 tw:gap-3">
-          <span
-            className={`tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl ${
-              isRunning ? 'tw:bg-brand-primary' : 'tw:bg-tertiary'
-            } ${AGENT_ICON_CLASS[agent.status]}`}>
-            <Icon height={18} width={18} />
-          </span>
-          <div className="tw:min-w-0">
-            <Tooltip placement="top" title={agent.name}>
-              <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
-                <span
-                  className="tw:block tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
-                  data-testid="pipeline-name">
-                  {agent.name}
-                </span>
-              </TooltipTrigger>
-            </Tooltip>
-            <div
-              className="tw:mt-px tw:text-xs tw:text-quaternary"
-              data-testid="pipeline-type">
-              {t(getAgentTypeLabelKey(agent.type))}
-            </div>
-            {showSchedule && (
-              <Tooltip placement="top" title={scheduleText}>
-                <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
-                  <span
-                    className="tw:mt-px tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-semibold tw:text-secondary"
-                    data-testid="agent-schedule">
-                    <Calendar className="tw:shrink-0" size={12} />
-                    <span className="tw:truncate">{scheduleText}</span>
-                  </span>
-                </TooltipTrigger>
-              </Tooltip>
-            )}
-          </div>
-        </Box>
+        <AgentIdentity
+          agent={agent}
+          isRunning={isRunning}
+          scheduleText={scheduleText}
+          showSchedule={showSchedule}
+        />
 
         {/* live status zone */}
-        <div className="tw:min-w-0 tw:flex-1">
-          <Box
-            align="center"
-            className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
-            {isPaused ? (
-              <Badge
-                className="tw:gap-1.5 tw:font-semibold"
-                color="warning"
-                data-testid="paused-pipeline-badge"
-                size="sm"
-                type="pill-color">
-                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
-                {t('label.paused')}
-              </Badge>
-            ) : (
-              <>
-                <StatusPill status={agent.status} />
-                {isRunning && (
-                  <Metric
-                    dataTestId="agent-assets-metric"
-                    icon={unitIcon}
-                    label={unitVerbLabel}
-                    value={fmtNum(agent.assets)}
-                  />
-                )}
-                {isRunning && (
-                  <Metric
-                    dataTestId="agent-eta-metric"
-                    icon={<Clock size={15} />}
-                    value={etaLabel}
-                  />
-                )}
-                {showLastRunMetric && (
-                  <Metric
-                    icon={unitIcon}
-                    label={`${unitLabel}${finishedSuffix}`}
-                    value={fmtNum(agent.assets)}
-                  />
-                )}
-                {isQueued && agent.after && (
-                  <span className="tw:text-sm tw:text-tertiary">
-                    {t('label.starts-after')}{' '}
-                    <strong className="tw:font-semibold tw:text-secondary">
-                      {agent.after}
-                    </strong>
-                  </span>
-                )}
-              </>
-            )}
-          </Box>
-          {isRunning && (
-            <div data-testid="agent-progress-bar">
-              <ProgressBar pct={agent.pct} status={agent.status} />
-            </div>
-          )}
-          {!isRunning && agent.recentRuns.length > 0 && (
-            <Box align="center" className="tw:mt-2 tw:gap-2">
-              <span className="tw:text-xs tw:text-quaternary">
-                {t('label.recent-runs-sentence')}
-              </span>
-              <Box className="tw:gap-1">
-                {agent.recentRuns.map((run, index) => (
-                  <button
-                    aria-label={t('message.run-status-click-details', {
-                      status: t(RUN_META[run.status].labelKey),
-                    })}
-                    className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
-                      RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
-                    }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
-                    data-run-status={run.status}
-                    data-testid="agent-run-dot"
-                    key={run.id}
-                    title={t('message.run-status-click-details', {
-                      status: t(RUN_META[run.status].labelKey),
-                    })}
-                    type="button"
-                    onClick={() => onRunDetails(agent, run.id)}
-                  />
-                ))}
-              </Box>
-              <Button
-                className="tw:text-xs tw:font-semibold tw:text-brand-tertiary"
-                color="link-color"
-                data-testid="view-run-history-button"
-                size="sm"
-                onClick={() => onRunDetails(agent)}>
-                {t('label.view-run-history')}
-              </Button>
-            </Box>
-          )}
-        </div>
+        <AgentStatusZone
+          agent={agent}
+          etaLabel={etaLabel}
+          finishedSuffix={finishedSuffix}
+          flags={flags}
+          unitIcon={unitIcon}
+          unitLabel={unitLabel}
+          unitVerbLabel={unitVerbLabel}
+          onRunDetails={onRunDetails}
+        />
 
         {/* errors / warnings — kept out of the status rows so the block stays
             vertically centered in the card alongside the actions */}
-        {(agent.errors > 0 || agent.warnings > 0) && (
-          <Box align="center" className="tw:shrink-0 tw:gap-3.5">
-            {agent.errors > 0 && (
-              <Metric
-                dataTestId="agent-errors-metric"
-                icon={<AlertCircle size={15} />}
-                label={t('label.error-plural-lowercase')}
-                tone="error"
-                value={agent.errors}
-              />
-            )}
-            {agent.warnings > 0 && (
-              <Metric
-                dataTestId="agent-warnings-metric"
-                icon={<AlertTriangle size={15} />}
-                label={t('label.warning-plural-lowercase')}
-                tone="warn"
-                value={agent.warnings}
-              />
-            )}
-          </Box>
-        )}
+        <AgentIssuesMetrics agent={agent} />
 
         {/* actions — Diagnose opens the run history, which is read from OpenMetadata's own
             tables, so it stays available while the pipeline service does not answer */}
-        <Box align="center" className="tw:shrink-0 tw:gap-2">
-          {isFailed && (
-            <Button
-              className="tw:font-semibold"
-              color="primary"
-              data-testid="diagnose-button"
-              iconLeading={<AlertTriangle size={15} />}
-              size="sm"
-              onClick={() => onRunDetails(agent)}>
-              {t('label.diagnose')}
-            </Button>
-          )}
-          {isPending ? (
-            <span
-              aria-busy
-              aria-label={t('label.loading')}
-              aria-live="polite"
-              className="tw:flex tw:items-center tw:gap-2"
-              data-testid="agent-card-actions-skeleton"
-              role="status">
-              <Skeleton height={32} variant="rounded" width={88} />
-              <Skeleton className="tw:size-8.5" variant="rounded" />
-            </span>
-          ) : (
-            <>
-              {!isFailed && (
-                <Button
-                  className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
-                  color="secondary"
-                  data-testid="logs-button"
-                  iconLeading={<AlignLeft size={15} />}
-                  isDisabled={isUnavailable}
-                  size="sm"
-                  onClick={() => onLogs(agent)}>
-                  {t('label.log-plural')}
-                </Button>
-              )}
-              {canRunAgent(agent, permissions) && (
-                <Button
-                  className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
-                  color="secondary"
-                  data-testid="run-agent-button"
-                  iconLeading={<PlayIcon height={14} width={14} />}
-                  isDisabled={isUnavailable}
-                  size="sm"
-                  onClick={() => onRun(agent)}>
-                  {t('label.run')}
-                </Button>
-              )}
-              <AgentOverflowMenu
-                allowedActions={allowedActions}
-                enabled={agent.enabled}
-                isDisabled={isUnavailable}
-                permissions={permissions}
-                status={agent.status}
-                onAction={(action) => onAction(action, agent)}
-              />
-            </>
-          )}
-        </Box>
+        <AgentActions
+          agent={agent}
+          allowedActions={allowedActions}
+          isFailed={isFailed}
+          isPending={isPending}
+          isUnavailable={isUnavailable}
+          permissions={permissions}
+          onAction={onAction}
+          onLogs={onLogs}
+          onRun={onRun}
+          onRunDetails={onRunDetails}
+        />
       </Box>
     </Card>
   );

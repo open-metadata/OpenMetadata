@@ -219,47 +219,49 @@ export interface ColumnGridParams {
   glossaryTerms?: string[];
 }
 
+const appendStringParam = (
+  queryParams: URLSearchParams,
+  key: string,
+  value?: string
+): void => {
+  if (value) {
+    queryParams.append(key, value);
+  }
+};
+
+const appendListParam = (
+  queryParams: URLSearchParams,
+  key: string,
+  value?: string[]
+): void => {
+  if (value && value.length > 0) {
+    queryParams.append(key, value.join(','));
+  }
+};
+
 export const getColumnGrid = async (
   params: ColumnGridParams
 ): Promise<ColumnGridResponse> => {
   const queryParams = new URLSearchParams();
 
-  if (params.size) {
-    queryParams.append('size', String(params.size));
-  }
-  if (params.cursor) {
-    queryParams.append('cursor', params.cursor);
-  }
-  if (params.entityTypes && params.entityTypes.length > 0) {
-    queryParams.append('entityTypes', params.entityTypes.join(','));
-  }
-  if (params.serviceName) {
-    queryParams.append('serviceName', params.serviceName);
-  }
-  if (params.serviceTypes && params.serviceTypes.length > 0) {
-    queryParams.append('serviceTypes', params.serviceTypes.join(','));
-  }
-  if (params.databaseName) {
-    queryParams.append('databaseName', params.databaseName);
-  }
-  if (params.schemaName) {
-    queryParams.append('schemaName', params.schemaName);
-  }
-  if (params.columnNamePattern) {
-    queryParams.append('columnNamePattern', params.columnNamePattern);
-  }
+  appendStringParam(
+    queryParams,
+    'size',
+    params.size ? String(params.size) : undefined
+  );
+  appendStringParam(queryParams, 'cursor', params.cursor);
+  appendListParam(queryParams, 'entityTypes', params.entityTypes);
+  appendStringParam(queryParams, 'serviceName', params.serviceName);
+  appendListParam(queryParams, 'serviceTypes', params.serviceTypes);
+  appendStringParam(queryParams, 'databaseName', params.databaseName);
+  appendStringParam(queryParams, 'schemaName', params.schemaName);
+  appendStringParam(queryParams, 'columnNamePattern', params.columnNamePattern);
   if (params.metadataStatus && params.metadataStatus.length > 0) {
     queryParams.append('metadataStatus', params.metadataStatus[0]);
   }
-  if (params.domainId) {
-    queryParams.append('domainId', params.domainId);
-  }
-  if (params.tags && params.tags.length > 0) {
-    queryParams.append('tags', params.tags.join(','));
-  }
-  if (params.glossaryTerms && params.glossaryTerms.length > 0) {
-    queryParams.append('glossaryTerms', params.glossaryTerms.join(','));
-  }
+  appendStringParam(queryParams, 'domainId', params.domainId);
+  appendListParam(queryParams, 'tags', params.tags);
+  appendListParam(queryParams, 'glossaryTerms', params.glossaryTerms);
 
   const response = await APIClient.get<ColumnGridResponse>(
     `/columns/grid?${queryParams.toString()}`

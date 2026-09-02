@@ -59,6 +59,89 @@ import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
+
+interface QueryBuilderResultCountProps {
+  isCountLoading: boolean;
+  showFilteredResourceCount: boolean;
+  showExploreLink: boolean;
+  queryURL: string;
+  searchResults?: number;
+  isCountBannerClosed: boolean;
+  onCountBannerClose: () => void;
+}
+
+const QueryBuilderResultCount: FC<QueryBuilderResultCountProps> = ({
+  isCountLoading,
+  showFilteredResourceCount,
+  showExploreLink,
+  queryURL,
+  searchResults,
+  isCountBannerClosed,
+  onCountBannerClose,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {isCountLoading && (
+        <Skeleton
+          active
+          className="m-t-sm"
+          loading={isCountLoading}
+          paragraph={false}
+          title={{ style: { height: '32px' } }}
+        />
+      )}
+
+      {showFilteredResourceCount && (
+        <div className="m-t-sm">
+          {showExploreLink ? (
+            <Button
+              className="w-full p-0 text-left h-auto"
+              data-testid="view-assets-banner-button"
+              disabled={false}
+              href={queryURL}
+              target="_blank"
+              type="link">
+              <Alert
+                closable
+                showIcon
+                icon={<InfoCircleOutlined height={16} />}
+                message={
+                  <div className="d-flex flex-wrap items-center gap-1">
+                    <Typography.Text>
+                      {t('message.search-entity-count', {
+                        count: searchResults,
+                      })}
+                    </Typography.Text>
+
+                    <Typography.Text className="text-xs text-grey-muted">
+                      {t('message.click-here-to-view-assets-on-explore')}
+                    </Typography.Text>
+                  </div>
+                }
+                type="info"
+              />
+            </Button>
+          ) : (
+            !isCountBannerClosed && (
+              <CoreAlert
+                closable
+                data-testid="view-assets-banner-count"
+                title={t('message.search-entity-count', {
+                  count: searchResults,
+                })}
+                variant="brand"
+                onClose={onCountBannerClose}
+              />
+            )
+          )}
+        </div>
+      )}
+    </>
+  );
+};
+
 const QueryBuilderWidget: FC<
   WidgetProps & {
     fields?: Config['fields'];
@@ -87,7 +170,6 @@ const QueryBuilderWidget: FC<
   const isSearchIndexUpdatedInContext =
     searchIndexFromContext === resolvedSearchIndex;
   const [initDone, setInitDone] = useState<boolean>(false);
-  const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
   const [queryActions, setQueryActions] = useState<Actions>();
   const [isCountBannerClosed, setIsCountBannerClosed] = useState(false);
@@ -287,61 +369,15 @@ const QueryBuilderWidget: FC<
               onChange={handleChange}
             />
 
-            {isCountLoading && (
-              <Skeleton
-                active
-                className="m-t-sm"
-                loading={isCountLoading}
-                paragraph={false}
-                title={{ style: { height: '32px' } }}
-              />
-            )}
-
-            {showFilteredResourceCount && (
-              <div className="m-t-sm">
-                {showExploreLink ? (
-                  <Button
-                    className="w-full p-0 text-left h-auto"
-                    data-testid="view-assets-banner-button"
-                    disabled={false}
-                    href={queryURL}
-                    target="_blank"
-                    type="link">
-                    <Alert
-                      closable
-                      showIcon
-                      icon={<InfoCircleOutlined height={16} />}
-                      message={
-                        <div className="d-flex flex-wrap items-center gap-1">
-                          <Typography.Text>
-                            {t('message.search-entity-count', {
-                              count: searchResults,
-                            })}
-                          </Typography.Text>
-
-                          <Typography.Text className="text-xs text-grey-muted">
-                            {t('message.click-here-to-view-assets-on-explore')}
-                          </Typography.Text>
-                        </div>
-                      }
-                      type="info"
-                    />
-                  </Button>
-                ) : (
-                  !isCountBannerClosed && (
-                    <CoreAlert
-                      closable
-                      data-testid="view-assets-banner-count"
-                      title={t('message.search-entity-count', {
-                        count: searchResults,
-                      })}
-                      variant="brand"
-                      onClose={() => setIsCountBannerClosed(true)}
-                    />
-                  )
-                )}
-              </div>
-            )}
+            <QueryBuilderResultCount
+              isCountBannerClosed={isCountBannerClosed}
+              isCountLoading={isCountLoading}
+              queryURL={queryURL}
+              searchResults={searchResults}
+              showExploreLink={showExploreLink}
+              showFilteredResourceCount={showFilteredResourceCount}
+              onCountBannerClose={() => setIsCountBannerClosed(true)}
+            />
           </Col>
         </Row>
       </Card>
