@@ -506,7 +506,7 @@ jobs:
           body-includes: '<!-- check:ui-checkstyle-summary -->'
 
       - name: Post or update summary comment
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
         continue-on-error: true
         with:
