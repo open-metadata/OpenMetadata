@@ -18,6 +18,13 @@ on:
   # inside the workflow via dorny/paths-filter so PRs without UI changes skip
   # the expensive jobs while still reporting a passing status.
   pull_request_target:
+    # main only. Release branches carry their own ui-checkstyle.yml and must be
+    # validated by it: this workflow assumes tooling (eslint-pr-report,
+    # tw-audit, tw-deprecation-guard, core-components check-i18n-all) that older
+    # branches do not have, so running it against them fails on MODULE_NOT_FOUND
+    # before the PR's code is ever examined.
+    branches:
+      - main
     types:
       - opened
       - synchronize
@@ -499,7 +506,7 @@ jobs:
           body-includes: '<!-- check:ui-checkstyle-summary -->'
 
       - name: Post or update summary comment
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
         continue-on-error: true
         with:

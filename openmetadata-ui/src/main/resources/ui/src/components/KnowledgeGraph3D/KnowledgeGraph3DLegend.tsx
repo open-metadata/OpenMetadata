@@ -123,6 +123,7 @@ const KnowledgeGraph3DLegend: FC = () => {
         <span
           className="tw:ml-auto tw:text-xs tw:opacity-60 tw:transition-transform"
           style={{ transform: isOpen ? 'rotate(90deg)' : 'none' }}>
+          {/* eslint-disable-line i18next/no-literal-string -- decorative disclosure triangle glyph */}
           ▸
         </span>
       </button>

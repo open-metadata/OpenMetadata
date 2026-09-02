@@ -191,6 +191,25 @@ es_nif_data: LabeledData = {
 
 # Sample data for regression tests
 
+# ALL-CAPS status-enum values must not produce false-positive PERSON tags from the NER pass.
+# "ACTIVE" → "Active", "PENDING" → "Pending" look like name tokens to spaCy but are not PII.
+false_positive_allcaps_status_enum_data: LabeledData = {
+    "column_name": None,
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "ACTIVE",
+        "PENDING",
+        "CANCELLED",
+        "COMPLETED",
+        "FAILED",
+        "RUNNING",
+        "PAUSED",
+        "QUEUED",
+    ],
+    "pii_tags": [],
+    "pii_sensitivity": False,
+}
+
 # Previously, this data was incorrectly tagged as PII.DATE_TIME
 false_positive_datetime_data: LabeledData = {
     "column_name": None,
