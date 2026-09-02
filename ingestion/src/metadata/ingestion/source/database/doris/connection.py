@@ -14,6 +14,8 @@ Source connection handler
 
 from typing import Optional
 
+from pydoris.sqlalchemy.dialect import DorisDialect
+from sqlalchemy.dialects.mysql.base import MySQLIdentifierPreparer
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -32,6 +34,16 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+
+
+class DorisIdentifierPreparer(MySQLIdentifierPreparer):
+    """Quote every identifier because Doris reserves more words than MySQL."""
+
+    def _requires_quotes(self, value: str) -> bool:
+        return True
+
+
+DorisDialect.preparer = DorisIdentifierPreparer
 
 
 class DorisConnection(BaseConnection[DorisConnectionConfig, Engine]):

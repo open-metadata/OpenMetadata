@@ -10,6 +10,10 @@
 #  limitations under the License.
 """Unit tests for Doris connection handling."""
 
+import pytest
+from pydoris.sqlalchemy.dialect import DorisDialect
+from sqlalchemy import Column, Integer, MetaData, Table, select
+
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection as DorisConnectionConfig,
 )
@@ -22,6 +26,25 @@ from metadata.ingestion.source.database.doris.connection import DorisConnection
 
 def test_doris_connection_is_base_connection():
     assert issubclass(DorisConnection, BaseConnection)
+
+
+@pytest.mark.parametrize(
+    "column_name",
+    ["install", "uninstall", "account_lock", "tablet", "ordinary_column"],
+)
+def test_doris_identifiers_are_always_quoted(column_name: str):
+    table = Table(
+        "events",
+        MetaData(),
+        Column("id", Integer),
+        Column(column_name, Integer),
+    )
+
+    query = str(select(table.c.id, table.c[column_name]).compile(dialect=DorisDialect()))
+
+    assert "`events`.`id`" in query
+    assert f"`events`.`{column_name}`" in query
+    assert "FROM `events`" in query
 
 
 def test_basic_auth_builds_doris_engine():
