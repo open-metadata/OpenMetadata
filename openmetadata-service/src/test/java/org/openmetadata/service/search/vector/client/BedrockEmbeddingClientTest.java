@@ -236,7 +236,9 @@ class BedrockEmbeddingClientTest {
   void titanResponseReportsInputTokens() {
     EmbeddingResult result =
         BedrockEmbeddingClient.parseEmbeddingResult(
-            BedrockEmbeddingFamily.TITAN_V2, "{\"embedding\":[0.6,0.7],\"inputTextTokenCount\":2}");
+            BedrockEmbeddingFamily.TITAN_V2,
+            "{\"embedding\":[0.6,0.7],\"inputTextTokenCount\":2}",
+            null);
 
     assertArrayEquals(new float[] {0.6f, 0.7f}, result.vector(), DELTA);
     assertNotNull(result.usage());
@@ -247,7 +249,9 @@ class BedrockEmbeddingClientTest {
   void titanV1ResponseReportsInputTokens() {
     EmbeddingResult result =
         BedrockEmbeddingClient.parseEmbeddingResult(
-            BedrockEmbeddingFamily.TITAN_V1, "{\"embedding\":[0.1],\"inputTextTokenCount\":17}");
+            BedrockEmbeddingFamily.TITAN_V1,
+            "{\"embedding\":[0.1],\"inputTextTokenCount\":17}",
+            null);
 
     assertNotNull(result.usage());
     assertEquals(17L, result.usage().inputTokens());
@@ -257,7 +261,7 @@ class BedrockEmbeddingClientTest {
   void titanResponseWithoutTokenCountReportsNoUsage() {
     EmbeddingResult result =
         BedrockEmbeddingClient.parseEmbeddingResult(
-            BedrockEmbeddingFamily.TITAN_V2, "{\"embedding\":[0.6,0.7]}");
+            BedrockEmbeddingFamily.TITAN_V2, "{\"embedding\":[0.6,0.7]}", null);
 
     assertNull(result.usage(), "an absent count must stay absent rather than becoming 0");
   }
@@ -267,7 +271,7 @@ class BedrockEmbeddingClientTest {
     // Cohere on Bedrock returns no token count at all, so consumers must estimate one.
     EmbeddingResult result =
         BedrockEmbeddingClient.parseEmbeddingResult(
-            BedrockEmbeddingFamily.COHERE, "{\"embeddings\":[[0.1,0.2,0.3]]}");
+            BedrockEmbeddingFamily.COHERE, "{\"embeddings\":[[0.1,0.2,0.3]]}", null);
 
     assertArrayEquals(new float[] {0.1f, 0.2f, 0.3f}, result.vector(), DELTA);
     assertNull(result.usage());

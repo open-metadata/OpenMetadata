@@ -282,7 +282,8 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
             .body(SdkBytes.fromUtf8String(body))
             .build();
     InvokeModelResponse response = bedrockClient.invokeModel(request);
-    return parseEmbeddingResult(family, response.body().asUtf8String());
+    // `text` here is already capped and possibly halved, so it is what the provider received.
+    return parseEmbeddingResult(family, response.body().asUtf8String(), text);
   }
 
   /**
@@ -375,10 +376,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   }
 
   static float[] parseEmbeddingResponse(BedrockEmbeddingFamily family, String responseBody) {
-    return parseEmbeddingResult(family, responseBody).vector();
+    return parseEmbeddingResult(family, responseBody, null).vector();
   }
 
-  static EmbeddingResult parseEmbeddingResult(BedrockEmbeddingFamily family, String responseBody) {
+  static EmbeddingResult parseEmbeddingResult(
+      BedrockEmbeddingFamily family, String responseBody, String submittedText) {
     try {
       JsonNode root = MAPPER.readTree(responseBody);
       JsonNode embeddingNode = family.extractEmbedding(root);
@@ -389,7 +391,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       for (int i = 0; i < embeddingNode.size(); i++) {
         embedding[i] = (float) embeddingNode.get(i).asDouble();
       }
-      return new EmbeddingResult(embedding, family.extractUsage(root));
+      return new EmbeddingResult(embedding, family.extractUsage(root), submittedText);
     } catch (IOException e) {
       throw new RuntimeException("Failed to parse Bedrock embedding response", e);
     }

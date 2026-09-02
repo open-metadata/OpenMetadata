@@ -33,12 +33,24 @@ public abstract class EmbeddingClient {
   /**
    * A vector plus the usage of the call that produced it. {@code usage} is {@code null} when the
    * provider does not report token counts (Google's {@code :embedContent} and Cohere on Bedrock
-   * never do), so consumers that need a number must estimate one from the input text.
+   * never do), so consumers that need a number must estimate one from the submitted text.
+   *
+   * <p>{@code submittedText} is what actually went to the provider, which is not always what the
+   * caller passed in: providers with a hard input limit truncate first (Cohere on Bedrock at 2048
+   * chars, well under a normal chunk). Estimating from the caller's string would then overstate
+   * every truncated call — and Cohere is precisely the family that reports no usage, so estimation
+   * is the only option there. {@code null} means the input went through unchanged.
    *
    * <p>A carrier only: the generated {@code equals}/{@code hashCode} compare {@code vector} by
    * identity, so do not use this record as a map key or in equality assertions.
    */
-  public record EmbeddingResult(float[] vector, EmbeddingUsage usage) {}
+  public record EmbeddingResult(float[] vector, EmbeddingUsage usage, String submittedText) {
+
+    /** For providers that submit the caller's input unchanged. */
+    public EmbeddingResult(float[] vector, EmbeddingUsage usage) {
+      this(vector, usage, null);
+    }
+  }
 
   /**
    * Notified after each successful embedding call, so a deployment can meter its own embedding
@@ -47,6 +59,13 @@ public abstract class EmbeddingClient {
    * <p>Called off the concurrency permit and after the circuit breaker has settled, and any
    * exception it throws is logged and swallowed — a listener is observability and must never fail
    * an embedding or open the circuit.
+   *
+   * <p>Runs synchronously on the calling thread, once per embedded chunk on the indexing path, so
+   * an implementation must not block. Accumulate and report out of band.
+   *
+   * @param text what the provider received, after any provider-side truncation — not necessarily
+   *     what the caller passed in. Estimating a token count from anything else overstates a
+   *     truncated call.
    */
   public interface UsageListener {
     void onUsage(String modelId, String text, EmbeddingUsage usage, boolean query);
@@ -130,7 +149,7 @@ public abstract class EmbeddingClient {
     // Deliberately outside invokeProvider: the permit is released and the circuit has settled by
     // now, so a slow listener cannot starve other callers and a throwing one cannot open the
     // circuit.
-    notifyUsage(text, result.usage(), query);
+    notifyUsage(submittedOr(result, text), result.usage(), query);
     return result.vector();
   }
 
@@ -152,6 +171,11 @@ public abstract class EmbeddingClient {
         concurrencyLimiter.release();
       }
     }
+  }
+
+  /** What the provider received: the truncated form when one was reported, else the input. */
+  private static String submittedOr(EmbeddingResult result, String text) {
+    return result.submittedText() != null ? result.submittedText() : text;
   }
 
   private void notifyUsage(String text, EmbeddingUsage usage, boolean query) {

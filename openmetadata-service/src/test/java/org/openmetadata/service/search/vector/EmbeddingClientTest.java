@@ -366,6 +366,124 @@ class EmbeddingClientTest {
     assertTrue(client.isAvailable(), "listener failures must not count toward the circuit breaker");
   }
 
+  @Test
+  void embedQueryStillReachesADoEmbedQueryOverride() {
+    // The compatibility guarantee the whole usage hook rests on. Without this, collapsing the
+    // dispatch in embedWithLimit onto doEmbed would pass every other test in this file.
+    EmbeddingClient client =
+        new EmbeddingClient() {
+          @Override
+          protected float[] doEmbed(String text) {
+            return new float[] {1.0f};
+          }
+
+          @Override
+          protected float[] doEmbedQuery(String text) {
+            return new float[] {2.0f};
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "dispatch-test";
+          }
+        };
+
+    assertEquals(1.0f, client.embed("a document")[0]);
+    assertEquals(
+        2.0f, client.embedQuery("a question")[0], "embedQuery must not collapse onto doEmbed");
+  }
+
+  @Test
+  void listenerSeesTheSubmittedTextNotTheCallersInput() {
+    // Cohere on Bedrock truncates at 2048 chars and reports no usage, so it is the one family that
+    // must be estimated from text — and the one where the caller's string is the wrong string.
+    EmbeddingClient client =
+        new EmbeddingClient() {
+          @Override
+          protected float[] doEmbed(String text) {
+            return new float[] {1.0f};
+          }
+
+          @Override
+          protected EmbeddingResult doEmbedWithUsage(String text, boolean query) {
+            return new EmbeddingResult(new float[] {1.0f}, null, text.substring(0, 2048));
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "truncating-test";
+          }
+        };
+    AtomicReference<String> seen = new AtomicReference<>();
+    client.setUsageListener((modelId, text, usage, query) -> seen.set(text));
+
+    client.embed("x".repeat(5000));
+
+    assertEquals(
+        2048, seen.get().length(), "estimating from 5000 chars would bill 2952 never sent");
+  }
+
+  @Test
+  void aBlockingListenerDoesNotHoldTheConcurrencyPermit() throws InterruptedException {
+    // The design claim behind notifyUsage living outside invokeProvider. Move it back inside and
+    // this deadlocks on a one-permit client.
+    CountDownLatch listenerEntered = new CountDownLatch(1);
+    CountDownLatch releaseListener = new CountDownLatch(1);
+    AtomicInteger listenerCalls = new AtomicInteger(0);
+    EmbeddingClient client =
+        new EmbeddingClient(1) {
+          @Override
+          protected float[] doEmbed(String text) {
+            return new float[] {1.0f};
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "permit-test";
+          }
+        };
+    client.setUsageListener(
+        (modelId, text, usage, query) -> {
+          if (listenerCalls.incrementAndGet() == 1) {
+            listenerEntered.countDown();
+            try {
+              releaseListener.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          }
+        });
+
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try {
+      CompletableFuture<float[]> blocked =
+          CompletableFuture.supplyAsync(() -> client.embed("first"), pool);
+      assertTrue(listenerEntered.await(2, TimeUnit.SECONDS), "the listener should be reached");
+
+      assertNotNull(client.embed("second"), "a blocked listener must not hold the only permit");
+
+      releaseListener.countDown();
+      assertNotNull(blocked.join());
+    } finally {
+      pool.shutdown();
+    }
+  }
+
   private static EmbeddingClient failingClient(AtomicInteger calls, boolean permanent) {
     return new EmbeddingClient() {
       @Override
