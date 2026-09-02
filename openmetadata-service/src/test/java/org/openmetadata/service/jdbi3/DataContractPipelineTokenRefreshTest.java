@@ -86,6 +86,7 @@ class DataContractPipelineTokenRefreshTest {
     Entity.setCollectionDAO(mock(CollectionDAO.class, RETURNS_DEEP_STUBS));
     applicationConfig = createApplicationConfig();
     pipelineServiceClient = mock(PipelineServiceClientInterface.class);
+    when(pipelineServiceClient.pinsCredentialsAtDeployTime()).thenReturn(true);
     ingestionPipelineRepository = new IngestionPipelineRepository(applicationConfig);
     ingestionPipelineRepository.setPipelineServiceClient(pipelineServiceClient);
     dataContractRepository = new DataContractRepository(applicationConfig);
@@ -145,6 +146,48 @@ class DataContractPipelineTokenRefreshTest {
   @Test
   @DisplayName("an unreachable pipeline service fails a validation with nothing deployed yet")
   void refreshFailureOnANeverDeployedDagAbortsTheValidation() {
+    IngestionPipeline pipeline = testSuitePipeline(false);
+    TestSuite testSuite = testSuiteWith(pipeline);
+    DataContract dataContract = dataContractFor(testSuite);
+    rejectDeployments();
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
+        MockedStatic<SecretsManagerFactory> mockedSecretsManagerFactory =
+            mockStatic(SecretsManagerFactory.class)) {
+      stubStaticLookups(mockedEntity, mockedSecretsManagerFactory, testSuite, pipeline);
+      currentBotToken = ROTATED_TOKEN;
+      assertThrows(
+          PipelineServiceClientException.class,
+          () -> dataContractRepository.deployAndTriggerDQValidation(dataContract));
+    }
+
+    assertEquals(List.of(), triggeredTokens);
+  }
+
+  @Test
+  @DisplayName("a runner that does not pin the token at deploy time is not re-deployed")
+  void validateDoesNotRedeployARunnerThatRebuildsTheTokenOnEveryRun() {
+    when(pipelineServiceClient.pinsCredentialsAtDeployTime()).thenReturn(false);
+    IngestionPipeline pipeline = testSuitePipeline(true);
+    TestSuite testSuite = testSuiteWith(pipeline);
+    DataContract dataContract = dataContractFor(testSuite);
+
+    validateTwiceRotatingTheBotTokenInBetween(testSuite, pipeline, dataContract);
+
+    assertEquals(List.of(), deployedTokens);
+    assertEquals(List.of(STALE_TOKEN, ROTATED_TOKEN), triggeredTokens);
+  }
+
+  /**
+   * The gate must skip only the refresh of an already deployed pipeline, never the first deploy. A
+   * successful first deploy cannot be asserted here because it goes on to createOrUpdate, which
+   * needs a real JDBI handle, so this pins the deploy attempt through the failure path instead:
+   * reaching the client at all is what proves the gate let it through.
+   */
+  @Test
+  @DisplayName("a runner that does not pin the token still deploys when nothing is deployed yet")
+  void validateStillDeploysANeverDeployedPipelineOnANonPinningRunner() {
+    when(pipelineServiceClient.pinsCredentialsAtDeployTime()).thenReturn(false);
     IngestionPipeline pipeline = testSuitePipeline(false);
     TestSuite testSuite = testSuiteWith(pipeline);
     DataContract dataContract = dataContractFor(testSuite);

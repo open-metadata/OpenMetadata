@@ -1189,9 +1189,19 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * introduced here - every deploy caller runs the same non-atomic code - but this is the only
    * caller that does not surface it, so a persistent failure shows up as a WARN plus a failing DAG
    * run rather than an aborted validation.
+   *
+   * <p>Only runners that pin the credentials at deploy time are refreshed. The Kubernetes and Argo
+   * runners rebuild the whole run spec from the pipeline on every run, so they already carry the
+   * current token; re-deploying them would rewrite a ConfigMap, a Secret and a CronWorkflow per
+   * validation - and DataContractValidationApp sweeps every contract nightly - to fix a problem they
+   * do not have. Those keep the pre-refresh behaviour of deploying only when nothing is deployed
+   * yet.
    */
   private void refreshDeployedPipelineBeforeRun(IngestionPipeline pipeline, TestSuite testSuite) {
     boolean alreadyDeployed = Boolean.TRUE.equals(pipeline.getDeployed());
+    if (alreadyDeployed && !pipelineServiceClient.pinsCredentialsAtDeployTime()) {
+      return;
+    }
     try {
       prepareAndDeployIngestionPipeline(pipeline, testSuite);
     } catch (RuntimeException e) {
@@ -1201,7 +1211,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       LOG.warn(
           "Could not refresh DQ pipeline '{}' before validation, running the DAG already deployed: {}",
           pipeline.getFullyQualifiedName(),
-          e.getMessage());
+          e.getMessage(),
+          e);
     }
   }
 
