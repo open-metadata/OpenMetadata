@@ -81,7 +81,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             )
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload. IngestionPipeline expected: {err}",
+                error="Request validation failed. Check the ingestion pipeline configuration.",
             )
 
         except Exception as exc:

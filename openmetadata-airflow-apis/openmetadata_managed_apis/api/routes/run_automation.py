@@ -83,7 +83,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             logger.error(msg)
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=msg,
+                error="Request validation failed. Check the automation workflow configuration.",
             )
 
         except Exception as exc:

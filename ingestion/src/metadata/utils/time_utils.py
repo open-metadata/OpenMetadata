@@ -17,8 +17,7 @@ from datetime import datetime, time, timedelta
 from datetime import timezone as dt_timezone
 from math import floor
 from typing import Optional, Union
-
-from pytz import timezone
+from zoneinfo import ZoneInfo
 
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.utils.deprecation import deprecated
@@ -29,7 +28,9 @@ logger = utils_logger()
 
 
 def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone_str: str = "UTC") -> int:
-    """Convert a datetime object to timestamp integer.
+    """Convert a datetime object to a timestamp.
+
+    Naive ambiguous or missing wall times honor ``datetime.fold`` (default 0).
 
     Args:
         datetime_value (_type_): datetime object
@@ -37,14 +38,14 @@ def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone
         timezone_str (str, optional): timezone string. Defaults to "UTC".
 
     Returns:
-        int : timestamp in seconds or milliseconds
+        int: timestamp in seconds or milliseconds
     """
-    tz = timezone(timezone_str)
+    tz = ZoneInfo(timezone_str)
     if not getattr(datetime_value, "timestamp", None):
         raise TypeError(f"Object of type {type(datetime_value).__name__} has not method `timestamp()`")
 
     if datetime_value.tzinfo is None:
-        datetime_value = tz.localize(datetime_value)
+        datetime_value = datetime_value.replace(tzinfo=tz)
     else:
         datetime_value = datetime_value.astimezone(tz)
     tmsap = datetime_value.timestamp()
@@ -62,7 +63,7 @@ def timestamp_to_datetime(ts: Timestamp, timezone_str: str = "UTC") -> datetime:
     Returns:
         datetime: datetime object
     """
-    return datetime.fromtimestamp(ts.root / 1000, tz=timezone(timezone_str))
+    return datetime.fromtimestamp(ts.root / 1000, tz=ZoneInfo(timezone_str))
 
 
 # pylint: disable=too-many-arguments
@@ -91,7 +92,7 @@ def get_beginning_of_day_timestamp_mill(
     Returns:
         int: timestamp milliseconds
     """
-    tz = timezone(timezone_str)
+    tz = ZoneInfo(timezone_str)
     now_tz = datetime.now(tz)
     delta = timedelta(
         weeks=weeks,
@@ -103,7 +104,7 @@ def get_beginning_of_day_timestamp_mill(
         milliseconds=milliseconds,
     )
     datetime_value = datetime.combine(now_tz - delta, time.min)
-    return datetime_to_ts(tz.localize(datetime_value))
+    return datetime_to_ts(datetime_value.replace(tzinfo=tz))
 
 
 # pylint: disable=too-many-arguments
@@ -132,7 +133,7 @@ def get_end_of_day_timestamp_mill(
     Returns:
         int: timestamp milliseconds
     """
-    tz = timezone(timezone_str)
+    tz = ZoneInfo(timezone_str)
     now_tz = datetime.now(tz)
     delta = timedelta(
         weeks=weeks,
@@ -145,7 +146,7 @@ def get_end_of_day_timestamp_mill(
     )
 
     datetime_value = datetime.combine(now_tz - delta, time.max)
-    return datetime_to_ts(tz.localize(datetime_value))
+    return datetime_to_ts(datetime_value.replace(tzinfo=tz))
 
 
 def convert_timestamp(timestamp: str) -> Union[int, float]:  # noqa: UP007
