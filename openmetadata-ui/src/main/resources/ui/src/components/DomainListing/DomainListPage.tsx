@@ -14,22 +14,22 @@
 import {
   Box,
   Card,
+  EmptyPlaceholder,
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
+import { Globe01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
-import { LIST_EMPTY_STATE_CLASS } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
@@ -40,7 +40,6 @@ import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
@@ -133,7 +132,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
-    useDomainTableColumns();
+    useDomainTableColumns({
+      onEntityClick: domainListing.actionHandlers.onEntityClick,
+    });
 
   const selectedDomainEntities = useMemo(
     () =>
@@ -167,6 +168,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
+            onClearSearch={domainListing.handleClearAll}
           />
         </div>
       );
@@ -175,28 +177,48 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <ErrorPlaceHolder
-            className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:min-h-70 tw:h-full">
+            <EmptyPlaceholder
+              actions={[
+                {
+                  color: 'primary',
+                  key: 'clear-filters',
+                  label: t('label.clear-entity', { entity: t('label.all') }),
+                  onPress: domainListing.handleClearAll,
+                },
+              ]}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
+            />
+          </div>
         );
       }
 
       return (
-        <ErrorPlaceHolder
-          buttonId="domain-add-button"
-          buttonTitle={t('label.add-entity', {
-            entity: t('label.domain'),
-          })}
-          className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
-          heading={t('message.no-data-message', {
-            entity: t('label.domain-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.domain?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={openDrawer}
-        />
+        <div className="tw:relative tw:min-h-70">
+          <EmptyPlaceholder
+            actions={
+              permissions.domain?.Create
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'add-domain',
+                      label: t('label.add-entity', {
+                        entity: t('label.domain'),
+                      }),
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('label.no-domains-yet-description')}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-domains-yet')}
+            variant="blank"
+          />
+        </div>
       );
     }
 
@@ -251,6 +273,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.currentPage,
     domainListing.totalPages,
     domainListing.handlePageChange,
+    domainListing.handleClearAll,
     isSearchOrFilterActive,
     view,
     renderDomainCell,

@@ -21,6 +21,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
@@ -355,14 +356,8 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [
-    allDocuments,
-    isDocumentsLoading,
-    previewFile,
-    searchParams,
-    t,
-    setSearchParams,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');
@@ -673,6 +668,7 @@ const ContextCenterDocumentsPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
+      <DocumentTitle title={t('label.document-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           breadcrumbs={[

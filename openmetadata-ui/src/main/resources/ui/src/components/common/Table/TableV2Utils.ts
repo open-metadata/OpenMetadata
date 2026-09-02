@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ColumnsType } from 'antd/es/table/interface';
+import { isEmpty } from 'lodash';
+import React, { ReactNode } from 'react';
 import type {
+  ColumnsType,
   ColumnType,
   FilterValue,
   SortOrder,
-} from 'antd/lib/table/interface';
-import { isEmpty } from 'lodash';
-import React, { ReactNode } from 'react';
+} from './Table.interface';
 import type { FlatRow } from './TableV2.interface';
 
 export function flattenTreeRows<T>(

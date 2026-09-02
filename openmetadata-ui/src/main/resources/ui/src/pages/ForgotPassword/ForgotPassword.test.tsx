@@ -48,7 +48,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       const translations: Record<string, string> = {
         'message.enter-your-registered-email': 'Enter your registered email',
         'label.email': 'Email',

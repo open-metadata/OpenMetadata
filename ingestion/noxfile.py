@@ -80,6 +80,7 @@ def lint(session):
     install(session, "-e", ".")
     install_group(session, "style")
     session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
+    session.run("python", "scripts/check_ruff_suppressions.py", "--check")
     session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
 
 

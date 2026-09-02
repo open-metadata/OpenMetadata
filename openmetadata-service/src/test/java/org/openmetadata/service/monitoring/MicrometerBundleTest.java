@@ -1,11 +1,18 @@
 package org.openmetadata.service.monitoring;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import jakarta.servlet.ServletRegistration;
 import jakarta.servlet.http.HttpServletRequest;
@@ -72,6 +79,31 @@ public class MicrometerBundleTest {
     assertFalse(bundle.getPrometheusMeterRegistry().getMeters().isEmpty());
     verify(jerseyEnv, times(1))
         .register(any(org.glassfish.jersey.internal.inject.AbstractBinder.class));
+  }
+
+  @Test
+  public void testRunConfiguresRequestLatencyPercentileHistogram() {
+    EventMonitorConfiguration eventMonitorConfiguration = new EventMonitorConfiguration();
+    eventMonitorConfiguration.setRequestLatencyPercentileHistogram(true);
+    when(config.getEventMonitorConfiguration()).thenReturn(eventMonitorConfiguration);
+    bundle.initialize(bootstrap);
+    bundle.run(config, environment);
+
+    String endpoint = "/v1/micrometer-bundle-histogram";
+    RequestLatencyContext.startRequest(endpoint, "GET");
+    RequestLatencyContext.endRequest();
+
+    Timer timer =
+        bundle
+            .getPrometheusMeterRegistry()
+            .find("request.latency.total")
+            .tag("endpoint", endpoint)
+            .tag("method", "GET")
+            .timer();
+    assertNotNull(timer);
+    assertTrue(
+        timer.takeSnapshot().histogramCounts().length > MetricUtils.LATENCY_SLA_BUCKETS.length);
+    RequestLatencyContext.reset();
   }
 
   @Test

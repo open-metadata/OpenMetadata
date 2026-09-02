@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { Bucket } from 'Models';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
-import { getOptionsFromAggregationBucket } from './AdvancedSearchPureUtils';
+import {
+  getOptionsFromAggregationBucket,
+  getQuickFilterSourceFields,
+  hydrateQuickFilterLabels,
+} from './AdvancedSearchPureUtils';
 
 const buckets = [
   { key: 'table', doc_count: 1734 },
@@ -79,5 +84,329 @@ describe('getOptionsFromAggregationBucket', () => {
     ] as Bucket[]);
 
     expect(option.count).toBe(0);
+  });
+
+  describe('sourceFields - top_hits label extraction', () => {
+    it('reads label from flat _source field when sourceFields is set', () => {
+      const bucket = {
+        key: 'john doe',
+        doc_count: 3,
+        'top_hits#top': {
+          hits: { hits: [{ _source: { ownerDisplayName: 'John Doe' } }] },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('john doe');
+      expect(option.label).toBe('John Doe');
+    });
+
+    it('reads label from nested single-object _source path', () => {
+      const bucket = {
+        key: 'tier.tier1',
+        doc_count: 2,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { tier: { tagFQN: 'Tier.Tier1' } } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'tier.tagFQN'
+      );
+
+      expect(option.key).toBe('tier.tier1');
+      expect(option.label).toBe('Tier.Tier1');
+    });
+
+    it('matches the correct array element by bucket key (not always [0])', () => {
+      const bucket = {
+        key: 'my domain',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  domains: [
+                    { displayName: 'Other Domain' },
+                    { displayName: 'My Domain' },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'domains.displayName'
+      );
+
+      expect(option.key).toBe('my domain');
+      expect(option.label).toBe('My Domain');
+    });
+
+    it('falls back to bucket key when no top_hits data is present', () => {
+      const bucket = {
+        key: 'my domain',
+        doc_count: 1,
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'domains.displayName'
+      );
+
+      expect(option.key).toBe('my domain');
+      expect(option.label).toBe('my domain');
+    });
+
+    it('reads label from string-array _source field (ownerDisplayName pattern)', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { ownerDisplayName: ['Aaron Johnson'] } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('aaron johnson');
+      expect(option.label).toBe('Aaron Johnson');
+    });
+
+    it('leaves the bucket key alone rather than labelling it with a sibling value', () => {
+      const bucket = {
+        key: 'pii.sensitive',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                // The bucket's own value is missing from this document, so any
+                // element picked here would be a different tag.
+                _source: { tags: [{ tagFQN: 'Tier.Tier1' }] },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'tags.tagFQN'
+      );
+
+      expect(option.label).toBe('pii.sensitive');
+    });
+
+    it('leaves the bucket key alone when a string-array holds only other values', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: { hits: [{ _source: { ownerDisplayName: ['Bob Smith'] } }] },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.label).toBe('aaron johnson');
+    });
+
+    it('picks the matching entry from a multi-value string-array by bucket key', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  ownerDisplayName: ['Bob Smith', 'Aaron Johnson'],
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('aaron johnson');
+      expect(option.label).toBe('Aaron Johnson');
+    });
+  });
+});
+
+describe('getQuickFilterSourceFields', () => {
+  it('resolves the shared source path for a field that does not pin one', () => {
+    expect(
+      getQuickFilterSourceFields({
+        key: EntityFields.GLOSSARY_TERMS,
+        label: 'label.glossary-term-plural',
+      })
+    ).toBe('glossaryTags');
+  });
+
+  it('prefers the path pinned on the field', () => {
+    expect(
+      getQuickFilterSourceFields({
+        key: EntityFields.OWNERS,
+        label: 'label.owner-plural',
+        sourceFields: 'owners.displayName',
+      })
+    ).toBe('owners.displayName');
+  });
+
+  it('returns undefined for a field aggregated in its original case', () => {
+    expect(
+      getQuickFilterSourceFields({
+        key: EntityFields.ENTITY_TYPE,
+        label: 'label.entity-type-plural',
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('hydrateQuickFilterLabels', () => {
+  const glossaryFilter = {
+    key: EntityFields.GLOSSARY_TERMS,
+    label: 'label.glossary-term-plural',
+    value: [
+      {
+        key: 'enterprise business glossary.advanced shipment notification',
+        label: 'enterprise business glossary.advanced shipment notification',
+      },
+    ],
+  };
+
+  it('restores the original casing of a selected value from the listed rows', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [glossaryFilter],
+      [
+        {
+          glossaryTags: [
+            'Enterprise Business Glossary.Advanced Shipment Notification',
+          ],
+        },
+      ]
+    );
+
+    expect(field.value?.[0]).toEqual({
+      key: 'enterprise business glossary.advanced shipment notification',
+      label: 'Enterprise Business Glossary.Advanced Shipment Notification',
+    });
+  });
+
+  it('resolves a path that crosses an array of objects', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [
+        {
+          key: EntityFields.TAG,
+          label: 'label.tag',
+          value: [{ key: 'pii.sensitive', label: 'pii.sensitive' }],
+        },
+      ],
+      [{ tags: [{ tagFQN: 'Tier.Tier1' }, { tagFQN: 'PII.Sensitive' }] }]
+    );
+
+    expect(field.value?.[0].label).toBe('PII.Sensitive');
+  });
+
+  it('keeps the field identity when no row carries the selected value', () => {
+    const fields = [glossaryFilter];
+    const result = hydrateQuickFilterLabels(fields, [
+      { glossaryTags: ['Some.Other Term'] },
+    ]);
+
+    expect(result[0]).toBe(glossaryFilter);
+  });
+
+  it('skips rows that are not objects', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [glossaryFilter],
+      [
+        null,
+        'not-a-row',
+        {
+          glossaryTags: [
+            'Enterprise Business Glossary.Advanced Shipment Notification',
+          ],
+        },
+      ]
+    );
+
+    expect(field.value?.[0].label).toBe(
+      'Enterprise Business Glossary.Advanced Shipment Notification'
+    );
+  });
+
+  it('keeps the field identity when there are no rows to read from', () => {
+    const fields = [glossaryFilter];
+
+    expect(hydrateQuickFilterLabels(fields, [])[0]).toBe(glossaryFilter);
+  });
+
+  it('leaves a label already resolved by the dropdown untouched', () => {
+    const resolved = {
+      key: EntityFields.GLOSSARY_TERMS,
+      label: 'label.glossary-term-plural',
+      value: [
+        {
+          key: 'enterprise business glossary.advanced shipment notification',
+          label: 'Enterprise Business Glossary.Advanced Shipment Notification',
+        },
+      ],
+    };
+
+    expect(
+      hydrateQuickFilterLabels(
+        [resolved],
+        [{ glossaryTags: ['SHOUTED.VALUE'] }]
+      )[0]
+    ).toBe(resolved);
+  });
+
+  it('leaves a field aggregated in its original case untouched', () => {
+    const fields = [
+      {
+        key: EntityFields.ENTITY_TYPE,
+        label: 'label.entity-type-plural',
+        value: [{ key: 'table', label: 'table' }],
+      },
+    ];
+
+    expect(hydrateQuickFilterLabels(fields, [{ entityType: 'Table' }])[0]).toBe(
+      fields[0]
+    );
   });
 });

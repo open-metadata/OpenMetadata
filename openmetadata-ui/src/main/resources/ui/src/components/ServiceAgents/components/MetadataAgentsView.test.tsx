@@ -160,10 +160,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion', () =>
-  jest.fn().mockImplementation(() => <p>ErrorPlaceHolderIngestion</p>)
-);
-
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ theme: {} }),
 }));
@@ -242,30 +238,37 @@ describe('MetadataAgentsView', () => {
     );
   });
 
-  it('should explain the unreachable pipeline service instead of claiming there are no agents', () => {
+  it.each([
+    ['unreachable', { isAirflowAvailable: false, isFetchingStatus: false }],
+    [
+      'still being fetched',
+      { isAirflowAvailable: false, isFetchingStatus: true },
+    ],
+  ])(
+    'should use the ordinary empty state when the pipeline service is %s',
+    (_label, status) => {
+      mockAirflowStatus.mockReturnValue({ ...status, platform: 'Airflow' });
+
+      renderView([]);
+
+      // The list is fetched independently of that status now, so an empty list really is empty.
+      // `AirflowMessageBanner` carries the unreachable case.
+      expect(getErrorPlaceHolder).toHaveBeenCalled();
+    }
+  );
+
+  it('should still hand the agents to the group when the pipeline service is unreachable', () => {
     mockAirflowStatus.mockReturnValue({
       isAirflowAvailable: false,
       isFetchingStatus: false,
       platform: 'Airflow',
     });
 
-    renderView([]);
+    renderView();
 
-    expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
-    expect(getErrorPlaceHolder).not.toHaveBeenCalled();
-  });
-
-  it('should not claim the pipeline service is unreachable while its status is still being fetched', () => {
-    mockAirflowStatus.mockReturnValue({
-      isAirflowAvailable: false,
-      isFetchingStatus: true,
-      platform: 'Airflow',
-    });
-
-    renderView([]);
-
-    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
-    expect(getErrorPlaceHolder).toHaveBeenCalled();
+    expect(mockAgentGroup).toHaveBeenLastCalledWith(
+      expect.objectContaining({ agents: [baseAgent] })
+    );
   });
 
   it('should toggle the agent when the pause action is dispatched', () => {

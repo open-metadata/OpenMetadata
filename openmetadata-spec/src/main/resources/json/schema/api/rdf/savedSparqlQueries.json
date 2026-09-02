@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/savedSparqlQueries.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SavedSparqlQueries",
+  "description": "The private SPARQL query library for the authenticated user.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.SavedSparqlQueries",
+  "properties": {
+    "queries": {
+      "description": "Queries owned by the authenticated user.",
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "savedSparqlQuery.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["queries"],
+  "additionalProperties": false
+}

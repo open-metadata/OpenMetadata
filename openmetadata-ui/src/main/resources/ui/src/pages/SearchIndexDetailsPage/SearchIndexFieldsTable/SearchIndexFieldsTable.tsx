@@ -12,8 +12,6 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
   cloneDeep,
   groupBy,
@@ -26,6 +24,10 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../components/common/Table/Table.interface';
 
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
@@ -222,10 +224,8 @@ const SearchIndexFieldsTable = ({
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
       const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon && !isButton) {
-        if (hasViewPermission) {
-          openColumnDetailPanel(field);
-        }
+      if (!isExpandIcon && !isButton && hasViewPermission) {
+        openColumnDetailPanel(field);
       }
     },
     [openColumnDetailPanel, hasViewPermission]

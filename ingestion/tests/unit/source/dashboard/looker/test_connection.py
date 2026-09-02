@@ -10,10 +10,12 @@
 #  limitations under the License.
 """Unit tests for Looker test-connection checks."""
 
+import contextlib
 import socket
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
+import looker_sdk
 import pytest
 from looker_sdk.error import SDKError
 from looker_sdk.rtl.requests_transport import RequestsTransport
@@ -22,6 +24,9 @@ from looker_sdk.rtl.transport import HttpMethod
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection as LookerConnectionConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.dashboard.looker.connection import (
     LOOKER_ERRORS,
@@ -80,13 +85,27 @@ def test_looker_connection_is_base_connection():
     assert issubclass(LookerConnection, BaseConnection)
 
 
-def _config(host: str = "https://looker.example.com", client_id: str = "id", secret: str = "secret") -> MagicMock:
-    config = MagicMock()
-    config.hostPort = host
-    config.clientId = client_id
-    config.clientSecret.get_secret_value.return_value = secret
+def _config(
+    host: str = "https://looker.example.com", client_id: str = "id", secret: str = "secret"
+) -> LookerConnectionConfig:
+    """The real connection model, not a mock: ``hostPort`` is an ``AnyUrl``, and how
+    it renders back to a string is exactly what the SDK's URL building depends on."""
+    return LookerConnectionConfig(hostPort=host, clientId=client_id, clientSecret=secret)
 
-    return config
+
+def _urls_built_while_logging_in(host: str) -> list[str]:
+    """The URLs the SDK builds to log in, captured where it hands them to transport."""
+    urls: list[str] = []
+
+    def record(self, method, path, *args, **kwargs):
+        urls.append(path)
+        raise SDKError("stopped before the network")
+
+    sdk = looker_sdk.init40(config_settings=LookerSettings(_config(host=host)))
+    with patch.object(RequestsTransport, "request", record), contextlib.suppress(SDKError):
+        sdk.auth.authenticate({})
+
+    return urls
 
 
 def test_get_client_initialises_the_sdk():
@@ -113,6 +132,37 @@ def test_the_sdk_is_configured_from_this_service_not_the_environment(monkeypatch
         "client_id": "second-id",
         "client_secret": "second-secret",
     }
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "https://looker.example.com",  # pydantic renders a host with no path with a trailing slash
+        "https://looker.example.com/",  # as typed by a user who copied the URL from a browser
+        "https://looker.example.com:19999",
+    ],
+)
+def test_the_base_url_never_ends_in_the_slash_the_sdk_concatenates_onto(host):
+    # hostPort is an AnyUrl, and pydantic renders a URL with no path as "https://host/".
+    # auth_session builds the login URL as f"{base_url}/api/{version}/login", so that
+    # slash would survive into the request.
+    assert LookerSettings(_config(host=host)).base_url == host.rstrip("/")
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["https://looker.example.com", "https://looker.example.com/", "https://looker.example.com:19999"],
+)
+def test_the_login_url_the_sdk_builds_has_no_double_slash(host):
+    """Drives the real SDK: only ``login`` and ``logout`` are concatenated, every
+    other endpoint goes through ``urljoin`` and normalises itself. Login is the gate
+    for CheckAccess, so a malformed URL here fails the connection before anything else
+    runs - and Looker answers a 404, which reads as rejected credentials."""
+    urls = _urls_built_while_logging_in(host)
+
+    assert urls, "the SDK did not attempt to log in"
+    assert all("//api/" not in url for url in urls), urls
+    assert urls == [f"{host.rstrip('/')}/api/4.0/login"]
 
 
 def test_checks_run_against_the_client_the_connection_owns():

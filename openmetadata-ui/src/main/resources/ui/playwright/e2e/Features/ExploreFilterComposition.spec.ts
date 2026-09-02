@@ -86,11 +86,13 @@ const certificationPatch = (tagFQN: string): Operation => ({
 
 const domainPatch = (): Operation => ({
   op: 'add',
-  path: '/domains/0',
-  value: {
-    id: assetDomain.responseData.id,
-    type: 'domain',
-  },
+  path: '/domains',
+  value: [
+    {
+      id: assetDomain.responseData.id,
+      type: 'domain',
+    },
+  ],
 });
 
 // tagFQN-style aggregation buckets are lowercase-normalized, so option

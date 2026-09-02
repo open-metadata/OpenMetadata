@@ -96,9 +96,6 @@ openmetadata-ui/src/main/resources/ui/playwright/.auth
 openmetadata-ui/src/main/resources/ui/blob-report
 openmetadata-ui/src/main/resources/ui/test-results/
 
-#UI - Dereferenced Schemas
-openmetadata-ui/src/main/resources/ui/src/jsons/*
-
 # UI - Contracts Downloads
 openmetadata-ui/src/main/resources/ui/downloads/*
 

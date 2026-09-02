@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Row } from 'antd';
-import { ColumnsType, TableProps } from 'antd/lib/table';
-import { TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -43,9 +41,13 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import ErrorPlaceHolderIngestion from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
-import Loader from '../../../../common/Loader/Loader';
+import AirflowMessageBanner from '../../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
+import {
+  ColumnsType,
+  TableProps,
+  TableRowSelection,
+} from '../../../../common/Table/Table.interface';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
 
@@ -226,22 +228,23 @@ export const IngestionPipelineList = ({
   // pipeline type filter — is state this effect reads, so a change to any one of them produces
   // exactly one request carrying all of the others. Handlers below only move that state; they must
   // not fetch as well, or a sort would race a request that has forgotten the active filter.
+  //
+  // Deliberately not gated on the airflow status: pipelines are OpenMetadata entities, so they list
+  // whether or not the pipeline service answers. Only re-deploying them needs that service — see the
+  // button below.
   useEffect(() => {
-    if (isAirflowAvailable) {
-      const { cursorType, cursorValue } = pagingCursor ?? {};
+    const { cursorType, cursorValue } = pagingCursor ?? {};
 
-      fetchPipelines({
-        paging:
-          cursorType && cursorValue ? { [cursorType]: cursorValue } : undefined,
-        pipelineType: pipelineTypeFilter,
-        limit: pageSize,
-        sortOrder,
-      });
-    }
+    fetchPipelines({
+      paging:
+        cursorType && cursorValue ? { [cursorType]: cursorValue } : undefined,
+      pipelineType: pipelineTypeFilter,
+      limit: pageSize,
+      sortOrder,
+    });
   }, [
     fetchPipelines,
     serviceName,
-    isAirflowAvailable,
     pageSize,
     pagingCursor,
     sortOrder,
@@ -296,20 +299,24 @@ export const IngestionPipelineList = ({
     [handleRowChange, selectedRowKeys]
   );
 
-  if (isFetchingStatus) {
-    return <Loader />;
-  }
-
-  if (!isAirflowAvailable) {
-    return <ErrorPlaceHolderIngestion />;
-  }
-
   return (
     <Row className={className} gutter={[16, 16]}>
+      <Col span={24}>
+        {/* Says why re-deploy is unavailable; the list itself stays readable. */}
+        <AirflowMessageBanner
+          unreachableFallbackMessage={t(
+            'message.pipeline-service-unreachable-agent-actions'
+          )}
+        />
+      </Col>
       <Col className="text-right" span={24}>
         <Button
           data-testid="bulk-re-deploy-button"
-          disabled={selectedPipelines?.length === 0}
+          disabled={
+            selectedPipelines?.length === 0 ||
+            isFetchingStatus ||
+            !isAirflowAvailable
+          }
           loading={deploying}
           type="primary"
           onClick={handleBulkRedeploy}>

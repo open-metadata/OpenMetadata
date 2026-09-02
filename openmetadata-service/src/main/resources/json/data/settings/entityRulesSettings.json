@@ -12,7 +12,7 @@
       "description": "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.",
       "rule": "{\"<=\":[{\"length\":{\"var\":\"domains\"}},1]}",
       "enabled": true,
-      "ignoredEntities": ["user", "team", "persona", "bot"],
+      "ignoredEntities": ["user", "team", "persona", "bot", "query"],
       "provider": "system"
     },
     {
@@ -35,7 +35,7 @@
       "description": "Validates that Data Products assigned to an entity match the entity's domains.",
       "rule": "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}",
       "enabled": true,
-      "ignoredEntities": ["user", "team", "persona", "bot"],
+      "ignoredEntities": ["user", "team", "persona", "bot", "query"],
       "provider": "system"
     }
   ]

@@ -16,7 +16,7 @@ Source connection helper
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, List, Tuple  # noqa: UP035
+from typing import Any
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from pydantic import BaseModel
@@ -196,7 +196,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint
         return []
 
 
-def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:  # noqa: UP006
+def parse_bigqeury_labels(labels: str) -> list[tuple[str, str]]:
     """
     This function is used to parse BigQuery label string into a list of tuples.
     """

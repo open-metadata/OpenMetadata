@@ -480,13 +480,11 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab) {
-      if (!isTourOpen) {
-        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
-          replace: true,
-          state: location.state,
-        });
-      }
+    if (activeKey !== activeTab && !isTourOpen) {
+      navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+        replace: true,
+        state: location.state,
+      });
     }
   };
 
@@ -759,6 +757,8 @@ const TableDetailsPageV1: React.FC = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -766,6 +766,8 @@ const TableDetailsPageV1: React.FC = () => {
           entity: t('label.table'),
         })
       );
+
+      return false;
     }
   };
 
@@ -1012,7 +1014,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={entityName} title="Table details">
+    <PageLayoutV1 pageTitle={entityName}>
       <GenericProvider<Table>
         columnFqn={columnFqn}
         customizedPage={customizedPage}

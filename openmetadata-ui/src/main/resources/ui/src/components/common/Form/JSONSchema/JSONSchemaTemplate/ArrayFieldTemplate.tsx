@@ -27,7 +27,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="d-flex justify-between items-center">
-        <label className="control-label">{title}</label>
+        <span className="control-label">{title}</span>
         {canAdd && (
           <Button
             data-testid={`add-item-${title}`}
@@ -49,7 +49,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           className={classNames('d-flex items-center w-full', {
             'm-t-sm': index > 0,
           })}
-          key={`${element.key}-${index}`}>
+          key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <Icon

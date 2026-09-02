@@ -12,7 +12,6 @@
  */
 
 import { Skeleton } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -51,10 +50,10 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolderIngestion from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import './ingestion-list-table.less';
@@ -214,30 +213,23 @@ function IngestionListTable({
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
-  const defaultEmptyPlaceholder = useMemo(() => {
-    // The pipeline list is never fetched while the service is unreachable, so an empty table here
-    // means "could not load", not "none exist" — say which.
-    if (!isFetchingStatus && !isAirflowAvailable) {
-      return (
-        <ErrorPlaceHolderIngestion cardClassName={INGESTION_EMPTY_CARD_CLASS} />
-      );
-    }
+  // `isAirflowAvailable` is seeded false, so it only reads as "unreachable" once the status call
+  // has answered.
+  const isAirflowUnavailable = !isFetchingStatus && !isAirflowAvailable;
 
-    return getErrorPlaceHolder(
-      ingestionData.length,
-      isPlatFormDisabled,
-      theme,
-      pipelineType,
-      INGESTION_EMPTY_CARD_CLASS
-    );
-  }, [
-    ingestionData.length,
-    isAirflowAvailable,
-    isFetchingStatus,
-    isPlatFormDisabled,
-    pipelineType,
-    theme,
-  ]);
+  // The pipeline list is fetched independently of the airflow status now, so an empty table here
+  // really does mean "none exist". `AirflowMessageBanner` carries the unreachable case.
+  const defaultEmptyPlaceholder = useMemo(
+    () =>
+      getErrorPlaceHolder(
+        ingestionData.length,
+        isPlatFormDisabled,
+        theme,
+        pipelineType,
+        INGESTION_EMPTY_CARD_CLASS
+      ),
+    [ingestionData.length, isPlatFormDisabled, pipelineType, theme]
+  );
 
   const handleDeleteConfirm = useCallback(async () => {
     await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
@@ -278,6 +270,7 @@ function IngestionListTable({
           ingestionPipelinePermissions={
             ingestionPipelinePermissions?.[record.name]
           }
+          isDisabled={isAirflowUnavailable}
           pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
@@ -287,6 +280,7 @@ function IngestionListTable({
       );
     },
     [
+      isAirflowUnavailable,
       isFetchingStatus,
       isPlatFormDisabled,
       deployIngestion,

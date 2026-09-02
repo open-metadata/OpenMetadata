@@ -16,7 +16,7 @@ import json
 import traceback
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Iterator, Union  # noqa: UP035
+from collections.abc import Iterator
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -221,7 +221,7 @@ class StoredProcedureLineageMixin(ABC):
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterator[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterator[Either[AddLineageRequest | CreateQueryRequest]]:
         """Get all the queries and procedures list and yield them"""
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_producer
