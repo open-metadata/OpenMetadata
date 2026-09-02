@@ -23,7 +23,7 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 import requests
 
@@ -47,16 +47,16 @@ class McpServerInfo:
 
     name: str
     transport: str = "Stdio"
-    command: Optional[str] = None  # noqa: UP045
-    args: Optional[List[str]] = None  # noqa: UP006, UP045
-    env: Optional[Dict[str, str]] = None  # noqa: UP006, UP045
-    url: Optional[str] = None  # noqa: UP045
-    api_key: Optional[str] = None  # noqa: UP045
-    server_info: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    capabilities: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    tools: List[Dict[str, Any]] = field(default_factory=list)  # noqa: UP006
-    resources: List[Dict[str, Any]] = field(default_factory=list)  # noqa: UP006
-    prompts: List[Dict[str, Any]] = field(default_factory=list)  # noqa: UP006
+    command: str | None = None
+    args: list[str] | None = None
+    env: dict[str, str] | None = None
+    url: str | None = None
+    api_key: str | None = None
+    server_info: dict[str, Any] | None = None
+    capabilities: dict[str, Any] | None = None
+    tools: list[dict[str, Any]] = field(default_factory=list)
+    resources: list[dict[str, Any]] = field(default_factory=list)
+    prompts: list[dict[str, Any]] = field(default_factory=list)
 
 
 class McpProtocolError(Exception):
@@ -72,21 +72,21 @@ class StdioTransport:
     def __init__(
         self,
         command: str,
-        args: Optional[List[str]] = None,  # noqa: UP006, UP045
-        env: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+        args: list[str] | None = None,
+        env: dict[str, str] | None = None,
         timeout: int = 30,
     ):
         self.command = command
         self.args = args or []
         self.env = env
         self.timeout = timeout
-        self.process: Optional[subprocess.Popen] = None  # noqa: UP045
+        self.process: subprocess.Popen | None = None
         self._message_id = 0
         self._lock = threading.Lock()
-        self._responses: Dict[int, Dict] = {}  # noqa: UP006
-        self._response_events: Dict[int, threading.Event] = {}  # noqa: UP006
-        self._reader_thread: Optional[threading.Thread] = None  # noqa: UP045
-        self._stderr_thread: Optional[threading.Thread] = None  # noqa: UP045
+        self._responses: dict[int, dict] = {}
+        self._response_events: dict[int, threading.Event] = {}
+        self._reader_thread: threading.Thread | None = None
+        self._stderr_thread: threading.Thread | None = None
         self._running = False
 
     def _get_next_id(self) -> int:
@@ -122,7 +122,7 @@ class StdioTransport:
             full_env.update(self.env)
 
         try:
-            self.process = subprocess.Popen(  # noqa: RUF100, S603
+            self.process = subprocess.Popen(
                 [resolved_command] + self.args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -182,7 +182,7 @@ class StdioTransport:
             except Exception:
                 break
 
-    def send_notification(self, method: str, params: Optional[Dict] = None) -> None:  # noqa: UP006, UP045
+    def send_notification(self, method: str, params: dict | None = None) -> None:
         """Send a JSON-RPC notification (no id, no response expected)"""
         if not self.process or not self.process.stdin:
             raise McpProtocolError("Transport not connected")
@@ -195,7 +195,7 @@ class StdioTransport:
         except Exception as e:
             raise McpProtocolError(f"Failed to send notification: {e}")  # noqa: B904
 
-    def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
+    def send_request(self, method: str, params: dict | None = None) -> dict[str, Any]:
         """Send a JSON-RPC request and wait for response"""
         if not self.process or not self.process.stdin:
             raise McpProtocolError("Transport not connected")
@@ -260,14 +260,14 @@ class HttpTransport:
     def __init__(
         self,
         url: str,
-        api_key: Optional[str] = None,  # noqa: UP045
+        api_key: str | None = None,
         timeout: int = 30,
     ):
         self.url = url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
         self.session = requests.Session()
-        self._session_id: Optional[str] = None  # noqa: UP045
+        self._session_id: str | None = None
 
     def connect(self) -> None:
         """Initialize HTTP session"""
@@ -275,9 +275,9 @@ class HttpTransport:
             self.session.headers["Authorization"] = f"Bearer {self.api_key}"
         self.session.headers["Content-Type"] = "application/json"
 
-    def send_notification(self, method: str, params: Optional[Dict] = None) -> None:  # noqa: UP006, UP045
+    def send_notification(self, method: str, params: dict | None = None) -> None:
         """Send a JSON-RPC notification via HTTP POST (no response expected)"""
-        notification: Dict[str, Any] = {"jsonrpc": "2.0", "method": method}  # noqa: UP006
+        notification: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
         if params:
             notification["params"] = params
         try:
@@ -289,9 +289,9 @@ class HttpTransport:
         except Exception as e:
             logger.error(f"Failed to send notification '{method}': {e}")
 
-    def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
+    def send_request(self, method: str, params: dict | None = None) -> dict[str, Any]:
         """Send a JSON-RPC request via HTTP POST"""
-        request: Dict[str, Any] = {  # noqa: UP006
+        request: dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": str(uuid.uuid4()),
             "method": method,
@@ -338,7 +338,7 @@ class McpClient:
         self.server_config = server_config
         self.connection_timeout = connection_timeout
         self.initialization_timeout = initialization_timeout
-        self._transport: Optional[StdioTransport | HttpTransport] = None  # noqa: UP045
+        self._transport: StdioTransport | HttpTransport | None = None
         self._initialized = False
 
     def connect(self) -> None:
@@ -367,7 +367,7 @@ class McpClient:
 
         self._transport.connect()
 
-    def initialize(self) -> Dict[str, Any]:  # noqa: UP006
+    def initialize(self) -> dict[str, Any]:
         """
         Initialize the MCP connection.
 
@@ -394,7 +394,7 @@ class McpClient:
 
         return result
 
-    def list_tools(self) -> List[Dict[str, Any]]:  # noqa: UP006
+    def list_tools(self) -> list[dict[str, Any]]:
         """List all tools available on the MCP server"""
         if not self._transport or not self._initialized:
             raise McpProtocolError(_CLIENT_NOT_INITIALIZED)
@@ -408,7 +408,7 @@ class McpClient:
         self.server_config.tools = tools
         return tools
 
-    def list_resources(self) -> List[Dict[str, Any]]:  # noqa: UP006
+    def list_resources(self) -> list[dict[str, Any]]:
         """List all resources available on the MCP server"""
         if not self._transport or not self._initialized:
             raise McpProtocolError(_CLIENT_NOT_INITIALIZED)
@@ -422,7 +422,7 @@ class McpClient:
         self.server_config.resources = resources
         return resources
 
-    def list_prompts(self) -> List[Dict[str, Any]]:  # noqa: UP006
+    def list_prompts(self) -> list[dict[str, Any]]:
         """List all prompts available on the MCP server"""
         if not self._transport or not self._initialized:
             raise McpProtocolError(_CLIENT_NOT_INITIALIZED)
@@ -444,7 +444,7 @@ class McpClient:
         self._initialized = False
 
 
-def parse_claude_desktop_config(config_path: str, config: Optional[Dict] = None) -> List[McpServerInfo]:  # noqa: UP006, UP045
+def parse_claude_desktop_config(config_path: str, config: dict | None = None) -> list[McpServerInfo]:
     """
     Parse Claude Desktop configuration file to extract MCP server definitions.
 
@@ -489,7 +489,7 @@ def parse_claude_desktop_config(config_path: str, config: Optional[Dict] = None)
     return servers
 
 
-def parse_vscode_config(config_path: str, config: Optional[Dict] = None) -> List[McpServerInfo]:  # noqa: UP006, UP045
+def parse_vscode_config(config_path: str, config: dict | None = None) -> list[McpServerInfo]:
     """
     Parse VS Code settings.json to extract MCP server definitions.
 
@@ -536,8 +536,8 @@ def parse_vscode_config(config_path: str, config: Optional[Dict] = None) -> List
 
 
 def discover_servers_from_config_files(
-    config_paths: List[str],  # noqa: UP006
-) -> List[McpServerInfo]:  # noqa: UP006
+    config_paths: list[str],
+) -> list[McpServerInfo]:
     """
     Discover MCP servers from a list of configuration file paths.
 

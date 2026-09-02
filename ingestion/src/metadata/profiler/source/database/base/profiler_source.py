@@ -15,7 +15,7 @@ its interface
 """
 
 from copy import deepcopy
-from typing import Optional, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -94,7 +94,7 @@ class ProfilerSource(ProfilerSourceInterface):
         database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,  # noqa: UP006
+        profiler_config_class: Inject[type[ProfilerProcessorConfig]] = None,
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -114,7 +114,7 @@ class ProfilerSource(ProfilerSourceInterface):
     @property
     def interface(
         self,
-    ) -> Optional[ProfilerInterface]:  # noqa: UP045
+    ) -> ProfilerInterface | None:
         """Get the interface"""
         return self._interface
 
@@ -164,10 +164,10 @@ class ProfilerSource(ProfilerSourceInterface):
     def create_profiler_interface(
         self,
         entity: Table,
-        config: Optional[TableConfig],  # noqa: UP045
+        config: TableConfig | None,
         schema_entity: DatabaseSchema,
         database_entity: Database,
-        profiler_resolver: Inject[Type[ProfilerResolver]] = None,  # noqa: UP006
+        profiler_resolver: Inject[type[ProfilerResolver]] = None,
     ) -> ProfilerInterface:
         """Create the appropriate profiler interface based on processing engine."""
         if profiler_resolver is None:
@@ -231,7 +231,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self,
         entity: Table,
         profiler_config: ProfilerProcessorConfig,
-        metrics_registry: Inject[Type[MetricRegistry]] = None,  # noqa: UP006
+        metrics_registry: Inject[type[MetricRegistry]] = None,
     ) -> Profiler:
         """
         Returns the runner for the profiler

@@ -22,7 +22,6 @@ import json
 import os
 import socket
 import time
-from typing import Optional, Union
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
@@ -50,7 +49,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         log_content: str,
         compress: bool = False,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: float | tuple[float, float] | None = None,
     ) -> bool:
         """
         Send logs to S3 storage via OpenMetadata server endpoint.
@@ -114,7 +113,7 @@ class OMetaLogsMixin:
         log_content: str,
         enable_compression: bool = False,
         max_retries: int = 3,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: float | tuple[float, float] | None = None,
     ) -> dict:
         """
         Send logs batch to S3 storage via OpenMetadata server endpoint with retry logic.
@@ -188,8 +187,8 @@ class OMetaLogsMixin:
         pipeline_fqn: str,
         run_id: UUID,
         log_content: str,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        client: Optional[REST] = None,  # noqa: UP045
+        timeout: float | tuple[float, float] | None = None,
+        client: REST | None = None,
     ) -> bool:
         """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
         try:
@@ -214,8 +213,8 @@ class OMetaLogsMixin:
         self,
         pipeline_fqn: str,
         run_id: UUID,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        client: Optional[REST] = None,  # noqa: UP045
+        timeout: float | tuple[float, float] | None = None,
+        client: REST | None = None,
     ) -> bool:
         """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""
         try:
@@ -309,7 +308,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         offset: int = 0,
         limit: int = 1000,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Retrieve logs from S3 storage for a pipeline run.
 

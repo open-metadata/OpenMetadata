@@ -10,187 +10,175 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Select,
-  TextArea,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Edit03 } from '@untitledui/icons';
-import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { Button, Card, Col, Form, Row, Tooltip, Typography } from 'antd';
+import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Metric } from '../../../generated/entity/data/metric';
-import { Language } from '../../../generated/entity/data/metric';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { Language } from '../../../generated/api/data/createMetric';
+import { Metric } from '../../../generated/entity/data/metric';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { generateFormFields } from '../../../utils/formUtils';
+import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
-export interface MetricExpressionProps {
-  metric: Metric;
-  onUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
-  canEdit?: boolean;
-  isEmbedded?: boolean;
-}
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
-const MetricExpression = ({
-  metric,
-  onUpdate,
-  canEdit = false,
-  isEmbedded = false,
-}: MetricExpressionProps) => {
+const MetricExpression: FC = () => {
+  const [form] = Form.useForm();
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
+  const { data: metricDetails, onUpdate: onMetricUpdate } =
+    useGenericContext<Metric>();
+
   const [isUpdating, setIsUpdating] = useState(false);
-  const [code, setCode] = useState(metric.metricExpression?.code ?? '');
-  const [language, setLanguage] = useState<Language>(
-    metric.metricExpression?.language ?? Language.SQL
-  );
+  const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    if (!isEditing) {
-      setCode(metric.metricExpression?.code ?? '');
-      setLanguage(metric.metricExpression?.language ?? Language.SQL);
-    }
-  }, [isEditing, metric.metricExpression]);
+  const selectedLanguage = Form.useWatch('language', form);
 
-  const startEditing = () => {
-    setCode(metric.metricExpression?.code ?? '');
-    setLanguage(metric.metricExpression?.language ?? Language.SQL);
-    setIsEditing(true);
-  };
-
-  const cancelEditing = () => {
-    setCode(metric.metricExpression?.code ?? '');
-    setLanguage(metric.metricExpression?.language ?? Language.SQL);
-    setIsEditing(false);
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!onUpdate) {
-      return;
-    }
-    setIsUpdating(true);
+  const handleSubmit = async (values: Metric['metricExpression']) => {
     try {
-      await onUpdate(
-        {
-          ...metric,
-          metricExpression: {
-            ...metric.metricExpression,
-            code,
-            language,
-          },
+      setIsUpdating(true);
+
+      const updatedData = {
+        ...metricDetails,
+        metricExpression: {
+          ...metricDetails?.metricExpression,
+          code: values?.code,
+          language: values?.language,
         },
-        'metricExpression'
-      );
-      setIsEditing(false);
+      };
+
+      if (onMetricUpdate) {
+        await onMetricUpdate(updatedData, 'metricExpression');
+      }
     } catch (error) {
-      showErrorToast(error instanceof Error ? error.message : String(error));
+      // do nothing as error is handled in the parent component
     } finally {
       setIsUpdating(false);
+      setIsEditing(false);
     }
   };
 
-  const content = isEditing ? (
-    <form data-testid="metric-expression-form" onSubmit={handleSubmit}>
-      <Box direction="col" gap={4}>
-        <Select
-          isDisabled={isUpdating}
-          label={t('label.language')}
-          selectedKey={language}
-          onSelectionChange={(key) =>
-            key !== null && setLanguage(key as Language)
-          }>
-          {Object.values(Language).map((option) => (
-            <Select.Item id={option} key={option} label={option} />
-          ))}
-        </Select>
-        <TextArea
-          isRequired
-          isDisabled={isUpdating}
-          label={t('label.code')}
-          rows={8}
-          value={code}
-          onChange={setCode}
-        />
-        <Box gap={2} justify="end">
-          <Button
-            color="secondary"
-            data-testid="cancel-button"
-            isDisabled={isUpdating}
-            type="button"
-            onPress={cancelEditing}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            data-testid="update-button"
-            isDisabled={!code.trim()}
-            isLoading={isUpdating}
-            type="submit">
-            {t('label.update')}
-          </Button>
-        </Box>
-      </Box>
-    </form>
-  ) : (
-    <Box
-      className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary"
-      data-testid="metric-expression-panel"
-      direction="col">
-      <Box
-        align="center"
-        className="tw:border-b tw:border-secondary tw:bg-primary tw:px-3 tw:py-2"
-        data-testid="metric-expression-header"
-        justify="between">
-        <Box align="center" gap={2}>
-          <Badge
-            className="tw:font-mono tw:uppercase tw:tracking-wide"
-            color="purple"
-            data-testid="metric-expression-language"
-            size="xs"
-            type="color">
-            {metric.metricExpression?.language ?? t('label.empty-dash')}
-          </Badge>
-          {isEmbedded ? (
-            <Typography className="tw:text-tertiary" size="text-xs">
-              {t('label.expression')}
-            </Typography>
-          ) : null}
-        </Box>
-        {canEdit && onUpdate && !metric.deleted ? (
-          <Button
-            color="secondary"
-            iconLeading={Edit03}
-            size="sm"
-            onPress={startEditing}>
-            {t('label.edit-entity', { entity: t('label.expression') })}
-          </Button>
-        ) : null}
-      </Box>
-      <pre
-        className="tw:m-0 tw:overflow-x-auto tw:bg-secondary tw:px-4 tw:py-3 tw:font-mono tw:text-sm tw:leading-5 tw:whitespace-pre-wrap tw:text-primary"
-        data-testid="metric-expression-code">
-        {metric.metricExpression?.code || t('label.empty-dash')}
-      </pre>
-    </Box>
+  const languageField: FieldProp = useMemo(
+    () => ({
+      name: 'language',
+      required: false,
+      label: t('label.language'),
+      id: 'root/language',
+      type: FieldTypes.SELECT,
+      props: {
+        'data-testid': 'language',
+        options: Object.values(Language).map((language) => ({
+          key: language,
+          label: language,
+          value: language,
+        })),
+        placeholder: `${t('label.select-field', {
+          field: t('label.language'),
+        })}`,
+        showSearch: true,
+        allowClear: true,
+        filterOption: (input: string, option: { label: string }) => {
+          return (option?.label ?? '')
+            .toLowerCase()
+            .includes(input.toLowerCase());
+        },
+      },
+    }),
+    []
   );
 
-  if (isEmbedded) {
-    return <section data-testid="code-component">{content}</section>;
-  }
+  const expressionTitle = (
+    <div className="d-flex justify-between w-full">
+      <Typography>
+        {isEditing
+          ? t('label.edit-entity', { entity: t('label.expression') })
+          : metricDetails?.metricExpression?.language ?? t('label.expression')}
+      </Typography>
+      {!isEditing && !metricDetails.deleted && (
+        <Tooltip
+          title={t('label.edit-entity', {
+            entity: t('label.expression'),
+          })}>
+          <Button
+            className="flex-center p-0"
+            data-testid="edit-expression-button"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            loading={isUpdating}
+            size="small"
+            type="text"
+            onClick={() => setIsEditing(true)}
+          />
+        </Tooltip>
+      )}
+    </div>
+  );
 
   return (
-    <Card data-testid="code-component">
-      <Card.Header
-        title={
-          <Typography size="text-sm" weight="semibold">
-            {t('label.expression')}
-          </Typography>
-        }
-      />
-      <Card.Content>{content}</Card.Content>
+    <Card
+      className="m-b-md"
+      data-testid="code-component"
+      title={expressionTitle}>
+      {isEditing ? (
+        <Form
+          form={form}
+          initialValues={{
+            code: metricDetails?.metricExpression?.code,
+            language: metricDetails?.metricExpression?.language,
+          }}
+          layout="vertical"
+          onFinish={handleSubmit}>
+          {generateFormFields([languageField])}
+          <Form.Item
+            data-testid="expression-code-container"
+            label={t('label.code')}
+            name="code"
+            trigger="onChange">
+            <SchemaEditor
+              className="custom-query-editor full-screen-editor-height custom-code-mirror-theme"
+              mode={{ name: getMetricExpressionLanguageName(selectedLanguage) }}
+              showCopyButton={false}
+            />
+          </Form.Item>
+          <Row justify="end">
+            <Col>
+              <Button
+                data-testid="cancel-button"
+                disabled={isUpdating}
+                type="link"
+                onClick={() => setIsEditing(false)}>
+                {t('label.cancel')}
+              </Button>
+            </Col>
+            <Col>
+              <Button
+                data-testid="update-button"
+                htmlType="submit"
+                loading={isUpdating}
+                type="primary">
+                {t('label.update')}
+              </Button>
+            </Col>
+          </Row>
+        </Form>
+      ) : (
+        <SchemaEditor
+          editorClass="custom-code-mirror-theme full-screen-editor-height"
+          mode={{
+            name: getMetricExpressionLanguageName(
+              metricDetails?.metricExpression?.language
+            ),
+          }}
+          options={{
+            styleActiveLine: false,
+            readOnly: true,
+          }}
+          value={metricDetails?.metricExpression?.code}
+        />
+      )}
     </Card>
   );
 };
