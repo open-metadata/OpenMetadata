@@ -31,10 +31,12 @@ export interface ManageButtonProps {
   softDeleteMessagePostFix?: string;
   hardDeleteMessagePostFix?: string;
   canDelete?: boolean;
+  canRestore?: boolean;
   isAsyncDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
-  onRestoreEntity?: () => Promise<void>;
+  /** Return true only after the entity has been restored successfully. */
+  onRestoreEntity?: () => Promise<boolean>;
   deleted?: boolean;
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
