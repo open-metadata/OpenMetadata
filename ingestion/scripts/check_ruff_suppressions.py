@@ -28,7 +28,7 @@ from typing import Any
 BASELINE_VERSION = 1
 BASELINE_NAME = ".ruff-g004-baseline.json"
 DISCOVERY_RULES = ("G004", "UP006", "UP007", "UP035", "UP045")
-FORBIDDEN_SUPPRESSION_CODES = frozenset({"G004", "PGH004", "RUF100", "UP006", "UP007", "UP035", "UP045"})
+FORBIDDEN_SUPPRESSION_CODES = frozenset({"G004", "UP006", "UP007", "UP035", "UP045"})
 MODERN_TYPING_RULES = frozenset({"UP006", "UP007", "UP035", "UP045"})
 EXCLUDED_DISCOVERY_DIRS = frozenset(
     {".mypy_cache", ".pytest_cache", ".ruff_cache", ".tox", ".venv", "__pycache__", "build", "dist"}

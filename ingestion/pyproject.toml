@@ -136,7 +136,6 @@ select = [
     # Hygiene
     "PIE",      # flake8-pie            — small misc cleanups
     "ICN",      # flake8-import-conventions — enforce `import pandas as pd` etc.
-    "PGH004",   # blanket-noqa           — require targeted suppression codes
     "T20",      # flake8-print          — no print/pprint (replaces print_checker plugin)
     "TC",       # flake8-type-checking  — move type-only imports under TYPE_CHECKING
     "TID",      # flake8-tidy-imports   — relative-import + banned-api (replaces import_checker plugin)

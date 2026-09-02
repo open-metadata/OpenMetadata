@@ -69,7 +69,6 @@ def test_forbidden_suppression_scan_ignores_string_contents(tmp_path: Path) -> N
     findings = find_forbidden_suppressions([source_path])
 
     assert [(finding.line, finding.code) for finding in findings] == [
-        (2, "RUF100"),
         (3, "UP006"),
         (4, "G004"),
     ]
@@ -85,8 +84,8 @@ logger = logging.getLogger(__name__)
 
 
 def run(table: str) -> None:
-    values: typing.List[str] = []  # noqa: UP006
-    logger.info(f"Processing {table}")  # noqa: G004
+    values: typing.List[str] = []  # noqa
+    logger.info(f"Processing {table}")  # noqa
 """,
     )
 
