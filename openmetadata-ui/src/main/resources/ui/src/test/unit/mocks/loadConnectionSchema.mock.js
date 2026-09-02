@@ -24,26 +24,24 @@ const CONNECTION_SCHEMA_DIR = path.resolve(
   '../../../../public/jsons/connectionSchemas'
 );
 
-const cache = new Map();
-
+// No module-level cache: Node's `require.cache` already dedupes the JSON
+// resolution per test process, and Jest resets module state between test
+// files, so adding a `Map` here would only introduce unbounded growth
+// (`openmetadata-performance/no-unbounded-module-cache`) with no hit-rate
+// benefit for the test harness.
 const loadConnectionSchema = (relativePath) => {
-  if (cache.has(relativePath)) {
-    return cache.get(relativePath);
-  }
   const fullPath = path.resolve(CONNECTION_SCHEMA_DIR, relativePath);
-  let pending;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const data = require(fullPath);
-    pending = Promise.resolve(data);
+
+    return Promise.resolve(data);
   } catch (error) {
-    pending = Promise.reject(
-      new Error(`Failed to load connection schema ${relativePath}: ${error.message}`)
+    return Promise.reject(
+      new Error(
+        `Failed to load connection schema ${relativePath}: ${error.message}`
+      )
     );
   }
-  cache.set(relativePath, pending);
-
-  return pending;
 };
 
 module.exports = { loadConnectionSchema };
