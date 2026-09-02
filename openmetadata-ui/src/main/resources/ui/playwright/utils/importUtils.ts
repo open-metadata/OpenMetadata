@@ -609,10 +609,15 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  // Re-focus the active rdg cell before pressing Enter — the previous owner
-  // editor's FocusTrap unmount can leave focus on document.body, causing the
-  // Enter press to be ignored by rdg and the tag editor never to open.
-  await page.locator('[role="gridcell"][tabindex="0"]').focus();
+  // Restore focus to the rdg grid container before pressing Enter. The
+  // previous owner picker (FocusTrap-based) unmount can leave browser focus on
+  // document.body, causing Enter to be ignored by rdg. Focusing the grid
+  // container (tabindex=0) is sufficient — rdg uses its internally-tracked
+  // selected cell (set by selectActiveRowCellByColumn) when Enter fires.
+  await page
+    .locator('.om-rdg .rdg')
+    .focus({ timeout: 2000 })
+    .catch(() => undefined);
   await page.keyboard.press('Enter', { delay: 100 });
 
   const tagSelectorInput = page
