@@ -12,10 +12,9 @@
 Sampling Models
 """
 
-from typing import Any, Optional, TypeVar, Union
+from typing import Annotated, Any, TypeVar
 
 from pydantic import Field, model_validator
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import (
@@ -44,28 +43,28 @@ class BaseProfileConfig(ConfigModel):
     """base profile config"""
 
     fullyQualifiedName: FullyQualifiedEntityName  # noqa: N815
-    profileSample: Optional[Union[float, int]] = None  # noqa: N815, UP007, UP045
-    profileSampleType: Optional[ProfileSampleType] = None  # noqa: N815, UP045
-    samplingMethodType: Optional[SamplingMethodType] = None  # noqa: N815, UP045
-    sampleDataCount: Optional[int] = 100  # noqa: N815, UP045
-    randomizedSample: Optional[bool] = True  # noqa: N815, UP045
-    profileSampleConfig: Optional[ProfileSampleConfig] = None  # noqa: N815, UP045
+    profileSample: float | int | None = None  # noqa: N815
+    profileSampleType: ProfileSampleType | None = None  # noqa: N815
+    samplingMethodType: SamplingMethodType | None = None  # noqa: N815
+    sampleDataCount: int | None = 100  # noqa: N815
+    randomizedSample: bool | None = True  # noqa: N815
+    profileSampleConfig: ProfileSampleConfig | None = None  # noqa: N815
 
 
 class ColumnConfig(ConfigModel):
     """Column config for profiler"""
 
-    excludeColumns: Optional[list[str]] = None  # noqa: N815, UP045
-    includeColumns: Optional[list[ColumnProfilerConfig]] = None  # noqa: N815, UP045
+    excludeColumns: list[str] | None = None  # noqa: N815
+    includeColumns: list[ColumnProfilerConfig] | None = None  # noqa: N815
 
 
 class TableConfig(BaseProfileConfig):
     """table profile config"""
 
-    profileQuery: Optional[str] = None  # noqa: N815, UP045
-    partitionConfig: Optional[PartitionProfilerConfig] = None  # noqa: N815, UP045
-    columnConfig: Optional[ColumnConfig] = None  # noqa: N815, UP045
-    randomizedSample: Optional[bool] = False  # noqa: N815, UP045
+    profileQuery: str | None = None  # noqa: N815
+    partitionConfig: PartitionProfilerConfig | None = None  # noqa: N815
+    columnConfig: ColumnConfig | None = None  # noqa: N815
+    randomizedSample: bool | None = False  # noqa: N815
 
     @classmethod
     def from_database_and_schema_config(cls, config: "DatabaseAndSchemaConfig", table_fqn: str):
@@ -83,7 +82,7 @@ class TableConfig(BaseProfileConfig):
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
 
-    sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None  # noqa: N815, UP045
+    sampleDataStorageConfig: SampleDataStorageConfig | None = None  # noqa: N815
 
 
 class SampleData(BaseModel):
@@ -97,8 +96,8 @@ class SamplerResponse(ConfigModel):
     """PII & Sampler Workflow Response. For a given entity, return all the tags and sample data"""
 
     entity: ClassifiableEntityType
-    sample_data: Optional[SampleData] = None  # noqa: UP045
-    column_tags: Optional[list[ColumnTag]] = None  # noqa: UP045
+    sample_data: SampleData | None = None
+    column_tags: list[ColumnTag] | None = None
 
     @model_validator(mode="before")
     @classmethod
