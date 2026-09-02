@@ -933,10 +933,16 @@ class TestWildcardWithNoDirectory:
         for include in ("**", "*", "*.sql", "?.sql"):
             assert glob_base_directory(include) == include, include
 
+    def test_a_first_segment_wildcard_is_returned_unchanged(self):
+        """`/tx*` reduces to `/`, so it is left alone for the same reason."""
+        for include in ("/tx*", "/tx**", "/*.sql"):
+            assert glob_base_directory(include) == include, include
+
     def test_an_include_with_a_directory_still_reduces(self):
         assert glob_base_directory("/tx/**") == "/tx/"
         assert glob_base_directory("/tx/staging*") == "/tx/"
         assert glob_base_directory("/tx/") == "/tx/"
+        assert glob_base_directory("/a/b/tx*") == "/a/b/"
 
     def test_a_concrete_path_is_still_left_alone(self):
         assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
