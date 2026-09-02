@@ -143,10 +143,7 @@ class SqlDltParser:
     @staticmethod
     def _normalise(table: Any, called_functions: frozenset = frozenset()) -> Optional[str]:  # noqa: UP045
         """Turn a parser table reference into a name, or None when it is not a table."""
-        from metadata.utils.helpers import (
-            get_formatted_entity_name,
-            has_table_name,
-        )
+        from metadata.utils.helpers import get_formatted_entity_name, has_table_name
 
         name = get_formatted_entity_name(str(table))
         if not name or not has_table_name(name):
