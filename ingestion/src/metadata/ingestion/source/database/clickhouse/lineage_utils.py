@@ -155,8 +155,11 @@ def get_mv_target_lineage(
     )
     if not target_entities:
         logger.debug(
-            f"Target table [{target_schema}.{target.table_name}] of materialized view "
-            f"[{view.schema_name}.{view.table_name}] not found, skipping downstream lineage"
+            "Target table [%s.%s] of materialized view [%s.%s] not found, skipping downstream lineage",
+            target_schema,
+            target.table_name,
+            view.schema_name,
+            view.table_name,
         )
         return
 

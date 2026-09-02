@@ -12,8 +12,6 @@
 Clickhouse lineage module
 """
 
-from typing import Optional
-
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
     get_mv_target_lineage,
 )
@@ -46,7 +44,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
 
     schema_field = "databases"
 
-    def get_view_lineage_extension(self) -> Optional[ViewLineageExtension]:  # noqa: UP045
+    def get_view_lineage_extension(self) -> ViewLineageExtension | None:
         """
         Materialized views created with a `TO` clause write into their target table
         """
