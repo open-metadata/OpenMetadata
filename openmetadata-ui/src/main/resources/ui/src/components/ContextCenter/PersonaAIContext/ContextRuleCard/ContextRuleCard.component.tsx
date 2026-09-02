@@ -44,6 +44,7 @@ import { ContextRule } from '../../../../generated/type/personaContextDefinition
 import {
   getRuleConditionCount,
   getRuleConditionParts,
+  isSearchScopedRule,
 } from '../../../../utils/PersonaAIContextUtils';
 import { DeleteModal } from '../../../common/DeleteModal/DeleteModal';
 
@@ -74,6 +75,9 @@ export const ContextRuleCard = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const conditionParts = useMemo(() => getRuleConditionParts(rule), [rule]);
+  // Not rule.filteredInSearch: the server ignores that flag on knowledge rules, so trusting it here
+  // would badge a rule as scoping search while the server preloads it.
+  const isScoped = isSearchScopedRule(rule);
   const conditionCount = getRuleConditionCount(
     rule.filterJsonTree,
     rule.queryFilter
@@ -165,7 +169,7 @@ export const ContextRuleCard = ({
         </Box>
 
         <Box align="center" className="tw:gap-1.5" wrap="wrap">
-          {rule.filteredInSearch ? (
+          {isScoped ? (
             <BadgeWithIcon color="brand" iconLeading={SearchLg} size="sm">
               {t('label.filtered-in-search')}
             </BadgeWithIcon>
@@ -203,7 +207,7 @@ export const ContextRuleCard = ({
               )}
             </>
           )}
-          {rule.alwaysInContext && !rule.filteredInSearch && (
+          {rule.alwaysInContext && !isScoped && (
             <Badge color="gray" size="sm">
               {t('label.always-in-context')}
             </Badge>
@@ -211,7 +215,7 @@ export const ContextRuleCard = ({
         </Box>
 
         <Typography as="p" className="tw:m-0 tw:text-quaternary" size="text-xs">
-          {rule.filteredInSearch
+          {isScoped
             ? t('message.persona-context-scoped-rule-summary')
             : t('message.persona-context-max-assets', {
                 count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
