@@ -609,6 +609,10 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
+  // Re-focus the active rdg cell before pressing Enter — the previous owner
+  // editor's FocusTrap unmount can leave focus on document.body, causing the
+  // Enter press to be ignored by rdg and the tag editor never to open.
+  await page.locator('[role="gridcell"][tabindex="0"]').focus();
   await page.keyboard.press('Enter', { delay: 100 });
 
   const tagSelectorInput = page
