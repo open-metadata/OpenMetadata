@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import type { FormListFieldData } from 'antd';
 import {
   Button,
   Card,
@@ -22,7 +23,6 @@ import {
   Select,
   Typography,
 } from 'antd';
-import type { FormListFieldData } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
