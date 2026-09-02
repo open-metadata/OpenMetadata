@@ -817,7 +817,12 @@ const TableV2 = <T extends object>(
       if (typeof rest.rowKey === 'string') {
         const val = (record as Record<string, unknown>)[rest.rowKey];
 
-        return val !== undefined && val !== null ? String(val) : String(index);
+        // An empty string is as missing as undefined: React Aria drops a row
+        // whose id is '' — a CSV import result keys its failure rows on a blank
+        // name, and AntD still rendered them.
+        return val !== undefined && val !== null && String(val) !== ''
+          ? String(val)
+          : String(index);
       }
 
       return String(index);
