@@ -145,6 +145,14 @@ runs:
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
+        # Airflow core owns the airflow package. Repair only that distribution if an
+        # exact-key cache restored inconsistent package files. Bypass uv's cache because
+        # installed files can share hardlinks with its cached wheel payload.
+        if ! python -c "import airflow; from airflow.models import Connection"; then
+          airflow_version="$(python -c 'from importlib.metadata import version; print(version("apache-airflow"))')"
+          uv pip install --no-cache --reinstall-package apache-airflow-core "apache-airflow-core==${airflow_version}"
+        fi
+        python -c "import airflow; from airflow.models import Connection; print(f'Airflow {airflow.__version__}: {Connection.__module__}.Connection')"
       shell: bash
     # ------------------------------------------------------------------------------
 
