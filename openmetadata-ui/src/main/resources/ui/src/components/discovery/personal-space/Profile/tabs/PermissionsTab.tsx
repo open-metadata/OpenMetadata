@@ -117,6 +117,20 @@ const OperationChips: React.FC<{
   </Box>
 );
 
+const getPermissionSummaryStats = (
+  summary?: PermissionDebugInfo['summary']
+) => ({
+  totalRoles: summary?.totalRoles ?? 0,
+  directRoles: summary?.directRoles ?? 0,
+  inheritedRoles: summary?.inheritedRoles ?? 0,
+  totalPolicies: summary?.totalPolicies ?? 0,
+  totalRules: summary?.totalRules ?? 0,
+  teamCount: summary?.teamCount ?? 0,
+  maxHierarchyDepth: summary?.maxHierarchyDepth ?? 0,
+  allowedOperations: summary?.effectiveOperations ?? [],
+  deniedOperations: summary?.deniedOperations ?? [],
+});
+
 const PermissionsTab: React.FC<PermissionsTabProps> = ({
   userData,
   updateUserDetails,
@@ -147,9 +161,8 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
     })();
   }, [isLoggedInUser, userData.name]);
 
-  const summary = debugInfo?.summary;
-  const allowedOperations = summary?.effectiveOperations ?? [];
-  const deniedOperations = summary?.deniedOperations ?? [];
+  const stats = getPermissionSummaryStats(debugInfo?.summary);
+  const { allowedOperations, deniedOperations } = stats;
 
   const sections: React.ReactNode[] = [
     <SectionBlock key="membership" title={t('label.membership')}>
@@ -162,7 +175,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
     <SectionBlock key="summary" title={t('label.permission-summary')}>
       <Box className="tw:flex-wrap" gap={3}>
         <StatTile
-          count={summary?.totalRoles ?? 0}
+          count={stats.totalRoles}
           icon={
             <UserCheck01
               className="tw:text-success-600"
@@ -172,24 +185,24 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
           }
           label={t('label.total-role-plural')}
           subLabel={t('label.direct-inherited-summary', {
-            direct: summary?.directRoles ?? 0,
-            inherited: summary?.inheritedRoles ?? 0,
+            direct: stats.directRoles,
+            inherited: stats.inheritedRoles,
           })}
         />
         <StatTile
-          count={summary?.totalPolicies ?? 0}
+          count={stats.totalPolicies}
           icon={<PoliciesIcon height={24} width={24} />}
           label={t('label.policy-plural')}
           subLabel={t('label.rule-plural-count', {
-            count: summary?.totalRules ?? 0,
+            count: stats.totalRules,
           })}
         />
         <StatTile
-          count={summary?.teamCount ?? 0}
+          count={stats.teamCount}
           icon={<TeamsIcon height={24} width={24} />}
           label={t('label.team-plural')}
           subLabel={t('label.max-hierarchy-depth-value', {
-            count: summary?.maxHierarchyDepth ?? 0,
+            count: stats.maxHierarchyDepth,
           })}
         />
       </Box>

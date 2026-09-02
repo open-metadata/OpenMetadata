@@ -720,21 +720,23 @@ export const useDataQualityDashboardFilters = ({
   );
 
   const showFilterBar = !hideFilterBar;
-  const hasVisibleFilters =
-    showOwnerFilter ||
-    showTierFilter ||
-    showCertificationFilter ||
-    showTagsFilter ||
-    showGlossaryTermsFilter ||
-    showDataProductsFilter;
+  const hasVisibleFilters = [
+    showOwnerFilter,
+    showTierFilter,
+    showCertificationFilter,
+    showTagsFilter,
+    showGlossaryTermsFilter,
+    showDataProductsFilter,
+  ].some(Boolean);
 
-  const hasActiveFilters =
-    !isEmpty(selectedTierFilter) ||
-    !isEmpty(selectedCertificationFilter) ||
-    !isEmpty(selectedTagFilter) ||
-    !isEmpty(selectedGlossaryTermFilter) ||
-    !isEmpty(selectedDataProductFilter) ||
-    !isEmpty(selectedOwnerFilter);
+  const hasActiveFilters = [
+    selectedTierFilter,
+    selectedCertificationFilter,
+    selectedTagFilter,
+    selectedGlossaryTermFilter,
+    selectedDataProductFilter,
+    selectedOwnerFilter,
+  ].some((selection) => !isEmpty(selection));
 
   const clearAll = () => {
     setSelectedTierFilter([]);

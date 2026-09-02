@@ -64,6 +64,21 @@ export function setupCanvas(
   return ctx;
 }
 
+const BASE_HEIGHT_ENTITY_TYPES: string[] = [
+  EntityType.METRIC,
+  EntityType.DRIVE_SERVICE,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.API_SERVICE,
+];
+
 const getBaseNodeHeightFromType = (
   entityType: string,
   isRootNode: boolean,
@@ -73,22 +88,8 @@ const getBaseNodeHeightFromType = (
 
   let baseHeight = childrenPresent ? NODE_HEIGHT_WITH_CHILDREN : NODE_HEIGHT;
 
-  switch (entityType) {
-    case EntityType.METRIC:
-    case EntityType.DRIVE_SERVICE:
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.METADATA_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.SECURITY_SERVICE:
-    case EntityType.API_SERVICE:
-      baseHeight = NODE_BASE_HEIGHT;
-
-      break;
+  if (BASE_HEIGHT_ENTITY_TYPES.includes(entityType)) {
+    baseHeight = NODE_BASE_HEIGHT;
   }
 
   return isRootNode ? baseHeight + 10 : baseHeight;
@@ -658,6 +659,31 @@ export const clearPathDataCache = (): void => {
   pathDataCache.clear();
 };
 
+function drawEdgeArrowMarker(
+  ctx: CanvasRenderingContext2D,
+  pathData: EdgePathData,
+  strokeColor: string
+): void {
+  const { sourceX, sourceY, targetX, targetY, edgePath } = pathData;
+
+  if (
+    targetX === undefined ||
+    targetY === undefined ||
+    sourceX === undefined ||
+    sourceY === undefined
+  ) {
+    return;
+  }
+
+  drawArrowMarker(
+    ctx,
+    targetX,
+    targetY,
+    getBezierEndTangentAngle(edgePath, sourceX, sourceY, targetX, targetY),
+    strokeColor
+  );
+}
+
 export function drawEdgesForExport(
   edges: Edge[],
   nodeMap: Map<string, Node>,
@@ -710,26 +736,7 @@ export function drawEdgesForExport(
     ctx.stroke(new Path2D(pathData.edgePath));
     ctx.setLineDash([]);
 
-    if (
-      pathData.targetX !== undefined &&
-      pathData.targetY !== undefined &&
-      pathData.sourceX !== undefined &&
-      pathData.sourceY !== undefined
-    ) {
-      drawArrowMarker(
-        ctx,
-        pathData.targetX,
-        pathData.targetY,
-        getBezierEndTangentAngle(
-          pathData.edgePath,
-          pathData.sourceX,
-          pathData.sourceY,
-          pathData.targetX,
-          pathData.targetY
-        ),
-        strokeColor
-      );
-    }
+    drawEdgeArrowMarker(ctx, pathData, strokeColor);
   }
 
   ctx.restore();

@@ -53,6 +53,24 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
+
+const GlossaryLoadingIndicator = ({
+  isLoading,
+  isPermissionLoading,
+}: {
+  isLoading: boolean;
+  isPermissionLoading: boolean;
+}) => (isLoading || isPermissionLoading ? <Loader /> : null);
+
+const getGlossaryEntityRenderProps = (
+  isGlossaryActive: boolean,
+  glossaryPermission: OperationPermission,
+  glossaryTermPermission: OperationPermission
+) => ({
+  permissions: isGlossaryActive ? glossaryPermission : glossaryTermPermission,
+  type: isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
+});
+
 const GlossaryV1 = ({
   isGlossaryActive,
   selectedData,
@@ -448,9 +466,18 @@ const GlossaryV1 = ({
     updateVote,
   ]);
 
+  const { permissions, type } = getGlossaryEntityRenderProps(
+    isGlossaryActive,
+    glossaryPermission,
+    glossaryTermPermission
+  );
+
   return (
     <>
-      {(isLoading || isPermissionLoading) && <Loader />}
+      <GlossaryLoadingIndicator
+        isLoading={isLoading}
+        isPermissionLoading={isPermissionLoading}
+      />
 
       <GenericProvider<Glossary | GlossaryTerm>
         currentVersionData={selectedData}
@@ -458,10 +485,8 @@ const GlossaryV1 = ({
         data={selectedData}
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
-        permissions={
-          isGlossaryActive ? glossaryPermission : glossaryTermPermission
-        }
-        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        permissions={permissions}
+        type={type}
         onUpdate={handleGlossaryUpdate}>
         {!isLoading &&
           !isPermissionLoading &&

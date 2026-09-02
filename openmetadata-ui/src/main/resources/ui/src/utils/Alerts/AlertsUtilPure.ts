@@ -38,32 +38,22 @@ import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddOb
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {
-  switch (func) {
-    case 'matchAnyEntityFqn':
-      return t('label.fqn-uppercase');
-    case 'matchAnyOwnerName':
-      return t('label.owner-plural');
-    case 'matchAnyEventType':
-      return t('label.event-type');
-    case 'matchTestResult':
-      return t('label.test-entity', {
-        entity: t('label.result-plural'),
-      });
-    case 'matchUpdatedBy':
-      return t('label.updated-by');
-    case 'matchAnyFieldChange':
-      return t('label.field-change');
-    case 'matchPipelineState':
-      return t('label.pipeline-state');
-    case 'matchIngestionPipelineState':
-      return t('label.pipeline-state');
-    case 'matchAnySource':
-      return t('label.source-match');
-    case 'matchAnyEntityId':
-      return t('label.entity-id-match');
-    default:
-      return '';
-  }
+  const displayNameByFunction: Record<string, string> = {
+    matchAnyEntityFqn: t('label.fqn-uppercase'),
+    matchAnyOwnerName: t('label.owner-plural'),
+    matchAnyEventType: t('label.event-type'),
+    matchTestResult: t('label.test-entity', {
+      entity: t('label.result-plural'),
+    }),
+    matchUpdatedBy: t('label.updated-by'),
+    matchAnyFieldChange: t('label.field-change'),
+    matchPipelineState: t('label.pipeline-state'),
+    matchIngestionPipelineState: t('label.pipeline-state'),
+    matchAnySource: t('label.source-match'),
+    matchAnyEntityId: t('label.entity-id-match'),
+  };
+
+  return displayNameByFunction[func] ?? '';
 };
 
 /**
@@ -429,100 +419,31 @@ export const getRandomizedAlertName = () => {
 };
 
 export const getMessageFromArgumentName = (argumentName: string) => {
-  switch (argumentName) {
-    case 'fqnList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.fqn-uppercase'),
-        }),
-      });
-    case 'domainList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.domain'),
-        }),
-      });
-    case 'tableNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.table'),
-          }),
-        }),
-      });
-    case 'entityNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.entity'),
-          }),
-        }),
-      });
-    case 'ownerNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.owner-plural'),
-          }),
-        }),
-      });
-    case 'updateByUserList':
-    case 'userList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.user'),
-          }),
-        }),
-      });
-    case 'eventTypeList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.event'),
-          }),
-        }),
-      });
-    case 'entityIdList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-id', {
-            entity: t('label.data-asset'),
-          }),
-        }),
-      });
-    case 'pipelineStateList':
-    case 'ingestionPipelineStateList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.pipeline-state'),
-        }),
-      });
-    case 'testStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite-status'),
-        }),
-      });
-    case 'testResultList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-case-result'),
-        }),
-      });
-    case 'contractStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.data-contract-status'),
-        }),
-      });
-    case 'testSuiteList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite'),
-        }),
-      });
-    default:
-      return '';
-  }
+  const requiredList = (entity: string) =>
+    t('message.field-text-is-required', {
+      fieldText: t('label.entity-list', { entity }),
+    });
+  const namedEntity = (entity: string) => t('label.entity-name', { entity });
+
+  const fieldTextEntityByArgument: Record<string, string> = {
+    fqnList: t('label.fqn-uppercase'),
+    domainList: t('label.domain'),
+    tableNameList: namedEntity(t('label.table')),
+    entityNameList: namedEntity(t('label.entity')),
+    ownerNameList: namedEntity(t('label.owner-plural')),
+    updateByUserList: namedEntity(t('label.user')),
+    userList: namedEntity(t('label.user')),
+    eventTypeList: namedEntity(t('label.event')),
+    entityIdList: t('label.entity-id', { entity: t('label.data-asset') }),
+    pipelineStateList: t('label.pipeline-state'),
+    ingestionPipelineStateList: t('label.pipeline-state'),
+    testStatusList: t('label.test-suite-status'),
+    testResultList: t('label.test-case-result'),
+    contractStatusList: t('label.data-contract-status'),
+    testSuiteList: t('label.test-suite'),
+  };
+
+  const entity = fieldTextEntityByArgument[argumentName];
+
+  return entity ? requiredList(entity) : '';
 };

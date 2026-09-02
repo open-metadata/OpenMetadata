@@ -394,16 +394,22 @@ export const CsvJobsTray = () => {
       : t('label.exporting-entity-plural', { entity: entityLabel });
   };
 
-  const renderJobSubLine = (job: CsvAsyncJob) => {
+  const renderActiveJobSubLine = (job: CsvAsyncJob) => {
     const total = job.total ?? 0;
     const progress = job.progress ?? 0;
     const percent = getJobPercent(job);
 
+    return total > 0
+      ? `${progress} ${t('label.of-lowercase')} ${total} · ${percent}%`
+      : job.message ?? t('message.import-data-in-progress');
+  };
+
+  const renderJobSubLine = (job: CsvAsyncJob) => {
     if (ACTIVE_STATUSES.includes(job.status)) {
-      return total > 0
-        ? `${progress} ${t('label.of-lowercase')} ${total} · ${percent}%`
-        : job.message ?? t('message.import-data-in-progress');
+      return renderActiveJobSubLine(job);
     }
+
+    const total = job.total ?? 0;
 
     if (job.status === 'COMPLETED') {
       return total > 0

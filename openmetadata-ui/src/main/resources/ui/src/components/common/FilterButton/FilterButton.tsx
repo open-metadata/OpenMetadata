@@ -18,6 +18,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
+import type { TFunction } from 'i18next';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -81,6 +82,25 @@ export type FilterButtonProps =
  * `selectionMode`/`disallowEmptySelection` defaults before spreading props, so both are overridable
  * from here without touching the core component.
  */
+const getTriggerDisplay = (
+  selectedLabels: string[],
+  label: string | undefined,
+  t: TFunction
+): { triggerLabel: string | undefined; triggerTitle: string | undefined } => {
+  const count = selectedLabels.length;
+  const triggerLabel =
+    count === 1
+      ? selectedLabels[0]
+      : count === 0
+      ? label
+      : t('label.n-selected', { count });
+
+  return {
+    triggerLabel,
+    triggerTitle: count > 1 ? selectedLabels.join(', ') : undefined,
+  };
+};
+
 export const FilterButton: React.FC<FilterButtonProps> = (props) => {
   const {
     label,
@@ -102,14 +122,11 @@ export const FilterButton: React.FC<FilterButtonProps> = (props) => {
   // trigger carries a tooltip naming them — otherwise "3 selected" is unreadable without
   // reopening the menu.
   const selectedLabels = selectedValues.map((value) => labelOf(value) ?? value);
-  const triggerLabel =
-    selectedValues.length === 1
-      ? selectedLabels[0]
-      : selectedValues.length === 0
-      ? label
-      : t('label.n-selected', { count: selectedValues.length });
-  const triggerTitle =
-    selectedLabels.length > 1 ? selectedLabels.join(', ') : undefined;
+  const { triggerLabel, triggerTitle } = getTriggerDisplay(
+    selectedLabels,
+    label,
+    t
+  );
 
   const visibleOptions = useMemo(() => {
     const needle = query.trim().toLowerCase();

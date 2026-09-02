@@ -139,6 +139,32 @@ export const getPipelineHealthRow = (
   return row;
 };
 
+const getDataQualityTone = (
+  success: number,
+  failed: number,
+  aborted: number,
+  queued: number,
+  total: number
+): { tone: AssetHealthTone; badgeLabel: string } => {
+  if (failed > 0) {
+    return {
+      tone: AssetHealthTone.Error,
+      badgeLabel: t('message.count-failed-test', { count: failed }),
+    };
+  }
+  if (queued > 0) {
+    return { tone: AssetHealthTone.Info, badgeLabel: t('label.queued') };
+  }
+  if (aborted > 0) {
+    return { tone: AssetHealthTone.Warning, badgeLabel: t('label.aborted') };
+  }
+
+  return {
+    tone: success < total ? AssetHealthTone.Warning : AssetHealthTone.Success,
+    badgeLabel: t('label.passing'),
+  };
+};
+
 export const getDataQualityHealthRow = (
   hasTests: boolean,
   summary?: TestSummary
@@ -159,20 +185,13 @@ export const getDataQualityHealthRow = (
     const aborted = summary?.aborted ?? 0;
     const queued = summary?.queued ?? 0;
 
-    let tone = AssetHealthTone.Success;
-    let badgeLabel = t('label.passing');
-    if (failed > 0) {
-      tone = AssetHealthTone.Error;
-      badgeLabel = t('message.count-failed-test', { count: failed });
-    } else if (queued > 0) {
-      tone = AssetHealthTone.Info;
-      badgeLabel = t('label.queued');
-    } else if (aborted > 0) {
-      tone = AssetHealthTone.Warning;
-      badgeLabel = t('label.aborted');
-    } else if (success < total) {
-      tone = AssetHealthTone.Warning;
-    }
+    const { tone, badgeLabel } = getDataQualityTone(
+      success,
+      failed,
+      aborted,
+      queued,
+      total
+    );
 
     row = buildRow({
       category: AssetHealthCategory.DataQuality,
