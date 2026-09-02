@@ -107,14 +107,15 @@ public class EmailPublisher implements Destination<ChangeEvent> {
               .filter(Objects::nonNull)
               .collect(Collectors.toSet());
 
-      CompletableFuture.allOf(
-              receivers.stream()
-                  .map(
-                      receiver ->
-                          emailSender.send(
-                              receiver, emailMessage.getSubject(), emailMessage.getHtmlContent()))
-                  .toArray(CompletableFuture[]::new))
-          .join();
+      CompletableFuture<?>[] deliveryFutures =
+          receivers.stream()
+              .map(
+                  receiver ->
+                      emailSender.send(
+                          receiver, emailMessage.getSubject(), emailMessage.getHtmlContent()))
+              .toArray(CompletableFuture<?>[]::new);
+
+      CompletableFuture.allOf(deliveryFutures).join();
 
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
