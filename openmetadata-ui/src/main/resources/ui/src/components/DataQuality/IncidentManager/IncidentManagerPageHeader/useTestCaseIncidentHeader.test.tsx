@@ -360,6 +360,21 @@ describe('useTestCaseIncidentHeader', () => {
     expect(result.current.hasEditDomainPermission).toBe(false);
   });
 
+  it('should disable edit permissions for deleted test cases', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      deleted: true,
+    };
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.hasEditStatusPermission).toBe(false);
+    expect(result.current.hasEditOwnerPermission).toBe(false);
+    expect(result.current.hasEditDomainPermission).toBe(false);
+  });
+
   it('should expose the table fqn and dimension key', async () => {
     mockParams = { fqn: 'fqn', dimensionKey: 'completeness' };
 
