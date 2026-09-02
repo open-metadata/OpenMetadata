@@ -29,7 +29,6 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
-from metadata.core.connections.test_connection.checks.scope import ProbeScope
 from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
@@ -158,7 +157,7 @@ class PostgresChecks:
     ) -> None:
         self._db = db
         self.query_statement_source = query_statement_source
-        self._scope = ProbeScope(excluded=schema_filter_pattern, skipped=self.SYSTEM_SCHEMAS)
+        self.schema_filter = schema_filter_pattern
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -176,11 +175,11 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._db.client, self._scope)
+        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS, self.schema_filter)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self._db.client, self._scope)
+        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS, self.schema_filter)
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:

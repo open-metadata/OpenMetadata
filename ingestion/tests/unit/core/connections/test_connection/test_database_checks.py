@@ -20,14 +20,15 @@ from sqlalchemy.pool import StaticPool
 
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import (
+    MAX_TARGETS,
     DatabaseStep,
     list_schemas,
     list_tables,
     list_views,
     ping,
     run_sql,
+    targets_in_scope,
 )
-from metadata.core.connections.test_connection.checks.scope import ProbeScope
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.type.filterPattern import FilterPattern
 
@@ -85,11 +86,11 @@ def test_run_sql_reports_the_same_statement_it_ran(engine):
 
 
 def test_list_tables_names_the_explicit_schema(engine):
-    assert list_tables(engine, ProbeScope(pinned="main")).summary == "3 tables in schema 'main'"
+    assert list_tables(engine, "main").summary == "3 tables in schema 'main'"
 
 
 def test_list_views_names_the_explicit_schema(engine):
-    assert list_views(engine, ProbeScope(pinned="main")).summary == "2 views in schema 'main'"
+    assert list_views(engine, "main").summary == "2 views in schema 'main'"
 
 
 def test_list_tables_auto_selects_and_flags_when_schema_unset(engine):
@@ -105,17 +106,17 @@ def test_auto_select_skips_connector_supplied_system_schemas():
         conn.exec_driver_sql("ATTACH DATABASE ':memory:' AS userschema")
         conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
     # 'main' is flagged as a system schema, so the probe falls through to it.
-    summary = list_tables(eng, ProbeScope(skipped=frozenset({"main"}))).summary
+    summary = list_tables(eng, None, frozenset({"main"})).summary
     assert summary == ("1 table in schema 'userschema', auto-selected because no databaseSchema was configured")
 
 
 def test_list_tables_has_no_caveat_when_tables_exist(engine):
-    assert list_tables(engine, ProbeScope(pinned="main")).caveat is None
+    assert list_tables(engine, "main").caveat is None
 
 
 def test_list_tables_warns_when_no_tables_visible():
     eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    evidence = list_tables(eng, ProbeScope(pinned="main"))
+    evidence = list_tables(eng, "main")
     assert evidence.summary == "0 tables in schema 'main'"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No tables visible in schema 'main'"
@@ -125,7 +126,7 @@ def test_list_tables_warns_when_no_tables_visible():
 def test_list_views_never_warns_when_empty():
     # An empty view list is normal, so list_views stays silent (no caveat).
     eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    assert list_views(eng, ProbeScope(pinned="main")).caveat is None
+    assert list_views(eng, "main").caveat is None
 
 
 def test_list_schemas_summarizes_count(engine):
@@ -159,8 +160,8 @@ def test_list_tables_skips_the_schemas_filtered_out():
         conn.exec_driver_sql("ATTACH DATABASE ':memory:' AS userschema")
         conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
 
-    scope = ProbeScope(excluded=FilterPattern(excludes=["main"]))
-    assert "userschema" in list_tables(eng, scope).summary
+    filtered = FilterPattern(excludes=["main"])
+    assert "userschema" in list_tables(eng, None, frozenset(), filtered).summary
 
 
 def test_list_tables_tries_the_next_schema_when_one_refuses_the_read():
@@ -181,7 +182,7 @@ def test_list_tables_tries_the_next_schema_when_one_refuses_the_read():
         conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
 
     with patch.object(Inspector, "get_table_names", get_table_names):
-        evidence = list_tables(eng, ProbeScope())
+        evidence = list_tables(eng)
 
     assert refused == ["main"]
     assert "userschema" in evidence.summary
@@ -194,13 +195,12 @@ def test_list_tables_fails_when_every_schema_refuses_the_read():
         raise PermissionError(f"not authorized on {schema}")
 
     with patch.object(Inspector, "get_table_names", get_table_names), pytest.raises(CheckError):
-        list_tables(eng, ProbeScope())
+        list_tables(eng)
 
 
 def test_list_tables_with_nothing_in_scope_reports_no_schema():
-    scope = ProbeScope(excluded=FilterPattern(excludes=[".*"]))
     eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    evidence = list_tables(eng, scope)
+    evidence = list_tables(eng, None, frozenset(), FilterPattern(excludes=[".*"]))
     assert evidence.summary == "no tables enumerated"
     assert evidence.caveat is not None
 
@@ -212,6 +212,26 @@ def test_only_system_schemas_falls_back_to_the_default_schema():
     with eng.connect() as conn:
         conn.exec_driver_sql("CREATE TABLE t1 (id INTEGER)")
 
-    evidence = list_tables(eng, ProbeScope(skipped=frozenset({"main"})))
+    evidence = list_tables(eng, None, frozenset({"main"}))
 
     assert evidence.summary == "1 table enumerated"
+
+
+def test_targets_in_scope_prefers_a_pin_over_any_listing():
+    assert targets_in_scope(["sales", "marketing"], pinned="finance") == ["finance"]
+    assert targets_in_scope([], pinned="finance") == ["finance"]
+
+
+def test_targets_in_scope_drops_what_the_filter_excludes():
+    names = ["system", "sales", "marketing"]
+    assert targets_in_scope(names, excluded=FilterPattern(excludes=["system"])) == ["sales", "marketing"]
+    assert targets_in_scope(names, excluded=FilterPattern(includes=["sales"])) == ["sales"]
+
+
+def test_targets_in_scope_is_capped():
+    """Each target costs a round-trip, so a wide catalog cannot exhaust the timeout"""
+    assert len(targets_in_scope(f"schema_{index}" for index in range(50))) == MAX_TARGETS
+
+
+def test_targets_in_scope_can_resolve_to_nothing():
+    assert targets_in_scope(["sales"], excluded=FilterPattern(excludes=[".*"])) == []

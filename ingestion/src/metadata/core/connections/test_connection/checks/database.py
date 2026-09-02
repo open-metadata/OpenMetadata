@@ -22,20 +22,27 @@ from typing import TYPE_CHECKING
 from sqlalchemy import event, inspect
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
-from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
+from metadata.core.connections.test_connection.checks.probe import probe_targets
 from metadata.core.connections.test_connection.checks.summary import count, enumerated
 from metadata.core.connections.test_connection.network import probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
+from metadata.utils.filters import filtered_out
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Sequence
 
     from sqlalchemy.engine import Engine, Row
     from sqlalchemy.engine.reflection import Inspector
 
+    from metadata.generated.schema.type.filterPattern import FilterPattern
+
 
 # Rows a probe fetches; proving a statement runs never needs the whole result.
 DEFAULT_SAMPLE_ROWS = 100
+
+# Each target costs a round-trip, so a catalog with very many objects cannot be
+# allowed to exhaust the step timeout.
+MAX_TARGETS = 10
 
 
 class DatabaseStep(StepName):
@@ -154,24 +161,56 @@ def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[s
     return result, _resolved_command(captured)
 
 
-def _targets(inspector: Inspector, scope: ProbeScope) -> list[str | None]:
-    """The schemas to probe, in order.
+def targets_in_scope(
+    names: Iterable[str],
+    *,
+    pinned: str | None = None,
+    excluded: FilterPattern | None = None,
+    limit: int = MAX_TARGETS,
+) -> list[str]:
+    """The objects a check should probe, from the ones it can see.
 
-    A configured ``databaseSchema`` is the only schema the run reads, so it is the
-    only one probed. Otherwise the scope keeps what ``schemaFilterPattern`` targets,
-    minus the connector's system schemas, so the probe lands on the data the run
-    would actually read.
+    ``pinned`` is a configured single object (``databaseSchema``, ``bucket``, ...):
+    when set it is the only one the run reads, so it is the only one probed - and
+    no listing is needed to know that. Otherwise ``excluded`` (the filter pattern
+    from the service connection) decides, capped at ``limit``.
 
-    ``None`` means "the connection's default schema" and is the fallback when the
-    listing yields no candidate - every schema is a system one, or none was
-    listed - which is what this helper did before there was a scope. A configured
-    filter that excludes everything is different: there the empty result is the
-    answer, and the caller reports it.
+    Which names are the connector's own system objects, and whether ingestion
+    reads them, is the connector's knowledge: pass them in already dropped, or
+    already ordered last.
     """
-    if scope.pinned:
-        return [scope.pinned]
-    targets = scope.targets(inspector.get_schema_names() or [])
-    if not targets and scope.excluded is None:
+    if pinned:
+        return [pinned]
+    targets: list[str] = []
+    for name in names:
+        if filtered_out(excluded, name):
+            continue
+        targets.append(name)
+        if len(targets) >= limit:
+            break
+    return targets
+
+
+def _schema_targets(
+    inspector: Inspector,
+    schema: str | None,
+    system_schemas: frozenset[str],
+    schema_filter: FilterPattern | None,
+) -> list[str | None]:
+    """The schemas to reflect, in order.
+
+    ``None`` means "the connection's default schema", and is the fallback when the
+    listing leaves no candidate - every schema is a system one, or none was listed -
+    which is what this helper did before it had a filter. A configured filter that
+    excludes everything is different: there the empty result is the answer, and the
+    caller reports it.
+    """
+    if schema:
+        return [schema]
+    avoid = {name.lower() for name in system_schemas}
+    candidates = [name for name in inspector.get_schema_names() or [] if name.lower() not in avoid]
+    targets = targets_in_scope(candidates, excluded=schema_filter)
+    if not targets and schema_filter is None:
         return [None]
     return list(targets)
 
@@ -211,7 +250,13 @@ def list_schemas(client: Engine) -> Evidence:
     )
 
 
-def _reflect_in_scope(client: Engine, scope: ProbeScope, operation: str) -> tuple[str | None, list[str], str | None]:
+def _reflect_in_scope(
+    client: Engine,
+    operation: str,
+    schema: str | None,
+    system_schemas: frozenset[str],
+    schema_filter: FilterPattern | None,
+) -> tuple[str | None, list[str], str | None]:
     """Reflect ``operation`` on the schemas in scope, keeping the first that answers.
 
     Most catalogs filter what the login cannot see and return an empty list, but an
@@ -221,35 +266,43 @@ def _reflect_in_scope(client: Engine, scope: ProbeScope, operation: str) -> tupl
     step gives up, and only every schema refusing the read is a failure.
     """
     inspector = inspect(client)
-    targets = _targets(inspector, scope)
-    if not targets:
+    targets = _schema_targets(inspector, schema, system_schemas, schema_filter)
+
+    def probe(target: str | None) -> tuple[list[str], str | None]:
+        # A reflection that does not raise is an answer, empty or not: an empty
+        # catalog listing is normal and is reported as a caveat, not a failure.
+        return _reflect(client, lambda: getattr(inspector, operation)(target))
+
+    answered = probe_targets(targets, probe)
+    if answered is None:
         return None, [], None
-    names: list[str] = []
-    command: str | None = None
-
-    def probe(target: str | None) -> None:
-        nonlocal names, command
-        names, command = _reflect(client, lambda: getattr(inspector, operation)(target))
-
-    probed = probe_targets(targets, probe)
-    return probed, names, command
+    target, (names, command) = answered
+    return target, names, command
 
 
-def list_tables(client: Engine, scope: ProbeScope | None = None) -> Evidence:
-    scope = scope or ProbeScope()
-    target, names, command = _reflect_in_scope(client, scope, "get_table_names")
+def list_tables(
+    client: Engine,
+    schema: str | None = None,
+    system_schemas: frozenset[str] = frozenset(),
+    schema_filter: FilterPattern | None = None,
+) -> Evidence:
+    target, names, command = _reflect_in_scope(client, "get_table_names", schema, system_schemas, schema_filter)
     described = f"schema '{target}'" if target else "the database"
     return Evidence(
-        summary=_in_schema("table", len(names), target, auto_selected=not scope.pinned),
+        summary=_in_schema("table", len(names), target, auto_selected=not schema),
         command=command,
         caveat=None if names else _empty_caveat("table", described),
     )
 
 
-def list_views(client: Engine, scope: ProbeScope | None = None) -> Evidence:
-    scope = scope or ProbeScope()
-    target, names, command = _reflect_in_scope(client, scope, "get_view_names")
+def list_views(
+    client: Engine,
+    schema: str | None = None,
+    system_schemas: frozenset[str] = frozenset(),
+    schema_filter: FilterPattern | None = None,
+) -> Evidence:
+    target, names, command = _reflect_in_scope(client, "get_view_names", schema, system_schemas, schema_filter)
     return Evidence(
-        summary=_in_schema("view", len(names), target, auto_selected=not scope.pinned),
+        summary=_in_schema("view", len(names), target, auto_selected=not schema),
         command=command,
     )
