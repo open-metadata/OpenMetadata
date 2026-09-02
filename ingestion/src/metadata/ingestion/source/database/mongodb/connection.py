@@ -22,8 +22,8 @@ from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 
 from metadata.core.connections.test_connection import ErrorPack, Evidence, Matchers, check, when
 from metadata.core.connections.test_connection.check import CheckError
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
-from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
+from metadata.core.connections.test_connection.checks.database import DatabaseStep, targets_in_scope
+from metadata.core.connections.test_connection.checks.probe import probe_targets
 from metadata.core.connections.test_connection.checks.summary import count, enumerated
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.core.connections.test_connection.records import Diagnosis
@@ -36,6 +36,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
 MONGODB_ERRORS = ErrorPack(
@@ -75,9 +76,10 @@ class MongoDBChecks:
 
     errors = MONGODB_ERRORS
 
-    def __init__(self, client: Borrowed[MongoClient], scope: ProbeScope) -> None:
+    def __init__(self, client: Borrowed[MongoClient], schema: str | None, schema_filter: FilterPattern | None) -> None:
         self._client = client
-        self._scope = scope
+        self._schema = schema
+        self._schema_filter = schema_filter
         self._targeted: list[str] | None = None
 
     def _targeted_databases(self) -> list[str]:
@@ -88,10 +90,12 @@ class MongoDBChecks:
         step working for a user that cannot run `listDatabases`.
         """
         if self._targeted is None:
-            if self._scope.pinned:
-                self._targeted = self._scope.targets([])
+            if self._schema:
+                self._targeted = targets_in_scope([], pinned=self._schema)
             else:
-                self._targeted = self._scope.targets(self._client.client.list_database_names())
+                self._targeted = targets_in_scope(
+                    self._client.client.list_database_names(), excluded=self._schema_filter
+                )
         return self._targeted
 
     @check(DatabaseStep.CheckAccess)
@@ -104,7 +108,7 @@ class MongoDBChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        command = "listDatabases" if not self._scope.pinned else f"database({self._scope.pinned!r})"
+        command = f"database({self._schema!r})" if self._schema else "listDatabases"
         try:
             targeted = self._targeted_databases()
         except Exception as cause:
@@ -135,17 +139,17 @@ class MongoDBChecks:
                 caveat=_nothing_in_scope(),
             )
 
-        found: dict[str, int] = {}
-
-        def probe(database: str) -> None:
-            found[database] = len(self._client.client.get_database(database).list_collection_names())
+        def probe(database: str) -> int:
+            # An empty database still answers - the user can list it - so the count
+            # is accepted either way and reported as a caveat when it is 0.
+            return len(self._client.client.get_database(database).list_collection_names())
 
         try:
-            database = probe_targets(targeted, probe)
+            answered = probe_targets(targeted, probe)
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
 
-        number = found.get(database, 0) if database else 0
+        database, number = answered if answered else (None, 0)
         return Evidence(
             summary=f"{count(number, 'collection')} in database '{database}'",
             command=command,
@@ -190,5 +194,6 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         connection = self.service_connection
         return MongoDBChecks(
             client=self.borrow(),
-            scope=ProbeScope(pinned=connection.databaseSchema, excluded=connection.schemaFilterPattern),
+            schema=connection.databaseSchema,
+            schema_filter=connection.schemaFilterPattern,
         )
