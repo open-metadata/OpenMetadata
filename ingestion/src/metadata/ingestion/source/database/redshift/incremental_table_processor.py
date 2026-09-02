@@ -14,8 +14,8 @@ Incremental Processor for Redshift
 """
 
 import re
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import text
@@ -85,7 +85,7 @@ REGEX_LIST = [
 # single-pass; keyword dispatch achieves the same reduction more predictably.
 _FIRST_KW_RE = re.compile(r"\b(ALTER|CREATE|DROP|COMMENT)\b", re.IGNORECASE)
 
-_KW_TO_CANDIDATES: Dict[str, List[RedshiftTableChangeQueryRegex]] = {  # noqa: UP006
+_KW_TO_CANDIDATES: dict[str, list[RedshiftTableChangeQueryRegex]] = {
     "ALTER": [_ALTER_TABLE_RE, _ALTER_VIEW_RE],
     "CREATE": [_CREATE_TABLE_RE, _CREATE_VIEW_RE],
     "DROP": [_DROP_TABLE_RE, _DROP_VIEW_RE],
@@ -102,7 +102,7 @@ class RedshiftIncrementalTableProcessor:
         self,
         table_map: RedshiftTableMap,
         table_changes_query: str,
-        regex_list: List[RedshiftTableChangeQueryRegex],  # noqa: UP006
+        regex_list: list[RedshiftTableChangeQueryRegex],
         connection: Connection,
         default_schema: SchemaName,
     ):
@@ -141,7 +141,7 @@ class RedshiftIncrementalTableProcessor:
         """
         return statement.translate(_CLEAN_TABLE)
 
-    def _get_schema_and_table(self, full_table_name: str, statement: str) -> Tuple[SchemaName, TableName]:  # noqa: UP006
+    def _get_schema_and_table(self, full_table_name: str, statement: str) -> tuple[SchemaName, TableName]:
         """From the full table name, retrieves the Schema and Table Name.
         If no Schema is present, falls back to the default schema."""
         full_table_name_as_list = full_table_name.split(".")
@@ -199,10 +199,10 @@ class RedshiftIncrementalTableProcessor:
             if not match_found:
                 logger.debug("Match not found for %s", statement)
 
-    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:  # noqa: UP006, UP045
+    def get_deleted(self, schema_name: SchemaName | None = None) -> list[tuple[SchemaName, TableName]]:
         """Returns the deleted table names present in the table_map for a given schema."""
         return self.table_map.get_deleted(schema_name)
 
-    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:  # noqa: UP006
+    def get_not_deleted(self, schema_name: SchemaName) -> frozenset[TableName]:
         """Returns the not deleted table names present in the table_map for a given schema."""
         return self.table_map.get_not_deleted(schema_name)
