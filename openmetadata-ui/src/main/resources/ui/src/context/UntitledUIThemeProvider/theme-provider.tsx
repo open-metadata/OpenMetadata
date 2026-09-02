@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   BrandColors,
   Theme,
@@ -19,6 +26,31 @@ import {
 } from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
+
+const getStoredTheme = (storageKey: string): Theme | null => {
+  if (typeof globalThis.localStorage === 'undefined') {
+    return null;
+  }
+
+  const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme;
+  }
+
+  localStorage.removeItem(storageKey);
+
+  return null;
+};
+
+const getSystemTheme = (): Theme | null => {
+  if (typeof globalThis.matchMedia !== 'function') {
+    return null;
+  }
+
+  return globalThis.matchMedia(SYSTEM_THEME_QUERY).matches ? 'dark' : 'light';
+};
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -39,7 +71,7 @@ interface ThemeProviderProps {
    */
   darkModeClass?: string;
   /**
-   * The default theme to use if no theme is stored in localStorage.
+   * The fallback theme when neither storage nor a system preference is available.
    * @default "light"
    */
   defaultTheme?: Theme;
@@ -231,31 +263,50 @@ export const ThemeProvider = ({
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof globalThis !== 'undefined') {
-      const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+  const [theme, setThemeState] = useState<Theme>(
+    () => getStoredTheme(storageKey) ?? getSystemTheme() ?? defaultTheme
+  );
 
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        return savedTheme;
+  const setTheme = useCallback(
+    (nextTheme: Theme) => {
+      // System-derived initialization stays ephemeral so later visits can keep
+      // following the OS until the user or desktop shell makes an explicit choice.
+      if (typeof globalThis.localStorage !== 'undefined') {
+        localStorage.setItem(storageKey, nextTheme);
       }
-
-      localStorage.removeItem(storageKey);
-    }
-
-    return defaultTheme;
-  });
+      setThemeState(nextTheme);
+    },
+    [storageKey]
+  );
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
 
     root.classList.toggle(darkModeClass, theme === 'dark');
+    root.style.colorScheme = theme;
+  }, [theme, darkModeClass]);
 
-    if (theme === 'dark') {
-      localStorage.setItem(storageKey, theme);
-    } else {
-      localStorage.removeItem(storageKey);
+  useEffect(() => {
+    if (typeof globalThis.matchMedia !== 'function') {
+      return;
     }
-  }, [theme, darkModeClass, storageKey]);
+
+    const systemTheme = globalThis.matchMedia(SYSTEM_THEME_QUERY);
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      // A stored value means the user or desktop shell has explicitly opted
+      // out of following later OS changes.
+      if (getStoredTheme(storageKey) !== null) {
+        return;
+      }
+
+      setThemeState(event.matches ? 'dark' : 'light');
+    };
+
+    systemTheme.addEventListener('change', handleSystemThemeChange);
+
+    return () =>
+      systemTheme.removeEventListener('change', handleSystemThemeChange);
+  }, [storageKey]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
@@ -276,7 +327,7 @@ export const ThemeProvider = ({
 
   const values = useMemo(
     () => ({ theme, brandColors, setTheme }),
-    [theme, brandColors]
+    [theme, brandColors, setTheme]
   );
 
   return (

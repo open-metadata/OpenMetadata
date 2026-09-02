@@ -66,15 +66,23 @@ function PipelineActionsDropdown({
     id = '',
   } = useMemo(() => ingestion, [ingestion]);
 
-  const { editPermission, deletePermission, triggerPermission } =
-    useMemo(() => {
-      return {
-        editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
-        deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
-        triggerPermission:
-          ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
-      };
-    }, [ingestionPipelinePermissions]);
+  const {
+    editPermission,
+    deletePermission,
+    deployPermission,
+    triggerPermission,
+  } = useMemo(() => {
+    return {
+      editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+      deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
+      deployPermission:
+        ingestionPipelinePermissions?.[Operation.EditAll] ||
+        ingestionPipelinePermissions?.[Operation.Deploy] ||
+        false,
+      triggerPermission:
+        ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
+    };
+  }, [ingestionPipelinePermissions]);
 
   const handleTriggerIngestion = useCallback(
     async (id: string, displayName: string) => {
@@ -179,7 +187,7 @@ function PipelineActionsDropdown({
                 id,
                 <ReloadIcon height={12} width={12} />
               ),
-              hidden: !editPermission,
+              hidden: !deployPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 're-deploy-button',
@@ -194,14 +202,21 @@ function PipelineActionsDropdown({
                 id,
                 <DeployIcon height={12} width={12} />
               ),
-              hidden: !editPermission,
+              hidden: !deployPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 'deploy-button',
               'data-testid': 'deploy-button',
             },
           ],
-    [ingestion, currTrigger, id, currDeploy, triggerPermission, editPermission]
+    [
+      ingestion,
+      currTrigger,
+      id,
+      currDeploy,
+      triggerPermission,
+      deployPermission,
+    ]
   );
 
   const menuItems = useMemo(() => {
