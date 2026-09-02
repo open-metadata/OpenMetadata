@@ -27,7 +27,6 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,8 +49,6 @@ import org.openmetadata.sdk.services.teams.UserService;
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
-  private static final Duration MAX_LAST_ACTIVITY_AGE = Duration.ofMinutes(30);
-
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
   @Test
@@ -236,16 +233,12 @@ public class UserMetricsResourceIT {
       String lastActivity = (String) updatedMetrics.get("last_activity");
       assertNotNull(lastActivity, "Last activity should not be null after user activity");
 
-      Instant lastActivityTime = Instant.parse(lastActivity);
-      Instant now = Instant.now();
-      long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-      assertTrue(
-          secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
-          "Last activity should be within last "
-              + MAX_LAST_ACTIVITY_AGE.toMinutes()
-              + " minutes, but was "
-              + secondsSinceActivity
-              + " seconds ago");
+      // No wall-clock freshness assertion. last_activity is MAX(lastActivityTime) read from the
+      // DB, and nothing this test does writes that column: UserActivityFilter only caches activity
+      // in memory, UserActivityTracker flushes to the DB once an hour, and the only immediate write
+      // is on login (UserRepository.updateUserLastActivityTime) which the ITs never perform - they
+      // self-mint JWTs via JwtAuthProvider. So the value is pinned near lane start and goes stale
+      // as the lane runs; any fixed window shorter than the lane duration fails by construction.
 
       int dailyActiveUsers = (Integer) updatedMetrics.get("daily_active_users");
       assertTrue(dailyActiveUsers >= 0, "Daily active users should be non-negative");
