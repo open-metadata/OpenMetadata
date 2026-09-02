@@ -50,13 +50,18 @@ class ProbeScope:
     ``pinned`` is a configured single target (``databaseSchema``, ``bucket``, ...):
     when set it is the only object ingestion reads, so it is the only one probed
     and no listing is needed. ``excluded`` is the filter pattern from the service
-    connection. ``last_resort`` objects are still probed - ingestion reads them
-    too - but only once everything else has been tried, so the step reports on
-    real data whenever any is in scope.
+    connection.
+
+    System objects are handled two ways, because the connectors differ on whether
+    ingestion reads them: ``skipped`` drops them from the candidates, ``last_resort``
+    keeps them but tries them only once everything else has been tried. A connector
+    whose ingestion reads its system objects (Cassandra keyspaces) wants the
+    latter; one whose ingestion never does (a SQL catalog) wants the former.
     """
 
     pinned: str | None = None
     excluded: FilterPattern | None = None
+    skipped: frozenset[str] = field(default_factory=frozenset)
     last_resort: frozenset[str] = field(default_factory=frozenset)
     limit: int = DEFAULT_MAX_TARGETS
 
@@ -64,11 +69,12 @@ class ProbeScope:
         """The in-scope objects among ``names``, preferred ones first."""
         if self.pinned:
             return [self.pinned]
+        dropped = {name.lower() for name in self.skipped}
         deferred_names = {name.lower() for name in self.last_resort}
         preferred: list[str] = []
         deferred: list[str] = []
         for name in names:
-            if filtered_out(self.excluded, name):
+            if name.lower() in dropped or filtered_out(self.excluded, name):
                 continue
             target = deferred if name.lower() in deferred_names else preferred
             target.append(name)

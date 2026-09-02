@@ -105,7 +105,7 @@ def test_auto_select_skips_connector_supplied_system_schemas():
         conn.exec_driver_sql("ATTACH DATABASE ':memory:' AS userschema")
         conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
     # 'main' is flagged as a system schema, so the probe falls through to it.
-    summary = list_tables(eng, ProbeScope(last_resort=frozenset({"main"}))).summary
+    summary = list_tables(eng, ProbeScope(skipped=frozenset({"main"}))).summary
     assert summary == ("1 table in schema 'userschema', auto-selected because no databaseSchema was configured")
 
 
@@ -203,3 +203,15 @@ def test_list_tables_with_nothing_in_scope_reports_no_schema():
     evidence = list_tables(eng, scope)
     assert evidence.summary == "no tables enumerated"
     assert evidence.caveat is not None
+
+
+def test_only_system_schemas_falls_back_to_the_default_schema():
+    """As before the scope existed: nothing non-system to pick means reflect the
+    connection's default schema, not nothing at all"""
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with eng.connect() as conn:
+        conn.exec_driver_sql("CREATE TABLE t1 (id INTEGER)")
+
+    evidence = list_tables(eng, ProbeScope(skipped=frozenset({"main"})))
+
+    assert evidence.summary == "1 table enumerated"

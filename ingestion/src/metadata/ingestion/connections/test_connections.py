@@ -50,8 +50,8 @@ from metadata.utils.timeout import timeout
 logger = cli_logger()
 
 
-# Probed only after the user schemas: these are exposed to every login, so landing
-# on one proves nothing about the data being ingested.
+# Never probed: these are exposed to every login, so landing on one proves nothing
+# about the data being ingested. Skipped rather than deferred, as before.
 LEGACY_SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema"})
 
 
@@ -383,7 +383,7 @@ def test_connection_db_schema_sources(
         """
         Check if we can list tables or views from the schemas the ingestion would
         read: the configured `databaseSchema` when set, else the ones
-        `schemaFilterPattern` targets, system schemas last.
+        `schemaFilterPattern` targets, minus the system schemas.
 
         Probing a single arbitrary schema fails a connection whose ingestion reads
         a different, readable schema - on an engine fronted by an external
@@ -398,7 +398,7 @@ def test_connection_db_schema_sources(
         scope = ProbeScope(
             pinned=service_connection.databaseSchema,
             excluded=getattr(service_connection, "schemaFilterPattern", None),
-            last_resort=LEGACY_SYSTEM_SCHEMAS,
+            skipped=LEGACY_SYSTEM_SCHEMAS,
         )
         probe_targets(scope.targets(inspector.get_schema_names() or []), inspector_fn)
 

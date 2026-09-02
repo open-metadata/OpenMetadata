@@ -92,3 +92,18 @@ def test_probe_raises_the_last_error_when_every_target_fails():
 def test_probe_of_nothing_is_not_a_failure():
     """A scope that resolves to nothing is a configuration answer, not an error"""
     assert probe_targets([], lambda target: None) is None
+
+
+def test_skipped_names_are_dropped_entirely():
+    """A connector whose ingestion never reads its system objects drops them"""
+    scope = ProbeScope(skipped=frozenset({"system", "system_auth"}))
+    assert scope.targets(NAMES) == ["sales", "marketing"]
+
+
+def test_skipped_matching_ignores_case():
+    assert ProbeScope(skipped=frozenset({"SYSTEM"})).targets(["system", "sales"]) == ["sales"]
+
+
+def test_skipping_everything_yields_no_targets():
+    scope = ProbeScope(skipped=frozenset(NAMES))
+    assert scope.targets(NAMES) == []

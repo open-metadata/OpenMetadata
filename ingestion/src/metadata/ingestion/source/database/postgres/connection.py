@@ -158,7 +158,7 @@ class PostgresChecks:
     ) -> None:
         self._db = db
         self.query_statement_source = query_statement_source
-        self._scope = ProbeScope(excluded=schema_filter_pattern, last_resort=self.SYSTEM_SCHEMAS)
+        self._scope = ProbeScope(excluded=schema_filter_pattern, skipped=self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:

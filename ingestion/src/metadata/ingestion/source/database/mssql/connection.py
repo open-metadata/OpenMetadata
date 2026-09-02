@@ -161,7 +161,7 @@ class MssqlChecks:
     ) -> None:
         self._db = db
         self.get_databases_statement = get_databases_statement
-        self._scope = ProbeScope(excluded=schema_filter_pattern, last_resort=self.SYSTEM_SCHEMAS)
+        self._scope = ProbeScope(excluded=schema_filter_pattern, skipped=self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:

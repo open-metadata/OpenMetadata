@@ -143,7 +143,7 @@ class MySQLChecks:
         self._scope = ProbeScope(
             pinned=schema,
             excluded=schema_filter_pattern,
-            last_resort=self.SYSTEM_SCHEMAS,
+            skipped=self.SYSTEM_SCHEMAS,
         )
 
     @check(DatabaseStep.CheckAccess)

@@ -154,17 +154,26 @@ def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[s
     return result, _resolved_command(captured)
 
 
-def _targets(inspector: Inspector, scope: ProbeScope) -> tuple[list[str], bool]:
-    """The schemas to probe in order, and whether they were auto-selected.
+def _targets(inspector: Inspector, scope: ProbeScope) -> list[str | None]:
+    """The schemas to probe, in order.
 
     A configured ``databaseSchema`` is the only schema the run reads, so it is the
-    only one probed. Otherwise the scope keeps what ``schemaFilterPattern`` targets
-    and defers the system schemas, so the probe lands on the data the run would
-    actually read.
+    only one probed. Otherwise the scope keeps what ``schemaFilterPattern`` targets,
+    minus the connector's system schemas, so the probe lands on the data the run
+    would actually read.
+
+    ``None`` means "the connection's default schema" and is the fallback when the
+    listing yields no candidate - every schema is a system one, or none was
+    listed - which is what this helper did before there was a scope. A configured
+    filter that excludes everything is different: there the empty result is the
+    answer, and the caller reports it.
     """
     if scope.pinned:
-        return [scope.pinned], False
-    return scope.targets(inspector.get_schema_names() or []), True
+        return [scope.pinned]
+    targets = scope.targets(inspector.get_schema_names() or [])
+    if not targets and scope.excluded is None:
+        return [None]
+    return list(targets)
 
 
 def _in_schema(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:
@@ -212,13 +221,13 @@ def _reflect_in_scope(client: Engine, scope: ProbeScope, operation: str) -> tupl
     step gives up, and only every schema refusing the read is a failure.
     """
     inspector = inspect(client)
-    targets, _ = _targets(inspector, scope)
+    targets = _targets(inspector, scope)
     if not targets:
         return None, [], None
     names: list[str] = []
     command: str | None = None
 
-    def probe(target: str) -> None:
+    def probe(target: str | None) -> None:
         nonlocal names, command
         names, command = _reflect(client, lambda: getattr(inspector, operation)(target))
 
