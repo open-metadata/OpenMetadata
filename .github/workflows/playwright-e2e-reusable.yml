@@ -439,11 +439,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Cache Maven Dependencies
-        # Second guard is the fork-PR-under-pull_request_target skip: that
-        # combination writes to main's cache scope while `Build with Maven`
-        # below runs the fork's poms and Makefile. The key hashes only
-        # **/pom.xml, so a fork that leaves the poms alone can drop artifacts
-        # into ~/.m2 under main's own key.
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           !(github.event_name == 'pull_request_target' &&
@@ -499,10 +495,8 @@ jobs:
             "$BUILD_TOOLCHAIN"
 
       - name: Save OpenMetadata distribution cache
-        # Restore (above) stays unconditional — reading main's cache into an
-        # untrusted job grants the fork nothing it didn't already have. Only
-        # the save is fork-gated: this tarball is built from fork sources and
-        # would otherwise land in main's cache scope.
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # Restores stay unconditional: reading main's cache into a fork job is harmless.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           !(github.event_name == 'pull_request_target' &&
@@ -664,10 +658,7 @@ jobs:
       # parallel. `--list` itself never launches a browser, so a seeding
       # failure must not fail planning — shards self-install as a fallback.
       - name: Seed Playwright browser cache
-        # Fork-PR-under-pull_request_target skip: the key hashes only
-        # yarn.lock, so a fork leaving yarn.lock untouched could write
-        # tampered browser binaries into main's cache scope — and every
-        # later run that restores them executes them.
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
         if: >-
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
@@ -1143,11 +1134,7 @@ jobs:
             "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
             "${{ needs.cache-keys.outputs.ingestion }}"
 
-      # Both saves are fork-gated for the same reason as the distribution
-      # cache above: the fixture is a database/OpenSearch snapshot and the
-      # ingestion entry is a container image, both produced by running fork
-      # code. Restoring them into main is arbitrary code execution. The
-      # matching restores stay unconditional.
+      # Fork PRs under pull_request_target skip both saves — actions/cache-poisoning.
       - name: Save golden fixture cache
         if: >-
           needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&

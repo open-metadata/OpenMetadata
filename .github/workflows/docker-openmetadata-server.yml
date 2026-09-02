@@ -59,8 +59,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     name: Release app with workflow_dispatch event
     runs-on: ubuntu-latest
-    # Overrides the workflow-level `contents: read`: this job runs
-    # `gh release upload`, which needs write.
+    # `gh release upload` needs write, overriding the workflow-level read.
     permissions:
       contents: write
     needs: maven-build

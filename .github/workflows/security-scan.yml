@@ -283,8 +283,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     environment: security-scan
-    # Slack posting uses SLACK_BOT_TOKEN (a secret, unaffected by this block).
-    # actions: read is only for download-artifact; nothing here needs write.
+    # actions: read is for download-artifact; Slack uses a secret, not GITHUB_TOKEN.
     permissions:
       actions: read
     needs: [vulnerability-scan, security-scan]
