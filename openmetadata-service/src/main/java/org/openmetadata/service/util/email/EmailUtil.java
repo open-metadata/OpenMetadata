@@ -240,10 +240,17 @@ public class EmailUtil {
   }
 
   private static CompletableFuture<Void> sendMailWithResult(Email email, boolean async) {
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
-      return mailer.sendMail(email, async);
+    if (!Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      return failedMailResult("SMTP is disabled. Enable SMTP before sending email.");
     }
-    String message = "Mailer is not initialized or Smtp is not Enabled.";
+    if (mailer == null) {
+      return failedMailResult(
+          "SMTP mailer is not initialized. Verify the SMTP configuration before sending email.");
+    }
+    return mailer.sendMail(email, async);
+  }
+
+  private static CompletableFuture<Void> failedMailResult(String message) {
     LOG.error(message);
     return CompletableFuture.failedFuture(new IllegalStateException(message));
   }

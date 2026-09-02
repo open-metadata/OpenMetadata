@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -75,6 +76,8 @@ class EmailPublisherTest {
     SubscriptionStatus status = (SubscriptionStatus) destination.getStatusDetails();
     assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
     assertNull(status.getLastSuccessfulAt());
-    assertTrue(status.getLastFailedReason().contains("SMTP unavailable"));
+    assertEquals("SMTP unavailable", status.getLastFailedReason());
+    assertTrue(exception.getMessage().contains("SMTP unavailable"));
+    assertFalse(exception.getMessage().contains("CompletionException"));
   }
 }

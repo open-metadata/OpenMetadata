@@ -18,6 +18,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -118,15 +119,25 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       CompletableFuture.allOf(deliveryFutures).join();
 
       setSuccessStatus(System.currentTimeMillis());
-    } catch (Exception e) {
-      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+    } catch (RuntimeException e) {
+      String failureReason = getFailureReason(e);
+      setErrorStatus(System.currentTimeMillis(), 500, failureReason);
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, failureReason);
       LOG.error(message);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, failureReason),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  private static String getFailureReason(RuntimeException exception) {
+    Throwable failure = exception;
+    while (failure instanceof CompletionException && failure.getCause() != null) {
+      failure = failure.getCause();
+    }
+    String message = failure.getMessage();
+    return message == null || message.isBlank() ? failure.getClass().getSimpleName() : message;
   }
 
   @Override
