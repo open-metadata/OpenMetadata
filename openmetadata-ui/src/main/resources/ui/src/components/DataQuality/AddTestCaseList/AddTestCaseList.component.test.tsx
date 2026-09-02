@@ -23,6 +23,7 @@ import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
@@ -71,6 +72,10 @@ jest.mock('../../../utils/FqnUtils', () => ({
 }));
 jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
@@ -282,6 +287,19 @@ describe('AddTestCaseList', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    });
+  });
+
+  it('handles test case fetch failures without an unhandled rejection', async () => {
+    const fetchError = new Error('Failed to fetch test cases');
+    mockGetListTestCaseBySearch.mockRejectedValueOnce(fetchError);
+
+    await act(async () => {
+      renderWithRouter(mockProps);
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(fetchError);
     });
   });
 
