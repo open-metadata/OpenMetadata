@@ -42,7 +42,7 @@ class AggregationFunction(Enum):
 
 
 class Executable(BaseModel):
-    def to_executable(self, client: MongoClient) -> CommandCursor | Cursor:
+    def to_executable(self, client: MongoClient) -> "CommandCursor | Cursor":
         raise NotImplementedError
 
 

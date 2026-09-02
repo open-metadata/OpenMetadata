@@ -32,7 +32,7 @@ from metadata.pii.algorithms.feature_extraction import (
     is_non_pii_datatype,
     split_column_name,
 )
-from metadata.pii.algorithms.preprocessing import preprocess_values
+from metadata.pii.algorithms.preprocessing import ner_normalize_values, preprocess_values
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
     combine_patchers,
@@ -44,6 +44,12 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
+
+# Tags detected by spaCy NER (not pattern recognisers) that benefit from
+# mixed-case input.  The NER second-pass union is restricted to these to avoid
+# false positives from title-casing status-enum values ("ACTIVE" → "Active")
+# which pattern recognisers never flag but spaCy NER might mis-classify as PERSON.
+_NER_BASED_TAGS: frozenset[PIITag] = frozenset({PIITag.PERSON, PIITag.LOCATION, PIITag.NRP})
 
 T = TypeVar("T", bound=Hashable)
 
@@ -118,16 +124,37 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             return {}
         context = split_column_name(column_name) if column_name else None
 
-        content_results = extract_pii_tags(
-            self._presidio_analyzer,
-            str_values,
-            context=context,
-            recognizer_result_patcher=combine_patchers(
-                date_time_patcher,
-                url_patcher,
-                *self._extra_patchers,
-            ),
+        patcher = combine_patchers(date_time_patcher, url_patcher, *self._extra_patchers)
+
+        # First pass: original values — pattern recognisers (IBAN, CRYPTO, …) need the
+        # original casing and must not receive title-cased input.
+        content_results: dict[PIITag, float] = dict(
+            extract_pii_tags(
+                self._presidio_analyzer,
+                str_values,
+                context=context,
+                recognizer_result_patcher=patcher,
+            )
         )
+
+        # Second pass: NER-normalised values — purely alphabetic ALL-CAPS tokens are
+        # title-cased so spaCy NER (trained on mixed-case text) can detect names like
+        # "SERGE".  We union by taking the max score per tag, but ONLY for NER-based
+        # tags (PERSON, LOCATION, NRP).  Pattern recognisers (IBAN, CRYPTO, …) already
+        # see the correct original casing from the first pass; restricting the union
+        # prevents status-enum values like "ACTIVE" → "Active" from introducing
+        # spurious PERSON hits that pattern recognisers would never produce.
+        ner_values = ner_normalize_values(str_values)
+        if ner_values != str_values:
+            ner_results = extract_pii_tags(
+                self._presidio_analyzer,
+                ner_values,
+                context=context,
+                recognizer_result_patcher=patcher,
+            )
+            for tag, score in ner_results.items():
+                if tag in _NER_BASED_TAGS and score > content_results.get(tag, 0.0):
+                    content_results[tag] = score
 
         column_name_matches: set[PIITag] = set()
 
