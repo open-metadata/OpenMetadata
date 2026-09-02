@@ -13,8 +13,8 @@ Query Parser Source module. Parent class for Lineage & Usage workflows
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -148,8 +148,8 @@ class QueryParserSource(Source, ABC):
 
     def check_life_cycle_query(
         self,
-        query_type: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
-        query_text: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
+        query_type: str | None,  # pylint: disable=unused-argument
+        query_text: str | None,  # pylint: disable=unused-argument
     ) -> bool:
         """
         returns true if query is to be used for life cycle processing.

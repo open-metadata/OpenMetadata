@@ -13,8 +13,9 @@
 Source connection handler
 """
 
-from functools import partial  # noqa: I001
-from typing import Optional
+from functools import partial
+
+from pydantic import BaseModel
 
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import (
@@ -24,8 +25,6 @@ from cassandra.cluster import (
     ProtocolVersion,
 )
 from cassandra.cluster import Session as CassandraSession
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -91,8 +90,8 @@ class CassandraConnection(BaseConnection[CassandraConnectionConfig, CassandraSes
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -101,7 +100,7 @@ class CassandraConnection(BaseConnection[CassandraConnectionConfig, CassandraSes
         session = self.client
 
         class SchemaHolder(BaseModel):
-            schema: Optional[str] = None  # noqa: UP045  # pyright: ignore[reportIncompatibleMethodOverride]
+            schema: str | None = None  # pyright: ignore[reportIncompatibleMethodOverride]
 
         holder = SchemaHolder()
 

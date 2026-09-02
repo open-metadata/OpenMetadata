@@ -11,7 +11,7 @@
 """Sigma source module"""
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -76,7 +76,7 @@ class SigmaSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SigmaConnection = config.serviceConnection.root.config
@@ -90,9 +90,9 @@ class SigmaSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.data_models: List[Elements] = []  # noqa: UP006
+        self.data_models: list[Elements] = []
 
-    def get_dashboards_list(self) -> Optional[List[Workbook]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[Workbook] | None:
         """
         get list of dashboard
         """
@@ -100,13 +100,13 @@ class SigmaSource(DashboardServiceSource):
             logger.debug("Skipping owner information as includeOwners is False")
         return self.client.get_dashboards()
 
-    def get_dashboard_name(self, dashboard: Workbook) -> Optional[str]:  # noqa: UP045
+    def get_dashboard_name(self, dashboard: Workbook) -> str | None:
         """
         get dashboard name
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: Workbook) -> Optional[WorkbookDetails]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
         """
         get dashboard details
         """
@@ -216,8 +216,8 @@ class SigmaSource(DashboardServiceSource):
     def _get_table_entity_from_node(
         self,
         node: NodeDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Table]:  # noqa: UP045
+        db_service_prefix: str | None = None,
+    ) -> Table | None:
         """
         Get the table entity for lineage
         """
@@ -267,7 +267,7 @@ class SigmaSource(DashboardServiceSource):
     def _yield_lineage_from_files(
         self,
         dashboard_details: WorkbookDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield lineage using file-based API (fallback method)
@@ -312,7 +312,7 @@ class SigmaSource(DashboardServiceSource):
         self,
         dashboard_details: WorkbookDetails,
         data_model: Elements,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield lineage using file-based API for a single element (fallback per element)
@@ -351,7 +351,7 @@ class SigmaSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: WorkbookDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield dashboard lineage using SQL query parsing (primary) or file-based (fallback)
@@ -442,7 +442,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
 
-    def get_column_info(self, element: Elements) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
         datamodel_columns = []
         for col in element.columns or []:
@@ -494,7 +494,7 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
         """
         Get owner from email
         """

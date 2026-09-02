@@ -20,7 +20,6 @@ import zipfile
 from collections import defaultdict
 from functools import singledispatch
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
@@ -52,7 +51,7 @@ from metadata.utils.s3_utils import list_s3_objects
 logger = utils_logger()
 
 
-def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+def get_prefix_config(config) -> tuple[str | None, str | None]:
     """
     Return (bucket, prefix) tuple
     """
@@ -64,7 +63,7 @@ def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: U
     return None, None
 
 
-def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa: UP006
+def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
     """
@@ -94,10 +93,10 @@ def _safe_local_path(extract_dir: str, blob: str) -> str:
 
 
 def download_pbit_files(
-    blob_grouped_by_directory: Dict,  # noqa: UP006
+    blob_grouped_by_directory: dict,
     config,
     client,
-    bucket_name: Optional[str],  # noqa: UP045
+    bucket_name: str | None,
     extract_dir: str,
 ):
     """
@@ -122,7 +121,7 @@ def download_pbit_files(
             reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
-def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     """
     Method maps the json to datamodel schema model
     """
@@ -150,7 +149,7 @@ def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  #
     return datamodel_schema_list
 
 
-def get_datamodel_schema_files_from_pbit(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | None:
     """
     Method to unzip the locally saved pbit files and get the schema files
     """
@@ -312,7 +311,7 @@ class PowerBiFileClient:
     def __init__(self, config: PowerBIConnection):
         self.config = config
 
-    def get_data_model_schema_mappings(self) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+    def get_data_model_schema_mappings(self) -> list[DataModelSchema] | None:
         """
         Get the data model schema mappings
         """
