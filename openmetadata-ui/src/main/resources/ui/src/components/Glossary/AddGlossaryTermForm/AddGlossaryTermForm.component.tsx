@@ -72,7 +72,7 @@ const resolveRelatedTerms = (
   editMode: boolean,
   relatedTerms: DefaultOptionType[],
   glossaryTerm: GlossaryTerm | undefined
-): (string | undefined)[] | string[] =>
+) =>
   editMode
     ? relatedTerms.map((term: DefaultOptionType) => {
         if (isString(term)) {

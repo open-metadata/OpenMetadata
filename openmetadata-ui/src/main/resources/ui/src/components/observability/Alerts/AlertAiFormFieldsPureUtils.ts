@@ -25,6 +25,7 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
+  ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
@@ -101,6 +102,45 @@ export const getAlertAiResources = (
   }
 
   return 'filteringRules' in value ? value.filteringRules?.resources ?? [] : [];
+};
+
+/** Derives the selected rules and section-visibility inputs for the AI alert form fields. */
+export const getAlertAiSectionInputs = ({
+  value,
+  selectedSource,
+  selectedFilterResource,
+  supportedFilters,
+  supportedTriggers,
+  shouldShowActionsSection,
+  shouldShowFiltersSection,
+}: {
+  value: AlertAiFormValue;
+  selectedSource?: string;
+  selectedFilterResource?: ObservabilityFilterResourceDescriptor;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+}) => {
+  const selectedFilters = value.input?.filters ?? [];
+  const selectedTriggers = value.input?.actions ?? [];
+  const selectedSupportedFilters =
+    selectedFilterResource?.supportedFilters ?? supportedFilters;
+  const selectedSupportedTriggers =
+    selectedFilterResource?.supportedActions ?? supportedTriggers;
+
+  return {
+    selectedFilters,
+    selectedTriggers,
+    selectedSupportedFilters,
+    selectedSupportedTriggers,
+    shouldDisplayFiltersSection: selectedSource
+      ? !isEmpty(selectedSupportedFilters)
+      : shouldShowFiltersSection,
+    shouldDisplayActionsSection: selectedSource
+      ? !isEmpty(selectedSupportedTriggers)
+      : shouldShowActionsSection,
+  };
 };
 
 /** Computes which configuration sections should render in edit and read-only modes. */
@@ -237,6 +277,31 @@ export const getTextArgumentCopy = (argument: string, t: TFunction) => {
         }),
       };
   }
+};
+
+/** Computes add-rule affordance flags for a filter or trigger rule section. */
+export const getRuleSectionFlags = ({
+  field,
+  isViewOnly,
+  selectedRules,
+  selectedSource,
+  supportedRules,
+}: {
+  field: RuleSectionField;
+  isViewOnly?: boolean;
+  selectedRules: ArgumentsInput[];
+  selectedSource?: string;
+  supportedRules?: EventFilterRule[];
+}) => {
+  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
+
+  return {
+    canAddRule:
+      Boolean(supportedRules?.length) && selectedRules.length < maxRules,
+    isAddDisabled: isEmpty(selectedSource),
+    showAddButton:
+      !isViewOnly && (field === 'filters' || selectedRules.length === 0),
+  };
 };
 
 /** Builds rule dropdown items and disables rules that are already selected. */

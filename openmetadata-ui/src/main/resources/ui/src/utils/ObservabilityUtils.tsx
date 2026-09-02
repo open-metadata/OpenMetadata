@@ -12,7 +12,6 @@
  */
 import { MailOutlined } from '@ant-design/icons';
 import { includes, isNil } from 'lodash';
-import { ComponentType } from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
 import { ReactComponent as MentionIcon } from '../assets/svg/ic-mentions.svg';
@@ -28,10 +27,7 @@ import {
 import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
-const ALERT_DESTINATION_CATEGORY_ICONS: Record<
-  string,
-  ComponentType<{ height?: number; width?: number }>
-> = {
+const ALERT_DESTINATION_CATEGORY_ICONS = {
   Teams: TeamIcon,
   Users: UserIcon,
   Admins: AdminIcon,
@@ -47,7 +43,10 @@ const ALERT_DESTINATION_CATEGORY_ICONS: Record<
 };
 
 export const getAlertDestinationCategoryIcons = (type: string) => {
-  const Icon = ALERT_DESTINATION_CATEGORY_ICONS[type];
+  const Icon =
+    ALERT_DESTINATION_CATEGORY_ICONS[
+      type as keyof typeof ALERT_DESTINATION_CATEGORY_ICONS
+    ];
 
   if (isNil(Icon)) {
     return null;

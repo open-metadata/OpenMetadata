@@ -147,7 +147,10 @@ const WIDGET_NAME_TO_KEY: Record<string, GlossaryTermDetailPageWidgetKeys> = {
   WORKFLOW_HISTORY: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
 };
 
-const WIDGET_KEY_TO_HEIGHT_PROP: Record<string, string> = {
+const WIDGET_KEY_TO_HEIGHT_PROP: Record<
+  string,
+  keyof typeof GlossaryTermDetailPageWidgetKeys
+> = {
   [GlossaryTermDetailPageWidgetKeys.HEADER]: 'HEADER',
   [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: 'DESCRIPTION',
   [GlossaryTermDetailPageWidgetKeys.TAGS]: 'TAGS',

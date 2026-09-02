@@ -386,11 +386,20 @@ interface PlatformViewFetchArgs {
   type: string;
 }
 
-const hasEntityFetchContext = (
+interface EntityFetchContext {
+  entity: SourceType;
+  entityFqn: string;
+  entityType: string;
+}
+
+const resolveEntityFetchContext = (
   entity: SourceType | undefined,
   entityFqn: string | undefined,
   entityType: string | undefined
-): boolean => Boolean(entity && entityFqn && entityType);
+): EntityFetchContext | undefined =>
+  entity && entityFqn && entityType
+    ? { entity, entityFqn, entityType }
+    : undefined;
 
 const resolveServiceFetchArgs = (
   entity: SourceType | undefined
@@ -2045,12 +2054,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       return;
     }
 
-    const hasEntityContext = hasEntityFetchContext(
+    const entityFetchContext = resolveEntityFetchContext(
       entity,
       entityFqn,
       entityType
     );
-    const entityFetchArgs = hasEntityContext
+    const entityFetchArgs = entityFetchContext
       ? resolvePlatformViewEntityFetchArgs(platformView, entity)
       : undefined;
 
@@ -2064,16 +2073,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       return;
     }
 
-    if (hasEntityContext && platformView === LineagePlatformView.None) {
+    if (entityFetchContext && platformView === LineagePlatformView.None) {
       const fetchKey = getLineageFetchKey(
-        entityFqn,
-        entityType,
+        entityFetchContext.entityFqn,
+        entityFetchContext.entityType,
         lineageConfig,
         queryFilter,
         timeFilter
       );
       if (lastFetchedLineageKeyRef.current !== fetchKey) {
-        fetchLineageData(entityFqn, entityType, lineageConfig);
+        fetchLineageData(
+          entityFetchContext.entityFqn,
+          entityFetchContext.entityType,
+          lineageConfig
+        );
       }
 
       return;

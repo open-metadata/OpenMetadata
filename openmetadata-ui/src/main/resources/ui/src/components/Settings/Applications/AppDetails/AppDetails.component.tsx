@@ -35,7 +35,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { TFunction, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
@@ -88,13 +88,15 @@ import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
 
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
 const getIsRuntimeDisabled = (appData: App | undefined): boolean =>
   Boolean(appData?.enabled === false && !appData.deleted);
 
 const getRuntimeDisabledReason = (
   appData: App | undefined,
   isRuntimeDisabled: boolean,
-  t: TFunction
+  t: TFunc
 ): string | undefined =>
   isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
     ? t('message.cache-service-not-configured-message')
@@ -113,7 +115,7 @@ interface ManageButtonHandlers {
 
 const getManageButtonContent = (
   appData: App | undefined,
-  t: TFunction,
+  t: TFunc,
   { setShowActions, setAction, setShowDeleteModel }: ManageButtonHandlers
 ): ItemType[] => [
   ...(appData?.deleted
@@ -221,7 +223,7 @@ interface ConfigurationTabParams {
   ApplicationConfigurationComponent: ReturnType<
     typeof applicationsClassBase.getApplicationConfigurationComponent
   >;
-  t: TFunction;
+  t: TFunc;
 }
 
 const getConfigurationTabs = ({
@@ -275,7 +277,7 @@ interface ScheduleTabParams {
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;
   onAppScheduleSave: (cron: string) => Promise<void>;
-  t: TFunction;
+  t: TFunc;
 }
 
 const getScheduleTabs = ({
@@ -329,7 +331,7 @@ interface RecentRunsTabParams {
   showScheduleTab: boolean;
   appData: App | undefined;
   jsonSchema: RJSFSchema | undefined;
-  t: TFunction;
+  t: TFunc;
 }
 
 const getRecentRunsTabs = ({
@@ -365,7 +367,7 @@ const getRecentRunsTabs = ({
 interface LiveIndexingTabParams {
   isAppUnavailable: boolean;
   appData: App | undefined;
-  t: TFunction;
+  t: TFunc;
 }
 
 const getLiveIndexingTabs = ({

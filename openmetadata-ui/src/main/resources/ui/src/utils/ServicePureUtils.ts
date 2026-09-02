@@ -224,8 +224,21 @@ export const getServiceCategoryFromEntityType = (
   SERVICE_CATEGORY_BY_ENTITY_TYPE[entityType] ??
   ServiceCategory.DATABASE_SERVICES;
 
+export type ServiceEntityType =
+  | EntityType.DASHBOARD_SERVICE
+  | EntityType.MESSAGING_SERVICE
+  | EntityType.PIPELINE_SERVICE
+  | EntityType.MLMODEL_SERVICE
+  | EntityType.METADATA_SERVICE
+  | EntityType.STORAGE_SERVICE
+  | EntityType.SEARCH_SERVICE
+  | EntityType.API_SERVICE
+  | EntityType.DRIVE_SERVICE
+  | EntityType.SECURITY_SERVICE
+  | EntityType.DATABASE_SERVICE;
+
 const ENTITY_TYPE_BY_SERVICE_CATEGORY: Partial<
-  Record<ServiceTypes, EntityType>
+  Record<ServiceTypes, ServiceEntityType>
 > = {
   [ServiceCategory.DASHBOARD_SERVICES]: EntityType.DASHBOARD_SERVICE,
   [ServiceCategory.MESSAGING_SERVICES]: EntityType.MESSAGING_SERVICE,
@@ -241,7 +254,7 @@ const ENTITY_TYPE_BY_SERVICE_CATEGORY: Partial<
 
 export const getEntityTypeFromServiceCategory = (
   serviceCategory: ServiceTypes
-) =>
+): ServiceEntityType =>
   ENTITY_TYPE_BY_SERVICE_CATEGORY[serviceCategory] ??
   EntityType.DATABASE_SERVICE;
 

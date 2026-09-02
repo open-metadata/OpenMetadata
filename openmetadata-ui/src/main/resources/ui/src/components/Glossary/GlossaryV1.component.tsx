@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -66,7 +67,7 @@ const getGlossaryEntityRenderProps = (
   isGlossaryActive: boolean,
   glossaryPermission: OperationPermission,
   glossaryTermPermission: OperationPermission
-) => ({
+): { permissions: OperationPermission; type: CustomizeEntityType } => ({
   permissions: isGlossaryActive ? glossaryPermission : glossaryTermPermission,
   type: isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
 });

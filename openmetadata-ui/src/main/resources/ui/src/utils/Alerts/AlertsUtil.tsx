@@ -328,6 +328,20 @@ export const getReadTimeoutField = () => (
   </>
 );
 
+/** Narrows a destination type to one that has a configured input placeholder. */
+const isDestinationTypeWithPlaceholder = (
+  type: SubscriptionType | SubscriptionCategory
+): type is keyof typeof DESTINATION_TYPE_BASED_PLACEHOLDERS =>
+  type in DESTINATION_TYPE_BASED_PLACEHOLDERS;
+
+/** Looks up the endpoint/receiver input placeholder copy for a destination type. */
+const getDestinationTypePlaceholder = (
+  type: SubscriptionType | SubscriptionCategory
+): string =>
+  isDestinationTypeWithPlaceholder(type)
+    ? DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''
+    : '';
+
 const getWebhookLikeDestinationConfigField = (
   type: SubscriptionType | SubscriptionCategory,
   fieldName: number
@@ -347,7 +361,7 @@ const getWebhookLikeDestinationConfigField = (
           ]}>
           <Input
             data-testid={`endpoint-input-${fieldName}`}
-            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+            placeholder={getDestinationTypePlaceholder(type)}
           />
         </Form.Item>
       </Col>
@@ -800,7 +814,7 @@ const getEmailDestinationConfigField = (
           data-testid={`email-input-${fieldName}`}
           mode="tags"
           open={false}
-          placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+          placeholder={getDestinationTypePlaceholder(type)}
         />
       </Form.Item>
     </Col>
