@@ -398,7 +398,7 @@ public class TestCaseResolutionStatusResource
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
     TestCaseResolutionStatus testCaseResolutionStatus =
-        getResolutionStatusOrThrow(testCaseResolutionStatusId);
+        repository.getByIdOrNotFound(testCaseResolutionStatusId);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -618,7 +618,7 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch) {
 
-    TestCaseResolutionStatus testCaseResolutionStatus = getResolutionStatusOrThrow(id);
+    TestCaseResolutionStatus testCaseResolutionStatus = repository.getByIdOrNotFound(id);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -826,22 +826,6 @@ public class TestCaseResolutionStatusResource
       resourceContext = TestCaseResourceContext.builder().build();
     }
     return resourceContext;
-  }
-
-  /**
-   * {@link org.openmetadata.service.jdbi3.EntityTimeSeriesRepository#getById} answers a missing row
-   * with {@code null}, and both the read and the patch handler have to dereference the record to
-   * resolve the test case the authorization check is scoped to. Resolve it here so an id with no row
-   * — a stale {@code incidentId}, or a stateId passed where a record id belongs — is a 404 rather
-   * than a NullPointerException mapped to a 500.
-   */
-  private TestCaseResolutionStatus getResolutionStatusOrThrow(UUID id) {
-    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
-    if (testCaseResolutionStatus == null) {
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(Entity.TEST_CASE_RESOLUTION_STATUS, id));
-    }
-    return testCaseResolutionStatus;
   }
 
   protected static List<AuthRequest> buildViewAuthRequests(
