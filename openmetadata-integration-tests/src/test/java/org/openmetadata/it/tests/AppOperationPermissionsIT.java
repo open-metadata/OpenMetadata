@@ -258,6 +258,38 @@ public class AppOperationPermissionsIT {
         200, response.statusCode(), "DataConsumer holds ViewAll and must keep reading app runs");
   }
 
+  @Test
+  void test_patchApp_unauthorized_deniesBeforeDisclosingExistence(TestNamespace ns)
+      throws Exception {
+    // A DataConsumer holds EditDescription but not EditAll, so patching /enabled is denied.
+    // The denial must come from the permission check rather than from the entity lookup, so a
+    // caller who may not patch cannot learn whether an app exists. Same ordering the delete
+    // endpoints use.
+    HttpResponse<String> response =
+        patchWithToken(
+            "/v1/apps/name/ZZNonExistentAppForPermissionCheck",
+            "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":true}]",
+            getDataConsumerToken());
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "an unauthorized patch must be rejected before the app lookup, not answered with 404");
+  }
+
+  private HttpResponse<String> patchWithToken(String path, String body, String token)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
   private HttpResponse<String> getWithToken(String path, String token) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()

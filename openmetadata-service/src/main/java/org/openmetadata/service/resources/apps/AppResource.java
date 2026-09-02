@@ -971,15 +971,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       }))
           JsonPatch patch)
       throws SchedulerException {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, patch),
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
@@ -1023,15 +1023,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       }))
           JsonPatch patch)
       throws SchedulerException {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, patch),
-        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
