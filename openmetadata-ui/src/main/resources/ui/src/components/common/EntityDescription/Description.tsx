@@ -74,10 +74,20 @@ const Description = ({
   changeSummaryEntry,
 }: DescriptionProps) => {
   const navigate = useNavigate();
-  const { isVersionView, changeSummary, onThreadLinkSelect } =
-    useGenericContext<Domain>();
+  const {
+    isVersionView,
+    changeSummary,
+    onThreadLinkSelect,
+    type: contextEntityType,
+  } = useGenericContext<Domain>();
+  // The context's changeSummary belongs to the page-level entity. Only fall back to it
+  // when the entity being rendered is that same entity — otherwise a nested Description
+  // (e.g. a Query in TableQueryRightPanel) inherits the parent table's provenance.
   const descriptionChangeSummary =
-    changeSummaryEntry ?? changeSummary?.['description'];
+    changeSummaryEntry ??
+    (entityType === contextEntityType
+      ? changeSummary?.['description']
+      : undefined);
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();

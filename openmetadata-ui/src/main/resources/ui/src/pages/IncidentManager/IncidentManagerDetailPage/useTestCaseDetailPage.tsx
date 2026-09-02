@@ -44,6 +44,7 @@ import {
 import {
   getTestCaseVersionDetails,
   getTestCaseVersionList,
+  restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
@@ -52,7 +53,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
@@ -71,6 +72,7 @@ export interface UseTestCaseDetailPageResult {
   hasEditPermission: boolean | undefined;
   hasDeletePermission: boolean | undefined;
   editDisplayNamePermission: boolean | undefined;
+  canRestorePermission: boolean;
   feedCount: FeedCounts;
   displayName: string | undefined;
   tabs: TestCaseTabType[];
@@ -95,6 +97,7 @@ export interface UseTestCaseDetailPageResult {
   }>;
   handleOwnerChange: (owners?: EntityReference[]) => Promise<void>;
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
+  handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
   setTestCase: (testCase: TestCase) => void;
 }
@@ -152,17 +155,31 @@ export const useTestCaseDetailPage = ({
   // receiving the raw object, not just the named flags this hook consumes locally.
   // canEditDisplayName is an explicit-deny-wins fix, same precedent as canViewBasic
   // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  // Soft-delete support (base commit fa824bf1b4): every edit-family flag must go false once
+  // the test case itself is deleted, EXCEPT canRestorePermission (offered only on a deleted
+  // row, so it must stay ungated — same `ungatedFlags` precedent as
+  // DataAssetsHeader.component.tsx). `useEntityPermissions`'s own `deleted` option isn't used
+  // here since `canRestorePermission` needs the same underlying `canEditAll` read left
+  // ungated; instead each flag is gated individually below, matching upstream's
+  // `!isDeleted && ...` reads 1:1.
+  const isDeleted = Boolean(testCase?.deleted);
+
   const {
     permissions: testCasePermission,
     isLoading: isPermissionLoading,
     error: permissionsError,
     hasViewAccess: hasViewPermission,
-    canEditAll: hasEditPermission,
-    canEditDisplayName: editDisplayNamePermission,
-    canDelete: hasDeletePermission,
+    canEditAll,
+    canEditDisplayName,
+    canDelete,
   } = useEntityPermissions(ResourceEntity.TEST_CASE, testCaseFQN, {
     enabled: Boolean(testCaseFQN),
   });
+
+  const hasEditPermission = !isDeleted && canEditAll;
+  const editDisplayNamePermission = !isDeleted && canEditDisplayName;
+  const hasDeletePermission = !isDeleted && canDelete;
+  const canRestorePermission = canEditAll;
 
   useEffect(() => {
     if (permissionsError) {
@@ -301,6 +318,10 @@ export const useTestCaseDetailPage = ({
   };
   const updateTestCase = useCallback(
     async (id: string, patch: PatchOperation[]) => {
+      if (testCase?.deleted) {
+        return;
+      }
+
       try {
         const res = await updateTestCaseById(id, patch);
         setEntityDetails(res);
@@ -308,8 +329,30 @@ export const useTestCaseDetailPage = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [setEntityDetails]
+    [setEntityDetails, testCase?.deleted]
   );
+
+  const handleRestore = useCallback(async () => {
+    if (!testCase?.id) {
+      return false;
+    }
+
+    try {
+      const restoredTestCase = await restoreTestCase(testCase.id);
+      setEntityDetails(restoredTestCase);
+      showSuccessToast(
+        t('server.restore-entity-success', {
+          entity: testCase.displayName ?? testCase.name,
+        })
+      );
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+  }, [setEntityDetails, t, testCase]);
   const handleOwnerChange = async (owners?: EntityReference[]) => {
     if (testCase) {
       const updatedTestCase = {
@@ -457,6 +500,7 @@ export const useTestCaseDetailPage = ({
     hasEditPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     feedCount,
     displayName,
     tabs,
@@ -477,6 +521,7 @@ export const useTestCaseDetailPage = ({
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   };

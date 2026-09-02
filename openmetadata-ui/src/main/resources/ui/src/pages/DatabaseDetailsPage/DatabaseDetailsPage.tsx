@@ -423,7 +423,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
   const handleRestoreDatabase = useCallback(async () => {
     if (!database) {
-      return;
+      return false;
     }
     try {
       const { version: newVersion } = await restoreDatabase(database.id ?? '');
@@ -433,6 +433,8 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -440,6 +442,8 @@ const DatabaseDetails: FunctionComponent = () => {
           entity: t('label.database'),
         })
       );
+
+      return false;
     }
   }, [database?.id]);
 

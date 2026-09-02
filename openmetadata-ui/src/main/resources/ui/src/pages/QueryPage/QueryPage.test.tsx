@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../generated/entity/policies/policy';
 import { MOCK_QUERIES } from '../../mocks/Queries.mock';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -73,7 +74,9 @@ jest.mock('../../components/Database/TableQueries/QueryCard', () => {
   return jest.fn().mockImplementation(({ permission }) => (
     <div>
       QueryCard
-      <span data-testid="query-edit-all">{String(permission?.EditAll)}</span>
+      <span data-testid="query-edit-all">
+        {String(permission?.[Operation.EditAll])}
+      </span>
     </div>
   ));
 });

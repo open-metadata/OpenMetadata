@@ -547,6 +547,8 @@ const ContainerPage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -554,6 +556,8 @@ const ContainerPage = () => {
           entity: t('label.container'),
         })
       );
+
+      return false;
     }
   };
 

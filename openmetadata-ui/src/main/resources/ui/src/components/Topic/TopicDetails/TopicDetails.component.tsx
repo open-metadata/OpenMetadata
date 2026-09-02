@@ -236,6 +236,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -243,6 +245,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           entity: t('label.topic'),
         })
       );
+
+      return false;
     }
   };
 

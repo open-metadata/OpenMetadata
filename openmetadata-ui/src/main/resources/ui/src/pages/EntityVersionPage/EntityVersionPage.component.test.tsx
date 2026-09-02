@@ -16,6 +16,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import EntityVersionPage from './EntityVersionPage.component';
 
@@ -70,7 +71,7 @@ jest.mock('../../utils/EntityVersionClassBase', () => ({
         return (
           <div data-testid="table-version">
             <div data-testid="edit-all">
-              {String(Boolean(entityPermissions?.EditAll))}
+              {String(Boolean(entityPermissions?.[Operation.EditAll]))}
             </div>
           </div>
         );

@@ -686,6 +686,8 @@ const TableDetailsPageV1: React.FC = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -693,6 +695,8 @@ const TableDetailsPageV1: React.FC = () => {
           entity: t('label.table'),
         })
       );
+
+      return false;
     }
   };
 

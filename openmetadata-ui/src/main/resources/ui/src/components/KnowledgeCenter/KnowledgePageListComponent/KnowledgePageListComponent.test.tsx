@@ -87,10 +87,12 @@ describe('KnowledgePageListComponent permissions', () => {
   it('shows the permission ErrorPlaceHolder when view access is denied', async () => {
     renderComponent({ ViewAll: false, ViewBasic: false });
 
+    // `permission-error-placeholder` was the old ErrorPlaceHolder's testid; the
+    // component now renders the core EmptyPlaceholder (base commit fa824bf1b4's
+    // placeholder migration), which doesn't set that testid — assert on its
+    // access-denied copy instead (see EmptyPlaceholderVariants.test.tsx precedent).
     await waitFor(() => {
-      expect(
-        screen.getByTestId('permission-error-placeholder')
-      ).toBeInTheDocument();
+      expect(screen.getByText('label.access-denied')).toBeInTheDocument();
     });
   });
 
@@ -105,10 +107,12 @@ describe('KnowledgePageListComponent permissions', () => {
   it('hides the empty-state add button when create access is denied', async () => {
     renderComponent({ ViewAll: true, Create: false });
 
+    // `create-error-placeholder-create` was the old CreateErrorPlaceHolder's testid; the
+    // component now renders the core EmptyPlaceholder (base commit fa824bf1b4's
+    // placeholder migration), which doesn't set that testid — assert on its generic
+    // testid instead.
     await waitFor(() => {
-      expect(
-        screen.getByTestId('create-error-placeholder-create')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     });
 
     expect(

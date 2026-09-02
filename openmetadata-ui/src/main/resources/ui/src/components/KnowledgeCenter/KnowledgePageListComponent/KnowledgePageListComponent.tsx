@@ -12,16 +12,8 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  MenuProps,
-  Row,
-  Skeleton,
-  Space,
-  Typography,
-} from 'antd';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
+import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -36,9 +28,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
@@ -48,7 +38,6 @@ import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -509,13 +498,23 @@ const KnowledgePageListComponent = forwardRef<
 
     if (!hasViewPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.article-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:flex-1 tw:min-h-0">
+          <EmptyPlaceholder
+            description={
+              <Transi18next
+                i18nKey="message.no-access-placeholder"
+                renderElement={<b />}
+                values={{
+                  entity: t('label.view-entity', {
+                    entity: t('label.article-plural'),
+                  }),
+                }}
+              />
+            }
+            icon={<Lock className="tw:text-secondary" />}
+            title={t('label.access-denied')}
+          />
+        </div>
       );
     }
 
@@ -534,49 +533,25 @@ const KnowledgePageListComponent = forwardRef<
 
     if (!isLoading && isEmpty(knowledgePages)) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          icon={
-            <AddPlaceHolderIcon
-              data-testid="no-data-image"
-              height={SIZE.LARGE}
-              width={SIZE.LARGE}
-            />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div
-            className="bg-white h-full flex-center"
-            data-testid="create-error-placeholder-create">
-            <Space
-              align="center"
-              className="w-full"
-              direction="vertical"
-              size={10}>
-              <div className="text-center text-sm font-normal">
-                <Typography.Paragraph>
-                  {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                    entity: t('label.article'),
-                  })}
-                </Typography.Paragraph>
-
-                <Typography.Paragraph>
-                  <Transi18next
-                    i18nKey="message.refer-to-our-doc"
-                    renderElement={
-                      <a
-                        aria-label={t('label.documentation')}
-                        href={KNOWLEDGE_CENTER_DOC_LINK}
-                        rel="noreferrer"
-                        style={{ color: theme.primaryColor }}
-                        target="_blank"
-                      />
-                    }
-                    values={{
-                      doc: t('label.doc-plural-lowercase'),
-                    }}
+        <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
+          <EmptyPlaceholder
+            description={
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    aria-label={t('label.documentation')}
+                    href={KNOWLEDGE_CENTER_DOC_LINK}
+                    rel="noreferrer"
+                    style={{ color: theme.primaryColor }}
+                    target="_blank"
                   />
-                </Typography.Paragraph>
-
+                }
+                values={{ doc: t('label.doc-plural-lowercase') }}
+              />
+            }
+            footer={
+              <>
                 {canCreate && !hideAddButton && (
                   <LimitWrapper resource="knowledgeCenter">
                     <Dropdown menu={{ items }} trigger={['click']}>
@@ -591,11 +566,16 @@ const KnowledgePageListComponent = forwardRef<
                     </Dropdown>
                   </LimitWrapper>
                 )}
-              </div>
-            </Space>
-          </div>
-          {addQuickLinkModalElement}
-        </ErrorPlaceHolder>
+                {addQuickLinkModalElement}
+              </>
+            }
+            icon={<Articles className="tw:text-secondary" />}
+            title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: t('label.article'),
+            })}
+            width={320}
+          />
+        </div>
       );
     }
 

@@ -216,6 +216,8 @@ const DashboardDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -223,6 +225,8 @@ const DashboardDetails = ({
           entity: t('label.dashboard'),
         })
       );
+
+      return false;
     }
   };
 

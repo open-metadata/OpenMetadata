@@ -108,6 +108,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
   } = useTestCaseStore();
   const { version } = useParams<{ version: string }>();
   const isVersionPage = !isUndefined(version);
+  const isReadOnly = isVersionPage || Boolean(testCaseData?.deleted);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const [testDefinition, setTestDefinition] = useState<TestDefinition>();
 
@@ -155,7 +156,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     hasEditTagsPermission,
     hasEditGlossaryTermsPermission,
   } = useMemo(() => {
-    return isVersionPage
+    return isReadOnly
       ? {
           hasEditPermission: false,
           hasEditDescriptionPermission: false,
@@ -190,7 +191,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
               Operation.EditGlossaryTerms
             ),
         };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+  }, [testCasePermission, isReadOnly]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];
@@ -213,7 +214,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
   }, [testCaseData?.parameterValues]);
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    if (!testCaseData) {
+    if (!testCaseData || isReadOnly) {
       return;
     }
     const tierTag = getTierTags(testCaseData.tags ?? []);
@@ -236,7 +237,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
 
   const handleDataProductsSave = useCallback(
     async (dataProducts: DataProduct[]) => {
-      if (!testCaseData) {
+      if (!testCaseData || isReadOnly) {
         return;
       }
 
@@ -262,38 +263,40 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
         }
       }
     },
-    [testCaseData, setTestCase]
+    [testCaseData, isReadOnly, setTestCase]
   );
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
-      if (testCaseData) {
-        const updatedTestCase = {
-          ...testCaseData,
-          description,
-        };
-        const jsonPatch = compare(testCaseData, updatedTestCase);
+      if (!testCaseData || isReadOnly) {
+        return;
+      }
 
-        if (jsonPatch.length) {
-          try {
-            const res = await updateTestCaseById(
-              testCaseData.id ?? '',
-              jsonPatch
-            );
-            setTestCase(res);
-            refetchChangeSummary();
-            showSuccessToast(
-              t('server.update-entity-success', {
-                entity: t('label.test-case'),
-              })
-            );
-          } catch (error) {
-            showErrorToast(error as AxiosError);
-          }
+      const updatedTestCase = {
+        ...testCaseData,
+        description,
+      };
+      const jsonPatch = compare(testCaseData, updatedTestCase);
+
+      if (jsonPatch.length) {
+        try {
+          const res = await updateTestCaseById(
+            testCaseData.id ?? '',
+            jsonPatch
+          );
+          setTestCase(res);
+          refetchChangeSummary();
+          showSuccessToast(
+            t('server.update-entity-success', {
+              entity: t('label.test-case'),
+            })
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
         }
       }
     },
-    [testCaseData, updateTestCaseById, setTestCase, refetchChangeSummary]
+    [testCaseData, isReadOnly, setTestCase, refetchChangeSummary, t]
   );
 
   const handleCancelParameter = useCallback(
@@ -383,6 +386,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     showComputeRowCount,
     computeRowCountDisplay,
     isVersionPage,
+    t,
   ]);
 
   return {

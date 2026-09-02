@@ -419,6 +419,8 @@ function SearchIndexDetailsPage() {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -426,6 +428,8 @@ function SearchIndexDetailsPage() {
           entity: t('label.search-index'),
         })
       );
+
+      return false;
     }
   };
 

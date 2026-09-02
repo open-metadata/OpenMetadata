@@ -17,6 +17,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../generated/entity/policies/policy';
 import { getApiEndPointByFQN } from '../../rest/apiEndpointsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -35,7 +36,7 @@ const mockAPIEndpointDetails = jest.fn().mockImplementation((props) => (
   <div>
     APIEndpointDetails.component
     <span data-testid="edit-all-permission">
-      {String(props.apiEndpointPermissions?.EditAll)}
+      {String(props.apiEndpointPermissions?.[Operation.EditAll])}
     </span>
   </div>
 ));

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -30,7 +32,6 @@ import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThread
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
@@ -49,7 +50,6 @@ import {
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -78,7 +78,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import i18n from '../../../utils/i18next/LocalUtil';
+import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -967,18 +967,33 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.article'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: t('label.view-entity', { entity: t('label.article') }),
+              }}
+            />
+          }
+          icon={<Lock className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 
   if (!knowledgePage) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return (
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          icon={<Articles className="tw:text-secondary" />}
+          title={t('label.no-entity', { entity: t('label.article') })}
+        />
+      </div>
+    );
   }
 
   return (

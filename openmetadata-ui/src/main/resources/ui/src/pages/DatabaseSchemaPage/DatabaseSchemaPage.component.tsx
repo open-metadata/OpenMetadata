@@ -435,6 +435,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -442,6 +444,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           entity: t('label.database-schema'),
         })
       );
+
+      return false;
     }
   }, [databaseSchemaId, handleToggleDelete]);
 

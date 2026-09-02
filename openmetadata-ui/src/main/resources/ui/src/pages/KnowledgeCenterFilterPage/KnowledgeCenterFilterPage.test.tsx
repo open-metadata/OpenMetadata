@@ -86,8 +86,12 @@ describe('KnowledgeCenterFilterPage — permissions', () => {
       expect(mockGetResourcePermission).toHaveBeenCalled();
     });
 
+    // `permission-error-placeholder` was the old ErrorPlaceHolder's testid; the
+    // page now renders the core EmptyPlaceholder (base commit fa824bf1b4's
+    // placeholder migration), which doesn't set that testid — assert on its
+    // access-denied copy instead (see EmptyPlaceholderVariants.test.tsx precedent).
     expect(
-      await screen.findByTestId('permission-error-placeholder')
+      await screen.findByText('label.access-denied')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('knowledge-card')).not.toBeInTheDocument();
   });

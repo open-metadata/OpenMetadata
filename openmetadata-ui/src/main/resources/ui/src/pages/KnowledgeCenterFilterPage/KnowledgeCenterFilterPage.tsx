@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import KnowledgeCard from '../../components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
@@ -27,7 +28,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Paging } from '../../generated/type/paging';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
@@ -36,6 +36,7 @@ import { KnowledgePage } from '../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -214,13 +215,23 @@ const KnowledgeCenterFilterPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.context-center'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: t('label.view-entity', {
+                  entity: t('label.context-center'),
+                }),
+              }}
+            />
+          }
+          icon={<Lock className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 

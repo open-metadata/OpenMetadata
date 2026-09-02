@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   mockedGlossaryTerms,
   MOCK_GLOSSARY,
@@ -211,7 +212,7 @@ describe('GlossaryHeader component', () => {
 
   it('should not render import and export dropdown menu items if no permission', async () => {
     mockGlossaryTermPermission.All = false;
-    mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryTermPermission[Operation.EditAll] = false;
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -233,7 +234,7 @@ describe('GlossaryHeader component', () => {
       EditDisplayName: true,
     };
     mockGlossaryTermPermission.All = false;
-    mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryTermPermission[Operation.EditAll] = false;
 
     render(
       <GlossaryHeader
@@ -253,14 +254,14 @@ describe('GlossaryHeader component', () => {
 
     mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
     mockGlossaryTermPermission.All = true;
-    mockGlossaryTermPermission.EditAll = true;
+    mockGlossaryTermPermission[Operation.EditAll] = true;
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
     mockContext.type = EntityType.GLOSSARY_TERM;
     mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     mockGlossaryTermPermission.All = true;
-    mockGlossaryTermPermission.EditAll = true;
+    mockGlossaryTermPermission[Operation.EditAll] = true;
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -355,7 +356,7 @@ describe('GlossaryHeader component', () => {
       // Simulate a conditional policy: resource-level check returns false because
       // the backend cannot evaluate isOwner() without entity context.
       mockGlossaryTermPermission.All = false;
-      mockGlossaryTermPermission.EditAll = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
 
       // Entity-level permissions are fetched with the glossary ID so the backend
       // correctly evaluates isOwner() and returns Allow.
@@ -382,7 +383,7 @@ describe('GlossaryHeader component', () => {
       // Both resource-level and entity-level permissions deny — user is not the
       // owner and no other condition grants access.
       mockGlossaryTermPermission.All = false;
-      mockGlossaryTermPermission.EditAll = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
 
       mockContext.type = EntityType.GLOSSARY;
       mockContext.permissions = {
@@ -415,7 +416,7 @@ describe('GlossaryHeader component', () => {
       mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
       mockContext.type = EntityType.GLOSSARY;
       mockGlossaryTermPermission.All = true;
-      mockGlossaryTermPermission.EditAll = true;
+      mockGlossaryTermPermission[Operation.EditAll] = true;
     });
 
     it('denies the rename menu item when EditDisplayName is explicitly false, even with EditAll true', async () => {
@@ -426,7 +427,7 @@ describe('GlossaryHeader component', () => {
         EditDisplayName: false,
       };
       mockGlossaryTermPermission.All = false;
-      mockGlossaryTermPermission.EditAll = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
 
       render(
         <GlossaryHeader
@@ -452,7 +453,7 @@ describe('GlossaryHeader component', () => {
         EditDisplayName: true,
       };
       mockGlossaryTermPermission.All = false;
-      mockGlossaryTermPermission.EditAll = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
 
       render(
         <GlossaryHeader

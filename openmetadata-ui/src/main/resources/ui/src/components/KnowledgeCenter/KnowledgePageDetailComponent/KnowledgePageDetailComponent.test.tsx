@@ -236,10 +236,12 @@ describe('KnowledgePageDetailComponent permissions', () => {
 
     renderComponent();
 
+    // `permission-error-placeholder` was the old ErrorPlaceHolder's testid; the
+    // component now renders the core EmptyPlaceholder (base commit fa824bf1b4's
+    // placeholder migration), which doesn't set that testid — assert on its
+    // access-denied copy instead (see EmptyPlaceholderVariants.test.tsx precedent).
     await waitFor(() => {
-      expect(
-        screen.getByTestId('permission-error-placeholder')
-      ).toBeInTheDocument();
+      expect(screen.getByText('label.access-denied')).toBeInTheDocument();
     });
 
     expect(screen.queryByTestId('title')).not.toBeInTheDocument();
