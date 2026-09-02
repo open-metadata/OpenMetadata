@@ -80,9 +80,13 @@ class CouchbaseChecks:
         """The buckets the configured scope would read.
 
         Memoized, and resolved lazily so no listing runs ahead of the gate step.
+        A pinned bucket needs no listing, so the cluster is pinged instead - the
+        gate has to dial the cluster either way, or an unreachable one would pass
+        it and surface only in the next step.
         """
         if self._targeted is None:
             if self._scope.pinned:
+                self._cluster.client.ping()
                 self._targeted = self._scope.targets([])
             else:
                 buckets = self._cluster.client.buckets().get_all_buckets()
@@ -91,7 +95,7 @@ class CouchbaseChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        command = "buckets.get_all_buckets()" if not self._scope.pinned else f"bucket({self._scope.pinned!r})"
+        command = "buckets.get_all_buckets()" if not self._scope.pinned else "ping()"
         try:
             targeted = self._targeted_buckets()
         except Exception as cause:

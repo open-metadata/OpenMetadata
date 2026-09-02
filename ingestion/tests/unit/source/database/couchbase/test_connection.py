@@ -98,6 +98,16 @@ def test_get_collections_probes_only_the_configured_bucket():
     cluster.buckets.assert_not_called()
 
 
+def test_the_gate_dials_the_cluster_even_with_a_bucket_pinned():
+    """A pinned bucket needs no listing, so an unreachable cluster would otherwise
+    pass the gate and fail only in the next step"""
+    cluster = _cluster(["travel"], readable=["travel"])
+    cluster.ping.side_effect = RuntimeError("unambiguoustimeout")
+
+    with _checks(_config(bucket="travel"), cluster) as checks, pytest.raises(CheckError):
+        checks.get_databases()
+
+
 def test_get_collections_passes_when_one_bucket_can_be_read():
     """Without a pin the probe keeps going until a bucket lets us in"""
     cluster = _cluster(["internal", "travel"], readable=["travel"])
