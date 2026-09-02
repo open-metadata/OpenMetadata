@@ -230,6 +230,41 @@ public class StaleIncidentStatusIT {
     assertEquals(testCase.getId(), fetched.getTestCaseReference().getId());
   }
 
+  /**
+   * The write path shares the same guard, and regressing it would 500 rather than 404 exactly as the
+   * read path did. The record is resolved before the patch is applied, so an empty patch is enough.
+   */
+  @Test
+  void patchByIdReturnsNotFoundForUnknownId() {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testCaseResolutionStatuses()
+                    .patch(UUID.randomUUID(), MAPPER.createArrayNode()));
+    assertEquals(
+        404, error.getStatusCode(), "an id with no row must be a 404, not a NullPointerException");
+  }
+
+  @Test
+  void patchByIdReturnsNotFoundForStateId(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "patchState");
+    TestCase testCase = createTestCase(table, "patchStateCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    assertNotEquals(
+        incident.getId(), incident.getStateId(), "stateId and record id must be distinct ids");
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testCaseResolutionStatuses()
+                    .patch(incident.getStateId(), MAPPER.createArrayNode()));
+    assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
   private JsonNode readData(String response) throws Exception {
     assertNotNull(response, "endpoint must not fail");
     JsonNode data = MAPPER.readTree(response).get("data");
