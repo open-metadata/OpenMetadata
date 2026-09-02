@@ -800,6 +800,7 @@ export const scrollHierarchyToNode = async (
 
       if (lastNode === previousLastNode) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;
@@ -908,6 +909,7 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
       if (lastCard === previousLastCard) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;

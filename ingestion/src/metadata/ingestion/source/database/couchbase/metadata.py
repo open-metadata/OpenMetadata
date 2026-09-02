@@ -14,7 +14,7 @@ Couchbase source methods.
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection,
@@ -53,7 +53,7 @@ class CouchbaseSource(CommonNoSQLSource):
         self.index_condition_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CouchbaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CouchbaseConnection):
@@ -74,7 +74,7 @@ class CouchbaseSource(CommonNoSQLSource):
             logger.debug(f"Failed to fetch bucket name: {exp}")
             logger.debug(traceback.format_exc())
 
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -141,7 +141,7 @@ class CouchbaseSource(CommonNoSQLSource):
         self.index_condition_map[(bucket_name, schema_name)] = ""
         return ""
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> List[Dict]:  # noqa: UP006
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict]:
         """
         Method to get actual data available within table
         need to be overridden by sources

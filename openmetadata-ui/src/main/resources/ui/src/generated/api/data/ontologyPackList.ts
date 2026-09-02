@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 /**
- * Ontology Studio library catalogue.
+ * Ontology library catalogue.
  */
 export interface OntologyPackList {
     packs: OntologyPackManifest[];
 }
 
 /**
- * Typed, versioned catalogue manifest for an Ontology Studio library pack.
+ * Typed, versioned catalogue manifest for an Ontology library pack.
  */
 export interface OntologyPackManifest {
     abbreviation: string;

@@ -19,6 +19,10 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  NoFilterFunnel,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -44,10 +48,6 @@ import {
 } from '../../rest/glossaryAPI';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import {
-  NoFilteredResultsPlaceholder,
-  NoSearchResultsPlaceholder,
-} from '../common/EmptyPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -163,21 +163,35 @@ function FilteredGraphEmptyState({
   readonly description: string;
   readonly testId: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid={testId}>
-      <NoFilteredResultsPlaceholder description={description} />
+      <EmptyPlaceholder
+        description={description}
+        icon={<NoFilterFunnel className="tw:text-secondary" />}
+        title={t('label.no-result-for-these-filter-plural')}
+        variant="blank"
+      />
     </div>
   );
 }
 
 function SearchGraphEmptyState() {
+  const { t } = useTranslation();
+
   return (
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid="ontology-graph-search-empty">
-      <NoSearchResultsPlaceholder />
+      <EmptyPlaceholder
+        description={t('message.check-spelling-or-try-shorter-term')}
+        icon={<NoSearch className="tw:text-secondary" />}
+        title={t('label.no-matching-result-plural')}
+        variant="blank"
+      />
     </div>
   );
 }
@@ -235,7 +249,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     isHierarchyView,
     exportableGlossaryId,
     hasMoreDataTerms,
-    studioSummary,
+    ontologySummary,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -451,23 +465,23 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const healthSummary = useMemo(() => {
     const derived = getOntologyHealthSummary(combinedGraphData, filters);
-    if (!studioSummary) {
+    if (!ontologySummary) {
       return derived;
     }
 
     return {
-      connectedPercent: studioSummary.connectedPercentage,
+      connectedPercent: ontologySummary.connectedPercentage,
       connectedTermCount:
-        studioSummary.totalTerms - studioSummary.isolatedTerms,
-      isolatedTerms: studioSummary.isolatedPreview.map((term) => ({
+        ontologySummary.totalTerms - ontologySummary.isolatedTerms,
+      isolatedTerms: ontologySummary.isolatedPreview.map((term) => ({
         id: term.id,
         fullyQualifiedName: term.fullyQualifiedName,
         label: term.displayName ?? term.name,
         type: 'glossaryTermIsolated',
       })),
-      totalTermCount: studioSummary.totalTerms,
+      totalTermCount: ontologySummary.totalTerms,
     };
-  }, [combinedGraphData, filters, studioSummary]);
+  }, [combinedGraphData, filters, ontologySummary]);
   const treeGroups = useMemo(
     () =>
       buildOntologyTreeGroups(
@@ -1235,7 +1249,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         {showHealth && !showConceptInspector && !selectedEdge ? (
           <OntologyHealthPanel
             health={healthSummary}
-            isolatedTermCount={studioSummary?.isolatedTerms}
+            isolatedTermCount={ontologySummary?.isolatedTerms}
             onConnect={(node) => {
               setSelectedNode(node);
               onRequestEdit?.();

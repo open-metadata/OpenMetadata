@@ -20,7 +20,7 @@ import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Bounded-cardinality release metrics for Ontology Studio and its RDF projection. */
+/** Bounded-cardinality release metrics for Ontology and its RDF projection. */
 public final class OntologyMetrics {
   private static final String RESULT = "result";
   private static final String STARTED = "started";

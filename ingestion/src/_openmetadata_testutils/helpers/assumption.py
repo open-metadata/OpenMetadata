@@ -1,4 +1,4 @@
-from typing import Callable, List  # noqa: UP035
+from collections.abc import Callable
 
 import pytest
 from pandas import DataFrame, Series
@@ -84,7 +84,7 @@ class AssumeLengthBetween(Assumption):
 
 
 class AssumeColumnValuesIn(Assumption):
-    def __init__(self, column: str, allowed_values: List[str]):  # noqa: UP006
+    def __init__(self, column: str, allowed_values: list[str]):
         super().__init__()
         self.column = column
         self.allowed_values = allowed_values
