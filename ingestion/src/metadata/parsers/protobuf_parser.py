@@ -20,6 +20,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path, PureWindowsPath
+from typing import TypeVar
 
 import grpc_tools.protoc
 from pydantic import BaseModel
@@ -30,6 +31,8 @@ from metadata.utils.helpers import snake_to_camel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+ProtobufField = TypeVar("ProtobufField", bound=BaseModel)
 
 
 class ProtobufDataTypes(Enum):
@@ -182,7 +185,7 @@ class ProtobufParser:
             logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
         return None
 
-    def parse_protobuf_schema(self, cls: type[BaseModel] = FieldModel) -> list[FieldModel | Column] | None:
+    def parse_protobuf_schema(self, cls: type[ProtobufField] = FieldModel) -> list[ProtobufField] | None:
         """
         Method to parse the protobuf schema
         """
@@ -215,15 +218,15 @@ class ProtobufParser:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
-        if cls == Column and data_type == DataTypeTopic.FIXED.value:
+        if cls is Column and data_type == DataTypeTopic.FIXED.value:
             return DataType.INT.value
         return data_type
 
     def get_protobuf_fields(
         self,
         fields,
-        cls: type[BaseModel] = FieldModel,
-    ) -> list[FieldModel | Column] | None:
+        cls: type[ProtobufField] = FieldModel,
+    ) -> list[ProtobufField] | None:
         """
         Recursively convert the parsed schema into required models
         """
