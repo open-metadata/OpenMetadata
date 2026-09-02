@@ -146,6 +146,13 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Override
+  protected String getEntityServiceFqn(Pipeline entity) {
+    return entity == null || entity.getService() == null
+        ? null
+        : entity.getService().getFullyQualifiedName();
+  }
+
+  @Override
   protected Pipeline getEntityWithFields(String id, String fields) {
     return SdkClients.adminClient().pipelines().get(id, fields);
   }

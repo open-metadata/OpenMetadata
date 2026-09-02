@@ -20,8 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -94,7 +96,7 @@ public class ColumnSearchIndexIT {
 
     @Test
     @DisplayName("FQN search on tableColumn matches only that column, not its siblings")
-    void testColumnFqnSearchIsPrecise(TestNamespace ns) throws Exception {
+    void testColumnFqnSearchIsPrecise(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();
       Table table = createTableWithColumns(ns, "col_fqn_precise");
       String userIdFqn =
@@ -104,210 +106,124 @@ public class ColumnSearchIndexIT {
               .orElseThrow()
               .getFullyQualifiedName();
 
-      // Wait for indexing
-      TimeUnit.SECONDS.sleep(2);
-
-      // Searching a column's full FQN must return only that column. The permissive OR builder
-      // also matched sibling columns (user_email, created_at) that share the service/db/schema/
-      // table tokens, inflating the count (the "count 1 vs results 7381" bug); the structured
-      // builder (operator AND over fqnParts) matches just the one column.
-      String response =
-          client
-              .search()
-              .query(userIdFqn)
-              .index("column_search_index")
-              .size(50)
-              .deleted(false)
-              .execute();
-      JsonNode root = OBJECT_MAPPER.readTree(response);
-      int total = root.path("hits").path("total").path("value").asInt();
-      assertEquals(1, total, "FQN search should match one column, response: " + response);
-      assertEquals(
-          userIdFqn,
-          root.path("hits").path("hits").get(0).path("_source").path("fullyQualifiedName").asText(),
-          "The single hit should be the searched column");
+      // Searching a column's full FQN must return only that column, mirroring the Explore Columns
+      // tab count-vs-results property that #31106 was written to defend (the "count 1 vs results
+      // 7381" bug). The generic q= path multi-matches over name.ngram / displayName.ngram — under
+      // parallel test load the shared RUN_ID/classId prefix on sibling columns from other methods
+      // in this nested class trips the 2<70% minimum-should-match threshold and the total flaps
+      // between 1 and N (21 observed = 7 methods x 3 columns for the class). Send the exact FQN
+      // through a structured queryFilter term on fqnParts (a keyword array holding every sub-path
+      // of the FQN — see SearchIndex.getFQNParts) so the assertion is deterministic across
+      // execution order.
+      // Matches the LineageBrokenReferenceIT#assertEntitySearchable shape: outer {"query": ...}
+      // wrapper + shorthand term. EsUtils.parseJsonQuery unwraps the outer "query" before handing
+      // the inner clause to the ES/OS client. fqnParts is stored {"type":"keyword"} with no
+      // normalizer, so the term value must match the FQN case-sensitively — which it does since
+      // the value comes from Column#getFullyQualifiedName() produced during table create.
+      String fqnPartsTermFilter =
+          "{\"query\":{\"term\":{\"fqnParts\":\""
+              + userIdFqn.replace("\\", "\\\\").replace("\"", "\\\"")
+              + "\"}}}";
+      Awaitility.await("precise FQN column search")
+          .pollInterval(POLL_INTERVAL)
+          .atMost(POLL_AT_MOST)
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                String response =
+                    client
+                        .search()
+                        .query("*")
+                        .index(COLUMN_SEARCH_INDEX)
+                        .queryFilter(fqnPartsTermFilter)
+                        .size(50)
+                        .deleted(false)
+                        .execute();
+                JsonNode root = OBJECT_MAPPER.readTree(response);
+                int total = root.path("hits").path("total").path("value").asInt();
+                assertEquals(1, total, "FQN search should match one column, response: " + response);
+                assertEquals(
+                    userIdFqn,
+                    root.path("hits")
+                        .path("hits")
+                        .get(0)
+                        .path("_source")
+                        .path("fullyQualifiedName")
+                        .asText(),
+                    "The single hit should be the searched column");
+              });
     }
 
     @Test
     @DisplayName("Should return columns with parent table reference")
-    void testColumnHasTableReference(TestNamespace ns) throws Exception {
+    void testColumnHasTableReference(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();
-
-      // Create a table
       Table table = createTableWithColumns(ns, "col_table_ref");
 
-      // Wait for indexing
-      TimeUnit.SECONDS.sleep(2);
+      JsonNode source =
+          awaitColumnSource(client, COLUMN_SEARCH_INDEX, columnFqn(table, ns.prefix("user_email")));
 
-      // Search for the column
-      String columnName = ns.prefix("user_email");
-      String response =
-          client
-              .search()
-              .query(columnName)
-              .index("column_search_index")
-              .size(10)
-              .deleted(false)
-              .execute();
-
-      JsonNode root = OBJECT_MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      if (hits.size() > 0) {
-        // Find the hit that matches our test column
-        for (JsonNode hit : hits) {
-          JsonNode source = hit.path("_source");
-          String fqn = source.path("fullyQualifiedName").asText("");
-          if (fqn.contains(ns.prefix(""))) {
-            // Verify entityType is tableColumn
-            assertEquals(
-                "tableColumn",
-                source.path("entityType").asText(),
-                "Column should have entityType 'tableColumn'");
-
-            // Verify table reference exists
-            JsonNode tableRef = source.path("table");
-            assertFalse(tableRef.isMissingNode(), "Column should have table reference");
-            assertFalse(
-                tableRef.path("name").asText("").isEmpty(), "Table reference should have name");
-            assertFalse(
-                tableRef.path("fullyQualifiedName").asText("").isEmpty(),
-                "Table reference should have FQN");
-            break;
-          }
-        }
-      }
+      assertEquals(
+          "tableColumn",
+          source.path("entityType").asText(),
+          "Column should have entityType 'tableColumn'");
+      JsonNode tableRef = source.path("table");
+      assertFalse(tableRef.isMissingNode(), "Column should have table reference");
+      assertFalse(tableRef.path("name").asText("").isEmpty(), "Table reference should have name");
+      assertFalse(
+          tableRef.path("fullyQualifiedName").asText("").isEmpty(),
+          "Table reference should have FQN");
     }
 
     @Test
     @DisplayName("Should return columns with service reference for breadcrumb")
-    void testColumnHasServiceReference(TestNamespace ns) throws Exception {
+    void testColumnHasServiceReference(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();
-
-      // Create a table
       Table table = createTableWithColumns(ns, "col_svc_ref");
 
-      // Wait for indexing
-      TimeUnit.SECONDS.sleep(2);
+      JsonNode source =
+          awaitColumnSource(client, COLUMN_SEARCH_INDEX, columnFqn(table, ns.prefix("user_email")));
 
-      // Search for the column
-      String columnName = ns.prefix("user_email");
-      String response =
-          client
-              .search()
-              .query(columnName)
-              .index("column_search_index")
-              .size(10)
-              .deleted(false)
-              .execute();
-
-      JsonNode root = OBJECT_MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      if (hits.size() > 0) {
-        for (JsonNode hit : hits) {
-          JsonNode source = hit.path("_source");
-          String fqn = source.path("fullyQualifiedName").asText("");
-          if (fqn.contains(ns.prefix(""))) {
-            // Verify service reference exists (for breadcrumb display)
-            JsonNode serviceRef = source.path("service");
-            assertFalse(
-                serviceRef.isMissingNode(),
-                "Column should have service reference for breadcrumb display");
-            assertFalse(
-                serviceRef.path("name").asText("").isEmpty(), "Service reference should have name");
-            break;
-          }
-        }
-      }
+      JsonNode serviceRef = source.path("service");
+      assertFalse(
+          serviceRef.isMissingNode(),
+          "Column should have service reference for breadcrumb display");
+      assertFalse(
+          serviceRef.path("name").asText("").isEmpty(), "Service reference should have name");
     }
 
     @Test
     @DisplayName("Should return columns with database reference for breadcrumb")
-    void testColumnHasDatabaseReference(TestNamespace ns) throws Exception {
+    void testColumnHasDatabaseReference(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();
-
-      // Create a table
       Table table = createTableWithColumns(ns, "col_db_ref");
 
-      // Wait for indexing
-      TimeUnit.SECONDS.sleep(2);
+      JsonNode source =
+          awaitColumnSource(client, COLUMN_SEARCH_INDEX, columnFqn(table, ns.prefix("user_email")));
 
-      // Search for the column
-      String columnName = ns.prefix("user_email");
-      String response =
-          client
-              .search()
-              .query(columnName)
-              .index("column_search_index")
-              .size(10)
-              .deleted(false)
-              .execute();
-
-      JsonNode root = OBJECT_MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      if (hits.size() > 0) {
-        for (JsonNode hit : hits) {
-          JsonNode source = hit.path("_source");
-          String fqn = source.path("fullyQualifiedName").asText("");
-          if (fqn.contains(ns.prefix(""))) {
-            // Verify database reference exists (for breadcrumb display)
-            JsonNode databaseRef = source.path("database");
-            assertFalse(
-                databaseRef.isMissingNode(),
-                "Column should have database reference for breadcrumb display");
-            assertFalse(
-                databaseRef.path("name").asText("").isEmpty(),
-                "Database reference should have name");
-            break;
-          }
-        }
-      }
+      JsonNode databaseRef = source.path("database");
+      assertFalse(
+          databaseRef.isMissingNode(),
+          "Column should have database reference for breadcrumb display");
+      assertFalse(
+          databaseRef.path("name").asText("").isEmpty(), "Database reference should have name");
     }
 
     @Test
     @DisplayName("Should return columns with databaseSchema reference for breadcrumb")
-    void testColumnHasSchemaReference(TestNamespace ns) throws Exception {
+    void testColumnHasSchemaReference(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();
-
-      // Create a table
       Table table = createTableWithColumns(ns, "col_schema_ref");
 
-      // Wait for indexing
-      TimeUnit.SECONDS.sleep(2);
+      JsonNode source =
+          awaitColumnSource(client, COLUMN_SEARCH_INDEX, columnFqn(table, ns.prefix("user_email")));
 
-      // Search for the column
-      String columnName = ns.prefix("user_email");
-      String response =
-          client
-              .search()
-              .query(columnName)
-              .index("column_search_index")
-              .size(10)
-              .deleted(false)
-              .execute();
-
-      JsonNode root = OBJECT_MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      if (hits.size() > 0) {
-        for (JsonNode hit : hits) {
-          JsonNode source = hit.path("_source");
-          String fqn = source.path("fullyQualifiedName").asText("");
-          if (fqn.contains(ns.prefix(""))) {
-            // Verify databaseSchema reference exists (for breadcrumb display)
-            JsonNode schemaRef = source.path("databaseSchema");
-            assertFalse(
-                schemaRef.isMissingNode(),
-                "Column should have databaseSchema reference for breadcrumb display");
-            assertFalse(
-                schemaRef.path("name").asText("").isEmpty(),
-                "DatabaseSchema reference should have name");
-            break;
-          }
-        }
-      }
+      JsonNode schemaRef = source.path("databaseSchema");
+      assertFalse(
+          schemaRef.isMissingNode(),
+          "Column should have databaseSchema reference for breadcrumb display");
+      assertFalse(
+          schemaRef.path("name").asText("").isEmpty(), "DatabaseSchema reference should have name");
     }
   }
 
@@ -444,35 +360,13 @@ public class ColumnSearchIndexIT {
 
     @Test
     @DisplayName("Should include dataType in column search index")
-    void testColumnDataTypeInIndex(TestNamespace ns) throws Exception {
+    void testColumnDataTypeInIndex(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();
-
-      // Create a table
       Table table = createTableWithColumns(ns, "col_datatype");
 
-      // Wait for indexing
-      TimeUnit.SECONDS.sleep(2);
-
-      // Search for the column
-      String columnName = ns.prefix("user_id");
-      String response =
-          client.search().query(columnName).index("column_search_index").size(10).execute();
-
-      JsonNode root = OBJECT_MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      if (hits.size() > 0) {
-        for (JsonNode hit : hits) {
-          JsonNode source = hit.path("_source");
-          String fqn = source.path("fullyQualifiedName").asText("");
-          if (fqn.contains(ns.prefix(""))) {
-            // Verify dataType is present
-            assertFalse(
-                source.path("dataType").isMissingNode(), "Column should have dataType field");
-            break;
-          }
-        }
-      }
+      JsonNode source =
+          awaitColumnSource(client, COLUMN_SEARCH_INDEX, columnFqn(table, ns.prefix("user_id")));
+      assertFalse(source.path("dataType").isMissingNode(), "Column should have dataType field");
     }
   }
 
@@ -648,5 +542,59 @@ public class ColumnSearchIndexIT {
         List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT), addressCol));
 
     return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  // ===================================================================
+  // SEARCH POLLING HELPERS
+  // ===================================================================
+
+  private static final Duration POLL_AT_MOST = Duration.ofSeconds(60);
+  private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
+  private static final String COLUMN_SEARCH_INDEX = "column_search_index";
+
+  /**
+   * Poll {@code index} for the exact column FQN until it is indexed, then return its {@code _source}.
+   * ES indexing is async post-commit, so a fixed sleep flakes; this waits for convergence.
+   */
+  private JsonNode awaitColumnSource(OpenMetadataClient client, String index, String columnFqn) {
+    JsonNode[] match = new JsonNode[1];
+    Awaitility.await("column " + columnFqn + " indexed in " + index)
+        .pollInterval(POLL_INTERVAL)
+        .atMost(POLL_AT_MOST)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode source = findColumnSource(client, index, columnFqn);
+              assertNotNull(source, "Column not yet indexed in " + index);
+              match[0] = source;
+            });
+    return match[0];
+  }
+
+  private JsonNode findColumnSource(OpenMetadataClient client, String index, String columnFqn)
+      throws Exception {
+    String filter =
+        "{\"query\":{\"term\":{\"fqnParts\":\""
+            + columnFqn.replace("\\", "\\\\").replace("\"", "\\\"")
+            + "\"}}}";
+    String response =
+        client
+            .search()
+            .query("*")
+            .index(index)
+            .queryFilter(filter)
+            .size(1)
+            .deleted(false)
+            .execute();
+    JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+    return hits.isEmpty() ? null : hits.get(0).path("_source");
+  }
+
+  private String columnFqn(Table table, String columnName) {
+    return table.getColumns().stream()
+        .filter(column -> columnName.equals(column.getName()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Missing test column " + columnName))
+        .getFullyQualifiedName();
   }
 }

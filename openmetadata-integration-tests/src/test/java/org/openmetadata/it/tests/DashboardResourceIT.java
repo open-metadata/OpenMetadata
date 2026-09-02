@@ -139,6 +139,13 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
   }
 
   @Override
+  protected String getEntityServiceFqn(Dashboard entity) {
+    return entity == null || entity.getService() == null
+        ? null
+        : entity.getService().getFullyQualifiedName();
+  }
+
+  @Override
   protected Dashboard getEntityWithFields(String id, String fields) {
     return SdkClients.adminClient().dashboards().get(id, fields);
   }
@@ -564,9 +571,12 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
       createEntity(request);
     }
 
-    // List dashboards
+    // Scope to this test's own service. An unscoped list returns sibling tests' dashboards, and a
+    // foreign row whose service is mid-hard-delete by its own @AfterEach hydrates with a null
+    // service ref — the getService() dereference below then NPEs.
     ListParams params = new ListParams();
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Dashboard> response = listEntities(params);
     assertNotNull(response);
 
