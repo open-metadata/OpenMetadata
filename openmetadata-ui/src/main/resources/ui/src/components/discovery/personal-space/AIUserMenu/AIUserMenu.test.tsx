@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import AIUserMenu from './AIUserMenu';
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
@@ -116,9 +117,10 @@ jest.mock('react-aria-components', () => ({
   MenuItem: ({
     children,
     onAction,
+    textValue: _textValue,
     ...rest
   }: React.PropsWithChildren<
-    Record<string, unknown> & { onAction?: () => void }
+    Record<string, unknown> & { onAction?: () => void; textValue?: string }
   >) => (
     <button
       type="button"
@@ -151,6 +153,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
     Separator: () => <hr />,
   },
+  Toggle: ({
+    isSelected,
+    label,
+    onChange,
+  }: {
+    isSelected: boolean;
+    label: string;
+    onChange: (isSelected: boolean) => void;
+  }) => (
+    <button
+      aria-checked={isSelected}
+      aria-label={label}
+      role="switch"
+      type="button"
+      onClick={() => onChange(!isSelected)}
+    />
+  ),
   Typography: ({ children }: React.PropsWithChildren) => (
     <span>{children}</span>
   ),
@@ -161,7 +180,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 const renderMenu = () =>
   render(
     <MemoryRouter>
-      <AIUserMenu />
+      <ThemeProvider defaultTheme="light">
+        <AIUserMenu />
+      </ThemeProvider>
     </MemoryRouter>
   );
 
@@ -170,6 +191,8 @@ const renderMenu = () =>
 describe('AIUserMenu', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    document.documentElement.classList.remove('dark-mode');
     mockAppVersion = '1.0.0';
     mockGetHelpItems.mockReturnValue([]);
   });
@@ -201,6 +224,18 @@ describe('AIUserMenu', () => {
     expect(screen.getByText('label.language')).toBeInTheDocument();
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
     expect(screen.getByText('label.logout')).toBeInTheDocument();
+  });
+
+  it('updates the theme without removing the user menu', () => {
+    renderMenu();
+
+    const switcher = screen.getByRole('switch', { name: 'label.dark-mode' });
+
+    fireEvent.click(switcher);
+
+    expect(switcher).toBeChecked();
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 
   it('navigates to /settings when the settings item is clicked', () => {
