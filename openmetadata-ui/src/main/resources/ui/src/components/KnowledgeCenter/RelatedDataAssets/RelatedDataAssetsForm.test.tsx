@@ -21,14 +21,12 @@ jest.mock(
 
 const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
-const mockDefaultValues: string[] = [];
 const mockInitialOptions: DataAssetOption[] = [];
 
 describe('RelatedDataAssetsForm', () => {
   it('should render', () => {
     render(
       <RelatedDataAssetsForm
-        defaultValue={mockDefaultValues}
         initialOptions={mockInitialOptions}
         onCancel={mockCancel}
         onSubmit={mockSubmit}
@@ -43,7 +41,6 @@ describe('RelatedDataAssetsForm', () => {
   it('should call onCancel when cancel button is clicked', () => {
     render(
       <RelatedDataAssetsForm
-        defaultValue={mockDefaultValues}
         initialOptions={mockInitialOptions}
         onCancel={mockCancel}
         onSubmit={mockSubmit}
@@ -57,7 +54,6 @@ describe('RelatedDataAssetsForm', () => {
   it('should call onSubmit when save button is clicked', async () => {
     render(
       <RelatedDataAssetsForm
-        defaultValue={mockDefaultValues}
         initialOptions={mockInitialOptions}
         onCancel={mockCancel}
         onSubmit={mockSubmit}

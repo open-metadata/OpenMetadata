@@ -24,7 +24,6 @@ import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectL
 import i18n from '../../../utils/i18next/LocalUtil';
 
 interface RelatedDataAssetsFormProps {
-  defaultValue?: string[];
   initialOptions?: DataAssetOption[];
   onSubmit: (option: DataAssetOption[]) => Promise<void>;
   onCancel: () => void;
