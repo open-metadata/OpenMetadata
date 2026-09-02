@@ -12,6 +12,9 @@
 Validate the logic and status handling of the base workflow
 """
 
+import json
+import uuid
+from types import SimpleNamespace
 from typing import Iterable, Tuple  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -199,6 +202,81 @@ class TestBaseWorkflow(TestCase):
         )
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
+
+
+def _self_registration_workflow(source_config: SourceConfig) -> SimpleWorkflow:
+    workflow_config = config.model_copy(
+        update={"source": config.source.model_copy(update={"type": "mysql", "sourceConfig": source_config})},
+        deep=True,
+    )
+
+    metadata = MagicMock()
+    metadata.config.forceEntityOverwriting = True
+    with patch("metadata.workflow.base.create_ometa_client", return_value=metadata):
+        workflow = SimpleWorkflow(config=workflow_config)
+
+    workflow.config = workflow_config.model_copy(
+        update={"ingestionPipelineFQN": "test-service.self-registered-pipeline"}
+    )
+    workflow.metadata.get_by_name.return_value = None
+    return workflow
+
+
+def _self_registration_request(source_config):
+    workflow = _self_registration_workflow(SourceConfig(config=source_config))
+    with patch.object(
+        workflow,
+        "_get_ingestion_pipeline_service",
+        return_value=SimpleNamespace(id=uuid.uuid4()),
+    ):
+        workflow.get_or_create_ingestion_pipeline()
+
+    return workflow.metadata.create_or_update.call_args.args[0]
+
+
+def test_self_registration_serializes_default_source_config_type():
+    source_config = DatabaseServiceMetadataPipeline()
+
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+    request = _self_registration_request(source_config)
+    payload = json.loads(request.model_dump_json(context={"mask_secrets": False}, by_alias=True, exclude_unset=True))
+
+    assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+
+def test_self_registration_marks_default_type_on_a_copy():
+    source_config = SourceConfig(config=DatabaseServiceMetadataPipeline())
+    workflow = _self_registration_workflow(source_config)
+
+    copied_source_config = workflow._source_config_with_explicit_type()
+
+    assert copied_source_config is not source_config
+    assert copied_source_config.config is not source_config.config
+    assert "type" in copied_source_config.config.model_fields_set
+    assert "type" not in source_config.config.model_fields_set
+
+
+def test_self_registration_preserves_raw_source_config_without_copying_or_mutating_it():
+    raw_config = {"type": "DatabaseMetadata", "markDeletedTables": True}
+    source_config = SourceConfig.model_construct(config=raw_config)
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config is raw_config
+
+
+def test_self_registration_does_not_invent_a_missing_model_type():
+    source_config = SourceConfig.model_construct(config=DatabaseServiceMetadataPipeline(type=None))
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config.type is None
 
 
 class TestWorkflowExecuteTeardown:
