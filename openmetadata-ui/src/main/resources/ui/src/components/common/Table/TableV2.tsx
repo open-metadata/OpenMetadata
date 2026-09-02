@@ -514,6 +514,18 @@ const TableV2 = <T extends object>(
       ? scroll.x
       : undefined;
 
+  /**
+   * AntD's `scroll={{ x: 'max-content' }}` means "size the table by its
+   * content and let the wrapper scroll" — which is auto table layout. Keeping
+   * the forced fixed layout here made Chrome compute the table's max-content
+   * from the header row alone, so a table of pixel columns plus one unsized
+   * one never grew past its headers: the pixel floors held their columns and
+   * the unsized column was crushed to its header's width (to nothing, on a
+   * narrow viewport — the glossary terms table's Description column in the
+   * merge queue). Auto layout sizes it from the rows, exactly as AntD did.
+   */
+  const sizeByContent = scroll?.x === 'max-content';
+
   const scrollStyle = useMemo((): React.CSSProperties => {
     if (!scroll) {
       return {};
@@ -1235,9 +1247,11 @@ const TableV2 = <T extends object>(
                 // Resizing needs fixed regardless: an auto table re-solves its
                 // own widths and swallows the drag.
                 'tw:table-fixed':
-                  rest.resizableColumns || rest.tableLayout !== 'auto',
+                  rest.resizableColumns ||
+                  (rest.tableLayout !== 'auto' && !sizeByContent),
                 'tw:table-auto':
-                  !rest.resizableColumns && rest.tableLayout === 'auto',
+                  !rest.resizableColumns &&
+                  (rest.tableLayout === 'auto' || sizeByContent),
               })}
               containerStyle={
                 scroll?.y
