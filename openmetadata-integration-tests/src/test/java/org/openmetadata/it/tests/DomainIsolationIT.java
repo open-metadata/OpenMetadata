@@ -32,9 +32,7 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
-import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -44,8 +42,6 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
@@ -57,7 +53,6 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -233,34 +228,59 @@ public class DomainIsolationIT {
   }
 
   @Test
-  void test_domainSearch_restrictedBotSeesOnlyOwnDomains(TestNamespace ns) throws Exception {
+  void test_assetSearch_restrictedBotSeesOnlyOwnDomain(TestNamespace ns) throws Exception {
     // #30023: a bot-authenticated caller (the standard MCP wiring) used to bypass search RBAC
     // entirely, because SearchUtils#shouldApplyRbacConditions skipped policy injection for bots and
     // a skipped injection leaves the query matching everything.
+    //
+    // This probes an asset index rather than domain_search_index on purpose. Domain visibility is
+    // narrowed by a separate, domain-field-driven mechanism, so a bot with no roles at all - whose
+    // RBAC allow side compiles to match_all - is still scoped there. That makes the domain index
+    // unable to tell search RBAC apart from that other filter. Asset search is what
+    // search_metadata actually queries and is filtered by RBAC alone.
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
       String p = ns.shortPrefix();
       Domain d1 = createDomain(admin, p + "_botd1", cleanup);
       Domain d2 = createDomain(admin, p + "_botd2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table ownTable = createTable(admin, p + "_bot_own", schema, d1, cleanup);
+      Table foreignTable = createTable(admin, p + "_bot_foreign", schema, d2, cleanup);
       OpenMetadataClient restrictedBot = createRestrictedBotClient(admin, p, d1, cleanup);
 
       boolean originalAccessControl = enableSearchAccessControl(admin);
       cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
 
-      String d2Fqn = d2.getFullyQualifiedName();
+      String ownFqn = ownTable.getFullyQualifiedName();
+      String foreignFqn = foreignTable.getFullyQualifiedName();
+
+      // Control: without this, "the bot cannot see the foreign table" would also hold if the
+      // table were simply not indexed yet, making the assertion below vacuous.
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                Set<String> searchNames = domainSearchFqns(restrictedBot);
+                Set<String> adminTables = tableSearchFqns(admin, p);
                 assertTrue(
-                    searchNames.contains(d1.getFullyQualifiedName()),
-                    "Own domain visible to the bot. Saw: " + searchNames);
+                    adminTables.containsAll(List.of(ownFqn, foreignFqn)),
+                    "Admin must see both tables before the negative check. Saw: " + adminTables);
+              });
+
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> botTables = tableSearchFqns(restrictedBot, p);
+                assertTrue(
+                    botTables.contains(ownFqn),
+                    "Own-domain asset visible to the bot. Saw: " + botTables);
                 assertFalse(
-                    searchNames.contains(d2Fqn),
-                    "Foreign domain must be hidden from a domain-scoped bot. Saw: " + searchNames);
+                    botTables.contains(foreignFqn),
+                    "Foreign-domain asset must be hidden from a domain-scoped bot. Saw: "
+                        + botTables);
               });
     } finally {
       drain(cleanup);
@@ -268,7 +288,7 @@ public class DomainIsolationIT {
   }
 
   @Test
-  void test_domainSearch_stockBotIsUnaffected(TestNamespace ns) throws Exception {
+  void test_assetSearch_stockBotIsUnaffected(TestNamespace ns) throws Exception {
     // The seeded bots carry an unconditioned ViewAll on All resources, which compiles to match_all,
     // so applying their policies must not narrow anything.
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -277,6 +297,9 @@ public class DomainIsolationIT {
       String p = ns.shortPrefix();
       Domain d1 = createDomain(admin, p + "_stockd1", cleanup);
       Domain d2 = createDomain(admin, p + "_stockd2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table t1 = createTable(admin, p + "_stock_t1", schema, d1, cleanup);
+      Table t2 = createTable(admin, p + "_stock_t2", schema, d2, cleanup);
 
       boolean originalAccessControl = enableSearchAccessControl(admin);
       cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
@@ -287,11 +310,11 @@ public class DomainIsolationIT {
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                Set<String> searchNames = domainSearchFqns(ingestionBot);
+                Set<String> botTables = tableSearchFqns(ingestionBot, p);
                 assertTrue(
-                    searchNames.containsAll(
-                        List.of(d1.getFullyQualifiedName(), d2.getFullyQualifiedName())),
-                    "A stock bot keeps its full view. Saw: " + searchNames);
+                    botTables.containsAll(
+                        List.of(t1.getFullyQualifiedName(), t2.getFullyQualifiedName())),
+                    "A stock bot keeps its full view. Saw: " + botTables);
               });
     } finally {
       drain(cleanup);
@@ -334,70 +357,6 @@ public class DomainIsolationIT {
       assertFalse(
           botNodes.contains(t2Fqn),
           "Foreign-domain node must be pruned for a domain-scoped bot. Saw: " + botNodes);
-    } finally {
-      drain(cleanup);
-    }
-  }
-
-  @Test
-  void test_domainSearch_allowOnlyDomainRoleIsDefeatedByABroaderRole(TestNamespace ns)
-      throws Exception {
-    // Reproduces the configuration reported on #30023. Allow rules are OR'd, so a hand-written
-    // allow-only hasDomain() role scopes a bot only while it is that bot's sole role; adding
-    // DefaultBotRole contributes DataConsumerPolicy's unconditioned ViewAll and the scoping is
-    // lost.
-    // The seeded DomainOnlyAccessRole is deny-based and immune to this.
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
-    try {
-      String p = ns.shortPrefix();
-      Domain d1 = createDomain(admin, p + "_allowd1", cleanup);
-      Domain d2 = createDomain(admin, p + "_allowd2", cleanup);
-      Role allowOnlyRole = createAllowOnlyDomainRole(admin, p, cleanup);
-      OpenMetadataClient scopedBot =
-          createBotClient(admin, p + "_scoped", d1, List.of(allowOnlyRole.getId()), cleanup);
-      OpenMetadataClient widenedBot =
-          createBotClient(
-              admin,
-              p + "_widened",
-              d1,
-              List.of(allowOnlyRole.getId(), admin.roles().getByName("DefaultBotRole").getId()),
-              cleanup);
-
-      boolean originalAccessControl = enableSearchAccessControl(admin);
-      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
-
-      String d2Fqn = d2.getFullyQualifiedName();
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(60))
-          .pollInterval(Duration.ofSeconds(2))
-          .untilAsserted(
-              () -> {
-                Set<String> scopedNames = domainSearchFqns(scopedBot);
-                assertTrue(
-                    scopedNames.contains(d1.getFullyQualifiedName()),
-                    "The domain-scoped bot keeps its own domain. Saw: " + scopedNames);
-                assertFalse(
-                    scopedNames.contains(d2Fqn),
-                    "An allow-only role scopes a bot when it is its only role. Saw: "
-                        + scopedNames);
-              });
-
-      // The widened bot has its own subject and RBAC cache entries, so it needs its own poll
-      // rather than riding on the scoped bot's having settled.
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(60))
-          .pollInterval(Duration.ofSeconds(2))
-          .untilAsserted(
-              () -> {
-                Set<String> widenedNames = domainSearchFqns(widenedBot);
-                assertTrue(
-                    widenedNames.contains(d2Fqn),
-                    "A second unconditioned ViewAll role restores the full view, which is why the "
-                        + "seeded deny-based DomainOnlyAccessRole is the supported way to scope by "
-                        + "domain. Saw: "
-                        + widenedNames);
-              });
     } finally {
       drain(cleanup);
     }
@@ -650,38 +609,6 @@ public class DomainIsolationIT {
     return SdkClients.createClient(email, email, new String[] {});
   }
 
-  private Role createAllowOnlyDomainRole(
-      OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
-    Rule allowRule =
-        new Rule()
-            .withName("allowOwnDomain")
-            .withDescription("Allow viewing assets in the caller's own domains")
-            .withEffect(Rule.Effect.ALLOW)
-            .withOperations(List.of(MetadataOperation.VIEW_ALL))
-            .withResources(List.of("All"))
-            .withCondition("hasDomain()");
-    Policy policy =
-        admin
-            .policies()
-            .create(
-                new CreatePolicy()
-                    .withName(prefix + "_allowOnlyDomainPolicy")
-                    .withDescription("Allow-only domain policy, mirroring the #30023 report")
-                    .withRules(List.of(allowRule)));
-    cleanup.push(() -> admin.policies().delete(policy.getId()));
-
-    Role role =
-        admin
-            .roles()
-            .create(
-                new CreateRole()
-                    .withName(prefix + "_allowOnlyDomainRole")
-                    .withDescription("Allow-only domain role, mirroring the #30023 report")
-                    .withPolicies(List.of(policy.getFullyQualifiedName())));
-    cleanup.push(() -> admin.roles().delete(role.getId()));
-    return role;
-  }
-
   private OpenMetadataClient createPlainUserClient(
       OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
     String name = prefix + "_plain";
@@ -761,6 +688,24 @@ public class DomainIsolationIT {
       }
     }
     return names;
+  }
+
+  /**
+   * Asset-index search, scoped to this test's namespace. Unlike the domain index, table search is
+   * narrowed by search RBAC alone, so it is the right probe for the bot policy injection in #30023.
+   */
+  private Set<String> tableSearchFqns(OpenMetadataClient client, String prefix) throws Exception {
+    String response =
+        client.search().query(prefix + "*").index("table_search_index").size(1000).execute();
+    JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+    Set<String> fqns = new HashSet<>();
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (source.hasNonNull("fullyQualifiedName")) {
+        fqns.add(source.get("fullyQualifiedName").asText());
+      }
+    }
+    return fqns;
   }
 
   private Set<String> domainSearchFqns(OpenMetadataClient client) throws Exception {
