@@ -9151,15 +9151,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
+      if (Objects.equals(origCertification, updatedCertification)) {
+        LOG.debug("Certification unchanged");
+        return;
+      }
+
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
         deleteCertificationTag(updated.getFullyQualifiedName());
         recordChange(FIELD_CERTIFICATION, origCertification, null, true);
-        return;
-      }
-
-      if (Objects.equals(origCertification, updatedCertification)) {
-        LOG.debug("Certification unchanged");
         return;
       }
 
