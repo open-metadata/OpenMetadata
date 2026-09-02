@@ -966,23 +966,12 @@ const testFilterWithSpecificOption = async (
   filterWrapper: Locator,
   filterName: string,
   optionTestId: string,
-  expectedQueryFilterValue: string,
-  searchText?: string
+  expectedQueryFilterValue: string
 ) => {
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
   await page.getByTestId('drop-down-menu').waitFor();
-
-  if (searchText) {
-    const aggregateResponse = page.waitForResponse(
-      '/api/v1/search/aggregate?*'
-    );
-    await page
-      .getByRole('textbox', { name: 'Search Service Type...' })
-      .fill(searchText);
-    await aggregateResponse;
-  }
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
@@ -1104,9 +1093,8 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'Service Type',
-    'Mysql',
     'mysql',
-    'Mysql'
+    'mysql'
   );
 
   await testFilterWithFirstOption(page, filterWrapper, 'Tag');
