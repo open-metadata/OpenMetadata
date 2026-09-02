@@ -2207,6 +2207,7 @@ public class SearchRepository {
       FieldChange field,
       PropagationDescriptor desc,
       EntityInterface entity) {
+    int scriptStart = script.length();
     switch (desc.propagationType()) {
       case ENTITY_REFERENCE_LIST -> {
         if (field.getName().equals(FIELD_FOLLOWERS)) {
@@ -2258,7 +2259,9 @@ public class SearchRepository {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
-    script.append(" ");
+    if (script.length() > scriptStart) {
+      script.append(" ");
+    }
   }
 
   private void appendDeleteScript(
@@ -2267,6 +2270,7 @@ public class SearchRepository {
       FieldChange field,
       PropagationDescriptor desc,
       EntityInterface entity) {
+    int scriptStart = script.length();
     switch (desc.propagationType()) {
       case ENTITY_REFERENCE_LIST -> {
         if (field.getName().equals(FIELD_FOLLOWERS)) {
@@ -2312,7 +2316,9 @@ public class SearchRepository {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
-    script.append(" ");
+    if (script.length() > scriptStart) {
+      script.append(" ");
+    }
   }
 
   private void appendUpdateScript(
@@ -2321,6 +2327,7 @@ public class SearchRepository {
       FieldChange field,
       PropagationDescriptor desc,
       EntityInterface entity) {
+    int scriptStart = script.length();
     switch (desc.propagationType()) {
       case ENTITY_REFERENCE_LIST -> {
         if (field.getName().equals(FIELD_FOLLOWERS)) {
@@ -2379,7 +2386,9 @@ public class SearchRepository {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
-    script.append(" ");
+    if (script.length() > scriptStart) {
+      script.append(" ");
+    }
   }
 
   private List<EntityReference> resolveEntityReferenceList(

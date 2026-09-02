@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -118,13 +117,6 @@ public class GlossaryTermMoveApprovalIT {
   // immutable id (relatedEntityId), so approving after the move no longer depends on the FQN being
   // repointed first.
   @Test
-  @Disabled(
-      "1.13 pg-es-redis: async glossary-term move fails to commit FQN change within 2 min."
-          + " Root cause is NOT the #28902 L1 cache race — the 2 min Awaitility window vastly"
-          + " exceeds the 30 s L1 TTL, so the entry would refresh long before the timeout."
-          + " Failure sits in the AsyncService.getExecutorService() moveGlossaryTerm task on this"
-          + " lane (silent failure or starvation of the workflow-follow / tag-usage / index"
-          + " updates). Not yet isolated. Re-enable once the async-move failure is root-caused.")
   void test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved(TestNamespace ns)
       throws Exception {
     Glossary glossary = createGlossary(ns);
@@ -157,13 +149,6 @@ public class GlossaryTermMoveApprovalIT {
    */
   // Deterministic via by-id resolution (see the parent-move test).
   @Test
-  @Disabled(
-      "1.13 pg-es-redis: async glossary-term move fails to commit FQN change within 2 min."
-          + " Root cause is NOT the #28902 L1 cache race — the 2 min Awaitility window vastly"
-          + " exceeds the 30 s L1 TTL, so the entry would refresh long before the timeout."
-          + " Failure sits in the AsyncService.getExecutorService() moveGlossaryTerm task on this"
-          + " lane (silent failure or starvation of the workflow-follow / tag-usage / index"
-          + " updates). Not yet isolated. Re-enable once the async-move failure is root-caused.")
   void test_approveApprovalTaskAfterMovingAncestorToGlossaryRoot_drivesMovedTermToApproved(
       TestNamespace ns) throws Exception {
     Glossary glossary = createGlossary(ns);

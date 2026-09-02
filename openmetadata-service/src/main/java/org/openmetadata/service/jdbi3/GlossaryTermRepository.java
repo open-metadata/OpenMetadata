@@ -2237,7 +2237,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       LOG.info("Glossary term FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every child term under this renamed term BEFORE the DB rewrite.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
       // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
       invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
@@ -2281,6 +2282,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(updated.getId());
         updateAssetIndexes(oldFqn, newFqn);
       }
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     /**
@@ -2306,7 +2308,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String newFqn = updated.getFullyQualifiedName();
 
       // Drop cache entries for every child term under this moved term BEFORE the DB rewrite.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
       // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
       invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
@@ -2340,6 +2343,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(updated.getId());
       }
       updateAssetIndexes(oldFqn, newFqn);
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     private void validateParent() {

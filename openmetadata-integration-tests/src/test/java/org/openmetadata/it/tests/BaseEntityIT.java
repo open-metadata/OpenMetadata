@@ -3784,6 +3784,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    awaitAsyncBulkEntitiesPersisted(result);
   }
 
   /**
@@ -4510,6 +4511,29 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
+    awaitAsyncBulkEntitiesPersisted(result);
+  }
+
+  private void awaitAsyncBulkEntitiesPersisted(BulkOperationResult result) {
+    if (result.getSuccessRequest() == null || result.getSuccessRequest().isEmpty()) {
+      return;
+    }
+    for (BulkResponse accepted : result.getSuccessRequest()) {
+      Object request = accepted.getRequest();
+      if (!(request instanceof String fqn) || fqn.isEmpty()) {
+        continue;
+      }
+      Awaitility.await("Async bulk-created entity " + fqn + " visible by name")
+          .pollDelay(Duration.ofMillis(200))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                getEntityByName(fqn);
+                return true;
+              });
+    }
   }
 
   /**

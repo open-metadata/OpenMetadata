@@ -7195,10 +7195,11 @@ public class WorkflowDefinitionResourceIT {
 
   @Test
   @Order(40)
-  void test_WorkflowWithReviewersOwnersCandidates(TestNamespace ns) throws IOException {
+  void test_WorkflowWithReviewersOwnersCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithReviewersOwnersCandidates");
 
     OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
 
     // Step 1: Create test users (2 candidates + 1 owner)
     LOG.debug("Creating test users for comprehensive assignment testing");
@@ -7386,7 +7387,10 @@ public class WorkflowDefinitionResourceIT {
 
     JsonNode workflowCreated = MAPPER.readTree(workflowResponse);
     String workflowId = workflowCreated.get("id").asText();
+    trackWorkflowFromJson(workflowCreated);
     LOG.debug("Created comprehensive workflow: {}", workflowId);
+
+    waitForWorkflowDeployment(client, "TableApprovalWorkflow");
 
     // Step 5: Wait for initial workflow processing (table creation event)
     LOG.info("Waiting for workflow to process table creation...");
@@ -7571,10 +7575,11 @@ public class WorkflowDefinitionResourceIT {
 
   @Test
   @Order(41)
-  void test_WorkflowWithTeamCandidates(TestNamespace ns) throws IOException {
+  void test_WorkflowWithTeamCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithTeamCandidates");
 
     OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
 
     // Step 1: Create test users (2 candidates + 1 owner)
     LOG.debug("Creating test users for team-based assignment testing");
@@ -7762,7 +7767,10 @@ public class WorkflowDefinitionResourceIT {
 
     JsonNode workflowCreated = MAPPER.readTree(workflowResponse);
     String workflowId = workflowCreated.get("id").asText();
+    trackWorkflowFromJson(workflowCreated);
     LOG.debug("Created team workflow: {}", workflowId);
+
+    waitForWorkflowDeployment(client, "TeamApprovalWorkflow");
 
     // Step 6: Wait for initial workflow processing (table creation event)
     LOG.info("Waiting for workflow to process table creation...");

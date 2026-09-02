@@ -732,6 +732,23 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateInheritedFieldsToChildrenSkipsExternalHandlerOnlyChanges() throws IOException {
+    UUID tableId = UUID.randomUUID();
+    EntityInterface table = mockEntity(Entity.TABLE, tableId, "orders");
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE, tableId.toString(), changeDescription, TABLE_MAPPING, table);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
     EntityInterface domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
