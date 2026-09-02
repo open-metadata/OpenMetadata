@@ -11,5 +11,9 @@
  *  limitations under the License.
  */
 
-export { default } from './Tag';
-export type { TagProps, TagSize, TagVariant } from './Tag.interface';
+export { default as ClassificationTag } from './ClassificationTag';
+export { default as DataProductTag } from './DataProductTag';
+export { default as DomainTag } from './DomainTag';
+export { default as GlossaryTag } from './GlossaryTag';
+export type { BaseTagProps, TagSize } from './Tag.interface';
+export { DEFAULT_TAG_COLOR } from './Tag.interface';

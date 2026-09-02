@@ -29,13 +29,10 @@ import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { activateOnEnterOrSpace } from '../../../utils/InteractiveTargetUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import Tag from '../../common/atoms/Tag/Tag';
-import { TagVariant } from '../../common/atoms/Tag/Tag.interface';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
+import GlossaryTag from '../../common/atoms/Tag/GlossaryTag';
 import TagSuggestion from '../../common/TagSuggestion/TagSuggestion';
 import { DisplayType, TagsProps } from './Tags.interface';
-
-const getVariantForSource = (source?: TagSource): TagVariant =>
-  source === TagSource.Glossary ? 'glossary' : 'classification';
 
 const Tags: FC<TagsProps> = ({
   tags,
@@ -98,7 +95,8 @@ const Tags: FC<TagsProps> = ({
     (tag: EntityTags, deletable = false) => {
       const tagName = getTagName(tag, tag.source === TagSource.Glossary);
       const redirectLink = getTagRedirectLink(tag);
-      const variant = getVariantForSource(tag.source);
+      const isGlossary = tag.source === TagSource.Glossary;
+      const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
       return (
         <Tooltip
@@ -113,14 +111,13 @@ const Tags: FC<TagsProps> = ({
                 'diff-added tw-mx-1': tag?.added,
                 'diff-removed': tag?.removed,
               })}>
-              <Tag
+              <TagComponent
                 color={tag.style?.color}
                 data-testid="tags"
                 href={deletable ? undefined : redirectLink}
                 icon={tag.style?.iconURL}
                 label={tagName}
                 size="sm"
-                variant={variant}
                 onDelete={
                   deletable
                     ? (e) => {

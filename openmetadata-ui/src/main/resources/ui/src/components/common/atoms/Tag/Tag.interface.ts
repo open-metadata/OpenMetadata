@@ -11,44 +11,33 @@
  *  limitations under the License.
  */
 
-import { ComponentType } from 'react';
+/**
+ * xs — 10 px font / 16 px height
+ * sm — 12 px font / 20 px height
+ * md — 14 px font / 24 px height
+ */
+export type TagSize = 'xs' | 'sm' | 'md';
 
 /**
- * Visual variant for the Tag atom.
- * - classification: 1 px border, tinted bg/border/text from `color` prop (inline styles)
- * - glossary: 1 px border, always blue-gray tokens, book icon
- * - tier: 1 px border, always purple tokens
- * - domain: 1 px border + 2 px left accent, inline color styles
- * - dataProduct: 1 px border + 2 px left accent, inline color styles
- * - pill: rounded-full, no border, semantic color
+ * Fallback color used when no explicit `color` prop is provided.
+ * All four tag components share this default so they look consistent
+ * when rendered without a palette color.
  */
-export type TagVariant =
-  | 'classification'
-  | 'glossary'
-  | 'tier'
-  | 'domain'
-  | 'dataProduct'
-  | 'pill';
+export const DEFAULT_TAG_COLOR = '#5D6B98';
 
-export type TagSize = 'sm' | 'md' | 'lg';
-
-export interface TagProps {
+export interface BaseTagProps {
   label: string;
-  /** Hex color from the backend. Used for inline styles on classification/domain/dataProduct. */
+  /** Hex color from ENTITY_PALETTE_HEX. Omit to use DEFAULT_TAG_COLOR. */
   color?: string;
-  variant?: TagVariant;
   /**
-   * Icon to display. Accepts:
-   * - A string key from ICON_MAP (e.g. 'Tag01')
-   * - An image URL (https:// or data:)
-   * - A React component type
+   * ICON_MAP key or image URL. Overrides the component's default icon.
+   * The default icon is always rendered; this replaces it.
    */
-  icon?: string | ComponentType<{ size?: number; className?: string }>;
+  icon?: string;
   size?: TagSize;
   onDelete?: (e: Event) => void;
-  /** When provided, wraps the label in a router Link. */
+  /** When provided, wraps the label in a react-router Link. */
   href?: string;
-  showIcon?: boolean;
   maxWidth?: string | number;
   disabled?: boolean;
   className?: string;
