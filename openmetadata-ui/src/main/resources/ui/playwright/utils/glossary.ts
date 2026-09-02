@@ -966,12 +966,25 @@ const testFilterWithSpecificOption = async (
   filterWrapper: Locator,
   filterName: string,
   optionTestId: string,
-  expectedQueryFilterValue: string
+  expectedQueryFilterValue: string,
+  searchText?: string
 ) => {
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
-  await page.getByTestId('drop-down-menu').waitFor();
+  const menu = page.getByTestId('drop-down-menu');
+  await menu.waitFor();
+
+  // A filter backed by sourceFields fetches a size-capped, alphabetically
+  // ordered aggregation, so the wanted option may not be on the first page —
+  // narrow the aggregation by searching before clicking.
+  if (searchText) {
+    const aggregateResponse = page.waitForResponse(
+      '/api/v1/search/aggregate?*'
+    );
+    await menu.getByTestId('search-input').fill(searchText);
+    await aggregateResponse;
+  }
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
@@ -1093,6 +1106,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'Service Type',
+    'mysql',
     'mysql',
     'mysql'
   );
