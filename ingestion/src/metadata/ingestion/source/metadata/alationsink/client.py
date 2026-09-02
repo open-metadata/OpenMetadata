@@ -14,7 +14,7 @@ Client to interact with Alation apis
 
 import json
 import traceback
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.metadata.alationSinkConnection import (
     AlationSinkConnection,
@@ -127,7 +127,7 @@ class AlationSinkClient:
         api_url: str,
         data: dict | None = None,
         is_key_offset: bool = False,
-    ) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    ) -> list[Any] | None:
         """
         Method to paginate the entities
         """
@@ -164,7 +164,7 @@ class AlationSinkClient:
         response = self.client.get("/v2/connectors/")
         return {response_data["name"]: response_data["id"] for response_data in response}
 
-    def write_entity(self, create_request: Any) -> Optional[Any]:  # noqa: UP045
+    def write_entity(self, create_request: Any) -> Any | None:
         """
         Method to write the entity to Alation
         """
@@ -184,7 +184,7 @@ class AlationSinkClient:
             logger.error(f"Failed to write entity: {exc}")
         return None
 
-    def write_entities(self, ds_id: int, create_requests: Any) -> Optional[Any]:  # noqa: UP045
+    def write_entities(self, ds_id: int, create_requests: Any) -> Any | None:
         """
         Method to write the entities to Alation
         """

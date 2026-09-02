@@ -14,9 +14,10 @@ Module containing AWS Client
 
 import datetime
 import threading
+from collections.abc import Callable
 from enum import Enum
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Type, TypeVar  # noqa: UP035
+from typing import Any, TypeVar
 from urllib.parse import parse_qs, urlparse
 
 import boto3
@@ -71,23 +72,23 @@ class AWSAssumeRoleException(Exception):  # noqa: N818
 class AWSAssumeRoleCredentialResponse(BaseModel):
     AccessKeyId: str = Field()
     SecretAccessKey: str = Field()
-    SessionToken: Optional[str] = Field(  # noqa: UP045
+    SessionToken: str | None = Field(
         default=None,
     )
-    Expiration: Optional[datetime.datetime] = None  # noqa: UP045
+    Expiration: datetime.datetime | None = None
 
 
 class AWSAssumeRoleCredentialWrapper(BaseModel):
     accessKeyId: str = Field(alias="access_key")  # noqa: N815
     secretAccessKey: CustomSecretStr = Field(alias="secret_key")  # noqa: N815
-    sessionToken: Optional[str] = Field(default=None, alias="token")  # noqa: N815, UP045
-    expiryTime: Optional[str] = Field(alias="expiry_time")  # noqa: N815, UP045
+    sessionToken: str | None = Field(default=None, alias="token")  # noqa: N815
+    expiryTime: str | None = Field(alias="expiry_time")  # noqa: N815
 
     class Config:
         populate_by_name = True
 
 
-AWSAssumeRoleCredentialFormat = TypeVar("AWSAssumeRoleCredentialFormat", AWSAssumeRoleCredentialWrapper, Dict)  # noqa: UP006
+AWSAssumeRoleCredentialFormat = TypeVar("AWSAssumeRoleCredentialFormat", AWSAssumeRoleCredentialWrapper, dict)
 
 
 class AWSClient:
@@ -113,8 +114,8 @@ class AWSClient:
     @staticmethod
     def get_assume_role_config(
         config: AWSCredentials,
-        return_type: Type[AWSAssumeRoleCredentialFormat] = AWSAssumeRoleCredentialWrapper,  # noqa: UP006
-    ) -> Optional[AWSAssumeRoleCredentialFormat]:  # noqa: UP045
+        return_type: type[AWSAssumeRoleCredentialFormat] = AWSAssumeRoleCredentialWrapper,
+    ) -> AWSAssumeRoleCredentialFormat | None:
         """
         Get temporary credentials from assumed role
         """
@@ -148,7 +149,7 @@ class AWSClient:
                 sessionToken=credentials.SessionToken,
                 expiryTime=credentials.Expiration.isoformat(),
             )
-            if return_type == Dict:  # noqa: UP006
+            if return_type == dict:  # noqa: E721
                 return creds_wrapper.model_dump(by_alias=True)
             return creds_wrapper
 
@@ -156,12 +157,12 @@ class AWSClient:
 
     @staticmethod
     def _get_session(
-        aws_access_key_id: Optional[str],  # noqa: UP045
-        aws_secret_access_key: Optional[CustomSecretStr],  # noqa: UP045
-        aws_session_token: Optional[str],  # noqa: UP045
+        aws_access_key_id: str | None,
+        aws_secret_access_key: CustomSecretStr | None,
+        aws_session_token: str | None,
         aws_region: str,
         profile=None,
-        refresh_using: Optional[Callable] = None,  # noqa: UP045
+        refresh_using: Callable | None = None,
     ) -> Session:
         """
         The only required param for boto3 is the region.
@@ -194,7 +195,7 @@ class AWSClient:
                 None,
                 self.config.awsRegion,
                 self.config.profileName,
-                refresh_using=partial(AWSClient.get_assume_role_config, self.config, Dict),  # noqa: UP006
+                refresh_using=partial(AWSClient.get_assume_role_config, self.config, dict),
             )
 
         return AWSClient._get_session(
@@ -295,8 +296,8 @@ class RdsIamAuthTokenManager:
         self.username = username
         self.aws_config = aws_config
         self.refresh_threshold = refresh_threshold
-        self._token: Optional[str] = None  # noqa: UP045
-        self._expires_at: Optional[datetime.datetime] = None  # noqa: UP045
+        self._token: str | None = None
+        self._expires_at: datetime.datetime | None = None
         self._lock = threading.Lock()
 
     def get_token(self) -> str:

@@ -18,7 +18,6 @@ ETA estimation based on processing rates.
 
 import threading
 from time import time
-from typing import Dict, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -30,13 +29,13 @@ class EntityProgress(BaseModel):
 
     total: int = Field(default=0, description="Total entities to process")
     processed: int = Field(default=0, description="Entities processed so far")
-    start_time: Optional[float] = Field(default=None, description="When processing started")  # noqa: UP045
+    start_time: float | None = Field(default=None, description="When processing started")
     processing_times: list = Field(default_factory=list, description="Rolling window of processing times")
 
     class Config:
         arbitrary_types_allowed = True
 
-    def estimate_remaining_seconds(self) -> Optional[int]:  # noqa: UP045
+    def estimate_remaining_seconds(self) -> int | None:
         """
         Calculate estimated remaining time based on average processing time.
         Uses a rolling window of the last 100 processing times for accuracy.
@@ -49,7 +48,7 @@ class EntityProgress(BaseModel):
         remaining = self.total - self.processed
         return int(avg_time * remaining)
 
-    def get_processing_rate(self) -> Optional[float]:  # noqa: UP045
+    def get_processing_rate(self) -> float | None:
         """Get current processing rate (entities per second)"""
         if not self.processing_times:
             return None
@@ -57,7 +56,7 @@ class EntityProgress(BaseModel):
         avg_time = sum(window) / len(window)
         return 1.0 / avg_time if avg_time > 0 else None
 
-    def to_dict(self) -> Dict:  # noqa: UP006
+    def to_dict(self) -> dict:
         """Convert to dictionary for API response"""
         return {
             "total": self.total,
@@ -75,7 +74,7 @@ class ProgressTrackerState(metaclass=Singleton):
     """
 
     def __init__(self):
-        self._progress: Dict[str, EntityProgress] = {}  # noqa: UP006
+        self._progress: dict[str, EntityProgress] = {}
         self._lock = threading.Lock()
         self._rolling_window_size = 100
 
@@ -111,7 +110,7 @@ class ProgressTrackerState(metaclass=Singleton):
                 self._progress[entity_type].start_time = time()
             self._progress[entity_type].total += count
 
-    def increment_processed(self, entity_type: str, processing_time: Optional[float] = None) -> None:  # noqa: UP045
+    def increment_processed(self, entity_type: str, processing_time: float | None = None) -> None:
         """
         Increment processed count and optionally record processing time.
 
@@ -131,17 +130,17 @@ class ProgressTrackerState(metaclass=Singleton):
                 if len(times) > self._rolling_window_size:
                     self._progress[entity_type].processing_times = times[-self._rolling_window_size :]
 
-    def get_progress(self, entity_type: str) -> Optional[EntityProgress]:  # noqa: UP045
+    def get_progress(self, entity_type: str) -> EntityProgress | None:
         """Get progress for a specific entity type"""
         with self._lock:
             return self._progress[entity_type].model_copy() if entity_type in self._progress else None
 
-    def get_all_progress(self) -> Dict[str, EntityProgress]:  # noqa: UP006
+    def get_all_progress(self) -> dict[str, EntityProgress]:
         """Get progress snapshot for all entity types"""
         with self._lock:
             return {k: v.model_copy() for k, v in self._progress.items()}
 
-    def get_progress_as_dict(self) -> Dict[str, Dict]:  # noqa: UP006
+    def get_progress_as_dict(self) -> dict[str, dict]:
         """Get progress as dictionary for API response"""
         with self._lock:
             return {k: v.to_dict() for k, v in self._progress.items()}
