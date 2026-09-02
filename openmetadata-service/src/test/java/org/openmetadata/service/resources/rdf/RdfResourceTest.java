@@ -77,7 +77,10 @@ class RdfResourceTest {
 
   private static void registerTableRepository() {
     if (!Entity.hasEntityRepository(Entity.TABLE)) {
-      Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
+      TableRepository tableRepository = Mockito.mock(TableRepository.class);
+      Mockito.doReturn(true).when(tableRepository).isSearchIndexable(any());
+      Mockito.doReturn(true).when(tableRepository).isVectorEmbeddable(any());
+      Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     }
   }
 
