@@ -1037,17 +1037,21 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Keys a compiled RBAC query by everything {@link RBACConditionEvaluator} reads while building it.
-   * Domains belong in the key alongside roles because {@code hasDomain()} compiles the subject's
-   * domain ids into literal term clauses; nothing invalidates this cache, so omitting them served a
-   * stale query for the remainder of the TTL after a domain change.
+   * Keys a compiled RBAC query by the subject fields that end up embedded in it as literal ids.
+   * Roles select the policies; {@code hasDomain()} compiles domain ids into term clauses; {@code
+   * isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the same way. Nothing
+   * invalidates this cache, so any field left out of the key is served stale for the remainder of
+   * the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator} whenever a new
+   * condition starts reading another subject field.
    */
   static String rbacCacheKey(SubjectContext subjectContext) {
     return subjectContext.user().getId()
         + ":"
         + sortedIds(subjectContext.user().getRoles())
         + ":"
-        + sortedIds(subjectContext.user().getDomains());
+        + sortedIds(subjectContext.user().getDomains())
+        + ":"
+        + sortedIds(subjectContext.user().getTeams());
   }
 
   private static String sortedIds(List<EntityReference> references) {

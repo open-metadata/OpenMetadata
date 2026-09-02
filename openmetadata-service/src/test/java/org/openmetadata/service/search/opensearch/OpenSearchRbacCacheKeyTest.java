@@ -49,18 +49,39 @@ class OpenSearchRbacCacheKeyTest {
   }
 
   @Test
-  @DisplayName("A subject with no roles or domains keys cleanly rather than throwing")
-  void testKeyToleratesNullCollections() {
-    SubjectContext bareSubject = subject(null, null);
+  @DisplayName("Two subjects sharing roles and domains but not teams do not share a cached query")
+  void testTeamsChangeTheKey() {
+    UUID domainId = UUID.randomUUID();
+    SubjectContext engineering =
+        subject(List.of(ROLE_ID), List.of(domainId), List.of(UUID.randomUUID()));
+    SubjectContext marketing =
+        subject(List.of(ROLE_ID), List.of(domainId), List.of(UUID.randomUUID()));
 
-    assertEquals(USER_ID + "::", OpenSearchSearchManager.rbacCacheKey(bareSubject));
+    assertNotEquals(
+        OpenSearchSearchManager.rbacCacheKey(engineering),
+        OpenSearchSearchManager.rbacCacheKey(marketing),
+        "isOwner, isReviewer and inAnyTeam compile team ids into the query");
+  }
+
+  @Test
+  @DisplayName("A subject with no roles, domains or teams keys cleanly rather than throwing")
+  void testKeyToleratesNullCollections() {
+    SubjectContext bareSubject = subject(null, null, null);
+
+    assertEquals(USER_ID + ":::", OpenSearchSearchManager.rbacCacheKey(bareSubject));
   }
 
   private static SubjectContext subject(List<UUID> roleIds, List<UUID> domainIds) {
+    return subject(roleIds, domainIds, null);
+  }
+
+  private static SubjectContext subject(
+      List<UUID> roleIds, List<UUID> domainIds, List<UUID> teamIds) {
     User user = mock(User.class);
     when(user.getId()).thenReturn(USER_ID);
     when(user.getRoles()).thenReturn(references(roleIds, Entity.ROLE));
     when(user.getDomains()).thenReturn(references(domainIds, Entity.DOMAIN));
+    when(user.getTeams()).thenReturn(references(teamIds, Entity.TEAM));
 
     SubjectContext subjectContext = mock(SubjectContext.class);
     when(subjectContext.user()).thenReturn(user);
