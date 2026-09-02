@@ -22,6 +22,7 @@ import {
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
+  QUICK_FILTER_SOURCE_FIELDS,
   TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
@@ -42,6 +43,7 @@ import type {
   TopicSearchSource,
 } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
+import { extractSourceValue } from './SearchPureUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -207,7 +209,101 @@ export const getServiceOptions = (
     : option.text;
 };
 
-export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+export const getQuickFilterSourceFields = (
+  field: ExploreQuickFilterField
+): string | undefined =>
+  field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
+
+const findSourceLabel = (
+  sources: unknown[],
+  path: string,
+  bucketKey: string
+): string | undefined => {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') {
+      continue;
+    }
+    const value = extractSourceValue(
+      source as Record<string, unknown>,
+      path,
+      bucketKey
+    );
+    if (value?.toLowerCase() === bucketKey.toLowerCase()) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * Rewrites the labels of already-selected quick-filter values.
+ *
+ * Only the lowercased bucket key survives a round trip through the URL, so a
+ * reloaded or shared listing would render its chips and checked options in
+ * lowercase. `resolveLabel` supplies the original casing for one value; a field
+ * keeps its identity when nothing resolves, so an unchanged filter set does not
+ * re-render. Values that already carry a resolved label are left alone.
+ */
+export const applyQuickFilterLabels = (
+  fields: ExploreQuickFilterField[],
+  resolveLabel: (
+    field: ExploreQuickFilterField,
+    optionKey: string
+  ) => string | undefined
+): ExploreQuickFilterField[] =>
+  fields.map((field) => {
+    if (isEmpty(field.value)) {
+      return field;
+    }
+
+    let hasResolvedLabel = false;
+    const value = (field.value ?? []).map((option) => {
+      // A label that already differs from the key came from the dropdown, where
+      // the aggregation resolved it against `_source`.
+      if (option.label !== option.key) {
+        return option;
+      }
+
+      const label = resolveLabel(field, option.key);
+      if (!label || label === option.key) {
+        return option;
+      }
+      hasResolvedLabel = true;
+
+      return { ...option, label };
+    });
+
+    return hasResolvedLabel ? { ...field, value } : field;
+  });
+
+/**
+ * Recovers selected-value casing from the rows currently listed: every hit of a
+ * filtered result set carries the value that matched in its `_source`, so no
+ * extra request is needed for the common case. A value whose only matching row
+ * sits on another page stays unresolved here — see `useQuickFilterLabels`.
+ */
+export const hydrateQuickFilterLabels = (
+  fields: ExploreQuickFilterField[],
+  sources: unknown[]
+): ExploreQuickFilterField[] => {
+  if (isEmpty(sources)) {
+    return fields;
+  }
+
+  return applyQuickFilterLabels(fields, (field, optionKey) => {
+    const sourceFields = getQuickFilterSourceFields(field);
+
+    return sourceFields
+      ? findSourceLabel(sources, sourceFields, optionKey)
+      : undefined;
+  });
+};
+
+export const getOptionsFromAggregationBucket = (
+  buckets: Bucket[],
+  sourceFields?: string
+) => {
   if (!buckets) {
     return [];
   }
@@ -217,11 +313,30 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
       (item) =>
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
-    .map((option) => ({
-      key: option.key,
-      label: option.key,
-      count: option.doc_count ?? 0,
-    }));
+    .map((option) => {
+      let label = option.key;
+
+      if (sourceFields) {
+        const topHitsData = (option as Record<string, unknown>)[
+          'top_hits#top'
+        ] as
+          | {
+              hits?: {
+                hits?: Array<{ _source?: Record<string, unknown> }>;
+              };
+            }
+          | undefined;
+        const src = topHitsData?.hits?.hits?.[0]?._source;
+        const extracted = src
+          ? extractSourceValue(src, sourceFields, option.key)
+          : undefined;
+        if (extracted) {
+          label = extracted;
+        }
+      }
+
+      return { key: option.key, label, count: option.doc_count ?? 0 };
+    });
 };
 
 export const formatQueryValueBasedOnType = (

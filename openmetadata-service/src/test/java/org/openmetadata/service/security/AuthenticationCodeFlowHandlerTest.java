@@ -97,6 +97,7 @@ import org.pac4j.oidc.config.AzureAd2OidcConfiguration;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
+import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 import sun.misc.Unsafe;
 
 @ExtendWith(MockitoExtension.class)
@@ -106,6 +107,30 @@ class AuthenticationCodeFlowHandlerTest {
   @Mock private HttpServletResponse response;
   @Mock private HttpSession session;
   @Mock private ServletOutputStream outputStream;
+
+  @Test
+  void resolveProviderMetadata_initializesAndLoadsPac4jV6Resolver() throws Exception {
+    OidcConfiguration configuration = mock(OidcConfiguration.class);
+    Method resolverAccessor = OidcConfiguration.class.getMethod("getOpMetadataResolver");
+    Object resolver = mock(resolverAccessor.getReturnType());
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    Method load = resolverAccessor.getReturnType().getMethod("load");
+
+    when(resolverAccessor.invoke(configuration)).thenReturn(resolver);
+    when(load.invoke(resolver)).thenReturn(metadata);
+
+    Method resolveProviderMetadata =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "resolveProviderMetadata", OidcConfiguration.class);
+    resolveProviderMetadata.setAccessible(true);
+
+    assertEquals(metadata, resolveProviderMetadata.invoke(null, configuration));
+    OidcConfiguration verifiedConfiguration = verify(configuration);
+    OidcConfiguration.class
+        .getMethod("ensuresMetadataResolverInitialized")
+        .invoke(verifiedConfiguration);
+    load.invoke(verify(resolver));
+  }
 
   @Test
   void buildOidcClientAllowsMissingClientAuthenticationMethodForGoogle() throws Exception {
@@ -537,8 +562,7 @@ class AuthenticationCodeFlowHandlerTest {
   void buildCredentialsCopiesAuthorizationArtifacts() throws Exception {
     AuthenticationCodeFlowHandler handler = newHandler();
     SignedJWT idToken =
-        new SignedJWT(
-            new JWSHeader(JWSAlgorithm.HS256), new JWTClaimsSet.Builder().subject("user").build());
+        SignedJWT.parse(signedJwt(new JWTClaimsSet.Builder().subject("user").build()));
     AccessToken accessToken = new BearerAccessToken("access-token");
     AuthenticationSuccessResponse successResponse =
         new AuthenticationSuccessResponse(
@@ -557,9 +581,9 @@ class AuthenticationCodeFlowHandlerTest {
             new Class<?>[] {AuthenticationSuccessResponse.class},
             successResponse);
 
-    assertEquals("auth-code", credentials.getCode().getValue());
-    assertEquals(idToken, credentials.getIdToken());
-    assertEquals(accessToken, credentials.getAccessToken());
+    assertEquals("auth-code", credentials.getCode());
+    assertEquals(idToken.serialize(), credentials.getIdToken());
+    assertEquals(accessToken, credentials.toAccessToken());
   }
 
   @Test
@@ -606,15 +630,15 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallbackWithoutSessionReturnsErrorResponse() {
+  void handleCallbackWithoutSessionClearsCookieAndRedirectsToSignin() throws Exception {
     AuthenticationCodeFlowHandler handler =
         assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
-    assertDoesNotThrow(() -> when(response.getOutputStream()).thenReturn(outputStream));
+    assertDoesNotThrow(() -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
     when(request.getSession(false)).thenReturn(null);
 
     handler.handleCallback(request, response);
 
-    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    verify(response).sendRedirect("https://openmetadata.example.com/signin");
   }
 
   @Test
@@ -777,13 +801,13 @@ class AuthenticationCodeFlowHandlerTest {
               "RefreshClient"));
 
       OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
+      credentials.setRefreshTokenObject(new RefreshToken("old-refresh-token"));
 
       handler.refreshTokenRequest(session, credentials);
 
-      assertEquals("refreshed-access-token", credentials.getAccessToken().getValue());
-      assertEquals("refreshed-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals("refreshed-user", credentials.getIdToken().getJWTClaimsSet().getSubject());
+      assertEquals("refreshed-access-token", credentials.toAccessToken().getValue());
+      assertEquals("refreshed-refresh-token", credentials.toRefreshToken().getValue());
+      assertEquals("refreshed-user", credentials.toIdToken().getJWTClaimsSet().getSubject());
     }
   }
 
@@ -833,7 +857,7 @@ class AuthenticationCodeFlowHandlerTest {
       setField(handler, "tokenValidity", 600);
 
       OidcCredentials sessionCredentials = new OidcCredentials();
-      sessionCredentials.setIdToken(SignedJWT.parse(sessionIdToken));
+      sessionCredentials.setIdToken(sessionIdToken);
       when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
           .thenReturn(sessionCredentials);
 
@@ -861,13 +885,13 @@ class AuthenticationCodeFlowHandlerTest {
           .thenReturn(jwtAuthMechanism);
 
       OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
+      credentials.setRefreshTokenObject(new RefreshToken("old-refresh-token"));
 
       handler.refreshTokenRequest(session, credentials);
 
-      assertEquals("provider-access-token", credentials.getAccessToken().getValue());
-      assertEquals("provider-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals(generatedOmJwt, credentials.getIdToken().getParsedString());
+      assertEquals("provider-access-token", credentials.toAccessToken().getValue());
+      assertEquals("provider-refresh-token", credentials.toRefreshToken().getValue());
+      assertEquals(generatedOmJwt, credentials.getIdToken());
     }
   }
 
@@ -898,7 +922,7 @@ class AuthenticationCodeFlowHandlerTest {
               "RefreshFailureClient"));
 
       OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
+      credentials.setRefreshTokenObject(new RefreshToken("old-refresh-token"));
 
       TechnicalException exception =
           assertThrows(
@@ -939,7 +963,7 @@ class AuthenticationCodeFlowHandlerTest {
               "RefreshHandlerClient"));
 
       OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
+      credentials.setRefreshTokenObject(new RefreshToken("old-refresh-token"));
       when(request.getSession(false)).thenReturn(session);
       when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
           .thenReturn(credentials);
@@ -948,9 +972,9 @@ class AuthenticationCodeFlowHandlerTest {
 
       handler.handleRefresh(request, response);
 
-      assertEquals("fresh-access-token", credentials.getAccessToken().getValue());
-      assertEquals("fresh-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals(refreshedIdToken, credentials.getIdToken().getParsedString());
+      assertEquals("fresh-access-token", credentials.toAccessToken().getValue());
+      assertEquals("fresh-refresh-token", credentials.toRefreshToken().getValue());
+      assertEquals(refreshedIdToken, credentials.getIdToken());
       verify(session)
           .setAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE, credentials);
       verify(outputStream).print(org.mockito.ArgumentMatchers.contains(refreshedIdToken));
@@ -959,7 +983,8 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleRefreshWithoutCredentialsFallsBackToLogout() throws Exception {
+  void handleRefreshWithoutCredentialsRespondsUnauthorizedWithoutInvalidatingSession()
+      throws Exception {
     AuthenticationCodeFlowHandler handler =
         assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
     assertDoesNotThrow(() -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
@@ -967,11 +992,11 @@ class AuthenticationCodeFlowHandlerTest {
     when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
         .thenReturn(null);
     when(session.getId()).thenReturn("missing-credentials-session");
+    when(response.getOutputStream()).thenReturn(outputStream);
 
     handler.handleRefresh(request, response);
 
-    verify(session).invalidate();
-    verify(response).sendRedirect("https://openmetadata.example.com/logout");
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
   }
 
   @Test
@@ -994,7 +1019,7 @@ class AuthenticationCodeFlowHandlerTest {
                     "id_token", refreshedIdToken)))) {
       AuthenticationCodeFlowHandler handler = newHandler();
       OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("azure-old-refresh-token"));
+      credentials.setRefreshTokenObject(new RefreshToken("azure-old-refresh-token"));
 
       invokePrivate(
           handler,
@@ -1003,9 +1028,9 @@ class AuthenticationCodeFlowHandlerTest {
           azureOidcConfiguration(tokenServer.tokenEndpoint()),
           credentials);
 
-      assertEquals("azure-access-token", credentials.getAccessToken().getValue());
-      assertEquals("azure-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals(refreshedIdToken, credentials.getIdToken().getParsedString());
+      assertEquals("azure-access-token", credentials.toAccessToken().getValue());
+      assertEquals("azure-refresh-token", credentials.toRefreshToken().getValue());
+      assertEquals(refreshedIdToken, credentials.getIdToken());
     }
   }
 
@@ -1606,7 +1631,7 @@ class AuthenticationCodeFlowHandlerTest {
     configuration.setScope("openid profile");
     configuration.setResponseType("code");
     configuration.setResponseMode("query");
-    configuration.setProviderMetadata(providerMetadata(supportedMethods, tokenEndpoint));
+    setProviderMetadata(configuration, providerMetadata(supportedMethods, tokenEndpoint));
     return configuration;
   }
 
@@ -1622,9 +1647,17 @@ class AuthenticationCodeFlowHandlerTest {
     configuration.setClientId("azure-client");
     configuration.setSecret("azure-secret");
     configuration.setTenant("organizations");
-    configuration.setProviderMetadata(
+    setProviderMetadata(
+        configuration,
         providerMetadata(List.of(ClientAuthenticationMethod.CLIENT_SECRET_POST), tokenEndpoint));
     return configuration;
+  }
+
+  private static void setProviderMetadata(
+      OidcConfiguration configuration, OIDCProviderMetadata metadata) {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    lenient().when(resolver.load()).thenReturn(metadata);
+    configuration.setOpMetadataResolver(resolver);
   }
 
   private static OIDCProviderMetadata providerMetadata(
