@@ -162,7 +162,9 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
     return kafka_configs
 
 
-def _extract_option(config_block: str, option_name: str, variables: dict = None) -> Optional[str]:  # noqa: RUF013, UP045
+def _extract_option(
+    config_block: str, option_name: str, variables: Optional[dict] = None  # noqa: UP045
+) -> Optional[str]:  # noqa: UP045
     """
     Extract a single option value from Kafka configuration block
     Supports both string literals and variable references

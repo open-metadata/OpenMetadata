@@ -227,7 +227,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     taskType=pipeline_details.settings.task_type,
                     sourceUrl=SourceUrl(job_url),
                     description=(Markdown(task.description) if task.description else None),
-                    downstreamTasks=[depend_task.name for depend_task in task.depends_on or []],
+                    downstreamTasks=[
+                        depend_task.name for depend_task in task.depends_on or [] if depend_task.name
+                    ],
                 )
                 for task in pipeline_details.settings.tasks
             ]
@@ -263,7 +265,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 task_status = [
                     TaskStatus(
                         name=str(task.name),
-                        executionStatus=STATUS_MAP.get(run.state.result_state, StatusType.Failed),
+                        executionStatus=STATUS_MAP.get(
+                            run.state.result_state if run.state and run.state.result_state else "",
+                            StatusType.Failed,
+                        ),
                         startTime=Timestamp(run.start_time),
                         endTime=Timestamp(run.end_time) if run.end_time else None,
                         logLink=run.run_page_url,
@@ -998,6 +1003,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                                     )
 
                                                     yield Either(
+                                                        left=None,
                                                         right=AddLineageRequest(
                                                             edge=EntitiesEdge(
                                                                 fromEntity=EntityReference(
@@ -1063,22 +1069,15 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                         logger.info(f"   ✅ Creating lineage: {source_fqn} -> {target_fqn}")
 
                                         yield Either(
+                                            left=None,
                                             right=AddLineageRequest(
                                                 edge=EntitiesEdge(
                                                     fromEntity=EntityReference(
-                                                        id=(
-                                                            source_table.id.root
-                                                            if hasattr(source_table.id, "root")
-                                                            else source_table.id
-                                                        ),
+                                                        id=source_table.id,
                                                         type="table",
                                                     ),
                                                     toEntity=EntityReference(
-                                                        id=(
-                                                            target_table.id.root
-                                                            if hasattr(target_table.id, "root")
-                                                            else target_table.id
-                                                        ),
+                                                        id=target_table.id,
                                                         type="table",
                                                     ),
                                                     lineageDetails=LineageDetails(
@@ -1137,7 +1136,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 pipeline_name=self.context.get().pipeline,
             )
 
+            if not pipeline_fqn:
+                return
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+            if not pipeline_entity:
+                logger.debug(f"Pipeline {pipeline_fqn} not found, skipping its lineage")
+                return
 
             # Extract Kafka topic lineage from source code
             # Works automatically - no configuration required!
