@@ -69,10 +69,8 @@ class PatchEntityToolTest {
   }
 
   /**
-   * A patch answers with the patched entity, so an authorized write is also a read. The patch
-   * operations decide the permission checked, and EditDescription is granted on every resource by
-   * DataConsumerPolicy - which would make a one-line description patch a way to read another
-   * user's private memory back out of the response.
+   * A patch answers with the patched entity, which makes it a read too, so the per-entity
+   * visibility rule runs before the write.
    */
   @Test
   void execute_refusesToPatchAnotherUsersPrivateMemory() {

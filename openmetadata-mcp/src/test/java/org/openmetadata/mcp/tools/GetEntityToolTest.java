@@ -101,10 +101,9 @@ class GetEntityToolTest {
   }
 
   /**
-   * A context memory's privacy lives in its own shareConfig, outside the policy model, so the
-   * VIEW_ALL check this tool makes cannot see it - and ViewAll on every resource is granted to
-   * every user by DataConsumerPolicy. Without the visibility guard a plain read of another user's
-   * private memory returns its answer verbatim.
+   * A context memory's visibility comes from its own shareConfig rather than from a role or policy,
+   * so a read by name applies that rule on top of the operation check - the same answer the REST
+   * endpoint gives.
    */
   @Test
   void plainReadDeniesAnotherUsersPrivateMemory() {

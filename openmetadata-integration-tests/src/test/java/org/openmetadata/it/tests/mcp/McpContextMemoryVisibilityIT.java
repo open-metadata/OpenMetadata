@@ -12,18 +12,19 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.service.Entity;
 
 /**
- * A context memory's privacy comes from its own {@code shareConfig}, not from a role or policy, so
- * no {@code authorize()} call can enforce it - and {@code ViewAll} on every resource is granted to
- * every user by DataConsumerPolicy. These tests pin the MCP read paths that reach a memory by name:
- * each must answer another user's PRIVATE memory the way the REST endpoint does, with a denial and
- * no body.
+ * A context memory's visibility comes from its own {@code shareConfig} rather than from a role or
+ * policy. These tests pin the MCP paths that reach a memory by name - the entity read, its content
+ * section, the Company Context lookup and a patch - to that rule, so each answers the way the REST
+ * endpoint on {@code /v1/contextCenter/memories} does.
  */
 class McpContextMemoryVisibilityIT extends McpTestBase {
 
   private static final String SECRET_ANSWER = "the-forecast-is-locked-to-its-owner";
+  private static final String SHARED_PILL_ANSWER = "the-pill-body-is-for-its-principals";
 
   private static String memoryFqn;
   private static String memoryId;
+  private static String sharedPillFqn;
   private static String ownerToken;
   private static String intruderToken;
 
@@ -55,6 +56,36 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
             JsonNode.class);
     memoryFqn = memory.get("fullyQualifiedName").asText();
     memoryId = memory.get("id").asText();
+    sharedPillFqn = createSharedPill(suffix, owner);
+  }
+
+  /**
+   * A file-extracted pill shared with one principal: in Company Context scope, and readable only by
+   * that principal.
+   */
+  private static String createSharedPill(String suffix, JsonNode owner) throws Exception {
+    Map<String, Object> principal =
+        Map.of("principal", Map.of("id", owner.get("id").asText(), "type", Entity.USER));
+    JsonNode pill =
+        post(
+            "contextCenter/memories",
+            Map.of(
+                "name",
+                "mcp_vis_pill_" + suffix,
+                "description",
+                "MCP visibility IT pill",
+                "question",
+                "What does the pill say?",
+                "answer",
+                SHARED_PILL_ANSWER,
+                "sourceType",
+                "FileExtraction",
+                "owners",
+                List.of(Map.of("id", owner.get("id").asText(), "type", Entity.USER)),
+                "shareConfig",
+                Map.of("visibility", "Shared", "sharedWith", List.of(principal))),
+            JsonNode.class);
+    return pill.get("fullyQualifiedName").asText();
   }
 
   @Test
@@ -91,12 +122,20 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
     assertThat(denied.path("result").path("isError").asBoolean(false)).isTrue();
   }
 
+  /**
+   * The Company Context scope is a file-extracted pill shared with the caller, which is what the
+   * tool's search half filters on. Reading one by name applies the same rule.
+   */
   @Test
-  void companyContextByName_withholdsAMemoryTheCallerMayNotSee() throws Exception {
+  void companyContextByName_answersOnlyAPrincipalThePillIsSharedWith() throws Exception {
     Map<String, Object> call =
-        McpTestUtils.createToolCallRequest("company_context", Map.of("fqn", memoryFqn));
+        McpTestUtils.createToolCallRequest("company_context", Map.of("fqn", sharedPillFqn));
 
-    assertThat(executeMcpRequest(call, intruderToken).toString()).doesNotContain(SECRET_ANSWER);
+    assertThat(executeMcpRequest(call, ownerToken).toString()).contains(SHARED_PILL_ANSWER);
+
+    JsonNode withheld = executeMcpRequest(call, intruderToken);
+    assertThat(withheld.toString()).doesNotContain(SHARED_PILL_ANSWER);
+    assertThat(withheld.toString()).contains("not a shared Company Context knowledge pill");
   }
 
   /**

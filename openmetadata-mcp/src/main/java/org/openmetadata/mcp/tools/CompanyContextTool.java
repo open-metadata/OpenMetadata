@@ -127,10 +127,9 @@ public class CompanyContextTool implements McpTool {
 
   /**
    * The by-name scope: a file-extracted pill, and one this caller may see. The search half filters
-   * on the same shareConfig through {@code ContextMemorySearchVisibility}, so reading a pill by
-   * name must ask the same question - otherwise one lookup hands back what the other hides. A pill
-   * outside the scope is reported as not-a-shared-pill rather than denied, which keeps the answer
-   * the same whether or not it exists.
+   * on the same shareConfig through {@code ContextMemorySearchVisibility}, so both halves of the
+   * tool answer the same question. A pill outside the scope is reported as not-a-shared-pill rather
+   * than denied, which keeps the answer the same whether or not it exists.
    */
   private static boolean isExposablePill(
       ContextMemory memory, CatalogSecurityContext securityContext) {
