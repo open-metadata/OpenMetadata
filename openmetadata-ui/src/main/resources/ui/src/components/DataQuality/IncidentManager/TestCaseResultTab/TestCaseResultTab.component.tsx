@@ -322,7 +322,7 @@ const TestCaseResultTab = ({
               <Component key={id} testCaseData={testCaseData} />
             ))}
 
-          {testCaseData && isParameterEdit && (
+          {testCaseData && hasEditPermission && isParameterEdit && (
             <TestCaseFormDrawer
               showOnlyParameter
               open={isParameterEdit}

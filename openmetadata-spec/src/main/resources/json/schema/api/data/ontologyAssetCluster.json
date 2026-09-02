@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/ontologyStudioAssetCluster.json",
+  "$id": "https://open-metadata.org/schema/api/data/ontologyAssetCluster.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OntologyStudioAssetCluster",
-  "description": "A glossary term and its bounded asset preview for Ontology Studio data mode.",
+  "title": "OntologyAssetCluster",
+  "description": "A glossary term and its bounded asset preview for an ontology data graph.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.data.OntologyStudioAssetCluster",
+  "javaType": "org.openmetadata.schema.api.data.OntologyAssetCluster",
   "properties": {
     "term": {
       "description": "Glossary term represented by the cluster.",
@@ -16,10 +16,10 @@
       "minimum": 0
     },
     "assets": {
-      "description": "Bounded first page of assets tagged with the term.",
+      "description": "Bounded first page of asset references tagged with the term.",
       "type": "array",
       "items": {
-        "$ref": "ontologyStudioAsset.json"
+        "$ref": "../../type/entityReference.json"
       },
       "default": []
     }

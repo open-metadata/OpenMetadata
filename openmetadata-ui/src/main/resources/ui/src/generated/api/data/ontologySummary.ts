@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Bounded health and scale summary for Ontology Studio.
+ * Bounded health and scale summary for an ontology.
  */
-export interface OntologyStudioSummary {
+export interface OntologySummary {
     /**
      * Percentage of scoped terms with at least one term-to-term relation.
      */
