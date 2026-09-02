@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import ReindexFailures from './ReindexFailures.component';
@@ -99,6 +99,59 @@ describe('ReindexFailures', () => {
 
     expect(getReindexFailures).toHaveBeenCalledTimes(1);
     expect(getRdfReindexFailures).not.toHaveBeenCalled();
+  });
+
+  it('should ignore a stale response when the app changes while open', async () => {
+    type FailureResponse = {
+      data: Array<Record<string, unknown>>;
+      total: number;
+      offset: number;
+      limit: number;
+    };
+    let resolveRdfRequest: (response: FailureResponse) => void = jest.fn();
+    (getRdfReindexFailures as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<FailureResponse>((resolve) => {
+          resolveRdfRequest = resolve;
+        })
+    );
+    const { rerender } = render(
+      <ReindexFailures visible appName="RdfIndexApp" onClose={jest.fn()} />
+    );
+    await waitFor(() => expect(getRdfReindexFailures).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <ReindexFailures
+        visible
+        appName="SearchIndexingApplication"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(await screen.findByText('search failure')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveRdfRequest({
+        data: [
+          {
+            id: 'stale-rdf',
+            entityType: 'dashboard',
+            entityId: 'stale',
+            failureStage: 'ENTITY_WRITE',
+            errorMessage: 'stale rdf failure',
+            timestamp: 3,
+          },
+        ],
+        total: 1,
+        offset: 0,
+        limit: 20,
+      });
+    });
+
+    expect(screen.queryByText('stale rdf failure')).not.toBeInTheDocument();
+    expect(screen.getByText('search failure')).toBeInTheDocument();
+    expect(getRdfReindexFailures).toHaveBeenCalledTimes(1);
+    expect(getReindexFailures).toHaveBeenCalledTimes(1);
   });
 
   it('should not fetch anything while the drawer is closed', async () => {

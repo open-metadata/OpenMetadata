@@ -52,6 +52,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
+import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /**
  * Unit tests for {@link RdfBatchProcessor#processEntities}. Pins the three
@@ -115,6 +116,24 @@ class RdfBatchProcessorTest {
     assertNull(result.lastError());
     // Bulk path took the write; no singleton bulk fallback must fire.
     verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+  }
+
+  @Test
+  @DisplayName("pre-translation failures remain visible when the writable entities succeed")
+  void preTranslationFailureIsNotOverwrittenByWriteSuccess() {
+    EntityInterface translated = mockEntity();
+    EntityInterface untranslated = mockEntity();
+    RdfStorageInterface.EntityWriteRequest request =
+        new RdfStorageInterface.EntityWriteRequest("table", translated.getId(), null);
+
+    RdfBatchProcessor.BatchProcessingResult result =
+        processor.processEntitiesPreTranslated(
+            "table", List.of(translated, untranslated), List.of(request), null);
+
+    assertEquals(1, result.successCount());
+    assertEquals(1, result.failedCount());
+    assertTrue(result.lastError().contains("RDF translation failed"));
+    verify(rdfRepository).bulkStorePreTranslated(List.of(request), RdfWriteMode.RECONCILE);
   }
 
   @Test

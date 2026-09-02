@@ -66,7 +66,7 @@ public class RdfUpdater {
 
   public static void initialize(
       RdfConfiguration config, AsyncOperationsConfiguration asyncOperationsConfiguration) {
-    maxConcurrentRdfWrites = asyncOperationsConfiguration.getMaxConcurrentRdfWrites();
+    maxConcurrentRdfWrites = effectiveMaxConcurrentWrites(config, asyncOperationsConfiguration);
     rdfWritePermits = new Semaphore(maxConcurrentRdfWrites, true);
     if (config.getEnabled() != null && config.getEnabled()) {
       RdfRepository.initialize(config);
@@ -75,6 +75,21 @@ public class RdfUpdater {
     } else {
       LOG.info("RDF updater disabled");
     }
+  }
+
+  static int effectiveMaxConcurrentWrites(
+      RdfConfiguration rdfConfiguration,
+      AsyncOperationsConfiguration asyncOperationsConfiguration) {
+    int configured = asyncOperationsConfiguration.getMaxConcurrentRdfWrites();
+    RdfConfiguration.StorageType storageType = rdfConfiguration.getStorageType();
+    if ((storageType == null || storageType == RdfConfiguration.StorageType.FUSEKI)
+        && configured > 1) {
+      LOG.warn(
+          "Configured {} concurrent live RDF writes for Fuseki; using 1 because TDB2 has one writer",
+          configured);
+      return 1;
+    }
+    return configured;
   }
 
   public static void updateEntity(EntityInterface entity) {

@@ -30,13 +30,14 @@ memory starves the page cache and usually reduces throughput.
   knowledge-graph tools depend on — OpenMetadata writes into named graphs, so without it a plain
   `?s ?p ?o` returns nothing.
 
-  **There is deliberately no server-side update timeout.** `arq:updateTimeout` looks like the
-  missing bound on runaway UPDATEs (`--timeout` covers queries only), but when it is set Fuseki
-  answers **400 Bad Request** to any update request carrying more than one WHERE-bearing operation,
-  logging only `Bad request: null`. Reconcile writes chain one `DELETE ... WHERE` per entity, so
-  every live entity update and every bulk reconcile chunk fails while the insert-only reindex still
-  succeeds — the projection reports `DEGRADED` with no obvious cause. Runaway updates stay bounded
-  by the client's `requestTimeoutMs` and the circuit breaker. Do not re-add it.
+  The assembler also sets `arq:queryTimeout=50000` and `arq:updateTimeout=50000`. These server
+  deadlines intentionally fire before the shipped 60-second client deadline: client-side
+  `requestTimeoutMs` releases an OpenMetadata thread but cannot stop work already executing in
+  Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0 has a known failure on the
+  second WHERE-bearing operation in one timed update request. OpenMetadata's generated mutations
+  therefore combine batch sources with `VALUES`/`UNION`, and the admin SPARQL API rejects requests
+  containing more than one WHERE-bearing operation with a clear validation error. Direct Fuseki
+  clients must follow the same restriction.
 
   Note the dataset location: `config.ttl` uses
   `/fuseki-data/openmetadata`, whereas the old `--loc=/fuseki-data` launch wrote TDB2 files directly
@@ -67,7 +68,7 @@ before starting the new one:
 ```bash
 # With the container stopped, on the host path backing /fuseki-data:
 mkdir -p /fuseki-data/openmetadata
-mv /fuseki-data/Data-0001 /fuseki-data/openmetadata/    # plus any other TDB2 files/dirs
+mv /fuseki-data/Data-* /fuseki-data/*.lock /fuseki-data/openmetadata/
 ```
 
 Then start the new image and run the count again; the two must match. If they do not, stop and
@@ -114,6 +115,13 @@ write throughput by design — reader parallelism keeps the writer fed, and the 
 one transaction open on Fuseki at a time, so client timeouts measure actual server work instead of
 queue position.
 
+Live metadata hooks use the same policy: they enqueue after the metadata transaction commits and
+execute asynchronously. OpenMetadata clamps live Fuseki writes to one regardless of
+`ASYNC_MAX_CONCURRENT_RDF_WRITES`; raising that value on TDB2 does not add throughput. The queue
+remains bounded and preserves per-entity ordering. At its 1,000-write capacity, submission applies
+up to 30 seconds of backpressure before dropping the update and marking the RDF projection degraded.
+Other storage engines retain their configured concurrency.
+
 Throughput therefore depends on the number and size of write transactions:
 
 - A `recreateIndex: true` run clears the graph (or builds into an idle blue/green dataset) and then
@@ -140,7 +148,8 @@ Start with the defaults and tune one setting at a time:
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` | Entity models per insert-only append. |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` | Stream appends as RDF Thrift instead of materializing a combined model. |
 | `RDF_GZIP_REQUESTS` | `false` | Gzip streamed append bodies (never deflate). |
-| `RDF_REQUEST_TIMEOUT_MS` | `60000` | Maximum time for one RDF request. |
+| `RDF_REQUEST_TIMEOUT_MS` | `60000` | Maximum client wait for one RDF request. |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | `8` | In-flight live RDF writes; Fuseki is automatically clamped to one. |
 
 Insert-only appends are budgeted separately and far more generously than reconciling updates
 because the limiting factor is transaction count rather than request size. Collapsing a rebuild
@@ -148,9 +157,18 @@ from thousands of transactions into dozens is the single largest throughput leve
 changing the deployment.
 
 Larger batches reduce transaction and journal overhead but increase request size, parse time, and
-retry cost. If a larger batch approaches `RDF_REQUEST_TIMEOUT_MS`, either reduce the batch or raise
-the timeout. Wide tables can produce tens of megabytes of triples per 100-entity batch, so validate
-changes against representative catalogs.
+retry cost. If a larger batch approaches `RDF_REQUEST_TIMEOUT_MS`, reduce the batch. Raising only
+the client deadline does not change the shipped server deadlines. Wide tables can produce tens of
+megabytes of triples per 100-entity batch, so validate changes against representative catalogs.
+
+## Read throughput
+
+TDB2 readers use snapshot transactions and remain concurrent while the single writer commits.
+OpenMetadata keeps interactive reads bounded at both layers: API query/result limits prevent
+unbounded responses, graph exploration has a 30-second aggregate traversal budget and a bounded
+short-TTL cache, and Fuseki aborts an abandoned query after 50 seconds. Keep Fuseki near the
+OpenMetadata servers and preserve memory outside `-Xmx` for the OS page cache; RDF indexes are
+memory-mapped, so starving page cache is a common cause of slow reads and writes together.
 
 ### Reading the run record's stage timings
 
@@ -311,12 +329,11 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` |
 | `RDF_GZIP_REQUESTS` | `false` |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | `8` (effective `1` for Fuseki) |
 | `RDF_REMOTE_USERNAME` | `admin` |
 | `RDF_REMOTE_PASSWORD` | `admin` |
 | `RDF_DATASET` | `openmetadata` |
 | `RDF_INFERENCE_ENABLED` | `false` |
-| `RDF_MATERIALIZED_INFERENCE_ENABLED` | `false` |
-| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | `100000` |
 | `RDF_DEFAULT_INFERENCE_LEVEL` | `NONE` |
 | `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | `100000` |
 | `RDF_MATERIALIZED_INFERENCE_ENABLED` | `false` |
@@ -337,9 +354,8 @@ Useful Fuseki administration endpoints are:
 - `/$/ping` for liveness and readiness.
 - `/$/stats` for dataset and operation statistics.
 - `/$/metrics` for **Prometheus-format metrics** — scrape this in production; it exposes request
-  counts and latency per endpoint alongside JVM memory and GC figures. The shipped `shiro.ini`
-  marks it anonymous (like `/$/ping` and `/$/stats`) so scraping works without credentials; delete
-  the `/$/metrics = anon` line in `docker/rdf-store/shiro.ini.template` to require admin auth.
+  counts and latency per endpoint alongside JVM memory and GC figures. It requires basic auth in
+  the shipped `shiro.ini`; configure the Prometheus scrape with the dedicated Fuseki credentials.
 - `/$/tasks` for compaction and other asynchronous administration work.
 
 On the OpenMetadata side:
@@ -408,9 +424,9 @@ Two scripts turn the guidance above into checks against a real stack:
 ./docker/docker-compose-quickstart/test-rdf-services.sh
 
 # Add the runaway-UPDATE check: submits a deliberately expensive UPDATE and asserts
-# the server aborts it near arq:updateTimeout. Takes ~2 minutes, and is the direct
+# the server aborts it near arq:updateTimeout. Takes ~1 minute, and is the direct
 # proof that the --config launch (not --loc) is in effect.
-./docker/docker-compose-quickstart/test-rdf-services.sh
+./docker/docker-compose-quickstart/test-rdf-services.sh --with-timeout-test
 ```
 
 ```bash

@@ -31,11 +31,11 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,6 +74,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
@@ -92,11 +93,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   // Defaults keep TCP connect fail-fast while giving production Fuseki enough
   // time for larger SPARQL UPDATE transactions. The request timeout bounds the
-  // per-request body via a CompletableFuture wrapper around every blocking
+  // per-request body via an interruptible Future around every blocking
   // RDFConnection call below — caller thread frees on timeout even when Fuseki
   // accepts the TCP connection and then stalls on the response.
   //
-  // We use CompletableFuture rather than Jena's QueryExecution.setTimeout
+  // We use an executor Future rather than Jena's QueryExecution.setTimeout
   // (removed in Jena 5; broke integration tests previously) or Jena's
   // QueryExecutionHTTPBuilder / UpdateExecHTTPBuilder (API surface differs
   // between Jena 4 and Jena 5, and our two classpaths use different
@@ -124,6 +125,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String METRIC_FUSEKI_REQUEST = "rdf.fuseki.request";
   private static final String METRIC_FUSEKI_TIMEOUTS = "rdf.fuseki.timeouts";
   private static final String METRIC_FUSEKI_PAYLOAD_BYTES = "rdf.fuseki.payload.bytes";
+  private static final String METRIC_FUSEKI_WRITER_WAIT = "rdf.fuseki.writer.wait";
   private static final String TAG_OPERATION = "operation";
   private static final String TAG_OUTCOME = "outcome";
   private static final String REQUEST_OUTCOME_SUCCESS = "success";
@@ -142,7 +144,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
   // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
   // block its worker thread until OS-level TCP give-up, and on commonPool that
-  // would starve unrelated CompletableFuture / parallel-stream work elsewhere
+  // would starve unrelated asynchronous work elsewhere
   // in the service. Virtual threads are cheap to leak (a few KB stack each)
   // and the circuit breaker bounds how many can pile up.
   private static final ExecutorService TIMEOUT_EXECUTOR =
@@ -173,6 +175,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
   private final AtomicLong circuitOpenUntilMs = new AtomicLong(0L);
+  private final Semaphore writePermit = new Semaphore(1, true);
 
   public JenaFusekiStorage(RdfConfiguration config) {
     this(config, (String) null);
@@ -667,7 +670,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           Objects.requireNonNull(getClass().getResourceAsStream("/rdf/ontology/openmetadata.ttl")),
           org.apache.jena.riot.Lang.TURTLE);
 
-      connection.load(METADATA_GRAPH, ontologyModel);
+      runWriteWithTimeout(() -> connection.load(METADATA_GRAPH, ontologyModel), "loadOntology");
       LOG.info("Loaded OpenMetadata ontology to Fuseki");
     } catch (Exception e) {
       LOG.error("Failed to load ontology to Fuseki", e);
@@ -887,8 +890,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   // Run a blocking RDFConnection call with a request-level deadline.
-  // CompletableFuture.runAsync executes the supplier on the common ForkJoinPool;
-  // get(requestTimeoutMs, …) frees this thread when the deadline hits, even
+  // The supplier runs on the dedicated virtual-thread executor above;
+  // get(requestTimeoutMs, …) frees the caller when the deadline hits, even
   // if the underlying HTTP request continues blocking until the server
   // responds (or the OS gives up on the socket). Exceptions thrown by the
   // supplier are unwrapped from ExecutionException so the caller sees the
@@ -896,14 +899,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // retry or surface to the circuit breaker.
   private <T> T runWithTimeout(Supplier<T> op, String description) {
     long startNanos = System.nanoTime();
-    CompletableFuture<T> future = CompletableFuture.supplyAsync(op, TIMEOUT_EXECUTOR);
+    Future<T> future = TIMEOUT_EXECUTOR.submit(op::get);
     try {
       T result = future.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
       recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_SUCCESS);
       return result;
     } catch (TimeoutException te) {
-      // Cancellation doesn't actually interrupt Jena's HTTP call, but
-      // releases this thread; the leaked task continues until OS TCP timeout.
+      // Cancellation interrupts work that is still queued for the writer. An active Jena HTTP
+      // call may ignore interruption and therefore keeps the writer permit until it really exits.
       future.cancel(true);
       recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_TIMEOUT);
       Metrics.counter(METRIC_FUSEKI_TIMEOUTS, TAG_OPERATION, description).increment();
@@ -916,6 +919,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       }
       throw new RuntimeException(description + " failed", cause);
     } catch (InterruptedException ie) {
+      future.cancel(true);
       Thread.currentThread().interrupt();
       recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR);
       throw new RuntimeException(description + " interrupted", ie);
@@ -951,6 +955,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         description);
   }
 
+  void runWriteWithTimeout(Runnable op, String description) {
+    runWithTimeout(
+        () -> {
+          long queuedAt = System.nanoTime();
+          boolean acquired = false;
+          try {
+            writePermit.acquire();
+            acquired = true;
+            Metrics.timer(METRIC_FUSEKI_WRITER_WAIT, TAG_OPERATION, description)
+                .record(System.nanoTime() - queuedAt, TimeUnit.NANOSECONDS);
+            op.run();
+            return null;
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for the RDF writer", e);
+          } finally {
+            if (acquired) {
+              writePermit.release();
+            }
+          }
+        },
+        description);
+  }
+
   // Union the translator's static "always managed" predicates with whatever
   // predicates the current model actually emits for this entity. The static
   // set covers shrink-to-empty cases (e.g. all tags removed -> current model
@@ -971,15 +999,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     StmtIterator stmts = entityModel.listStatements(entityResource, null, (RDFNode) null);
     while (stmts.hasNext()) {
       String predicateUri = stmts.next().getPredicate().getURI();
-      if (org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(
-          predicateUri)) {
+      if (RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(predicateUri)) {
         continue;
       }
       predicates.add(predicateUri);
     }
     // Defensive belt-and-braces in case a future change adds a hook predicate
     // to the static set: filter the static set the same way.
-    predicates.removeAll(org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
+    predicates.removeAll(RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
     return predicates;
   }
 
@@ -1008,6 +1035,18 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filter);
   }
 
+  private static String buildPredicateScopedDelete(Set<String> entityUris, Set<String> predicates) {
+    if (entityUris.isEmpty()) {
+      return "";
+    }
+    String filter =
+        predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
+    return String.format(
+        "DELETE { GRAPH <%s> { ?entity ?p ?o } } WHERE { GRAPH <%s> { "
+            + "VALUES ?entity { %s } ?entity ?p ?o . FILTER(%s) } }",
+        KNOWLEDGE_GRAPH, KNOWLEDGE_GRAPH, iriValues(entityUris), filter);
+  }
+
   private static String iriList(Set<String> predicates) {
     StringBuilder list = new StringBuilder();
     for (String predicate : predicates) {
@@ -1017,6 +1056,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       list.append('<').append(predicate).append('>');
     }
     return list.toString();
+  }
+
+  private static String iriValues(Iterable<String> iris) {
+    StringBuilder values = new StringBuilder();
+    for (String iri : iris) {
+      if (!values.isEmpty()) {
+        values.append(' ');
+      }
+      values.append('<').append(iri).append('>');
+    }
+    return values.toString();
   }
 
   static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {
@@ -1051,8 +1101,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * Bulk variant: one request per repository chunk, in a SINGLE transaction at the Fuseki side,
    * with a hard payload-size guard.
    *
-   * <p>Transport differs by write mode. RECONCILE embeds the combined per-entity DELETE statements
-   * and the unioned N-Triples in one multi-statement SPARQL UPDATE — Fuseki runs it in one
+   * <p>Transport differs by write mode. RECONCILE embeds one VALUES-scoped DELETE and the unioned
+   * N-Triples in one multi-operation SPARQL UPDATE — Fuseki runs it in one
    * transaction, so the delete/insert pair can never half-apply. INSERT_ONLY has no DELETE side, so
    * it appends via the Graph Store Protocol instead ({@link #bulkAppendEntities}) — Fuseki parses
    * the streamed body with the RIOT parser rather than the SPARQL grammar, which is materially
@@ -1134,20 +1184,19 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static String buildBulkReconcileUpdate(String baseUri, List<EntityWriteRequest> requests) {
-    StringBuilder combinedDelete = new StringBuilder();
+    Set<String> entityUris = new LinkedHashSet<>();
+    Set<String> predicatesToDelete = new LinkedHashSet<>();
     Model combinedModel = ModelFactory.createDefaultModel();
     for (EntityWriteRequest req : requests) {
       String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
-      Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
-      if (!combinedDelete.isEmpty()) {
-        combinedDelete.append(";\n");
-      }
-      combinedDelete.append(buildPredicateScopedDelete(entityUri, predicatesToDelete));
+      entityUris.add(entityUri);
+      predicatesToDelete.addAll(collectTranslatorPredicates(entityUri, req.model()));
       combinedModel.add(req.model());
     }
     String triples = serializeModel(combinedModel);
     combinedModel.close();
-    StringBuilder combined = new StringBuilder(combinedDelete);
+    StringBuilder combined =
+        new StringBuilder(buildPredicateScopedDelete(entityUris, predicatesToDelete));
     if (!triples.isBlank()) {
       if (!combined.isEmpty()) {
         combined.append(";\n");
@@ -1163,7 +1212,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           .record(update.length());
       UpdateRequest updateRequest = UpdateFactory.create(update);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities"),
+          () -> runWriteWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities"),
           "bulkStoreEntities",
           update.length(),
           maxUpdatePayloadBytes);
@@ -1200,7 +1249,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       if (streamingAppendEnabled) {
         runWriteWithRetry(
-            () -> runWithTimeout(() -> streamAppend(requests), "bulkAppendEntities"),
+            () -> runWriteWithTimeout(() -> streamAppend(requests), "bulkAppendEntities"),
             "bulkAppendEntities",
             estimatedBytes,
             maxAppendPayloadBytes);
@@ -1231,7 +1280,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       }
       runWriteWithRetry(
           () ->
-              runWithTimeout(
+              runWriteWithTimeout(
                   () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkAppendEntities"),
           "bulkAppendEntities",
           estimatedBytes,
@@ -1415,7 +1464,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       UpdateRequest request = UpdateFactory.create(upsertQuery);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(request), "storeEntity"), "storeEntity");
+          () -> runWriteWithTimeout(() -> connection.update(request), "storeEntity"),
+          "storeEntity");
       LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
     } catch (Exception e) {
       LOG.error("Failed to store entity in Fuseki", e);
@@ -1464,7 +1514,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
       UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(request), "storeRelationship"),
+          () -> runWriteWithTimeout(() -> connection.update(request), "storeRelationship"),
           "storeRelationship");
       LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
     } catch (Exception e) {
@@ -1491,95 +1541,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // with a non-empty relationships list (insert-only, no reconcile).
     Set<String> effectiveSources = sourcesToReconcile != null ? sourcesToReconcile : Set.of();
 
-    // Per-source-entity reconciliation: for each source URI the caller asked
-    // us to reconcile, wipe every outgoing relationship-hook edge first, then
-    // insert the current batch. Sources NOT in sourcesToReconcile (e.g. an
-    // outside-batch upstream entity that contributed only an incoming lineage
-    // row) get their new edges inserted but their existing edges are left
-    // alone — wiping them would destroy unrelated state that this batch
-    // never had visibility into.
-    //
-    // The DELETE filter is scoped to RELATIONSHIP_HOOK_PREDICATES (derived
-    // from the Relationship enum, see RdfRepository) so it ONLY touches
-    // predicates that addRelationship / bulkAddRelationships actually write.
-    // Lineage predicates (managed by addLineageWithDetails) and
-    // translator-managed predicates (om:hasOwner / om:hasTag / etc., managed
-    // by storeEntity's predicate-scoped DELETE) are NOT in the set and are
-    // therefore preserved across reconciliation.
-    String hookPredicateList =
-        org.openmetadata.service.rdf.RdfRepository.buildPredicateInList(
-            org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
-
-    StringBuilder deleteUpdate = new StringBuilder();
-    boolean firstDelete = true;
-    for (String sourceUri : effectiveSources) {
-      if (!firstDelete) {
-        deleteUpdate.append("; ");
-      }
-      firstDelete = false;
-      deleteUpdate
-          .append("DELETE { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { <")
-          .append(sourceUri)
-          .append("> ?p ?o } } WHERE { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { <")
-          .append(sourceUri)
-          .append("> ?p ?o . FILTER(?p IN (")
-          .append(hookPredicateList)
-          .append(")) } }");
-    }
-
-    StringBuilder insertData = new StringBuilder();
-    insertData.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-    for (RelationshipData rel : relationships) {
-      // Use the pre-computed predicateUri (via RdfRepository.getRelationshipPredicate)
-      // so the triple written here matches what addRelationship / removeRelationship
-      // expect for the same relationship type. Fall back to the lowercase
-      // `<baseUri>ontology/<type>` for any caller that built RelationshipData via
-      // the legacy 5-arg constructor — same shape the original implementation used.
-      String predicateUri =
-          rel.getPredicateUri() != null
-              ? rel.getPredicateUri()
-              : baseUri + "ontology/" + rel.getRelationshipType();
-      insertData.append(
-          String.format(
-              "<%sentity/%s/%s> <%s> <%sentity/%s/%s> . ",
-              baseUri,
-              rel.getFromType(),
-              rel.getFromId(),
-              predicateUri,
-              baseUri,
-              rel.getToType(),
-              rel.getToId()));
-    }
-    insertData.append("} }");
-
-    // Combine DELETE and INSERT into a SINGLE SPARQL update so they share a
-    // transaction at the Fuseki side — if the request fails, neither half
-    // commits, and we never leave the graph half-reconciled. (The previous
-    // separate calls + a failed insert could leave sources wiped without
-    // their replacement edges in place until the next weekly recreate-index.)
-    StringBuilder combined = new StringBuilder();
-    if (deleteUpdate.length() > 0) {
-      combined.append(deleteUpdate);
-      if (!relationships.isEmpty()) {
-        combined.append("; ");
-      }
-    }
-    if (!relationships.isEmpty()) {
-      combined.append(insertData);
-    }
+    String combined = buildBulkRelationshipUpdate(baseUri, relationships, effectiveSources);
 
     try {
-      if (combined.length() == 0) {
-        return; // No work — empty relationships AND empty sourcesToReconcile is the early return
-        // above.
-      }
-      UpdateRequest request = UpdateFactory.create(combined.toString());
+      UpdateRequest request = UpdateFactory.create(combined);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(request), "bulkStoreRelationships"),
+          () -> runWriteWithTimeout(() -> connection.update(request), "bulkStoreRelationships"),
           "bulkStoreRelationships");
       LOG.debug(
           "Bulk stored {} relationships, reconciled {} source entities",
@@ -1589,6 +1556,36 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.error("Failed to bulk store relationships in Fuseki", e);
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
     }
+  }
+
+  static String buildBulkRelationshipUpdate(
+      String baseUri, List<RelationshipData> relationships, Set<String> sourcesToReconcile) {
+    String deleteUpdate = RdfRepository.buildOutgoingRelationshipDelete(sourcesToReconcile);
+    StringBuilder combined = new StringBuilder(deleteUpdate);
+    if (!relationships.isEmpty()) {
+      if (!combined.isEmpty()) {
+        combined.append("; ");
+      }
+      combined.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
+      for (RelationshipData relationship : relationships) {
+        String predicateUri =
+            relationship.getPredicateUri() != null
+                ? relationship.getPredicateUri()
+                : baseUri + "ontology/" + relationship.getRelationshipType();
+        combined.append(
+            String.format(
+                "<%sentity/%s/%s> <%s> <%sentity/%s/%s> . ",
+                baseUri,
+                relationship.getFromType(),
+                relationship.getFromId(),
+                predicateUri,
+                baseUri,
+                relationship.getToType(),
+                relationship.getToId()));
+      }
+      combined.append("} }");
+    }
+    return combined.toString();
   }
 
   @Override
@@ -1629,16 +1626,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("deleteEntity");
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
-    // Delete entity and all its relationships from the knowledge graph
-    String deleteQuery =
-        String.format(
-            "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
+    String deleteQuery = RdfRepository.buildEntityDeleteUpdate(entityUri);
 
     try {
       UpdateRequest request = UpdateFactory.create(deleteQuery);
-      runWithTimeout(() -> connection.update(request), "deleteEntity");
+      runWriteWithTimeout(() -> connection.update(request), "deleteEntity");
       LOG.debug("Deleted entity {} from Fuseki", entityId);
       recordSuccess();
     } catch (Exception e) {
@@ -1745,7 +1737,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("executeSparqlUpdate");
     try {
       UpdateRequest request = UpdateFactory.create(sparqlUpdate);
-      runWithTimeout(() -> connection.update(request), "executeSparqlUpdate");
+      runWriteWithTimeout(() -> connection.update(request), "executeSparqlUpdate");
       LOG.debug("Executed SPARQL update on Fuseki");
       recordSuccess();
     } catch (Exception e) {
@@ -1763,16 +1755,18 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       Model model = ModelFactory.createDefaultModel();
       model.read(turtleStream, null, "TURTLE");
-      try {
-        connection.delete(graphUri);
-      } catch (HttpException e) {
-        if (e.getStatusCode() != 404) {
-          throw e;
-        }
-      }
-
-      // Then load the new data
-      connection.load(graphUri, model);
+      runWriteWithTimeout(
+          () -> {
+            try {
+              connection.delete(graphUri);
+            } catch (HttpException e) {
+              if (e.getStatusCode() != 404) {
+                throw e;
+              }
+            }
+            connection.load(graphUri, model);
+          },
+          "loadTurtleFile");
 
       LOG.info("Loaded Turtle file into graph {} with {} triples", graphUri, model.size());
       recordSuccess();
@@ -1876,7 +1870,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public void clearGraph(String graphUri) {
     throwIfCircuitOpen("clearGraph");
     try {
-      connection.delete(graphUri);
+      runWriteWithTimeout(() -> connection.delete(graphUri), "clearGraph");
       LOG.info("Cleared graph: {}", graphUri);
       recordSuccess();
     } catch (Exception e) {
@@ -1959,7 +1953,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       // The Javadoc on compactStorage promises "Failures are logged and
       // swallowed". The HTTP path can throw IllegalArgumentException (URI),
       // RdfStorageCircuitOpenException (if state flips mid-run), the
-      // CompletableFuture wrappers' RuntimeException re-throws, or any of
+      // timeout wrappers' RuntimeException re-throws, or any of
       // Jena's runtime exceptions. Catch them all so a stray RuntimeException
       // never demotes a successful reindex to FAILED.
       LOG.warn(

@@ -13,7 +13,9 @@
 package org.openmetadata.service.rdf.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
@@ -21,10 +23,18 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -50,46 +60,105 @@ class JenaFusekiStreamingAppendTest {
   private static final String DATASET_PATH = "/openmetadata";
 
   private HttpServer server;
+  private ExecutorService serverExecutor;
   private final Map<String, byte[]> capturedBodies = new ConcurrentHashMap<>();
   private final Map<String, String> capturedHeaders = new ConcurrentHashMap<>();
+  private final AtomicInteger appendRequests = new AtomicInteger();
+  private final AtomicInteger mutationRequests = new AtomicInteger();
+  private final AtomicInteger activeMutations = new AtomicInteger();
+  private final AtomicInteger maxActiveMutations = new AtomicInteger();
+  private final CountDownLatch firstMutationStarted = new CountDownLatch(1);
+  private final CountDownLatch releaseFirstMutation = new CountDownLatch(1);
+  private volatile boolean blockFirstMutation;
 
   @BeforeEach
   void startStubServer() throws Exception {
     server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+    serverExecutor = Executors.newFixedThreadPool(4);
+    server.setExecutor(serverExecutor);
     // Permissive stub: constructor-time admin checks and ontology loads succeed
     // silently; the GSP data endpoint records what the streaming path sent.
     server.createContext(
         "/",
         exchange -> {
-          byte[] body = exchange.getRequestBody().readAllBytes();
-          // Constructor-time ontology bootstrap also posts RDF; only requests targeting
-          // the knowledge graph belong to the streaming append under test.
           String query = exchange.getRequestURI().getQuery();
-          if (exchange.getRequestURI().getPath().equals(DATASET_PATH + "/data")
-              && query != null
-              && query.contains("graph/knowledge")) {
-            capturedBodies.put(exchange.getRequestURI().toString(), body);
-            String encoding = exchange.getRequestHeaders().getFirst("Content-Encoding");
-            if (encoding != null) {
-              capturedHeaders.put("Content-Encoding", encoding);
-            }
-            capturedHeaders.put(
-                "Content-Type", exchange.getRequestHeaders().getFirst("Content-Type"));
+          boolean knowledgeGraphAppend =
+              exchange.getRequestURI().getPath().equals(DATASET_PATH + "/data")
+                  && query != null
+                  && query.contains("graph/knowledge");
+          String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
+          boolean sparqlUpdate =
+              contentType != null && contentType.contains("application/sparql-update");
+          boolean mutation =
+              knowledgeGraphAppend
+                  || sparqlUpdate
+                  || exchange.getRequestURI().getPath().equals(DATASET_PATH + "/update");
+          String accept = exchange.getRequestHeaders().getFirst("Accept");
+          boolean sparqlQuery =
+              !mutation
+                  && exchange.getRequestURI().getPath().startsWith(DATASET_PATH)
+                  && accept != null
+                  && accept.contains("sparql-results");
+          int requestNumber = 0;
+          if (mutation) {
+            requestNumber = mutationRequests.incrementAndGet();
+            int active = activeMutations.incrementAndGet();
+            maxActiveMutations.accumulateAndGet(active, Math::max);
+            firstMutationStarted.countDown();
           }
-          exchange.sendResponseHeaders(200, 0);
-          exchange.getResponseBody().close();
+          if (knowledgeGraphAppend) {
+            appendRequests.incrementAndGet();
+          }
+          try {
+            if (blockFirstMutation && requestNumber == 1) {
+              releaseFirstMutation.await(5, TimeUnit.SECONDS);
+            }
+            byte[] body = exchange.getRequestBody().readAllBytes();
+            // Constructor-time ontology bootstrap also posts RDF; only requests targeting
+            // the knowledge graph belong to the streaming append under test.
+            if (knowledgeGraphAppend) {
+              capturedBodies.put(exchange.getRequestURI().toString(), body);
+              String encoding = exchange.getRequestHeaders().getFirst("Content-Encoding");
+              if (encoding != null) {
+                capturedHeaders.put("Content-Encoding", encoding);
+              }
+              capturedHeaders.put(
+                  "Content-Type", exchange.getRequestHeaders().getFirst("Content-Type"));
+            }
+            byte[] responseBody = new byte[0];
+            if (sparqlQuery) {
+              responseBody = "{\"head\":{},\"boolean\":false}".getBytes(StandardCharsets.UTF_8);
+              exchange.getResponseHeaders().set("Content-Type", "application/sparql-results+json");
+            }
+            exchange.sendResponseHeaders(200, responseBody.length);
+            exchange.getResponseBody().write(responseBody);
+            exchange.getResponseBody().close();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            exchange.sendResponseHeaders(503, -1);
+          } finally {
+            if (mutation) {
+              activeMutations.decrementAndGet();
+            }
+          }
         });
     server.start();
   }
 
   @AfterEach
   void stopStubServer() {
+    releaseFirstMutation.countDown();
     server.stop(0);
+    serverExecutor.shutdownNow();
     capturedBodies.clear();
     capturedHeaders.clear();
   }
 
   private JenaFusekiStorage storageWith(boolean gzip) {
+    return storageWith(gzip, 60_000);
+  }
+
+  private JenaFusekiStorage storageWith(boolean gzip, int requestTimeoutMs) {
     RdfConfiguration config =
         new RdfConfiguration()
             .withEnabled(true)
@@ -98,6 +167,7 @@ class JenaFusekiStreamingAppendTest {
                 URI.create("http://localhost:" + server.getAddress().getPort() + DATASET_PATH))
             .withStreamingAppendEnabled(true)
             .withGzipRequests(gzip)
+            .withRequestTimeoutMs(requestTimeoutMs)
             .withWriteMaxRetries(0);
     return new JenaFusekiStorage(config, delayMs -> {});
   }
@@ -159,5 +229,102 @@ class JenaFusekiStreamingAppendTest {
     assertEquals("gzip", capturedHeaders.get("Content-Encoding"));
     Model parsed = parseCapturedBody(true);
     assertTrue(expected.isIsomorphicWith(parsed));
+  }
+
+  @Test
+  @DisplayName("reads stay concurrent while scheduled and live writes share one writer")
+  void liveAndScheduledWritesAreSerializedAtTheStorageBoundary() throws Exception {
+    JenaFusekiStorage storage = storageWith(false);
+    blockFirstMutation = true;
+    ExecutorService callers = Executors.newFixedThreadPool(3);
+    try {
+      Future<?> first =
+          callers.submit(
+              () ->
+                  storage.bulkStoreEntities(
+                      List.of(entityWithBlankNode("orders")), RdfWriteMode.INSERT_ONLY));
+      assertTrue(firstMutationStarted.await(5, TimeUnit.SECONDS));
+      Future<String> read =
+          callers.submit(() -> storage.executeSparqlQuery("ASK { ?s ?p ?o }", "json"));
+      assertTrue(read.get(2, TimeUnit.SECONDS).contains("false"));
+      assertFalse(first.isDone(), "the read must not wait for the active writer");
+      RdfStorageInterface.EntityWriteRequest liveEntity = entityWithBlankNode("customers");
+      Future<?> second =
+          callers.submit(
+              () ->
+                  storage.storeEntity(
+                      liveEntity.entityType(), liveEntity.entityId(), liveEntity.model()));
+
+      assertFalse(
+          waitForMutationCount(2, 250),
+          "a live write reached Fuseki while a rebuild write was active");
+      releaseFirstMutation.countDown();
+      first.get(5, TimeUnit.SECONDS);
+      second.get(5, TimeUnit.SECONDS);
+
+      assertEquals(2, mutationRequests.get());
+      assertEquals(1, appendRequests.get());
+      assertEquals(1, maxActiveMutations.get());
+    } finally {
+      releaseFirstMutation.countDown();
+      callers.shutdownNow();
+    }
+  }
+
+  @Test
+  @DisplayName("a write that times out in the writer queue cannot execute later")
+  void timedOutQueuedWriteIsCancelled() throws Exception {
+    JenaFusekiStorage storage = storageWith(false, 500);
+    CountDownLatch releaseActiveWrite = new CountDownLatch(1);
+    CountDownLatch activeWriteFinished = new CountDownLatch(1);
+    CountDownLatch queuedWriteExecuted = new CountDownLatch(1);
+    AtomicBoolean activeWriteStarted = new AtomicBoolean();
+
+    try {
+      assertThrows(
+          RuntimeException.class,
+          () ->
+              storage.runWriteWithTimeout(
+                  () -> {
+                    activeWriteStarted.set(true);
+                    try {
+                      awaitIgnoringInterrupt(releaseActiveWrite);
+                    } finally {
+                      activeWriteFinished.countDown();
+                    }
+                  },
+                  "activeWrite"));
+      assertTrue(activeWriteStarted.get());
+
+      assertThrows(
+          RuntimeException.class,
+          () -> storage.runWriteWithTimeout(queuedWriteExecuted::countDown, "queuedWrite"));
+    } finally {
+      releaseActiveWrite.countDown();
+    }
+
+    assertTrue(activeWriteFinished.await(2, TimeUnit.SECONDS));
+    assertFalse(
+        queuedWriteExecuted.await(250, TimeUnit.MILLISECONDS),
+        "a timed-out queued write executed after the active writer released its permit");
+  }
+
+  private static void awaitIgnoringInterrupt(CountDownLatch release) {
+    boolean released = false;
+    while (!released) {
+      try {
+        released = release.await(2, TimeUnit.SECONDS);
+      } catch (InterruptedException ignored) {
+        // A server call may ignore cancellation; the writer permit must remain held until it exits.
+      }
+    }
+  }
+
+  private boolean waitForMutationCount(int expected, long timeoutMs) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+    while (mutationRequests.get() < expected && System.nanoTime() < deadline) {
+      TimeUnit.MILLISECONDS.sleep(10);
+    }
+    return mutationRequests.get() >= expected;
   }
 }

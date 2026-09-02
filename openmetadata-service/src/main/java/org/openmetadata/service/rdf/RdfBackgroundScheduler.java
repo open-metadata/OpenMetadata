@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 /** Shared pool with enough workers to keep one slow RDF maintenance task from stalling all polls. */
 @Slf4j
 public final class RdfBackgroundScheduler implements Managed {
-  static final int DEFAULT_POOL_SIZE = 2;
+  static final int DEFAULT_POOL_SIZE = 3;
   private static final long SHUTDOWN_TIMEOUT_SECONDS = 5;
   private static final RdfBackgroundScheduler INSTANCE =
       new RdfBackgroundScheduler(DEFAULT_POOL_SIZE);

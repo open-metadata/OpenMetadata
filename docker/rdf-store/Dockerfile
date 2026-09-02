@@ -93,8 +93,8 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Run Fuseki via the entrypoint (which prepares FUSEKI_BASE and renders
 # shiro.ini, then execs fuseki-server). The server is launched from an
-# assembler config rather than --loc so server-side settings that are
-# config-file-only — most importantly arq:updateTimeout — take effect; the
+# assembler config rather than --loc so the union default graph and server-side
+# query/update deadlines take effect; the
 # dataset location inside config.ttl is /fuseki-data/openmetadata, which is NOT
 # where the old --loc=/fuseki-data launch stored files (it wrote them directly into
 # /fuseki-data). Upgrading from that layout needs the migration step in

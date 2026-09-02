@@ -41,6 +41,22 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 
 
+def positive_int(value: str) -> int:
+    """Parse a strictly positive CLI integer."""
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
+def non_negative_int(value: str) -> int:
+    """Parse a non-negative CLI integer."""
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be greater than or equal to 0")
+    return parsed
+
+
 def create_metadata_client(server_url: str, token: str) -> OpenMetadata:
     """Create OpenMetadata client."""
     server_config = OpenMetadataConnection(
@@ -290,37 +306,37 @@ def main():
     )
     parser.add_argument(
         "--tables",
-        type=int,
+        type=positive_int,
         default=100000,
         help="Number of tables to create (default: 100000)",
     )
     parser.add_argument(
         "--batch-size",
-        type=int,
+        type=positive_int,
         default=100,
         help="Batch size for table creation (default: 100)",
     )
     parser.add_argument(
         "--workers",
-        type=int,
+        type=positive_int,
         default=10,
         help="Number of parallel workers (default: 10)",
     )
     parser.add_argument(
         "--columns",
-        type=int,
+        type=positive_int,
         default=7,
         help="Columns per ordinary table (default: 7)",
     )
     parser.add_argument(
         "--wide-columns",
-        type=int,
+        type=positive_int,
         default=500,
         help="Columns on wide tables (default: 500)",
     )
     parser.add_argument(
         "--wide-every",
-        type=int,
+        type=non_negative_int,
         default=0,
         help=(
             "Make every Nth table wide. 0 (default) creates no wide tables; "

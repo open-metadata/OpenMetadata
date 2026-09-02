@@ -3,6 +3,8 @@
 # Smoke tests for the RDF services (Apache Jena Fuseki + OpenSearch).
 #
 # Exits non-zero if any check fails, so it can gate a local deployment or CI job.
+# The server-side timeout check is opt-in because it deliberately waits for the
+# configured update deadline.
 
 set -u
 
@@ -15,6 +17,11 @@ FUSEKI_PASSWORD="${FUSEKI_PASSWORD:-admin}"
 FUSEKI_CONTAINER="${FUSEKI_CONTAINER:-}"
 FUSEKI_CONTAINER_CANDIDATES="openmetadata_fuseki openmetadata-fuseki"
 OPENSEARCH_URL="${OPENSEARCH_URL:-http://localhost:9200}"
+UPDATE_TIMEOUT_SECONDS="${UPDATE_TIMEOUT_SECONDS:-50}"
+UPDATE_TIMEOUT_BUDGET_SECONDS="${UPDATE_TIMEOUT_BUDGET_SECONDS:-70}"
+
+RUN_TIMEOUT_TEST=false
+[ "${1:-}" = "--with-timeout-test" ] && RUN_TIMEOUT_TEST=true
 
 FAILURES=0
 
@@ -82,22 +89,51 @@ if curl -sf "${FUSEKI_URL}/\$/ping" > /dev/null 2>&1; then
         skip "non-root check (no Fuseki container from: ${FUSEKI_CONTAINER:-${FUSEKI_CONTAINER_CANDIDATES}})"
     fi
 
-    # Reconcile writes chain one DELETE...WHERE per entity in a single request. Setting
-    # arq:updateTimeout in config.ttl makes Fuseki answer 400 to any update carrying more
-    # than one WHERE-bearing operation (it logs only "Bad request: null"), which breaks
-    # every live entity update and every bulk reconcile chunk while the insert-only reindex
-    # keeps working - the projection just goes DEGRADED with no obvious cause. This check
-    # is the cheap guard against that setting coming back.
-    CHAINED_UPDATE='DELETE { GRAPH <urn:om:probe> { <urn:om:s> ?p ?o } } WHERE { GRAPH <urn:om:probe> { <urn:om:s> ?p ?o } }; DELETE { GRAPH <urn:om:probe> { <urn:om:x> ?p ?o } } WHERE { GRAPH <urn:om:probe> { <urn:om:x> ?p ?o } }; INSERT DATA { GRAPH <urn:om:probe> { <urn:om:s> <urn:om:p> "ok" } }'
+    # Generated bulk reconciliation uses one WHERE with VALUES for all sources. This
+    # stays compatible with the Jena 6.2.0 update-timeout controller while retaining
+    # one atomic delete+insert transaction.
+    CHAINED_UPDATE='DELETE { GRAPH <urn:om:probe> { ?entity ?p ?o } } WHERE { GRAPH <urn:om:probe> { VALUES ?entity { <urn:om:s> <urn:om:x> } ?entity ?p ?o } }; INSERT DATA { GRAPH <urn:om:probe> { <urn:om:s> <urn:om:p> "ok" } }'
     HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
         -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
         -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \
         -H "Content-Type: application/sparql-update" \
         --data "${CHAINED_UPDATE}")
     if [ "${HTTP_CODE}" = "204" ] || [ "${HTTP_CODE}" = "200" ]; then
-        pass "multi-statement reconcile update accepted (HTTP ${HTTP_CODE})"
+        pass "single-WHERE reconcile update accepted (HTTP ${HTTP_CODE})"
     else
-        fail "multi-statement reconcile update rejected (HTTP ${HTTP_CODE}); is arq:updateTimeout set in config.ttl?"
+        fail "single-WHERE reconcile update rejected (HTTP ${HTTP_CODE})"
+    fi
+
+    if [ "${RUN_TIMEOUT_TEST}" = true ]; then
+        echo "  running runaway-UPDATE abort check (expect an abort near ${UPDATE_TIMEOUT_SECONDS}s)..."
+        SEED=$(for i in $(seq 1 500); do printf '<urn:om:n%s> ' "$i"; done)
+        curl -s -o /dev/null -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
+            -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \
+            -H "Content-Type: application/sparql-update" \
+            --data "INSERT { GRAPH <urn:om:timeout-probe> { ?s <urn:om:p> ?s } } WHERE { VALUES ?s { ${SEED} } }"
+        RUNAWAY_UPDATE='INSERT { GRAPH <urn:om:timeout-probe-out> { <urn:om:s> <urn:om:p> <urn:om:o> } } WHERE { GRAPH <urn:om:timeout-probe> { ?a ?p1 ?b . ?c ?p2 ?d . ?e ?p3 ?f . ?g ?p4 ?h } FILTER(STRLEN(CONCAT(STR(?a), STR(?c), STR(?e), STR(?g))) > 100000) }'
+        START=$(date +%s)
+        HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            --max-time "${UPDATE_TIMEOUT_BUDGET_SECONDS}" \
+            -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
+            -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \
+            -H "Content-Type: application/sparql-update" \
+            --data "${RUNAWAY_UPDATE}")
+        ELAPSED=$(( $(date +%s) - START ))
+        MIN_ELAPSED=$(( UPDATE_TIMEOUT_SECONDS * 80 / 100 ))
+        if [ "${HTTP_CODE}" = "000" ]; then
+            fail "runaway UPDATE ran past ${ELAPSED}s without a server-side abort"
+        elif [ "${ELAPSED}" -lt "${MIN_ELAPSED}" ]; then
+            fail "UPDATE ended after ${ELAPSED}s (HTTP ${HTTP_CODE}); expected the configured timeout"
+        else
+            pass "server aborted runaway UPDATE after ${ELAPSED}s (HTTP ${HTTP_CODE})"
+        fi
+        curl -s -o /dev/null -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
+            -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \
+            -H "Content-Type: application/sparql-update" \
+            --data 'DROP SILENT GRAPH <urn:om:timeout-probe>; DROP SILENT GRAPH <urn:om:timeout-probe-out>'
+    else
+        skip "runaway-UPDATE abort check (pass --with-timeout-test to run it)"
     fi
     curl -s -o /dev/null -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" \
         -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/update" \

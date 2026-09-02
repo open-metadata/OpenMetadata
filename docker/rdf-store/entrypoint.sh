@@ -54,8 +54,16 @@ fi
 # unopened. Refuse to start instead, and name the migration.
 LEGACY_TDB2_DIR="${FUSEKI_DATA_DIR:-/fuseki-data}"
 DATASET_TDB2_DIR="${LEGACY_TDB2_DIR}/openmetadata"
-if [ -d "${LEGACY_TDB2_DIR}/Data-0001" ] && [ ! -d "${DATASET_TDB2_DIR}" ]; then
-  echo "ERROR: found a legacy TDB2 store directly in ${LEGACY_TDB2_DIR} (Data-0001), but this"
+LEGACY_TDB2_GENERATION=""
+for candidate in "${LEGACY_TDB2_DIR}"/Data-*; do
+  if [ -d "${candidate}" ]; then
+    LEGACY_TDB2_GENERATION="${candidate}"
+    break
+  fi
+done
+
+if [ -n "${LEGACY_TDB2_GENERATION}" ] && [ ! -d "${DATASET_TDB2_DIR}" ]; then
+  echo "ERROR: found a legacy TDB2 store directly in ${LEGACY_TDB2_DIR} ($(basename "${LEGACY_TDB2_GENERATION}")), but this"
   echo "image serves ${DATASET_TDB2_DIR}. Starting now would open an EMPTY store and leave the"
   echo "existing graph unread."
   echo "Migrate with the container stopped, then restart:"

@@ -1,19 +1,10 @@
 # Fuseki assembler configuration for the OpenMetadata RDF store.
 #
-# Why --config instead of --loc: tdb2:unionDefaultGraph. OpenMetadata writes into
-# named graphs, while MCP tools and the SPARQL playground issue `?s ?p ?o` against
-# the default graph; without the union those queries return nothing. --loc cannot
-# express it, and it silently ignores this file.
-#
-# DO NOT ADD arq:updateTimeout HERE. It looks like the missing server-side bound on
-# UPDATE execution (--timeout is query-only), but when it is set Fuseki rejects any
-# update request carrying more than one WHERE-bearing operation — "400 Bad Request",
-# logged as "Bad request: null" — because the timeout controller governs a single
-# execution per request. Reconcile writes chain one DELETE...WHERE per entity, so
-# every live entity update and every bulk reconcile chunk fails while the reindex
-# (insert-only, Graph Store Protocol) still succeeds, leaving the projection quietly
-# DEGRADED. Runaway updates stay bounded client-side by requestTimeoutMs and the
-# circuit breaker in JenaFusekiStorage.
+# Why --config instead of --loc: the union default graph and server-side execution
+# deadlines below are assembler-only settings. OpenMetadata-generated updates contain
+# at most one WHERE-bearing operation because Jena 6.2.0 mishandles a second one when
+# arq:updateTimeout is active. The OpenMetadata SPARQL API rejects that unsupported
+# shape explicitly; direct Fuseki clients must use VALUES/UNION or separate requests.
 #
 # NOTE ON UPGRADES: the original `--loc=/fuseki-data` layout stored TDB2 files
 # directly in /fuseki-data, while this assembler uses the /fuseki-data/openmetadata
@@ -53,6 +44,11 @@
     # yields silently empty results rather than an error. Queries that need to target one
     # graph must say so with an explicit GRAPH clause.
     tdb2:unionDefaultGraph true ;
+    # Bound abandoned reads and writes inside Fuseki itself. These fire before the
+    # shipped 60-second client deadline because releasing an OpenMetadata thread does
+    # not cancel server work holding TDB2's writer or consuming read resources.
+    ja:context [ ja:cxtName "arq:queryTimeout" ; ja:cxtValue "50000" ] ;
+    ja:context [ ja:cxtName "arq:updateTimeout" ; ja:cxtValue "50000" ] ;
     .
 
 # Enable full-text search

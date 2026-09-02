@@ -570,8 +570,8 @@ public class RdfRepository {
    * <p>Implementation note: {@link
    * org.openmetadata.service.rdf.storage.JenaFusekiStorage#bulkStoreEntities}
    * runs each configured repository chunk as a SINGLE SPARQL UPDATE containing
-   * both the combined per-entity DELETE statements and an {@code INSERT DATA}
-   * block with the unioned N-Triples body. Fuseki executes multi-statement
+   * one VALUES-scoped DELETE and an {@code INSERT DATA} block with the unioned N-Triples body.
+   * Fuseki executes the two operations
    * UPDATEs in one transaction, so each chunk is atomic at the storage side.
    * The per-entity fallback in {@code RdfBatchProcessor.processEntities} keeps
    * row-level failure attribution when a chunk fails.
@@ -715,11 +715,7 @@ public class RdfRepository {
               + "/"
               + entityReference.getId();
 
-      String sparqlUpdate =
-          String.format(
-              "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                  + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
-              KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
+      String sparqlUpdate = buildEntityDeleteUpdate(entityUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
@@ -872,31 +868,13 @@ public class RdfRepository {
     if (RELATIONSHIP_HOOK_PREDICATES.isEmpty()) {
       return; // nothing to clear
     }
+    Set<String> sourceUris = new LinkedHashSet<>();
     String base = config.getBaseUri().toString();
-    String filterIn = buildPredicateInList(RELATIONSHIP_HOOK_PREDICATES);
-    StringBuilder update = new StringBuilder();
-    boolean first = true;
     for (EntitySourceRef ref : sources) {
-      if (!first) {
-        update.append("; ");
-      }
-      first = false;
-      String sourceUri = base + "entity/" + ref.entityType() + "/" + ref.entityId();
-      update
-          .append("DELETE { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { <")
-          .append(sourceUri)
-          .append("> ?p ?o } } WHERE { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { <")
-          .append(sourceUri)
-          .append("> ?p ?o . FILTER(?p IN (")
-          .append(filterIn)
-          .append(")) } }");
+      sourceUris.add(base + "entity/" + ref.entityType() + "/" + ref.entityId());
     }
     try {
-      storageService.executeSparqlUpdate(update.toString());
+      storageService.executeSparqlUpdate(buildOutgoingRelationshipDelete(sourceUris));
       LOG.debug("Cleared outgoing relationship-hook edges for {} sources", sources.size());
     } catch (Exception e) {
       LOG.error("Failed to clear outgoing relationship-hook edges", e);
@@ -904,10 +882,7 @@ public class RdfRepository {
     }
   }
 
-  // Build a comma-separated "<uri1>, <uri2>, ..." for SPARQL `?p IN (...)` lists.
-  // public so JenaFusekiStorage (in storage subpackage) can reuse the same
-  // RELATIONSHIP_HOOK_PREDICATES rendering for its per-source DELETE filter.
-  public static String buildPredicateInList(Set<String> uris) {
+  private static String buildPredicateInList(Set<String> uris) {
     StringBuilder sb = new StringBuilder();
     boolean first = true;
     for (String uri : uris) {
@@ -918,6 +893,33 @@ public class RdfRepository {
       sb.append('<').append(uri).append('>');
     }
     return sb.toString();
+  }
+
+  /** Builds one predicate-scoped delete for every supplied relationship source. */
+  public static String buildOutgoingRelationshipDelete(Set<String> sourceUris) {
+    if (sourceUris == null || sourceUris.isEmpty()) {
+      return "";
+    }
+    return String.format(
+        "DELETE { GRAPH <%s> { ?source ?p ?o } } WHERE { GRAPH <%s> { "
+            + "VALUES ?source { %s } ?source ?p ?o . FILTER(?p IN (%s)) } }",
+        KNOWLEDGE_GRAPH,
+        KNOWLEDGE_GRAPH,
+        buildIriValues(sourceUris),
+        buildPredicateInList(RELATIONSHIP_HOOK_PREDICATES));
+  }
+
+  /** Builds one update that removes both incoming and outgoing triples for an entity. */
+  public static String buildEntityDeleteUpdate(String entityUri) {
+    return String.format(
+        "DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { "
+            + "{ VALUES ?s { <%s> } ?s ?p ?o } UNION "
+            + "{ ?s ?p <%s> . BIND(<%s> AS ?o) } } }",
+        KNOWLEDGE_GRAPH, KNOWLEDGE_GRAPH, entityUri, entityUri, entityUri);
+  }
+
+  private static String buildIriValues(Collection<String> iris) {
+    return String.join(" ", iris.stream().map(RdfRepository::asIri).toList());
   }
 
   public void bulkAddRelationships(List<EntityRelationship> relationships) {
@@ -1308,6 +1310,8 @@ public class RdfRepository {
   public record LineageEdgeData(
       String fromType, UUID fromId, String toType, UUID toId, LineageDetails details) {}
 
+  private record LineageDeleteTarget(String fromUri, String toUri, String detailsUri) {}
+
   public void bulkAddLineage(List<LineageEdgeData> edges, RdfWriteMode writeMode) {
     if (!isEnabled() || edges == null || edges.isEmpty()) {
       return;
@@ -1336,7 +1340,7 @@ public class RdfRepository {
     // here: flush the accumulated update whenever the estimated body crosses
     // the payload budget instead of letting 50 wide edges ride one request.
     long byteBudget = payloadBudgetBytes(writeMode);
-    StringBuilder deletes = new StringBuilder();
+    List<LineageDeleteTarget> deleteTargets = new ArrayList<>();
     Model combinedModel = ModelFactory.createDefaultModel();
     for (LineageEdgeData edge : edges) {
       Model edgeModel =
@@ -1346,11 +1350,8 @@ public class RdfRepository {
       edgeModel.close();
 
       if (writeMode != RdfWriteMode.INSERT_ONLY) {
-        if (!deletes.isEmpty()) {
-          deletes.append(";\n");
-        }
-        deletes.append(
-            buildLineageDeleteStatements(
+        deleteTargets.add(
+            new LineageDeleteTarget(
                 entityUri(edge.fromType(), edge.fromId()),
                 entityUri(edge.toType(), edge.toId()),
                 lineageDetailsUri(edge.fromId(), edge.toId())));
@@ -1358,20 +1359,20 @@ public class RdfRepository {
 
       long estimatedBytes =
           combinedModel.size() * (long) RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE
-              + deletes.length();
+              + buildLineageDeleteStatement(deleteTargets).length();
       if (estimatedBytes > byteBudget) {
-        flushLineageUpdate(deletes, combinedModel);
-        deletes = new StringBuilder();
+        flushLineageUpdate(deleteTargets, combinedModel);
+        deleteTargets = new ArrayList<>();
         combinedModel = ModelFactory.createDefaultModel();
       }
     }
-    flushLineageUpdate(deletes, combinedModel);
+    flushLineageUpdate(deleteTargets, combinedModel);
   }
 
-  private void flushLineageUpdate(StringBuilder deletes, Model combinedModel) {
+  private void flushLineageUpdate(List<LineageDeleteTarget> deleteTargets, Model combinedModel) {
     String triples = serializeModel(combinedModel);
     combinedModel.close();
-    StringBuilder update = new StringBuilder(deletes);
+    StringBuilder update = new StringBuilder(buildLineageDeleteStatement(deleteTargets));
     if (!triples.isBlank()) {
       if (!update.isEmpty()) {
         update.append(";\n");
@@ -1388,37 +1389,50 @@ public class RdfRepository {
   }
 
   String buildLineageDeleteStatements(String fromUri, String toUri, String detailsUri) {
-    // The details subtree (plan + columnLineage nodes) is deleted by following the
-    // hadPlan/hasColumnLineage links from the details node instead of a
-    // STRSTARTS(STR(?s), prefix) filter: the filter form is an unbound full-graph
-    // scan, and bulk reconcile emits this block once per edge (up to
-    // bulkLineageEdgeBatchSize times in a single update). The subtree statement
-    // must run before the details-node statement — it needs the links intact.
+    return buildLineageDeleteStatement(
+        List.of(new LineageDeleteTarget(fromUri, toUri, detailsUri)));
+  }
+
+  private String buildLineageDeleteStatement(List<LineageDeleteTarget> targets) {
+    if (targets.isEmpty()) {
+      return "";
+    }
+    StringBuilder exactTriples = new StringBuilder();
+    Set<String> detailsUris = new LinkedHashSet<>();
+    for (LineageDeleteTarget target : targets) {
+      exactTriples
+          .append(" (<")
+          .append(target.fromUri())
+          .append("> <https://open-metadata.org/ontology/UPSTREAM> <")
+          .append(target.toUri())
+          .append(">)")
+          .append(" (<")
+          .append(target.toUri())
+          .append("> <http://www.w3.org/ns/prov#wasDerivedFrom> <")
+          .append(target.fromUri())
+          .append(">)")
+          .append(" (<")
+          .append(target.fromUri())
+          .append("> <https://open-metadata.org/ontology/hasLineageDetails> <")
+          .append(target.detailsUri())
+          .append(">)");
+      detailsUris.add(target.detailsUri());
+    }
+    String detailValues = buildIriValues(detailsUris);
     return String.format(
-        "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
-            + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
-            + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
-            + " DELETE { GRAPH <%s> { ?sub ?p ?o } } WHERE { GRAPH <%s> { <%s> (<https://open-metadata.org/ontology/hasColumnLineage>|<http://www.w3.org/ns/prov#hadPlan>) ?sub . ?sub ?p ?o } };"
-            + " DELETE WHERE { GRAPH <%s> { <%s> ?p ?o . } };"
-            + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
-        KNOWLEDGE_GRAPH,
-        fromUri,
-        toUri,
-        KNOWLEDGE_GRAPH,
-        toUri,
-        fromUri,
-        KNOWLEDGE_GRAPH,
-        fromUri,
-        detailsUri,
-        KNOWLEDGE_GRAPH,
-        KNOWLEDGE_GRAPH,
-        detailsUri,
-        KNOWLEDGE_GRAPH,
-        detailsUri,
-        KNOWLEDGE_GRAPH,
-        detailsUri,
-        KNOWLEDGE_GRAPH,
-        detailsUri);
+        "DELETE { GRAPH <%1$s> { ?deleteSubject ?deletePredicate ?deleteObject } } WHERE { "
+            + "GRAPH <%1$s> { "
+            + "{ VALUES (?deleteSubject ?deletePredicate ?deleteObject) {%2$s } "
+            + "?deleteSubject ?deletePredicate ?deleteObject } UNION "
+            + "{ VALUES ?details { %3$s } ?details "
+            + "(<https://open-metadata.org/ontology/hasColumnLineage>|"
+            + "<http://www.w3.org/ns/prov#hadPlan>) ?deleteSubject . "
+            + "?deleteSubject ?deletePredicate ?deleteObject } UNION "
+            + "{ VALUES ?deleteSubject { %3$s } ?deleteSubject ?deletePredicate ?deleteObject } "
+            + "UNION { VALUES ?deleteObject { %3$s } "
+            + "?deleteSubject <http://www.w3.org/ns/prov#generated> ?deleteObject . "
+            + "BIND(<http://www.w3.org/ns/prov#generated> AS ?deletePredicate) } } }",
+        KNOWLEDGE_GRAPH, exactTriples, detailValues);
   }
 
   private String entityUri(String entityType, UUID entityId) {
@@ -3985,18 +3999,7 @@ public class RdfRepository {
       // for bidirectional relationships, so a one-sided delete leaves a
       // stale "<to> om:<predicate> <from>" triple — visible as a lingering
       // edge in the relations graph after the user removed the relation.
-      String sparqlUpdate =
-          String.format(
-              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } };"
-                  + "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
-              KNOWLEDGE_GRAPH,
-              fromUri,
-              predicateUri,
-              toUri,
-              KNOWLEDGE_GRAPH,
-              toUri,
-              predicateUri,
-              fromUri);
+      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
@@ -4014,6 +4017,13 @@ public class RdfRepository {
   private String getGlossaryTermRelationPredicateUri(String relationType) {
     String resolvedType = relationType == null ? "relatedTo" : relationType;
     return relationshipTypeResolver().requireIgnoreCase(resolvedType).getRdfPredicate().toString();
+  }
+
+  static String buildGlossaryTermRelationDeleteUpdate(
+      String fromUri, String toUri, String predicateUri) {
+    return String.format(
+        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
+        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, predicateUri, fromUri);
   }
 
   /**

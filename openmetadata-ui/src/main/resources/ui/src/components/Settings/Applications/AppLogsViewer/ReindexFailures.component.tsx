@@ -13,7 +13,7 @@
 
 import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
@@ -42,9 +42,14 @@ const ReindexFailures = ({
     undefined
   );
   const [entityTypes, setEntityTypes] = useState<string[]>([]);
+  const requestSequence = useRef(0);
+  const invalidatePendingRequest = useCallback(() => {
+    requestSequence.current++;
+  }, []);
 
   const fetchFailures = useCallback(
     async (page: number, entityType?: string) => {
+      const requestId = ++requestSequence.current;
       setLoading(true);
       try {
         const fetcher =
@@ -56,6 +61,9 @@ const ReindexFailures = ({
           limit: PAGE_SIZE,
           entityType,
         });
+        if (requestId !== requestSequence.current) {
+          return;
+        }
         setData(response.data);
         setTotal(response.total);
 
@@ -64,9 +72,13 @@ const ReindexFailures = ({
           setEntityTypes(types);
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === requestSequence.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setLoading(false);
+        if (requestId === requestSequence.current) {
+          setLoading(false);
+        }
       }
     },
     [appName]
@@ -76,9 +88,14 @@ const ReindexFailures = ({
     if (visible) {
       setCurrentPage(1);
       setEntityTypeFilter(undefined);
+      setEntityTypes([]);
+      setData([]);
+      setTotal(0);
       fetchFailures(1);
     }
-  }, [visible]);
+
+    return invalidatePendingRequest;
+  }, [fetchFailures, invalidatePendingRequest, visible]);
 
   const handlePageChange = useCallback(
     (page: number) => {

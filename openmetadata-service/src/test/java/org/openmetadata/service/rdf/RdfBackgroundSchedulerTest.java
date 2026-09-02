@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 class RdfBackgroundSchedulerTest {
   private final RdfBackgroundScheduler scheduler =
       new RdfBackgroundScheduler(RdfBackgroundScheduler.DEFAULT_POOL_SIZE);
-  private final CountDownLatch blockedTaskStarted = new CountDownLatch(1);
+  private final CountDownLatch blockedTasksStarted = new CountDownLatch(2);
   private final CountDownLatch releaseBlockedTask = new CountDownLatch(1);
 
   @AfterEach
@@ -35,14 +35,16 @@ class RdfBackgroundSchedulerTest {
   }
 
   @Test
-  @DisplayName("a blocked task does not delay another periodic task")
-  void blockedTaskDoesNotDelayAnotherTask() throws InterruptedException {
-    CountDownLatch secondTaskRan = new CountDownLatch(1);
+  @DisplayName("two blocked maintenance tasks do not delay the polling task")
+  void blockedMaintenanceTasksDoNotDelayPollingTask() throws InterruptedException {
+    CountDownLatch pollingTaskRan = new CountDownLatch(1);
     scheduler.scheduleWithFixedDelay(
-        () -> awaitRelease(blockedTaskStarted, releaseBlockedTask), 0, 1, TimeUnit.DAYS);
-    assertTrue(blockedTaskStarted.await(5, TimeUnit.SECONDS));
-    scheduler.scheduleWithFixedDelay(secondTaskRan::countDown, 0, 1, TimeUnit.DAYS);
-    assertTrue(secondTaskRan.await(5, TimeUnit.SECONDS));
+        () -> awaitRelease(blockedTasksStarted, releaseBlockedTask), 0, 1, TimeUnit.DAYS);
+    scheduler.scheduleWithFixedDelay(
+        () -> awaitRelease(blockedTasksStarted, releaseBlockedTask), 0, 1, TimeUnit.DAYS);
+    assertTrue(blockedTasksStarted.await(5, TimeUnit.SECONDS));
+    scheduler.scheduleWithFixedDelay(pollingTaskRan::countDown, 0, 1, TimeUnit.DAYS);
+    assertTrue(pollingTaskRan.await(5, TimeUnit.SECONDS));
   }
 
   @Test

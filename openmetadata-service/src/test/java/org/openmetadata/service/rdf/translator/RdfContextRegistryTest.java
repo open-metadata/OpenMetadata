@@ -35,7 +35,9 @@ class RdfContextRegistryTest {
           "governance",
           "quality",
           "operations",
-          "lineage");
+          "lineage",
+          "ai",
+          "automation");
 
   @Test
   @DisplayName("every routed context name corresponds to a loaded context file")
@@ -50,6 +52,8 @@ class RdfContextRegistryTest {
             "glossaryTerm",
             "testCase",
             "ingestionPipeline",
+            "llmModel",
+            "workflow",
             "unknownFutureType");
     for (String entityType : probes) {
       String contextName = RdfContextRegistry.contextNameFor(entityType);
@@ -78,6 +82,8 @@ class RdfContextRegistryTest {
     assertEquals("service", RdfContextRegistry.contextNameFor("searchService"));
     assertEquals("team", RdfContextRegistry.contextNameFor("bot"));
     assertEquals("thread", RdfContextRegistry.contextNameFor("post"));
+    assertEquals("ai", RdfContextRegistry.contextNameFor("llmModel"));
+    assertEquals("automation", RdfContextRegistry.contextNameFor("workflow"));
   }
 
   @Test

@@ -183,8 +183,10 @@ public class RdfBatchProcessor {
                   indexedEntities);
       sinkTimeNanos += System.nanoTime() - writeStartNanos;
       successCount = bisect.successCount();
-      failedCount = bisect.failedCount();
-      lastError = bisect.lastError();
+      failedCount += bisect.failedCount();
+      if (bisect.lastError() != null) {
+        lastError = bisect.lastError();
+      }
     }
 
     int relationshipFailures = 0;

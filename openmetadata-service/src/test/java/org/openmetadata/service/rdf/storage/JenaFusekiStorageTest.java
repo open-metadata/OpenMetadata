@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf.storage;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -22,16 +23,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.ConnectException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.Query;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.update.UpdateAction;
+import org.apache.jena.update.UpdateFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -413,13 +421,8 @@ class JenaFusekiStorageTest {
 
       String update = JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model);
 
-      // Two WHERE-bearing operations in one request make Fuseki answer 400 ("Bad request:
-      // null") whenever a server-side update timeout is configured - the timeout controller
-      // governs one execution per request. The literal sweep and the predicate-scoped URI
-      // delete are therefore merged into a single filter rather than chained with ';'.
       assertEquals(1, countOccurrences(update, "WHERE"), update);
       assertEquals(1, countOccurrences(update, "DELETE"), update);
-      // Both deletion concerns still expressed, now as one disjunction.
       assertTrue(update.contains("!isIRI(?o)"), update);
       assertTrue(update.contains("?p IN ("), update);
     }
@@ -440,14 +443,72 @@ class JenaFusekiStorageTest {
       assertTrue(update.contains("!isIRI(?o)"), update);
     }
 
-    private int countOccurrences(String haystack, String needle) {
-      int count = 0;
-      int from = 0;
-      while ((from = haystack.indexOf(needle, from)) >= 0) {
-        count++;
-        from += needle.length();
-      }
-      return count;
+    @Test
+    @DisplayName("bulk reconcile combines all entity deletes into one WHERE operation")
+    void bulkReconcileUsesOneWhereOperation() {
+      UUID firstId = UUID.randomUUID();
+      UUID secondId = UUID.randomUUID();
+      String baseUri = "https://open-metadata.org/";
+      List<RdfStorageInterface.EntityWriteRequest> requests =
+          List.of(entityRequest(firstId, "orders"), entityRequest(secondId, "customers"));
+
+      String update = JenaFusekiStorage.buildBulkReconcileUpdate(baseUri, requests);
+      Dataset dataset = DatasetFactory.createTxnMem();
+      Model graph = dataset.getNamedModel("https://open-metadata.org/graph/knowledge");
+      Resource first = graph.createResource(baseUri + "entity/table/" + firstId);
+      Resource second = graph.createResource(baseUri + "entity/table/" + secondId);
+      Resource outsider = graph.createResource("urn:outsider");
+      Resource target = graph.createResource("urn:target");
+      Property label = graph.createProperty("http://www.w3.org/2000/01/rdf-schema#label");
+      Property contains = graph.createProperty("https://open-metadata.org/ontology/contains");
+      graph.add(first, label, "old orders");
+      graph.add(second, label, "old customers");
+      graph.add(first, contains, target);
+      graph.add(outsider, label, "preserved");
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertEquals(1, countOccurrences(update, "DELETE"), update);
+      assertTrue(update.contains("VALUES ?entity"), update);
+      assertTrue(update.contains(firstId.toString()), update);
+      assertTrue(update.contains(secondId.toString()), update);
+      assertDoesNotThrow(() -> UpdateAction.parseExecute(update, dataset));
+      assertFalse(graph.contains(first, label, "old orders"));
+      assertFalse(graph.contains(second, label, "old customers"));
+      assertTrue(graph.contains(first, label, "orders"));
+      assertTrue(graph.contains(second, label, "customers"));
+      assertTrue(graph.contains(first, contains, target));
+      assertTrue(graph.contains(outsider, label, "preserved"));
+      dataset.close();
+    }
+  }
+
+  @Nested
+  @DisplayName("relationship reconciliation query")
+  class RelationshipReconciliationQueryTests {
+
+    @Test
+    @DisplayName("multiple sources share one WHERE-bearing delete")
+    void multipleSourcesShareOneWhereOperation() {
+      UUID firstId = UUID.randomUUID();
+      UUID secondId = UUID.randomUUID();
+      String baseUri = "https://open-metadata.org/";
+      Set<String> sources =
+          new LinkedHashSet<>(
+              List.of(baseUri + "entity/table/" + firstId, baseUri + "entity/table/" + secondId));
+      RdfStorageInterface.RelationshipData relationship =
+          new RdfStorageInterface.RelationshipData(
+              "table", firstId, "database", UUID.randomUUID(), "contains");
+
+      String update =
+          JenaFusekiStorage.buildBulkRelationshipUpdate(baseUri, List.of(relationship), sources);
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertEquals(1, countOccurrences(update, "DELETE"), update);
+      assertTrue(update.contains("VALUES ?source"), update);
+      assertTrue(update.contains(firstId.toString()), update);
+      assertTrue(update.contains(secondId.toString()), update);
+      assertTrue(update.contains("INSERT DATA"), update);
+      assertDoesNotThrow(() -> UpdateFactory.create(update));
     }
   }
 
@@ -801,5 +862,24 @@ class JenaFusekiStorageTest {
     void malformedJson() {
       assertFalse(JenaFusekiStorage.isTaskFinished("not json"));
     }
+  }
+
+  private static RdfStorageInterface.EntityWriteRequest entityRequest(UUID id, String label) {
+    String entityUri = "https://open-metadata.org/entity/table/" + id;
+    Model model = ModelFactory.createDefaultModel();
+    model
+        .createResource(entityUri)
+        .addProperty(model.createProperty("http://www.w3.org/2000/01/rdf-schema#label"), label);
+    return new RdfStorageInterface.EntityWriteRequest("table", id, model);
+  }
+
+  private static int countOccurrences(String haystack, String needle) {
+    int count = 0;
+    int from = 0;
+    while ((from = haystack.indexOf(needle, from)) >= 0) {
+      count++;
+      from += needle.length();
+    }
+    return count;
   }
 }
