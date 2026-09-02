@@ -178,7 +178,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
   private static final String FAILED_LOGS_MESSAGE = "Failed to retrieve logs: ";
   private static final String K8S_NAMESPACE_DESERIALIZATION_MESSAGE =
-      "Kubernetes namespace {} is reachable but pod status could not be deserialized"
+      "Kubernetes namespace {} is reachable but pod status could not be deserialized "
           + "(client-java models likely lag the cluster's Kubernetes version): {}";
   private static final String K8S_STATUS_DESERIALIZATION_WARNING =
       "Pod/job status details are unavailable because the bundled Kubernetes client could not "
@@ -186,14 +186,14 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String PARTIAL_METADATA_ACCEPT =
       "application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1";
   private static final String JSON_ACCEPT = "application/json";
-  private static final String SELECTOR_POD_LOGS = "metadata.name";
+  private static final String SELECTOR_POD_LOGS = "metadata.name=";
   private static final ObjectMapper POD_SUMMARY_MAPPER = new ObjectMapper();
 
   // Error messages
   private static final String NAMESPACE_NOT_EXISTS_ERROR =
       "Namespace '%s' does not exist. Create it with: kubectl create namespace %s";
   private static final String NAMESPACE_VALIDATION_WARNING =
-      "Could not validate namespace '%s' exists (HTTP %d): %s. Proceeding anyway.";
+      "Could not validate namespace '{}' exists (HTTP {}): {}. Proceeding anyway.";
   private static final String K8S_API_CALL_FAILED = "K8s API call failed: ";
   private static final String FAILED_TO_INITIALIZE_K8S_CLIENT =
       "Failed to initialize Kubernetes client: ";
@@ -208,11 +208,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String K8S_AVAILABLE_FORMAT =
       "Kubernetes pipeline client is available in namespace '%s' with service account '%s'";
   private static final String PIPELINE_MISSING_CONNECTION_WARNING =
-      "Pipeline %s missing OpenMetadataServerConnection - creating default configuration from client config";
+      "Pipeline {} missing OpenMetadataServerConnection - creating default configuration from client config";
   private static final String PIPELINE_MISSING_SECURITY_CONFIG_ERROR =
-      "Pipeline %s has OpenMetadataServerConnection but missing securityConfig. The JWT token and authentication config are required for ingestion to work.";
+      "Pipeline {} has OpenMetadataServerConnection but missing securityConfig. The JWT token and authentication config are required for ingestion to work.";
   private static final String PIPELINE_PROPER_CONNECTION_DEBUG =
-      "Pipeline %s has proper OpenMetadataServerConnection with security config";
+      "Pipeline {} has proper OpenMetadataServerConnection with security config";
   private static final String INGESTION_BOT_NOT_FOUND_ERROR =
       "Ingestion bot not found or bot has no associated user";
   private static final String BOT_USER_NOT_FOUND_ERROR =
@@ -230,7 +230,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String SKIP_CONNECTION_CONFIG_DEBUG =
       "Skipping server connection configuration for unit tests";
   private static final String DEFAULT_CONNECTION_INFO =
-      "Set default OpenMetadataServerConnection for pipeline %s with endpoint %s";
+      "Set default OpenMetadataServerConnection for pipeline {} with endpoint {}";
   private static final String WORKFLOW_CONFIG_BUILD_FAILED =
       "Workflow configuration building failed";
   private static final String WORKFLOW_CONFIG_BUILD_WITH_OVERRIDES_FAILED =
@@ -1126,25 +1126,28 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .orElse(null);
   }
 
-  private String readPodLogsWithContainerFallback(String podName) throws ApiException {
+  private String readPodLogsWithContainerFallback(String podName, String containerName)
+      throws ApiException {
+    String primaryContainer = containerName != null ? containerName : CONTAINER_MAIN;
     try {
       return coreApi
           .readNamespacedPodLog(podName, k8sConfig.getNamespace())
-          .container(CONTAINER_MAIN)
+          .container(primaryContainer)
           .execute();
     } catch (ApiException e) {
       if (e.getCode() == 400) {
         LOG.debug(
             "Pod {} has no '{}' container, retrying without explicit container name",
             podName,
-            CONTAINER_MAIN);
+            primaryContainer);
         return coreApi.readNamespacedPodLog(podName, k8sConfig.getNamespace()).execute();
       }
       throw e;
     }
   }
 
-  private String fetchPodMetadataRaw(String labelSelector, String acceptHeader) throws IOException {
+  private String fetchPodMetadataRaw(
+      String selectorParam, String selectorValue, String acceptHeader) throws IOException {
     ApiClient apiClient = coreApi.getApiClient();
     HttpUrl url =
         HttpUrl.parse(
@@ -1153,7 +1156,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     + k8sConfig.getNamespace()
                     + "/pods")
             .newBuilder()
-            .addQueryParameter("labelSelector", labelSelector)
+            .addQueryParameter(selectorParam, selectorValue)
             .build();
 
     Request request = new Request.Builder().url(url).get().header("Accept", acceptHeader).build();
@@ -1179,7 +1182,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
       try {
         pods =
             parsePodSummaries(
-                fetchPodMetadataRaw(buildLabelSelector(labelSelectorMap), PARTIAL_METADATA_ACCEPT));
+                fetchPodMetadataRaw(
+                    "labelSelector",
+                    buildLabelSelector(labelSelectorMap),
+                    PARTIAL_METADATA_ACCEPT));
       } catch (IOException e) {
         LOG.error("Failed to fetch/parse pod metadata for pipeline {}", pipelineName, e);
         return Map.of(
@@ -1201,19 +1207,25 @@ public class K8sPipelineClient extends PipelineServiceClient {
       }
 
       String podName = latestPod.name();
+      String containerName = null;
       // Attempt to provide container name as did the original code on top of pod name, fallback to
       // only pod name if there is an error
       try {
-        String podRawJson = fetchPodMetadataRaw(SELECTOR_POD_LOGS, JSON_ACCEPT);
-        JsonNode pod = POD_SUMMARY_MAPPER.readTree(podRawJson).path("items").get(0);
-        String containerName = selectContainerName(pod);
-        LOG.debug("Retrieving logs from pod: {} container: {}", podName, containerName);
+        String podRawJson =
+            fetchPodMetadataRaw("fieldSelector", SELECTOR_POD_LOGS + podName, JSON_ACCEPT);
+        JsonNode items = POD_SUMMARY_MAPPER.readTree(podRawJson).path("items");
+        if (items.isArray() && !items.isEmpty()) {
+          containerName = selectContainerName(items.get(0));
+          LOG.debug("Retrieving logs from pod: {} container: {}", podName, containerName);
+        } else {
+          LOG.debug("Pod {} not found on fieldSelector lookup, using default container", podName);
+        }
       } catch (IOException e) {
         // Non-fatal error, reduce log info exposed to the user
-        LOG.debug("Retrieving logs from pod: {}", podName);
+        LOG.debug("Error retrieving logs from pod {}, using default container", podName);
       }
 
-      String logs = readPodLogsWithContainerFallback(podName);
+      String logs = readPodLogsWithContainerFallback(podName, containerName);
 
       if (logs == null || logs.isEmpty()) {
         LOG.debug("No logs available for pod: {}", podName);
@@ -1245,12 +1257,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
     for (JsonNode container : containers) {
       if (CONTAINER_MAIN.equals(container.path("name").asText())) {
         return CONTAINER_MAIN;
-      }
-    }
-
-    for (JsonNode container : containers) {
-      if (CONTAINER_INGESTION.equals(container.path("name").asText())) {
-        return CONTAINER_INGESTION;
       }
     }
 
