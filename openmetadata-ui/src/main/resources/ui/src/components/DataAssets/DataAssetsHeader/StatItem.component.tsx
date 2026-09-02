@@ -29,7 +29,7 @@ export const StatItem = ({
   isActive,
   srLabel,
 }: StatItemProps) => {
-  const isDisabled = disabled || loading || !onClick;
+  const isDisabled = disabled || loading;
   const labelClassName = classNames(
     'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
     isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
@@ -55,17 +55,26 @@ export const StatItem = ({
     </>
   );
 
+  const interactive = onClick ? (
+    <button
+      aria-busy={loading || undefined}
+      aria-label={srLabel ?? tooltip}
+      className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
+      data-testid={testId}
+      disabled={isDisabled}
+      type="button"
+      onClick={onClick}>
+      <span className={labelClassName}>{label}</span>
+    </button>
+  ) : (
+    <span className={labelClassName} data-testid={testId}>
+      {label}
+    </span>
+  );
+
   return (
     <Tooltip placement="top" title={tooltip}>
-      <TooltipTrigger
-        aria-busy={loading || undefined}
-        aria-label={srLabel ?? tooltip}
-        className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
-        data-testid={testId}
-        isDisabled={isDisabled}
-        onPress={onClick}>
-        <span className={labelClassName}>{label}</span>
-      </TooltipTrigger>
+      <TooltipTrigger>{interactive}</TooltipTrigger>
     </Tooltip>
   );
 };
