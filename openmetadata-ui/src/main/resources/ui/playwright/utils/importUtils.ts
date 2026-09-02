@@ -609,16 +609,12 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  // Restore focus to the rdg grid container before pressing Enter. The
-  // previous owner picker (FocusTrap-based) unmount can leave browser focus on
-  // document.body, causing Enter to be ignored by rdg. Focusing the grid
-  // container (tabindex=0) is sufficient — rdg uses its internally-tracked
-  // selected cell (set by selectActiveRowCellByColumn) when Enter fires.
-  await page
-    .locator('.om-rdg .rdg')
-    .focus({ timeout: 2000 })
-    .catch(() => undefined);
-  await page.keyboard.press('Enter', { delay: 100 });
+  // Press Enter directly on the aria-selected cell. locator.press() focuses the
+  // element at the CDP level before dispatching the key — this is atomic and
+  // bypasses Ant Design FocusTrap's restoreFocus(), which may fire
+  // asynchronously after selectActiveRowCellByColumn and move browser focus
+  // away from the grid before page.keyboard.press() could run.
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter');
 
   const tagSelectorInput = page
     .locator('[data-testid="tag-selector"] input')
