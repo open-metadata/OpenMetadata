@@ -64,6 +64,15 @@ on:
         required: false
         type: boolean
         default: true
+      retries:
+        description: >-
+          Playwright per-test retry count, exported to playwright.config.ts as
+          PLAYWRIGHT_RETRIES on the shard test step only (the fixture populator
+          and bundle-smoke keep the config default). The default matches the
+          config's CI default of 1; release-branch nightlies raise it to 2.
+        required: false
+        type: number
+        default: 1
       send_slack_notification:
         description: Post a Slack summary once the run finishes.
         required: false
@@ -429,9 +438,10 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Cache Maven Dependencies
+      - name: Restore Maven Dependencies
+        id: maven-cache
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -469,6 +479,21 @@ jobs:
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
         run: mvn -DskipTests clean package -pl openmetadata-dist -am
 
+      - name: Save Maven Dependencies
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # The restore above stays ungated so forks are not forced into a cold
+        # ~/.m2 download; only the write into main's cache scope is blocked.
+        if: >-
+          steps.distribution-cache.outputs.usable != 'true' &&
+          steps.maven-cache.outputs.cache-hit != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+
       - name: Package OpenMetadata distribution cache entry
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         run: |
@@ -482,7 +507,12 @@ jobs:
             "$BUILD_TOOLCHAIN"
 
       - name: Save OpenMetadata distribution cache
-        if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # Restores stay unconditional: reading main's cache into a fork job is harmless.
+        if: >-
+          steps.distribution-cache.outputs.usable != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -633,15 +663,16 @@ jobs:
             sleep $((attempt * 15))
           done
 
-      # These two steps SEED the run-scoped browser cache for the 30+ shard
+      # These three steps SEED the run-scoped browser cache for the 30+ shard
       # jobs downstream: the plan job finishes before any shard starts, so
       # on a yarn.lock change the new browser-cache key is populated exactly
       # once here instead of every shard downloading ~250 MB of Chromium in
       # parallel. `--list` itself never launches a browser, so a seeding
       # failure must not fail planning — shards self-install as a fallback.
-      - name: Seed Playwright browser cache
+      - name: Restore Playwright browser cache
+        id: seed-browser-cache
         continue-on-error: true
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -650,6 +681,20 @@ jobs:
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: npx playwright install chromium
+
+      - name: Seed Playwright browser cache
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # The restore above stays ungated: on a fork PR the shards fall back to
+        # the main-scoped entry saved by populate-playwright-apt-cache.yml.
+        if: >-
+          steps.seed-browser-cache.outputs.cache-hit != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
       - name: Download recent full-suite timings
         continue-on-error: true
@@ -695,6 +740,7 @@ jobs:
             --project=GlobalSettings \
             --project=SystemCertificationTags \
             --project=IntakeForm \
+            --project=AdvancedSearch \
             --project=search-nightly \
             > "$RUNNER_TEMP/playwright-test-list.json"
 
@@ -1111,8 +1157,12 @@ jobs:
             "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
             "${{ needs.cache-keys.outputs.ingestion }}"
 
+      # Fork PRs under pull_request_target skip both saves — actions/cache-poisoning.
       - name: Save golden fixture cache
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        if: >-
+          needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -1120,7 +1170,11 @@ jobs:
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
       - name: Save ingestion image cache
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
+        if: >-
+          needs.plan-playwright.outputs.requires_airflow == 'true' &&
+          needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -1481,6 +1535,7 @@ jobs:
           PW_SHARD_ID: ${{ matrix.shardId }}
           PW_SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
           PW_WORKERS: ${{ matrix.workers }}
+          PLAYWRIGHT_RETRIES: ${{ inputs.retries }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}

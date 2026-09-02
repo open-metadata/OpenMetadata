@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os  # noqa: F401
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -351,7 +351,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
             return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
-    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:  # noqa: UP045
+    def _read(self, *, key: str, bucket_name: str, file_size: int | None = None, **__) -> DatalakeColumnWrapper:
         self._file_size = file_size
         return self._read_parquet_dispatch(self.config_source, key=key, bucket_name=bucket_name)
 

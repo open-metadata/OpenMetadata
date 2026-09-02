@@ -182,7 +182,7 @@ export const expectCapturedDownload = async (page: Page, fileName: string) => {
   expect(download.href.startsWith('blob:')).toBe(true);
 };
 
-export const DASHBOARD_URL = '/context-center/dashboard';
+export const DASHBOARD_URL = '/context-center/overview';
 export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
@@ -800,6 +800,7 @@ export const scrollHierarchyToNode = async (
 
       if (lastNode === previousLastNode) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;
@@ -908,6 +909,7 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
       if (lastCard === previousLastCard) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;

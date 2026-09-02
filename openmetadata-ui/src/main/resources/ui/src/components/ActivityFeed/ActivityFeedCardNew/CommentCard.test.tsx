@@ -14,10 +14,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+  Conversation,
+  ConversationReply,
+  ConversationSource,
+} from '../../../generated/entity/feed/conversation';
 import CommentCard from './CommentCard.component';
 
 const mockUpdateFeed = jest.fn();
@@ -72,7 +72,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
         onChange={(e) => onTextChange(e.target.value)}
       />
       <button
-        data-testid="save-button"
+        data-testid="send-button"
         onClick={() => onSave('edited message')}>
         Save
       </button>
@@ -98,39 +98,48 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
   },
 }));
 
-const createMockPost = (from: string, message: string): Post => ({
-  id: 'post-123',
+const createMockReply = (
+  author: string,
+  message: string
+): ConversationReply => ({
+  id: 'reply-123',
+  conversationId: 'conversation-123',
   message,
-  postTs: 1234567890,
-  from,
+  createdAt: 1234567890,
+  updatedAt: 1234567890,
+  author: { id: 'user-1', type: 'user', name: author },
 });
 
-const createMockFeed = (): Thread => ({
-  id: 'thread-123',
+const createMockConversation = (): Conversation => ({
+  id: 'conversation-123',
   href: 'http://test',
-  threadTs: 1234567890,
+  createdAt: 1234567890,
   about: '<#E::table::test>',
-  createdBy: 'testuser',
+  createdBy: { id: 'user-1', type: 'user', name: 'testuser' },
+  entityRef: { id: 'entity-1', type: 'table', name: 'test' },
   updatedAt: 1234567890,
   updatedBy: 'testuser',
-  type: ThreadType.Conversation,
+  source: ConversationSource.User,
   message: 'Test thread message',
-  postsCount: 1,
-  posts: [],
+  replyCount: 1,
+  replies: [],
   reactions: [],
+  resolved: false,
 });
 
 const renderCommentCard = (
   props?: Partial<{
-    feed: Thread;
-    post: Post;
+    conversation: Conversation;
+    conversationId: string;
+    reply: ConversationReply;
     isLastReply: boolean;
     closeFeedEditor: () => void;
   }>
 ) => {
   const defaultProps = {
-    feed: createMockFeed(),
-    post: createMockPost('testuser', 'Test comment message'),
+    conversation: createMockConversation(),
+    conversationId: 'conversation-123',
+    reply: createMockReply('testuser', 'Test comment message'),
     isLastReply: false,
     closeFeedEditor: jest.fn(),
   };
@@ -268,7 +277,7 @@ describe('CommentCard', () => {
         target: { value: 'updated message' },
       });
 
-      fireEvent.click(screen.getByTestId('save-button'));
+      fireEvent.click(screen.getByTestId('send-button'));
 
       await waitFor(() => {
         expect(mockUpdateFeed).toHaveBeenCalled();
@@ -291,7 +300,7 @@ describe('CommentCard', () => {
         expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('save-button'));
+      fireEvent.click(screen.getByTestId('send-button'));
 
       await waitFor(() => {
         expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();

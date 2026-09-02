@@ -14,6 +14,7 @@
 export enum CSMode {
   JAVASCRIPT = 'javascript',
   SQL = 'sql',
+  SPARQL = 'application/sparql-query',
   PYTHON = 'python',
   CLIKE = 'clike',
   YAML = 'yaml',

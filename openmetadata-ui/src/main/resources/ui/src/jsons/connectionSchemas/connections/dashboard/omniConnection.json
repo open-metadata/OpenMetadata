@@ -1,0 +1,217 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmniConnection",
+  "description": "Omni BI connector: models, topics, workbooks/dashboards and lineage",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.OmniConnection",
+  "definitions": {
+    "omniType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Omni"
+      ],
+      "default": "Omni"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Omni",
+      "type": "string",
+      "enum": [
+        "Omni"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added automatically.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://your-org.omniapp.co"
+    },
+    "token": {
+      "title": "API Token",
+      "description": "API token to authenticate with Omni.",
+      "type": "string",
+      "format": "password"
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "title": "Default Dashboard Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chartFilterPattern": {
+      "description": "Regex to exclude or include charts that matches the pattern.",
+      "title": "Default Chart Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex to exclude or include data models (Omni topics) that matches the pattern.",
+      "title": "Default Data Model Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "title": "Default Project Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "verifySSL": {
+      "default": "no-ssl",
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "Client SSL configuration",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "token"
+  ]
+}

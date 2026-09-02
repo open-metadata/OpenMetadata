@@ -55,6 +55,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   displayName,
   entityType,
   canDelete,
+  canRestore,
   entityId,
   isAsyncDelete = false,
   isRecursiveDelete,
@@ -132,8 +133,10 @@ const ManageButton: FC<ManageButtonProps> = ({
   const handleRestore = async () => {
     try {
       setIsEntityRestoring(true);
-      onRestoreEntity && (await onRestoreEntity());
-      setShowReactiveModal(false);
+      const isRestoreSuccessful = await onRestoreEntity?.();
+      if (isRestoreSuccessful === true) {
+        setShowReactiveModal(false);
+      }
     } finally {
       setIsEntityRestoring(false);
     }
@@ -175,7 +178,7 @@ const ManageButton: FC<ManageButtonProps> = ({
       ? ([
           {
             label: (
-              <Tooltip title={canDelete ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+              <Tooltip title={canRestore ? '' : t(NO_PERMISSION_FOR_ACTION)}>
                 <ManageButtonItemLabel
                   description={t('message.restore-action-description', {
                     entityType,
@@ -187,7 +190,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               </Tooltip>
             ),
             onClick: (e) => {
-              if (canDelete) {
+              if (canRestore) {
                 e.domEvent.stopPropagation();
                 setIsDropdownOpen(false);
                 setShowReactiveModal(true);
