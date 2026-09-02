@@ -276,7 +276,7 @@ describe('Test Glossary-details component', () => {
     // fetchChildrenCount pages through offset/hasMore beyond a single 1000
     // response, mirroring fetchAllTerms's own "load more" — covered by its
     // own tests in GlossaryTermUtils.test.tsx.
-    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts paging.total when termsSearchTerm is set', async () => {
+    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
         termsStatusFilter: 'Approved,Draft,In Review',
@@ -284,6 +284,8 @@ describe('Test Glossary-details component', () => {
       } as never);
       mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
         data: [{ id: 'bridge-term' }],
+        // Deliberately misleading paging.total (the search endpoint's own
+        // pagination heuristic) to prove the count comes from data.length.
         paging: { total: 99 },
       });
 
@@ -301,9 +303,11 @@ describe('Test Glossary-details component', () => {
         entityStatus: 'Approved,Draft,In Review',
       });
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+      // The badge must show 1 (data.length), not 99 (the misleading
+      // paging.total above).
       expect(
         await within(termsTab).findByTestId('filter-count')
-      ).toHaveTextContent('99');
+      ).toHaveTextContent('1');
     });
 
     // The concrete regression this guards: with the old PAGE_SIZE_LARGE

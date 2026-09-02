@@ -169,14 +169,30 @@ export const useGlossaryStore = create<{
       // count matches what the table shows instead of the unfiltered list.
       let count: number;
       if (termsSearchTerm) {
-        const { paging } = await searchGlossaryTermsPaginated({
-          q: termsSearchTerm,
-          glossaryFqn: fqn,
-          limit: AGGREGATE_PAGE_SIZE_LARGE,
-          offset: 0,
-          entityStatus: termsStatusFilter,
-        });
-        count = paging.total ?? 0;
+        // paging.total from the search endpoint is not a real count --
+        // GlossaryTermRepository#searchGlossaryTermsInternal derives it as
+        // offset + results.size() + (hasMore ? 1 : 0), accurate only when
+        // the true total is <= limit + 1. Page through and sum the actual
+        // rows instead, or a term with 1000+ matches silently undercounts.
+        count = 0;
+        let offset = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data } = await searchGlossaryTermsPaginated({
+            q: termsSearchTerm,
+            glossaryFqn: fqn,
+            limit: AGGREGATE_PAGE_SIZE_LARGE,
+            offset,
+            entityStatus: termsStatusFilter,
+          });
+          count += data.length;
+          hasMore = data.length === AGGREGATE_PAGE_SIZE_LARGE;
+          offset += AGGREGATE_PAGE_SIZE_LARGE;
+
+          if (requestSeq !== childrenCountRequestSeqRef[fqn]) {
+            return;
+          }
+        }
       } else {
         const { paging } = await getFirstLevelGlossaryTermsPaginated(
           fqn,

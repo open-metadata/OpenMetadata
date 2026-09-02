@@ -563,13 +563,15 @@ describe('getGlossaryTermDetailPageTabs', () => {
     // table's own PAGE_SIZE_LARGE (50): the badge is a one-shot count with
     // no "load more" to fall back on, so a 50-row cap would silently
     // undercount any term with more than 50 matching children.
-    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts paging.total when termsSearchTerm is set', async () => {
+    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         termsStatusFilter: 'Approved,Draft,In Review',
         termsSearchTerm: 'bridge',
       } as never);
       mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
         data: [{ id: 'bridge-term' }],
+        // Deliberately misleading paging.total (the search endpoint's own
+        // pagination heuristic) to prove the count comes from data.length.
         paging: { total: 99 },
       });
 
@@ -585,7 +587,9 @@ describe('getGlossaryTermDetailPageTabs', () => {
         entityStatus: 'Approved,Draft,In Review',
       });
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
-      expect(mockGetCountBadge).toHaveBeenLastCalledWith(99, '', false);
+      // The badge must show 1 (data.length), not 99 (the misleading
+      // paging.total above).
+      expect(mockGetCountBadge).toHaveBeenLastCalledWith(1, '', false);
     });
 
     // The concrete regression this guards: with the old PAGE_SIZE_LARGE
@@ -604,6 +608,48 @@ describe('getGlossaryTermDetailPageTabs', () => {
       await screen.findByTestId('terms');
 
       expect(mockGetCountBadge).toHaveBeenLastCalledWith(60, '', false);
+    });
+
+    // Real reviewer feedback: fetchAllTerms's own search branch supports
+    // "load more" via offset/hasMore, exactly like the plain listing does —
+    // a single AGGREGATE_PAGE_SIZE_LARGE (1000) request silently truncated
+    // the badge for any term with more than 1000 matching children, the
+    // same category of bug as the earlier 50-row cap above.
+    it('pages through offset/hasMore and sums every page when more than 1000 terms match the search', async () => {
+      useGlossaryStore.setState({ termsSearchTerm: 'bridge' } as never);
+      mockSearchGlossaryTermsPaginated
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 1000 }, (_, i) => ({ id: `term-${i}` })),
+          paging: { total: 1001 },
+        })
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 250 }, (_, i) => ({
+            id: `term-${1000 + i}`,
+          })),
+          paging: { total: 1251 },
+        });
+
+      renderGlossaryTermsTabLabel();
+
+      await waitFor(() => {
+        expect(mockGetCountBadge).toHaveBeenLastCalledWith(1250, '', false);
+      });
+
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenNthCalledWith(1, {
+        q: 'bridge',
+        glossaryFqn: 'Finance.Revenue',
+        limit: 1000,
+        offset: 0,
+        entityStatus: undefined,
+      });
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenNthCalledWith(2, {
+        q: 'bridge',
+        glossaryFqn: 'Finance.Revenue',
+        limit: 1000,
+        offset: 1000,
+        entityStatus: undefined,
+      });
     });
 
     it('switches back to the plain listing API once the search term is cleared', async () => {
