@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -28,7 +30,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Description from '../../components/common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import Table from '../../components/common/Table/Table';
@@ -439,7 +440,32 @@ function ServiceMainTabContent({
                       }
                       loading={isServiceLoading}
                       locale={{
-                        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                        emptyText: (
+                          <div className="tw:relative tw:min-h-42">
+                            {searchValue ? (
+                              <EmptyPlaceholder
+                                description={t(
+                                  'message.check-spelling-or-try-shorter-term'
+                                )}
+                                icon={
+                                  <NoSearch className="tw:text-secondary" />
+                                }
+                                title={t('label.no-matching-result-plural')}
+                                variant="blank"
+                              />
+                            ) : (
+                              <EmptyPlaceholder
+                                icon={
+                                  <Assets className="tw:text-utility-gray-600" />
+                                }
+                                title={t('message.no-entity-data-available', {
+                                  entity: getCountLabel(serviceCategory),
+                                })}
+                                variant="blank"
+                              />
+                            )}
+                          </div>
+                        ),
                       }}
                       pagination={false}
                       rowKey="id"
