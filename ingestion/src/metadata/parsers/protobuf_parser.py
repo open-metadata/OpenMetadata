@@ -207,8 +207,8 @@ class ProtobufParser:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
         finally:
-            if self.config.base_file_path:
-                shutil.rmtree(self.config.base_file_path, ignore_errors=True)
+            shutil.rmtree(self.generated_src_dir, ignore_errors=True)
+            shutil.rmtree(self.proto_interface_dir, ignore_errors=True)
         return None
 
     def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:

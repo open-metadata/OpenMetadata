@@ -214,6 +214,9 @@ def test_parse_uses_only_top_level_message_when_topic_name_does_not_match(tmp_pa
 
 def test_parse_does_not_guess_when_multiple_top_level_messages_do_not_match_topic(tmp_path):
     base_file_path = tmp_path / "protobuf"
+    base_file_path.mkdir()
+    sentinel = base_file_path / "keep.txt"
+    sentinel.write_text("keep", encoding="UTF-8")
     parser = ProtobufParser(
         config=ProtobufParserConfig(
             schema_name="loan_events",
@@ -228,4 +231,6 @@ def test_parse_does_not_guess_when_multiple_top_level_messages_do_not_match_topi
     )
 
     assert parser.parse_protobuf_schema() is None
-    assert not base_file_path.exists()
+    assert sentinel.read_text(encoding="UTF-8") == "keep"
+    assert not (base_file_path / "generated").exists()
+    assert not (base_file_path / "interfaces").exists()
