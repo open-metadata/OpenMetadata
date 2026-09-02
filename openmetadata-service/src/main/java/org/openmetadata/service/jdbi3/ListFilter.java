@@ -16,6 +16,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -85,6 +86,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
     conditions.add(getTierCondition(tableName));
+    conditions.add(getDomainTypeCondition(tableName));
+    conditions.add(getDomainOwnersCondition(tableName));
+    conditions.add(getClassificationTagsCondition(tableName));
+    conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
@@ -881,6 +886,74 @@ public class ListFilter extends Filter<ListFilter> {
     return String.format(
         "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.tagFQN = :tierParam))",
         fqnHashColumn);
+  }
+
+  private String getDomainTypeCondition(String tableName) {
+    String domainType = getQueryParam("domainType");
+    if (nullOrEmpty(domainType)) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams("domainType", domainType);
+    String jsonColumn = nullOrEmpty(tableName) ? "json" : (tableName + ".json");
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.domainType')) IN (%s)", jsonColumn, inCondition);
+    }
+    return String.format("%s->>'domainType' IN (%s)", jsonColumn, inCondition);
+  }
+
+  private String getDomainOwnersCondition(String tableName) {
+    String owners = getQueryParam("owners");
+    if (nullOrEmpty(owners)) {
+      return "";
+    }
+    String hashCsv =
+        Arrays.stream(owners.split(","))
+            .map(String::trim)
+            .filter(name -> !name.isEmpty())
+            .map(ListFilter::hashUserName)
+            .collect(Collectors.joining(","));
+    if (hashCsv.isEmpty()) {
+      return "";
+    }
+    String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+    String inCondition = buildIndexedBindParams("ownerNameHash", hashCsv);
+    return String.format(
+        "(%s IN (SELECT er.toId FROM entity_relationship er "
+            + "INNER JOIN user_entity u ON er.fromId = u.id "
+            + "WHERE er.fromEntity = 'user' AND u.nameHash IN (%s) AND er.relation = %d) "
+            + "OR %s IN (SELECT er.toId FROM entity_relationship er "
+            + "INNER JOIN team_entity t ON er.fromId = t.id "
+            + "WHERE er.fromEntity = 'team' AND t.nameHash IN (%s) AND er.relation = %d))",
+        entityIdColumn,
+        inCondition,
+        Relationship.OWNS.ordinal(),
+        entityIdColumn,
+        inCondition,
+        Relationship.OWNS.ordinal());
+  }
+
+  private String getClassificationTagsCondition(String tableName) {
+    return getTagUsageCondition(
+        tableName, "tags", TagLabel.TagSource.CLASSIFICATION, "classificationTag");
+  }
+
+  private String getGlossaryTermsCondition(String tableName) {
+    return getTagUsageCondition(
+        tableName, "glossaryTerms", TagLabel.TagSource.GLOSSARY, "glossaryTerm");
+  }
+
+  private String getTagUsageCondition(
+      String tableName, String param, TagLabel.TagSource source, String bindPrefix) {
+    String value = getQueryParam(param);
+    if (nullOrEmpty(value)) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams(bindPrefix, value);
+    String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+    return String.format(
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQN IN (%s)))",
+        fqnHashColumn, source.ordinal(), inCondition);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
