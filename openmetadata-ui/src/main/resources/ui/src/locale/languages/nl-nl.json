@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "Er is een fout opgetreden bij het ophalen van domeinen",
     "fetch-pipeline-status-error": "Fout bij het ophalen van de pipelinestatus.",
     "field-ca-certs-description": "Het certificaatpad moet worden toegevoegd in de configuratie. Het moet een lokaal pad zijn in de ingestiecontainer.",
+    "field-cannot-be-highlighted": "Dit veld kan niet worden gemarkeerd. Alleen geanalyseerde tekstvelden ondersteunen markering.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "{{field}}-data zijn niet beschikbaar voor verwijderde entiteiten.",
     "field-insight": "Toon het percentage data-assets met {{field}} per type.",

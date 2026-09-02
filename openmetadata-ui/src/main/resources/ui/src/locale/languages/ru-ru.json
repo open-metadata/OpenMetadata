@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "Произошла ошибка при получении доменов",
     "fetch-pipeline-status-error": "Ошибка при получении статуса пайплайна.",
     "field-ca-certs-description": "Необходимо добавить путь сертификата в конфигурацию. Путь должен быть локальным в контейнере приема.",
+    "field-cannot-be-highlighted": "Это поле нельзя подсветить. Подсветка поддерживается только для анализируемых текстовых полей.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "Данные поля «{{field}}» недоступны для удаленных сущностей.",
     "field-insight": "Отображает процент объектов с заполненным полем «{{field}}»",

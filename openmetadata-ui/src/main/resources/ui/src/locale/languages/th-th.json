@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "เกิดข้อผิดพลาดขณะดึงข้อมูลโดเมน",
     "fetch-pipeline-status-error": "ข้อผิดพลาดขณะดึงสถานะท่อ",
     "field-ca-certs-description": "เส้นทางใบรับรองต้องถูกเพิ่มในค่าตั้งค่า เส้นทางควรอยู่ในเครื่องใน Ingestion Container",
+    "field-cannot-be-highlighted": "ไม่สามารถไฮไลต์ฟิลด์นี้ได้ เฉพาะฟิลด์ข้อความที่ผ่านการวิเคราะห์เท่านั้นที่รองรับการไฮไลต์",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "ข้อมูล {{field}} ไม่สามารถใช้งานได้สำหรับเอนทิตีที่ถูกลบ",
     "field-insight": "แสดงเปอร์เซ็นต์ของสินทรัพย์ข้อมูลที่มี {{field}} แยกตามประเภท",

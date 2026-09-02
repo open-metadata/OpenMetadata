@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "Produciuse un erro ao obter os dominios",
     "fetch-pipeline-status-error": "Erro ao obter o estado do pipeline.",
     "field-ca-certs-description": "A ruta do certificado debe engadirse na configuración. A ruta debe ser local no Contedor de Inxestión.",
+    "field-cannot-be-highlighted": "Este campo non se pode resaltar. Só os campos de texto analizados admiten o resaltado.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "Os datos de {{field}} non están dispoñibles para entidades eliminadas.",
     "field-insight": "Mostrar a porcentaxe de activos de datos con {{field}} por tipo.",

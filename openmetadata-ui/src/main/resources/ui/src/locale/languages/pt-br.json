@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "Ocorreu um erro ao buscar os domínios",
     "fetch-pipeline-status-error": "Erro ao buscar status do pipeline.",
     "field-ca-certs-description": "O caminho do Certificado precisa ser adicionado na configuração. O caminho deve ser local no Contêiner de Ingestão.",
+    "field-cannot-be-highlighted": "Este campo não pode ser destacado. Apenas campos de texto analisados oferecem suporte a destaque.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "Dados de {{field}} não estão disponíveis para entidades excluídas.",
     "field-insight": "Exibir a porcentagem de ativos de dados com {{field}} por tipo.",
