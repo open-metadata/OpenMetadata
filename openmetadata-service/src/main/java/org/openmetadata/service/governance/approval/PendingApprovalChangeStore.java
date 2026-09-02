@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.PendingApprovalChangeDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.PendingApprovalChangeEntry;
 import org.openmetadata.service.jdbi3.CollectionDAO.PendingApprovalChangeRecord;
 
 /**
@@ -48,6 +49,23 @@ public final class PendingApprovalChangeStore {
   public static ChangeDescription get(UUID entityId, String updatedBy) {
     String json = dao().find(entityId, updatedBy);
     return CommonUtil.nullOrEmpty(json) ? null : JsonUtils.readValue(json, ChangeDescription.class);
+  }
+
+  /** A single requester's held change on an entity: who proposed it and the held diff. */
+  public record PendingHold(String requester, ChangeDescription change) {}
+
+  /**
+   * Every requester's held change on an entity, for the read API. Empty when nothing is held. Reads
+   * straight from the hold store, so it works whether or not a governing workflow still exists.
+   */
+  public static List<PendingHold> findAllForEntity(UUID entityId) {
+    List<PendingHold> holds = new ArrayList<>();
+    for (PendingApprovalChangeEntry entry : dao().findAllForEntity(entityId)) {
+      holds.add(
+          new PendingHold(
+              entry.updatedBy(), JsonUtils.readValue(entry.json(), ChangeDescription.class)));
+    }
+    return holds;
   }
 
   /**

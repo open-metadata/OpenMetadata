@@ -52,16 +52,19 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PendingApprovalChange;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
@@ -82,6 +85,8 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore.PendingHold;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -1613,6 +1618,66 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextById(id));
     EntityReference reference = Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
     return renderAiContext(reference.getFullyQualifiedName(), securityContext, format, query);
+  }
+
+  @GET
+  @Path("/{id}/pendingChanges")
+  @Operation(
+      operationId = "listEntityPendingChanges",
+      summary = "List approval-gated changes held on an entity",
+      description =
+          "List the approval-gated changes currently held off an entity, one entry per requester. "
+              + "The entity keeps serving its approved value; these are the proposed changes awaiting "
+              + "a governance workflow to commit or discard them. Optionally filter to a single "
+              + "requester with `user`. Requires view permission on the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pending approval changes held on the entity"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public List<PendingApprovalChange> getPendingChanges(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity id", required = true) @PathParam("id") UUID id,
+      @Parameter(description = "Return only the change proposed by this requester")
+          @QueryParam("user")
+          String user) {
+    ResourceContext<T> resourceContext = getResourceContextById(id);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        resourceContext);
+
+    // Owners and reviewers of the entity (and admins) may see every requester's proposal; any other
+    // caller sees only their own held change. Enforced here so a non-privileged user cannot read
+    // someone else's proposal by passing the `user` query param. Reuse the ResourceContext already
+    // built for authorize() (the same accessors RuleEvaluator uses) instead of re-fetching.
+    String caller = securityContext.getUserPrincipal().getName();
+    SubjectContext subject = SubjectContext.getSubjectContext(caller);
+    boolean seeAll =
+        subject.isAdmin()
+            || subject.isOwner(resourceContext.getOwners())
+            || subject.isReviewer(resourceContext.getEntity().getReviewers());
+
+    List<PendingApprovalChange> changes = new ArrayList<>();
+    if (seeAll && CommonUtil.nullOrEmpty(user)) {
+      for (PendingHold hold : PendingApprovalChangeStore.findAllForEntity(id)) {
+        changes.add(
+            new PendingApprovalChange()
+                .withRequester(hold.requester())
+                .withChangeDescription(hold.change()));
+      }
+    } else {
+      // A privileged caller may filter to one requester via `user`; everyone else is forced to
+      // their own username so the query param cannot be used to read another user's proposal.
+      String requester = seeAll ? user : caller;
+      ChangeDescription held = PendingApprovalChangeStore.get(id, requester);
+      if (held != null) {
+        changes.add(
+            new PendingApprovalChange().withRequester(requester).withChangeDescription(held));
+      }
+    }
+    return changes;
   }
 
   @GET

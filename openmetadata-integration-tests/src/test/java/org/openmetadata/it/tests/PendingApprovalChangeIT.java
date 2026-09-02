@@ -42,6 +42,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.PendingApprovalChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.classification.ClassificationService;
 import org.openmetadata.sdk.services.classification.TagService;
 import org.openmetadata.service.Entity;
@@ -506,6 +508,59 @@ public class PendingApprovalChangeIT {
 
     // Accumulated hold keeps the latest proposed value; approval applies it.
     awaitDescription(glossary.getId(), "second proposal", "latest accumulated value applied");
+  }
+
+  // ---- pending changes read API (GET /v1/pendingChanges) --------------------------------------
+
+  @Test
+  void pendingChangesApi_listsHeldChange(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns);
+    deployHookWorkflow(
+        ns, INCLUDE_DESCRIPTION, EXCLUDE_STATUS, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    patchDescription(glossary.getId(), "proposed via api");
+    awaitHeldAt(glossary.getId(), APPROVED, "held before listing pending changes");
+
+    PendingApprovalChange[] changes = pendingChanges(glossary.getId(), null);
+    assertEquals(1, changes.length);
+    assertEquals("admin", changes[0].getRequester());
+    assertTrue(
+        changes[0].getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(field -> "description".equals(field.getName())),
+        "held change should carry the proposed description field");
+  }
+
+  @Test
+  void pendingChangesApi_filterByUser(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns);
+    deployHookWorkflow(
+        ns, INCLUDE_DESCRIPTION, EXCLUDE_STATUS, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    patchDescription(glossary.getId(), "admin proposal");
+    awaitHeldAt(glossary.getId(), APPROVED, "held before filtering by user");
+
+    assertEquals(1, pendingChanges(glossary.getId(), "admin").length);
+    assertEquals(0, pendingChanges(glossary.getId(), "user-with-no-hold").length);
+  }
+
+  @Test
+  void pendingChangesApi_emptyWhenNothingHeld(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns);
+    deployHookWorkflow(
+        ns, INCLUDE_DESCRIPTION, EXCLUDE_STATUS, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    // No edit was made, so no change is held: the API returns an empty list.
+    assertEquals(0, pendingChanges(glossary.getId(), null).length);
+  }
+
+  private PendingApprovalChange[] pendingChanges(UUID glossaryId, String user) {
+    String path = "/v1/glossaries/" + glossaryId + "/pendingChanges";
+    if (user != null) {
+      path = path + "?user=" + user;
+    }
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.GET, path, null, PendingApprovalChange[].class);
   }
 
   // ---- include / exclude / filter selection ---------------------------------------------------

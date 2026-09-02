@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -1021,6 +1023,10 @@ public class TaskRepository extends EntityRepository<Task> {
     if (!closeTask && !isApprovalTask(task)) {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
+
+    if (!closeTask) {
+      enforceReviewerForApprovalStatusTask(task, securityContext);
+    }
   }
 
   private boolean isApprovalTask(Task task) {
@@ -1028,6 +1034,31 @@ public class TaskRepository extends EntityRepository<Task> {
     return taskType == TaskEntityType.GlossaryApproval
         || taskType == TaskEntityType.RequestApproval
         || taskType == TaskEntityType.DataAccessRequest;
+  }
+
+  /**
+   * Resolving an approval task on a governed entity that is IN_REVIEW drives the reviewer-gated
+   * status transition enforced by {@link EntityRepository.EntityUpdater#checkUpdatedByReviewer}.
+   * Mirror that gate here so a non-reviewer is rejected with 403 up front, instead of resolving the
+   * task and letting the governance workflow instance fail on the status update downstream. The
+   * check no-ops when the entity has no reviewers (preserving the admin/owner approval path) and
+   * when the target is not a governed, in-review entity (so DAR and non-status approvals are
+   * unaffected — their targets return a null entityStatus).
+   */
+  private void enforceReviewerForApprovalStatusTask(Task task, SecurityContext securityContext) {
+    if (task.getAbout() == null || !isApprovalTask(task)) {
+      return;
+    }
+    // Read the governed status without assuming the target supports a "reviewers" field.
+    EntityInterface target = Entity.getEntity(task.getAbout(), "", NON_DELETED);
+    if (target.getEntityStatus() != EntityStatus.IN_REVIEW) {
+      return;
+    }
+    EntityInterface reviewed = Entity.getEntity(task.getAbout(), "reviewers", NON_DELETED);
+    if (!nullOrEmpty(reviewed.getReviewers())) {
+      EntityRepository.EntityUpdater.checkUpdatedByReviewer(
+          reviewed, securityContext.getUserPrincipal().getName());
+    }
   }
 
   private boolean isUserTaskFiler(Task task, SecurityContext securityContext) {

@@ -71,6 +71,7 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
+import PendingChangesNotification from '../../PendingChanges/PendingChangesNotification.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -567,6 +568,11 @@ const GlossaryHeader = ({
             {!isVersionView && createButtons}
 
             <ButtonGroup className="spaced" size="small">
+              <PendingChangesNotification
+                entityFqn={selectedData.fullyQualifiedName ?? ''}
+                entityId={selectedData.id}
+                entityType={entityType as EntityType}
+              />
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}

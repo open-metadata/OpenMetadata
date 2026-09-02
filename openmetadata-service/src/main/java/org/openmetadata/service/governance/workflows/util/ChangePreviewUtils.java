@@ -28,8 +28,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -217,7 +220,8 @@ public final class ChangePreviewUtils {
   public static Object buildProposedChangesPayload(
       EntityInterface entity, Object existingPayload, String updatedBy) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription = pickIncrementalOrFull(entity, updatedBy);
+    ChangeDescription changeDescription =
+        resolveMutuallyExclusiveTags(entity, pickIncrementalOrFull(entity, updatedBy));
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -257,6 +261,44 @@ public final class ChangePreviewUtils {
           e);
       return existingPayload;
     }
+  }
+
+  // Mirror the commit's tag resolution (ResolvePendingChangeImpl.resolveTags) in the reviewer's
+  // preview: a held tag that is mutually exclusive with a currently-approved tag displaces it at
+  // commit, so the task must show the resolved set (the conflicting tag removed) rather than an
+  // impossible union the reviewer would never actually get on approve.
+  private static ChangeDescription resolveMutuallyExclusiveTags(
+      EntityInterface entity, ChangeDescription changeDescription) {
+    ChangeDescription result = changeDescription;
+    if (changeDescription != null && hasTagsChange(changeDescription)) {
+      // Copy first: the source may be the entity's live change description, shared with other
+      // consumers this request, so the preview must resolve on a copy and never mutate it.
+      result =
+          JsonUtils.readValue(JsonUtils.pojoToJson(changeDescription), ChangeDescription.class);
+      Stream.concat(
+              listOrEmpty(result.getFieldsUpdated()).stream(),
+              listOrEmpty(result.getFieldsAdded()).stream())
+          .filter(
+              fieldChange ->
+                  WorkflowTriggerFields.TAGS.value().equals(fieldChange.getName())
+                      && fieldChange.getNewValue() != null)
+          .forEach(
+              fieldChange -> {
+                List<TagLabel> heldTags =
+                    JsonUtils.convertValue(
+                        fieldChange.getNewValue(), new TypeReference<List<TagLabel>>() {});
+                fieldChange.withNewValue(
+                    TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), heldTags));
+              });
+    }
+    return result;
+  }
+
+  private static boolean hasTagsChange(ChangeDescription changeDescription) {
+    return Stream.concat(
+            listOrEmpty(changeDescription.getFieldsUpdated()).stream(),
+            listOrEmpty(changeDescription.getFieldsAdded()).stream())
+        .anyMatch(fieldChange -> WorkflowTriggerFields.TAGS.value().equals(fieldChange.getName()));
   }
 
   /**

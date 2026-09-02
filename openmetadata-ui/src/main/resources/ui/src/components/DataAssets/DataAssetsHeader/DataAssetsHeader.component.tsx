@@ -97,6 +97,7 @@ import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/Announce
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import PendingChangesNotification from '../../PendingChanges/PendingChangesNotification.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -892,6 +893,11 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            <PendingChangesNotification
+              entityFqn={dataAsset.fullyQualifiedName ?? ''}
+              entityId={entityId}
+              entityType={entityType as EntityType}
+            />
             <ManageButton
               isAsyncDelete
               afterDeleteAction={afterDeleteAction}

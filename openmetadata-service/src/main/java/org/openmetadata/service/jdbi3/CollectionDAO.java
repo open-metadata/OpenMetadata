@@ -183,6 +183,15 @@ public interface CollectionDAO
     }
   }
 
+  record PendingApprovalChangeEntry(String updatedBy, String json) {}
+
+  class PendingApprovalChangeEntryMapper implements RowMapper<PendingApprovalChangeEntry> {
+    @Override
+    public PendingApprovalChangeEntry map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new PendingApprovalChangeEntry(rs.getString("updated_by"), rs.getString("json"));
+    }
+  }
+
   interface PendingApprovalChangeDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -262,5 +271,13 @@ public interface CollectionDAO
 
     @SqlUpdate("DELETE FROM pending_approval_change WHERE entity_id = :entityId")
     void deleteAllForEntity(@BindUUID("entityId") UUID entityId);
+
+    // Every requester's held change for an entity, so the read API can list all pending changes on
+    // it (each row is one requester's accumulated hold). Ordered by requester for a stable
+    // response.
+    @SqlQuery(
+        "SELECT updated_by, json FROM pending_approval_change WHERE entity_id = :entityId ORDER BY updated_by")
+    @RegisterRowMapper(PendingApprovalChangeEntryMapper.class)
+    List<PendingApprovalChangeEntry> findAllForEntity(@BindUUID("entityId") UUID entityId);
   }
 }
