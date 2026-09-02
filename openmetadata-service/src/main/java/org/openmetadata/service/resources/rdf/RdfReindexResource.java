@@ -28,10 +28,14 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexFailureDAO.RdfIndexFailureRecord;
+import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 
@@ -43,10 +47,17 @@ import org.openmetadata.service.security.Authorizer;
 public class RdfReindexResource {
   private final CollectionDAO collectionDAO;
   private final Authorizer authorizer;
+  private final Set<String> rdfIndexableEntityTypes;
 
   public RdfReindexResource(Authorizer authorizer) {
-    this.collectionDAO = Entity.getCollectionDAO();
+    this(Entity.getCollectionDAO(), authorizer, getRdfIndexableEntityTypes());
+  }
+
+  RdfReindexResource(
+      CollectionDAO collectionDAO, Authorizer authorizer, Set<String> rdfIndexableEntityTypes) {
+    this.collectionDAO = collectionDAO;
     this.authorizer = authorizer;
+    this.rdfIndexableEntityTypes = Set.copyOf(rdfIndexableEntityTypes);
   }
 
   @GET
@@ -65,7 +76,10 @@ public class RdfReindexResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = RdfReindexFailuresResponse.class)))
+                    schema = @Schema(implementation = RdfReindexFailuresResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "entityType is not an RDF-indexable OpenMetadata entity type")
       })
   public RdfReindexFailuresResponse getFailures(
       @Context SecurityContext securityContext,
@@ -79,7 +93,9 @@ public class RdfReindexResource {
           @QueryParam("limit")
           @DefaultValue("50")
           int limit,
-      @Parameter(description = "Filter by entity type", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Filter by canonical RDF-indexable entity type; blank means no filter",
+              schema = @Schema(type = "string"))
           @QueryParam("entityType")
           String entityType) {
 
@@ -90,18 +106,37 @@ public class RdfReindexResource {
     int totalCount;
     List<RdfIndexFailureRecord> failures;
 
-    // Trim before deciding: a blank or padded value is a client artifact, not a filter,
-    // and passing it through returns a confusingly empty page.
-    String filter = entityType == null ? null : entityType.trim();
-    if (filter != null && !filter.isEmpty()) {
-      totalCount = collectionDAO.rdfIndexFailureDAO().countByEntityType(filter);
-      failures = collectionDAO.rdfIndexFailureDAO().findByEntityType(filter, limit, offset);
+    String validatedEntityType = validateEntityType(entityType);
+    if (validatedEntityType != null) {
+      totalCount = collectionDAO.rdfIndexFailureDAO().countByEntityType(validatedEntityType);
+      failures =
+          collectionDAO.rdfIndexFailureDAO().findByEntityType(validatedEntityType, limit, offset);
     } else {
       totalCount = collectionDAO.rdfIndexFailureDAO().countAll();
       failures = collectionDAO.rdfIndexFailureDAO().findAll(limit, offset);
     }
 
     return new RdfReindexFailuresResponse(failures, totalCount, offset, limit);
+  }
+
+  private String validateEntityType(String requestedEntityType) {
+    String entityType = null;
+    if (requestedEntityType != null && !requestedEntityType.isBlank()) {
+      entityType = requestedEntityType.strip();
+      if (!rdfIndexableEntityTypes.contains(entityType)) {
+        throw new BadRequestException(
+            "Invalid entityType '%s'. Expected an RDF-indexable entity type."
+                .formatted(entityType));
+      }
+    }
+    return entityType;
+  }
+
+  private static Set<String> getRdfIndexableEntityTypes() {
+    return Entity.getEntityList().stream()
+        .filter(entityType -> !Entity.isTimeSeriesEntity(entityType))
+        .filter(entityType -> !RdfExcludedEntities.isExcluded(entityType))
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   @Schema(description = "Response containing paginated RDF reindex failures")

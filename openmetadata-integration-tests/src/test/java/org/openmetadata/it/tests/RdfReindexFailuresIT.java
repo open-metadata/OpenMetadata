@@ -30,12 +30,13 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
 
 /**
  * Contract for {@code GET /v1/rdf/reindex/failures}: the endpoint the RDF app's "View Reindex
  * Failures" drawer reads. Before this endpoint existed the drawer called the search API, so RDF
  * failures were never viewable — these tests pin the envelope shape, the pagination and filter
- * parameters the drawer sends, and the admin-only gate.
+ * parameters the drawer sends, entity-type validation, and the admin-only gate.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -94,13 +95,39 @@ public class RdfReindexFailuresIT {
   }
 
   @Test
-  void listFailures_unknownEntityType_returnsEmptyPage() throws Exception {
+  void listFailures_unknownEntityType_returns400() throws Exception {
     HttpResponse<String> response = get("?entityType=notAnEntityType", adminJwt());
+
+    assertEquals(400, response.statusCode(), response.body());
+    JsonNode body = MAPPER.readTree(response.body());
+    assertTrue(body.get("error").asText().contains("notAnEntityType"), response.body());
+  }
+
+  @Test
+  void listFailures_registeredRdfEntityType_isAcceptedAfterTrimming() throws Exception {
+    HttpResponse<String> response = get("?entityType=%20" + Entity.TABLE + "%20", adminJwt());
+
+    assertEquals(200, response.statusCode(), response.body());
+    assertNotNull(MAPPER.readTree(response.body()).get("data"));
+  }
+
+  @Test
+  void listFailures_registeredTimeSeriesEntityType_returns400() throws Exception {
+    HttpResponse<String> response = get("?entityType=" + Entity.QUERY_COST_RECORD, adminJwt());
+
+    assertEquals(400, response.statusCode(), response.body());
+    JsonNode body = MAPPER.readTree(response.body());
+    assertTrue(body.get("error").asText().contains(Entity.QUERY_COST_RECORD), response.body());
+  }
+
+  @Test
+  void listFailures_blankEntityType_isTreatedAsNoFilter() throws Exception {
+    HttpResponse<String> response = get("?entityType=%20%20%20", adminJwt());
 
     assertEquals(200, response.statusCode(), response.body());
     JsonNode body = MAPPER.readTree(response.body());
-    assertEquals(0, body.get("total").asInt());
-    assertEquals(0, body.get("data").size());
+    assertNotNull(body.get("data"));
+    assertTrue(body.get("total").asInt() >= 0);
   }
 
   @Test

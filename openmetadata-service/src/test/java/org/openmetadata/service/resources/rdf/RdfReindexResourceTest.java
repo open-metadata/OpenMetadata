@@ -17,17 +17,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexFailureDAO;
@@ -48,16 +48,15 @@ class RdfReindexResourceTest {
         id, "job-1", "server-1", entityType, "entity-id", "fqn", "ENTITY_WRITE", "boom", null, 1L);
   }
 
-  /** Builds the resource with the static Entity DAO lookup its constructor performs. */
   private Fixture fixture() {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     RdfIndexFailureDAO failureDAO = mock(RdfIndexFailureDAO.class);
     when(collectionDAO.rdfIndexFailureDAO()).thenReturn(failureDAO);
     Authorizer authorizer = mock(Authorizer.class);
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      return new Fixture(new RdfReindexResource(authorizer), failureDAO, authorizer);
-    }
+    return new Fixture(
+        new RdfReindexResource(collectionDAO, authorizer, Set.of("table", "topic")),
+        failureDAO,
+        authorizer);
   }
 
   @Test
@@ -113,7 +112,7 @@ class RdfReindexResourceTest {
   }
 
   @Test
-  @DisplayName("a blank or padded entityType is not treated as a filter")
+  @DisplayName("a blank entityType is treated as no filter")
   void blankEntityTypeIsNotAFilter() {
     Fixture fixture = fixture();
     when(fixture.failureDAO().countAll()).thenReturn(3);
@@ -139,6 +138,24 @@ class RdfReindexResourceTest {
         fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "  table  ");
 
     assertEquals(1, response.total());
+    verify(fixture.failureDAO()).countByEntityType("table");
+    verify(fixture.failureDAO()).findByEntityType("table", 50, 0);
+  }
+
+  @Test
+  @DisplayName("an unknown entityType is rejected before querying failures")
+  void unknownEntityTypeIsRejected() {
+    Fixture fixture = fixture();
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "notAnEntityType"));
+
+    assertEquals(
+        "Invalid entityType 'notAnEntityType'. Expected an RDF-indexable entity type.",
+        exception.getMessage());
+    verifyNoInteractions(fixture.failureDAO());
   }
 
   @Test
