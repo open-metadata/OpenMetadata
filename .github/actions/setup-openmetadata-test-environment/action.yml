@@ -113,9 +113,25 @@ runs:
     # import undeclared packages. Cache miss = fresh install, always.
     # Skipped in fast-mode / lightweight-ingestion — those consumers restore
     # a pre-seeded fixture and never touch the venv.
+    #
+    # SECURITY: also skipped entirely for fork PRs running under
+    # pull_request_target. That event runs in the base branch's context, so
+    # `actions/cache` writes to main's cache scope, while the checkout
+    # deliberately fetches untrusted fork code. `Generate Models` below then
+    # runs the fork's Makefile and installs the fork's `ingestion` package
+    # into `env` — and the cache key hashes only setup.py / pyproject.toml /
+    # this file, so a fork that leaves those three untouched and injects via
+    # the Makefile or scripts/ produces a poisoned venv under the *same* key
+    # main uses (CodeQL rule `actions/cache-poisoning`). Same guard and same
+    # reasoning as .github/actions/cache-ui-dist. Fork PRs pay a full venv
+    # rebuild; same-repo pull_request, merge_group, push, schedule and
+    # workflow_dispatch runs are unaffected.
     - name: Cache ingestion Python venv
       id: cache-python-venv
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      if: >-
+        ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
+        !(github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository) }}
       uses: actions/cache@v4
       with:
         path: env

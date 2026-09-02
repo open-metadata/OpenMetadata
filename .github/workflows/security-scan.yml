@@ -163,6 +163,8 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     environment: security-scan
+    permissions:
+      contents: read
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       SNYK_ORGANIZATION: ${{ secrets.SNYK_ORGANIZATION_ID }}
@@ -281,6 +283,10 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     environment: security-scan
+    # Slack posting uses SLACK_BOT_TOKEN (a secret, unaffected by this block).
+    # actions: read is only for download-artifact; nothing here needs write.
+    permissions:
+      actions: read
     needs: [vulnerability-scan, security-scan]
     if: always()
     steps:

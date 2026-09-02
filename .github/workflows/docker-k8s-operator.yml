@@ -24,6 +24,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   maven-build:
     runs-on: ubuntu-latest
@@ -59,6 +62,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     name: Release k8s operator with workflow_dispatch event
     runs-on: ubuntu-latest
+    # Overrides the workflow-level `contents: read`: this job runs
+    # `gh release upload`, which needs write.
+    permissions:
+      contents: write
     needs: maven-build
     steps:
       - name: Download application from Artifact
