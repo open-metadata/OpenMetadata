@@ -46,7 +46,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontology/patterns")
-@Tag(name = "Ontology Patterns", description = "Governed Ontology Studio modeling patterns.")
+@Tag(name = "Ontology Patterns", description = "Governed Ontology modeling patterns.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyPatterns", order = 9)

@@ -27,8 +27,8 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
-import org.openmetadata.schema.api.data.OntologyStudioSummary;
+import org.openmetadata.schema.api.data.OntologyDataGraph;
+import org.openmetadata.schema.api.data.OntologySummary;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -36,20 +36,18 @@ import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-class OntologyStudioResourceIT {
+class OntologyResourceIT {
   private static final int TERM_COUNT = 7;
 
   @Test
-  void returnsScopedBoundedStudioSummaryAndData(final TestNamespace namespace) {
+  void returnsScopedBoundedOntologySummaryAndData(final TestNamespace namespace) {
     final Glossary glossary = GlossaryTestFactory.createSimple(namespace);
     final List<GlossaryTerm> terms = createTerms(namespace, glossary);
     final GlossaryTermService service = SdkClients.adminClient().glossaryTerms();
     service.addRelation(terms.getFirst().getId(), terms.get(1).getId(), "relatedTo");
 
-    final OntologyStudioSummary summary =
-        service.studioSummary(glossary.getFullyQualifiedName(), 5, 0);
-    final OntologyStudioDataGraph data =
-        service.studioData(glossary.getFullyQualifiedName(), 12, 0, 4);
+    final OntologySummary summary = service.ontologySummary(glossary.getFullyQualifiedName(), 5, 0);
+    final OntologyDataGraph data = service.ontologyData(glossary.getFullyQualifiedName(), 12, 0, 4);
 
     assertThat(summary.getTotalTerms()).isEqualTo(TERM_COUNT);
     assertThat(summary.getTotalRelations()).isEqualTo(1);
@@ -61,23 +59,23 @@ class OntologyStudioResourceIT {
   }
 
   @Test
-  void rejectsStudioPagesAboveTheServerBounds(final TestNamespace namespace) {
+  void rejectsOntologyPagesAboveTheServerBounds(final TestNamespace namespace) {
     final Glossary glossary = GlossaryTestFactory.createSimple(namespace);
     final GlossaryTermService service = SdkClients.adminClient().glossaryTerms();
 
     assertThrows(
         InvalidRequestException.class,
-        () -> service.studioData(glossary.getFullyQualifiedName(), 13, 0, 4));
+        () -> service.ontologyData(glossary.getFullyQualifiedName(), 13, 0, 4));
     assertThrows(
         InvalidRequestException.class,
-        () -> service.studioSummary(glossary.getFullyQualifiedName(), 21, 0));
+        () -> service.ontologySummary(glossary.getFullyQualifiedName(), 21, 0));
   }
 
   private static List<GlossaryTerm> createTerms(
       final TestNamespace namespace, final Glossary glossary) {
     final List<GlossaryTerm> terms = new ArrayList<>();
     for (int index = 0; index < TERM_COUNT; index++) {
-      terms.add(GlossaryTermTestFactory.createWithName(namespace, glossary, "studio" + index));
+      terms.add(GlossaryTermTestFactory.createWithName(namespace, glossary, "ontology" + index));
     }
     return List.copyOf(terms);
   }
