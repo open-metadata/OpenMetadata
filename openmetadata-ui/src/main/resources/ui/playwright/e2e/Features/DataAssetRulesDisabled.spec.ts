@@ -55,7 +55,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct, assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -400,7 +400,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database description.');
 
         // Verify Owners
@@ -544,7 +544,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database Schema description.');
 
         // Verify Owners
@@ -683,7 +683,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Table description');
 
         // Go to Table Page
@@ -834,6 +834,11 @@ test.describe(
     const productDomain = new Domain();
     const crossDomainDataProduct = new DataProduct([productDomain]);
     const crossTable = new TableClass();
+    // Dedicated fixtures for the "Add Assets" picker test so its precondition
+    // (the Data Product starts with zero assets) is not affected by the
+    // asset-level assignment performed by the first test.
+    const pickerDataProduct = new DataProduct([productDomain]);
+    const pickerTable = new TableClass();
 
     test.beforeAll('Setup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -841,11 +846,26 @@ test.describe(
       await productDomain.create(apiContext);
       await crossDomainDataProduct.create(apiContext);
       await crossTable.create(apiContext);
+      await pickerDataProduct.create(apiContext);
+      await pickerTable.create(apiContext);
+      // The picker table lives in a different domain than the Data Product.
+      await pickerTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
       await afterAction();
     });
 
     test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await pickerTable.delete(apiContext);
+      await pickerDataProduct.delete(apiContext);
       await crossTable.delete(apiContext);
       await crossDomainDataProduct.delete(apiContext);
       await productDomain.delete(apiContext);
@@ -880,6 +900,25 @@ test.describe(
             `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
           )
       ).toBeVisible();
+    });
+
+    // With the rule disabled, the "Add Assets" picker on a Data Product must
+    // surface assets from every domain, not only the Data Product's own domain,
+    // so a cross-domain asset can be added. This mirrors the asset-side fix from
+    // the reverse direction (#32297).
+    test('should list cross-domain assets in the Add Assets picker', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await pickerDataProduct.visitEntityPage(page);
+
+      // pickerTable belongs to assetDomain while pickerDataProduct belongs to
+      // productDomain; the helper fails if the card never appears in the picker.
+      await addAssetsToDataProduct(
+        page,
+        pickerDataProduct.responseData.fullyQualifiedName,
+        [pickerTable]
+      );
     });
   }
 );
