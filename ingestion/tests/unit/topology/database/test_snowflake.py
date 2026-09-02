@@ -806,6 +806,26 @@ class SnowflakeUnitTest(TestCase):
             )
 
 
+def test_schema_tag_query_quotes_account_usage_identifier():
+    source = SnowflakeSource.__new__(SnowflakeSource)
+    source.schema_tags_map = {}
+    source.source_config = MagicMock(includeTags=True)
+    source.service_connection = MagicMock()
+    account_usage = 'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"'
+    source.service_connection.accountUsageSchema = account_usage
+
+    connection = MagicMock()
+    connection.execute.return_value = []
+    source.engine = MagicMock()
+    source.engine.connect.return_value.__enter__.return_value = connection
+
+    source.set_schema_tags_map("TEST_DATABASE")
+
+    statement = str(connection.execute.call_args.args[0])
+    assert 'from "GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --".tag_references' in statement
+    assert account_usage not in statement
+
+
 class TestSnowflakeGetDatabaseNamesRawEagerFetch:
     """
     Option B Part 2 applied to Snowflake: get_database_names_raw must call

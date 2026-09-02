@@ -28,6 +28,9 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     set_session_tag_query,
 )
@@ -68,7 +71,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             end_time=end_time,
             result_limit=limit,
             filters=self.get_filters(),
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
             credit_cost=self.service_connection.creditCost * self.service_connection.creditCost,
             offset=offset,
         )

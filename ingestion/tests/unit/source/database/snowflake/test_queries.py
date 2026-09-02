@@ -19,6 +19,9 @@ from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_qualified_identifier,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     build_get_ddl_query,
     set_session_tag_query,
@@ -70,6 +73,25 @@ def test_identifier_helpers_escape_embedded_double_quotes():
     )
 
 
+@pytest.mark.parametrize(
+    ("identifier", "expected"),
+    [
+        ("SNOWFLAKE.ACCOUNT_USAGE", '"SNOWFLAKE"."ACCOUNT_USAGE"'),
+        ("snowflake.account_usage", "snowflake.account_usage"),
+        (
+            '"CUSTOM.DB"."ACCOUNT.USAGE"',
+            '"CUSTOM.DB"."ACCOUNT.USAGE"',
+        ),
+        (
+            'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"',
+            '"GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --"',
+        ),
+    ],
+)
+def test_quote_qualified_identifier_prepares_each_name_part(identifier, expected):
+    assert quote_qualified_identifier(identifier) == expected
+
+
 def test_get_ddl_query_keeps_object_name_inside_one_string_literal():
     object_name = _qualified_identifier(
         "sales\\archive",
@@ -103,16 +125,18 @@ def test_incremental_view_query_only_passes_actual_bind_parameters():
     connection.execute.return_value = []
     incremental = IncrementalConfig(enabled=True, start_timestamp=123456789)
 
+    account_usage = 'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"'
     get_view_names(
         dialect,
         connection,
         schema="PUBLIC",
         incremental=incremental,
-        account_usage="GOVERNANCE.ACCOUNT_USAGE",
+        account_usage=account_usage,
     )
 
     statement, parameters = connection.execute.call_args.args
-    assert "GOVERNANCE.ACCOUNT_USAGE.tables" in str(statement)
+    assert 'from "GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --".tables' in str(statement)
+    assert account_usage not in str(statement)
     assert parameters == {
         "database": "ANALYTICS",
         "schema": "PUBLIC",

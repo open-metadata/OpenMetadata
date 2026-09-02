@@ -86,6 +86,9 @@ from metadata.ingestion.source.database.snowflake.constants import (
     SNOWFLAKE_TAG_DESCRIPTION,
     TABLE_TYPE_URL_MAP,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -372,7 +375,7 @@ class SnowflakeSource(
                     text(
                         SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
                             database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 ):
@@ -403,7 +406,7 @@ class SnowflakeSource(
                     text(
                         SNOWFLAKE_FETCH_DATABASE_TAGS.format(
                             database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 ):
@@ -631,7 +634,7 @@ class SnowflakeSource(
                         SNOWFLAKE_FETCH_TABLE_TAGS.format(
                             database_name=self.context.get().database,
                             schema_name=schema_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 )
@@ -645,7 +648,7 @@ class SnowflakeSource(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
                                 database_name=f'"{self.context.get().database}"',
                                 schema_name=f'"{self.context.get().database_schema}"',
-                                account_usage=self.service_connection.accountUsageSchema,
+                                account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                             )
                         )
                     )
@@ -987,7 +990,7 @@ class SnowflakeSource(
                         query.format(
                             database_name=self.context.get().database,
                             schema_name=self.context.get().database_schema,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 ):
@@ -1373,7 +1376,7 @@ class SnowflakeSource(
         return self.life_cycle_query.format(
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
         )
 
     def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:

@@ -28,6 +28,15 @@ from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    qualified_identifier as _qualified_identifier,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_identifier as _quote_identifier,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeTable,
     SnowflakeTableList,
@@ -141,16 +150,6 @@ STREAM_QUERY_MAPS = {
         "default": SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
     },
 }
-
-
-def _quote_identifier(identifier: str) -> str:
-    """Quote one Snowflake identifier without interpreting dots as separators."""
-    return dialect.identifier_preparer.quote_identifier(fqn.unquote_name(identifier))
-
-
-def _qualified_identifier(*identifiers: str | None) -> str:
-    """Build a safely quoted Snowflake identifier from individual name parts."""
-    return ".".join(_quote_identifier(identifier) for identifier in identifiers if identifier is not None)
 
 
 def _denormalize_quote_join(*idents):
@@ -273,7 +272,7 @@ def _get_query_parameters(
 
     if incremental and incremental.enabled:
         database, _ = self._current_database_schema(connection)  # pylint: disable=W0212
-        format_parameters["account_usage"] = account_usage or "SNOWFLAKE.ACCOUNT_USAGE"
+        format_parameters["account_usage"] = quote_account_usage_schema(account_usage)
         bind_parameters = {
             **bind_parameters,
             "date": incremental.start_timestamp,
@@ -469,7 +468,12 @@ def _fetch_ddl(connection: Connection, object_type: str, object_name: str) -> st
         if result:
             return result[0]
     except Exception as exc:
-        logger.warning(f"Failed to fetch DDL for {object_type} [{object_name}]: {exc}")
+        logger.warning(
+            "Failed to fetch DDL for %s [%s]: %s",
+            object_type,
+            object_name,
+            exc,
+        )
     finally:
         if cursor is not None:
             cursor.close()
