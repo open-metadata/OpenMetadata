@@ -21,6 +21,7 @@ import {
   getRuleFilterTree,
   getScopedRuleCount,
   isKnowledgeContextRule,
+  isSearchScopedRule,
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
 } from './PersonaAIContextUtils';
@@ -170,6 +171,25 @@ describe('PersonaAIContextUtils', () => {
     expect(definition.rules?.[0].filteredInSearch).toBe(false);
   });
 
+  it('does not treat a knowledge rule as search-scoped even when the flag is set', () => {
+    // The server ignores filteredInSearch on knowledge types, and the API accepts an explicit true
+    // there, so trusting the flag would claim a rule narrows search while the server preloads it.
+    expect(
+      isSearchScopedRule({
+        entityType: EntityType.GLOSSARY_TERM,
+        filteredInSearch: true,
+        name: 'Terms',
+      })
+    ).toBe(false);
+    expect(
+      isSearchScopedRule({
+        entityType: EntityType.TABLE,
+        filteredInSearch: true,
+        name: 'Tables',
+      })
+    ).toBe(true);
+  });
+
   it('counts only the enabled rules that are filtered in search', () => {
     // The backend drops disabled rules from the served scope, so counting them here would tell the
     // admin more of their search is narrowed than actually is.
@@ -183,6 +203,11 @@ describe('PersonaAIContextUtils', () => {
           entityType: EntityType.TABLE,
           filteredInSearch: true,
           name: 'Disabled',
+        },
+        {
+          entityType: EntityType.GLOSSARY_TERM,
+          filteredInSearch: true,
+          name: 'Knowledge',
         },
       ])
     ).toBe(1);
