@@ -209,6 +209,7 @@ public class ColumnCustomPropertiesIT {
 
       Table created = client.tables().create(request);
       Table reloaded = client.tables().get(created.getId().toString(), "columns,extension");
+      assertFalse(nullOrEmpty(reloaded.getColumns()), "reloaded table must contain columns");
       Column leaf = getDeepestColumn(reloaded.getColumns().getFirst());
 
       assertNotNull(leaf.getExtension());
