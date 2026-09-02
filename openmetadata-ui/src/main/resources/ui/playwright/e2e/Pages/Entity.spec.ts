@@ -1380,12 +1380,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
-          // Match both engines: AntD renders rows inside its inner <table>,
-          // TableV2 renders a plain <table> directly.
+          // Match both engines without a positional pick: AntD rows live in
+          // a <table> nested inside .ant-table (excluded here, the wrapper
+          // matches instead); TableV2 renders one plain <table>.
           const childTable = page
-            .locator('table')
-            .filter({ has: taggedRow })
-            .first();
+            .locator('.ant-table, table:not(.ant-table table)')
+            .filter({ has: taggedRow });
           const rows = childTable.locator(`[${rowSelector}]`);
 
           await test.step('Tag a child row', async () => {
