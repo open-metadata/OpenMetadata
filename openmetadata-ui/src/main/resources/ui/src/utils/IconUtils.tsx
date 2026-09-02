@@ -137,23 +137,42 @@ export const ICON_MAP: Record<
 };
 
 /**
+ * An icon whose stroke weight can be overridden — the shape `@untitledui`
+ * icons expose (their own props type is wider, so they need a cast).
+ */
+export type StrokableIcon = ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
+
+/**
  * Creates an icon component with custom stroke width
  * @param IconComponent - The icon component from @untitledui/icons
  * @param strokeWidth - Custom stroke width (default icons use 2)
  * @returns Wrapped icon component with custom stroke width
  */
 export const createIconWithStroke = (
-  IconComponent: ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    style?: React.CSSProperties;
-  }>,
+  IconComponent: StrokableIcon,
   strokeWidth: number
 ) => {
   return (props: { size?: number; style?: React.CSSProperties }) => (
     <IconComponent {...props} strokeWidth={strokeWidth} />
   );
 };
+
+/**
+ * The Ontology Studio glyph, as every nav entry leading there renders it —
+ * classic sidebar and app-mode sub-nav — so the two surfaces cannot drift
+ * apart. Restroked to 1.2, the weight the hand-drawn nav SVGs beside it use:
+ * `@untitledui` icons ship at stroke 2, which at nav size reads noticeably
+ * heavier than the items around it. The page header draws the same glyph
+ * unrestroked, because there it sits reversed-out on a brand-solid badge.
+ */
+export const OntologyStudioIcon = createIconWithStroke(
+  LayersThree01 as StrokableIcon,
+  1.2
+);
 
 /**
  * Get the default icon for an entity type
