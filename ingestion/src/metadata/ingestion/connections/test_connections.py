@@ -23,7 +23,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
-from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
+from metadata.core.connections.test_connection.checks.database import targets_in_scope
+from metadata.core.connections.test_connection.checks.probe import probe_targets
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
@@ -395,12 +396,16 @@ def test_connection_db_schema_sources(
         inspector = inspect(engine_)
         inspector_fn = getattr(inspector, inspector_fn_str)
 
-        scope = ProbeScope(
+        candidates = [
+            schema for schema in inspector.get_schema_names() or [] if schema.lower() not in LEGACY_SYSTEM_SCHEMAS
+        ]
+        targets = targets_in_scope(
+            candidates,
             pinned=service_connection.databaseSchema,
             excluded=getattr(service_connection, "schemaFilterPattern", None),
-            skipped=LEGACY_SYSTEM_SCHEMAS,
         )
-        probe_targets(scope.targets(inspector.get_schema_names() or []), inspector_fn)
+        # A listing that does not raise is an answer, empty or not.
+        probe_targets(targets, lambda schema: inspector_fn(schema) or ())
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
