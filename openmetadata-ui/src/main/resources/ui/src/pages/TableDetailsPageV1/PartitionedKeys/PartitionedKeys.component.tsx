@@ -13,8 +13,8 @@
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import Table from '../../../components/common/Table/Table';
 import { ColumnsType } from '../../../components/common/Table/Table.interface';
+import Table from '../../../components/common/Table/TableV2';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
