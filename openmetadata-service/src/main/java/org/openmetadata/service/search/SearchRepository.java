@@ -2207,7 +2207,6 @@ public class SearchRepository {
       FieldChange field,
       PropagationDescriptor desc,
       EntityInterface entity) {
-    int scriptStart = script.length();
     switch (desc.propagationType()) {
       case ENTITY_REFERENCE_LIST -> {
         if (field.getName().equals(FIELD_FOLLOWERS)) {
@@ -2257,11 +2256,10 @@ public class SearchRepository {
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
-    if (script.length() > scriptStart) {
-      script.append(" ");
-    }
+    script.append(" ");
   }
 
   private void appendDeleteScript(
@@ -2270,7 +2268,6 @@ public class SearchRepository {
       FieldChange field,
       PropagationDescriptor desc,
       EntityInterface entity) {
-    int scriptStart = script.length();
     switch (desc.propagationType()) {
       case ENTITY_REFERENCE_LIST -> {
         if (field.getName().equals(FIELD_FOLLOWERS)) {
@@ -2314,11 +2311,10 @@ public class SearchRepository {
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
-    if (script.length() > scriptStart) {
-      script.append(" ");
-    }
+    script.append(" ");
   }
 
   private void appendUpdateScript(
@@ -2327,7 +2323,6 @@ public class SearchRepository {
       FieldChange field,
       PropagationDescriptor desc,
       EntityInterface entity) {
-    int scriptStart = script.length();
     switch (desc.propagationType()) {
       case ENTITY_REFERENCE_LIST -> {
         if (field.getName().equals(FIELD_FOLLOWERS)) {
@@ -2384,11 +2379,10 @@ public class SearchRepository {
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
-    if (script.length() > scriptStart) {
-      script.append(" ");
-    }
+    script.append(" ");
   }
 
   private List<EntityReference> resolveEntityReferenceList(
