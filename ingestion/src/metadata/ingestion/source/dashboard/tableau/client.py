@@ -14,7 +14,7 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from collections.abc import Iterable
 
 import validators
 from tableauserverclient import (
@@ -95,11 +95,11 @@ class TableauClient:
 
     def __init__(
         self,
-        tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],  # noqa: UP007
+        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth,
         config,
-        verify_ssl: Union[bool, str],  # noqa: UP007
+        verify_ssl: bool | str,
         pagination_limit: int,
-        ssl_manager: Optional[SSLManager] = None,  # noqa: UP045
+        ssl_manager: SSLManager | None = None,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
@@ -108,9 +108,9 @@ class TableauClient:
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.pagination_limit = pagination_limit
-        self.custom_sql_table_queries: Dict[str, List[str]] = {}  # noqa: UP006
-        self.owner_cache: Dict[str, TableauOwner] = {}  # noqa: UP006
-        self.all_projects: List[ProjectItem] = []  # noqa: UP006
+        self.custom_sql_table_queries: dict[str, list[str]] = {}
+        self.owner_cache: dict[str, TableauOwner] = {}
+        self.all_projects: list[ProjectItem] = []
         self.ssl_manager = ssl_manager
 
     def server_info(self):
@@ -123,7 +123,7 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: Optional[str], include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+    def get_tableau_owner(self, owner_id: str | None, include_owners: bool = True) -> TableauOwner | None:
         """
         Get tableau owner with optional include_owners flag
         """
@@ -145,12 +145,12 @@ class TableauClient:
         self,
         views: list[ViewItem],
         include_owners: bool = True,
-    ) -> Optional[Tuple[Optional[int], Optional[List[TableauChart]]]]:  # noqa: UP006, UP045
+    ) -> tuple[int | None, list[TableauChart] | None] | None:
         """
         Fetches workbook charts and dashboard user view count
         """
         view_count = 0
-        charts: Optional[List[TableauChart]] = []  # noqa: UP006, UP045
+        charts: list[TableauChart] | None = []
         for view in views or []:
             try:
                 charts.append(
@@ -179,14 +179,14 @@ class TableauClient:
         """
         try:
             logger.debug("Getting all projects from the tableau server")
-            all_projects: List[ProjectItem] = []  # noqa: UP006
+            all_projects: list[ProjectItem] = []
             for project in Pager(self.tableau_server.projects):
                 all_projects.append(project)  # noqa: PERF402
             self.all_projects = all_projects
         except Exception as e:
             logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
 
-    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:  # noqa: UP045
+    def get_project_parents_by_id(self, project_id: str) -> str | None:
         """
         Get the parents of a project by id
         """
@@ -273,7 +273,7 @@ class TableauClient:
             "Please check if the user has permissions to access the Charts information"
         )
 
-    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+    def test_get_owners(self, include_owners: bool = True) -> TableauOwner | None:
         workbook = self.test_get_workbooks()
         owners = self.get_tableau_owner(workbook.owner_id, include_owners)
         if owners is not None:
@@ -319,7 +319,7 @@ class TableauClient:
             "#enable-the-tableau-metadata-api-for-tableau-server\n"
         )
 
-    def _withheld_source_tables(self, workbook_id: str) -> List[str]:  # noqa: UP006
+    def _withheld_source_tables(self, workbook_id: str) -> list[str]:
         """
         Names of the data sources on a workbook whose upstream tables cannot be resolved.
 
@@ -378,9 +378,7 @@ class TableauClient:
             )
         return True
 
-    def _query_datasources(
-        self, dashboard_id: str, entities_per_page: int, offset: int
-    ) -> Optional[TableauDatasources]:  # noqa: UP045
+    def _query_datasources(self, dashboard_id: str, entities_per_page: int, offset: int) -> TableauDatasources | None:
         """
         Method to query the graphql endpoint to get data sources
         """
@@ -411,7 +409,7 @@ class TableauClient:
             )
         return None
 
-    def get_datasources(self, dashboard_id: str) -> Optional[List[DataSource]]:  # noqa: UP006, UP045
+    def get_datasources(self, dashboard_id: str) -> list[DataSource] | None:
         """
         Paginate and get the list of all data sources of the workbook
         """
@@ -438,7 +436,7 @@ class TableauClient:
             logger.warning("Unable to fetch Data Sources")
         return []
 
-    def get_custom_sql_table_queries(self, datasource_id: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def get_custom_sql_table_queries(self, datasource_id: str) -> list[str] | None:
         """
         Get custom SQL table queries for a specific dashboard/workbook ID
         """

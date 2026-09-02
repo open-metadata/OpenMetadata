@@ -14,9 +14,10 @@ Python API REST wrapper and helpers
 
 import time
 import traceback
+from collections.abc import Callable
 from contextlib import nullcontext
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Union, cast  # noqa: UP035
+from typing import Any, cast
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -67,7 +68,7 @@ class HtmlResponseError(Exception):
     pass a ``hint`` with the advice specific to it.
     """
 
-    def __init__(self, url: object, status_code: int, hint: Optional[str] = None) -> None:  # noqa: UP045
+    def __init__(self, url: object, status_code: int, hint: str | None = None) -> None:
         super().__init__(
             f"Got an HTML page instead of JSON from [{url}] (HTTP {status_code})."
             " The endpoint served a web page, not an API response - check the configured"
@@ -181,32 +182,32 @@ class ClientConfig(ConfigModel):
     """
 
     base_url: str
-    api_version: Optional[str] = "v1"  # noqa: UP045
-    retry: Optional[int] = 3  # noqa: UP045
-    retry_wait: Optional[int] = 30  # noqa: UP045
-    limit_codes: List[int] = [429]  # noqa: RUF012, UP006
-    retry_codes: List[int] = [504]  # noqa: RUF012, UP006
-    auth_token: Optional[Callable] = None  # noqa: UP045
-    access_token: Optional[str] = None  # noqa: UP045
-    expires_in: Optional[int] = None  # noqa: UP045
-    auth_header: Optional[str] = None  # noqa: UP045
-    extra_headers: Optional[dict] = None  # noqa: UP045
-    user_agent: Optional[str] = None  # noqa: UP045
-    raw_data: Optional[bool] = False  # noqa: UP045
-    allow_redirects: Optional[bool] = False  # noqa: UP045
+    api_version: str | None = "v1"
+    retry: int | None = 3
+    retry_wait: int | None = 30
+    limit_codes: list[int] = [429]  # noqa: RUF012
+    retry_codes: list[int] = [504]  # noqa: RUF012
+    auth_token: Callable | None = None
+    access_token: str | None = None
+    expires_in: int | None = None
+    auth_header: str | None = None
+    extra_headers: dict | None = None
+    user_agent: str | None = None
+    raw_data: bool | None = False
+    allow_redirects: bool | None = False
     # Treat an HTML body as an error rather than handing the caller the raw
     # Response. Off by default: connectors share this client against third-party
     # APIs, and some tolerate a non-JSON reply on purpose.
     raise_on_html: bool = False
-    auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
-    verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
-    cookies: Optional[Any] = None  # noqa: UP045
+    auth_token_mode: str | None = "Bearer"
+    verify: bool | str | None = None
+    cookies: Any | None = None
     ttl_cache: int = 60
     # (connect, read) seconds. Default prevents indefinite hangs when a pooled
     # socket is silently severed (NAT/LB idle reaping). Override with None to
     # disable, or pass a single int to use the same value for both.
-    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
-    cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
+    timeout: int | tuple[int, int] | None = (10, 300)
+    cert: str | tuple | None = None
 
 
 # pylint: disable=too-many-instance-attributes
@@ -243,18 +244,18 @@ class REST:
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
-    def _request(  # noqa: C901, pylint: disable=too-many-arguments,too-many-branches
+    def _request(  # noqa: C901
         self,
         method: str,
         path: str,
         data: Any = None,
         json: Any = None,
-        base_url: Optional[URL] = None,  # noqa: UP045
-        api_version: Optional[str] = None,  # noqa: UP045
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        retries: Optional[int] = None,  # noqa: UP045
-        retry_wait: Optional[int] = None,  # noqa: UP045
+        base_url: URL | None = None,
+        api_version: str | None = None,
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
+        retries: int | None = None,
+        retry_wait: int | None = None,
         raw: bool = False,
     ):
         # pylint: disable=too-many-locals
@@ -294,7 +295,7 @@ class REST:
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
         # Any header which is comming as extra header from client will overwrite the header with same name in headers
         if self.config.extra_headers:
-            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
+            extra_headers: dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             headers = {**headers, **extra_headers}
 
@@ -434,9 +435,9 @@ class REST:
         self,
         path: str,
         data: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        retry_wait: Optional[int] = None,  # noqa: UP045
-        retries: Optional[int] = None,  # noqa: UP045
+        headers: dict | None = None,
+        retry_wait: int | None = None,
+        retries: int | None = None,
     ) -> requests.Response:
         """GET returning the raw ``Response`` so the caller can read its status.
 
@@ -456,9 +457,9 @@ class REST:
         path: str,
         data: Any = None,
         json: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        retries: Optional[int] = None,  # noqa: UP045
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
+        retries: int | None = None,
     ):
         """
         POST method
@@ -489,8 +490,8 @@ class REST:
         self,
         path: str,
         data: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
     ) -> bool:
         """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
         if path in self._limits_reached:
@@ -515,7 +516,7 @@ class REST:
             return False
         return 200 <= resp.status_code < 300
 
-    def _build_request_headers(self, headers: Optional[dict] = None):  # noqa: UP045
+    def _build_request_headers(self, headers: dict | None = None):
         """Reader-only headers builder. Does NOT refresh auth token —
         refresh stays on _request() to avoid concurrent refreshes from
         post_best_effort callers sharing ClientConfig."""
@@ -528,7 +529,7 @@ class REST:
                 else self.config.access_token
             )
         if self.config.extra_headers:
-            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
+            extra_headers: dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             headers = {**headers, **extra_headers}
         return headers

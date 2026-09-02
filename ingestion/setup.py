@@ -13,8 +13,6 @@
 Python Dependencies
 """
 
-from typing import Dict, List, Set  # noqa: UP035
-
 from setuptools import setup
 
 # Add here versions required for multiple plugins
@@ -45,8 +43,12 @@ VERSIONS = {
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
-    # pygtrie 2.6 evaluates typing.Self at import time, which breaks Airflow on Python 3.10.
-    "pygtrie": "pygtrie<2.6; python_version < '3.11'",
+    # 2.6.0 annotates with typing.Self (3.11+) but declares no requires-python floor, so
+    # pip/uv installs it on 3.10 and `import pygtrie` raises AttributeError. Airflow pulls
+    # it in unpinned (apache-airflow-core/task-sdk require pygtrie>=2.5.0) and imports it
+    # from airflow._shared.logging.structlog, which breaks `import airflow` on our main CI
+    # interpreter. Drop the cap once pygtrie declares its floor or 3.10 support is dropped.
+    "pygtrie": "pygtrie<2.6",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy>=2,<3",
@@ -203,7 +205,7 @@ base_requirements = {
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {  # noqa: UP006
+plugins: dict[str, set[str]] = {
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
@@ -596,7 +598,7 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
+def filter_requirements(filtered: set[str]) -> list[str]:
     """Filter out requirements from base_requirements"""
     return list(
         base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])

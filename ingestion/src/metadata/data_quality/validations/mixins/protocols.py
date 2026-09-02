@@ -13,7 +13,7 @@
 Protocols used byt he Mixins
 """
 
-from typing import TYPE_CHECKING, List, Protocol, Union, runtime_checkable  # noqa: UP035
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from pandas import DataFrame
@@ -26,5 +26,5 @@ if TYPE_CHECKING:
 class HasValidatorContext(Protocol):
     """Contract: Classes using validaotr Mixings must provide context"""
 
-    runner: "Union[QueryRunner, List[DataFrame]]"  # noqa: UP006, UP007
+    runner: "QueryRunner | list[DataFrame]"
     test_case: "TestCase"

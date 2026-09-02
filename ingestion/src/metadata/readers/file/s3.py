@@ -14,7 +14,7 @@ Read files as string from S3
 """
 
 import traceback
-from typing import Any, Dict, List  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
@@ -25,7 +25,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def return_s3_storage_options(config_source: S3Config) -> Dict[str, Any]:  # noqa: UP006
+def return_s3_storage_options(config_source: S3Config) -> dict[str, Any]:
     """
     Build the S3 storage options to pass to pandas/fsspec readers.
     Returns a dictionary with AWS credentials and client configuration.
@@ -68,7 +68,7 @@ class S3Reader(Reader):
                 logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from S3: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:  # noqa: UP006
+    def _get_tree(self) -> list[str]:
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need
