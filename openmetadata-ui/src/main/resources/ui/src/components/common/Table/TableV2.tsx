@@ -40,43 +40,43 @@
  */
 
 import {
-    Button,
-    Dropdown,
-    EmptyPlaceholder,
-    PaginationCardWithControls,
-    Table as UntitledTable,
-    Typography
+  Button,
+  Dropdown,
+  EmptyPlaceholder,
+  PaginationCardWithControls,
+  Table as UntitledTable,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import type { ComponentProps } from 'react';
 import React, {
-    forwardRef,
-    ReactElement,
-    ReactNode,
-    Ref,
-    RefAttributes,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  forwardRef,
+  ReactElement,
+  ReactNode,
+  Ref,
+  RefAttributes,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import {
-    Button as AriaButton,
-    ColumnResizer,
-    Dialog,
-    DialogTrigger,
-    Popover,
-    ResizableTableContainer
+  Button as AriaButton,
+  ColumnResizer,
+  Dialog,
+  DialogTrigger,
+  Popover,
+  ResizableTableContainer,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
-    getCustomizeColumnDetails,
-    getReorderedColumns
+  getCustomizeColumnDetails,
+  getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -85,28 +85,28 @@ import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
 import type {
-    ColumnsType,
-    ColumnType,
-    FilterValue,
-    SorterResult,
-    TableCurrentDataSource,
-    TablePaginationConfig
+  ColumnsType,
+  ColumnType,
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
 } from './Table.interface';
 import {
-    TableColumnDropdownList,
-    TableComponentProps
+  TableColumnDropdownList,
+  TableComponentProps,
 } from './Table.interface';
 import './table.less';
 import type {
-    AriaSelection,
-    AriaSortDescriptor,
-    FlatRow
+  AriaSelection,
+  AriaSortDescriptor,
+  FlatRow,
 } from './TableV2.interface';
 import {
-    flattenTreeRows,
-    getColumnStickyStyle,
-    resolveCellValue,
-    resolveColumnTitle
+  flattenTreeRows,
+  getColumnStickyStyle,
+  resolveCellValue,
+  resolveColumnTitle,
 } from './TableV2Utils';
 
 /**
@@ -501,40 +501,6 @@ const TableV2 = <T extends object>(
     [controlledFilterState, filterState]
   );
 
-  /**
-   * AntD's `onChange` filter map: every filterable column, keyed by
-   * `key ?? dataIndex`, active columns carrying their keys and inactive ones
-   * `null` — SchemaTable and the other filteredValue call sites read the next
-   * state straight off this argument.
-   */
-  const reportFilterChange = useCallback(
-    (nextState: Record<string, React.Key[]>) => {
-      if (!rest.onChange) {
-        return;
-      }
-      const filters: Record<string, FilterValue | null> = {};
-      (rest.columns ?? []).forEach((col, idx) => {
-        const c = col as ColumnType<T>;
-        if (!c.filters && !c.filterDropdown) {
-          return;
-        }
-        const key = String(c.key ?? c.dataIndex ?? idx);
-        const keys = nextState[key] ?? [];
-        filters[key] = keys.length ? (keys as FilterValue) : null;
-      });
-      rest.onChange(
-        {} as TablePaginationConfig,
-        filters,
-        {} as SorterResult<T>,
-        {
-          currentDataSource: filteredDataSource,
-          action: 'filter',
-        } as TableCurrentDataSource<T>
-      );
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rest.onChange, rest.columns]
-  );
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
   const {
     preferences: { selectedEntityTableColumns },
@@ -584,6 +550,18 @@ const TableV2 = <T extends object>(
     typeof scroll?.x === 'number' || typeof scroll?.x === 'string'
       ? scroll.x
       : undefined;
+
+  /**
+   * AntD's `scroll={{ x: 'max-content' }}` means "size the table by its
+   * content and let the wrapper scroll" — which is auto table layout. Keeping
+   * the forced fixed layout here made Chrome compute the table's max-content
+   * from the header row alone, so a table of pixel columns plus one unsized
+   * one never grew past its headers: the pixel floors held their columns and
+   * the unsized column was crushed to its header's width (to nothing, on a
+   * narrow viewport — the glossary terms table's Description column in the
+   * merge queue). Auto layout sizes it from the rows, exactly as AntD did.
+   */
+  const sizeByContent = scroll?.x === 'max-content';
 
   const scrollStyle = useMemo((): React.CSSProperties => {
     if (!scroll) {
@@ -747,6 +725,40 @@ const TableV2 = <T extends object>(
     columnKeys,
   ]);
 
+  /**
+   * AntD's `onChange` filter map: every filterable column, keyed by
+   * `key ?? dataIndex`, active columns carrying their keys and inactive ones
+   * `null` — SchemaTable and the other filteredValue call sites read the next
+   * state straight off this argument.
+   */
+  const reportFilterChange = useCallback(
+    (nextState: Record<string, React.Key[]>) => {
+      if (!rest.onChange) {
+        return;
+      }
+      const filters: Record<string, FilterValue | null> = {};
+      (rest.columns ?? []).forEach((col, idx) => {
+        const c = col as ColumnType<T>;
+        if (!c.filters && !c.filterDropdown) {
+          return;
+        }
+        const key = String(c.key ?? c.dataIndex ?? idx);
+        const keys = nextState[key] ?? [];
+        filters[key] = keys.length ? (keys as FilterValue) : null;
+      });
+      rest.onChange(
+        {} as TablePaginationConfig,
+        filters,
+        {} as SorterResult<T>,
+        {
+          currentDataSource: filteredDataSource,
+          action: 'filter',
+        } as TableCurrentDataSource<T>
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rest.onChange, rest.columns]
+  );
   const currentPage =
     clientPagination?.controlledCurrent ?? internalCurrentPage;
 
@@ -1320,9 +1332,11 @@ const TableV2 = <T extends object>(
                 // Resizing needs fixed regardless: an auto table re-solves its
                 // own widths and swallows the drag.
                 'tw:table-fixed':
-                  rest.resizableColumns || rest.tableLayout !== 'auto',
+                  rest.resizableColumns ||
+                  (rest.tableLayout !== 'auto' && !sizeByContent),
                 'tw:table-auto':
-                  !rest.resizableColumns && rest.tableLayout === 'auto',
+                  !rest.resizableColumns &&
+                  (rest.tableLayout === 'auto' || sizeByContent),
               })}
               containerStyle={
                 scroll?.y
