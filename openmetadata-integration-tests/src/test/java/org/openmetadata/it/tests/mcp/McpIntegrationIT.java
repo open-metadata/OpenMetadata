@@ -397,6 +397,58 @@ public class McpIntegrationIT extends McpTestBase {
         .isEqualTo(1);
   }
 
+  /**
+   * A pipeline is edge metadata, not a graph node, so the node filter never sees it. Both endpoint
+   * tables are readable here and the edge survives; what must not survive is the denied pipeline's
+   * identity. The relationship itself stays, so the caller still learns a pipeline joins these two.
+   */
+  @Test
+  void lineageRedactsAPipelineTheCallerCannotView() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table root = createServiceDatabaseSchemaTable("mcp_pipe_root_" + suffix);
+    Table upstream = createServiceDatabaseSchemaTable("mcp_pipe_up_" + suffix);
+    // Both tables tagged so both stay visible and the edge is returned; the pipeline is not.
+    tagTable(root.getId().toString(), tagFqn);
+    tagTable(upstream.getId().toString(), tagFqn);
+    String pipelineId = createPipeline(suffix);
+    addLineageEdge(upstream, root, pipelineId);
+    JsonNode pipeline = get("pipelines/" + pipelineId, JsonNode.class);
+    String pipelineFqn = pipeline.get("fullyQualifiedName").asText();
+    String token =
+        createUserDeniedByCondition(
+            suffix, String.format("!matchAnyTag('%s')", tagFqn), List.of("all"));
+
+    Map<String, Object> call =
+        McpTestUtils.createGetLineageToolCall(Entity.TABLE, root.getFullyQualifiedName(), 1, 1);
+
+    // Control: admin sees the pipeline, proving it is really on the edge.
+    assertThat(executeMcpRequest(call).toString())
+        .as("admin must see the pipeline that joins the two tables")
+        .contains(pipelineFqn);
+
+    // Control: the policy must genuinely deny the pipeline, or the assertions below prove nothing.
+    assertThat(
+            executeMcpRequest(
+                    McpTestUtils.createGetEntityToolCall(Entity.PIPELINE, pipelineFqn), token)
+                .toString())
+        .as("the restricted caller must not be able to read the pipeline directly")
+        .contains("Authorization error");
+
+    String restricted = executeMcpRequest(call, token).toString();
+    assertThat(restricted)
+        .as("both tables are tagged, so the edge itself must be returned")
+        .contains(root.getFullyQualifiedName())
+        .contains(upstream.getFullyQualifiedName());
+    assertThat(restricted)
+        .as("the denied pipeline must not be named")
+        .doesNotContain(pipelineFqn)
+        .doesNotContain("mcppipe_" + suffix);
+    assertThat(restricted)
+        .as("but the relationship must still say a pipeline connects them")
+        .contains("\"relationshipType\":\"pipeline\"");
+  }
+
   private void assertLineageDenied(Table table, String token) throws Exception {
     String lineage =
         executeMcpRequest(
@@ -426,13 +478,41 @@ public class McpIntegrationIT extends McpTestBase {
    * Class)} (which parses the body) or {@code putText} (which sends text/plain).
    */
   private void addLineageEdge(Table from, Table to) throws Exception {
-    String body =
-        OBJECT_MAPPER.writeValueAsString(
+    addLineageEdge(from, to, null);
+  }
+
+  private String createPipeline(String suffix) throws Exception {
+    String prefix = "mcppipe_" + suffix;
+    JsonNode service =
+        post(
+            "services/pipelineServices",
             Map.of(
-                "edge",
-                Map.of(
-                    "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
-                    "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE))));
+                "name",
+                prefix + "_svc",
+                "serviceType",
+                "Airflow",
+                "connection",
+                Map.of("config", Map.of("type", "Airflow", "hostPort", "http://localhost:8080"))),
+            JsonNode.class);
+    JsonNode pipeline =
+        post(
+            "pipelines",
+            Map.of("name", prefix, "service", service.get("fullyQualifiedName").asText()),
+            JsonNode.class);
+    return pipeline.get("id").asText();
+  }
+
+  private void addLineageEdge(Table from, Table to, String pipelineId) throws Exception {
+    Map<String, Object> edge =
+        new java.util.HashMap<>(
+            Map.of(
+                "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
+                "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE)));
+    if (pipelineId != null) {
+      edge.put(
+          "lineageDetails", Map.of("pipeline", Map.of("id", pipelineId, "type", Entity.PIPELINE)));
+    }
+    String body = OBJECT_MAPPER.writeValueAsString(Map.of("edge", edge));
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(TestSuiteBootstrap.getBaseUrl() + "/api/v1/lineage"))
@@ -477,6 +557,11 @@ public class McpIntegrationIT extends McpTestBase {
    * denies everything else, and an unresolved ResourceContext gets the wrong answer for both.
    */
   private String createUserDeniedByCondition(String suffix, String condition) throws Exception {
+    return createUserDeniedByCondition(suffix, condition, List.of("table"));
+  }
+
+  private String createUserDeniedByCondition(
+      String suffix, String condition, List<String> resources) throws Exception {
     String prefix = "mcpauthz_" + suffix;
     JsonNode policy =
         post(
@@ -490,7 +575,7 @@ public class McpIntegrationIT extends McpTestBase {
                         "name",
                         prefix + "_rule",
                         "resources",
-                        List.of("table"),
+                        resources,
                         "operations",
                         List.of("ViewAll"),
                         "effect",

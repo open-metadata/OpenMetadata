@@ -158,11 +158,13 @@ public class GetLineageTool implements McpTool {
       return pipeline -> true;
     }
     Map<UUID, Boolean> decisions = new HashMap<>();
+    // No pipeline at all is nothing to hide. A pipeline we cannot identify is one we cannot
+    // authorize, so it is withheld rather than waved through.
     return pipeline ->
         pipeline == null
-            || pipeline.getId() == null
-            || decisions.computeIfAbsent(
-                pipeline.getId(), id -> filter.canView(securityContext, pipeline));
+            || (pipeline.getId() != null
+                && decisions.computeIfAbsent(
+                    pipeline.getId(), id -> filter.canView(securityContext, pipeline)));
   }
 
   /**
