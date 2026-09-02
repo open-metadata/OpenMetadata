@@ -713,8 +713,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
 
-      // Cascade search writes must run after this transaction commits. Rebuilding child term
-      // documents here would re-read the old committed rows and leave their glossary denorm stale.
+      // Reordered to run after every DB write and after the phase-2 evict. @Transaction on
+      // EntityRepository is inert on this branch (JDBI SqlObject annotation on a plain class),
+      // so each DAO call autocommits; this is an ordering fix, not a commit hook. Matches the
+      // ordering main gets from its post-commit DeferralScope.
       deferReactOperation(() -> updateAssetIndexes(original, updated));
     }
 

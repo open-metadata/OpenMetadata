@@ -252,6 +252,7 @@ import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -8191,6 +8192,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
               EntityRepository.this.entityType,
               updated != null ? updated.getId() : null,
               e);
+          // A failed cascade is recoverable from the committed rows, so hand it to the durable
+          // outbox instead of leaving the search index silently stale.
+          SearchIndexRetryQueue.enqueue(
+              updated != null && updated.getId() != null ? updated.getId().toString() : null,
+              updated != null ? updated.getFullyQualifiedName() : null,
+              EntityRepository.this.entityType,
+              "Deferred react operation failed: " + e.getMessage());
         }
       }
     }

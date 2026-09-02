@@ -2280,7 +2280,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       if (parentChanged || glossaryChanged || nameChanged) {
         invalidateTerm(updated.getId());
-        updateAssetIndexes(oldFqn, newFqn);
+        // Reordered to run after every DB write and after the phase-2 evict below, matching the
+        // ordering main gets from its post-commit DeferralScope.
+        deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
       }
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
@@ -2342,7 +2344,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(updated.getId());
       }
-      updateAssetIndexes(oldFqn, newFqn);
+      // Reordered to run after every DB write and after the phase-2 evict below, matching the
+      // ordering main gets from its post-commit DeferralScope.
+      deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 

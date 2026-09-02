@@ -1377,7 +1377,10 @@ public class ContainerRepository extends EntityRepository<Container> {
       recordChange(
           FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
 
-      // The index rewrite must see the committed descendant FQNs.
+      // Reordered to run after every DB write and after the phase-2 evict. @Transaction on
+      // EntityRepository is inert on this branch (JDBI SqlObject annotation on a plain class),
+      // so each DAO call autocommits; this is an ordering fix, not a commit hook. Matches the
+      // ordering main gets from its post-commit DeferralScope.
       deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
       finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
     }

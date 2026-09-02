@@ -353,7 +353,10 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
 
       updateEntityLinks(oldFqn, newFqn, updated);
-      // The index rewrite reads the renamed rows, so schedule it after this transaction commits.
+      // Reordered to run after every DB write and after the phase-2 evict. @Transaction on
+      // EntityRepository is inert on this branch (JDBI SqlObject annotation on a plain class),
+      // so each DAO call autocommits; this is an ordering fix, not a commit hook. Matches the
+      // ordering main gets from its post-commit DeferralScope.
       deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
 
       PolicyConditionUpdater.updateAllPolicyConditions(
