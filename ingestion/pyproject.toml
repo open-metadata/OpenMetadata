@@ -358,4 +358,3 @@ allowedUntypedLibraries = []
 # [[tool.basedpyright.executionEnvironments]]
 # root = "src/metadata/utils"
 # reportMissingParameterType = "error"
-
