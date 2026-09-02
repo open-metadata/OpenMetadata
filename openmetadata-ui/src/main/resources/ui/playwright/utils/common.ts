@@ -1775,3 +1775,16 @@ export const testTableSearch = async (
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };
+
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator,
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
+};
