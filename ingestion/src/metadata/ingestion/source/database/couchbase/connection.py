@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 from metadata.core.connections.test_connection import ErrorPack, Evidence, Matchers, check, when
 from metadata.core.connections.test_connection.check import CheckError
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
-from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
+from metadata.core.connections.test_connection.checks.database import DatabaseStep, targets_in_scope
+from metadata.core.connections.test_connection.checks.probe import probe_targets
 from metadata.core.connections.test_connection.checks.summary import count, enumerated
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.core.connections.test_connection.records import Diagnosis
@@ -71,9 +71,9 @@ class CouchbaseChecks:
 
     errors = COUCHBASE_ERRORS
 
-    def __init__(self, cluster: Borrowed[Any], scope: ProbeScope) -> None:
+    def __init__(self, cluster: Borrowed[Any], bucket: str | None) -> None:
         self._cluster = cluster
-        self._scope = scope
+        self._bucket = bucket
         self._targeted: list[str] | None = None
 
     def _targeted_buckets(self) -> list[str]:
@@ -85,17 +85,17 @@ class CouchbaseChecks:
         it and surface only in the next step.
         """
         if self._targeted is None:
-            if self._scope.pinned:
+            if self._bucket:
                 self._cluster.client.ping()
-                self._targeted = self._scope.targets([])
+                self._targeted = targets_in_scope([], pinned=self._bucket)
             else:
                 buckets = self._cluster.client.buckets().get_all_buckets()
-                self._targeted = self._scope.targets(bucket.name for bucket in buckets)
+                self._targeted = targets_in_scope(bucket.name for bucket in buckets)
         return self._targeted
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        command = "buckets.get_all_buckets()" if not self._scope.pinned else "ping()"
+        command = "ping()" if self._bucket else "buckets.get_all_buckets()"
         try:
             targeted = self._targeted_buckets()
         except Exception as cause:
@@ -119,18 +119,18 @@ class CouchbaseChecks:
         if not targeted:
             return Evidence(summary="no bucket in scope to read scopes from", command=command, caveat=_no_buckets())
 
-        found: dict[str, int] = {}
-
-        def probe(bucket_name: str) -> None:
+        def probe(bucket_name: str) -> int:
+            # A bucket with no scope still answers - the user can read it - so the
+            # count is accepted either way and reported as a caveat when it is 0.
             collections = self._cluster.client.bucket(bucket_name).collections()
-            found[bucket_name] = len(list(collections.get_all_scopes()))
+            return len(list(collections.get_all_scopes()))
 
         try:
-            bucket_name = probe_targets(targeted, probe)
+            answered = probe_targets(targeted, probe)
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
 
-        number = found.get(bucket_name, 0) if bucket_name else 0
+        bucket_name, number = answered if answered else (None, 0)
         return Evidence(
             summary=f"{count(number, 'scope')} in bucket '{bucket_name}'",
             command=command,
@@ -171,7 +171,4 @@ class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
     def checks(self) -> ChecksProvider:
         # Borrowed, not built: reading the client is what dials the cluster, so a
         # connection failure lands inside the gate step.
-        return CouchbaseChecks(
-            cluster=self.borrow(),
-            scope=ProbeScope(pinned=self.service_connection.bucket),
-        )
+        return CouchbaseChecks(cluster=self.borrow(), bucket=self.service_connection.bucket)
