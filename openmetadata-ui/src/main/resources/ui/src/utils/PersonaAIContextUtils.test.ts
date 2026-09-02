@@ -19,6 +19,7 @@ import {
   getPersonaContextSections,
   getRuleConditionCount,
   getRuleFilterTree,
+  getScopedRuleCount,
   isKnowledgeContextRule,
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
@@ -159,6 +160,24 @@ describe('PersonaAIContextUtils', () => {
     });
 
     expect(definition.rules?.[0].fullyRendered).toBe(true);
+  });
+
+  it('reads a rule stored without filteredInSearch as preloading', () => {
+    const definition = normalizePersonaContextDefinition({
+      rules: [{ entityType: EntityType.TABLE, name: 'Legacy' }],
+    });
+
+    expect(definition.rules?.[0].filteredInSearch).toBe(false);
+  });
+
+  it('counts only the rules that are filtered in search', () => {
+    expect(
+      getScopedRuleCount([
+        { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+        { entityType: EntityType.TABLE, filteredInSearch: false, name: 'Two' },
+        { entityType: EntityType.TABLE, name: 'Three' },
+      ])
+    ).toBe(1);
   });
 
   describe('buildPersonaContextVersionHistory', () => {

@@ -32,17 +32,17 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CACHE_STATE_BADGE_COLOR } from '../../../../../constants/PersonaAIContext.constants';
-import { useClipboard } from '../../../../../hooks/useClipBoard';
+import { CACHE_STATE_BADGE_COLOR } from '../../../../constants/PersonaAIContext.constants';
+import { useClipboard } from '../../../../hooks/useClipBoard';
 import {
   getPersonaAIContextDocument,
   PersonaContextDocument,
   refreshPersonaAIContextDocument,
-} from '../../../../../rest/PersonaAPI';
-import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
-import Loader from '../../../../common/Loader/Loader';
-import RichTextEditorPreviewNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
+} from '../../../../rest/PersonaAPI';
+import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
+import RichTextEditorPreviewNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import './context-preview-modal.less';
 
 interface ContextPreviewModalProps {

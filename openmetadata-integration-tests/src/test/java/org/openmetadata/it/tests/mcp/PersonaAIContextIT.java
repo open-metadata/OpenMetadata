@@ -151,6 +151,44 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   @Test
+  void searchScopedRuleIsServedAsASearchFilterInsteadOfBeingPreloaded() throws Exception {
+    ContextRule requested = tableRule("Scoped tables").withFilteredInSearch(null);
+    PersonaContextDefinition created =
+        post(contextPath() + "/rules", requested, PersonaContextDefinition.class);
+    ContextRule createdRule =
+        created.getRules().stream()
+            .filter(rule -> requested.getName().equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+    // Omitting the field on create means "use the product default", which is search scoping.
+    assertThat(createdRule.getFilteredInSearch()).isTrue();
+
+    try {
+      HttpResponse<String> response =
+          getResponse(
+              "personas/name/"
+                  + persona.getFullyQualifiedName()
+                  + "/context?format=json&refresh=true",
+              authToken);
+      assertThat(response.statusCode()).isEqualTo(200);
+      JsonNode context = OBJECT_MAPPER.readTree(response.body());
+
+      JsonNode searchScope = context.get("searchScope");
+      assertThat(searchScope).isNotNull();
+      assertThat(searchScope.get("entityTypes").toString()).contains(Entity.TABLE);
+      assertThat(searchScope.get("queryFilter").asText()).contains("entityType");
+      assertThat(searchScope.get("rules").get(0).get("ruleName").asText())
+          .isEqualTo(requested.getName());
+
+      // The whole point of the mode: the rule selects the table for search without spending any of
+      // the context budget preloading it.
+      assertThat(context.get("rules").toString()).doesNotContain(requested.getName());
+    } finally {
+      deleteResponse(contextPath() + "/rules/" + createdRule.getId(), authToken);
+    }
+  }
+
+  @Test
   void enforcesMemberInheritedBotAdminAndRefreshAuthorization() throws Exception {
     String personaContextPath =
         "personas/name/" + persona.getFullyQualifiedName() + "/context?format=json";
@@ -198,6 +236,8 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   private static ContextRule tableRule(String name) {
+    // Explicitly preloading: the create API stamps filteredInSearch=true when the client omits it,
+    // and a scoped rule materializes nothing, so the document assertions need this to be false.
     return new ContextRule()
         .withName(name)
         .withEntityType(Entity.TABLE)
@@ -207,7 +247,8 @@ class PersonaAIContextIT extends McpTestBase {
                 + "\"}}}")
         .withSections(Set.of())
         .withMaxAssets(1)
-        .withEnabled(true);
+        .withEnabled(true)
+        .withFilteredInSearch(false);
   }
 
   private static String contextPath() {

@@ -24,8 +24,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,6 +48,7 @@ import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
@@ -178,6 +183,94 @@ class PersonaContextBuilderTest {
     assertEquals("Always", results.getFirst().rule().getName());
     assertEquals(1, results.getFirst().entities().size());
     assertEquals(0, results.getLast().entities().size());
+  }
+
+  @Test
+  void selectRulesSkipsSearchScopedRulesWithoutSearchingForThem() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    ContextRule scopedRule = assetRule("Scoped", "").withFilteredInSearch(true);
+
+    List<PersonaContextBuilder.RuleMaterialization> results =
+        new PersonaContextBuilder(persona(), repository)
+            .selectRules(
+                new PersonaContextDefinition().withRules(List.of(scopedRule)).withEnabled(true));
+
+    assertTrue(results.isEmpty());
+    verify(repository, never())
+        .listWithDeepPagination(
+            anyString(),
+            isNull(),
+            anyString(),
+            any(String[].class),
+            any(SearchSortFilter.class),
+            anyInt(),
+            nullable(Object[].class));
+  }
+
+  @Test
+  void searchScopeIsEmptyWhenNoRuleOptsIn() {
+    ContextRule preloadedRule = assetRule("Preloaded", "{\"term\":{\"domain\":\"one\"}}");
+
+    SearchScope scope =
+        PersonaContextBuilder.searchScope(
+            new PersonaContextDefinition().withRules(List.of(preloadedRule)).withEnabled(true));
+
+    assertTrue(nullOrEmpty(scope.getEntityTypes()));
+    assertTrue(nullOrEmpty(scope.getQueryFilter()));
+  }
+
+  @Test
+  void searchScopeUnionsEachScopedRuleUnderItsOwnEntityType() {
+    ContextRule tableRule =
+        assetRule("Finance tables", "{\"term\":{\"domain\":\"finance\"}}")
+            .withFilteredInSearch(true);
+    ContextRule dashboardRule =
+        new ContextRule()
+            .withName("All dashboards")
+            .withEntityType(Entity.DASHBOARD)
+            .withEnabled(true)
+            .withFilteredInSearch(true);
+
+    SearchScope scope =
+        PersonaContextBuilder.searchScope(
+            new PersonaContextDefinition()
+                .withRules(List.of(tableRule, dashboardRule))
+                .withEnabled(true));
+
+    assertEquals(Set.of(Entity.TABLE, Entity.DASHBOARD), scope.getEntityTypes());
+    assertEquals(2, scope.getRules().size());
+    JsonNode filter = JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter");
+    assertEquals(false, filter.get(0).at("/term/deleted").asBoolean());
+    JsonNode union = filter.get(1).get("bool");
+    assertEquals(1, union.get("minimum_should_match").asInt());
+    JsonNode tableClause = union.get("should").get(0).at("/bool/filter");
+    assertEquals(Entity.TABLE, tableClause.get(0).at("/term/entityType").asText());
+    assertEquals("finance", tableClause.get(1).at("/term/domain").asText());
+    JsonNode dashboardClause = union.get("should").get(1).at("/bool/filter");
+    assertEquals(Entity.DASHBOARD, dashboardClause.get(0).at("/term/entityType").asText());
+    assertEquals(1, dashboardClause.size());
+  }
+
+  @Test
+  void searchScopeIgnoresDisabledRulesAndDisabledDefinitions() {
+    ContextRule disabledRule =
+        assetRule("Disabled", "").withFilteredInSearch(true).withEnabled(false);
+    ContextRule enabledRule = assetRule("Enabled", "").withFilteredInSearch(true);
+
+    assertTrue(
+        nullOrEmpty(
+            PersonaContextBuilder.searchScope(
+                    new PersonaContextDefinition()
+                        .withRules(List.of(disabledRule))
+                        .withEnabled(true))
+                .getQueryFilter()));
+    assertTrue(
+        nullOrEmpty(
+            PersonaContextBuilder.searchScope(
+                    new PersonaContextDefinition()
+                        .withRules(List.of(enabledRule))
+                        .withEnabled(false))
+                .getQueryFilter()));
   }
 
   @Test

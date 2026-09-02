@@ -32,7 +32,6 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
-import { PersonaAIContext } from '../../../components/Settings/Persona/PersonaAIContext/PersonaAIContext.component';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -285,17 +284,6 @@ export const PersonaDetailsPage = () => {
         label: t('label.customize-ui'),
         key: 'customize-ui',
         children: <CustomizeUI />,
-      },
-      {
-        label: t('label.ai-context'),
-        key: 'ai-context',
-        children: personaDetails ? (
-          <PersonaAIContext
-            canEdit={entityPermission.EditAll}
-            persona={personaDetails}
-            onPersonaUpdate={fetchPersonaDetails}
-          />
-        ) : null,
       },
       {
         label: t('label.user-plural'),

@@ -10,13 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { ReactNode } from 'react';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { ContextRule } from '../../../../../generated/type/personaContextDefinition';
+import { EntityType } from '../../../../enums/entity.enum';
+import { ContextRule } from '../../../../generated/type/personaContextDefinition';
 import { ContextRuleEditor } from './ContextRuleEditor.component';
 
-jest.mock('../../../../../rest/PersonaAPI', () => ({
+jest.mock('../../../../rest/PersonaAPI', () => ({
   previewPersonaAIContextRule: jest.fn().mockResolvedValue({
     matchedCount: 0,
     sampleNames: [],
@@ -27,7 +33,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../../../../common/atoms/drawer/useFormDrawer', () => ({
+jest.mock('../../../common/atoms/drawer/useFormDrawer', () => ({
   useFormDrawerWithHook: ({ form }: { form: ReactNode }) => ({
     closeDrawer: jest.fn(),
     formDrawer: <div>{form}</div>,
@@ -72,6 +78,77 @@ describe('ContextRuleEditor', () => {
     );
 
     expect(name).toHaveValue('Typed locally');
+  });
+
+  it('defaults a new asset rule to filtered in search', () => {
+    render(<ContextRuleEditor {...defaultProps} rule={undefined} />);
+
+    expect(
+      within(screen.getByTestId('context-rule-filtered-in-search')).getByRole(
+        'switch'
+      )
+    ).toBeChecked();
+  });
+
+  it('keeps an existing rule preloading until it is explicitly scoped', () => {
+    render(<ContextRuleEditor {...defaultProps} />);
+
+    expect(
+      within(screen.getByTestId('context-rule-filtered-in-search')).getByRole(
+        'switch'
+      )
+    ).not.toBeChecked();
+  });
+
+  it('disables the preload options while the rule is filtered in search', () => {
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={{ ...rule, alwaysInContext: true, filteredInSearch: true }}
+      />
+    );
+
+    const alwaysInContext = within(
+      screen.getByTestId('context-rule-always-in-context')
+    ).getByRole('switch');
+    const fullyRendered = within(
+      screen.getByTestId('context-rule-fully-rendered')
+    ).getByRole('switch');
+
+    expect(alwaysInContext).toBeDisabled();
+    expect(alwaysInContext).not.toBeChecked();
+    expect(fullyRendered).toBeDisabled();
+    expect(fullyRendered).not.toBeChecked();
+    expect(screen.getByTestId('context-rule-max-assets')).toBeDisabled();
+  });
+
+  it('clears the preload options when the rule is switched to filtered in search', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={{ ...rule, alwaysInContext: true, fullyRendered: true }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(
+      within(screen.getByTestId('context-rule-filtered-in-search')).getByRole(
+        'switch'
+      )
+    );
+    const form = screen.getByTestId('context-rule-name').closest('form');
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alwaysInContext: false,
+        filteredInSearch: true,
+        fullyRendered: false,
+      })
+    );
   });
 
   it('forces knowledge rules to use full rendering', () => {

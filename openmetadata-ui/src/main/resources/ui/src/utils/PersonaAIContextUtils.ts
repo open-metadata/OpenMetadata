@@ -54,6 +54,7 @@ export const normalizePersonaContextDefinition = (
       ...cloneDeep(rule),
       alwaysInContext: rule.alwaysInContext ?? false,
       enabled: rule.enabled ?? true,
+      filteredInSearch: rule.filteredInSearch ?? false,
       fullyRendered: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
         rule.entityType as EntityType
       )
@@ -225,6 +226,9 @@ export const getRuleConditionParts = (
 
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
+
+export const getScopedRuleCount = (rules: ContextRule[]): number =>
+  rules.filter((rule) => rule.filteredInSearch).length;
 
 export interface PersonaContextVersionChange {
   key: string;

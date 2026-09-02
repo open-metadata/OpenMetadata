@@ -349,6 +349,12 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     PersonaContextDefinition definition = editableDefinition(original);
     ContextRule rule = sanitizedRule(requestedRule);
     rule.setId(UUID.randomUUID());
+    // Search scoping is the default for new rules. Only the create path stamps it: on update a null
+    // means the caller is round-tripping a rule stored before the field existed, which must keep
+    // preloading.
+    if (rule.getFilteredInSearch() == null) {
+      rule.setFilteredInSearch(true);
+    }
     List<ContextRule> rules = new ArrayList<>(listOrEmpty(definition.getRules()));
     rules.add(rule);
     definition.setRules(rules);

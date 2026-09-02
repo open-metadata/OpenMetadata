@@ -38,6 +38,8 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.schema.type.personaContext.ManifestEntry;
 import org.openmetadata.schema.type.personaContext.RuleResult;
+import org.openmetadata.schema.type.personaContext.SearchScope;
+import org.openmetadata.schema.type.personaContext.SearchScopeRule;
 import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 
 /** Renders a materialized persona context with monotonic full/compact/manifest degradation. */
@@ -74,6 +76,7 @@ final class PersonaContextMarkdown {
     List<ManifestEntry> manifest = new ArrayList<>();
     StringBuilder body = new StringBuilder();
     RenderTier tier = RenderTier.FULL;
+    body.append(renderSearchScope(context.getSearchScope()));
 
     for (PersonaContextBuilder.RuleMaterialization rule : rules) {
       RuleRenderResult rendered =
@@ -103,6 +106,33 @@ final class PersonaContextMarkdown {
         (frontmatter(context, maxChars, tokensEstimate) + renderTitle(persona) + body).strip()
             + "\n";
     return new PersonaContextBuilder.MaterializedPersonaContext(context, markdown);
+  }
+
+  /**
+   * Search-scoped rules preload nothing, so without this note the document would give no hint that
+   * searches are being narrowed and the model could not explain a thin result set.
+   */
+  private static String renderSearchScope(SearchScope scope) {
+    if (scope == null || nullOrEmpty(scope.getEntityTypes())) {
+      return "";
+    }
+    StringBuilder markdown = new StringBuilder("\n## Search scope\n\n");
+    markdown
+        .append("Your administrator scoped this persona's asset search to ")
+        .append(String.join(", ", scope.getEntityTypes()))
+        .append(
+            " matching the rules below. Search tools apply this scope by default, so assets outside"
+                + " it will not appear in results even though they exist in the platform.\n\n");
+    for (SearchScopeRule rule : listOrEmpty(scope.getRules())) {
+      markdown
+          .append("- ")
+          .append(rule.getRuleName())
+          .append(" — ")
+          .append(rule.getEntityType())
+          .append(nullOrEmpty(rule.getQueryFilter()) ? " (every entity of this type)" : "")
+          .append('\n');
+    }
+    return markdown.append('\n').toString();
   }
 
   private static RuleRenderResult renderKnowledgeRule(

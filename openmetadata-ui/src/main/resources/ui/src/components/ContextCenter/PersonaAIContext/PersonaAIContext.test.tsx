@@ -14,10 +14,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   getPersonaAIContext,
   updatePersonaAIContext,
-} from '../../../../rest/PersonaAPI';
+} from '../../../rest/PersonaAPI';
 import { PersonaAIContext } from './PersonaAIContext.component';
 
-jest.mock('../../../../rest/PersonaAPI', () => ({
+jest.mock('../../../rest/PersonaAPI', () => ({
   createPersonaAIContextRule: jest.fn(),
   deletePersonaAIContextRule: jest.fn(),
   getPersonaAIContext: jest.fn(),
