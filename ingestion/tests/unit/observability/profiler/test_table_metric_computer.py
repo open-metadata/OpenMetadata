@@ -819,6 +819,28 @@ class TestDatabricksTableMetricComputer:
             result = computer.compute()
         assert result.rowCount == 5000
 
+    def test_views_fall_back_without_describe_detail(self):
+        for table_type in (TableType.View, TableType.MaterializedView):
+            session = _build_mock_session()
+            session.execute.side_effect = AssertionError(
+                "DESCRIBE DETAIL must not run for views"
+            )
+            computer = _build_computer(
+                session,
+                DatabricksTableMetricComputer,
+                table_type=table_type,
+            )
+
+            with patch.object(
+                BaseTableMetricComputer,
+                "compute",
+                return_value=MagicMock(rowCount=5000),
+            ):
+                result = computer.compute()
+
+            assert result is not None
+            assert result.rowCount == 5000
+
     def test_databricks_registration(self):
         assert (
             table_metric_computer_factory._constructs[Dialects.Databricks]
