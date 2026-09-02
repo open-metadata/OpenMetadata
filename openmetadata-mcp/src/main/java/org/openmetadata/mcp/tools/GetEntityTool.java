@@ -27,6 +27,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -451,23 +452,29 @@ public class GetEntityTool implements McpTool {
     // The subject context applies the caller's domain restrictions
     // (LineageRepository.pruneLineageByDomain). Without it they see neighbours they cannot access.
     SubjectContext subjectContext = getSubjectContext(ctx.securityContext());
-    EntityLineage lineage =
+    // The reporting overload, so a neighbour removed by domain scope is counted as hidden here too.
+    // Reading the plain getByName would report 0 hidden and let the note below claim the graph is
+    // complete while domain pruning had already withheld neighbours.
+    LineageRepository.DomainPrunedLineage pruned =
         Entity.getLineageRepository()
-            .getByName(ctx.entityType(), ctx.fqn(), REACH_DEPTH, REACH_DEPTH, subjectContext);
+            .getByNameReportingPrune(
+                ctx.entityType(), ctx.fqn(), REACH_DEPTH, REACH_DEPTH, subjectContext);
+    EntityLineage lineage = pruned.lineage();
     // Domain pruning only covers domain-restricted subjects. Entity-scoped policies (tags, owners)
     // have to be applied per neighbour too, or this section names assets the caller is denied.
     LineagePermissionFilter.Result filtered =
         new LineagePermissionFilter(ctx.authorizer())
             .filter(ctx.securityContext(), subjectContext, lineage);
     lineage = filtered.lineage();
+    int hiddenNodes = filtered.hiddenNodes() + pruned.hiddenNodes();
     UUID root = rootId(lineage, ctx.fqn());
     Map<UUID, EntityReference> index = indexNodes(lineage);
     Map<String, Object> summary = new LinkedHashMap<>();
     addDirection(summary, root, index, lineage.getUpstreamEdges(), true);
     addDirection(summary, root, index, lineage.getDownstreamEdges(), false);
-    summary.put(McpResponseTrim.HIDDEN_NODES_KEY, filtered.hiddenNodes());
+    summary.put(McpResponseTrim.HIDDEN_NODES_KEY, hiddenNodes);
     summary.put(McpResponseTrim.HIDDEN_UNCHECKED_KEY, filtered.hiddenUnchecked());
-    summary.put("note", reachNote(continuesAnywhere(summary), filtered));
+    summary.put("note", reachNote(continuesAnywhere(summary), filtered, hiddenNodes));
     return summary;
   }
 
@@ -526,19 +533,20 @@ public class GetEntityTool implements McpTool {
    * <p>Never claims completeness once the permission filter removed something: "nothing lies beyond
    * these" would then be false, and a hidden neighbour is precisely what a reader would act on.
    */
-  private static String reachNote(boolean continues, LineagePermissionFilter.Result filtered) {
+  private static String reachNote(
+      boolean continues, LineagePermissionFilter.Result filtered, int hiddenNodes) {
     if (filtered.hiddenUnchecked()) {
       return String.format(
-          "Immediate neighbours only, and this graph was too large to authorize in full: %d"
-              + " neighbour(s) were removed without being checked, so this is not the complete"
-              + " graph. Use get_entity_lineage for an authorized view at a shallower depth.",
-          filtered.hiddenNodes());
+          "Immediate neighbours only. %d neighbour(s) were removed, %d of them beyond the"
+              + " authorization limit and never checked, so this is not the complete graph. Use"
+              + " get_entity_lineage for an authorized view at a shallower depth.",
+          hiddenNodes, filtered.uncheckedNodes());
     }
-    if (filtered.hiddenNodes() > 0) {
+    if (hiddenNodes > 0) {
       return String.format(
-          "Immediate neighbours only, and %d neighbour(s) are hidden by your permissions, so this"
-              + " is not the complete graph.",
-          filtered.hiddenNodes());
+          "Immediate neighbours only, and %d neighbour(s) are hidden from you, so this is not the"
+              + " complete graph.",
+          hiddenNodes);
     }
     return continues
         ? "Immediate neighbours only, and the graph continues beyond them. Use get_entity_lineage"

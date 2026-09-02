@@ -65,10 +65,19 @@ public class LineagePermissionFilter {
    */
   private static final int MAX_FILTERED_NODES = 500;
 
-  /** The pruned graph, plus what has to be said about it. */
-  public record Result(EntityLineage lineage, int hiddenNodes, boolean hiddenUnchecked) {
+  /**
+   * The pruned graph, plus what has to be said about it. {@code hiddenNodes} counts every node
+   * removed - denied, cut off behind a denied one, or past the ceiling - while {@code
+   * uncheckedNodes} counts only the last group, so a message can name each accurately instead of
+   * attributing every removal to the ceiling.
+   */
+  public record Result(EntityLineage lineage, int hiddenNodes, int uncheckedNodes) {
     static Result unchanged(EntityLineage lineage) {
-      return new Result(lineage, 0, false);
+      return new Result(lineage, 0, 0);
+    }
+
+    public boolean hiddenUnchecked() {
+      return uncheckedNodes > 0;
     }
   }
 
@@ -90,7 +99,7 @@ public class LineagePermissionFilter {
     // caller was just granted.
     visible.add(lineage.getEntity().getId());
     int hidden = LineageGraphPruner.retainReachable(lineage, visible);
-    return new Result(lineage, hidden, checkable.size() < nodes.size());
+    return new Result(lineage, hidden, nodes.size() - checkable.size());
   }
 
   /**
@@ -180,8 +189,9 @@ public class LineagePermissionFilter {
     try {
       // Include.ALL: a soft-deleted node still needs its policy evaluated rather than resolving to
       // nothing and re-entering the unloaded-attribute failure mode.
-      entities =
+      List<T> loaded =
           repository.get(null, ids, ResourceContext.authorizationFields(repository), Include.ALL);
+      entities = loaded == null ? List.of() : loaded;
     } catch (RuntimeException e) {
       LOG.warn(
           "Hiding all '{}' lineage nodes: authorization load failed: {}",

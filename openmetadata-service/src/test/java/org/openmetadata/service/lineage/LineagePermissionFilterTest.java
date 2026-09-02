@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,21 +18,28 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * The filter's decision paths, asserted through what survives in the graph rather than through
- * interactions with the authorizer. The batch-load path needs a registered repository, so these
- * tests drive the single-reference {@code canView} and the short-circuit/ceiling branches, which is
- * where the fail-open risks live.
+ * interactions with the authorizer.
+ *
+ * <p>The table repository is registered here rather than borrowed from whatever else ran first:
+ * {@code Entity}'s type map is static, so a test that relies on another class having populated it
+ * passes or fails on execution order.
  */
 class LineagePermissionFilterTest {
 
@@ -39,6 +48,22 @@ class LineagePermissionFilterTest {
   private Authorizer authorizer;
   private SecurityContext securityContext;
   private LineagePermissionFilter filter;
+
+  @BeforeAll
+  static void registerRepository() {
+    TableRepository tableRepository = mock(TableRepository.class);
+    when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
+    when(tableRepository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
+    when(tableRepository.get(isNull(), anyList(), any(Fields.class), any(Include.class)))
+        .thenAnswer(
+            invocation -> {
+              List<UUID> ids = invocation.getArgument(1);
+              List<Table> tables = new ArrayList<>();
+              ids.forEach(id -> tables.add(table(id)));
+              return tables;
+            });
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
+  }
 
   @BeforeEach
   void setUp() {
@@ -63,8 +88,8 @@ class LineagePermissionFilterTest {
   }
 
   /**
-   * A bot is not exempt. {@code DefaultAuthorizer} short-circuits admins only, so its root entity is
-   * policy-evaluated in full; exempting it here would let a tag-scoped bot read neighbours that a
+   * A bot is not exempt. {@code DefaultAuthorizer} short-circuits admins alone, so its root entity
+   * is policy-evaluated in full; exempting it here would let a tag-scoped bot read neighbours that a
    * direct entity read denies it.
    */
   @Test
@@ -73,47 +98,78 @@ class LineagePermissionFilterTest {
     SubjectContext bot = mock(SubjectContext.class);
     when(bot.isAdmin()).thenReturn(false);
     when(bot.isBot()).thenReturn(true);
+    denyEverything();
 
     filter.filter(securityContext, bot, lineage);
 
-    // Nodes have no registered repository here, so every one fails closed and is removed.
-    assertEquals(0, lineage.getNodes().size(), "a bot's neighbours must still be filtered");
+    assertTrue(lineage.getNodes().isEmpty(), "a bot's neighbours must still be filtered");
   }
 
   @Test
-  void nodesWithoutADecisionAreRemovedNotReturned() {
+  void allowedNodesSurvive() {
     EntityLineage lineage = graphWithNodes(3);
 
     LineagePermissionFilter.Result result = filter.filter(securityContext, nonAdmin(), lineage);
 
+    assertEquals(0, result.hiddenNodes());
+    assertEquals(3, lineage.getNodes().size());
+  }
+
+  @Test
+  void deniedNodesAreRemovedWithTheirEdges() {
+    EntityLineage lineage = graphWithNodes(3);
+    denyEverything();
+
+    LineagePermissionFilter.Result result = filter.filter(securityContext, nonAdmin(), lineage);
+
     assertEquals(3, result.hiddenNodes());
-    assertTrue(lineage.getNodes().isEmpty(), "an unauthorizable node must never be returned");
-    assertTrue(lineage.getUpstreamEdges().isEmpty(), "its edges must go with it");
+    assertEquals(0, result.uncheckedNodes(), "these were checked and denied, not skipped");
+    assertTrue(lineage.getNodes().isEmpty());
+    assertTrue(lineage.getUpstreamEdges().isEmpty(), "their edges must go with them");
+  }
+
+  /** Fail closed on an unexpected error, and contain it to the one node. */
+  @Test
+  void nodesWhoseCheckThrowsUnexpectedlyAreRemoved() {
+    EntityLineage lineage = graphWithNodes(2);
+    doThrow(new IllegalStateException("malformed policy"))
+        .when(authorizer)
+        .authorize(any(), any(), any());
+
+    LineagePermissionFilter.Result result = filter.filter(securityContext, nonAdmin(), lineage);
+
+    assertEquals(2, result.hiddenNodes());
+    assertTrue(lineage.getNodes().isEmpty());
   }
 
   /**
-   * The whole point of the ceiling: it must not become a way to ask for the unfiltered graph. Depth
-   * is caller-controlled, so a caller who can grow the graph past the limit would otherwise receive
+   * The point of the ceiling: it must not become a way to ask for the unfiltered graph. Depth is
+   * caller-controlled, so a caller who can grow the graph past the limit would otherwise receive
    * every denied node's identity.
    */
   @Test
-  void graphOverTheCeilingIsPrunedNotReturnedUnchecked() {
+  void graphOverTheCeilingHidesTheRemainderRatherThanReturningIt() {
     int overCeiling = 501;
     EntityLineage lineage = graphWithNodes(overCeiling);
 
     LineagePermissionFilter.Result result = filter.filter(securityContext, nonAdmin(), lineage);
 
     assertTrue(result.hiddenUnchecked(), "the ceiling must be reported");
-    assertEquals(overCeiling, result.hiddenNodes());
-    assertTrue(
-        lineage.getNodes().isEmpty(),
-        "nodes past the ceiling must be hidden, never returned unchecked");
+    assertEquals(
+        1,
+        result.uncheckedNodes(),
+        "exactly the one node past the ceiling was never checked, and it must not be returned");
+    assertEquals(
+        overCeiling - 1,
+        lineage.getNodes().size(),
+        "the nodes that were checked and allowed still come back");
   }
 
   @Test
   void emptyAndNullGraphsArePassedThrough() {
-    assertEquals(0, filter.filter(securityContext, nonAdmin(), null).hiddenNodes());
-    assertEquals(null, filter.filter(securityContext, nonAdmin(), null).lineage());
+    LineagePermissionFilter.Result nullResult = filter.filter(securityContext, nonAdmin(), null);
+    assertEquals(0, nullResult.hiddenNodes());
+    assertSame(null, nullResult.lineage());
 
     EntityLineage empty = new EntityLineage().withEntity(ref(ROOT)).withNodes(new ArrayList<>());
     assertSame(empty, filter.filter(securityContext, nonAdmin(), empty).lineage());
@@ -123,20 +179,7 @@ class LineagePermissionFilterTest {
   void canViewIsTrueOnlyWhenAuthorizeSucceeds() {
     assertTrue(filter.canView(securityContext, ref(UUID.randomUUID())));
 
-    doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
-    assertFalse(filter.canView(securityContext, ref(UUID.randomUUID())));
-  }
-
-  /** Fail closed on an unexpected error, and contain it to the one reference. */
-  @Test
-  void canViewSwallowsUnexpectedRuntimeExceptions() {
-    doAnswer(
-            invocation -> {
-              throw new IllegalStateException("malformed policy");
-            })
-        .when(authorizer)
-        .authorize(any(), any(), any());
-
+    denyEverything();
     assertFalse(filter.canView(securityContext, ref(UUID.randomUUID())));
   }
 
@@ -144,6 +187,10 @@ class LineagePermissionFilterTest {
   void canViewRejectsUnusableReferences() {
     assertFalse(filter.canView(securityContext, null));
     assertFalse(filter.canView(securityContext, new EntityReference().withId(UUID.randomUUID())));
+  }
+
+  private void denyEverything() {
+    doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
   }
 
   private static SubjectContext nonAdmin() {
@@ -166,6 +213,10 @@ class LineagePermissionFilterTest {
         .withNodes(nodes)
         .withUpstreamEdges(edges)
         .withDownstreamEdges(new ArrayList<>());
+  }
+
+  private static Table table(UUID id) {
+    return new Table().withId(id).withName("t_" + id).withFullyQualifiedName("svc.db.sch.t_" + id);
   }
 
   private static EntityReference ref(UUID id) {

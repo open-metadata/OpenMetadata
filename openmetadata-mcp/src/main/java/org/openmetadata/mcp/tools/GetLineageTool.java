@@ -194,10 +194,11 @@ public class GetLineageTool implements McpTool {
     if (filtered.hiddenUnchecked()) {
       note =
           String.format(
-              "This graph was too large to authorize in full, so %d node(s) beyond the limit were"
-                  + " removed without being checked. Reduce upstreamDepth/downstreamDepth for a"
-                  + " complete, fully authorized graph at a shallower depth.",
-              hidden);
+              "%d node(s) were removed from this graph, and %d of those lie beyond the"
+                  + " authorization limit and were never checked. Reduce"
+                  + " upstreamDepth/downstreamDepth for a complete, fully authorized graph at a"
+                  + " shallower depth.",
+              hidden, filtered.uncheckedNodes());
     } else if (hidden > 0) {
       note =
           String.format(
