@@ -41,7 +41,7 @@ def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone
     """
     tz = ZoneInfo(timezone_str)
     if not getattr(datetime_value, "timestamp", None):
-        raise TypeError(f"Object of type {type(datetime_value).__name__} has not method `timestamp()`")
+        raise TypeError(f"Object of type {type(datetime_value).__name__} has no timestamp method")
 
     if datetime_value.tzinfo is None:
         datetime_value = datetime_value.replace(tzinfo=tz)

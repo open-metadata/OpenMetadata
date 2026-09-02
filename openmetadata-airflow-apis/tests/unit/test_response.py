@@ -25,11 +25,10 @@ def test_server_error_does_not_expose_internal_details():
             ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, internal_detail),
             ApiResponse.server_error(),
         )
-
-    for response in responses:
-        assert response.status_code == ApiResponse.STATUS_SERVER_ERROR
-        assert response.get_json() == {"error": "An unexpected problem occurred"}
-        assert internal_detail.encode() not in response.data
+        for response in responses:
+            assert response.status_code == ApiResponse.STATUS_SERVER_ERROR
+            assert response.get_json() == {"error": "An unexpected problem occurred"}
+            assert internal_detail.encode() not in response.data
 
 
 def test_client_error_keeps_safe_actionable_message():
@@ -37,9 +36,8 @@ def test_client_error_keeps_safe_actionable_message():
 
     with Flask(__name__).app_context():
         response = ApiResponse.bad_request(message)
-
-    assert response.status_code == ApiResponse.STATUS_BAD_REQUEST
-    assert response.get_json() == {"error": message}
+        assert response.status_code == ApiResponse.STATUS_BAD_REQUEST
+        assert response.get_json() == {"error": message}
 
 
 @pytest.mark.parametrize(
@@ -53,6 +51,5 @@ def test_client_error_keeps_safe_actionable_message():
 def test_error_handles_missing_enum_and_nonstandard_statuses(status, error, expected_status, expected_error):
     with Flask(__name__).app_context():
         response = ApiResponse.error(status, error)
-
-    assert response.status_code == expected_status
-    assert response.get_json() == {"error": expected_error}
+        assert response.status_code == expected_status
+        assert response.get_json() == {"error": expected_error}
