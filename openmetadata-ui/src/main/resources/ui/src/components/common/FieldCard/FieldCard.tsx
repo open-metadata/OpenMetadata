@@ -22,11 +22,159 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataTypeString } from '../../../utils/TablePureUtils';
 import { prepareConstraintIcon } from '../../../utils/TableUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
+
+interface FieldDescriptionProps {
+  description?: string;
+  isExpanded: boolean;
+  shouldShowButton: boolean;
+  containerRef: React.RefObject<HTMLDivElement>;
+  onToggle: () => void;
+}
+
+const FieldDescription: React.FC<FieldDescriptionProps> = ({
+  description,
+  isExpanded,
+  shouldShowButton,
+  containerRef,
+  onToggle,
+}) => {
+  const { t } = useTranslation();
+
+  if (!description) {
+    return (
+      <Typography as="span" className="tw:text-secondary">
+        {t('label.no-entity', { entity: t('label.description') })}
+      </Typography>
+    );
+  }
+
+  return (
+    <div>
+      <div
+        className={classNames(
+          isExpanded
+            ? 'tw:block tw:leading-[1.4]'
+            : 'tw:[&_.markdown-parser]:line-clamp-3 tw:[&_.markdown-parser]:break-words tw:[&_.markdown-parser]:text-[13px] tw:[&_.markdown-parser]:leading-[18px]'
+        )}
+        ref={containerRef}>
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant={false}
+          isDescriptionExpanded={isExpanded}
+          markdown={description}
+        />
+      </div>
+      {(shouldShowButton || isExpanded) && (
+        <Button
+          className="tw:mt-1"
+          color="link-color"
+          size="xs"
+          onClick={onToggle}>
+          {isExpanded ? t('label.show-less') : t('label.show-more')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
+interface FieldMetadataSectionProps {
+  label: string;
+  items: TagLabel[];
+  totalCount: number;
+  visibleCount: number | null;
+  showAll: boolean;
+  moreLabel: string;
+  icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
+  itemClassName: string;
+  testIdPrefix: string;
+  moreButtonClassName: string;
+  containerRef: React.RefObject<HTMLDivElement>;
+  onShowAll: () => void;
+  onHideAll: () => void;
+}
+
+const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
+  label,
+  items,
+  totalCount,
+  visibleCount,
+  showAll,
+  moreLabel,
+  icon,
+  itemClassName,
+  testIdPrefix,
+  moreButtonClassName,
+  containerRef,
+  onShowAll,
+  onHideAll,
+}) => {
+  const { t } = useTranslation();
+
+  if (totalCount === 0) {
+    return null;
+  }
+
+  const showMoreButton =
+    visibleCount !== null && totalCount > visibleCount && !showAll;
+  const showLessButton = showAll && totalCount > 1;
+
+  return (
+    <div
+      className={classNames(
+        'metadata-section tw:flex tw:items-start tw:gap-2',
+        showAll ? 'tw:flex-col' : 'tw:flex-row'
+      )}>
+      <Typography
+        as="span"
+        className="tw:text-xs tw:font-medium tw:leading-5 tw:whitespace-nowrap tw:text-secondary">
+        {t('label.-with-colon', { text: label })}
+      </Typography>
+      <div className="tw:min-w-0 tw:flex-1">
+        <div
+          className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
+          ref={containerRef}>
+          {items.map((item) => (
+            <span
+              className={itemClassName}
+              data-testid={`${testIdPrefix}-${item.tagFQN}`}
+              key={item.tagFQN}>
+              <BadgeWithIcon
+                color="gray"
+                iconLeading={icon}
+                size="xs"
+                type="color">
+                {getEntityName(item)}
+              </BadgeWithIcon>
+            </span>
+          ))}
+          {showMoreButton && (
+            <Button
+              className={moreButtonClassName}
+              color="link-color"
+              size="xs"
+              onClick={onShowAll}>
+              {moreLabel}
+            </Button>
+          )}
+          {showLessButton && (
+            <Button
+              className={moreButtonClassName}
+              color="link-color"
+              size="xs"
+              onClick={onHideAll}>
+              {t('label.less')}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const FieldCard: React.FC<FieldCardProps> = ({
   fieldName,
@@ -324,147 +472,46 @@ const FieldCard: React.FC<FieldCardProps> = ({
             'tw:[&_.block-editor-wrapper_.tiptap.ProseMirror]:text-[13px]!'
           )}
           data-testid={`field-description-${fieldName}`}>
-          {description ? (
-            <div>
-              <div
-                className={classNames(
-                  isExpanded
-                    ? 'tw:block tw:leading-[1.4]'
-                    : 'tw:[&_.markdown-parser]:line-clamp-3 tw:[&_.markdown-parser]:break-words tw:[&_.markdown-parser]:text-[13px] tw:[&_.markdown-parser]:leading-[18px]'
-                )}
-                ref={containerRef}>
-                <RichTextEditorPreviewerV1
-                  enableSeeMoreVariant={false}
-                  isDescriptionExpanded={isExpanded}
-                  markdown={description}
-                />
-              </div>
-              {(shouldShowButton || isExpanded) && (
-                <Button
-                  className="tw:mt-1"
-                  color="link-color"
-                  size="xs"
-                  onClick={toggleExpanded}>
-                  {isExpanded ? t('label.show-less') : t('label.show-more')}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Typography as="span" className="tw:text-secondary">
-              {t('label.no-entity', { entity: t('label.description') })}
-            </Typography>
-          )}
+          <FieldDescription
+            containerRef={containerRef}
+            description={description}
+            isExpanded={isExpanded}
+            shouldShowButton={shouldShowButton}
+            onToggle={toggleExpanded}
+          />
         </Typography>
 
         <div className="tw:mt-3 tw:mb-2 tw:flex tw:flex-col tw:gap-2">
-          {nonGlossaryTags.length > 0 && (
-            <div
-              className={classNames(
-                'metadata-section tw:flex tw:items-start tw:gap-2',
-                showAllTags ? 'tw:flex-col' : 'tw:flex-row'
-              )}>
-              <Typography
-                as="span"
-                className="tw:text-xs tw:font-medium tw:leading-5 tw:whitespace-nowrap tw:text-secondary">
-                {t('label.-with-colon', { text: t('label.tag-plural') })}
-              </Typography>
-              <div className="tw:min-w-0 tw:flex-1">
-                <div
-                  className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
-                  ref={tagsContainerRef}>
-                  {visibleTags.map((tag) => (
-                    <span
-                      className="tag-item"
-                      data-testid={`tag-${tag.tagFQN}`}
-                      key={tag.tagFQN}>
-                      <BadgeWithIcon
-                        color="gray"
-                        iconLeading={ClassificationIcon}
-                        size="xs"
-                        type="color">
-                        {getEntityName(tag)}
-                      </BadgeWithIcon>
-                    </span>
-                  ))}
-                  {visibleTagsCount !== null &&
-                    nonGlossaryTags.length > visibleTagsCount &&
-                    !showAllTags && (
-                      <Button
-                        className="show-more-tags-button tw:whitespace-nowrap"
-                        color="link-color"
-                        size="xs"
-                        onClick={handleShowAllTags}>
-                        {tagsMoreLabel}
-                      </Button>
-                    )}
-                  {showAllTags && nonGlossaryTags.length > 1 && (
-                    <Button
-                      className="show-more-tags-button tw:whitespace-nowrap"
-                      color="link-color"
-                      size="xs"
-                      onClick={handleHideAllTags}>
-                      {t('label.less')}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          {glossaryTerms.length > 0 && (
-            <div
-              className={classNames(
-                'metadata-section tw:flex tw:items-start tw:gap-2',
-                showAllTerms ? 'tw:flex-col' : 'tw:flex-row'
-              )}>
-              <Typography
-                as="span"
-                className="tw:text-xs tw:font-medium tw:leading-5 tw:whitespace-nowrap tw:text-secondary">
-                {t('label.-with-colon', {
-                  text: t('label.glossary-term-plural'),
-                })}
-              </Typography>
-              <div className="tw:min-w-0 tw:flex-1">
-                <div
-                  className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
-                  ref={termsContainerRef}>
-                  {visibleTerms.map((glossaryTerm) => (
-                    <span
-                      className="glossary-term-item"
-                      data-testid={`term-${glossaryTerm.tagFQN}`}
-                      key={glossaryTerm.tagFQN}>
-                      <BadgeWithIcon
-                        color="gray"
-                        iconLeading={GlossaryIcon}
-                        size="xs"
-                        type="color">
-                        {getEntityName(glossaryTerm)}
-                      </BadgeWithIcon>
-                    </span>
-                  ))}
-                  {visibleTermsCount !== null &&
-                    glossaryTerms.length > visibleTermsCount &&
-                    !showAllTerms && (
-                      <Button
-                        className="show-more-terms-button tw:whitespace-nowrap"
-                        color="link-color"
-                        size="xs"
-                        onClick={handleShowAllTerms}>
-                        {termsMoreLabel}
-                      </Button>
-                    )}
-                  {showAllTerms && glossaryTerms.length > 1 && (
-                    <Button
-                      className="show-more-terms-button tw:whitespace-nowrap"
-                      color="link-color"
-                      size="xs"
-                      onClick={handleHideAllTerms}>
-                      {t('label.less')}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          <FieldMetadataSection
+            containerRef={tagsContainerRef}
+            icon={ClassificationIcon}
+            itemClassName="tag-item"
+            items={visibleTags}
+            label={t('label.tag-plural')}
+            moreButtonClassName="show-more-tags-button tw:whitespace-nowrap"
+            moreLabel={tagsMoreLabel}
+            showAll={showAllTags}
+            testIdPrefix="tag"
+            totalCount={nonGlossaryTags.length}
+            visibleCount={visibleTagsCount}
+            onHideAll={handleHideAllTags}
+            onShowAll={handleShowAllTags}
+          />
+          <FieldMetadataSection
+            containerRef={termsContainerRef}
+            icon={GlossaryIcon}
+            itemClassName="glossary-term-item"
+            items={visibleTerms}
+            label={t('label.glossary-term-plural')}
+            moreButtonClassName="show-more-terms-button tw:whitespace-nowrap"
+            moreLabel={termsMoreLabel}
+            showAll={showAllTerms}
+            testIdPrefix="term"
+            totalCount={glossaryTerms.length}
+            visibleCount={visibleTermsCount}
+            onHideAll={handleHideAllTerms}
+            onShowAll={handleShowAllTerms}
+          />
         </div>
       </div>
     </div>

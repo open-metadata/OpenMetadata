@@ -43,11 +43,12 @@ import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/pr
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { Column } from '../../../../generated/entity/data/table';
+import { Column, Table } from '../../../../generated/entity/data/table';
 import {
   Rule,
   TestCaseParameterDefinition,
   TestDataType,
+  TestDefinition,
 } from '../../../../generated/tests/testDefinition';
 import {
   SearchHitBody,
@@ -249,6 +250,174 @@ const TableDiffForm = ({
   return <>{definition.parameterDefinition?.map(getFormData)}</>;
 };
 
+const NUMERIC_DATA_TYPES: Array<TestDataType | undefined> = [
+  TestDataType.Number,
+  TestDataType.Int,
+  TestDataType.Decimal,
+  TestDataType.Double,
+  TestDataType.Float,
+];
+
+const buildStringField = ({
+  data,
+  table,
+  definition,
+  label,
+  t,
+}: {
+  data: TestCaseParameterDefinition;
+  table?: Table;
+  definition: TestDefinition;
+  label: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}): ReactElement => {
+  if (
+    !isUndefined(table) &&
+    definition.name === 'tableRowInsertedCountToBeBetween' &&
+    data.name === 'columnName'
+  ) {
+    const partitionColumnOptions = table.columns.reduce((result, column) => {
+      if (SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME.includes(column.dataType)) {
+        return [
+          ...result,
+          {
+            value: column.name,
+            label: column.name,
+          },
+        ];
+      }
+
+      return result;
+    }, [] as { value: string; label: string }[]);
+
+    return (
+      <Select
+        showSearch
+        getPopupContainer={getPopupContainer}
+        options={partitionColumnOptions}
+        placeholder={t('message.select-column-name')}
+      />
+    );
+  }
+
+  if (data.name === 'sqlExpression') {
+    return (
+      <CodeEditor
+        showCopyButton
+        className="custom-query-editor query-editor-h-200"
+        mode={{ name: CSMode.SQL }}
+        title={
+          <div className="ant-form-item-label">
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
+            <label className="d-flex align-items-center">
+              <Typography.Text className="form-label-title">
+                {label}
+              </Typography.Text>
+              <Tooltip title={data.description}>
+                <QuestionCircleOutlined className="ant-form-item-tooltip" />
+              </Tooltip>
+            </label>
+          </div>
+        }
+      />
+    );
+  }
+
+  if (data.name === 'column') {
+    return (
+      <Select
+        showSearch
+        getPopupContainer={getPopupContainer}
+        options={table?.columns.map((column) => ({
+          label: getEntityName(column),
+          value: column.name,
+        }))}
+        placeholder={t('message.select-column-name')}
+      />
+    );
+  }
+
+  return (
+    <Input
+      placeholder={`${t('message.enter-a-field', {
+        field: label,
+      })}`}
+    />
+  );
+};
+
+const buildArraySetField = ({
+  data,
+  label,
+  DynamicField,
+  t,
+}: {
+  data: TestCaseParameterDefinition;
+  label: string;
+  DynamicField?: ReactElement;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}): ReactElement => (
+  <Form.List
+    initialValue={[{ value: undefined }]}
+    key={data.name}
+    name={data.name || ''}>
+    {(fields, { add, remove }) => (
+      <Form.Item
+        key={data.name}
+        label={
+          <>
+            <span>{data.displayName}</span>
+            <Button
+              className="m-x-sm list-add-btn"
+              icon={<PlusOutlined />}
+              size="small"
+              type="primary"
+              onClick={() => add()}
+            />
+          </>
+        }
+        name={data.name}
+        tooltip={data.description}>
+        {fields.map(({ key, name, ...restField }) => (
+          <div className="d-flex w-full" key={key}>
+            <Form.Item
+              className="w-full m-b-0"
+              {...restField}
+              name={[name, 'value']}
+              rules={[
+                {
+                  required: data.required,
+                  message: `${t('message.field-text-is-required', {
+                    fieldText: label,
+                  })}`,
+                },
+              ]}>
+              {DynamicField ?? (
+                <Input
+                  placeholder={`${t('message.enter-a-field', {
+                    field: label,
+                  })}`}
+                />
+              )}
+            </Form.Item>
+            <Button
+              icon={
+                <Icon
+                  className="align-middle"
+                  component={IconDelete}
+                  style={{ fontSize: '16px' }}
+                />
+              }
+              type="text"
+              onClick={() => remove(name)}
+            />
+          </div>
+        ))}
+      </Form.Item>
+    )}
+  </Form.List>
+);
+
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
 
@@ -302,181 +471,28 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           ))}
         </Select>
       );
-    } else {
-      switch (data.dataType) {
-        case TestDataType.String:
-          if (
-            !isUndefined(table) &&
-            definition.name === 'tableRowInsertedCountToBeBetween' &&
-            data.name === 'columnName'
-          ) {
-            const partitionColumnOptions = table.columns.reduce(
-              (result, column) => {
-                if (
-                  SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME.includes(
-                    column.dataType
-                  )
-                ) {
-                  return [
-                    ...result,
-                    {
-                      value: column.name,
-                      label: column.name,
-                    },
-                  ];
-                }
-
-                return result;
-              },
-              [] as { value: string; label: string }[]
-            );
-            Field = (
-              <Select
-                showSearch
-                getPopupContainer={getPopupContainer}
-                options={partitionColumnOptions}
-                placeholder={t('message.select-column-name')}
-              />
-            );
-          } else if (data.name === 'sqlExpression') {
-            Field = (
-              <CodeEditor
-                showCopyButton
-                className="custom-query-editor query-editor-h-200"
-                mode={{ name: CSMode.SQL }}
-                title={
-                  <div className="ant-form-item-label">
-                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
-                    <label className="d-flex align-items-center">
-                      <Typography.Text className="form-label-title">
-                        {label}
-                      </Typography.Text>
-                      <Tooltip title={data.description}>
-                        <QuestionCircleOutlined className="ant-form-item-tooltip" />
-                      </Tooltip>
-                    </label>
-                  </div>
-                }
-              />
-            );
-          } else if (data.name === 'column') {
-            Field = (
-              <Select
-                showSearch
-                getPopupContainer={getPopupContainer}
-                options={table?.columns.map((column) => ({
-                  label: getEntityName(column),
-                  value: column.name,
-                }))}
-                placeholder={t('message.select-column-name')}
-              />
-            );
-          } else {
-            Field = (
-              <Input
-                placeholder={`${t('message.enter-a-field', {
-                  field: label,
-                })}`}
-              />
-            );
-          }
-
-          break;
-        case TestDataType.Number:
-        case TestDataType.Int:
-        case TestDataType.Decimal:
-        case TestDataType.Double:
-        case TestDataType.Float:
-          Field = (
-            <InputNumber
-              className="w-full"
-              placeholder={`${t('message.enter-a-field', {
-                field: label,
-              })}`}
-            />
-          );
-
-          break;
-        case TestDataType.Boolean:
-          Field = <Switch />;
-          internalFormItemProps = {
-            ...internalFormItemProps,
-            valuePropName: 'checked',
-          };
-
-          break;
-        case TestDataType.Array:
-        case TestDataType.Set:
-          Field = (
-            <Input
-              placeholder={`${t('message.enter-comma-separated-field', {
-                field: label,
-              })}`}
-            />
-          );
-
-          return (
-            <Form.List
-              initialValue={[{ value: undefined }]}
-              key={data.name}
-              name={data.name || ''}>
-              {(fields, { add, remove }) => (
-                <Form.Item
-                  key={data.name}
-                  label={
-                    <>
-                      <span>{data.displayName}</span>
-                      <Button
-                        className="m-x-sm list-add-btn"
-                        icon={<PlusOutlined />}
-                        size="small"
-                        type="primary"
-                        onClick={() => add()}
-                      />
-                    </>
-                  }
-                  name={data.name}
-                  tooltip={data.description}>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <div className="d-flex w-full" key={key}>
-                      <Form.Item
-                        className="w-full m-b-0"
-                        {...restField}
-                        name={[name, 'value']}
-                        rules={[
-                          {
-                            required: data.required,
-                            message: `${t('message.field-text-is-required', {
-                              fieldText: label,
-                            })}`,
-                          },
-                        ]}>
-                        {DynamicField ?? (
-                          <Input
-                            placeholder={`${t('message.enter-a-field', {
-                              field: label,
-                            })}`}
-                          />
-                        )}
-                      </Form.Item>
-                      <Button
-                        icon={
-                          <Icon
-                            className="align-middle"
-                            component={IconDelete}
-                            style={{ fontSize: '16px' }}
-                          />
-                        }
-                        type="text"
-                        onClick={() => remove(name)}
-                      />
-                    </div>
-                  ))}
-                </Form.Item>
-              )}
-            </Form.List>
-          );
-      }
+    } else if (data.dataType === TestDataType.String) {
+      Field = buildStringField({ data, table, definition, label, t });
+    } else if (NUMERIC_DATA_TYPES.includes(data.dataType)) {
+      Field = (
+        <InputNumber
+          className="w-full"
+          placeholder={`${t('message.enter-a-field', {
+            field: label,
+          })}`}
+        />
+      );
+    } else if (data.dataType === TestDataType.Boolean) {
+      Field = <Switch />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+    } else if (
+      data.dataType === TestDataType.Array ||
+      data.dataType === TestDataType.Set
+    ) {
+      return buildArraySetField({ data, label, DynamicField, t });
     }
 
     const commonFormItemProps = {

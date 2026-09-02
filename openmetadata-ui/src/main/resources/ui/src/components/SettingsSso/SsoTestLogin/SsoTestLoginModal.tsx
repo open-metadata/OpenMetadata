@@ -72,10 +72,38 @@ const SsoTestLoginModal = ({
     );
   }, [result, t]);
 
+  const resultContent = useMemo(() => {
+    if (!result) {
+      return null;
+    }
+
+    const isSuccess = result.status === Status.Success;
+    const description = isSuccess
+      ? t('message.sso-test-login-success', {
+          email: result.resolvedEmail ?? '',
+        })
+      : !isEmpty(result.errors)
+      ? (result.errors ?? []).join(' ')
+      : t('message.sso-test-login-failed');
+
+    return (
+      <Space className="w-full" direction="vertical" size={12}>
+        <InlineAlert
+          alertClassName={
+            isSuccess ? 'sso-test-login-success' : 'sso-test-login-failed'
+          }
+          description={description}
+          heading={isSuccess ? t('label.success') : t('label.failed')}
+          type={isSuccess ? 'success' : 'error'}
+        />
+        {resultDetails}
+      </Space>
+    );
+  }, [result, resultDetails, t]);
+
   const body = useMemo(() => {
-    let content = null;
     if (isTesting) {
-      content = (
+      return (
         <div
           className="d-flex flex-col items-center gap-3 p-md"
           data-testid="sso-test-login-loading">
@@ -85,8 +113,10 @@ const SsoTestLoginModal = ({
           </Typography.Text>
         </div>
       );
-    } else if (error) {
-      content = (
+    }
+
+    if (error) {
+      return (
         <InlineAlert
           alertClassName="sso-test-login-error"
           description={error}
@@ -94,32 +124,10 @@ const SsoTestLoginModal = ({
           type="error"
         />
       );
-    } else if (result) {
-      const isSuccess = result.status === Status.Success;
-      const description = isSuccess
-        ? t('message.sso-test-login-success', {
-            email: result.resolvedEmail ?? '',
-          })
-        : !isEmpty(result.errors)
-        ? (result.errors ?? []).join(' ')
-        : t('message.sso-test-login-failed');
-      content = (
-        <Space className="w-full" direction="vertical" size={12}>
-          <InlineAlert
-            alertClassName={
-              isSuccess ? 'sso-test-login-success' : 'sso-test-login-failed'
-            }
-            description={description}
-            heading={isSuccess ? t('label.success') : t('label.failed')}
-            type={isSuccess ? 'success' : 'error'}
-          />
-          {resultDetails}
-        </Space>
-      );
     }
 
-    return content;
-  }, [isTesting, error, result, resultDetails, t]);
+    return resultContent;
+  }, [isTesting, error, resultContent, t]);
 
   return (
     <Modal

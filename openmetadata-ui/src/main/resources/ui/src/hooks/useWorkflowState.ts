@@ -52,6 +52,44 @@ interface UseWorkflowStateProps {
   fqn?: string;
 }
 
+type WorkflowTrigger = WorkflowDefinition['trigger'];
+
+const mergeTriggerConfig = (
+  prevTrigger: WorkflowTrigger,
+  updateTrigger: WorkflowTrigger
+) => ({
+  ...(prevTrigger && typeof prevTrigger === 'object' && 'config' in prevTrigger
+    ? prevTrigger.config
+    : {}),
+  ...(updateTrigger &&
+  typeof updateTrigger === 'object' &&
+  'config' in updateTrigger
+    ? updateTrigger.config
+    : {}),
+});
+
+const mergeTrigger = (
+  prevTrigger: WorkflowTrigger,
+  updateTrigger: WorkflowTrigger
+) => ({
+  ...(prevTrigger && typeof prevTrigger === 'object' ? prevTrigger : {}),
+  ...(updateTrigger && typeof updateTrigger === 'object' ? updateTrigger : {}),
+  config: mergeTriggerConfig(prevTrigger, updateTrigger),
+});
+
+const isStartNodeConfigured = (startNode: Node): boolean =>
+  Boolean(
+    startNode.data?.lastSaved ||
+      startNode.data?.userModified ||
+      (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||
+      // If start node exists and has any configuration data, consider it configured
+      startNode.data?.triggerType ||
+      startNode.data?.eventType ||
+      startNode.data?.scheduleType ||
+      startNode.data?.input ||
+      startNode.data?.output
+  );
+
 export const useWorkflowState = ({
   initialConfig,
   fqn,
@@ -143,27 +181,7 @@ export const useWorkflowState = ({
           ...prev.workflowDefinition,
           ...updates,
           trigger: updates.trigger
-            ? {
-                ...(prev.workflowDefinition.trigger &&
-                typeof prev.workflowDefinition.trigger === 'object'
-                  ? prev.workflowDefinition.trigger
-                  : {}),
-                ...(updates.trigger && typeof updates.trigger === 'object'
-                  ? updates.trigger
-                  : {}),
-                config: {
-                  ...(prev.workflowDefinition.trigger &&
-                  typeof prev.workflowDefinition.trigger === 'object' &&
-                  'config' in prev.workflowDefinition.trigger
-                    ? prev.workflowDefinition.trigger.config
-                    : {}),
-                  ...(updates.trigger &&
-                  typeof updates.trigger === 'object' &&
-                  'config' in updates.trigger
-                    ? updates.trigger.config
-                    : {}),
-                },
-              }
+            ? mergeTrigger(prev.workflowDefinition.trigger, updates.trigger)
             : prev.workflowDefinition.trigger,
         };
 
@@ -265,19 +283,7 @@ export const useWorkflowState = ({
       (node) => node.type === NodeType.StartEvent
     );
     const hasStart = !!startNode;
-    const isConfigured =
-      hasStart &&
-      Boolean(
-        startNode.data?.lastSaved ||
-          startNode.data?.userModified ||
-          (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||
-          // If start node exists and has any configuration data, consider it configured
-          startNode.data?.triggerType ||
-          startNode.data?.eventType ||
-          startNode.data?.scheduleType ||
-          startNode.data?.input ||
-          startNode.data?.output
-      );
+    const isConfigured = startNode ? isStartNodeConfigured(startNode) : false;
 
     if (
       state.hasStartNode !== hasStart ||

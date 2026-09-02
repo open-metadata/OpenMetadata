@@ -344,6 +344,21 @@ const customTaskSchema: TaskFormSchema = {
   },
 };
 
+const withTaskIdentity =
+  (schema: TaskFormSchema) =>
+  (taskType: TaskEntityType): TaskFormSchema => ({
+    ...schema,
+    taskType,
+    name: taskType,
+    fullyQualifiedName: taskType,
+    displayName: taskType,
+  });
+
+interface DefaultSchemaEntry {
+  category: TaskCategory;
+  resolve: (taskType: TaskEntityType) => TaskFormSchema;
+}
+
 /**
  * Look up the built-in default form schema for a task type/category combination.
  * Used as a fallback when no schema is configured server-side.
@@ -352,78 +367,54 @@ export const getDefaultTaskFormSchema = (
   taskType: TaskEntityType,
   taskCategory: TaskCategory
 ): TaskFormSchema | undefined => {
-  if (
-    taskType === TaskEntityType.DescriptionUpdate &&
-    taskCategory === taskCategories.MetadataUpdate
-  ) {
-    return descriptionUpdateSchema;
-  }
-
-  if (
-    taskType === TaskEntityType.TagUpdate &&
-    taskCategory === taskCategories.MetadataUpdate
-  ) {
-    return tagUpdateSchema;
-  }
-
-  if (
-    [TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval].includes(
-      taskType
-    ) &&
-    taskCategory === taskCategories.Approval
-  ) {
-    return {
-      ...approvalSchema,
-      taskType,
-      name: taskType,
-      fullyQualifiedName: taskType,
-      displayName: taskType,
+  const schemaByTaskType: Partial<Record<TaskEntityType, DefaultSchemaEntry>> =
+    {
+      [TaskEntityType.DescriptionUpdate]: {
+        category: taskCategories.MetadataUpdate,
+        resolve: () => descriptionUpdateSchema,
+      },
+      [TaskEntityType.TagUpdate]: {
+        category: taskCategories.MetadataUpdate,
+        resolve: () => tagUpdateSchema,
+      },
+      [TaskEntityType.GlossaryApproval]: {
+        category: taskCategories.Approval,
+        resolve: withTaskIdentity(approvalSchema),
+      },
+      [TaskEntityType.RequestApproval]: {
+        category: taskCategories.Approval,
+        resolve: withTaskIdentity(approvalSchema),
+      },
+      [TaskEntityType.TestCaseResolution]: {
+        category: taskCategories.Incident,
+        resolve: withTaskIdentity(incidentResolutionSchema),
+      },
+      [TaskEntityType.IncidentResolution]: {
+        category: taskCategories.Incident,
+        resolve: withTaskIdentity(incidentResolutionSchema),
+      },
+      [TaskEntityType.OwnershipUpdate]: {
+        category: taskCategories.MetadataUpdate,
+        resolve: () => ownershipUpdateSchema,
+      },
+      [TaskEntityType.TierUpdate]: {
+        category: taskCategories.MetadataUpdate,
+        resolve: () => tierUpdateSchema,
+      },
+      [TaskEntityType.DomainUpdate]: {
+        category: taskCategories.MetadataUpdate,
+        resolve: () => domainUpdateSchema,
+      },
+      [TaskEntityType.CustomTask]: {
+        category: taskCategories.Custom,
+        resolve: () => customTaskSchema,
+      },
     };
+
+  const entry = schemaByTaskType[taskType];
+  if (!entry || entry.category !== taskCategory) {
+    return undefined;
   }
 
-  if (
-    [
-      TaskEntityType.TestCaseResolution,
-      TaskEntityType.IncidentResolution,
-    ].includes(taskType) &&
-    taskCategory === taskCategories.Incident
-  ) {
-    return {
-      ...incidentResolutionSchema,
-      taskType,
-      name: taskType,
-      fullyQualifiedName: taskType,
-      displayName: taskType,
-    };
-  }
-
-  if (
-    taskType === TaskEntityType.OwnershipUpdate &&
-    taskCategory === taskCategories.MetadataUpdate
-  ) {
-    return ownershipUpdateSchema;
-  }
-
-  if (
-    taskType === TaskEntityType.TierUpdate &&
-    taskCategory === taskCategories.MetadataUpdate
-  ) {
-    return tierUpdateSchema;
-  }
-
-  if (
-    taskType === TaskEntityType.DomainUpdate &&
-    taskCategory === taskCategories.MetadataUpdate
-  ) {
-    return domainUpdateSchema;
-  }
-
-  if (
-    taskType === TaskEntityType.CustomTask &&
-    taskCategory === taskCategories.Custom
-  ) {
-    return customTaskSchema;
-  }
-
-  return undefined;
+  return entry.resolve(taskType);
 };

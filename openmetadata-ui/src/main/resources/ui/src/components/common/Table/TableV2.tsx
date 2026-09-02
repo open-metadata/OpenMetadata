@@ -534,6 +534,212 @@ const TableV2 = <T extends object>(
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const getCellStyle = (
+    colType: ColumnType<T>,
+    cellKey: string,
+    showExpandInCell: boolean | undefined,
+    depth: number,
+    handlerStyle?: React.CSSProperties
+  ): React.CSSProperties => {
+    const hasWidth =
+      columnWidths[cellKey] !== undefined || colType.width !== undefined;
+
+    return {
+      ...(rest.size === 'small' && !rest.cellClassName
+        ? { padding: '8px' }
+        : {}),
+      ...(hasWidth
+        ? {
+            width: columnWidths[cellKey] ?? (colType.width as number),
+            minWidth: (colType.width as number) ?? undefined,
+          }
+        : {}),
+      ...getColumnStickyStyle(colType.fixed, 1),
+      ...(showExpandInCell ? { paddingLeft: `${16 + depth * 12}px` } : {}),
+      ...handlerStyle,
+    };
+  };
+
+  const renderExpandControl = (
+    record: T,
+    rowKey: string,
+    hasChildren: boolean,
+    isExpanded: boolean
+  ) => {
+    const ExpandIcon = rest.expandable?.expandIcon;
+
+    if (hasChildren) {
+      return ExpandIcon ? (
+        <ExpandIcon
+          expandable={hasChildren}
+          expanded={isExpanded}
+          prefixCls=""
+          record={record}
+          onExpand={(rec, e) => {
+            e.stopPropagation();
+            handleExpandToggle(rec as T, rowKey);
+          }}
+        />
+      ) : (
+        <button
+          aria-expanded={isExpanded}
+          className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+          data-testid="expand-icon"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleExpandToggle(record, rowKey);
+          }}>
+          {isExpanded ? (
+            <ChevronDown className="tw:size-4" />
+          ) : (
+            <ChevronRight className="tw:size-4" />
+          )}
+        </button>
+      );
+    }
+
+    return ExpandIcon ? (
+      <ExpandIcon
+        expandable={false}
+        expanded={false}
+        prefixCls=""
+        record={record}
+        onExpand={(_rec, _e) => {}}
+      />
+    ) : (
+      <span className="tw:inline-block tw:w-4 tw:mr-1" />
+    );
+  };
+
+  const renderColumnFilterDropdown = (colType: ColumnType<T>, colKey: string) =>
+    Boolean(colType.filters || colType.filterDropdown) && (
+      <DialogTrigger
+        isOpen={openFilterKey === colKey}
+        onOpenChange={(isOpen) => setOpenFilterKey(isOpen ? colKey : null)}>
+        <Button
+          aria-label="filter"
+          className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+          color="tertiary">
+          {typeof colType.filterIcon === 'function'
+            ? colType.filterIcon(Boolean(filterState[colKey]?.length))
+            : colType.filterIcon ?? null}
+        </Button>
+        <Popover placement="bottom right">
+          <Dialog className="tw:outline-none">
+            <div
+              className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
+              style={{ minWidth: '200px' }}>
+              {typeof colType.filterDropdown === 'function'
+                ? colType.filterDropdown({
+                    prefixCls: 'ant-table-filter-dropdown',
+                    setSelectedKeys: (keys) =>
+                      setFilterState((prev) => ({
+                        ...prev,
+                        [colKey]: keys,
+                      })),
+                    selectedKeys: filterState[colKey] ?? [],
+                    confirm: () => setOpenFilterKey(null),
+                    clearFilters: () =>
+                      setFilterState((prev) => {
+                        const next = { ...prev };
+                        delete next[colKey];
+
+                        return next;
+                      }),
+                    filters: colType.filters,
+                    visible: true,
+                    close: () => setOpenFilterKey(null),
+                  })
+                : colType.filterDropdown}
+            </div>
+          </Dialog>
+        </Popover>
+      </DialogTrigger>
+    );
+
+  const renderTableToolbar = () => (
+    <div
+      className={classNames('p-x-md', {
+        'p-y-md':
+          searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
+      })}
+      data-testid="table-toolbar">
+      <div className="tw:flex tw:items-center">
+        {searchProps && (
+          <div style={{ flex: 1 }}>
+            <Searchbar
+              {...searchProps}
+              removeMargin
+              placeholder={searchProps?.placeholder ?? t('label.search')}
+              searchValue={searchProps?.searchValue}
+              typingInterval={searchProps?.typingInterval ?? 500}
+              onSearch={handleSearchAction}
+            />
+          </div>
+        )}
+        {(rest.extraTableFilters || isCustomizeColumnEnable) && (
+          <div
+            className={classNames(
+              'd-flex justify-end items-center gap-5',
+              rest.extraTableFiltersClassName
+            )}
+            style={{ flex: 1 }}>
+            {rest.extraTableFilters}
+            {isCustomizeColumnEnable && (
+              <Dropdown.Root>
+                <Button
+                  color="tertiary"
+                  data-testid="column-dropdown"
+                  iconLeading={ColumnIcon}
+                  size="sm"
+                  title={t('label.show-or-hide-column-plural')}>
+                  {t('label.customize')}
+                </Button>
+                <Dropdown.Popover>
+                  <Dropdown.Menu>
+                    <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
+                      <Typography
+                        className="tw:text-tertiary"
+                        data-testid="column-dropdown-title"
+                        weight="medium">
+                        {t('label.column')}
+                      </Typography>
+                      <Button
+                        color="link-color"
+                        data-testid="column-dropdown-action-button"
+                        size="xs"
+                        onClick={handleBulkColumnAction}>
+                        {dropdownColumnList.length ===
+                        columnDropdownSelections.length
+                          ? t('label.hide-all')
+                          : t('label.view-all')}
+                      </Button>
+                    </Dropdown.SectionHeader>
+
+                    <Dropdown.Separator />
+                    <Dropdown.Section>
+                      {dropdownColumnList.map((item, index) => (
+                        <DraggableMenuItemV2
+                          currentItem={item}
+                          index={index}
+                          itemList={dropdownColumnList}
+                          key={item.value}
+                          selectedOptions={columnDropdownSelections}
+                          onMoveItem={handleMoveItem}
+                          onSelect={handleColumnItemSelect}
+                        />
+                      ))}
+                    </Dropdown.Section>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={classNames(
@@ -542,86 +748,7 @@ const TableV2 = <T extends object>(
         rest.containerClassName
       )}
       ref={ref}>
-      <div
-        className={classNames('p-x-md', {
-          'p-y-md':
-            searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
-        })}
-        data-testid="table-toolbar">
-        <div className="tw:flex tw:items-center">
-          {searchProps && (
-            <div style={{ flex: 1 }}>
-              <Searchbar
-                {...searchProps}
-                removeMargin
-                placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.searchValue}
-                typingInterval={searchProps?.typingInterval ?? 500}
-                onSearch={handleSearchAction}
-              />
-            </div>
-          )}
-          {(rest.extraTableFilters || isCustomizeColumnEnable) && (
-            <div
-              className={classNames(
-                'd-flex justify-end items-center gap-5',
-                rest.extraTableFiltersClassName
-              )}
-              style={{ flex: 1 }}>
-              {rest.extraTableFilters}
-              {isCustomizeColumnEnable && (
-                <Dropdown.Root>
-                  <Button
-                    color="tertiary"
-                    data-testid="column-dropdown"
-                    iconLeading={ColumnIcon}
-                    size="sm"
-                    title={t('label.show-or-hide-column-plural')}>
-                    {t('label.customize')}
-                  </Button>
-                  <Dropdown.Popover>
-                    <Dropdown.Menu>
-                      <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
-                        <Typography
-                          className="tw:text-tertiary"
-                          data-testid="column-dropdown-title"
-                          weight="medium">
-                          {t('label.column')}
-                        </Typography>
-                        <Button
-                          color="link-color"
-                          data-testid="column-dropdown-action-button"
-                          size="xs"
-                          onClick={handleBulkColumnAction}>
-                          {dropdownColumnList.length ===
-                          columnDropdownSelections.length
-                            ? t('label.hide-all')
-                            : t('label.view-all')}
-                        </Button>
-                      </Dropdown.SectionHeader>
-
-                      <Dropdown.Separator />
-                      <Dropdown.Section>
-                        {dropdownColumnList.map((item, index) => (
-                          <DraggableMenuItemV2
-                            currentItem={item}
-                            index={index}
-                            itemList={dropdownColumnList}
-                            key={item.value}
-                            selectedOptions={columnDropdownSelections}
-                            onMoveItem={handleMoveItem}
-                            onSelect={handleColumnItemSelect}
-                          />
-                        ))}
-                      </Dropdown.Section>
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown.Root>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      {renderTableToolbar()}
 
       <div
         className="tw:flex tw:flex-col tw:w-full"
@@ -699,54 +826,7 @@ const TableV2 = <T extends object>(
                       }}>
                       <div className="tw:flex tw:items-center tw:gap-1">
                         {resolveColumnTitle(colType, propsColumns)}
-                        {Boolean(colType.filters || colType.filterDropdown) && (
-                          <DialogTrigger
-                            isOpen={openFilterKey === colKey}
-                            onOpenChange={(isOpen) =>
-                              setOpenFilterKey(isOpen ? colKey : null)
-                            }>
-                            <Button
-                              aria-label="filter"
-                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
-                              color="tertiary">
-                              {typeof colType.filterIcon === 'function'
-                                ? colType.filterIcon(
-                                    Boolean(filterState[colKey]?.length)
-                                  )
-                                : colType.filterIcon ?? null}
-                            </Button>
-                            <Popover placement="bottom right">
-                              <Dialog className="tw:outline-none">
-                                <div
-                                  className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
-                                  style={{ minWidth: '200px' }}>
-                                  {typeof colType.filterDropdown === 'function'
-                                    ? colType.filterDropdown({
-                                        prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) =>
-                                          setFilterState((prev) => ({
-                                            ...prev,
-                                            [colKey]: keys,
-                                          })),
-                                        selectedKeys: filterState[colKey] ?? [],
-                                        confirm: () => setOpenFilterKey(null),
-                                        clearFilters: () =>
-                                          setFilterState((prev) => {
-                                            const next = { ...prev };
-                                            delete next[colKey];
-
-                                            return next;
-                                          }),
-                                        filters: colType.filters,
-                                        visible: true,
-                                        close: () => setOpenFilterKey(null),
-                                      })
-                                    : colType.filterDropdown}
-                                </div>
-                              </Dialog>
-                            </Popover>
-                          </DialogTrigger>
-                        )}
+                        {renderColumnFilterDropdown(colType, colKey)}
                       </div>
                       {rest.resizableColumns && (
                         <ColumnResizer
@@ -817,15 +897,10 @@ const TableV2 = <T extends object>(
                         const cellKey = String(
                           col.key ?? colType.dataIndex ?? colIdx
                         );
-                        const stickyStyle = getColumnStickyStyle(
-                          colType.fixed,
-                          1
-                        );
 
                         const isFirstColumn = colIdx === 0;
                         const showExpandInCell =
                           rest.expandable && isFirstColumn;
-                        const ExpandIcon = rest.expandable?.expandIcon;
                         const cellHandlerProps =
                           (colType.onCell?.(
                             record,
@@ -845,70 +920,24 @@ const TableV2 = <T extends object>(
                               'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
                             )}
                             key={cellKey}
-                            style={{
-                              ...(rest.size === 'small' && !rest.cellClassName
-                                ? { padding: '8px' }
-                                : {}),
-                              ...(columnWidths[cellKey] !== undefined ||
-                              colType.width !== undefined
-                                ? {
-                                    width:
-                                      columnWidths[cellKey] ??
-                                      (colType.width as number),
-                                    minWidth:
-                                      (colType.width as number) ?? undefined,
-                                  }
-                                : {}),
-                              ...stickyStyle,
-                              ...(showExpandInCell
-                                ? { paddingLeft: `${16 + depth * 12}px` }
-                                : {}),
-                              ...cellHandlerProps.style,
-                            }}>
+                            style={getCellStyle(
+                              colType,
+                              cellKey,
+                              showExpandInCell,
+                              depth,
+                              cellHandlerProps.style
+                            )}>
                             <div
                               className={classNames(
                                 'tw:flex tw:gap-1 tw:max-w-full'
                               )}>
                               {showExpandInCell && (
                                 <div className="tw:flex tw:items-center tw:shrink-0">
-                                  {hasChildren ? (
-                                    ExpandIcon ? (
-                                      <ExpandIcon
-                                        expandable={hasChildren}
-                                        expanded={isExpanded}
-                                        prefixCls=""
-                                        record={record}
-                                        onExpand={(rec, e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(rec as T, rowKey);
-                                        }}
-                                      />
-                                    ) : (
-                                      <button
-                                        aria-expanded={isExpanded}
-                                        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
-                                        data-testid="expand-icon"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(record, rowKey);
-                                        }}>
-                                        {isExpanded ? (
-                                          <ChevronDown className="tw:size-4" />
-                                        ) : (
-                                          <ChevronRight className="tw:size-4" />
-                                        )}
-                                      </button>
-                                    )
-                                  ) : ExpandIcon ? (
-                                    <ExpandIcon
-                                      expandable={false}
-                                      expanded={false}
-                                      prefixCls=""
-                                      record={record}
-                                      onExpand={(_rec, _e) => {}}
-                                    />
-                                  ) : (
-                                    <span className="tw:inline-block tw:w-4 tw:mr-1" />
+                                  {renderExpandControl(
+                                    record,
+                                    rowKey,
+                                    hasChildren,
+                                    isExpanded
                                   )}
                                 </div>
                               )}

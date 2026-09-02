@@ -459,6 +459,77 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     messageSchema?.schemaFields,
   ]);
 
+  const renderSchemaContent = () => {
+    if (
+      isEmpty(messageSchema?.schemaFields) &&
+      isEmpty(messageSchema?.schemaText)
+    ) {
+      return <ErrorPlaceHolder />;
+    }
+
+    const isTextView =
+      viewType === SchemaViewType.TEXT || isEmpty(messageSchema?.schemaFields);
+
+    return (
+      <>
+        {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
+          <Col span={24}>
+            <Segmented
+              className="segment-toggle"
+              options={viewTypeOptions}
+              value={viewType}
+              onChange={(value) => setViewType(value as SchemaViewType)}
+            />
+          </Col>
+        )}
+
+        <Col span={24}>
+          {isTextView ? (
+            messageSchema?.schemaText && (
+              <SchemaEditor
+                className="custom-code-mirror-theme custom-query-editor"
+                editorClass={classNames('table-query-editor')}
+                mode={{ name: CSMode.JAVASCRIPT }}
+                options={{
+                  styleActiveLine: false,
+                }}
+                value={messageSchema?.schemaText ?? ''}
+              />
+            )
+          ) : (
+            <Table
+              className={classNames('align-table-filter-left', className)}
+              columns={columns}
+              data-testid="topic-schema-fields-table"
+              dataSource={filteredSchemaFields}
+              defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
+              expandable={{
+                ...getTableExpandableConfig<Field>(false, 'text-link-color'),
+                rowExpandable: (record) => !isEmpty(record.children),
+                onExpandedRowsChange: handleExpandedRowsChange,
+                expandedRowKeys,
+              }}
+              extraTableFilters={
+                <ToggleExpandButton
+                  allRowKeys={schemaAllRowKeys}
+                  expandedRowKeys={expandedRowKeys}
+                  toggleExpandAll={toggleExpandAll}
+                />
+              }
+              pagination={false}
+              rowClassName={getRowClassName}
+              rowKey="fullyQualifiedName"
+              scroll={TABLE_SCROLL_VALUE}
+              size="small"
+              staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+              onChange={handleTableChange}
+            />
+          )}
+        </Col>
+      </>
+    );
+  };
+
   return (
     <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
@@ -471,68 +542,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           )}
         </Col>
       )}
-      {isEmpty(messageSchema?.schemaFields) &&
-      isEmpty(messageSchema?.schemaText) ? (
-        <ErrorPlaceHolder />
-      ) : (
-        <>
-          {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
-            <Col span={24}>
-              <Segmented
-                className="segment-toggle"
-                options={viewTypeOptions}
-                value={viewType}
-                onChange={(value) => setViewType(value as SchemaViewType)}
-              />
-            </Col>
-          )}
-
-          <Col span={24}>
-            {viewType === SchemaViewType.TEXT ||
-            isEmpty(messageSchema?.schemaFields) ? (
-              messageSchema?.schemaText && (
-                <SchemaEditor
-                  className="custom-code-mirror-theme custom-query-editor"
-                  editorClass={classNames('table-query-editor')}
-                  mode={{ name: CSMode.JAVASCRIPT }}
-                  options={{
-                    styleActiveLine: false,
-                  }}
-                  value={messageSchema?.schemaText ?? ''}
-                />
-              )
-            ) : (
-              <Table
-                className={classNames('align-table-filter-left', className)}
-                columns={columns}
-                data-testid="topic-schema-fields-table"
-                dataSource={filteredSchemaFields}
-                defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
-                expandable={{
-                  ...getTableExpandableConfig<Field>(false, 'text-link-color'),
-                  rowExpandable: (record) => !isEmpty(record.children),
-                  onExpandedRowsChange: handleExpandedRowsChange,
-                  expandedRowKeys,
-                }}
-                extraTableFilters={
-                  <ToggleExpandButton
-                    allRowKeys={schemaAllRowKeys}
-                    expandedRowKeys={expandedRowKeys}
-                    toggleExpandAll={toggleExpandAll}
-                  />
-                }
-                pagination={false}
-                rowClassName={getRowClassName}
-                rowKey="fullyQualifiedName"
-                scroll={TABLE_SCROLL_VALUE}
-                size="small"
-                staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-                onChange={handleTableChange}
-              />
-            )}
-          </Col>
-        </>
-      )}
+      {renderSchemaContent()}
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}

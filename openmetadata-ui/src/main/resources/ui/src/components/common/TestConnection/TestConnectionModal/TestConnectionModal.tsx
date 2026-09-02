@@ -113,32 +113,56 @@ const TestConnectionModal = ({
     () => testConnectionStep.filter((step) => !step.mandatory),
     [testConnectionStep]
   );
-  const areRequiredStepsPassing =
-    requiredSteps.length > 0 &&
-    requiredSteps.every((step) => getConnectionStepResult(step)?.passed);
-  const hasOptionalFailures = optionalSteps.some(
-    (step) => getConnectionStepResult(step)?.passed === false
+  const areRequiredStepsPassing = useMemo(
+    () =>
+      requiredSteps.length > 0 &&
+      requiredSteps.every((step) => getConnectionStepResult(step)?.passed),
+    [requiredSteps, getConnectionStepResult]
+  );
+  const hasOptionalFailures = useMemo(
+    () =>
+      optionalSteps.some(
+        (step) => getConnectionStepResult(step)?.passed === false
+      ),
+    [optionalSteps, getConnectionStepResult]
   );
 
-  const progressPercent = totalCount
-    ? Math.min(
-        100,
-        Math.max(progress, Math.round((completedCount / totalCount) * 100))
-      )
-    : progress;
+  const progressPercent = useMemo(
+    () =>
+      totalCount
+        ? Math.min(
+            100,
+            Math.max(progress, Math.round((completedCount / totalCount) * 100))
+          )
+        : progress,
+    [totalCount, progress, completedCount]
+  );
 
-  const isComplete = !isTestingConnection && progress >= 100;
-  const canProceed = isComplete && areRequiredStepsPassing;
-  const isSuccessful = canProceed && !hasOptionalFailures;
-  const isWarning = canProceed && hasOptionalFailures;
-  const isFailed = isComplete && !areRequiredStepsPassing;
+  const { isComplete, isSuccessful, isWarning, isFailed, connectionFailed } =
+    useMemo(() => {
+      const complete = !isTestingConnection && progress >= 100;
+      const canProceed = complete && areRequiredStepsPassing;
+      const failed = complete && !areRequiredStepsPassing;
 
-  // Gate failed either because the gate step itself failed, or because the API
-  // errored before the workflow ran (no step results at all but test is done).
-  const connectionFailed =
-    !isTestingConnection &&
-    ((gateResult !== undefined && !gateResult.passed) ||
-      (isFailed && gateResult === undefined));
+      return {
+        isComplete: complete,
+        isSuccessful: canProceed && !hasOptionalFailures,
+        isWarning: canProceed && hasOptionalFailures,
+        isFailed: failed,
+        // Gate failed either because the gate step itself failed, or because the
+        // API errored before the workflow ran (no step results but test is done).
+        connectionFailed:
+          !isTestingConnection &&
+          ((gateResult !== undefined && !gateResult.passed) ||
+            (failed && gateResult === undefined)),
+      };
+    }, [
+      isTestingConnection,
+      progress,
+      areRequiredStepsPassing,
+      hasOptionalFailures,
+      gateResult,
+    ]);
 
   const rawLog = useMemo(
     () =>
@@ -179,9 +203,11 @@ const TestConnectionModal = ({
   );
 
   const { onCopyToClipBoard } = useClipboard(rawLog);
-  const rawLogLineCount = rawLog
-    ? rawLog.split('\n').filter((line) => line.trim()).length
-    : 0;
+  const rawLogLineCount = useMemo(
+    () =>
+      rawLog ? rawLog.split('\n').filter((line) => line.trim()).length : 0,
+    [rawLog]
+  );
 
   const serviceLogo = useMemo(
     () =>
@@ -200,9 +226,10 @@ const TestConnectionModal = ({
   };
 
   const message = getConnectionTimeoutMessage(t, serviceType, hostIp);
-  const gateDescription = gateStep
-    ? getGateDescription(t, gateResult, gateStep)
-    : '';
+  const gateDescription = useMemo(
+    () => (gateStep ? getGateDescription(t, gateResult, gateStep) : ''),
+    [gateStep, gateResult, t]
+  );
 
   useEffect(() => {
     if (isTestingConnection) {

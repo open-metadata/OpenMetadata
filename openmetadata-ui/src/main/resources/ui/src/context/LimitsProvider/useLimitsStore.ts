@@ -69,6 +69,63 @@ export type BannerDetails = {
   hardLimitExceed?: boolean;
 };
 
+const buildDisabledResourceLimit = (
+  resource: string
+): ResourceLimit['featureLimitStatuses'][number] =>
+  ({
+    name: resource,
+    limitReached: false,
+    currentCount: -1,
+    configuredLimit: {
+      name: resource,
+      maxVersions: 0,
+      disableFields: [],
+      limits: {
+        softLimit: -1,
+        hardLimit: -1,
+      },
+    },
+  } as ResourceLimit['featureLimitStatuses'][number]);
+
+const resolveLimitBanner = (
+  rLimit: ResourceLimit['featureLimitStatuses'][number],
+  config: LimitConfig | null,
+  showBanner: boolean,
+  setBannerDetails: (details: BannerDetails | null) => void,
+  resource: string
+) => {
+  const {
+    configuredLimit: { limits },
+    currentCount,
+    limitReached,
+  } = rLimit;
+
+  const softLimitExceed =
+    limits.softLimit !== -1 && currentCount >= limits.softLimit;
+  const hardLimitExceed =
+    limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+  const shouldShowBanner =
+    (softLimitExceed || hardLimitExceed || limitReached) && showBanner;
+
+  if (!shouldShowBanner) {
+    return;
+  }
+
+  const plan = config?.limits?.config.plan ?? 'FREE';
+  const usagePercent = hardLimitExceed ? '100%' : '75%';
+  const bannerType = hardLimitExceed ? 'danger' : 'warning';
+
+  setBannerDetails({
+    header: `You have reached ${usagePercent} of your ${plan} Plan usage limit.`,
+    type: bannerType,
+    subheader: ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
+      .replace('{{resource}}', startCase(resource))
+      .replace('{{limit}}', limits.hardLimit + ''),
+    softLimitExceed,
+    hardLimitExceed,
+  });
+};
+
 /**
  * Store to manage the limits and resource limits
  */
@@ -115,20 +172,7 @@ export const useLimitStore = create<{
 
     let rLimit = resourceLimit[resource];
     if (config?.enable === false) {
-      return {
-        name: resource,
-        limitReached: false,
-        currentCount: -1,
-        configuredLimit: {
-          name: resource,
-          maxVersions: 0,
-          disableFields: [],
-          limits: {
-            softLimit: -1,
-            hardLimit: -1,
-          },
-        },
-      } as ResourceLimit['featureLimitStatuses'][number];
+      return buildDisabledResourceLimit(resource);
     }
 
     if (isNil(rLimit) || force) {
@@ -139,35 +183,13 @@ export const useLimitStore = create<{
     }
 
     if (rLimit) {
-      const {
-        configuredLimit: { limits },
-        currentCount,
-        limitReached,
-      } = rLimit;
-
-      const softLimitExceed =
-        limits.softLimit !== -1 && currentCount >= limits.softLimit;
-      const hardLimitExceed =
-        limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
-
-      const plan = config?.limits?.config.plan ?? 'FREE';
-
-      (softLimitExceed || hardLimitExceed || limitReached) &&
-        showBanner &&
-        setBannerDetails({
-          header: `You have reached ${
-            hardLimitExceed ? '100%' : '75%'
-          } of your ${plan} Plan usage limit.`,
-          type: hardLimitExceed ? 'danger' : 'warning',
-          subheader: ERROR_SUB_HEADER.replace(
-            '{{currentCount}}',
-            currentCount + ''
-          )
-            .replace('{{resource}}', startCase(resource))
-            .replace('{{limit}}', limits.hardLimit + ''),
-          softLimitExceed,
-          hardLimitExceed,
-        });
+      resolveLimitBanner(
+        rLimit,
+        config,
+        showBanner,
+        setBannerDetails,
+        resource
+      );
     }
 
     return rLimit;

@@ -38,6 +38,31 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
   );
 };
 
+const getArrayFieldValue = (
+  formData: FieldProps['formData'],
+  isScopeField: boolean
+): string[] => {
+  if (isScopeField) {
+    return typeof formData === 'string'
+      ? formData.split(' ').filter(Boolean)
+      : formData ?? [];
+  }
+
+  return formData ?? [];
+};
+
+const getArrayFieldErrorState = (
+  isUrlField: boolean,
+  value: string[],
+  rawErrors?: string[]
+): { hasInvalidUrls: boolean; hasError: boolean } => {
+  const hasInvalidUrls =
+    isUrlField && value.some((url: string) => !isValidUrl(url));
+  const hasError = (rawErrors && rawErrors.length > 0) || hasInvalidUrls;
+
+  return { hasInvalidUrls, hasError: Boolean(hasError) };
+};
+
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
 
@@ -91,25 +116,17 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const id = props.idSchema.$id;
 
   // Handle scope field conversion between string (backend) and array (UI)
-  let value: string[];
-  if (isScopeField) {
-    // Convert string to array for UI display
-    value =
-      typeof props.formData === 'string'
-        ? props.formData.split(' ').filter(Boolean)
-        : props.formData ?? [];
-  } else {
-    value = props.formData ?? [];
-  }
+  const value = getArrayFieldValue(props.formData, isScopeField);
 
   const options = generateOptions();
   const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
   // Check if field has errors (including invalid URLs)
-  const hasInvalidUrls =
-    isUrlField && value.some((url: string) => !isValidUrl(url));
-  const hasError =
-    (props.rawErrors && props.rawErrors.length > 0) || hasInvalidUrls;
+  const { hasInvalidUrls, hasError } = getArrayFieldErrorState(
+    isUrlField,
+    value,
+    props.rawErrors
+  );
 
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();

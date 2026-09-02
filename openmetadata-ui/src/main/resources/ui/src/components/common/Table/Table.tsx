@@ -260,6 +260,52 @@ const Table = <T extends object>(
     defaultVisibleColumns,
   ]);
 
+  const renderTableToolbar = () => (
+    <Row className="p-x-md">
+      {searchProps ? (
+        <Col span={12}>
+          <Searchbar
+            {...searchProps}
+            removeMargin
+            placeholder={searchProps?.placeholder ?? t('label.search')}
+            searchValue={searchProps?.searchValue}
+            typingInterval={searchProps?.typingInterval ?? 500}
+            onSearch={handleSearchAction}
+          />
+        </Col>
+      ) : null}
+      {(rest.extraTableFilters || isCustomizeColumnEnable) && (
+        <Col
+          className={classNames(
+            'd-flex justify-end items-center gap-5',
+            rest.extraTableFiltersClassName
+          )}
+          span={searchProps ? 12 : 24}>
+          {rest.extraTableFilters}
+          {isCustomizeColumnEnable && (
+            <Dropdown
+              className="custom-column-dropdown-menu"
+              menu={menu}
+              open={isDropdownVisible}
+              placement="bottomRight"
+              trigger={['click']}
+              onOpenChange={setIsDropdownVisible}>
+              <Button
+                className="remove-button-background-hover"
+                data-testid="column-dropdown"
+                icon={<ColumnIcon />}
+                size="small"
+                title={t('label.show-or-hide-column-plural')}
+                type="text">
+                {t('label.customize')}
+              </Button>
+            </Dropdown>
+          )}
+        </Col>
+      )}
+    </Row>
+  );
+
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
       <Col
@@ -268,49 +314,7 @@ const Table = <T extends object>(
             searchProps ?? rest.extraTableFilters ?? isCustomizeColumnEnable,
         })}
         span={24}>
-        <Row className="p-x-md">
-          {searchProps ? (
-            <Col span={12}>
-              <Searchbar
-                {...searchProps}
-                removeMargin
-                placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.searchValue}
-                typingInterval={searchProps?.typingInterval ?? 500}
-                onSearch={handleSearchAction}
-              />
-            </Col>
-          ) : null}
-          {(rest.extraTableFilters || isCustomizeColumnEnable) && (
-            <Col
-              className={classNames(
-                'd-flex justify-end items-center gap-5',
-                rest.extraTableFiltersClassName
-              )}
-              span={searchProps ? 12 : 24}>
-              {rest.extraTableFilters}
-              {isCustomizeColumnEnable && (
-                <Dropdown
-                  className="custom-column-dropdown-menu"
-                  menu={menu}
-                  open={isDropdownVisible}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setIsDropdownVisible}>
-                  <Button
-                    className="remove-button-background-hover"
-                    data-testid="column-dropdown"
-                    icon={<ColumnIcon />}
-                    size="small"
-                    title={t('label.show-or-hide-column-plural')}
-                    type="text">
-                    {t('label.customize')}
-                  </Button>
-                </Dropdown>
-              )}
-            </Col>
-          )}
-        </Row>
+        {renderTableToolbar()}
       </Col>
 
       <Col span={24}>

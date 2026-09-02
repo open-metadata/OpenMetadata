@@ -41,264 +41,397 @@ type NodeConfigWithMetadata = NodeConfig & {
   userModified?: boolean;
 };
 
+type TriggerUserChanges = string | boolean | undefined;
+
+const resolveEntityTypes = (
+  hasUserChanges: TriggerUserChanges,
+  hasStartNodeConfig: boolean,
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig?: Record<string, unknown>
+): string[] => {
+  if (hasUserChanges && hasStartNodeConfig) {
+    return startNodeConfig.dataAssets.filter(
+      (asset: string) => asset && asset.trim() !== ''
+    );
+  }
+  if (
+    existingTriggerConfig?.entityTypes &&
+    Array.isArray(existingTriggerConfig.entityTypes)
+  ) {
+    return [...existingTriggerConfig.entityTypes];
+  }
+  if (
+    existingTriggerConfig?.entityType &&
+    typeof existingTriggerConfig.entityType === 'string'
+  ) {
+    return [existingTriggerConfig.entityType];
+  }
+
+  return [];
+};
+
+const resolveEventTypes = (
+  hasUserChanges: TriggerUserChanges,
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig?: Record<string, unknown>
+): unknown => {
+  if (
+    hasUserChanges &&
+    startNodeConfig.eventType &&
+    startNodeConfig.eventType.length > 0
+  ) {
+    return startNodeConfig.eventType;
+  }
+  if (existingTriggerConfig?.events) {
+    return existingTriggerConfig.events;
+  }
+
+  return undefined;
+};
+
+const resolveExclude = (
+  hasUserChanges: TriggerUserChanges,
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig?: Record<string, unknown>
+): unknown => {
+  if (hasUserChanges && startNodeConfig.excludeFields !== undefined) {
+    return startNodeConfig.excludeFields.length > 0
+      ? startNodeConfig.excludeFields
+      : undefined;
+  }
+  if (existingTriggerConfig?.exclude) {
+    return existingTriggerConfig.exclude;
+  }
+
+  return undefined;
+};
+
+const resolveInclude = (
+  hasUserChanges: TriggerUserChanges,
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig?: Record<string, unknown>
+): unknown => {
+  if (
+    hasUserChanges &&
+    Array.isArray(startNodeConfig.include) &&
+    startNodeConfig.include.length > 0
+  ) {
+    return startNodeConfig.include;
+  }
+  if (existingTriggerConfig?.include) {
+    return existingTriggerConfig.include;
+  }
+
+  return undefined;
+};
+
+const resolveEventFilter = (
+  hasUserChanges: TriggerUserChanges,
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig: Record<string, unknown> | undefined,
+  entityTypes: string[]
+): unknown => {
+  if (
+    hasUserChanges &&
+    startNodeConfig.triggerFilter &&
+    startNodeConfig.triggerFilter.trim() !== ''
+  ) {
+    const filterObj: Record<string, string> = {};
+    entityTypes.forEach((entityType) => {
+      filterObj[entityType] = startNodeConfig.triggerFilter || '';
+    });
+
+    return filterObj;
+  }
+  if (existingTriggerConfig?.filter) {
+    return existingTriggerConfig.filter;
+  }
+
+  return undefined;
+};
+
+const buildEventBasedTriggerConfig = (
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig: Record<string, unknown> | undefined,
+  hasUserChanges: TriggerUserChanges,
+  hasStartNodeConfig: boolean
+): Record<string, unknown> => {
+  const finalTriggerConfig: Record<string, unknown> = {};
+  const entityTypes = resolveEntityTypes(
+    hasUserChanges,
+    hasStartNodeConfig,
+    startNodeConfig,
+    existingTriggerConfig
+  );
+
+  // EntityTypes are required - must be provided
+  if (entityTypes.length > 0) {
+    finalTriggerConfig.entityTypes = entityTypes;
+  }
+
+  const events = resolveEventTypes(
+    hasUserChanges,
+    startNodeConfig,
+    existingTriggerConfig
+  );
+  if (events !== undefined) {
+    finalTriggerConfig.events = events;
+  }
+
+  const exclude = resolveExclude(
+    hasUserChanges,
+    startNodeConfig,
+    existingTriggerConfig
+  );
+  if (exclude !== undefined) {
+    finalTriggerConfig.exclude = exclude;
+  }
+
+  const include = resolveInclude(
+    hasUserChanges,
+    startNodeConfig,
+    existingTriggerConfig
+  );
+  if (include !== undefined) {
+    finalTriggerConfig.include = include;
+  }
+
+  const filter = resolveEventFilter(
+    hasUserChanges,
+    startNodeConfig,
+    existingTriggerConfig,
+    entityTypes
+  );
+  if (filter !== undefined) {
+    finalTriggerConfig.filter = filter;
+  }
+
+  return finalTriggerConfig;
+};
+
+const resolveUserSchedule = (
+  startNodeConfig: NodeConfigWithMetadata
+): Record<string, unknown> => {
+  const scheduleType = startNodeConfig.scheduleType || 'OnDemand';
+  if (scheduleType === 'Scheduled' && startNodeConfig.cronExpression) {
+    return {
+      scheduleTimeline: 'Custom',
+      cronExpression: startNodeConfig.cronExpression,
+    };
+  }
+
+  return { scheduleTimeline: 'None' };
+};
+
+const resolveExistingSchedule = (
+  existingTriggerConfig?: Record<string, unknown>
+): unknown => {
+  if (!existingTriggerConfig?.schedule) {
+    return { scheduleTimeline: 'None' };
+  }
+
+  const existingSchedule = existingTriggerConfig.schedule as Record<
+    string,
+    unknown
+  >;
+
+  // If scheduleTimeline is "None", it means OnDemand
+  if (existingSchedule.scheduleTimeline === ScheduleTimeline.None) {
+    return { scheduleTimeline: 'None' };
+  }
+  if (
+    existingSchedule.scheduleTimeline === ScheduleTimeline.Custom &&
+    existingSchedule.cronExpression
+  ) {
+    return {
+      scheduleTimeline: 'Custom',
+      cronExpression: existingSchedule.cronExpression,
+    };
+  }
+
+  return existingTriggerConfig.schedule;
+};
+
+const resolveUserBatchSize = (
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig?: Record<string, unknown>
+): unknown => {
+  if (startNodeConfig.batchSize && startNodeConfig.batchSize !== 100) {
+    return startNodeConfig.batchSize;
+  }
+  if (existingTriggerConfig?.batchSize) {
+    return existingTriggerConfig.batchSize;
+  }
+
+  return 100;
+};
+
+const resolvePeriodicFilters = (
+  hasUserChanges: TriggerUserChanges,
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig?: Record<string, unknown>
+): unknown => {
+  if (
+    hasUserChanges &&
+    startNodeConfig.dataAssetFilters &&
+    startNodeConfig.dataAssetFilters.length > 0
+  ) {
+    const filterObj: Record<string, string> = {};
+    startNodeConfig.dataAssetFilters.forEach((df: DataAssetFilter) => {
+      const entityType = df.dataAsset;
+      const jsonLogicFilter = df.filters;
+      if (jsonLogicFilter && jsonLogicFilter.trim() !== '') {
+        filterObj[entityType] = jsonLogicFilter;
+      }
+    });
+
+    return Object.keys(filterObj).length > 0 ? filterObj : undefined;
+  }
+  if (existingTriggerConfig?.filters) {
+    return existingTriggerConfig.filters;
+  }
+
+  return undefined;
+};
+
+const buildPeriodicBatchTriggerConfig = (
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig: Record<string, unknown> | undefined,
+  hasUserChanges: TriggerUserChanges,
+  hasStartNodeConfig: boolean
+): Record<string, unknown> => {
+  const finalTriggerConfig: Record<string, unknown> = {};
+  const entityTypes = resolveEntityTypes(
+    hasUserChanges,
+    hasStartNodeConfig,
+    startNodeConfig,
+    existingTriggerConfig
+  );
+
+  // EntityTypes are required - must be provided
+  if (entityTypes.length > 0) {
+    finalTriggerConfig.entityTypes = entityTypes;
+  }
+
+  if (hasUserChanges) {
+    finalTriggerConfig.schedule = resolveUserSchedule(startNodeConfig);
+    finalTriggerConfig.batchSize = resolveUserBatchSize(
+      startNodeConfig,
+      existingTriggerConfig
+    );
+  } else {
+    finalTriggerConfig.schedule = resolveExistingSchedule(
+      existingTriggerConfig
+    );
+    finalTriggerConfig.batchSize = existingTriggerConfig?.batchSize
+      ? existingTriggerConfig.batchSize
+      : 100;
+  }
+
+  const filters = resolvePeriodicFilters(
+    hasUserChanges,
+    startNodeConfig,
+    existingTriggerConfig
+  );
+  if (filters !== undefined) {
+    finalTriggerConfig.filters = filters;
+  }
+
+  return finalTriggerConfig;
+};
+
 const buildTriggerConfig = (
   startNodeConfig: NodeConfigWithMetadata,
   triggerType: string,
   existingTriggerConfig?: Record<string, unknown>
 ) => {
-  const isEventBased = triggerType === Type.EventBasedEntity;
-  const isPeriodicBatch = triggerType === Type.PeriodicBatchEntity;
-
   const hasUserChanges =
     startNodeConfig.lastSaved || startNodeConfig.userModified;
-  const hasStartNodeConfig =
+  const hasStartNodeConfig = Boolean(
     startNodeConfig.dataAssets &&
-    Array.isArray(startNodeConfig.dataAssets) &&
-    startNodeConfig.dataAssets.length > 0;
+      Array.isArray(startNodeConfig.dataAssets) &&
+      startNodeConfig.dataAssets.length > 0
+  );
 
-  if (isEventBased) {
-    const finalTriggerConfig: Record<string, unknown> = {};
-    const entityTypes: string[] = [];
-
-    if (hasUserChanges && hasStartNodeConfig) {
-      const validAssets = startNodeConfig.dataAssets.filter(
-        (asset: string) => asset && asset.trim() !== ''
-      );
-      if (validAssets.length > 0) {
-        entityTypes.push(...validAssets);
-      }
-    } else if (
-      existingTriggerConfig?.entityTypes &&
-      Array.isArray(existingTriggerConfig.entityTypes)
-    ) {
-      entityTypes.push(...existingTriggerConfig.entityTypes);
-    } else if (
-      existingTriggerConfig?.entityType &&
-      typeof existingTriggerConfig.entityType === 'string'
-    ) {
-      entityTypes.push(existingTriggerConfig.entityType);
-    }
-
-    // EntityTypes are required - must be provided
-    if (entityTypes.length > 0) {
-      finalTriggerConfig.entityTypes = entityTypes;
-    } else {
-      // If no entity types provided, this will cause issues
-    }
-
-    if (
-      hasUserChanges &&
-      startNodeConfig.eventType &&
-      startNodeConfig.eventType.length > 0
-    ) {
-      finalTriggerConfig.events = startNodeConfig.eventType;
-    } else if (existingTriggerConfig?.events) {
-      finalTriggerConfig.events = existingTriggerConfig.events;
-    }
-
-    if (hasUserChanges && startNodeConfig.excludeFields !== undefined) {
-      if (startNodeConfig.excludeFields.length > 0) {
-        finalTriggerConfig.exclude = startNodeConfig.excludeFields;
-      }
-    } else if (existingTriggerConfig?.exclude) {
-      finalTriggerConfig.exclude = existingTriggerConfig.exclude;
-    }
-
-    if (
-      hasUserChanges &&
-      Array.isArray(startNodeConfig.include) &&
-      startNodeConfig.include.length > 0
-    ) {
-      finalTriggerConfig.include = startNodeConfig.include;
-    } else if (existingTriggerConfig?.include) {
-      finalTriggerConfig.include = existingTriggerConfig.include;
-    }
-
-    if (
-      hasUserChanges &&
-      startNodeConfig.triggerFilter &&
-      startNodeConfig.triggerFilter.trim() !== ''
-    ) {
-      const filterObj: Record<string, string> = {};
-      entityTypes.forEach((entityType) => {
-        filterObj[entityType] = startNodeConfig.triggerFilter || '';
-      });
-      finalTriggerConfig.filter = filterObj;
-    } else if (existingTriggerConfig?.filter) {
-      finalTriggerConfig.filter = existingTriggerConfig.filter;
-    }
-
-    return finalTriggerConfig;
-  } else if (isPeriodicBatch) {
-    const finalTriggerConfig: Record<string, unknown> = {};
-    const entityTypes: string[] = [];
-
-    if (hasUserChanges && hasStartNodeConfig) {
-      const validAssets = startNodeConfig.dataAssets.filter(
-        (asset: string) => asset && asset.trim() !== ''
-      );
-      if (validAssets.length > 0) {
-        entityTypes.push(...validAssets);
-      }
-    } else if (
-      existingTriggerConfig?.entityTypes &&
-      Array.isArray(existingTriggerConfig.entityTypes)
-    ) {
-      entityTypes.push(...existingTriggerConfig.entityTypes);
-    } else if (
-      existingTriggerConfig?.entityType &&
-      typeof existingTriggerConfig.entityType === 'string'
-    ) {
-      entityTypes.push(existingTriggerConfig.entityType);
-    }
-
-    // EntityTypes are required - must be provided
-    if (entityTypes.length > 0) {
-      finalTriggerConfig.entityTypes = entityTypes;
-    } else {
-      // If no entity types provided, this will cause issues
-    }
-
-    if (hasUserChanges) {
-      // Use user's configuration
-      const scheduleType = startNodeConfig.scheduleType || 'OnDemand';
-      if (scheduleType === 'Scheduled' && startNodeConfig.cronExpression) {
-        finalTriggerConfig.schedule = {
-          scheduleTimeline: 'Custom',
-          cronExpression: startNodeConfig.cronExpression,
-        };
-      } else {
-        finalTriggerConfig.schedule = {
-          scheduleTimeline: 'None',
-        };
-      }
-
-      if (startNodeConfig.batchSize && startNodeConfig.batchSize !== 100) {
-        finalTriggerConfig.batchSize = startNodeConfig.batchSize;
-      } else if (existingTriggerConfig?.batchSize) {
-        finalTriggerConfig.batchSize = existingTriggerConfig.batchSize;
-      } else {
-        finalTriggerConfig.batchSize = 100;
-      }
-    } else {
-      if (existingTriggerConfig?.schedule) {
-        const existingSchedule = existingTriggerConfig.schedule as Record<
-          string,
-          unknown
-        >;
-
-        // If scheduleTimeline is "None", it means OnDemand
-        if (existingSchedule.scheduleTimeline === ScheduleTimeline.None) {
-          finalTriggerConfig.schedule = {
-            scheduleTimeline: 'None',
-          };
-        } else if (
-          existingSchedule.scheduleTimeline === ScheduleTimeline.Custom &&
-          existingSchedule.cronExpression
-        ) {
-          finalTriggerConfig.schedule = {
-            scheduleTimeline: 'Custom',
-            cronExpression: existingSchedule.cronExpression,
-          };
-        } else {
-          finalTriggerConfig.schedule = existingTriggerConfig.schedule;
-        }
-      } else {
-        finalTriggerConfig.schedule = {
-          scheduleTimeline: 'None',
-        };
-      }
-
-      if (existingTriggerConfig?.batchSize) {
-        finalTriggerConfig.batchSize = existingTriggerConfig.batchSize;
-      } else {
-        finalTriggerConfig.batchSize = 100;
-      }
-    }
-
-    if (
-      hasUserChanges &&
-      startNodeConfig.dataAssetFilters &&
-      startNodeConfig.dataAssetFilters.length > 0
-    ) {
-      const filterObj: Record<string, string> = {};
-
-      startNodeConfig.dataAssetFilters.forEach((df: DataAssetFilter) => {
-        const entityType = df.dataAsset;
-
-        const jsonLogicFilter = df.filters;
-
-        if (jsonLogicFilter && jsonLogicFilter.trim() !== '') {
-          filterObj[entityType] = jsonLogicFilter;
-        }
-      });
-
-      if (Object.keys(filterObj).length > 0) {
-        finalTriggerConfig.filters = filterObj;
-      }
-    } else if (existingTriggerConfig?.filters) {
-      finalTriggerConfig.filters = existingTriggerConfig.filters;
-    }
-
-    return finalTriggerConfig;
+  if (triggerType === Type.EventBasedEntity) {
+    return buildEventBasedTriggerConfig(
+      startNodeConfig,
+      existingTriggerConfig,
+      hasUserChanges,
+      hasStartNodeConfig
+    );
+  }
+  if (triggerType === Type.PeriodicBatchEntity) {
+    return buildPeriodicBatchTriggerConfig(
+      startNodeConfig,
+      existingTriggerConfig,
+      hasUserChanges,
+      hasStartNodeConfig
+    );
   }
 
   return existingTriggerConfig || {};
 };
 
+const resolveAutomatedTaskSubType = (
+  nodeData: { subType?: NodeSubType; label?: string },
+  defaultSubType: NodeSubType
+): NodeSubType => {
+  const label = nodeData.label;
+  const rules: Array<{ subType: NodeSubType; labels: string[] }> = [
+    {
+      subType: NodeSubType.CheckChangeDescriptionTask,
+      labels: ['Check Change Desc'],
+    },
+    { subType: NodeSubType.CheckEntityAttributesTask, labels: ['Check'] },
+    { subType: NodeSubType.SetEntityAttributeTask, labels: ['Set'] },
+    { subType: NodeSubType.DataCompletenessTask, labels: ['Completeness'] },
+    { subType: NodeSubType.RollbackEntityTask, labels: ['Roll', 'Revert'] },
+  ];
+
+  const matched = rules.find(
+    (rule) =>
+      nodeData.subType === rule.subType ||
+      rule.labels.some((keyword) => label?.includes(keyword))
+  );
+
+  return matched ? matched.subType : defaultSubType;
+};
+
 const mapNodeTypeAndSubtype = (node: Node) => {
   const nodeData = node.data || {};
-  let nodeType: NodeType = (node.type as NodeType) || NodeType.AutomatedTask;
-  let subType: NodeSubType =
+  const defaultSubType: NodeSubType =
     nodeData.subType || NodeSubType.SetEntityAttributeTask;
 
   if (node.type === NodeType.StartEvent) {
-    nodeType = NodeType.StartEvent;
-    subType = NodeSubType.StartEvent;
-  } else if (node.type === NodeType.EndEvent) {
-    nodeType = NodeType.EndEvent;
-    subType = NodeSubType.EndEvent;
-  } else if (
+    return { nodeType: NodeType.StartEvent, subType: NodeSubType.StartEvent };
+  }
+  if (node.type === NodeType.EndEvent) {
+    return { nodeType: NodeType.EndEvent, subType: NodeSubType.EndEvent };
+  }
+  if (
     node.type === NodeType.AutomatedTask ||
     nodeData.nodeType === NodeType.AutomatedTask
   ) {
-    nodeType = NodeType.AutomatedTask;
-    if (
-      nodeData.subType === NodeSubType.CheckChangeDescriptionTask ||
-      nodeData.label?.includes('Check Change Desc')
-    ) {
-      subType = NodeSubType.CheckChangeDescriptionTask;
-    } else if (
-      nodeData.subType === NodeSubType.CheckEntityAttributesTask ||
-      nodeData.label?.includes('Check')
-    ) {
-      subType = NodeSubType.CheckEntityAttributesTask;
-    } else if (
-      nodeData.subType === NodeSubType.SetEntityAttributeTask ||
-      nodeData.label?.includes('Set')
-    ) {
-      subType = NodeSubType.SetEntityAttributeTask;
-    } else if (
-      nodeData.subType === NodeSubType.DataCompletenessTask ||
-      nodeData.label?.includes('Completeness')
-    ) {
-      subType = NodeSubType.DataCompletenessTask;
-    } else if (
-      nodeData.subType === NodeSubType.RollbackEntityTask ||
-      nodeData.label?.includes('Roll') ||
-      nodeData.label?.includes('Revert')
-    ) {
-      subType = NodeSubType.RollbackEntityTask;
-    }
-  } else if (
+    return {
+      nodeType: NodeType.AutomatedTask,
+      subType: resolveAutomatedTaskSubType(nodeData, defaultSubType),
+    };
+  }
+  if (
     node.type === NodeType.UserTask ||
     nodeData.nodeType === NodeType.UserTask
   ) {
-    nodeType = NodeType.UserTask;
-    subType = NodeSubType.UserApprovalTask;
+    return {
+      nodeType: NodeType.UserTask,
+      subType: NodeSubType.UserApprovalTask,
+    };
   }
 
-  return { nodeType, subType };
+  return {
+    nodeType: (node.type as NodeType) || NodeType.AutomatedTask,
+    subType: defaultSubType,
+  };
 };
 
 const buildWorkflowNodes = (nodes: Node[], validEdges: Edge[]) => {
@@ -424,58 +557,71 @@ const findAllPredecessorsInSave = (
 type BackendNode = ReturnType<typeof buildWorkflowNodes>[number];
 type BackendEdge = ReturnType<typeof buildWorkflowEdges>[number];
 
+const shouldMigrateUpdatedBy = (
+  currentUpdatedBy: string | undefined,
+  nodes: BackendNode[],
+  allPredecessors: string[]
+): boolean => {
+  const isKnownGlobalReference =
+    currentUpdatedBy === 'global' ||
+    currentUpdatedBy === 'ApproveGlossaryTerm' ||
+    currentUpdatedBy === 'ApprovalForUpdates';
+  if (isKnownGlobalReference) {
+    return true;
+  }
+  if (!currentUpdatedBy) {
+    return false;
+  }
+
+  return (
+    !nodes.some((n) => n.name === currentUpdatedBy) ||
+    !allPredecessors.includes(currentUpdatedBy)
+  );
+};
+
+const migrateSingleNode = (
+  node: BackendNode,
+  nodes: BackendNode[],
+  userTasks: BackendNode[],
+  edges: BackendEdge[]
+): BackendNode => {
+  const isSetOrRollback =
+    node.subType === NodeSubType.SetEntityAttributeTask ||
+    node.subType === NodeSubType.RollbackEntityTask;
+
+  // Fix set/rollback task nodes - they should reference the user task that leads to them
+  if (!isSetOrRollback || !node.input?.includes('updatedBy')) {
+    return node;
+  }
+
+  const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
+  const allPredecessors = findAllPredecessorsInSave(node.name, edges);
+
+  if (!shouldMigrateUpdatedBy(currentUpdatedBy, nodes, allPredecessors)) {
+    return node;
+  }
+
+  // Only use a user task that is actually a predecessor (comes before this node)
+  const predecessorUserTask = userTasks.find((userTask) =>
+    allPredecessors.includes(userTask.name)
+  );
+
+  return {
+    ...node,
+    inputNamespaceMap: {
+      ...node.inputNamespaceMap,
+      updatedBy: predecessorUserTask ? predecessorUserTask.name : 'global',
+    },
+  };
+};
+
 const migrateInputNamespaceMap = (
   nodes: BackendNode[],
   edges: BackendEdge[]
 ): BackendNode[] => {
   const userTasks = nodes.filter((n) => n.type === NodeType.UserTask);
 
-  return nodes.map((node) => {
-    // Fix set/rollback task nodes - they should reference the user task that leads to them
-    if (
-      (node.subType === NodeSubType.SetEntityAttributeTask ||
-        node.subType === NodeSubType.RollbackEntityTask) &&
-      node.input?.includes('updatedBy')
-    ) {
-      const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
-
-      const allPredecessors = findAllPredecessorsInSave(node.name, edges);
-
-      const shouldMigrate =
-        currentUpdatedBy === 'global' ||
-        currentUpdatedBy === 'ApproveGlossaryTerm' ||
-        currentUpdatedBy === 'ApprovalForUpdates' ||
-        (currentUpdatedBy && !nodes.some((n) => n.name === currentUpdatedBy)) ||
-        (currentUpdatedBy && !allPredecessors.includes(currentUpdatedBy));
-
-      if (shouldMigrate) {
-        // Only use a user task that is actually a predecessor (comes before this node)
-        const predecessorUserTask = userTasks.find((userTask) => {
-          return allPredecessors.includes(userTask.name);
-        });
-
-        if (predecessorUserTask) {
-          return {
-            ...node,
-            inputNamespaceMap: {
-              ...node.inputNamespaceMap,
-              updatedBy: predecessorUserTask.name,
-            },
-          };
-        }
-
-        return {
-          ...node,
-          inputNamespaceMap: {
-            ...node.inputNamespaceMap,
-            updatedBy: 'global',
-          },
-        };
-      }
-    }
-
-    return node;
-  });
+  return nodes.map((node) => migrateSingleNode(node, nodes, userTasks, edges));
 };
 
 const resolveTriggerType = (
@@ -501,21 +647,58 @@ const resolveTriggerType = (
   return Type.EventBasedEntity;
 };
 
+const resolveWorkflowMetadata = (
+  workflowDefinition: WorkflowDefinition | null,
+  workflowMetadata?: { displayName?: string; description?: string } | null
+): { name: string; displayName: string; description: string } => {
+  return {
+    name: workflowDefinition?.name || 'CustomWorkflow',
+    displayName:
+      workflowMetadata?.displayName ||
+      workflowDefinition?.displayName ||
+      'Custom Workflow',
+    description:
+      workflowMetadata?.description ||
+      workflowDefinition?.description ||
+      'Custom workflow created with Workflow Builder',
+  };
+};
+
+const resolveExistingTrigger = (
+  workflowDefinition: WorkflowDefinition | null
+): { type?: Type; config?: Record<string, unknown> } => {
+  const trigger = workflowDefinition?.trigger;
+  if (
+    typeof trigger === 'object' &&
+    trigger !== null &&
+    !Array.isArray(trigger)
+  ) {
+    return { type: trigger.type, config: trigger.config };
+  }
+
+  return {};
+};
+
+const getTriggerEntityTypes = (
+  finalTriggerConfig: Record<string, unknown> | undefined
+): string[] => {
+  const entityTypes = (finalTriggerConfig as { entityTypes?: unknown })
+    ?.entityTypes;
+
+  return Array.isArray(entityTypes) ? (entityTypes as string[]) : [];
+};
+
 export const buildWorkflowForSave = async (
   nodes: Node[],
   edges: Edge[],
   workflowDefinition: WorkflowDefinition | null,
   workflowMetadata?: { displayName?: string; description?: string } | null
 ): Promise<WorkflowDefinition> => {
-  const workflowName = workflowDefinition?.name || 'CustomWorkflow';
-  const workflowDisplayName =
-    workflowMetadata?.displayName ||
-    workflowDefinition?.displayName ||
-    'Custom Workflow';
-  const workflowDescription =
-    workflowMetadata?.description ||
-    workflowDefinition?.description ||
-    'Custom workflow created with Workflow Builder';
+  const {
+    name: workflowName,
+    displayName: workflowDisplayName,
+    description: workflowDescription,
+  } = resolveWorkflowMetadata(workflowDefinition, workflowMetadata);
 
   const startNode = nodes.find((node) => node.type === NodeType.StartEvent);
   const startNodeConfig = (startNode?.data || {}) as NodeConfigWithMetadata;
@@ -525,12 +708,8 @@ export const buildWorkflowForSave = async (
     (edge) => currentNodeIds.has(edge.source) && currentNodeIds.has(edge.target)
   );
 
-  const existingTriggerType =
-    typeof workflowDefinition?.trigger === 'object' &&
-    workflowDefinition?.trigger !== null &&
-    !Array.isArray(workflowDefinition.trigger)
-      ? workflowDefinition.trigger.type
-      : undefined;
+  const { type: existingTriggerType, config: existingTriggerConfig } =
+    resolveExistingTrigger(workflowDefinition);
 
   const hasUserChanges =
     startNodeConfig.lastSaved || startNodeConfig.userModified;
@@ -546,24 +725,13 @@ export const buildWorkflowForSave = async (
     existingTriggerType
   );
 
-  const existingTriggerConfig =
-    typeof workflowDefinition?.trigger === 'object' &&
-    workflowDefinition?.trigger !== null &&
-    !Array.isArray(workflowDefinition.trigger)
-      ? workflowDefinition.trigger.config
-      : undefined;
-
   const finalTriggerConfig = buildTriggerConfig(
     startNodeConfig,
     triggerType,
     existingTriggerConfig
   );
 
-  const triggerEntityTypes = Array.isArray(
-    (finalTriggerConfig as { entityTypes?: unknown }).entityTypes
-  )
-    ? (finalTriggerConfig as { entityTypes: string[] }).entityTypes ?? []
-    : [];
+  const triggerEntityTypes = getTriggerEntityTypes(finalTriggerConfig);
 
   if (
     (triggerType === Type.EventBasedEntity ||

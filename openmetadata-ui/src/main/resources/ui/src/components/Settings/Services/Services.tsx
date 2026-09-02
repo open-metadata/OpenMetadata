@@ -247,55 +247,24 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   const getServicePageHeader = useCallback(() => {
-    let pageHeader;
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
+    const pageHeaderByCategory: Partial<
+      Record<ServiceCategory, (typeof PAGE_HEADERS)[keyof typeof PAGE_HEADERS]>
+    > = {
+      [ServiceCategory.DATABASE_SERVICES]: PAGE_HEADERS.DATABASES_SERVICES,
+      [ServiceCategory.DASHBOARD_SERVICES]: PAGE_HEADERS.DASHBOARD_SERVICES,
+      [ServiceCategory.MESSAGING_SERVICES]: PAGE_HEADERS.MESSAGING_SERVICES,
+      [ServiceCategory.METADATA_SERVICES]: PAGE_HEADERS.METADATA_SERVICES,
+      [ServiceCategory.ML_MODEL_SERVICES]: PAGE_HEADERS.ML_MODELS_SERVICES,
+      [ServiceCategory.PIPELINE_SERVICES]: PAGE_HEADERS.PIPELINES_SERVICES,
+      [ServiceCategory.STORAGE_SERVICES]: PAGE_HEADERS.STORAGE_SERVICES,
+      [ServiceCategory.SEARCH_SERVICES]: PAGE_HEADERS.SEARCH_SERVICES,
+      [ServiceCategory.API_SERVICES]: PAGE_HEADERS.API_SERVICES,
+      [ServiceCategory.SECURITY_SERVICES]: PAGE_HEADERS.SECURITY_SERVICES,
+      [ServiceCategory.DRIVE_SERVICES]: PAGE_HEADERS.DRIVE_SERVICES,
+    };
 
-        break;
-      case ServiceCategory.DASHBOARD_SERVICES:
-        pageHeader = PAGE_HEADERS.DASHBOARD_SERVICES;
-
-        break;
-      case ServiceCategory.MESSAGING_SERVICES:
-        pageHeader = PAGE_HEADERS.MESSAGING_SERVICES;
-
-        break;
-      case ServiceCategory.METADATA_SERVICES:
-        pageHeader = PAGE_HEADERS.METADATA_SERVICES;
-
-        break;
-      case ServiceCategory.ML_MODEL_SERVICES:
-        pageHeader = PAGE_HEADERS.ML_MODELS_SERVICES;
-
-        break;
-      case ServiceCategory.PIPELINE_SERVICES:
-        pageHeader = PAGE_HEADERS.PIPELINES_SERVICES;
-
-        break;
-      case ServiceCategory.STORAGE_SERVICES:
-        pageHeader = PAGE_HEADERS.STORAGE_SERVICES;
-
-        break;
-      case ServiceCategory.SEARCH_SERVICES:
-        pageHeader = PAGE_HEADERS.SEARCH_SERVICES;
-
-        break;
-      case ServiceCategory.API_SERVICES:
-        pageHeader = PAGE_HEADERS.API_SERVICES;
-
-        break;
-      case ServiceCategory.SECURITY_SERVICES:
-        pageHeader = PAGE_HEADERS.SECURITY_SERVICES;
-
-        break;
-      case ServiceCategory.DRIVE_SERVICES:
-        pageHeader = PAGE_HEADERS.DRIVE_SERVICES;
-
-        break;
-      default:
-        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
-    }
+    const pageHeader =
+      pageHeaderByCategory[serviceName] ?? PAGE_HEADERS.DATABASES_SERVICES;
 
     return {
       header: t(pageHeader.header),
