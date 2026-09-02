@@ -13,7 +13,7 @@ Redshift source ingestion
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -152,7 +152,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
-        self.incremental_table_processor: Optional[RedshiftIncrementalTableProcessor] = None  # noqa: UP045
+        self.incremental_table_processor: RedshiftIncrementalTableProcessor | None = None
         self.external_location_map = {}
 
         if self.incremental.enabled:
@@ -162,7 +162,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
@@ -170,7 +170,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, incremental_config)
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
@@ -236,7 +236,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         """
         return []
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -281,7 +281,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             ).all()
         self.external_location_map = {(database_name, row.schemaname, row.tablename): row.location for row in results}
 
-    def _filtered_database_names_for_totals(self) -> List[str]:  # noqa: UP006
+    def _filtered_database_names_for_totals(self) -> list[str]:
         """Filtered database names for the progress denominator. Single configured
         database when ``ingestAllDatabases`` is off, else the filtered result of the
         lightweight ``pg_database`` enumeration. Emits no status side effects."""
@@ -292,7 +292,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
         return result
 
-    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
         """``{database: [schema_names]}`` for every visible database from a single
         cross-database ``SVV_ALL_SCHEMAS`` — one round-trip, no per-database
         reconnect. Returns ``None`` when the view is unavailable (older cluster or
@@ -305,7 +305,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                 exc,
             )
             return None
-        by_database: Dict[str, List[str]] = {}  # noqa: UP006
+        by_database: dict[str, list[str]] = {}
         for row in rows:
             database_name = row[0]
             schema_name = row[1]
@@ -360,7 +360,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
+    def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
         """
         Process DIST_KEY & SORT_KEY column properties
         """

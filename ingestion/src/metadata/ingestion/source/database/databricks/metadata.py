@@ -13,8 +13,9 @@
 import json
 import re
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
@@ -112,12 +113,11 @@ _DESCRIBE_JSON_CACHE_KEY = "databricks_describe_json"
 _DESCRIBE_JSON_SUPPORTED_KEY = "databricks_describe_json_supported"
 _TABLE_TYPES_CACHE_KEY = "databricks_table_types"
 
-_IDENTIFIER_PREPARER = DatabricksDialect().identifier_preparer
-
 
 def _quote_identifier(identifier: str) -> str:
     """Quote one Databricks identifier without interpreting dots as separators."""
-    return _IDENTIFIER_PREPARER.quote_identifier(identifier)
+    escaped_identifier = identifier.replace("`", "``")
+    return f"`{escaped_identifier}`"
 
 
 def _qualified_identifier(*identifiers: str | None) -> str:
@@ -919,7 +919,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         return om_column
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
@@ -942,7 +942,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.session = create_and_bind_thread_safe_session(self.engine)
         self.connection_obj = self.engine
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.catalog
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -1012,7 +1012,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.schema_tags.clear()
         self.column_tags.clear()
 
-    def _add_to_tag_cache(self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str | None]):  # noqa: UP006, UP007
+    def _add_to_tag_cache(self, tag_dict: dict, key: str | tuple, value: tuple[str, str | None]):
         if tag_dict.get(key):
             tag_dict.get(key).append(value)
         else:
@@ -1222,7 +1222,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         try:
@@ -1313,7 +1313,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Schema description error for schema [{schema_name}]: {exep}")
         return description
 
-    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:  # noqa: UP045
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
         database = self.context.get().database
         payload = _fetch_table_describe_json(inspector.dialect, self.connection, database, schema_name, table_name)
         if payload is not None:
@@ -1354,7 +1354,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         return description
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
@@ -1366,7 +1366,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         filtered_name = re.sub(pattern, "", owner_name).strip()
         return filtered_name  # noqa: RET504
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:
         """
         Method to process the table owners
         """
@@ -1409,7 +1409,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return  # noqa: RET502
 
-    def _filtered_database_names_for_totals(self) -> List[str]:  # noqa: UP006
+    def _filtered_database_names_for_totals(self) -> list[str]:
         """Filtered database names for the progress denominator. Single configured
         catalog when one is set on the connection, else the filtered result of the
         catalog enumeration. Emits no status side effects."""
@@ -1420,7 +1420,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
         return result
 
-    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
         """``{database: [schema_names]}`` for every visible catalog from a single
         cross-catalog ``system.information_schema.schemata`` query — one round-trip,
         no per-catalog reconnect. Returns ``None`` when the view is unavailable
@@ -1434,7 +1434,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 exc,
             )
             return None
-        by_database: Dict[str, List[str]] = {}  # noqa: UP006
+        by_database: dict[str, list[str]] = {}
         for row in rows:
             database_name = row[0]
             schema_name = row[1]

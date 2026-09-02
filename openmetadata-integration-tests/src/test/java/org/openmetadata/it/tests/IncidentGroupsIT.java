@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.db.DataSourceFactory;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -71,6 +73,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -96,7 +99,7 @@ public class IncidentGroupsIT {
   private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
   private static final String GROUP_BY_OWNER = "owner";
   private static final String MAX_LIMIT = "1000";
-  private static final String INCIDENT_BACKFILL_SQL = "INSERT INTO test_case_incident";
+  private static final String INCIDENT_SUMMARY_BACKFILL_PREFIX = "INSERT INTO test_case_incident";
 
   private OpenMetadataClient client;
   private Table tableA;
@@ -984,21 +987,34 @@ public class IncidentGroupsIT {
     }
   }
 
-  // Direct SQL seeding bypasses the repository's write path, so the summary projection the
-  // groups endpoint reads must be synced the way pre-existing history is at upgrade time: by
-  // the 2.1.0 backfill. Use the same dialect parser as the migration integration tests because
-  // MySQL JDBC deliberately rejects executing multiple migration statements in one call. Select
-  // only the incident statement so unrelated backfills cannot mutate concurrently running tests.
+  // Direct SQL seeding bypasses the repository's write path, so sync the summary projection with
+  // the shipped 2.1.0 backfill. Parsing the migration and selecting its target statement keeps this
+  // fixture aligned with production without executing unrelated post-migration statements.
   private void syncIncidentSummary(Connection connection, boolean postgres) throws Exception {
+    Path migrationFile =
+        Path.of(
+            "bootstrap",
+            "sql",
+            "migrations",
+            "native",
+            "2.1.0",
+            postgres ? "postgres" : "mysql",
+            "postDataMigrationSQLScript.sql");
+    if (!Files.exists(migrationFile)) {
+      migrationFile = Path.of("..").resolve(migrationFile);
+    }
+    Path resolvedMigrationFile = migrationFile;
     ConnectionType connectionType = postgres ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
-    String migrationStatement =
-        MetricMigrationSqlFixture.readMigrationScripts(connectionType).postStatements().stream()
-            .filter(statement -> statement.contains(INCIDENT_BACKFILL_SQL))
+    String backfill =
+        MigrationFile.parseSQLFile(resolvedMigrationFile.toFile(), connectionType).stream()
+            .filter(sql -> sql.contains(INCIDENT_SUMMARY_BACKFILL_PREFIX))
             .findFirst()
             .orElseThrow(
-                () -> new IllegalStateException("2.1.0 incident backfill statement not found"));
+                () ->
+                    new IllegalStateException(
+                        "Incident summary backfill is missing from " + resolvedMigrationFile));
     try (Statement statement = connection.createStatement()) {
-      statement.executeUpdate(migrationStatement);
+      statement.executeUpdate(backfill);
     }
   }
 

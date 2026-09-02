@@ -635,7 +635,7 @@ ORDER BY data.starttime DESC;
 # both Redshift Serverless and Provisioned since sys views are available
 # in both instances. However, it still needs to be tested in Provisioned
 # clusters.
-# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17  # noqa: E501, RUF100
+# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17
 
 REDSHIFT_TEST_GET_QUERIES_MAP = {
     RedshiftInstanceType.PROVISIONED: REDSHIFT_TEST_GET_QUERIES,

@@ -12,7 +12,8 @@
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from pydoris.sqlalchemy import datatype
 from pydoris.sqlalchemy.dialect import DorisDialect
@@ -165,7 +166,7 @@ class DorisSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
@@ -229,7 +230,7 @@ class DorisSource(CommonDbSourceService):
         db_name: str,
         inspector: Inspector,
         table_type: str = None,  # noqa: RUF013
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
+    ) -> tuple[list[Column] | None, list[TableConstraint] | None, list[dict] | None]:
         """
         :param schema_name:
         :param table_name:
@@ -294,7 +295,7 @@ class DorisSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """
         check if the table is partitioned table and return the partition details
         """

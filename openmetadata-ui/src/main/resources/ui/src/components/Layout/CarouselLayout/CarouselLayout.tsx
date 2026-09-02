@@ -28,8 +28,7 @@ const LOGIN_SPLIT_LAYOUT_CLASSES =
 
 const LOGIN_VIDEO_PANEL_CLASSES =
   'tw:relative tw:flex tw:flex-[1_1_52%] tw:min-w-0 tw:items-center ' +
-  'tw:justify-center tw:overflow-hidden tw:max-[1000px]:hidden ' +
-  'tw:bg-[linear-gradient(165deg,#f8f7fc_0%,#f3effc_55%,#ece5fb_100%)]';
+  'tw:justify-center tw:overflow-hidden tw:max-[1000px]:hidden';
 
 const LOGIN_VIDEO_INSET_CLASSES =
   'tw:flex tw:box-border tw:h-full tw:w-full tw:items-center tw:justify-center ' +
@@ -38,8 +37,6 @@ const LOGIN_VIDEO_INSET_CLASSES =
 const LOGIN_VIDEO_CARD_CLASSES =
   'tw:relative tw:aspect-[2024/2160] tw:max-h-full tw:max-w-full ' +
   'tw:w-[min(100cqw,93.7cqh)] tw:overflow-hidden tw:rounded-[max(22px,4.8%)] ' +
-  'tw:bg-[linear-gradient(180deg,#f2f1f5_0%,#e3d9f8_55%,#8a5cf0_100%)] ' +
-  'tw:shadow-[0_32px_80px_-28px_rgba(86,54,205,0.38),0_6px_20px_-6px_rgba(38,24,90,0.12)] ' +
   'tw:[transform:translateZ(0)]';
 
 const LOGIN_FORM_PANEL_CLASSES =
@@ -67,9 +64,17 @@ export const CarouselLayout = ({
         <Content
           className={classNames(LOGIN_SPLIT_LAYOUT_CLASSES, carouselClassName)}
           data-testid="signin-page">
-          <div className={LOGIN_VIDEO_PANEL_CLASSES}>
+          <div
+            className={classNames(
+              LOGIN_VIDEO_PANEL_CLASSES,
+              loginClassBase.getLoginVideoPanelClassName()
+            )}>
             <div className={LOGIN_VIDEO_INSET_CLASSES}>
-              <div className={LOGIN_VIDEO_CARD_CLASSES}>
+              <div
+                className={classNames(
+                  LOGIN_VIDEO_CARD_CLASSES,
+                  loginClassBase.getLoginVideoCardClassName()
+                )}>
                 <LoginCarousel />
               </div>
             </div>

@@ -167,7 +167,7 @@ class StdDev(StaticMetric):
         Returns:
             PandasComputation: Computation protocol with create/update/aggregate methods
         """
-        return PandasComputation[SumSumSquaresCount, Optional[float]](  # noqa: UP045
+        return PandasComputation[SumSumSquaresCount, float | None](
             create_accumulator=lambda: SumSumSquaresCount(0.0, 0.0, 0),
             update_accumulator=lambda acc, df: StdDev.update_accumulator(acc, df, self.col),
             aggregate_accumulator=StdDev.aggregate_accumulator,
@@ -226,7 +226,7 @@ class StdDev(StaticMetric):
     @staticmethod
     def aggregate_accumulator(
         sum_sum_squares_count: SumSumSquaresCount,
-    ) -> Optional[float]:  # noqa: UP045
+    ) -> float | None:
         """Compute final stddev from running sum, sum of squares, and count
 
         Uses the computational formula for variance:
