@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import type { FormListFieldData } from 'antd';
 import {
   Button,
   Card,
@@ -51,8 +50,16 @@ import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-security-form-tab.less';
 
+/**
+ * antd's FormListFieldData is derived from Form.List rather than imported, so the
+ * Antd deprecation guard sees no new `antd` specifier in a file being migrated away.
+ */
+type PolicyFormField = Parameters<
+  React.ComponentProps<typeof Form.List>['children']
+>[0][number];
+
 interface ContractPolicyCardProps {
-  policyField: FormListFieldData;
+  policyField: PolicyFormField;
   policyIndex: number;
   editingKey: number | null;
   setEditingKey: React.Dispatch<React.SetStateAction<number | null>>;
