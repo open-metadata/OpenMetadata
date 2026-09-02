@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,13 +21,9 @@ import {
   MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
   MAX_VISIBLE_OWNERS_FOR_FEED_TAB,
 } from '../../../../../constants/constants';
-import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { OwnerItem } from '../../../../common/OwnerItem/OwnerItem';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
-import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
 interface ActivityOwnersFeedProps {
   activity: ActivityEvent;
@@ -39,7 +34,6 @@ interface ActivityOwnersFeedProps {
 function ActivityOwnersFeed({
   activity,
   isForFeedTab,
-  showThread,
 }: Readonly<ActivityOwnersFeedProps>) {
   const { t } = useTranslation();
 
@@ -87,43 +81,7 @@ function ActivityOwnersFeed({
 
   const getOwnerItems = useCallback(
     (ownerList: EntityReference[]) => {
-      return ownerList.length <= maxVisibleOwners ? (
-        <Row wrap align="middle">
-          {ownerList.map((owner: EntityReference) =>
-            owner.type === EntityType.USER ? (
-              <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
-                <div
-                  className={`owner-chip d-flex items-center ${
-                    showThread && 'bg-white'
-                  }`}
-                  key={owner.id}>
-                  <ProfilePicture
-                    displayName={owner.displayName}
-                    name={owner.name ?? ''}
-                    width="24"
-                  />
-                  <Typography.Text className="owner-chip-text">
-                    {owner.displayName}
-                  </Typography.Text>
-                </div>
-              </UserPopOverCard>
-            ) : (
-              <div
-                className={classNames('owner-chip', {
-                  'bg-white': showThread,
-                })}
-                key={owner.id}>
-                <OwnerItem
-                  isCompactView
-                  avatarSize={24}
-                  className="owner-chip-text"
-                  owner={owner}
-                />
-              </div>
-            )
-          )}
-        </Row>
-      ) : (
+      return (
         <OwnerLabel
           avatarSize={24}
           isCompactView={false}
@@ -133,7 +91,7 @@ function ActivityOwnersFeed({
         />
       );
     },
-    [maxVisibleOwners, showThread]
+    [maxVisibleOwners]
   );
 
   const renderUpdatedOwner = useMemo(
