@@ -246,6 +246,21 @@ class ContextMemoryVisibilityTest {
   }
 
   @Test
+  void testEnforceVisibility_onEntityInterface_letsAnAdminReadEveryMemory() {
+    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    SecurityContext admin = securityContextFor(BOB);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(admin))
+          .thenReturn(new SubjectContext(new User().withName(BOB).withIsAdmin(true), null, null));
+
+      assertDoesNotThrow(
+          () -> ContextMemoryVisibility.enforceVisibility(privateOwnedByAlice, admin));
+    }
+  }
+
+  @Test
   void testHasVisibilityRules_onlyForContextMemory() {
     assertTrue(ContextMemoryVisibility.hasVisibilityRules(Entity.CONTEXT_MEMORY));
     assertFalse(ContextMemoryVisibility.hasVisibilityRules(Entity.TABLE));

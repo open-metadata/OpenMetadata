@@ -60,12 +60,23 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
   }
 
   /**
-   * A file-extracted pill shared with one principal: in Company Context scope, and readable only by
-   * that principal.
+   * A file-extracted pill owned by the admin who created it and shared with one principal, so
+   * access comes from the sharedWith list rather than from ownership.
    */
-  private static String createSharedPill(String suffix, JsonNode owner) throws Exception {
+  private static String createSharedPill(String suffix, JsonNode sharedPrincipal) throws Exception {
+    String name = sharedPrincipal.get("name").asText();
     Map<String, Object> principal =
-        Map.of("principal", Map.of("id", owner.get("id").asText(), "type", Entity.USER));
+        Map.of(
+            "principal",
+            Map.of(
+                "id",
+                sharedPrincipal.get("id").asText(),
+                "type",
+                Entity.USER,
+                "name",
+                name,
+                "fullyQualifiedName",
+                name));
     JsonNode pill =
         post(
             "contextCenter/memories",
@@ -80,8 +91,6 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
                 SHARED_PILL_ANSWER,
                 "sourceType",
                 "FileExtraction",
-                "owners",
-                List.of(Map.of("id", owner.get("id").asText(), "type", Entity.USER)),
                 "shareConfig",
                 Map.of("visibility", "Shared", "sharedWith", List.of(principal))),
             JsonNode.class);
