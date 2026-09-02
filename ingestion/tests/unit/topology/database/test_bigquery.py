@@ -17,7 +17,7 @@ bigquery unit tests
 import types
 from copy import deepcopy
 from types import SimpleNamespace
-from typing import ClassVar, Dict  # noqa: UP035
+from typing import ClassVar
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -272,7 +272,7 @@ MOCK_COLUMN_DATA = [
     ],
 ]
 
-MOCK_PK_CONSTRAINT: Dict[str, Dict] = {  # noqa: UP006
+MOCK_PK_CONSTRAINT: dict[str, dict] = {
     "customers": dict({"constrained_columns": ("customer_id",)}),  # noqa: C418
     "orders": dict({"constrained_columns": ()}),  # noqa: C418
 }

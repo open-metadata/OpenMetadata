@@ -15,7 +15,6 @@ Utilities for Looker service
 
 import os
 import shutil
-from typing import Optional, Union
 
 from git import Repo
 
@@ -53,8 +52,8 @@ def _is_azure_devops_host(hostname: str) -> bool:
 def _clone_repo(
     repo_name: str,
     path: str,
-    credential: Optional[Union[NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials]],  # noqa: UP007, UP045
-    overwrite: Optional[bool] = False,  # noqa: UP045
+    credential: NoGitCredentials | GitHubCredentials | BitBucketCredentials | GitlabCredentials | None,
+    overwrite: bool | None = False,
 ):
     """Clone a repo to local `path`"""
     try:
