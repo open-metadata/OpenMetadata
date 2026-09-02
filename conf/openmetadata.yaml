@@ -291,8 +291,12 @@ logging:
       # logs/audit.log. Pin the level so audit capture does not depend on the global LOG_LEVEL.
       level: INFO
   appenders:
+    # Containers keep this on — stdout is how `docker logs` / `kubectl logs` see the server.
+    # `bin/openmetadata.sh start` exports CONSOLE_LOG_LEVEL=OFF instead, because it redirects
+    # stdout into logs/catalog.log, which has no rotation: leaving the console on there duplicates
+    # every rotated logs/openmetadata.log line into a file that grows for the life of the install.
     - type: console
-      threshold: TRACE
+      threshold: ${CONSOLE_LOG_LEVEL:-TRACE}
       timeZone: UTC
       layout:
         type: om-event-layout
