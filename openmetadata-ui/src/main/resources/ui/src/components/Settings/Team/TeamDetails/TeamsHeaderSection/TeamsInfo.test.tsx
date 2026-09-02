@@ -44,9 +44,8 @@ const mockTeam = {
   version: 1,
 };
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
 
 jest.mock('../../../../common/DomainLabel/DomainLabel.component', () => ({

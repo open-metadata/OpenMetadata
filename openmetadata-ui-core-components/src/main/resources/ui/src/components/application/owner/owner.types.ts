@@ -13,9 +13,6 @@
 import type { ReactNode } from 'react';
 import type { AvatarSize, OwnerRef } from '../../../types';
 
-/** Callback that wraps a rendered avatar chip for a single owner. */
-export type RenderOwnerContent = (owner: OwnerRef, chip: ReactNode) => ReactNode;
-
 export interface OwnerChipProps {
   owner: OwnerRef;
   avatarSize?: AvatarSize;

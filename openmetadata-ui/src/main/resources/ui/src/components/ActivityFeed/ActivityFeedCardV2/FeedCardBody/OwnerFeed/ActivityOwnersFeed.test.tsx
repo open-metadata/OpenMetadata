@@ -41,9 +41,10 @@ jest.mock('../../../../common/OwnerItem/OwnerItem', () => ({
   )),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn(({ owners }) => (
+    <div data-testid="owner-label">{owners.length} owners</div>
+  )),
 }));
 
 const createOwner = (

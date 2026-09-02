@@ -103,9 +103,8 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <>OwnerLabelComponent</>),
 }));
 
 jest.mock('../../../../hooks/useEntityRules', () => ({

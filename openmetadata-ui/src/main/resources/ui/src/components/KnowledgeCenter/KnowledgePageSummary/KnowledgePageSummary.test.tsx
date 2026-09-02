@@ -19,9 +19,10 @@ import {
 import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => {
+    return <div>OwnerLabel</div>;
+  }),
 }));
 jest.mock(
   'components/common/SummaryTagsDescription/SummaryTagsDescription.component',

@@ -164,9 +164,19 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(<></>),
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
+      <button
+        {...rest}
+        data-testid={OWNER_COMPONENT_TEST_ID}
+        type="button"
+        onClick={onUpdate}>
+        <div data-testid="placeholder">{placeHolder}</div>
+        {children}
+      </button>
+    )),
 }));
 
 jest.mock('../Severity/Severity.component', () => {

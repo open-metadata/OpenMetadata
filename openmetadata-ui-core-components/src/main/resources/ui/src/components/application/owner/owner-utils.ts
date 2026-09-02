@@ -23,7 +23,6 @@ export interface OwnerLike {
   name?: string;
   displayName?: string;
   href?: string;
-  profileUrl?: string;
 }
 
 export const toOwnerRef = (ref: OwnerLike): OwnerRef => ({
@@ -32,7 +31,6 @@ export const toOwnerRef = (ref: OwnerLike): OwnerRef => ({
   displayName: ref.displayName,
   type: (ref.type ?? 'user') as OwnerRef['type'],
   href: ref.href,
-  profileUrl: ref.profileUrl,
 });
 
 export const toOwnerRefs = (refs?: OwnerLike[]): OwnerRef[] =>

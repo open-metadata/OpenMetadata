@@ -123,9 +123,8 @@ jest.mock('../../../pages/TasksPage/shared/DescriptionTaskFromTask', () => {
   return jest.fn().mockImplementation(() => <p>DescriptionTaskFromTask</p>);
 });
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
 }));
 
 jest.mock('../../../components/common/PopOverCard/EntityPopOverCard', () => {

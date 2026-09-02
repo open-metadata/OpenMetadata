@@ -260,9 +260,21 @@ jest.mock('../../../../utils/RouterUtils', () => ({
   getTestCaseDetailPagePath: jest.fn().mockReturnValue('/test-case-path'),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(({ owners, placeHolder }) => {
+    if (owners && owners.length > 0) {
+      const owner = owners[0];
+
+      return (
+        <div data-testid="owner-label">
+          <div data-testid="avatar">{owner.displayName?.charAt(0) || 'U'}</div>
+          <span>{owner.displayName || owner.name || 'Unknown'}</span>
+        </div>
+      );
+    }
+
+    return <span data-testid="owner-placeholder">{placeHolder || '--'}</span>;
+  }),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';

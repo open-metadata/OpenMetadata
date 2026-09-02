@@ -30,9 +30,12 @@ import {
   tagTableObject,
 } from './TableColumn.util';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(({ owners }) => (
+      <div data-testid="owner-label">{owners?.length ?? 0}</div>
+    )),
 }));
 
 jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({

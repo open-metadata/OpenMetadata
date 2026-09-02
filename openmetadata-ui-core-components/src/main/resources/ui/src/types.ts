@@ -93,6 +93,4 @@ export interface OwnerRef {
   displayName?: string;
   type: OwnerKind;
   href?: string;
-  /** URL to the user's profile picture, if available. */
-  profileUrl?: string;
 }

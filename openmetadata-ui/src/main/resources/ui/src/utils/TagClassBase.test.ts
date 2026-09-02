@@ -48,9 +48,8 @@ jest.mock('../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: 'DomainLabelV2',
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+jest.mock('../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
+  OwnerLabelV2: 'OwnerLabelV2',
 }));
 
 jest.mock('./i18next/LocalUtil', () => ({

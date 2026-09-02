@@ -16,6 +16,7 @@ import {
   LineageData,
   LineageEntityReference,
 } from '../../../../components/Lineage/Lineage.interface';
+import { User } from '../../../../generated/entity/teams/user';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
@@ -40,7 +41,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
-  Owner: jest.fn().mockReturnValue(<></>),
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -216,7 +216,23 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
   },
 }));
 
+// Mock OwnerLabel component
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(({ owners }) => (
+      <div data-testid="owner-label">
+        {owners?.map((owner: User) => owner.name).join(', ')}
+      </div>
+    )),
+}));
 
+// Mock NoOwnerFound component
+jest.mock('../../../common/NoOwner/NoOwnerFound', () => ({
+  NoOwnerFound: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="no-owner-found">No Owner</div>),
+}));
 
 // Mock data
 const mockUpstreamEntity: LineageEntityReference & {
