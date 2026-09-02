@@ -299,6 +299,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   {runLabel}
                 </div>
                 <div className="tw:text-xs tw:text-tertiary">
+                  {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
                   {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
                   {t('message.ran-for-duration', { duration: run.duration })}
                 </div>

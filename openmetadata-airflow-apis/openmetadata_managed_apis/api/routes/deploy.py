@@ -13,7 +13,7 @@ Deploy the DAG and scan it with the scheduler
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response, jsonify, make_response, request
 from pydantic import ValidationError

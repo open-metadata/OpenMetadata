@@ -257,6 +257,59 @@ test.describe('Search Settings', () => {
       await expect(boostModeSelect).toHaveText('Replace');
     });
 
+    test('Highlight toggle is offered for analyzed fields', async ({
+      page,
+    }) => {
+      // The highlight toggle is driven by allowedFields[].highlight, which the server derives from
+      // the index mapping. Nothing in the shipped settings is unhighlightable, so every toggle here
+      // must be enabled. A backend that stops annotating the flag serves the schema default (false)
+      // for every field and silently disables all of them — the Jest test cannot catch that,
+      // because it supplies entityFields as props.
+      const settingsResponse = page.waitForResponse(
+        '/api/v1/system/settings/searchSettings'
+      );
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+      await tableCard.click();
+
+      expect((await settingsResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('entity-search-settings-header')
+      ).toBeVisible();
+
+      await openMatchingFieldsPanel(page);
+      // Named field rather than whichever row happens to render first: the assertion below is
+      // that the server annotates `highlight`, which only means something on a field the index
+      // mapping can actually highlight -- an analyzed text field such as `description`.
+      await page.getByTestId('field-configuration-panel-description').click();
+
+      const highlightFieldToggle = page.getByTestId('highlight-field-switch');
+
+      await expect(highlightFieldToggle).toBeVisible();
+      await expect(highlightFieldToggle).toBeEnabled();
+
+      // Saving must not disable it. The page takes the PUT response straight into app state, so an
+      // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
+      // moment you hit Save, while the server goes on highlighting the field. Checking after a
+      // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
+      await setSliderValue(page, 'field-weight-slider', 7);
+
+      const saveSettings = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/system/settings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-btn').click();
+      await saveSettings;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(highlightFieldToggle).toBeEnabled();
+    });
+
     test('Restore default search settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
