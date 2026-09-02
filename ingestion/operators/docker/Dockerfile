@@ -167,7 +167,7 @@ RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="2.0.1.0"
+ARG RI_VERSION="2.0.2.0"
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
