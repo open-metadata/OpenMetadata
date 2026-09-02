@@ -113,13 +113,21 @@ runs:
     # import undeclared packages. Cache miss = fresh install, always.
     # Skipped in fast-mode / lightweight-ingestion — those consumers restore
     # a pre-seeded fixture and never touch the venv.
-    - name: Cache ingestion Python venv
+    # Restore and save are separate steps so the fork guard below can gate the
+    # write without also denying forks the read.
+    - name: Compute ingestion venv cache key
+      id: venv-cache-key
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      run: echo "key=${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Restore ingestion Python venv
       id: cache-python-venv
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: env
-        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
+        key: ${{ steps.venv-cache-key.outputs.key }}
 
     - name: Generate Models
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
@@ -146,6 +154,21 @@ runs:
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
       shell: bash
+
+    # Saved here rather than at job end so a later failure (server startup,
+    # tests) still leaves the venv cached. Fork PRs under pull_request_target
+    # skip the save — actions/cache-poisoning; their restore above still runs.
+    - name: Save ingestion Python venv
+      if: >-
+        ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
+        steps.cache-python-venv.outputs.cache-hit != 'true' &&
+        !(github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository) }}
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: env
+        key: ${{ steps.venv-cache-key.outputs.key }}
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
