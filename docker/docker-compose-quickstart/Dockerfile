@@ -35,24 +35,44 @@ RUN mkdir -p /opt/openmetadata && \
     printf '#!/busybox/sh\nexec /busybox/sh "$@"\n' > /shim/bin/bash && \
     chmod 755 /shim/bin/bash
 
-# gcr.io/distroless/java21-debian13 rather than a hand-built jlink runtime on a
-# cc/base variant. It carries Temurin 21 plus every glibc library the JNI natives
-# the server loads need: libstdc++.so.6 and libgcc_s.so.1 for DJL's
-# libtokenizers.so, and libz.so.1, which libtorch's libgfortran links.
-# base-debian12 fails the first with "libstdc++.so.6: cannot open shared object
-# file" and cc-debian12 gets one step further and fails on libz. This is also why
-# the image left alpine: those natives are glibc-linked and musl+gcompat cannot
-# load them (gcompat exports none of the _FORTIFY_SOURCE `__*_chk` symbols they
-# need).
+# Temurin rather than the runtime's own distro, even though that puts the
+# builder on a newer glibc (Ubuntu 26.04 / 2.43) than the runtime (debian 13 /
+# 2.41). What matters is not the builder image's glibc but what the JDK binaries
+# jlink copies were linked against: Adoptium builds those for portability, so the
+# output requires at most GLIBC_2.17. Building the same runtime from
+# debian:13-slim + openjdk-21-jdk-headless raises that floor to GLIBC_2.38 for no
+# size win (96 MB vs 100 MB before pruning), which would pin the image to
+# trixie-era bases and break on any rollback to debian 12. Temurin is also the
+# distribution actions/setup-java pins across this repo's CI.
 #
-# The trade against building our own runtime with jlink: this ships a full JDK,
-# so 30 launchers instead of 9 (javac, jshell, jdb, jhsdb, jpackage among them)
-# and ~129 MB more image. Bought with one fewer build stage, no glibc-floor
-# reasoning between builder and runtime, and the JDK patched on the distroless
-# rebuild cadence rather than by bumping a builder tag here. Note the module set
-# is the same either way -- a jlink build for this app needs ALL-MODULE-PATH,
-# since it reaches into java.beans, java.sql and java.naming at runtime -- so the
-# difference is tool binaries, not classes.
+# ALL-MODULE-PATH on purpose: the app reaches deep into the JDK at runtime
+# (dropwizard yaml -> java.beans, postgresql -> java.sql + java.naming), and a
+# pruned module only fails on the code path that needed it.
+FROM eclipse-temurin:21-jdk AS jre-builder
+
+RUN jlink \
+      --add-modules ALL-MODULE-PATH \
+      --strip-debug \
+      --no-man-pages \
+      --no-header-files \
+      --compress=zip-6 \
+      --output /javaruntime
+
+# ALL-MODULE-PATH also ships javac, jshell, jrunscript and jwebserver. Keep the
+# runtime, the diagnostics and keytool, which operators need to import a custom CA.
+RUN find /javaruntime/bin -type f \
+      ! -name java ! -name jcmd ! -name jstack ! -name jmap \
+      ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
+      -delete
+
+# `cc`, not `base`: the JNI natives the server loads link the GNU C++ runtime.
+# DJL's libtokenizers.so and onnxruntime need libstdc++.so.6 and libgcc_s.so.1,
+# and libtorch's libgfortran needs libz.so.1. base-debian12 fails the first with
+# "libstdc++.so.6: cannot open shared object file"; cc-debian12 gets one step
+# further and fails on libz, which it does not ship. debian13 carries all three
+# plus libgomp, so nothing has to be copied in by hand. This is also why the
+# image left alpine: those natives are glibc-linked and musl+gcompat cannot load
+# them (gcompat exports none of the _FORTIFY_SOURCE `__*_chk` symbols they need).
 #
 # `debug-nonroot`, not `nonroot`: it adds busybox, which keeps the shell that
 # bin/openmetadata-server-start.sh, bootstrap/openmetadata-ops.sh, the compose
@@ -60,7 +80,7 @@ RUN mkdir -p /opt/openmetadata && \
 # image is a worthwhile follow-up, but it is a coordinated change across this
 # repo, openmetadata-helm-charts and a release boundary -- not a side effect of
 # fixing the libc.
-FROM gcr.io/distroless/java21-debian13:debug-nonroot
+FROM gcr.io/distroless/cc-debian13:debug-nonroot
 
 ARG RI_VERSION="2.0.0-SNAPSHOT"
 ARG BUILD_DATE
@@ -75,13 +95,14 @@ LABEL org.open-metadata.vcs-url="https://github.com/open-metadata/OpenMetadata"
 LABEL org.open-metadata.build-date=$BUILD_DATE
 LABEL org.open-metadata.commit-id=$COMMIT_ID
 
-# JAVA_HOME is deliberately not set. This base installs the JDK under an
-# arch-suffixed path (/usr/lib/jvm/temurin-21-jdk-arm64, -amd64 on the other
-# arch), which a multi-arch build cannot name in a single ENV. Both
-# bin/openmetadata-server-start.sh and bootstrap/openmetadata-ops.sh fall back to
-# `java` on PATH when JAVA_HOME is empty, and the base symlinks /usr/bin/java. The
-# JVM tuning stays where it has always been -- those scripts -- which keeps
-# OPENMETADATA_HEAP_OPTS and OPENMETADATA_JVM_PERFORMANCE_OPTS working.
+# bin/openmetadata-server-start.sh and bootstrap/openmetadata-ops.sh both prefer
+# $JAVA_HOME/bin/java over a bare `java`, so this is what points them at the
+# jlink runtime. The JVM tuning stays where it has always been -- those scripts --
+# which keeps OPENMETADATA_HEAP_OPTS and OPENMETADATA_JVM_PERFORMANCE_OPTS working.
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /
