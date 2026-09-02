@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-export interface DestinationFormItemV2Props {
-  isViewMode?: boolean;
-  isRequired?: boolean;
-}
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
+
+export const EXTERNAL_DESTINATION_TYPES = EXTERNAL_CATEGORY_OPTIONS.map(
+  ({ value }) => value
+);
