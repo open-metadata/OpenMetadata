@@ -98,14 +98,6 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  // Bumped on a successful term add so the (otherwise fetch-on-mount-only) Terms
-  // tab table/badge on the Glossary root page re-fetches immediately instead of
-  // waiting for a page reload. The Glossary Term page's own children-count
-  // badge doesn't need an equivalent trigger — it reads directly from
-  // useGlossaryStore, so the fetchChildrenCount() call below is enough.
-  const [glossaryTermsRefreshTrigger, setGlossaryTermsRefreshTrigger] =
-    useState(0);
-
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -288,8 +280,9 @@ const GlossaryV1 = ({
         refreshGlossaryList();
       }
       // Force the Terms tab count badge to re-fetch immediately, rather than
-      // waiting for a page reload.
-      setGlossaryTermsRefreshTrigger((prev) => prev + 1);
+      // waiting for a page reload. GlossaryDetails reads childrenCounts
+      // straight from this same store, so updating it here is enough --
+      // no separate refresh signal needs to be threaded through props.
       if (selectedData.fullyQualifiedName) {
         fetchChildrenCount(selectedData.fullyQualifiedName);
       }
@@ -406,13 +399,8 @@ const GlossaryV1 = ({
       setGlossaryChildTerms([]);
       setAfterCursor(undefined);
       setHasMore(true);
-      // Reset the live Terms-table status filter and search term back to
-      // their defaults, and clear cached children counts, so stale values
-      // from a previously-viewed glossary/term can't flash on the new
-      // page's badge before its own GlossaryTermTab mounts and pushes
-      // fresh ones. Without clearing childrenCounts, re-visiting the same
-      // fqn would briefly show its last cached count (from whatever
-      // filter/search was active last time) before the fresh fetch lands.
+      // Reset the shared filter/search/counts so stale values from a
+      // previous glossary/term can't flash on the new page's badge.
       setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
       setTermsSearchTerm(undefined);
       resetChildrenCounts();
@@ -465,7 +453,6 @@ const GlossaryV1 = ({
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
         permissions={glossaryPermission}
-        termsRefreshTrigger={glossaryTermsRefreshTrigger}
         toggleTabExpanded={toggleTabExpanded}
         updateGlossary={handleGlossaryUpdate}
         updateVote={updateVote}
@@ -474,7 +461,6 @@ const GlossaryV1 = ({
   }, [
     glossaryPermission.ViewAll,
     glossaryPermission.ViewBasic,
-    glossaryTermsRefreshTrigger,
     isTabExpanded,
     isVersionsView,
     onGlossaryDelete,

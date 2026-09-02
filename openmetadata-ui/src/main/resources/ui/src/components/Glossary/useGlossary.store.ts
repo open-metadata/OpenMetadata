@@ -35,24 +35,9 @@ export type GlossaryFunctionRef = {
   loadMoreTerms?: () => void;
 };
 
-// Per-fqn request sequence counters for fetchChildrenCount, mirroring
-// GlossaryTermTab.component.tsx's fetchAllTerms's own fetchRequestSeqRef: a
-// per-fqn (not global) counter so a slower, earlier request for one fqn
-// can't overwrite a newer one's result if the status filter or search term
-// changes and fires requests in quick succession. Kept per-fqn (not a single
-// ref, since fetchAllTerms only ever tracks its own one table's requests)
-// because this store's fetchChildrenCount is shared by every Terms tab badge
-// across the app, each fetching a different fqn concurrently.
-//
-// Deliberately NEVER reset back to {} or to 0 — resetChildrenCounts instead
-// bumps each tracked fqn's counter forward (see its own comment below). A
-// hard reset to {} would let a fetch for the same fqn issued right after the
-// reset restart its own counter at the same number a still-in-flight,
-// pre-reset request for that fqn had already captured — letting that stale
-// response coincidentally pass the "is this still the latest?" check and
-// briefly overwrite the fresh count. Since the counter only ever increases
-// for a given fqn, no later request (from a fresh fetch OR a reset's bump)
-// can ever coincidentally re-match a value already captured by an earlier one.
+// Per-fqn request counters so a slower, older fetchChildrenCount request
+// can't overwrite a newer one's result. Never reset to {} — reset bumps
+// each counter forward instead, so in-flight stale requests still lose.
 const childrenCountRequestSeqRef: Record<string, number> = {};
 
 export const useGlossaryStore = create<{
@@ -72,33 +57,19 @@ export const useGlossaryStore = create<{
   refreshGlossaryTerms: () => void;
   loadMoreTerms: () => void;
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
-  // The Terms table's live, already-'all'-filtered entityStatus param. Seeded
-  // with the table's own default filter (not undefined) so "not yet
-  // published" and "user explicitly selected All statuses" are
-  // distinguishable — only the latter is a real undefined, since the table
-  // always pushes at least once on mount.
+  // Live status filter the Terms table is using; the badge reads this to
+  // stay in sync with what the table actually shows.
   termsStatusFilter: string | undefined;
   setTermsStatusFilter: (termsStatusFilter: string | undefined) => void;
-  // The Terms table's live search box query, pushed the same way as
-  // termsStatusFilter above — so the children-count badge can tell when the
-  // table has switched from the plain listing API to the search API and
-  // mirror that, instead of only ever counting the unfiltered listing.
+  // Live search query the Terms table is using; same purpose as above.
   termsSearchTerm: string | undefined;
   setTermsSearchTerm: (termsSearchTerm: string | undefined) => void;
-  // Direct-children counts for a glossary/glossary-term fqn, filtered to the
-  // same entityStatus AND search term the Terms table is currently using
-  // (termsStatusFilter / termsSearchTerm above) — keyed by fqn since both the
-  // Glossary root page and every Glossary Term page's Terms tab badge read
-  // from this same map.
+  // Direct-children counts per glossary/term fqn, filtered by the two
+  // fields above.
   childrenCounts: Record<string, number>;
   fetchChildrenCount: (fqn: string) => Promise<void>;
-  // Clears the childrenCounts data map, so a previously-viewed entity's
-  // cached count can't flash on a page for a different (or the same,
-  // revisited) fqn before its own fresh fetch lands. Also bumps
-  // childrenCountRequestSeqRef forward (never resets it — see its own
-  // comment above) so any request still in-flight at reset time is
-  // discarded on arrival, even if no replacement fetch for that fqn has
-  // fired yet.
+  // Clears cached counts so a stale one can't flash before a fresh fetch
+  // lands, and bumps request counters so in-flight requests are discarded.
   resetChildrenCounts: () => void;
 }>()((set, get) => ({
   glossaries: [],
@@ -187,68 +158,25 @@ export const useGlossaryStore = create<{
   fetchChildrenCount: async (fqn: string) => {
     const { termsStatusFilter, termsSearchTerm } = get();
 
-    // Mirrors GlossaryTermTab.component.tsx's fetchAllTerms's own
-    // fetchRequestSeqRef pattern: increment before the request, and only
-    // apply the result if this is still the latest request issued for this
-    // fqn — otherwise a slower, earlier request (e.g. superseded by a
-    // rapid filter/search change) can overwrite a newer one's result.
+    // Only apply the result if this is still the latest request for this
+    // fqn, so a slower, superseded request can't overwrite a newer one.
     childrenCountRequestSeqRef[fqn] =
       (childrenCountRequestSeqRef[fqn] ?? 0) + 1;
     const requestSeq = childrenCountRequestSeqRef[fqn];
 
     try {
-      // Mirrors GlossaryTermTab.component.tsx's fetchAllTerms: the table
-      // itself switches from the plain listing API to the search API the
-      // moment a search term is active, so the count must switch with it —
-      // otherwise it keeps counting the unfiltered listing while the table
-      // shows only the search matches.
+      // Switch to the search API whenever a search term is active, so the
+      // count matches what the table shows instead of the unfiltered list.
       let count: number;
       if (termsSearchTerm) {
-        // The search endpoint's `limit` has a server-side @Min(1) constraint
-        // (GlossaryTermResource#searchGlossaryTerms) — limit: 0 is rejected
-        // outright, not "count only". Its `paging.total` also isn't a real
-        // count for search results: GlossaryTermRepository#searchGlossary
-        // TermsInternal deliberately skips the COUNT query and derives
-        // `knownTotal` from `offset + terms.size() + (hasMore ? 1 : 0)`,
-        // which is only accurate when the true total is <= limit + 1. The
-        // table itself already works around this the same way — see its own
-        // `setTotalTermsCount(data.length)` in fetchAllTerms — so this
-        // mirrors that: count the returned rows, not paging.total.
-        //
-        // A single fetch is NOT a one-shot count here: fetchAllTerms's own
-        // search branch supports "load more" via offset/hasMore exactly
-        // like the plain listing does, so a term with more matches than
-        // one page can still grow past whatever limit a single request
-        // uses. A single AGGREGATE_PAGE_SIZE_LARGE (1000) request silently
-        // truncated the count for any term with over 1000 matches. Fix:
-        // page through with the same offset/hasMore shape as fetchAllTerms,
-        // AGGREGATE_PAGE_SIZE_LARGE (1000) rows at a time — not
-        // PAGE_SIZE_LARGE (50), so a large-but-typical match count still
-        // resolves in one or two round trips instead of dozens — summing
-        // every page until one comes back short of the limit (no more
-        // matches left).
-        count = 0;
-        let offset = 0;
-        let hasMore = true;
-        while (hasMore) {
-          const { data } = await searchGlossaryTermsPaginated({
-            q: termsSearchTerm,
-            glossaryFqn: fqn,
-            limit: AGGREGATE_PAGE_SIZE_LARGE,
-            offset,
-            entityStatus: termsStatusFilter,
-          });
-          count += data.length;
-          hasMore = data.length === AGGREGATE_PAGE_SIZE_LARGE;
-          offset += AGGREGATE_PAGE_SIZE_LARGE;
-
-          // Bail out mid-pagination if a newer request for this fqn has
-          // since been issued, instead of paging through a result set
-          // whose count is about to be discarded anyway.
-          if (requestSeq !== childrenCountRequestSeqRef[fqn]) {
-            return;
-          }
-        }
+        const { paging } = await searchGlossaryTermsPaginated({
+          q: termsSearchTerm,
+          glossaryFqn: fqn,
+          limit: AGGREGATE_PAGE_SIZE_LARGE,
+          offset: 0,
+          entityStatus: termsStatusFilter,
+        });
+        count = paging.total ?? 0;
       } else {
         const { paging } = await getFirstLevelGlossaryTermsPaginated(
           fqn,
@@ -275,14 +203,8 @@ export const useGlossaryStore = create<{
     }
   },
   resetChildrenCounts: () => {
-    // Bump (never reset to 0 — see the module-level comment above) every
-    // fqn's counter that's been fetched before, so any request still
-    // in-flight for it at reset time captured a requestSeq strictly less
-    // than the bumped value and is discarded when it resolves — even if no
-    // replacement request for that fqn has fired yet. Without this, a
-    // stale success/error from a previous view could still pass the
-    // staleness check and repopulate the badge with an obsolete count
-    // until the next fetch overwrites it.
+    // Bump every tracked fqn's counter so any in-flight request is
+    // discarded on arrival instead of repopulating a stale count.
     for (const fqn of Object.keys(childrenCountRequestSeqRef)) {
       childrenCountRequestSeqRef[fqn] += 1;
     }

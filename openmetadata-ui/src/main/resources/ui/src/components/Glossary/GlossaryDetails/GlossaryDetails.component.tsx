@@ -84,7 +84,6 @@ const GlossaryDetails = ({
   isVersionView,
   toggleTabExpanded,
   isTabExpanded,
-  termsRefreshTrigger,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -105,8 +104,6 @@ const GlossaryDetails = ({
       0
     : glossary.termCount ?? glossary.childrenCount ?? 0;
 
-  // termsRefreshTrigger is bumped by the parent after a term is added, to
-  // force a re-fetch instead of waiting for a page reload.
   useEffect(() => {
     if (!glossary.fullyQualifiedName) {
       return;
@@ -114,7 +111,6 @@ const GlossaryDetails = ({
     fetchChildrenCount(glossary.fullyQualifiedName);
   }, [
     glossary.fullyQualifiedName,
-    termsRefreshTrigger,
     termsStatusFilter,
     termsSearchTerm,
     fetchChildrenCount,

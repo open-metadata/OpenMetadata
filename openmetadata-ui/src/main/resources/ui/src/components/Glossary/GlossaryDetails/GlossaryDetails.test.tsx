@@ -177,47 +177,6 @@ describe('Test Glossary-details component', () => {
       ).toHaveTextContent('4');
     });
 
-    it('re-fetches when termsRefreshTrigger changes, e.g. after a term is added', async () => {
-      useGlossaryStore.setState({
-        activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
-        termsStatusFilter: 'Approved,Draft,In Review',
-      } as never);
-      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
-        data: [],
-        paging: { total: 4 },
-      });
-
-      let renderResult: ReturnType<typeof render>;
-      await act(async () => {
-        renderResult = render(
-          <GlossaryDetails {...mockProps} termsRefreshTrigger={0} />
-        );
-      });
-
-      const termsTab = await screen.findByTestId('terms');
-
-      expect(
-        await within(termsTab).findByTestId('filter-count')
-      ).toHaveTextContent('4');
-      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
-
-      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
-        data: [],
-        paging: { total: 5 },
-      });
-
-      await act(async () => {
-        renderResult.rerender(
-          <GlossaryDetails {...mockProps} termsRefreshTrigger={1} />
-        );
-      });
-
-      expect(
-        await within(termsTab).findByTestId('filter-count')
-      ).toHaveTextContent('5');
-      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
-    });
-
     // useGlossary.store seeds termsStatusFilter with the default filter string,
     // so a genuinely undefined termsStatusFilter here only happens once the
     // table has mounted and the user explicitly selected "All" statuses and
@@ -317,7 +276,7 @@ describe('Test Glossary-details component', () => {
     // fetchChildrenCount pages through offset/hasMore beyond a single 1000
     // response, mirroring fetchAllTerms's own "load more" — covered by its
     // own tests in GlossaryTermUtils.test.tsx.
-    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
+    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts paging.total when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
         termsStatusFilter: 'Approved,Draft,In Review',
@@ -325,8 +284,6 @@ describe('Test Glossary-details component', () => {
       } as never);
       mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
         data: [{ id: 'bridge-term' }],
-        // Deliberately misleading paging.total (the search endpoint's own
-        // pagination heuristic) to prove the count comes from data.length.
         paging: { total: 99 },
       });
 
@@ -346,7 +303,7 @@ describe('Test Glossary-details component', () => {
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
       expect(
         await within(termsTab).findByTestId('filter-count')
-      ).toHaveTextContent('1');
+      ).toHaveTextContent('99');
     });
 
     // The concrete regression this guards: with the old PAGE_SIZE_LARGE

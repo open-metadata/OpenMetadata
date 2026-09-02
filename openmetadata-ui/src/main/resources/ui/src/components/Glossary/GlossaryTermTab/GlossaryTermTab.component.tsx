@@ -281,8 +281,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const selectedStatusRef = useRef(selectedStatus);
   selectedStatusRef.current = selectedStatus;
-  // Tracks the entity this component's local status filter was last reset
-  // for -- see the effect below.
+  // Entity the local status filter was last reset for (see effect below).
   const statusFilterResetFQNRef = useRef(activeGlossary?.fullyQualifiedName);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
@@ -612,18 +611,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     searchTerm,
   ]);
 
-  // Reset the locally-selected status filter back to the shared default
-  // whenever the active glossary/term changes -- independent of the
-  // toggleExpandBtn/searchTerm guard above, which only decides whether to
-  // interrupt an in-flight search/expand-all session, not whether a stale
-  // filter selection should carry over to a different entity. GlossaryV1
-  // already resets the *store's* termsStatusFilter (what the count badge
-  // reads) back to default on navigation; without this, a filter chosen on
-  // one entity (e.g. "Rejected" only) would keep being applied to the next
-  // one's table/fetches while the badge shows the reset default, so the two
-  // disagree about what's currently filtered. Setting selectedStatus here
-  // also re-triggers the effect below that republishes termsStatusFilter,
-  // so the store catches up to the same default.
+  // Reset the local status filter to the default when the active
+  // glossary/term changes, so a filter picked on one entity doesn't keep
+  // applying to the next. Re-triggers the effect below to republish the
+  // reset value to the store too.
   useEffect(() => {
     const currentFQN = activeGlossary?.fullyQualifiedName;
 
@@ -1694,10 +1685,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }));
       fetchAllTerms();
     }
-    // Outside the guard above (which only exists to skip a redundant fetch on
-    // first mount / glossary switch, since another effect already fetches
-    // then) so the count badge's store value always reflects the current
-    // committed filter, including the initial default on mount/remount.
+    // Outside the guard above so the store always reflects the current
+    // filter, including on initial mount.
     setTermsStatusFilter(getEntityStatusParamFromSelection(selectedStatus));
     setTermsSearchTerm(searchTerm);
   }, [searchTerm, selectedStatus]);

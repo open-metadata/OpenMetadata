@@ -23,5 +23,4 @@ export type GlossaryDetailsProps = {
   handleGlossaryDelete: (id: string) => Promise<void>;
   toggleTabExpanded: () => void;
   isTabExpanded: boolean;
-  termsRefreshTrigger?: number;
 };
