@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../../../../components/Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
+import ThemeModeSwitcher from '../../../../components/ThemeModeSwitcher/ThemeModeSwitcher';
 import {
   HELP_ITEMS_ENUM,
   SupportItem,
@@ -466,6 +467,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             <MenuItemRenderer item={item} key={item.id} />
           ))}
         </Dropdown.Menu>
+        <Box className="tw:border-t tw:border-secondary tw:px-4 tw:py-3">
+          <ThemeModeSwitcher className="tw:w-full" />
+        </Box>
       </Dropdown.Popover>
     </Dropdown.Root>
   );
