@@ -141,6 +141,13 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Override
+  protected String getEntityServiceFqn(Topic entity) {
+    return entity == null || entity.getService() == null
+        ? null
+        : entity.getService().getFullyQualifiedName();
+  }
+
+  @Override
   protected Topic getEntityWithFields(String id, String fields) {
     return SdkClients.adminClient().topics().get(id, fields);
   }

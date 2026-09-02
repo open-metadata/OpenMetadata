@@ -1344,12 +1344,10 @@ public class ContainerRepository extends EntityRepository<Container> {
               .countDescendantsByPrefix(FullyQualifiedName.buildHash(oldFqn) + ".%");
       validateSubtreeSize(oldFqn, descendantCount, maxAllowed);
 
-      // Snapshot (id, oldFqn) for every descendant BEFORE the bulk FQN rewrite — needed to
-      // rewrite each descendant's feed-thread entityLink in updateEntityLinks below. On this
-      // branch invalidateCacheForRenameCascade does not return the snapshot, so capture it
-      // directly from the DAO.
-      List<EntityDAO.EntityIdFqnPair> renamedContainers = dao.listDescendantIdFqnByPrefix(oldFqn);
-      invalidateCacheForRenameCascade(CONTAINER, oldFqn);
+      // Snapshot and invalidate descendants before the bulk FQN rewrite. The same snapshot is
+      // re-invalidated after the update to prevent a concurrent reader from caching old rows.
+      List<EntityDAO.EntityIdFqnPair> renamedContainers =
+          invalidateCacheForRenameCascade(CONTAINER, oldFqn);
       invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
 
       daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
@@ -1379,7 +1377,12 @@ public class ContainerRepository extends EntityRepository<Container> {
       recordChange(
           FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
 
-      updateAssetIndexes(oldFqn, newFqn);
+      // Reordered to run after every DB write and after the phase-2 evict. @Transaction on
+      // EntityRepository is inert on this branch (JDBI SqlObject annotation on a plain class),
+      // so each DAO call autocommits; this is an ordering fix, not a commit hook. Matches the
+      // ordering main gets from its post-commit DeferralScope.
+      deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
+      finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
     }
 
     private void updateParentRelationship(Container orig, Container updated) {
