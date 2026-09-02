@@ -105,8 +105,25 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Grid.Item = GridItem;
 
   return {
-    Alert: ({ title, variant }: { title: ReactNode; variant?: string }) => (
-      <div data-testid={`alert-${variant}`}>{title}</div>
+    Alert: ({
+      title,
+      variant,
+      closable,
+      onClose,
+    }: {
+      title: ReactNode;
+      variant?: string;
+      closable?: boolean;
+      onClose?: () => void;
+    }) => (
+      <div data-testid={`alert-${variant}`}>
+        {title}
+        {closable && (
+          <button aria-label="Close alert" type="button" onClick={onClose}>
+            Close
+          </button>
+        )}
+      </div>
     ),
     Button: ({
       onPress,
@@ -475,6 +492,48 @@ describe('DestinationSelectItem', () => {
         screen.getByText('message.destination-selection-warning')
       ).toBeInTheDocument();
     });
+  });
+
+  it('dismisses the internal destination selection warning', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Teams,
+          type: SubscriptionType.Email,
+        },
+      ],
+    });
+
+    expect(
+      await screen.findByText('message.destination-selection-warning')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close alert' }));
+
+    expect(
+      screen.queryByText('message.destination-selection-warning')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the warning again when the subscription type changes', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Teams,
+          type: SubscriptionType.Email,
+        },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Close alert' }));
+    fireEvent.change(
+      screen.getByTestId(`destination-type-select-${MOCK_PROPS.id}`),
+      { target: { value: SubscriptionType.ActivityFeed } }
+    );
+
+    expect(
+      await screen.findByText('message.destination-selection-warning')
+    ).toBeInTheDocument();
   });
 
   it('shows notify downstream toggle when a destination is selected', async () => {

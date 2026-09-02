@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { X } from '@untitledui/icons';
 import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -59,6 +59,8 @@ function DestinationSelectItem({
   const destinationItem =
     useWatch({ name: `destinations.${id}`, control }) ?? {};
   const [selectedSource = ''] = useWatch({ name: 'resources', control }) ?? [];
+  const [isSelectionWarningDismissed, setIsSelectionWarningDismissed] =
+    useState(false);
 
   const destinationType: string | undefined = destinationItem.destinationType;
   const subscriptionType: string | undefined = destinationItem.type;
@@ -108,6 +110,7 @@ function DestinationSelectItem({
       if (!value || value.startsWith('header-')) {
         return;
       }
+      setIsSelectionWarningDismissed(false);
       const isInternal = checkIfDestinationIsInternal(value);
       const configField = getConfigFieldFromDestinationType(value);
 
@@ -245,7 +248,10 @@ function DestinationSelectItem({
                           field: t('label.destination'),
                         })}
                         selectedKey={field.value ?? null}
-                        onSelectionChange={(key) => field.onChange(key)}>
+                        onSelectionChange={(key) => {
+                          setIsSelectionWarningDismissed(false);
+                          field.onChange(key);
+                        }}>
                         {getSubscriptionTypeOptions(destinationType).map(
                           (option) => (
                             <Select.Item
@@ -273,26 +279,29 @@ function DestinationSelectItem({
                 />
               </Grid.Item>
 
-              {destinationType && subscriptionType && (
-                <Grid.Item span={24}>
-                  <Alert
-                    closable
-                    title={
-                      destinationType === SubscriptionCategory.Owners &&
-                      subscriptionType !== SubscriptionType.Email
-                        ? t('message.destination-owner-selection-warning', {
-                            subscriptionCategory: destinationType,
-                            subscriptionType,
-                          })
-                        : t('message.destination-selection-warning', {
-                            subscriptionCategory: destinationType,
-                            subscriptionType,
-                          })
-                    }
-                    variant="warning"
-                  />
-                </Grid.Item>
-              )}
+              {destinationType &&
+                subscriptionType &&
+                !isSelectionWarningDismissed && (
+                  <Grid.Item span={24}>
+                    <Alert
+                      closable
+                      title={
+                        destinationType === SubscriptionCategory.Owners &&
+                        subscriptionType !== SubscriptionType.Email
+                          ? t('message.destination-owner-selection-warning', {
+                              subscriptionCategory: destinationType,
+                              subscriptionType,
+                            })
+                          : t('message.destination-selection-warning', {
+                              subscriptionCategory: destinationType,
+                              subscriptionType,
+                            })
+                      }
+                      variant="warning"
+                      onClose={() => setIsSelectionWarningDismissed(true)}
+                    />
+                  </Grid.Item>
+                )}
             </>
           )}
 
