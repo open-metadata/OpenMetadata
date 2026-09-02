@@ -1065,7 +1065,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private record PodSummary(
       String name, Map<String, String> labels, OffsetDateTime creationTimestamp) {}
-
+  @VisibleForTesting
   private List<PodSummary> parsePodSummaries(String rawJson) throws IOException {
     JsonNode items = POD_SUMMARY_MAPPER.readTree(rawJson).path("items");
     List<PodSummary> summaries = new ArrayList<>();
@@ -1087,7 +1087,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
     return summaries;
   }
-
+  @VisibleForTesting
   private PodSummary selectLatestPod(List<PodSummary> pods) {
     // Early return if pod list is null or empty - avoid unnecessary stream processing
     if (pods == null || pods.isEmpty()) {
@@ -1244,7 +1244,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
           FAILED_LOGS_MESSAGE + "Kubernetes API request failed");
     }
   }
-
+  @VisibleForTesting
   private String selectContainerName(JsonNode pod) {
     JsonNode spec = pod.get("spec");
 
