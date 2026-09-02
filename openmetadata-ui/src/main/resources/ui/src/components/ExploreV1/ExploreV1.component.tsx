@@ -46,6 +46,7 @@ import {
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   exportSearchResultsCsvStream,
@@ -131,6 +132,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
+  );
+
+  const hitSources = useMemo(
+    () => (searchResults?.hits?.hits ?? []).map((hit) => hit._source),
+    [searchResults]
   );
 
   const { toggleModal, sqlQuery, queryFilter, onResetAllFilters } =
@@ -385,6 +391,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
     });
   };
 
+  // Selected values round trip through the URL as lowercased aggregation keys.
+  // Labels are presentational, so only the rendered fields are hydrated — query
+  // building keeps reading the raw state, whose keys never change.
+  const quickFilterFields = useQuickFilterLabels({
+    fields: selectedQuickFilters,
+    sources: hitSources,
+    index: activeTabKey,
+  });
+
   const exploreLeftPanel = useMemo(() => {
     if (tabItems.length === 0) {
       return loading ? (
@@ -522,7 +537,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <ExploreQuickFilters
               showSelectedCounts
               aggregations={aggregations}
-              fields={selectedQuickFilters}
+              fields={quickFilterFields}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
               index={activeTabKey}
               showDeleted={showDeleted}
