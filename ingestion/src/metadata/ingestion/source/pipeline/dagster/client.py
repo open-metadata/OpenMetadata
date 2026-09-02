@@ -14,7 +14,6 @@ Wrapper module of DagsterGraphQLClient client
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 
 from dagster_graphql import DagsterGraphQLClient
 from gql.transport.requests import RequestsHTTPTransport
@@ -60,7 +59,7 @@ class DagsterClient:
             ),
         )
 
-    def get_run_list(self) -> Optional[List[Node]]:  # noqa: UP006, UP045
+    def get_run_list(self) -> list[Node] | None:
         """
         List all the pipeline runs
         """
@@ -85,7 +84,7 @@ class DagsterClient:
         pipeline_name: str,
         repository_name: str,
         repository_location: str,
-    ) -> Optional[DagsterPipeline]:  # noqa: UP045
+    ) -> DagsterPipeline | None:
         """
         Get all the runs details
         """
@@ -110,7 +109,7 @@ class DagsterClient:
 
         return None
 
-    def get_jobs(self, pipeline_name, repository_name: str, repository_location: str) -> Optional[GraphOrError]:  # noqa: UP045
+    def get_jobs(self, pipeline_name, repository_name: str, repository_location: str) -> GraphOrError | None:
         """
         Get all the jobs for a pipeline
         """
@@ -133,7 +132,7 @@ class DagsterClient:
 
         return None
 
-    def get_assets(self, repository_name: str, repository_location: str) -> Optional[List[DagsterAssetNode]]:  # noqa: UP006, UP045
+    def get_assets(self, repository_name: str, repository_location: str) -> list[DagsterAssetNode] | None:
         """
         Retrieve all assets from a repository with their dependencies.
         """

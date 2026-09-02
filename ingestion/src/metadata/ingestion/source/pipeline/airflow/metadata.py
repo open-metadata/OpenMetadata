@@ -13,23 +13,24 @@
 Airflow source to extract metadata from OM UI
 """
 
-import json  # noqa: I001
+import json
 import traceback
 import zlib
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Any, cast
 from urllib.parse import quote
+
+from pydantic import BaseModel, ValidationError
+from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, literal
+from sqlalchemy.orm import Session
 
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.definitions.dag import SerializedDAG
-from pydantic import BaseModel, ValidationError
-from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, literal
-from sqlalchemy.orm import Session
-
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -63,9 +64,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -125,9 +126,9 @@ class OMTaskInstance(BaseModel):
     """
 
     task_id: str
-    state: Optional[str]  # noqa: UP045
-    start_date: Optional[datetime]  # noqa: UP045
-    end_date: Optional[datetime]  # noqa: UP045
+    state: str | None
+    start_date: datetime | None
+    end_date: datetime | None
 
 
 # pylint: disable=too-many-locals,too-many-nested-blocks,too-many-boolean-expressions
@@ -147,7 +148,7 @@ class AirflowSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
-        self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}  # noqa: UP006
+        self.observability_cache: dict[tuple[str, str], dict[str, Any]] = {}
 
         # Status and lineage stages request the same DAG's runs back-to-back;
         # cache the last DAG so we query once per DAG instead of twice.
@@ -216,7 +217,7 @@ class AirflowSource(PipelineServiceSource):
         return self._execution_date_column
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         from metadata.generated.schema.entity.utils.airflowRestApiConnection import (
             AirflowRestApiConnection,
         )
@@ -244,7 +245,7 @@ class AirflowSource(PipelineServiceSource):
         return self._session
 
     @staticmethod
-    def _extract_serialized_task(task: Dict) -> Dict:  # noqa: UP006
+    def _extract_serialized_task(task: dict) -> dict:
         """
         Given the serialization changes introduced in Airflow 2.10,
         ensure compatibility with all versions.
@@ -253,7 +254,7 @@ class AirflowSource(PipelineServiceSource):
             return task["__var"]
         return task
 
-    def get_all_tags(self, dag_id: str) -> List[str]:  # noqa: UP006
+    def get_all_tags(self, dag_id: str) -> list[str]:
         try:
             tag_query = self.session.query(DagTag.name).filter(DagTag.dag_id == dag_id).distinct().all()
             return [tag[0] for tag in tag_query]
@@ -271,7 +272,7 @@ class AirflowSource(PipelineServiceSource):
             include_tags=self.source_config.includeTags,
         )
 
-    def get_pipeline_status(self, dag_id: str) -> List[DagRun]:  # noqa: UP006
+    def get_pipeline_status(self, dag_id: str) -> list[DagRun]:
         """
         Return the DagRuns of given dag
         """
@@ -333,15 +334,15 @@ class AirflowSource(PipelineServiceSource):
         self,
         dag_id: str,
         run_ids: list[str],
-        serialized_tasks: List[AirflowTask],  # noqa: UP006
-    ) -> Dict[str, List[OMTaskInstance]]:  # noqa: UP006
+        serialized_tasks: list[AirflowTask],
+    ) -> dict[str, list[OMTaskInstance]]:
         """
         Fetch all TaskInstances for the given DAG and run IDs in a single query,
         returning a dict keyed by run_id. This avoids an N+1 pattern where a
         separate query was previously fired for each DagRun.
         """
         serialized_tasks_ids = {task.task_id for task in serialized_tasks}
-        result: Dict[str, List[OMTaskInstance]] = defaultdict(list)  # noqa: UP006
+        result: dict[str, list[OMTaskInstance]] = defaultdict(list)
 
         # Short-circuit: avoid building and executing a query with an empty
         # IN(...) list - unnecessary DB round-trip and rejected by some SQL
@@ -493,10 +494,10 @@ class AirflowSource(PipelineServiceSource):
 
     def _resolve_dag_data(
         self,
-        raw_data: Optional[Any],  # noqa: UP045
+        raw_data: Any | None,
         dag_id: str,
-        compressed_data: Optional[bytes],  # noqa: UP045
-    ) -> Optional[Any]:  # noqa: UP045
+        compressed_data: bytes | None,
+    ) -> Any | None:
         if raw_data is not None:
             return raw_data
         if compressed_data is None:
@@ -676,7 +677,7 @@ class AirflowSource(PipelineServiceSource):
             return
         yield from super().mark_pipelines_as_deleted()
 
-    def fetch_dag_owners(self, data) -> Optional[str]:  # noqa: UP045
+    def fetch_dag_owners(self, data) -> str | None:
         """
         In Airflow, ownership is defined as:
         - `default_args`: Applied to all tasks and available on the DAG payload
@@ -724,7 +725,7 @@ class AirflowSource(PipelineServiceSource):
         """
         return pipeline_details.dag_id
 
-    def get_pipeline_state(self, pipeline_details: AirflowDagDetails) -> Optional[PipelineState]:  # noqa: UP045
+    def get_pipeline_state(self, pipeline_details: AirflowDagDetails) -> PipelineState | None:
         """
         Return the state of the DAG
         """
@@ -741,7 +742,7 @@ class AirflowSource(PipelineServiceSource):
         )
         return Markdown(doc) if doc else None
 
-    def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:  # noqa: UP006
+    def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> list[Task]:
         """
         Obtain the tasks from a SerializedDAG
         :param dag: AirflowDagDetails
@@ -769,7 +770,7 @@ class AirflowSource(PipelineServiceSource):
             for task in cast(Iterable[BaseOperator], dag.tasks)  # noqa: TC006
         ]
 
-    def get_owner(self, owner) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner(self, owner) -> EntityReferenceList | None:
         """
         Fetching users by name via ES to keep things as fast as possible.
 
@@ -895,7 +896,7 @@ class AirflowSource(PipelineServiceSource):
         self.context.get().current_dag_runs = dag_runs
         self.context.get().latest_dag_run = dag_runs[0] if dag_runs else None
 
-        xlets: List[XLets] = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []  # noqa: UP006
+        xlets: list[XLets] = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
 
         table_fqns = []
         for xlet in xlets:
@@ -962,7 +963,7 @@ class AirflowSource(PipelineServiceSource):
         self,
         dag_run: DagRun,
         pipeline_entity: Pipeline,
-        schedule_interval: Optional[str] = None,  # noqa: UP045
+        schedule_interval: str | None = None,
     ) -> PipelineObservability:
         """Build PipelineObservability object from DagRun data."""
         # DagRun objects are built with logical_date (SDK is Airflow 3.x)
@@ -987,13 +988,13 @@ class AirflowSource(PipelineServiceSource):
 
     def get_table_pipeline_observability(
         self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
+    ) -> Iterable[dict[str, list[PipelineObservability]]]:
         """
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current dag), falls back to cache for historical data.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
+            table_pipeline_map: dict[str, list[PipelineObservability]] = defaultdict(list)
 
             ctx = self.context.get()
 

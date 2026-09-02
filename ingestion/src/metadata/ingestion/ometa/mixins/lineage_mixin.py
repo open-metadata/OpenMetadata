@@ -17,8 +17,9 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import Any, Dict, Generic, Optional, Sequence, Type, TypeVar, Union, cast  # noqa: UP035
+from typing import Any, Generic, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -63,7 +64,7 @@ class OMetaLineageMixin(Generic[T]):
         return f"{entity_reference.type}:id:{model_str(entity_reference.id)}"
 
     @staticmethod
-    def _entity_ref_summary(reference: EntityReference) -> Dict[str, Any]:  # noqa: UP006
+    def _entity_ref_summary(reference: EntityReference) -> dict[str, Any]:
         """Minimal ``{"entity": ...}`` payload the sink reads (fullyQualifiedName), rebuilt
         from a reference we already hold so we can skip the post-write lineage-graph GET.
         fullyQualifiedName degrades to None if the reference does not carry one."""
@@ -133,7 +134,7 @@ class OMetaLineageMixin(Generic[T]):
         self,
         from_entity: EntityReference,
         to_entity: EntityReference,
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    ) -> dict[str, Any] | None:
         try:
             cache_key = self._lineage_edge_cache_key(from_entity, to_entity)
             if cache_key in search_cache:
@@ -161,7 +162,7 @@ class OMetaLineageMixin(Generic[T]):
         from_entity_fqn: str,
         to_entity_type: str,
         to_entity_fqn: str,
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    ) -> dict[str, Any] | None:
         try:
             cache_key = self._lineage_edge_name_cache_key(
                 from_entity_type,
@@ -191,8 +192,8 @@ class OMetaLineageMixin(Generic[T]):
 
     def _merge_column_lineage(
         self,
-        original: Sequence[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
-        updated: Sequence[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
+        original: Sequence[dict[str, Any] | ColumnLineage] | None,
+        updated: Sequence[dict[str, Any] | ColumnLineage] | None,
     ) -> list[dict[str, Any]]:
         flat_original_result = set()
         flat_updated_result = set()
@@ -215,7 +216,7 @@ class OMetaLineageMixin(Generic[T]):
             return original_data
         return [{"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]} for col_data in union_result]
 
-    def _update_cache(self, request: AddLineageRequest, response: Dict[str, Any]):  # noqa: UP006
+    def _update_cache(self, request: AddLineageRequest, response: dict[str, Any]):
         try:
             cache_key = self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity)
             for res in response.get("downstreamEdges", []):
@@ -233,14 +234,14 @@ class OMetaLineageMixin(Generic[T]):
     @staticmethod
     def _is_matching_lineage_target(
         to_entity: EntityReference,
-        downstream_edge_to_id: Optional[str],  # noqa: UP045
-        response: Dict[str, Any],  # noqa: UP006
+        downstream_edge_to_id: str | None,
+        response: dict[str, Any],
     ) -> bool:
         return model_str(to_entity.id) == downstream_edge_to_id
 
     def add_lineage(
         self, data: AddLineageRequest, check_patch: bool = False, return_lineage: bool = True
-    ) -> Dict[str, Any]:  # noqa: UP006
+    ) -> dict[str, Any]:
         """
         Add lineage relationship between two entities and returns
         the entity information of the origin node.
@@ -319,10 +320,10 @@ class OMetaLineageMixin(Generic[T]):
         from_entity_type: str,
         to_entity_fqn: str,
         to_entity_type: str,
-        lineage_details: Optional[LineageDetails] = None,  # noqa: UP045
+        lineage_details: LineageDetails | None = None,
         check_patch: bool = False,
         return_lineage: bool = True,
-    ) -> Dict[str, Any]:  # noqa: UP006
+    ) -> dict[str, Any]:
         lineage_details = deepcopy(lineage_details) if lineage_details else LineageDetails.model_validate({})
         try:
             patch_op_success = False
@@ -403,7 +404,7 @@ class OMetaLineageMixin(Generic[T]):
         self,
         from_id: str,
         to_id: str,
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    ) -> dict[str, Any] | None:
         """
         Get the lineage edge between two entities.
 
@@ -430,7 +431,7 @@ class OMetaLineageMixin(Generic[T]):
         self,
         original: AddLineageRequest,
         updated: AddLineageRequest,
-    ) -> Optional[bool]:  # noqa: UP045
+    ) -> bool | None:
         """
         Patches a lineage edge between two entities.
 
@@ -473,7 +474,7 @@ class OMetaLineageMixin(Generic[T]):
         to_entity_type: str,
         original: LineageDetails,
         updated: LineageDetails,
-    ) -> Optional[bool]:  # noqa: UP045
+    ) -> bool | None:
         try:
             allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
             patch = build_patch(
@@ -499,11 +500,11 @@ class OMetaLineageMixin(Generic[T]):
 
     def get_lineage_by_id(
         self,
-        entity: Union[Type[T], str],  # noqa: UP006, UP007
-        entity_id: Union[str, Uuid],  # noqa: UP007
+        entity: type[T] | str,
+        entity_id: str | Uuid,
         up_depth: int = 1,
         down_depth: int = 1,
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    ) -> dict[str, Any] | None:
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
@@ -520,11 +521,11 @@ class OMetaLineageMixin(Generic[T]):
 
     def get_lineage_by_name(
         self,
-        entity: Union[Type[T], str],  # noqa: UP006, UP007
-        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        entity: type[T] | str,
+        fqn: str | FullyQualifiedEntityName,
         up_depth: int = 1,
         down_depth: int = 1,
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    ) -> dict[str, Any] | None:
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
@@ -541,11 +542,11 @@ class OMetaLineageMixin(Generic[T]):
 
     def _get_lineage(
         self,
-        entity: Union[Type[T], str],  # noqa: UP006, UP007
+        entity: type[T] | str,
         path: str,
         up_depth: int = 1,
         down_depth: int = 1,
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    ) -> dict[str, Any] | None:
         """
         Generic function to get entity data.
         :param entity: Type of the entity
@@ -672,7 +673,7 @@ class OMetaLineageMixin(Generic[T]):
     @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def patch_lineage_processed_flag(
         self,
-        entity: Type[T],  # noqa: UP006
+        entity: type[T],
         fqn: str,
     ) -> None:
         """
