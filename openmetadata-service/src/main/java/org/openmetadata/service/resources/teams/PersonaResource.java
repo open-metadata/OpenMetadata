@@ -351,9 +351,10 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     rule.setId(UUID.randomUUID());
     // Search scoping is the default for new rules. Only the create path stamps it: on update a null
     // means the caller is round-tripping a rule stored before the field existed, which must keep
-    // preloading.
+    // preloading. Knowledge rules are exempt — they exist to be in context, so scoping one would
+    // drop its glossary terms, articles or metrics out of the document entirely.
     if (rule.getFilteredInSearch() == null) {
-      rule.setFilteredInSearch(true);
+      rule.setFilteredInSearch(!PersonaContextBuilder.isKnowledgeEntityType(rule.getEntityType()));
     }
     List<ContextRule> rules = new ArrayList<>(listOrEmpty(definition.getRules()));
     rules.add(rule);

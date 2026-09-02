@@ -252,6 +252,36 @@ class PersonaContextBuilderTest {
   }
 
   @Test
+  void knowledgeRulesAreNeverSearchScopedEvenWhenTheFlagIsSet() throws IOException {
+    // A scoped knowledge rule would drop its articles/terms/metrics out of the document entirely
+    // and put a knowledge type into an asset-search allowlist, where it means nothing.
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            eq(Entity.PAGE),
+            isNull(),
+            anyString(),
+            any(String[].class),
+            any(SearchSortFilter.class),
+            anyInt(),
+            nullable(Object[].class)))
+        .thenReturn(new SearchResultListMapper(List.of(), 0));
+    ContextRule knowledgeRule =
+        new ContextRule()
+            .withName("Articles")
+            .withEntityType(Entity.PAGE)
+            .withEnabled(true)
+            .withFilteredInSearch(true);
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withRules(List.of(knowledgeRule)).withEnabled(true);
+
+    assertTrue(nullOrEmpty(PersonaContextBuilder.searchScope(definition).getQueryFilter()));
+    assertEquals(
+        1,
+        new PersonaContextBuilder(persona(), repository).selectRules(definition).size(),
+        "a knowledge rule must still be materialized despite the flag");
+  }
+
+  @Test
   void searchScopeIgnoresDisabledRulesAndDisabledDefinitions() {
     ContextRule disabledRule =
         assetRule("Disabled", "").withFilteredInSearch(true).withEnabled(false);

@@ -170,12 +170,20 @@ describe('PersonaAIContextUtils', () => {
     expect(definition.rules?.[0].filteredInSearch).toBe(false);
   });
 
-  it('counts only the rules that are filtered in search', () => {
+  it('counts only the enabled rules that are filtered in search', () => {
+    // The backend drops disabled rules from the served scope, so counting them here would tell the
+    // admin more of their search is narrowed than actually is.
     expect(
       getScopedRuleCount([
         { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
         { entityType: EntityType.TABLE, filteredInSearch: false, name: 'Two' },
         { entityType: EntityType.TABLE, name: 'Three' },
+        {
+          enabled: false,
+          entityType: EntityType.TABLE,
+          filteredInSearch: true,
+          name: 'Disabled',
+        },
       ])
     ).toBe(1);
   });

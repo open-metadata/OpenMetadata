@@ -36,6 +36,10 @@ import { getScopedRuleCount } from '../../../utils/PersonaAIContextUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const PERSONA_PAGE_SIZE = 50;
+// Every persona must be reachable from this list — it is the only nav path to its AI context — so
+// the cursor is followed to exhaustion rather than rendering one page. Bounded so a paging bug on
+// the server cannot spin here.
+const MAX_PERSONA_PAGES = 20;
 
 const ContextCenterAIContextPage = () => {
   const { t } = useTranslation();
@@ -47,11 +51,21 @@ const ContextCenterAIContextPage = () => {
   const fetchPersonas = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data } = await getAllPersonas({
-        fields: TabSpecificField.CONTEXT_DEFINITION,
-        limit: PERSONA_PAGE_SIZE,
-      });
-      setPersonas(data);
+      const collected: Persona[] = [];
+      let after: string | undefined;
+      for (let page = 0; page < MAX_PERSONA_PAGES; page++) {
+        const { data, paging } = await getAllPersonas({
+          after,
+          fields: TabSpecificField.CONTEXT_DEFINITION,
+          limit: PERSONA_PAGE_SIZE,
+        });
+        collected.push(...data);
+        after = paging?.after;
+        if (!after) {
+          break;
+        }
+      }
+      setPersonas(collected);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setPersonas([]);

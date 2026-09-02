@@ -283,9 +283,16 @@ public class PersonaContextBuilder {
   /**
    * A rule delivered as a search scope contributes its selection to every AI search instead of
    * preloading its entities. Absent means false so rules stored before the field keep preloading.
+   *
+   * <p>Knowledge rules can never be search-scoped, whatever the flag says. Their whole purpose is to
+   * be in context — scoping one would silently drop the glossary terms, articles or metrics it
+   * carries out of the document, and put a knowledge entity type into an asset-search allowlist
+   * where it means nothing. Enforced here rather than only at the API boundary so a rule stored with
+   * the flag already set cannot resurrect the behaviour.
    */
   static boolean isFilteredInSearch(ContextRule rule) {
-    return Boolean.TRUE.equals(rule.getFilteredInSearch());
+    return Boolean.TRUE.equals(rule.getFilteredInSearch())
+        && !isKnowledgeEntityType(rule.getEntityType());
   }
 
   /**

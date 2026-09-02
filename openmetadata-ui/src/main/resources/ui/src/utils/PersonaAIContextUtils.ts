@@ -227,8 +227,11 @@ export const getRuleConditionParts = (
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
 
+// Mirrors PersonaContextBuilder.searchScope: a disabled rule contributes nothing to the served
+// scope, so counting it here would overstate how much of the persona's search is actually narrowed.
 export const getScopedRuleCount = (rules: ContextRule[]): number =>
-  rules.filter((rule) => rule.filteredInSearch).length;
+  rules.filter((rule) => rule.filteredInSearch && rule.enabled !== false)
+    .length;
 
 export interface PersonaContextVersionChange {
   key: string;
