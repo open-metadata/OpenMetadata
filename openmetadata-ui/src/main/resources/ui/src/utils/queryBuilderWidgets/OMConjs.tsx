@@ -25,6 +25,7 @@ const OMConjs: FC<ConjsProps> = ({
 
   return (
     <ButtonGroup
+      data-testid="advanced-search-conjunction"
       isDisabled={readonly}
       selectedKeys={
         selectedConjunction ? new Set([selectedConjunction]) : new Set<Key>()
@@ -37,7 +38,14 @@ const OMConjs: FC<ConjsProps> = ({
         }
       }}>
       {options.map(([key, opt]) => (
-        <ButtonGroupItem id={key} key={key}>
+        <ButtonGroupItem
+          // AND/OR read as logical operators, so they are uppercased for
+          // display. The transform is CSS rather than a rewritten string so the
+          // label stays whatever the config (and any translation of it) says.
+          className="tw:uppercase"
+          data-testid={`advanced-search-conjunction-${key.toLowerCase()}`}
+          id={key}
+          key={key}>
           {opt.label}
         </ButtonGroupItem>
       ))}

@@ -71,10 +71,18 @@ export const parseBucketsData = (
         | undefined;
       const data = topHitsData?.hits?.hits?.[0]?._source;
 
-      return {
-        title: data?.[sourceFieldOptionType.label] as string,
-        value: data?.[sourceFieldOptionType.value] as string,
-      };
+      const value = (data?.[sourceFieldOptionType.value] ??
+        bucket.key) as string;
+
+      // displayName, then name, then the raw value. An entity without a
+      // displayName must still read as itself rather than as a blank option,
+      // and falling through to the value keeps the FQN visible as a last
+      // resort instead of rendering nothing.
+      const title = (data?.[sourceFieldOptionType.label] ??
+        data?.name ??
+        value) as string;
+
+      return { title, value };
     });
   }
 
@@ -235,3 +243,28 @@ export const getTermQuery = (
     },
   };
 };
+
+/**
+ * One option shape for tag-like entities (tiers, tags, certifications).
+ *
+ * The label is the display name, falling back to the name and finally to the
+ * FQN, so an option can never render blank. The value is always the
+ * fullyQualifiedName, because that is what the emitted filter has to carry.
+ *
+ * This exists because three call sites built these options independently — the
+ * Elasticsearch aggregation, the JSONLogic tier autocomplete and
+ * `getTierOptions` — and two of them showed the raw FQN. Same builder, three
+ * different lists.
+ */
+export const toTagSelectOptions = (
+  tags: Array<{
+    displayName?: string;
+    name?: string;
+    fullyQualifiedName?: string;
+  }>
+): Array<{ title: string; value: string }> =>
+  tags.map((tag) => {
+    const value = tag.fullyQualifiedName || tag.name || '';
+
+    return { title: tag.displayName || tag.name || value, value };
+  });

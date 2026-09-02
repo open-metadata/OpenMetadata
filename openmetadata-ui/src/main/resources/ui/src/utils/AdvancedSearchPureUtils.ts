@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OldJsonTree } from '@react-awesome-query-builder/ui';
 import { isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -24,10 +23,6 @@ import {
   TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import {
-  EntityFields,
-  EntityReferenceFields,
-} from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import type {
@@ -41,7 +36,6 @@ import type {
   TopicSearchSource,
 } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
-import { generateUUID } from './StringUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -322,81 +316,4 @@ export const getCustomPropertyAdvanceSearchEnumOptions = (
 
     return acc;
   }, {});
-};
-
-export const getEmptyJsonTree = (
-  defaultField: string = EntityFields.OWNERS
-): OldJsonTree => {
-  return {
-    id: generateUUID(),
-    type: 'group',
-    properties: {
-      conjunction: 'AND',
-      not: false,
-    },
-    children1: {
-      [generateUUID()]: {
-        type: 'group',
-        properties: {
-          conjunction: 'AND',
-          not: false,
-        },
-        children1: {
-          [generateUUID()]: {
-            type: 'rule',
-            properties: {
-              field: defaultField,
-              operator: null,
-              value: [],
-              valueSrc: ['value'],
-            },
-          },
-        },
-      },
-    },
-  };
-};
-
-export const getEmptyJsonTreeForQueryBuilder = (
-  defaultField: string = EntityReferenceFields.OWNERS,
-  subField = 'fullyQualifiedName'
-): OldJsonTree => {
-  const uuid1 = generateUUID();
-  const uuid2 = generateUUID();
-  const uuid3 = generateUUID();
-
-  return {
-    id: uuid1,
-    type: 'group',
-    properties: {
-      conjunction: 'AND',
-      not: false,
-    },
-    children1: {
-      [uuid2]: {
-        type: 'rule_group',
-        id: uuid2,
-        properties: {
-          conjunction: 'AND',
-          not: false,
-          mode: 'some',
-          field: defaultField,
-          fieldSrc: 'field',
-        },
-        children1: {
-          [uuid3]: {
-            type: 'rule',
-            id: uuid3,
-            properties: {
-              field: `${defaultField}.${subField}`,
-              operator: 'select_equals',
-              value: [],
-              valueSrc: ['value'],
-              fieldSrc: 'field',
-            },
-          },
-        },
-      },
-    },
-  };
 };

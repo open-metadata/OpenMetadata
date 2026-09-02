@@ -11,18 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Builder,
-  Config,
-  ImmutableTree,
-  JsonTree,
-  Query,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/ui';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   getExpandedResourceList,
@@ -33,8 +27,8 @@ import {
   AlertMessage,
   CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
-import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';
+import QueryBuilder from '../../../../common/QueryBuilder/QueryBuilder';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import './advanced-assets-filter-field.less';
@@ -76,22 +70,24 @@ export const AdvancedAssetsFilterField = ({
     });
   }, [queryFilter, config, selectedResource]);
 
+  // The provider holds an ImmutableTree; the builder takes a plain JsonTree.
+  const treeJson = useMemo(() => QbUtils.getTree(treeInternal), [treeInternal]);
+
   const handleChange = useCallback(
-    (nTree: ImmutableTree, nConfig: Config) => {
-      onTreeUpdate(nTree, nConfig);
-      const elasticQuery = elasticSearchFormat(nTree, nConfig);
-      const queryFilter = {
-        query: elasticQuery ?? '',
-      };
+    (nextValue: string, nextTree?: JsonTree) => {
+      if (nextTree) {
+        onTreeUpdate(QbUtils.loadTree(nextTree), config);
+      }
 
-      // Update form field with the raw query filter (without entity type filter)
-      // The entity type filter will be added when needed in getModifiedQueryFilterWithSelectedAssets
-      form.setFieldValue('queryFilter', JSON.stringify(queryFilter));
+      // The raw query filter, without the entity type filter — that is added
+      // later by getModifiedQueryFilterWithSelectedAssets. An empty tree still
+      // has to write `{"query":""}`, which is what the count logic expects.
+      const queryFilter = nextValue || JSON.stringify({ query: '' });
 
-      // Update local state for entity count calculation
-      setQueryFilter(JSON.stringify(queryFilter));
+      form.setFieldValue('queryFilter', queryFilter);
+      setQueryFilter(queryFilter);
     },
-    [onTreeUpdate, form]
+    [onTreeUpdate, form, config]
   );
 
   const handleEntityCount = useCallback(
@@ -187,15 +183,15 @@ export const AdvancedAssetsFilterField = ({
             {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
             <label>{t('label.advance-filter')}</label>
           </div>
-          <Query
-            {...config}
+          <QueryBuilder
+            entityType={EntityType.ALL}
+            fields={config.fields}
+            groupMode="flat"
             key={searchIndex.toLocaleString()}
-            renderBuilder={(props) => (
-              <div className="query-builder-container query-builder qb-lite">
-                <Builder {...props} />
-              </div>
-            )}
-            value={treeInternal}
+            // Counting and the Explore link are done here, scoped to the
+            // selected resources, so the builder's own preview stays off.
+            showCountPreview={false}
+            tree={treeJson}
             onChange={handleChange}
           />
         </Col>

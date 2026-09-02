@@ -387,10 +387,19 @@ function getFieldTypeInfo(propertyName) {
  */
 function lookupOmPropertyType(config, entityType, propertyName) {
   const extensionGroup = config?.fields?.extension;
-  const entityGroup = extensionGroup?.subfields?.[entityType];
-  const fieldConfig = entityGroup?.subfields?.[propertyName];
+  // Pinned builders expose properties directly under `extension`; Explore nests
+  // them one level deeper, per entity type.
+  const scope = entityType
+    ? extensionGroup?.subfields?.[entityType]?.subfields
+    : extensionGroup?.subfields;
 
-  return fieldConfig?.__omPropertyType ?? null;
+  return (
+    scope?.[propertyName]?.__omPropertyType ??
+    // The field key carries suffixes such as `.keyword` that the config key
+    // does not.
+    scope?.[getBasePropertyName(propertyName)]?.__omPropertyType ??
+    null
+  );
 }
 
 /**
@@ -584,19 +593,14 @@ function buildExtensionQuery(
       mainQuery = existsQuery;
     }
 
-    // Return early with entityType filter
-    return {
-      bool: {
-        must: [
-          mainQuery,
-          {
-            term: {
-              entityType: entityType,
-            },
+    // Return early, narrowing by entity type only when the field carried one.
+    return entityType
+      ? {
+          bool: {
+            must: [mainQuery, { term: { entityType: entityType } }],
           },
-        ],
-      },
-    };
+        }
+      : mainQuery;
   } else if (fieldType === 'timeInterval' && nestedField) {
     // TimeInterval: query start or end field
     mainQuery = buildNestedTypedQuery(
@@ -733,19 +737,14 @@ function buildExtensionQuery(
     };
   }
 
-  // Combine with entityType filter
-  return {
-    bool: {
-      must: [
-        mainQuery,
-        {
-          term: {
-            entityType: entityType,
-          },
+  // Combine with the entity-type filter only when the field carried one.
+  return entityType
+    ? {
+        bool: {
+          must: [mainQuery, { term: { entityType: entityType } }],
         },
-      ],
-    },
-  };
+      }
+    : mainQuery;
 }
 
 /**
@@ -793,12 +792,35 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   let entityType = null;
   let extensionPropertyName = null;
 
-  if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
+  if (fieldName.startsWith('extension.')) {
     const parts = fieldName.split('.');
-    entityType = parts[1];
-    extensionPropertyName = parts.slice(2).join('.');
-    actualFieldName = `${parts[0]}.${extensionPropertyName}`;
-    isNestedExtensionField = true;
+    // The entity-type segment is only present when the builder offers custom
+    // properties for every entity type (Explore): `extension.table.testCp`.
+    // A builder pinned to one entity type omits it: `extension.testCp`.
+    // Deciding positionally read `testCp` as the entity type and `keyword` as
+    // the property, so those builders matched nothing at all. Ask the config
+    // instead: an entity-type segment is a group, a property is a leaf.
+    const extensionSubfields = config?.fields?.extension?.subfields;
+    const segment = extensionSubfields?.[parts[1]];
+    const hasEntityTypeSegment =
+      parts.length >= 3 &&
+      (segment ? Boolean(segment.subfields) : !extensionSubfields);
+
+    if (hasEntityTypeSegment) {
+      entityType = parts[1];
+      extensionPropertyName = parts.slice(2).join('.');
+    } else if (parts.length >= 2) {
+      // A pinned builder's key has no entity-type segment, so take the type the
+      // builder was configured with. Without it the nested query is not scoped
+      // to the selected entity at all.
+      entityType = config?.settings?.omEntityType ?? null;
+      extensionPropertyName = parts.slice(1).join('.');
+    }
+
+    if (extensionPropertyName) {
+      actualFieldName = `${parts[0]}.${extensionPropertyName}`;
+      isNestedExtensionField = true;
+    }
   }
 
   let op = operator;
@@ -821,7 +843,11 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   // Handle both value-based operators and unary operators (is_null, is_not_null)
   const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
   const hasValue = Array.isArray(value) && value.length > 0;
-  if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
+  // No `entityType` requirement: a builder pinned to one entity type keys its
+  // custom properties without that segment, and demanding it sent those fields
+  // down the generic path, which cannot express a nested customPropertiesTyped
+  // query and produced no query at all.
+  if (isNestedExtensionField && (hasValue || isUnaryOperator)) {
     const omPropertyType = lookupOmPropertyType(
       config,
       entityType,

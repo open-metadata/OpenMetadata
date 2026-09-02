@@ -17,24 +17,11 @@ import { noop } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
+import { getQueryBuilderPortalContainer } from '../../../../utils/queryBuilder/portal';
 import QueryBuilderWidget from '../../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 const PORTAL_CONTAINER_ID = 'workflow-query-builder-portal';
-
-const getQueryBuilderPortalContainer = (): HTMLElement => {
-  let container = document.getElementById(PORTAL_CONTAINER_ID);
-  if (!container) {
-    container = document.createElement('div');
-    container.id = PORTAL_CONTAINER_ID;
-    container.setAttribute('data-react-aria-top-layer', 'true');
-    container.style.position = 'absolute';
-    container.style.zIndex = '10001';
-    document.body.appendChild(container);
-  }
-
-  return container;
-};
 
 interface QueryBuilderSectionProps {
   entityTypes?: EntityType;
@@ -77,7 +64,10 @@ export const QueryBuilderSection: React.FC<QueryBuilderSectionProps> = ({
     <div
       className={readOnly ? 'tw:pointer-events-none' : ''}
       data-testid="query-builder-section">
-      <ConfigProvider getPopupContainer={getQueryBuilderPortalContainer}>
+      <ConfigProvider
+        getPopupContainer={() =>
+          getQueryBuilderPortalContainer(PORTAL_CONTAINER_ID)
+        }>
         <QueryBuilderWidget
           data-testid="query-builder-widget"
           id={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}

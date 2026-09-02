@@ -42,6 +42,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
 import {
+  reconcileDataAssetFilters,
   serializeDataAssetFilters,
   serializeEventBasedFilters,
   serializePeriodicBatchFilters,
@@ -162,10 +163,29 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const updateConfig = useCallback(
     <K extends keyof NodeConfig>(key: K, value: NodeConfig[K]) => {
-      setLocalConfig((prevConfig) => ({
-        ...(prevConfig || effectiveConfig),
-        [key]: value,
-      }));
+      setLocalConfig((prevConfig) => {
+        const base = prevConfig || effectiveConfig;
+
+        if (key !== 'dataAssets') {
+          return { ...base, [key]: value };
+        }
+
+        // Each filter is bound to the asset type it was created for. Dropping
+        // that type from `dataAssets` used to leave the filter behind: it could
+        // never match, and its builder kept showing the removed type's fields —
+        // which is why switching ApiCollection -> Table still offered no custom
+        // properties until the drawer was closed and reopened.
+        const assets = (value as string[]) ?? [];
+
+        return {
+          ...base,
+          dataAssets: assets,
+          dataAssetFilters: reconcileDataAssetFilters(
+            base.dataAssetFilters,
+            assets
+          ),
+        };
+      });
 
       if (key === 'name') {
         setLocalName(value as string);

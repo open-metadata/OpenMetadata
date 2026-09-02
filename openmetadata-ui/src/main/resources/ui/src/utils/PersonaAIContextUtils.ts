@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
@@ -32,6 +32,8 @@ import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface
 import { getTreeConfig } from './AdvancedSearchUtils';
 import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
+import type { TreeNode } from './queryBuilder/url';
+import { withExploreFieldKeys } from './queryBuilder/url';
 import searchClassBase from './SearchClassBase';
 
 export const normalizePersonaContextDefinition = (
@@ -130,8 +132,18 @@ export const getRuleExplorePath = (
     ? searchClassBase.getTabsInfo()[searchIndex]?.path
     : undefined;
 
+  // Explore validates the deep-linked tree against its own config and silently
+  // resets when a field is unknown. This editor is pinned to one entity type,
+  // so its custom-property keys omit the entity segment that Explore expects —
+  // without the rewrite the link lands on the unfiltered estate.
+  const exploreTree = tree
+    ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
+    : tree;
+
   return getExplorePath({
-    extraParameters: tree ? { queryFilter: JSON.stringify(tree) } : undefined,
+    extraParameters: exploreTree
+      ? { queryFilter: JSON.stringify(exploreTree) }
+      : undefined,
     isPersistFilters: false,
     tab,
   });

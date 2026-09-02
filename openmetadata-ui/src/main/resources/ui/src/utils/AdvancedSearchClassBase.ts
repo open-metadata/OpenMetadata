@@ -50,8 +50,8 @@ import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
+import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
-import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchPureUtils';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
@@ -708,7 +708,15 @@ class AdvancedSearchClassBase {
    * Overriding default configurations.
    * Basic attributes that fields inherit from.
    */
-  public getInitialConfigWithoutFields = (isExplorePage = true) => {
+  public getInitialConfigWithoutFields = (
+    modes: QueryBuilderConfigModes = {}
+  ) => {
+    const {
+      showLabels = true,
+      useFriendlyOperatorLabels = false,
+      renderButton = renderAdvanceSearchButtons,
+    } = modes;
+
     const initialConfigWithoutFields: BasicConfig = {
       ...this.baseConfig,
       types: this.configTypes,
@@ -719,9 +727,8 @@ class AdvancedSearchClassBase {
           ...this.baseConfig.operators.like,
           elasticSearchQueryType: 'wildcard',
         },
-        ...(isExplorePage
-          ? {}
-          : {
+        ...(useFriendlyOperatorLabels
+          ? {
               equal: {
                 ...this.baseConfig.operators.equal,
                 label: t('label.is'),
@@ -746,11 +753,12 @@ class AdvancedSearchClassBase {
                 ...this.baseConfig.operators.is_not_null,
                 label: t('label.is-set'),
               },
-            }),
+            }
+          : {}),
       },
       settings: {
         ...this.baseConfig.settings,
-        showLabels: isExplorePage,
+        showLabels,
         canReorder: false,
         renderSize: 'medium',
         fieldLabel: t('label.field-plural') + ':',
@@ -760,9 +768,7 @@ class AdvancedSearchClassBase {
         removeEmptyGroupsOnLoad: false,
         setOpOnChangeField: ['none'],
         defaultField: EntityFields.OWNERS,
-        renderButton: isExplorePage
-          ? renderAdvanceSearchButtons
-          : renderQueryBuilderFilterButtons,
+        renderButton,
 
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
@@ -940,6 +946,11 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'displayName,name,fullyQualifiedName',
+            sourceFieldOptionType: {
+              label: 'displayName',
+              value: 'fullyQualifiedName',
+            },
             q: buildTermQuery(
               [
                 {
@@ -981,6 +992,11 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'displayName,name,fullyQualifiedName',
+            sourceFieldOptionType: {
+              label: 'displayName',
+              value: 'fullyQualifiedName',
+            },
             q: buildTermQuery(
               {
                 field: 'classification.name.keyword',
@@ -1001,6 +1017,11 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'displayName,name,fullyQualifiedName',
+            sourceFieldOptionType: {
+              label: 'displayName',
+              value: 'fullyQualifiedName',
+            },
             q: buildTermQuery(
               {
                 field: 'classification.name.keyword',
@@ -1292,8 +1313,8 @@ class AdvancedSearchClassBase {
    */
   public getQbConfigs: (
     entitySearchIndex?: Array<SearchIndex>,
-    isExplorePage?: boolean
-  ) => BasicConfig = (entitySearchIndex, isExplorePage) => {
+    modes?: QueryBuilderConfigModes
+  ) => BasicConfig = (entitySearchIndex, modes) => {
     const searchIndexWithServices = [
       SearchIndex.DATA_ASSET,
       SearchIndex.TABLE,
@@ -1326,7 +1347,7 @@ class AdvancedSearchClassBase {
       );
 
     return {
-      ...this.getInitialConfigWithoutFields(isExplorePage),
+      ...this.getInitialConfigWithoutFields(modes),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,

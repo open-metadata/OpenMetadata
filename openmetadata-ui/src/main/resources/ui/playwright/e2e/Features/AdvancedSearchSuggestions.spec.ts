@@ -83,12 +83,20 @@ test.describe('Advanced Search Suggestions', () => {
 
       await aggregateRes2;
 
+      // Assert on the option's value, not its label. Tag-like fields (Tags,
+      // Certification, Tier) render the display name — `Tier1` — while the
+      // search text is the FQN `Tier.Tier1`. react-aria exposes the value on
+      // `data-key`, which does not move when the label presentation does.
+      const listbox = page.locator('[role="listbox"]:visible');
+      const byValue = listbox.locator(
+        `[role="option"][data-key="${searchText}" i]`
+      );
+      const byText = listbox
+        .locator('[role="option"]')
+        .filter({ hasText: searchText });
+
       await test
-        .expect(
-          page
-            .locator('[role="listbox"]:visible [role="option"]')
-            .filter({ hasText: searchText })
-        )
+        .expect((await byValue.count()) > 0 ? byValue : byText)
         .not.toHaveCount(0);
     });
   });

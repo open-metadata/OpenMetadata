@@ -44,9 +44,18 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
+import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
+import { toTagSelectOptions } from './SearchPureUtils';
+
+/**
+ * The value format RAQB's `date` widget stores and the native `<input
+ * type="date">` renders. Anything else renders as an empty field, so the
+ * JSONLogic import must hand back exactly this.
+ */
+const DATE_WIDGET_VALUE_FORMAT = 'YYYY-MM-DD';
 
 class JSONLogicSearchClassBase {
   baseConfig = OMConfig as Config;
@@ -130,8 +139,11 @@ class JSONLogicSearchClassBase {
         return this.utils.moment.utc(val).valueOf();
       },
       jsonLogicImport: function (val) {
-        // Check if valueFormat indicates timestamp
-        return this.utils.moment.utc(val).toISOString();
+        // Return the widget's own `valueFormat`, not an ISO string. The date
+        // widget is a native `<input type="date">`, which renders its value
+        // verbatim and silently blanks anything that is not `YYYY-MM-DD` — so
+        // an ISO datetime came back from the API as an empty field.
+        return this.utils.moment.utc(val).format(DATE_WIDGET_VALUE_FORMAT);
       },
     },
   };
@@ -646,12 +658,7 @@ class JSONLogicSearchClassBase {
         limit: 50,
       });
 
-      const tierFields = tiers.map((tier) => ({
-        title: tier.fullyQualifiedName, // tier.name,
-        value: tier.fullyQualifiedName,
-      }));
-
-      resolvedTierOptions = tierFields as ListItem[];
+      resolvedTierOptions = toTagSelectOptions(tiers) as ListItem[];
     } catch (error) {
       resolvedTierOptions = [];
     }
@@ -724,7 +731,14 @@ class JSONLogicSearchClassBase {
    * Overriding default configurations.
    * Basic attributes that fields inherit from.
    */
-  public getInitialConfigWithoutFields = (isExplorePage = true) => {
+  public getInitialConfigWithoutFields = (
+    modes: QueryBuilderConfigModes = {}
+  ) => {
+    const {
+      showLabels = true,
+      renderButton = renderJSONLogicQueryBuilderButtons,
+    } = modes;
+
     const initialConfigWithoutFields: Config = {
       ...this.baseConfig,
       types: this.configTypes,
@@ -732,14 +746,14 @@ class JSONLogicSearchClassBase {
       operators: this.configOperators as Operators,
       settings: {
         ...this.baseConfig.settings,
-        showLabels: isExplorePage,
+        showLabels,
         canReorder: false,
         renderSize: 'medium',
         fieldLabel: t('label.field-plural') + ':',
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderJSONLogicQueryBuilderButtons,
+        renderButton,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
           popupClassName: 'json-logic-field-select',
@@ -752,10 +766,10 @@ class JSONLogicSearchClassBase {
 
   public getQbConfigs: (
     entitySearchIndex?: Array<SearchIndex>,
-    isExplorePage?: boolean
-  ) => Config = (entitySearchIndex, isExplorePage) => {
+    modes?: QueryBuilderConfigModes
+  ) => Config = (entitySearchIndex, modes) => {
     return {
-      ...this.getInitialConfigWithoutFields(isExplorePage),
+      ...this.getInitialConfigWithoutFields(modes),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,

@@ -37,6 +37,13 @@ const toSelectItems = (
   }));
 };
 
+/**
+ * `tw:contents` keeps this wrapper out of layout entirely, so it is a test
+ * handle and nothing else. Without it a value control can only be reached
+ * through RAQB's internal `.rule--widget--*` classes.
+ */
+const VALUE_TEST_ID_WRAPPER = 'tw:contents';
+
 const OMMultiSelectWidget = ({
   value,
   setValue,
@@ -147,28 +154,32 @@ const OMMultiSelectWidget = ({
   );
 
   return (
-    <Autocomplete
-      isDisabled={readonly}
-      items={allItems}
-      placeholder={placeholder ?? 'Select'}
-      selectedItems={selectedItems}
-      onItemCleared={handleItemCleared}
-      onItemInserted={handleItemInserted}
-      // Results are filtered server-side, so keep the built-in client filter
-      // off (filterOption: () => true) — the option label need not literally
-      // contain the raw query (e.g. an owner's display name vs the typed value),
-      // and client-filtering it would wrongly hide valid server matches. The
-      // accumulated result set keeps the typed option present regardless of any
-      // later default ('') fetch, so the list always still contains it.
-      {...(isAsync
-        ? { filterOption: () => true, onSearchChange: loadAsync }
-        : {})}>
-      {(item) => (
-        <Autocomplete.Item id={item.id} key={item.id}>
-          {item.label}
-        </Autocomplete.Item>
-      )}
-    </Autocomplete>
+    <span
+      className={VALUE_TEST_ID_WRAPPER}
+      data-testid="advanced-search-value-multiselect">
+      <Autocomplete
+        isDisabled={readonly}
+        items={allItems}
+        placeholder={placeholder ?? 'Select'}
+        selectedItems={selectedItems}
+        onItemCleared={handleItemCleared}
+        onItemInserted={handleItemInserted}
+        // Results are filtered server-side, so keep the built-in client filter
+        // off (filterOption: () => true) — the option label need not literally
+        // contain the raw query (e.g. an owner's display name vs the typed value),
+        // and client-filtering it would wrongly hide valid server matches. The
+        // accumulated result set keeps the typed option present regardless of any
+        // later default ('') fetch, so the list always still contains it.
+        {...(isAsync
+          ? { filterOption: () => true, onSearchChange: loadAsync }
+          : {})}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    </span>
   );
 };
 

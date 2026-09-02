@@ -48,8 +48,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEmptyJsonTreeForQueryBuilder } from '../../../utils/AdvancedSearchPureUtils';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
+import {
+  getEmptyJsonTreeForQueryBuilder,
+  READONLY_SETTINGS,
+} from '../../../utils/queryBuilder/tree';
 import {
   elasticSearchFormat,
   hasUnfinishedRule,
@@ -58,7 +61,6 @@ import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
-  READONLY_SETTINGS,
 } from '../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';

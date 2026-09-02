@@ -22,10 +22,6 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
   TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
-import {
-  EntityFields,
-  EntityReferenceFields,
-} from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -33,8 +29,6 @@ import {
   getAssetsPageQuickFilters,
   getChartsOptions,
   getColumnsOptions,
-  getEmptyJsonTree,
-  getEmptyJsonTreeForQueryBuilder,
   getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
   getSearchLabel,
@@ -263,172 +257,6 @@ describe('AdvancedSearchUtils tests', () => {
       { count: 1, key: 'pipeline', label: 'pipeline' },
       { count: 3, key: 'chart', label: 'chart' },
     ]);
-  });
-
-  describe('getEmptyJsonTree', () => {
-    it('should return a default JsonTree structure with OWNERS as the default field', () => {
-      const result = getEmptyJsonTree();
-
-      expect(result.type).toBe('group');
-      expect(result.properties).toEqual({
-        conjunction: 'AND',
-        not: false,
-      });
-
-      const children1Keys = Object.keys(result.children1 ?? {});
-
-      expect(children1Keys.length).toBe(1);
-
-      const children1AsRecord = result.children1 as Record<
-        string,
-        {
-          type: string;
-          children1?: Record<
-            string,
-            { type: string; properties?: { field: string } }
-          >;
-        }
-      >;
-      const firstChild = children1AsRecord[children1Keys[0]];
-
-      expect(firstChild?.type).toBe('group');
-
-      const grandChildren1Keys = Object.keys(firstChild?.children1 ?? {});
-
-      expect(grandChildren1Keys.length).toBe(1);
-
-      const grandChildren1AsRecord = firstChild?.children1 as Record<
-        string,
-        { type: string; properties?: { field: string } }
-      >;
-      const grandChild = grandChildren1AsRecord[grandChildren1Keys[0]];
-
-      expect(grandChild?.type).toBe('rule');
-      expect(grandChild?.properties?.field).toBe(EntityFields.OWNERS);
-    });
-
-    it('should use the provided field when passed as parameter', () => {
-      const customField = EntityFields.TAG;
-      const result = getEmptyJsonTree(customField);
-
-      const children1 = result.children1 as Record<
-        string,
-        { children1: Record<string, { properties: { field: string } }> }
-      >;
-      const firstChildKey = Object.keys(children1)[0];
-      const firstChild = children1[firstChildKey] as {
-        children1: Record<string, { properties: { field: string } }>;
-      };
-      const grandChildKey = Object.keys(firstChild.children1)[0];
-
-      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
-        customField
-      );
-    });
-  });
-
-  describe('getEmptyJsonTreeForQueryBuilder', () => {
-    it('should return a JsonTree structure with default parameters', () => {
-      const result = getEmptyJsonTreeForQueryBuilder();
-
-      expect(result.type).toBe('group');
-      expect(result.properties).toEqual({
-        conjunction: 'AND',
-        not: false,
-      });
-
-      const children1Keys = Object.keys(result.children1 ?? {});
-
-      expect(children1Keys.length).toBe(1);
-
-      const children1AsRecord = result.children1 as Record<
-        string,
-        {
-          type: string;
-          properties?: { field: string; mode: string };
-          children1?: Record<
-            string,
-            { type: string; properties?: { field: string; operator: string } }
-          >;
-        }
-      >;
-      const firstChild = children1AsRecord[children1Keys[0]];
-
-      expect(firstChild?.type).toBe('rule_group');
-      expect(firstChild?.properties?.field).toBe(EntityReferenceFields.OWNERS);
-      expect(firstChild?.properties?.mode).toBe('some');
-
-      const grandChildren1Keys = Object.keys(firstChild?.children1 ?? {});
-
-      expect(grandChildren1Keys.length).toBe(1);
-
-      const grandChildren1AsRecord = firstChild?.children1 as Record<
-        string,
-        { type: string; properties?: { field: string; operator: string } }
-      >;
-      const grandChild = grandChildren1AsRecord[grandChildren1Keys[0]];
-
-      expect(grandChild?.type).toBe('rule');
-      expect(grandChild?.properties?.field).toBe(
-        `${EntityReferenceFields.OWNERS}.fullyQualifiedName`
-      );
-      expect(grandChild?.properties?.operator).toBe('select_equals');
-    });
-
-    it('should use custom field when provided', () => {
-      const customField = EntityReferenceFields.TAG;
-      const result = getEmptyJsonTreeForQueryBuilder(customField);
-
-      const children1 = result.children1 as Record<
-        string,
-        {
-          properties: { field: string };
-          children1: Record<string, { properties: { field: string } }>;
-        }
-      >;
-      const firstChildKey = Object.keys(children1)[0];
-      const firstChild = children1[firstChildKey] as {
-        properties: { field: string };
-        children1: Record<string, { properties: { field: string } }>;
-      };
-      const grandChildKey = Object.keys(firstChild.children1)[0];
-
-      expect(firstChild.properties.field).toEqual(customField);
-      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
-        `${customField}.fullyQualifiedName`
-      );
-    });
-
-    it('should use custom subField when provided', () => {
-      const customSubField = 'name';
-      const result = getEmptyJsonTreeForQueryBuilder(
-        EntityReferenceFields.OWNERS,
-        customSubField
-      );
-
-      const children1 = result.children1 as Record<
-        string,
-        { children1: Record<string, { properties: { field: string } }> }
-      >;
-      const firstChildKey = Object.keys(children1)[0];
-      const firstChild = children1[firstChildKey] as {
-        children1: Record<string, { properties: { field: string } }>;
-      };
-      const grandChildKey = Object.keys(firstChild.children1)[0];
-
-      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
-        `${EntityReferenceFields.OWNERS}.${customSubField}`
-      );
-    });
-
-    it('should have rule_group as the type for the first child', () => {
-      const result = getEmptyJsonTreeForQueryBuilder();
-
-      const children1 = result.children1 as Record<string, { type: string }>;
-      const firstChildKey = Object.keys(children1)[0];
-
-      expect(children1[firstChildKey].type).toEqual('rule_group');
-    });
   });
 
   describe('processCustomPropertyField', () => {

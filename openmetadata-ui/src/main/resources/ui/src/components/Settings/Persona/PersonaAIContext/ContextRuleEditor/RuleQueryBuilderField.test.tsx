@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
@@ -21,33 +21,30 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock(
-  '../../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1',
-  () => {
-    const MockQueryBuilderWidget = ({
-      getQueryActions,
-      onChange,
-    }: {
-      getQueryActions?: (actions: { addRule: typeof mockAddRule }) => void;
-      onChange?: (value: string, tree: Record<string, string>) => void;
-    }) => {
-      const React = jest.requireActual<typeof import('react')>('react');
-      React.useEffect(() => {
-        getQueryActions?.(mockQueryActions);
-      }, [getQueryActions]);
+jest.mock('../../../../common/QueryBuilder/QueryBuilder', () => {
+  const MockQueryBuilderWidget = ({
+    onActionsReady,
+    onChange,
+  }: {
+    onActionsReady?: (actions: { addRule: typeof mockAddRule }) => void;
+    onChange?: (value: string, tree: Record<string, string>) => void;
+  }) => {
+    const React = jest.requireActual<typeof import('react')>('react');
+    React.useEffect(() => {
+      onActionsReady?.(mockQueryActions);
+    }, [onActionsReady]);
 
-      return (
-        <button
-          data-testid="emit-query-change"
-          onClick={() => onChange?.('{"query":{}}', { id: 'tree' })}>
-          change
-        </button>
-      );
-    };
+    return (
+      <button
+        data-testid="emit-query-change"
+        onClick={() => onChange?.('{"query":{}}', { id: 'tree' })}>
+        change
+      </button>
+    );
+  };
 
-    return { __esModule: true, default: MockQueryBuilderWidget };
-  }
-);
+  return { __esModule: true, default: MockQueryBuilderWidget };
+});
 
 describe('RuleQueryBuilderField', () => {
   beforeEach(() => {
@@ -63,13 +60,10 @@ describe('RuleQueryBuilderField', () => {
       />
     );
 
-    await waitFor(() =>
-      expect(screen.getByTestId('add-context-condition')).toBeEnabled()
-    );
-    fireEvent.click(screen.getByTestId('add-context-condition'));
+    // The editor no longer ships its own add button: the builder renders the
+    // shared one, so there is nothing bespoke left to click here.
     fireEvent.click(screen.getByTestId('emit-query-change'));
 
-    expect(mockAddRule).toHaveBeenCalledWith([]);
     expect(onChange).toHaveBeenCalledWith(
       '{"query":{}}',
       JSON.stringify({ id: 'tree' })
@@ -87,6 +81,9 @@ describe('RuleQueryBuilderField', () => {
 
     expect(
       screen.queryByTestId('add-context-condition')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('add-condition-button')
     ).not.toBeInTheDocument();
   });
 });

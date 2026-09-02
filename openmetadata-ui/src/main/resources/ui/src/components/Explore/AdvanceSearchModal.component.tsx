@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Builder, Query } from '@react-awesome-query-builder/ui';
+import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { Button, Modal, Space, Typography } from 'antd';
-import { FunctionComponent } from 'react';
+import { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../enums/entity.enum';
+import QueryBuilder from '../common/QueryBuilder/QueryBuilder';
 import './advanced-search-modal.less';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 
@@ -32,6 +34,9 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
   const { t } = useTranslation();
   const { config, treeInternal, onTreeUpdate, onReset, modalProps } =
     useAdvanceSearch();
+
+  // The provider holds an ImmutableTree; the builder takes a plain JsonTree.
+  const treeJson = useMemo(() => QbUtils.getTree(treeInternal), [treeInternal]);
 
   return (
     <Modal
@@ -73,15 +78,19 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       <Typography.Text data-testid="advanced-search-message">
         {modalProps?.subTitle ?? t('message.advanced-search-message')}
       </Typography.Text>
-      <Query
-        {...config}
-        renderBuilder={(props) => (
-          <div className="query-builder-container query-builder qb-lite">
-            <Builder {...props} />
-          </div>
-        )}
-        value={treeInternal}
-        onChange={onTreeUpdate}
+      <QueryBuilder
+        conjunctionMode="editable"
+        entityType={EntityType.ALL}
+        // The provider owns the enriched fields (custom properties, field
+        // overrides) and, on submit, the query filter and Explore URL. The
+        // builder only reports changes back into it.
+        fields={config.fields}
+        groupMode="nested"
+        showCountPreview={false}
+        tree={treeJson}
+        onChange={(_value, nextTree) =>
+          nextTree && onTreeUpdate(QbUtils.loadTree(nextTree), config)
+        }
       />
     </Modal>
   );

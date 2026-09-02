@@ -29,8 +29,12 @@ export const OMConfig: BasicConfig = {
       <OMFieldSelect {...props} dataTestId="advanced-search-field-select" />
     ),
     // RAQB passes the same FieldProps shape (including setField) to both
-    // field and operator renderers, so the same select component works for both.
-    renderOperator: (props) => <OMFieldSelect {...props} />,
+    // field and operator renderers, so the same select component works for
+    // both. They get distinct testids so a test can address either without
+    // falling back to RAQB's `.rule--field` / `.rule--operator` classes.
+    renderOperator: (props) => (
+      <OMFieldSelect {...props} dataTestId="advanced-search-operator-select" />
+    ),
     renderConjs: (props) => <OMConjs {...props} />,
   },
   widgets: {

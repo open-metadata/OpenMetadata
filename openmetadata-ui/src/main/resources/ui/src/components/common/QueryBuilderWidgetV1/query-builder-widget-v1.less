@@ -1,3 +1,8 @@
+// Scoping note: the `:not(.nested)` guards below are load-bearing. These rules
+// were written for the flat QueryBuilderWidgetV1 and hide `.action--ADD-GROUP`,
+// `.group--conjunctions` and the first rule's delete — exactly the affordances
+// Explore's nested advanced search needs. The canonical QueryBuilder tags its
+// root with its groupMode, so nested callers opt out of the whole block.
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,20 +20,34 @@
   background-color: var(--color-bg-secondary);
 }
 
+// The canonical QueryBuilder renders no card, so `outputType` lands on the
+// root `.query-builder-form-field` instead of a `.query-builder-card` child.
+// Both forms are listed while the legacy V1 widget (which still renders the
+// card) survives; drop the card selector with the rest of the dead code.
 .query-builder-form-field
   .query-builder-card.jsonlogic
-  .query-builder-container {
+  .query-builder-container,
+.query-builder-form-field.jsonlogic .query-builder-container {
   .group-or-rule-container.group-container {
     & > .group.group-or-rule {
       & > .group--header {
-        order: 0;
+        // Header last, so "Add condition" sits below the rules exactly as it
+        // does on every other surface.
+        order: 9999;
 
         .action.action--ADD-RULE {
-          position: absolute !important;
-          margin-top: 0;
-          right: 0;
-          top: -56px;
-          display: block;
+          // Was `absolute; top: -56px`, which pointed into the card header
+          // this builder no longer renders. With the card gone that put the
+          // button outside its own container — visibly misplaced in the
+          // Explore modal, and entirely off-panel in the workflow's Exclude
+          // and Data Asset filters, where the space above belongs to the
+          // section heading.
+          position: relative !important;
+          inset: auto !important;
+          margin-top: var(--om-space-8);
+          // `inline-flex`, not `block`: the core Button lays its icon and
+          // label out with flex, so `block` leaves them uncentred.
+          display: inline-flex;
         }
       }
     }
@@ -39,7 +58,7 @@
   text-transform: capitalize;
 }
 
-.query-builder-form-field {
+.query-builder-form-field:not(.nested) {
   .hide--line.one--child {
     margin-top: 0;
     padding-top: var(--om-space-16);
@@ -106,7 +125,15 @@
           }
 
           .action.action--ADD-RULE {
-            position: static !important;
+            // `relative`, not `static`: this only needs to undo RAQB's absolute
+            // placement. `static` also strips the button's containing block, and the
+            // core Button draws its border on an `inset-0` `::after` — that border
+            // then escapes to the nearest positioned ancestor, painting a box
+            // around the whole group.
+            position: relative !important;
+            // `relative` honours the offsets `static` ignored, so clear them or the
+            // button jumps to RAQB's absolute placement.
+            inset: auto !important;
             margin-top: var(--om-space-8);
           }
         }
@@ -171,7 +198,78 @@
   }
 }
 
-.query-builder-card.elasticsearch {
+// RAQB renders an "add rule" button in every group header. The Explore layout
+// hides the root group's one, because there the rules always sit in inner
+// groups that carry their own button.
+//
+// A flat builder seeded by `getEmptyJsonTree` also has that inner group — but a
+// builder that *loads* a saved filter does not: its rules hang directly off the
+// root. For those the hidden root button was the only one there was, leaving
+// the workflow's Data Asset and Exclude filters with no way to add a condition.
+//
+// Restore it only when the root group has no child group of its own, so
+// builders that do have one (Automator, seeded trees) don't grow a second
+// button. `.rule_group` is excluded from that test: RAQB renders one as a
+// structural wrapper for array-valued fields such as Custom Property, not as a
+// user-authored bracket, so choosing Custom Property must not take the button
+// away again.
+.query-builder-form-field:not(.nested)
+  .query-builder-container
+  > .group-or-rule-container.group-container
+  > .group.group-or-rule:not(
+    :has(
+        > .group--children
+          > .group-or-rule-container.group-container
+          > .group.group-or-rule:not(.rule_group)
+      )
+  )
+  > .group--header
+  .action.action--ADD-RULE {
+  // `inline-flex`, not `block` — see above: `block` breaks the Button's own
+  // icon/label centring.
+  display: inline-flex;
+}
+
+// The AND/OR control is absolutely centred at the top of the group by the
+// Explore layout, which has empty space there. A flat builder's rules start at
+// the top, so that placement drops the control on top of the first condition
+// row. Anchor it to the top of the group instead.
+//
+// The group is positioned unconditionally: it is what the control resolves
+// against, and if the `:has()` rule below failed to match while the control was
+// still absolute, the control would escape the builder entirely and land on
+// whatever field sits above it.
+.query-builder-form-field:not(.nested)
+  .query-builder-container
+  > .group-or-rule-container.group-container
+  > .group.group-or-rule {
+  position: relative;
+}
+
+// Reserve the space only when the control is actually shown, so a single-rule
+// builder keeps its tight spacing.
+.query-builder-form-field:not(.nested)
+  .query-builder-container
+  > .group-or-rule-container.group-container
+  > .group.group-or-rule:has(> .group--header:not(.hide--conjs)) {
+  padding-top: var(--om-space-48);
+}
+
+.query-builder-form-field:not(.nested)
+  .query-builder-container
+  > .group-or-rule-container.group-container
+  > .group.group-or-rule
+  > .group--header
+  .group--conjunctions {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: auto;
+}
+
+.query-builder-form-field:not(.nested) .query-builder-card.elasticsearch,
+.query-builder-form-field:not(.nested).elasticsearch {
   .rule-container:first-child .action--DELETE {
     display: none;
   }
@@ -217,53 +315,13 @@
   }
 }
 
-.query-builder-card.jsonlogic {
-  .query-builder-container
-    .group-or-rule-container.group-container
-    > .group.group-or-rule
-    > .group--header
-    .group--conjunctions {
-    top: -75px;
-  }
-
+.query-builder-card.jsonlogic,
+.query-builder-form-field.jsonlogic {
   .rule_group--children .rule--field {
     display: none;
   }
 }
 
-// Persona rule editor (io.collate PersonaAIContext): render the AND/OR
-// conjunction toggle as its own row at the top of the group (as the workflow /
-// JSONLogic builder does) instead of the centered default that overlaps the
-// condition rows. Scoped to the `.persona-context-rule-builder` wrapper so
-// other elasticsearch query builders (ScopeFilter, DataContract) are
-// unaffected.
-.persona-context-rule-builder {
-  .query-builder-card.elasticsearch .query-builder-container {
-    .group-or-rule-container.group-container
-      > .group.group-or-rule
-      > .group--header {
-      order: 0;
-      // Reserve vertical space below the toggle so it never sits on top of the
-      // first condition's field label/input.
-      margin-bottom: var(--om-space-12);
-
-      .group--conjunctions {
-        // The old `top: -75px` targeted a statically-positioned box and did
-        // nothing — the toggle stayed crammed on top of the first rule where a
-        // sibling <label> (higher in the stacking order than the toggle's
-        // `tw:z-0`) intercepted clicks. Make it positioned (so `top` applies),
-        // give it its own stacking context above the rows so pointer events
-        // reach it, and lift it into the empty space at the top of the card so
-        // it no longer overlaps the first condition's field.
-        position: relative;
-        top: calc(-1 * var(--om-space-24));
-        z-index: var(--om-z-2);
-      }
-
-      // The persona editor renders its own "Add condition" button below.
-      .action.action--ADD-RULE {
-        display: none;
-      }
-    }
-  }
-}
+// The persona rule editor now renders the shared "Add condition" button and
+// takes the common flat layout, so it no longer overrides either. Its wrapper
+// class remains only as a hook for the surrounding drawer.

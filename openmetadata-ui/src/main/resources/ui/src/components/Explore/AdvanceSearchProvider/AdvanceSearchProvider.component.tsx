@@ -36,7 +36,6 @@ import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
-import { getEmptyJsonTree } from '../../../utils/AdvancedSearchPureUtils';
 import {
   getTreeConfig,
   processEntityTypeFields,
@@ -45,6 +44,7 @@ import {
   getExploreClearQueryFilterSearchParams,
   getExploreResetFiltersSearchParams,
 } from '../../../utils/ExplorePureUtils';
+import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -106,10 +106,21 @@ export const AdvanceSearchProvider = ({
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
+      // Re-selecting the index the provider is already on must not enter the
+      // updating state. `loadData` is what clears `isUpdating`, and it only
+      // re-runs when `searchIndex` actually changes — so flipping the flag for
+      // a no-op change strands consumers in "updating" forever. That is how the
+      // workflow Exclude Filter, which asks for the provider's own default
+      // index, rendered nothing while Data Asset Filter (a different index)
+      // worked.
+      if (isEqual(searchIndex, index)) {
+        return;
+      }
+
       setIsUpdating(true);
       setSearchIndex(index);
     },
-    []
+    [searchIndex]
   );
 
   const [config, setConfig] = useState<Config>(

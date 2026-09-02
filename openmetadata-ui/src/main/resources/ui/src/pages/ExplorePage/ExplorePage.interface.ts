@@ -32,45 +32,16 @@ export type TabsInfoData = {
   iconClassName?: string;
 };
 
-export type FieldValue = string | boolean | null | number | undefined;
-
-export interface EsTermQuery {
-  value: FieldValue;
-  case_insensitive?: boolean;
-}
-
-export type EsTermsQuery = {
-  [property: string]: string | string[];
-};
-
-export interface EsExistsQuery {
-  field: string;
-}
-
-export interface EsWildCard {
-  wildcard: {
-    [key: string]: { value: string };
-  };
-}
-
-export interface EsBoolQuery {
-  filter?: QueryFieldInterface | QueryFieldInterface[];
-  must?: QueryFieldInterface | QueryFieldInterface[];
-  must_not?: QueryFieldInterface | QueryFieldInterface[];
-  should?: QueryFieldInterface | QueryFieldInterface[] | EsWildCard[];
-  minimum_should_match?: number;
-}
-
-export interface QueryFieldInterface {
-  bool?: EsBoolQuery;
-  term?: Partial<Record<string, EsTermQuery | FieldValue>>;
-  terms?: EsTermsQuery;
-  exists?: EsExistsQuery;
-}
-
-export interface QueryFilterInterface {
-  query: QueryFieldInterface;
-}
+export type {
+  EsBoolQuery,
+  EsExistsQuery,
+  EsTermQuery,
+  EsTermsQuery,
+  EsWildCard,
+  FieldValue,
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../interface/queryFilter.interface';
 
 export interface EsTerm {
   term: {

@@ -2285,17 +2285,6 @@
     react-aria "3.48.0"
     react-stately "3.46.0"
 
-"@react-awesome-query-builder/antd@^6.6.15":
-  version "6.6.15"
-  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/antd/-/antd-6.6.15.tgz#ace78253a55e34fb8509925ad915fb13d68a4c60"
-  integrity sha512-WyAG1aSsOE29Q5TtK3bvg49zE4sci4TMTZqt0Ggaq7QoUnDhGX0EQ94EPzyl5mu0Eo22AmnVQAOOE6TM5TCozA==
-  dependencies:
-    "@babel/runtime" "^7.27.0"
-    "@react-awesome-query-builder/ui" "^6.6.15"
-    lodash "^4.17.21"
-    prop-types "^15.8.1"
-    rc-picker "^4.5.0"
-
 "@react-awesome-query-builder/core@^6.6.15":
   version "6.6.15"
   resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/core/-/core-6.6.15.tgz#26f3aa2792140b60864d0206d5d1c039222ebd5d"

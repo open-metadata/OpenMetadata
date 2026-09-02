@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  AntdConfig,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+import { BasicConfig, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import {
   elasticSearchFormat,
   hasUnfinishedRule,
@@ -52,12 +49,12 @@ const makeTree = (operator, value, field = 'extension.table.myNumber') => ({
   },
 });
 
-// Extend AntdConfig with extension field metadata so lookupOmPropertyType
+// Extend BasicConfig with extension field metadata so lookupOmPropertyType
 // resolves the OM type, which is required for the scoped between/not_between fix.
 const configWithNumberType = {
-  ...AntdConfig,
+  ...BasicConfig,
   fields: {
-    ...AntdConfig.fields,
+    ...BasicConfig.fields,
     extension: {
       subfields: {
         table: {
@@ -299,7 +296,7 @@ const SELECT_FIELD = 'service.displayName.keyword';
 const SELECT_VALUE = 'banking-bigquery';
 
 const selectFieldConfig = {
-  ...AntdConfig,
+  ...BasicConfig,
   fields: {
     [SELECT_FIELD]: {
       label: 'Service',
@@ -371,5 +368,84 @@ describe('hasUnfinishedRule – entered rules on plain fields (Issue #31564)', (
     const tree = loadSelectTree('select_equals', [undefined], 'select');
 
     expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(true);
+  });
+});
+
+// A builder pinned to one entity type (persona AI context, workflow Check
+// Condition, Data Asset filters) keys custom properties without the entity-type
+// segment: `extension.testCp`, not `extension.table.testCp`. Splitting
+// positionally read `testCp` as the entity type and `keyword` as the property,
+// so those builders produced a query that could never match.
+describe('elasticSearchFormat – custom properties without an entity-type segment', () => {
+  const pinnedConfig = {
+    ...BasicConfig,
+    fields: {
+      ...BasicConfig.fields,
+      extension: {
+        subfields: {
+          // pinned builders expose the property directly, as a leaf
+          testCp: { __omPropertyType: 'date-cp' },
+        },
+      },
+    },
+  };
+
+  const nestedQueryOf = (result) =>
+    JSON.stringify(result).match(/customPropertiesTyped/g) ?? [];
+
+  it('should build the nested customPropertiesTyped query for a pinned field', () => {
+    const result = elasticSearchFormat(
+      makeTree('equal', ['2026-09-03'], 'extension.testCp.keyword'),
+      pinnedConfig
+    );
+    const json = JSON.stringify(result);
+
+    expect(nestedQueryOf(result).length).toBeGreaterThan(0);
+    expect(json).toContain('"customPropertiesTyped.name":"testCp"');
+    expect(json).toContain('2026-09-03');
+    // `keyword` is a suffix on the field key, never the property name
+    expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
+  });
+
+  // The pinned builder knows its entity type even though the field key does
+  // not carry it, so the nested query must still be scoped to that type —
+  // reading it off the key produced `entityType: "MigrationAccessPattern"`,
+  // the property name mistaken for a type.
+  it('should scope to the entity type the builder was configured with', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['2026-09-03'], 'extension.testCp.keyword'),
+        {
+          ...pinnedConfig,
+          settings: { ...pinnedConfig.settings, omEntityType: 'table' },
+        }
+      )
+    );
+
+    expect(json).toContain('"entityType":"table"');
+    expect(json).toContain('"customPropertiesTyped.name":"testCp"');
+  });
+
+  it('should omit the entityType clause when no type is configured', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['2026-09-03'], 'extension.testCp.keyword'),
+        pinnedConfig
+      )
+    );
+
+    expect(json).not.toContain('"entityType"');
+  });
+
+  it('should still read the entity-type segment when the config nests one', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['2026-09-03'], 'extension.table.myDate.keyword'),
+        configWithNumberType
+      )
+    );
+
+    expect(json).toContain('"customPropertiesTyped.name":"myDate"');
+    expect(json).toContain('"entityType":"table"');
   });
 });

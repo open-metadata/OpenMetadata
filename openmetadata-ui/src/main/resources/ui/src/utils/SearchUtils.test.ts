@@ -320,7 +320,9 @@ describe('parseBucketsData', () => {
       ]);
     });
 
-    it('should handle missing label field in sourceFieldOptionType', () => {
+    // Falling through to name, then to the value, is deliberate: an option with
+    // no displayName previously rendered blank.
+    it('should fall back to the value when the label field is missing', () => {
       const buckets = [
         {
           key: 'bucket1',
@@ -344,10 +346,12 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: undefined, value: 'user1@domain.com' }]);
+      expect(result).toEqual([
+        { title: 'user1@domain.com', value: 'user1@domain.com' },
+      ]);
     });
 
-    it('should handle missing value field in sourceFieldOptionType', () => {
+    it('should fall back to the bucket key when the value field is missing', () => {
       const buckets = [
         {
           key: 'bucket1',
@@ -371,7 +375,7 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: 'User 1', value: undefined }]);
+      expect(result).toEqual([{ title: 'User 1', value: 'bucket1' }]);
     });
 
     it('should handle empty _source in sourceFieldOptionType', () => {
@@ -396,7 +400,9 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: undefined, value: undefined }]);
+      // An empty _source falls all the way back to the bucket key rather than
+      // producing a blank, unselectable option.
+      expect(result).toEqual([{ title: 'bucket1', value: 'bucket1' }]);
     });
 
     it('should prioritize sourceFieldOptionType over sourceFields', () => {
@@ -539,7 +545,8 @@ describe('parseBucketsData', () => {
       });
 
       expect(resultWithOptionType).toEqual([
-        { title: 'Test Display', value: undefined }, // nested.field should be undefined as it's not at root level
+        // nested.field is not at root level, so the value falls back to the key
+        { title: 'Test Display', value: 'value1' },
       ]);
 
       // Test basic usage
@@ -589,8 +596,8 @@ describe('parseBucketsData', () => {
       });
 
       expect(result).toEqual([
-        { title: null, value: undefined },
-        { title: undefined, value: undefined },
+        { title: 'test1', value: 'test1' },
+        { title: 'test2', value: 'test2' },
       ]);
 
       // Test sourceFields with valid path

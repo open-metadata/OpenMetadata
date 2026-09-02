@@ -220,10 +220,19 @@ export const selectOption = async (
     if (!listboxId) {
       throw new Error('Combobox popup did not open (aria-controls not set)');
     }
-    const option = page
-      .locator(`[role="listbox"][id="${listboxId}"]`)
-      .getByRole('option', { name: optionTitle, exact: true })
-      .first();
+    const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+    // Prefer the option's value over its label. Tag-like fields (Tier, Tags,
+    // Certification) render the display name — `Tier1` — while callers pass
+    // the FQN `Tier.Tier1`. react-aria puts the value on `data-key`, so this
+    // keeps working however the label is presented. `data-key` is unique
+    // within a listbox, so no positional locator is needed here.
+    const byValue = listbox.locator(
+      `[role="option"][data-key="${optionTitle}"]`
+    );
+    const option = (await byValue.count())
+      ? byValue
+      : listbox.getByRole('option', { name: optionTitle, exact: true }).first();
     if (isSearchable && (await option.count()) === 0) {
       await comboboxInput.fill('');
       await comboboxInput.fill(optionTitle);
@@ -310,11 +319,20 @@ export const fillRule = async (
           return 0;
         }
 
-        return page
-          .locator(`[role="listbox"][id="${listboxId}"]`)
-          .getByRole('option')
-          .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+        const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+        // Either the value matches (tag-like fields show a display name) or the
+        // visible text does.
+        const byValue = await listbox
+          .locator(`[role="option"][data-key="${searchCriteria}"]`)
           .count();
+
+        return byValue > 0
+          ? byValue
+          : listbox
+              .getByRole('option')
+              .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+              .count();
       };
 
       await expect
@@ -339,20 +357,34 @@ export const fillRule = async (
 
       const listboxId = await dropdownInput.getAttribute('aria-controls');
       const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
-      const exactMatch = dropdown
-        .getByRole('option', {
-          name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
-        })
-        .first();
 
-      if (await exactMatch.count()) {
-        await exactMatch.click();
+      // Match on the option's value, not its label. Tag-like fields (Tier,
+      // Tags, Certification) render the display name — `Tier1` — while the
+      // fixtures carry the FQN `Tier.Tier1`, and the two are legitimately
+      // different. react-aria puts the value on `data-key`, so this stays
+      // correct however the label is presented.
+      const byValue = dropdown.locator(
+        `[role="option"][data-key="${searchCriteria}"]`
+      );
+
+      if (await byValue.count()) {
+        await byValue.click();
       } else {
-        await dropdown
-          .getByRole('option')
-          .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
-          .first()
-          .click();
+        const exactMatch = dropdown
+          .getByRole('option', {
+            name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+          })
+          .first();
+
+        if (await exactMatch.count()) {
+          await exactMatch.click();
+        } else {
+          await dropdown
+            .getByRole('option')
+            .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+            .first()
+            .click();
+        }
       }
     }
 

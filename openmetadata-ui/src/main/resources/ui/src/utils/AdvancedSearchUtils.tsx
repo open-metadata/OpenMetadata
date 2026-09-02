@@ -36,7 +36,10 @@ import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
+import type { QueryBuilderConfigModes } from './queryBuilder/types';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
+import { toTagSelectOptions } from './SearchPureUtils';
 
 type DropdownItem = { key: string; label: JSX.Element };
 
@@ -194,17 +197,20 @@ export const getTierOptions = async (): Promise<ListValues> => {
       limit: 50,
     });
 
-    const tierFields = tiers.map((tier) => ({
-      title: tier.fullyQualifiedName, // tier.name,
-      value: tier.fullyQualifiedName,
-    }));
-
-    return tierFields as ListValues;
+    return toTagSelectOptions(tiers) as ListValues;
   } catch {
     return [];
   }
 };
 
+/**
+ * Legacy entry point: translates the single `isExplorePage` boolean into the
+ * explicit mode inputs the class bases now take.
+ *
+ * New code should call `buildQueryBuilderConfig` instead — it names each of
+ * the four jobs this boolean used to conflate, and it is the only way to reach
+ * `groupMode` / `conjunctionMode`.
+ */
 export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
@@ -215,10 +221,22 @@ export const getTreeConfig = ({
   isExplorePage: boolean;
 }) => {
   const index = isArray(searchIndex) ? searchIndex : [searchIndex];
+  const modes: QueryBuilderConfigModes = isExplorePage
+    ? {}
+    : {
+        showLabels: false,
+        useFriendlyOperatorLabels: true,
+        renderButton: renderQueryBuilderFilterButtons,
+      };
 
-  return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
+  if (searchOutputType === SearchOutputType.ElasticSearch) {
+    return advancedSearchClassBase.getQbConfigs(index, modes);
+  }
+
+  // JSONLogic keeps its own icon-only renderer; only label visibility varies.
+  return jsonLogicSearchClassBase.getQbConfigs(index, {
+    showLabels: isExplorePage,
+  });
 };
 
 /**

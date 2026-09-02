@@ -16,7 +16,7 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isEmpty, isUndefined } from 'lodash';
+import { isBoolean, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -28,6 +28,7 @@ import type {
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { generateUUID } from './StringUtils';
+import { QUERY_BUILDER_CONJUNCTION } from './queryBuilder/types';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,
@@ -116,15 +117,6 @@ export const getSelectEqualsNotEqualsProperties = (
       path: [...parentPath, id],
     },
   };
-};
-
-export const READONLY_SETTINGS = {
-  immutableGroupsMode: true,
-  immutableFieldsMode: true,
-  immutableOpsMode: true,
-  immutableValuesMode: true,
-  canRegroup: false,
-  canRemove: false,
 };
 
 export const getSelectAnyInProperties = (
@@ -403,11 +395,14 @@ export const getJsonTreeFromQueryFilter = (
 
     return {
       type: 'group',
-      properties: { conjunction: 'AND', not: false },
+      properties: { conjunction: QUERY_BUILDER_CONJUNCTION.AND, not: false },
       children1: {
         [id2]: {
           type: 'group',
-          properties: { conjunction: 'AND', not: false },
+          properties: {
+            conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+            not: false,
+          },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
             innerMust ?? mustFilters,
@@ -768,6 +763,22 @@ export const addEntityTypeFilter = (
         ],
       },
     });
+
+    return qFilter;
+  }
+
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.should)) {
+    return {
+      ...qFilter,
+      query: {
+        bool: {
+          must: [
+            qFilter.query,
+            { term: { 'entityType.keyword': entityType } },
+          ] as QueryFieldInterface[],
+        },
+      },
+    } as QueryFilterInterface;
   }
 
   return qFilter;
@@ -860,12 +871,3 @@ export const getFieldsByKeys = (
 
   return filteredFields;
 };
-
-export const buildExploreUrlParams = (
-  tree: unknown,
-  qFilter?: QueryFilterInterface
-): Record<string, string> => ({
-  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
-  ...(!isEmpty(qFilter) &&
-    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
-});

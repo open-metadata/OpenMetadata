@@ -18,6 +18,7 @@ import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
   getRuleConditionCount,
+  getRuleExplorePath,
   getRuleFilterTree,
   isKnowledgeContextRule,
   normalizePersonaContextDefinition,
@@ -241,5 +242,51 @@ describe('PersonaAIContextUtils', () => {
         },
       ]);
     });
+  });
+});
+
+// Explore validates a deep-linked tree against its own config and silently
+// resets when a field is unknown. This editor is pinned to one entity type, so
+// its custom-property keys omit the entity segment Explore expects — without
+// the rewrite the link landed on the unfiltered estate with no filter chip.
+describe('getRuleExplorePath', () => {
+  const filterJsonTree = JSON.stringify({
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND', not: false },
+    children1: {
+      r1: {
+        type: 'rule',
+        id: 'r1',
+        properties: {
+          field: 'extension.testCp.keyword',
+          operator: 'equal',
+          value: ['2026-09-03'],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  });
+
+  const fieldsIn = (path: string) =>
+    decodeURIComponent(path).match(/"field":"[^"]+"/g) ?? [];
+
+  it('should deep link with the entity-segmented custom property key', () => {
+    const path = getRuleExplorePath(EntityType.TABLE, filterJsonTree);
+
+    expect(fieldsIn(path)).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
+  });
+
+  it('should not rewrite a key that already carries the segment', () => {
+    const already = filterJsonTree.replace(
+      'extension.testCp.keyword',
+      'extension.table.testCp.keyword'
+    );
+
+    expect(fieldsIn(getRuleExplorePath(EntityType.TABLE, already))).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
   });
 });

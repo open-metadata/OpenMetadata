@@ -46,7 +46,7 @@ import {
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import QueryBuilderWidgetV1 from '../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
+import QueryBuilder from '../../common/QueryBuilder/QueryBuilder';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './contract-semantic-form-tab.less';
 
@@ -330,10 +330,14 @@ export const ContractSemanticFormTab: React.FC<{
                                   validator: semanticRuleValidator,
                                 },
                               ]}>
-                              <QueryBuilderWidgetV1
+                              <QueryBuilder
+                                // Rules here are always ANDed; fixing the
+                                // conjunction leaves RAQB nothing to toggle,
+                                // so the control stays hidden as it always was.
+                                conjunctionMode="and"
                                 entityType={EntityType.TABLE}
                                 fields={queryBuilderFields}
-                                getQueryActions={handleAddQueryBuilderRule}
+                                groupMode="flat"
                                 key={field.name}
                                 outputType={SearchOutputType.JSONLogic}
                                 tree={
@@ -342,6 +346,7 @@ export const ContractSemanticFormTab: React.FC<{
                                     : undefined
                                 }
                                 value={editFieldData?.rule ?? ''}
+                                onActionsReady={handleAddQueryBuilderRule}
                                 onChange={(rule: string, tree?: JsonTree) =>
                                   handleQueryBuilderChange(field, rule, tree)
                                 }
@@ -379,10 +384,12 @@ export const ContractSemanticFormTab: React.FC<{
                       </>
                     ) : (
                       <div className="semantic-rule-editor-view-only">
-                        <QueryBuilderWidgetV1
+                        <QueryBuilder
                           readonly
+                          conjunctionMode="and"
                           entityType={EntityType.TABLE}
                           fields={queryBuilderFields}
+                          groupMode="flat"
                           key={field.name}
                           outputType={SearchOutputType.JSONLogic}
                           tree={

@@ -35,8 +35,9 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
   }, [externalStr]);
 
   return (
+    // `qb-number-input` is kept because Playwright already uses it.
     <Input
-      inputDataTestId="qb-number-input"
+      inputDataTestId="advanced-search-value-number qb-number-input"
       isDisabled={readonly}
       placeholder={placeholder}
       size="sm"

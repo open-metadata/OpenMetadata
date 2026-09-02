@@ -10,342 +10,104 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Alert as CoreAlert } from '@openmetadata/ui-core-components';
-import {
-  Actions,
-  Builder,
-  Config,
-  ImmutableTree,
-  Query,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/ui';
-import '@react-awesome-query-builder/ui/css/styles.css';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import type { Actions, Config } from '@react-awesome-query-builder/ui';
 import { WidgetProps } from '@rjsf/utils';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
-import classNames from 'classnames';
-import { debounce, isEmpty, isUndefined } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { FC, useEffect } from 'react';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
-import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
-import { searchQuery } from '../../../../../../rest/searchAPI';
-import {
-  getEmptyJsonTree,
-  getEmptyJsonTreeForQueryBuilder,
-} from '../../../../../../utils/AdvancedSearchPureUtils';
-import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
-import {
-  addEntityTypeFilter,
-  buildExploreUrlParams,
-  getEntityTypeAggregationFilter,
-  getJsonTreeFromQueryFilter,
-  migrateJsonLogic,
-  READONLY_SETTINGS,
-} from '../../../../../../utils/QueryBuilderPureUtils';
-import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import './query-builder-widget.less';
+import QueryBuilder from '../../../../QueryBuilder/QueryBuilder';
+
+/**
+ * RJSF adapter over the canonical `QueryBuilder`.
+ *
+ * This is registered by `FormBuilder` for every JSON-schema form, so it is the
+ * widest-reaching caller in the tree. It now does two things and nothing else:
+ * map `WidgetProps` onto the component's props, and source `fields` from
+ * `AdvanceSearchProvider`.
+ *
+ * The provider stays because it owns something the component deliberately does
+ * not: it fetches custom properties and grafts them onto
+ * `config.fields.extension.subfields`, and it applies `fieldOverrides`. Those
+ * are feature field definitions, not builder mechanics.
+ */
 const QueryBuilderWidget: FC<
   WidgetProps & {
     fields?: Config['fields'];
     defaultField?: string;
     subField?: string;
+    getQueryActions?: (actions: Actions) => void;
   }
-> = ({ onChange, schema, value, fields, defaultField, subField, ...props }) => {
+> = ({
+  onChange,
+  schema,
+  value,
+  fields,
+  defaultField,
+  subField,
+  getQueryActions,
+  label,
+  readonly,
+  formContext,
+}) => {
   const {
     config,
-    treeInternal,
-    onTreeUpdate,
     onChangeSearchIndex,
     searchIndex: searchIndexFromContext,
     isUpdating,
   } = useAdvanceSearch();
-  const [searchResults, setSearchResults] = useState<number | undefined>();
-  const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
+
   const entityType =
-    (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
-  const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
-  const searchIndex = searchIndexMapping[entityType as string];
-  const resolvedSearchIndex =
-    searchIndex === SearchIndex.ALL ? SearchIndex.DATA_ASSET : searchIndex;
+    (formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
   const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
   const showExploreLink = schema?.showExploreLink ?? true;
-  const isSearchIndexUpdatedInContext =
-    searchIndexFromContext === resolvedSearchIndex;
-  const [initDone, setInitDone] = useState<boolean>(false);
-  const { t } = useTranslation();
-  const [queryURL, setQueryURL] = useState<string>('');
-  const [queryActions, setQueryActions] = useState<Actions>();
-  const [isCountBannerClosed, setIsCountBannerClosed] = useState(false);
 
-  const fetchEntityCount = useCallback(
-    async (queryFilter: Record<string, unknown>) => {
-      const qFilter = getEntityTypeAggregationFilter(
-        queryFilter as unknown as QueryFilterInterface,
-        entityType
-      );
-
-      const tree = QbUtils.sanitizeTree(
-        QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
-        config
-      ).fixedTree;
-
-      const extraParameters = buildExploreUrlParams(tree, qFilter);
-
-      setQueryURL(getExplorePath({ extraParameters }));
-
-      try {
-        setIsCountLoading(true);
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 0,
-          pageSize: 0,
-          queryFilter: qFilter as unknown as Record<string, unknown>,
-          searchIndex: SearchIndex.ALL,
-          includeDeleted: false,
-          trackTotalHits: true,
-          fetchSource: false,
-        });
-        setSearchResults(res.hits.total.value ?? 0);
-      } catch {
-        // silent fail
-      } finally {
-        setIsCountLoading(false);
-      }
-    },
-    [entityType]
-  );
-
-  const debouncedFetchEntityCount = useMemo(
-    () => debounce(fetchEntityCount, 300),
-    [fetchEntityCount]
-  );
-
-  const showFilteredResourceCount = useMemo(
-    () =>
-      outputType === SearchOutputType.ElasticSearch &&
-      !isUndefined(value) &&
-      searchResults !== undefined &&
-      !isCountLoading,
-    [outputType, value, isCountLoading]
-  );
-
-  const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
-    onTreeUpdate(nTree, nConfig);
-
-    if (outputType === SearchOutputType.ElasticSearch) {
-      const data = elasticSearchFormat(nTree, config) ?? '';
-      const qFilter = {
-        query: data,
-      };
-      if (data) {
-        const qFilterWithEntityType = addEntityTypeFilter(
-          qFilter as unknown as QueryFilterInterface,
-          entityType
-        );
-
-        debouncedFetchEntityCount(
-          qFilterWithEntityType as unknown as Record<string, unknown>
-        );
-      }
-
-      onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
-    } else {
-      try {
-        const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
-        onChange(JSON.stringify(jsonLogic.logic ?? ''));
-      } catch {
-        onChange('');
-      }
-    }
-  };
-
-  const loadDefaultValueInTree = useCallback(() => {
-    if (!isEmpty(value)) {
-      const parsedValue = JSON.parse(value ?? '{}');
-      if (outputType === SearchOutputType.ElasticSearch) {
-        const parsedTree = getJsonTreeFromQueryFilter(
-          parsedValue,
-          config.fields
-        );
-
-        if (Object.keys(parsedTree).length > 0) {
-          const tree = QbUtils.Validation.sanitizeTree(
-            QbUtils.loadTree(parsedTree),
-            config
-          ).fixedTree;
-          onTreeUpdate(tree, config);
-          // Fetch count for default value
-          debouncedFetchEntityCount(parsedValue);
-        }
-      } else {
-        // migrate existing json logic to new format
-        const migratedValue = migrateJsonLogic(parsedValue);
-
-        const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
-        if (tree) {
-          const validatedTree = QbUtils.Validation.sanitizeTree(
-            tree,
-            config
-          ).fixedTree;
-          onTreeUpdate(validatedTree, config);
-        }
-      }
-    } else {
-      const emptyJsonTree =
-        outputType === SearchOutputType.JSONLogic
-          ? getEmptyJsonTreeForQueryBuilder(defaultField, subField)
-          : getEmptyJsonTree();
-
-      const tree = QbUtils.loadTree(emptyJsonTree);
-
-      onTreeUpdate(tree, config);
-    }
-    setInitDone(true);
-  }, [config, value, outputType]);
+  const searchIndex =
+    searchClassBase.getEntityTypeSearchIndexMapping()[entityType as string];
+  const resolvedSearchIndex =
+    searchIndex === SearchIndex.ALL ? SearchIndex.DATA_ASSET : searchIndex;
 
   useEffect(() => {
     onChangeSearchIndex(resolvedSearchIndex);
-  }, []);
+  }, [resolvedSearchIndex, onChangeSearchIndex]);
 
-  useEffect(() => {
-    if (isSearchIndexUpdatedInContext && !isUpdating) {
-      loadDefaultValueInTree();
-    }
-  }, [isSearchIndexUpdatedInContext, isUpdating]);
+  // Mounting before the provider has loaded this index's fields would seed a
+  // tree against the wrong field set, so the builder waits.
+  const isReady = searchIndexFromContext === resolvedSearchIndex && !isUpdating;
 
-  useEffect(() => {
-    if (props.getQueryActions) {
-      props.getQueryActions(queryActions);
-    }
-  }, [queryActions]);
-
-  useEffect(() => {
-    setIsCountBannerClosed(false);
-  }, [searchResults]);
-
-  if (!initDone) {
-    return <></>;
+  if (!isReady) {
+    // A skeleton rather than `null`: if the provider never settles on this
+    // index the section stays in a visibly loading state instead of rendering
+    // an empty box that reads as a broken builder.
+    return (
+      <Skeleton
+        animation="pulse"
+        data-testid="query-builder-loading"
+        height={64}
+        variant="rectangular"
+      />
+    );
   }
 
   return (
-    <div
-      className="query-builder-form-field"
-      data-testid="query-builder-form-field">
-      <Card className={classNames('query-builder-card', outputType)}>
-        <Row gutter={[8, 8]}>
-          <Col
-            className={classNames({
-              'p-t-sm': outputType === SearchOutputType.ElasticSearch,
-            })}
-            span={24}>
-            {outputType === SearchOutputType.JSONLogic && (
-              <>
-                <Typography.Text className="query-filter-label text-grey-muted">
-                  {props.label}
-                </Typography.Text>
-                <Divider className="m-y-sm" />
-              </>
-            )}
-            <Query
-              {...config}
-              fields={fields ?? config.fields}
-              renderBuilder={(props) => {
-                // Store the actions for external access
-                if (!queryActions) {
-                  setQueryActions(props.actions);
-                }
-
-                return (
-                  <div className="query-builder-container query-builder qb-lite">
-                    <Builder {...props} />
-                  </div>
-                );
-              }}
-              settings={{
-                ...config.settings,
-                ...(props.readonly ? READONLY_SETTINGS : {}),
-                removeEmptyGroupsOnLoad: false,
-                removeEmptyRulesOnLoad: false,
-                shouldCreateEmptyGroup: true,
-              }}
-              value={treeInternal}
-              onChange={handleChange}
-            />
-
-            {isCountLoading && (
-              <Skeleton
-                active
-                className="m-t-sm"
-                loading={isCountLoading}
-                paragraph={false}
-                title={{ style: { height: '32px' } }}
-              />
-            )}
-
-            {showFilteredResourceCount && (
-              <div className="m-t-sm">
-                {showExploreLink ? (
-                  <Button
-                    className="w-full p-0 text-left h-auto"
-                    data-testid="view-assets-banner-button"
-                    disabled={false}
-                    href={queryURL}
-                    target="_blank"
-                    type="link">
-                    <Alert
-                      closable
-                      showIcon
-                      icon={<InfoCircleOutlined height={16} />}
-                      message={
-                        <div className="d-flex flex-wrap items-center gap-1">
-                          <Typography.Text>
-                            {t('message.search-entity-count', {
-                              count: searchResults,
-                            })}
-                          </Typography.Text>
-
-                          <Typography.Text className="text-xs text-grey-muted">
-                            {t('message.click-here-to-view-assets-on-explore')}
-                          </Typography.Text>
-                        </div>
-                      }
-                      type="info"
-                    />
-                  </Button>
-                ) : (
-                  !isCountBannerClosed && (
-                    <CoreAlert
-                      closable
-                      data-testid="view-assets-banner-count"
-                      title={t('message.search-entity-count', {
-                        count: searchResults,
-                      })}
-                      variant="brand"
-                      onClose={() => setIsCountBannerClosed(true)}
-                    />
-                  )
-                )}
-              </div>
-            )}
-          </Col>
-        </Row>
-      </Card>
-    </div>
+    <QueryBuilder
+      defaultField={defaultField}
+      entityType={entityType}
+      fields={fields ?? config?.fields}
+      groupMode="flat"
+      label={label}
+      outputType={outputType}
+      readonly={readonly}
+      showExploreLink={showExploreLink}
+      subField={subField}
+      value={value}
+      onActionsReady={getQueryActions}
+      onChange={(nextValue) => onChange(nextValue)}
+    />
   );
 };
 

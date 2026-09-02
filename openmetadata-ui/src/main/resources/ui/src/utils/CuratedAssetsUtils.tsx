@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Alert } from 'antd';
 import type { Bucket } from 'Models';
-import { useTranslation } from 'react-i18next';
 import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
+import QueryBuilderCountBanner from '../components/common/QueryBuilder/QueryBuilderCountBanner/QueryBuilderCountBanner';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -30,39 +28,25 @@ export interface CuratedAssetsFormSelectedAssetsInfo {
 
 export const AlertMessage = ({
   assetCount,
-  href = '#',
+  href,
   target,
+  showExploreLink = true,
 }: {
   assetCount?: number;
   href?: string;
   target?: string;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Alert
-      closable
-      className="bg-transparent border-none"
-      message={
-        <div className="flex items-center">
-          <InfoCircleOutlined className="m-r-xs text-xl flex self-center" />
-          <span>
-            {t('message.search-entity-count', {
-              count: assetCount,
-            })}
-            &nbsp;
-            <a
-              className="text-primary hover:underline"
-              href={href}
-              target={target}>
-              {t('label.view-in-explore-page')}
-            </a>
-          </span>
-        </div>
-      }
-    />
-  );
-};
+  /** Offer the click-through, or show the count on its own. */
+  showExploreLink?: boolean;
+}) => (
+  // The same banner every other query-builder surface renders; this screen
+  // only supplies a count the builder cannot derive on its own.
+  <QueryBuilderCountBanner
+    count={assetCount}
+    exploreUrl={showExploreLink ? href : undefined}
+    linkLabelKey="label.view-in-explore-page"
+    target={target}
+  />
+);
 
 export const getSelectedResourceCount = async ({
   selectedResource,
