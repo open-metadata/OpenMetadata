@@ -206,12 +206,10 @@ export default [
       // Promoted to error so CI blocks any regression.
       '@typescript-eslint/no-explicit-any': 'error',
 
-      // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
-      // for no longer reproduces — verified running against this config, where
-      // it reports ~367 findings in a 400-file sample. `warn` because of that
-      // backlog; the repo convention is no user-facing string literals, so this
-      // should reach `error` once the backlog is worked down.
-      'i18next/no-literal-string': 'warn',
+      // No user-facing string literals — all copy goes through `t()`. Cleared to
+      // zero (mock/fixture files exempted below; decorative glyphs carry a
+      // documented disable) and enforced at error so CI blocks new hardcoded copy.
+      'i18next/no-literal-string': 'error',
 
       // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
       // does not pixel-snap box-shadows, so a ring used as a border thins out and can
@@ -616,10 +614,16 @@ export default [
     },
   },
 
-  // Test fixtures use literal and repeated strings as selectors and controlled inputs,
-  // so production-facing string rules create noise without protecting user-visible copy.
+  // Test fixtures and mock data use literal and repeated strings as selectors and
+  // sample values, so production-facing string rules create noise without protecting
+  // user-visible copy.
   {
-    files: ['src/**/*.test.{ts,tsx}'],
+    files: [
+      'src/**/*.test.{ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
     rules: {
       'i18next/no-literal-string': 'off',
       'sonarjs/no-duplicate-string': 'off',
