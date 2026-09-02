@@ -57,10 +57,10 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(
       page.getByRole('button', { name: 'Re Deploy' })
     ).not.toBeEnabled();
-    await expect(page.locator('.ant-table-container')).toBeVisible();
+    await expect(page.getByTestId('ingestion-list-table')).toBeVisible();
 
-    await page.locator(`td [type="checkbox"]`).first().click();
-    await page.locator(`td [type="checkbox"]`).nth(1).click();
+    await page.locator('td label[slot="selection"]').first().click();
+    await page.locator('td label[slot="selection"]').nth(1).click();
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 

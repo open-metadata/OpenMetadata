@@ -30,11 +30,11 @@ import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../common/Table/TableV2';
 import {
   ColumnsType,
   ExpandableConfig,
 } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCell';
@@ -245,7 +245,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     },
     acceptedDragTypes: [TEAM_DRAG_TYPE],
     onDragStart: (event) => {
-      draggedTeamRef.current = teamByName.get(String(Array.from(event.keys)[0]));
+      draggedTeamRef.current = teamByName.get(
+        String(Array.from(event.keys)[0])
+      );
       handleTableHover(true);
     },
     onDragEnd: () => {
