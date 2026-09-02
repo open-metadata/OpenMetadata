@@ -722,8 +722,10 @@ class ElasticSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<ElasticSearchVectorService> vectorServiceMock =
             mockStatic(ElasticSearchVectorService.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
@@ -764,8 +766,10 @@ class ElasticSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<ElasticSearchVectorService> vectorServiceMock =
             mockStatic(ElasticSearchVectorService.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
@@ -808,8 +812,10 @@ class ElasticSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<ElasticSearchVectorService> vectorServiceMock =
             mockStatic(ElasticSearchVectorService.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 

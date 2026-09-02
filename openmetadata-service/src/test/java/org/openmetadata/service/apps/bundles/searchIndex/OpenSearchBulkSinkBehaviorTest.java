@@ -670,8 +670,10 @@ class OpenSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
@@ -802,9 +804,11 @@ class OpenSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
       List<Map<String, Object>> chunkDocs =
           stubRecompute(
@@ -862,9 +866,11 @@ class OpenSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
       List<Map<String, Object>> chunkDocs =
           stubRecompute(
@@ -915,9 +921,11 @@ class OpenSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
       List<Map<String, Object>> chunkDocs =
           stubRecompute(
@@ -977,9 +985,11 @@ class OpenSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
       List<Map<String, Object>> chunkDocs =
           stubRecompute(
@@ -1036,9 +1046,11 @@ class OpenSearchBulkSinkBehaviorTest {
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
