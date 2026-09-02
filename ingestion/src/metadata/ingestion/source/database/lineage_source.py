@@ -28,6 +28,7 @@ from sqlalchemy import text
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import (
@@ -499,6 +500,30 @@ class LineageSource(QueryParserSource, ABC):
             )
 
         return None
+
+    def get_cross_database_fqn_from_service_names(self) -> list[str]:
+        database_service_names = self.source_config.crossDatabaseServiceNames  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+        return [
+            database.fullyQualifiedName.root
+            for service in database_service_names or []
+            for database in self.metadata.list_all_entities(entity=Database, params={"service": service})
+        ]
+
+    def check_same_table(self, table1: Table, table2: Table) -> bool:
+        """
+        Method to check whether the table1 and table2 are same
+        """
+        if table1.name.root.lower() != table2.name.root.lower():
+            return False
+
+        if not table1.columns and not table2.columns:
+            return True
+
+        if not table1.columns or not table2.columns:
+            return False
+        return {column.name.root.lower() for column in table1.columns} == {
+            column.name.root.lower() for column in table2.columns
+        }
 
     def yield_cross_database_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """

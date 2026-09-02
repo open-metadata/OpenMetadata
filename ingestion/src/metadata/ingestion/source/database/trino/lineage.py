@@ -98,30 +98,6 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                     f"for lineage queries"
                 )
 
-    def get_cross_database_fqn_from_service_names(self) -> list[str]:
-        database_service_names = self.source_config.crossDatabaseServiceNames  # pyright: ignore[reportAttributeAccessIssue]
-        return [
-            database.fullyQualifiedName.root
-            for service in database_service_names
-            for database in self.metadata.list_all_entities(entity=Database, params={"service": service})
-        ]
-
-    def check_same_table(self, table1: Table, table2: Table) -> bool:
-        """
-        Method to check whether the table1 and table2 are same
-        """
-        if table1.name.root.lower() != table2.name.root.lower():
-            return False
-
-        if not table1.columns and not table2.columns:
-            return True
-
-        if not table1.columns or not table2.columns:
-            return False
-        return {column.name.root.lower() for column in table1.columns} == {
-            column.name.root.lower() for column in table2.columns
-        }
-
     def _get_cross_database_schema_fqn(
         self,
         cross_database_fqn: str,
