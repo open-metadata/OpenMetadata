@@ -332,7 +332,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           redirected.append(parsed.userInfo()).append('@');
         }
         redirected.append(parsed.serverBaseUrl().substring(schemeEnd + 3));
-        redirected.append('/').append(datasetName);
+        redirected.append('/').append(encodePathSegment(datasetName));
         result = redirected.toString();
       }
     }

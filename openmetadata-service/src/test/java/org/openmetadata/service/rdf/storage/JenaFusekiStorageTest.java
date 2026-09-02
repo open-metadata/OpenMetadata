@@ -464,6 +464,24 @@ class JenaFusekiStorageTest {
     }
 
     @Test
+    @DisplayName("encodes spaces in the dataset path segment")
+    void encodesSpacesInDatasetPath() {
+      assertEquals(
+          "http://fuseki:3030/openmetadata%20blue",
+          JenaFusekiStorage.redirectToDataset(
+              "http://fuseki:3030/openmetadata", "openmetadata blue"));
+    }
+
+    @Test
+    @DisplayName("encodes reserved characters in the dataset path segment")
+    void encodesReservedCharactersInDatasetPath() {
+      assertEquals(
+          "http://fuseki:3030/openmetadata%2Fblue%3Fstate%3Dready%23current",
+          JenaFusekiStorage.redirectToDataset(
+              "http://fuseki:3030/openmetadata", "openmetadata/blue?state=ready#current"));
+    }
+
+    @Test
     @DisplayName("preserves embedded credentials so admin calls stay authenticated")
     void preservesEmbeddedCredentials() {
       assertEquals(
