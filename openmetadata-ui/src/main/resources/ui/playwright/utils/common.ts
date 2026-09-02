@@ -1778,7 +1778,7 @@ export const testTableSearch = async (
 
 export const selectOptionWithRetry = async (
   trigger: Locator,
-  option: Locator,
+  option: Locator
 ) => {
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {

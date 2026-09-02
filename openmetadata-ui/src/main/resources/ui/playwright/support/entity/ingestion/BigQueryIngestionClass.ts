@@ -74,12 +74,12 @@ class BigQueryIngestionClass extends ServiceBaseClass {
 
     await selectOptionWithRetry(
       page.getByRole('button', { name: 'GCP Credentials Values GCP' }),
-      page.getByRole('option', { name: 'GCP Credentials Values' }),
+      page.getByRole('option', { name: 'GCP Credentials Values' })
     );
 
     await selectOptionWithRetry(
       page.getByRole('button', { name: 'Single Project ID Project ID' }),
-      page.getByRole('option', { name: 'Multiple Project ID' }),
+      page.getByRole('option', { name: 'Multiple Project ID' })
     );
 
     const projectIds = projectId.split(',');
