@@ -1318,7 +1318,7 @@ base.describe(
     base(
       'User Performance across different entities pages',
       async ({ browser }) => {
-        test.slow();
+        base.slow();
         const { page, afterAction } = await performUserLogin(browser, user);
 
         for (const entity of userPerformanceEntities) {

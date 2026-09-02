@@ -105,7 +105,6 @@ test.describe('Curated Assets Widget', () => {
     test(`Test ${entityType.displayName} with display name filter`, async ({
       page,
     }) => {
-      test.slow();
       test.slow(true);
 
       const testEntity = entityTypeToTestEntity[entityType.name];
@@ -299,7 +298,6 @@ test.describe('Curated Assets Widget', () => {
   });
 
   test('Multiple entity types with OR conditions', async ({ page }) => {
-    test.slow();
     test.slow(true);
 
     // Create a new curated asset widget
@@ -397,7 +395,6 @@ test.describe('Curated Assets Widget', () => {
   });
 
   test('Multiple entity types with AND conditions', async ({ page }) => {
-    test.slow();
     test.slow(true);
 
     // Create a new curated asset widget
@@ -512,7 +509,6 @@ test.describe('Curated Assets Widget', () => {
   });
 
   test('Complex nested groups', async ({ page }) => {
-    test.slow();
     test.slow(true);
 
     // Create a new curated asset widget

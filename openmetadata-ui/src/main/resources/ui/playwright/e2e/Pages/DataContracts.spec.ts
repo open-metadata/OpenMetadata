@@ -1170,7 +1170,6 @@ test.describe('Data Contracts', () => {
   test('Semantic with Not_Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
   }) => {
-    test.slow();
     test.slow(true);
 
     const table = new TableClass();

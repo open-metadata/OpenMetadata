@@ -115,7 +115,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Assign Widgets', async ({ page }) => {
-    test.slow();
     test.slow(true);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await addAndVerifyWidget(

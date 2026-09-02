@@ -316,7 +316,6 @@ test.describe('Domains', () => {
   });
 
   test('Create DataProducts and add remove assets', async ({ page }) => {
-    test.slow();
     test.slow(true);
 
     const { afterAction, apiContext } = await getApiContext(page);
