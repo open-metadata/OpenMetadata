@@ -49,8 +49,8 @@ inputs:
     default: "false"
   install-test-dependencies:
     # ingestion[all,airflow,great-expectations], the test dependency group,
-    # cx_Oracle, sqlalchemy-redshift/ibmi,
-    # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
+    # sqlalchemy-redshift/ibmi, pydoris-custom, and nox are only used by
+    # py-tests / py-cli-e2e / py-operator
     # workflows that invoke Python on the runner. Playwright E2E workflows drive
     # the browser and let the ingestion Docker container run its own installs, so
     # they can pass "false" here to shave ~3-4 minutes per shard off setup.
@@ -143,8 +143,6 @@ runs:
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
-        uv pip install "setuptools<81"
-        uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
         uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
         uv pip install -e "${{ github.workspace }}/ingestion[all,airflow,great-expectations]"
         uv pip install --group "${{ github.workspace }}/ingestion/pyproject.toml:test"

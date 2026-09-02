@@ -20,13 +20,11 @@ install_dev:  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 	uv pip install -e "$(INGESTION_DIR)[all,airflow,great-expectations]"
 	uv pip install --group "$(INGESTION_DIR)/pyproject.toml:test"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 	uv pip install "$(INGESTION_DIR)[all]"
 
 .PHONY: install_apis
