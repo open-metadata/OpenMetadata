@@ -32,7 +32,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 from metadata.utils.logger import cli_logger
 
@@ -163,8 +162,8 @@ class ConnectorProfile:
         self.display_name: str = ""
         self.service_type: str = ""
         self.connection_type: str = "rest_api"
-        self.scheme: Optional[str] = None  # noqa: UP045
-        self.default_port: Optional[int] = None  # noqa: UP045
+        self.scheme: str | None = None
+        self.default_port: int | None = None
         self.auth_types: list[str] = ["basic"]
         self.capabilities: list[str] = ["metadata"]
         self.description: str = ""
@@ -173,7 +172,7 @@ class ConnectorProfile:
         self.sdk_package: str = ""
         self.api_endpoints: str = ""
         self.docker_image: str = ""
-        self.docker_port: Optional[int] = None  # noqa: UP045
+        self.docker_port: int | None = None
 
     @property
     def camel(self) -> str:
@@ -191,7 +190,7 @@ class ConnectorProfile:
 # ---------------------------------------------------------------------------
 
 
-def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) -> str:  # noqa: UP045
+def _prompt(label: str, default: str = "", choices: list[str] | None = None) -> str:
     if choices:
         options = ", ".join(choices)
         suffix = f" [{options}]"
@@ -219,7 +218,7 @@ def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) 
         print("    This field is required.")  # noqa: T201
 
 
-def _prompt_multi(label: str, choices: list[str], defaults: Optional[list[str]] = None) -> list[str]:  # noqa: UP045
+def _prompt_multi(label: str, choices: list[str], defaults: list[str] | None = None) -> list[str]:
     default_str = ",".join(defaults) if defaults else ""
     suffix = f" [{', '.join(choices)}]"
     if default_str:

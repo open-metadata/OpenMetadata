@@ -14,7 +14,8 @@ Base class for the Auto Classification Processor.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Sequence, Type, TypeVar, cast, final  # noqa: UP035
+from collections.abc import Sequence
+from typing import Any, TypeVar, cast, final
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -80,10 +81,10 @@ class AutoClassificationProcessor(Processor, ABC):
     @classmethod
     @final
     def create(
-        cls: Type[C],  # noqa: UP006
+        cls: type[C],
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> C:
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
