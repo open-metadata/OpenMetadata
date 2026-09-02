@@ -11,7 +11,6 @@
 """Unit tests for Doris connection handling."""
 
 import pytest
-from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy import Column, Integer, MetaData, Table, select
 
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
@@ -24,6 +23,17 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.doris.connection import DorisConnection
 
 
+@pytest.fixture
+def doris_connection_config() -> DorisConnectionConfig:
+    return DorisConnectionConfig(
+        username="openmetadata_user",
+        password="openmetadata_password",
+        hostPort="localhost:9030",
+        databaseSchema="openmetadata_db",
+        scheme=DorisScheme.doris,
+    )
+
+
 def test_doris_connection_is_base_connection():
     assert issubclass(DorisConnection, BaseConnection)
 
@@ -32,7 +42,7 @@ def test_doris_connection_is_base_connection():
     "column_name",
     ["install", "uninstall", "account_lock", "tablet", "ordinary_column"],
 )
-def test_doris_identifiers_are_always_quoted(column_name: str):
+def test_doris_identifiers_are_always_quoted(column_name: str, doris_connection_config: DorisConnectionConfig):
     table = Table(
         "events",
         MetaData(),
@@ -40,22 +50,18 @@ def test_doris_identifiers_are_always_quoted(column_name: str):
         Column(column_name, Integer),
     )
 
-    query = str(select(table.c.id, table.c[column_name]).compile(dialect=DorisDialect()))
+    with DorisConnection(doris_connection_config) as owned:
+        query = str(select(table.c.id, table.c[column_name]).compile(dialect=owned.client.dialect))
 
     assert "`events`.`id`" in query
     assert f"`events`.`{column_name}`" in query
     assert "FROM `events`" in query
 
 
-def test_basic_auth_builds_doris_engine():
-    connection = DorisConnectionConfig(
-        username="openmetadata_user",
-        password="openmetadata_password",
-        hostPort="localhost:9030",
-        databaseSchema="openmetadata_db",
-        scheme=DorisScheme.doris,
-    )
-    with DorisConnection(connection) as owned:
+def test_basic_auth_builds_doris_engine(
+    doris_connection_config: DorisConnectionConfig,
+):
+    with DorisConnection(doris_connection_config) as owned:
         assert owned.client.dialect.name == "pydoris"
         assert (
             owned.client.url.render_as_string(hide_password=False)

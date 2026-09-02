@@ -12,9 +12,8 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional, cast
 
-from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy.dialects.mysql.base import MySQLIdentifierPreparer
 from sqlalchemy.engine import Engine
 
@@ -35,6 +34,9 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine.default import DefaultDialect
+
 
 class DorisIdentifierPreparer(MySQLIdentifierPreparer):
     """Quote every identifier because Doris reserves more words than MySQL."""
@@ -43,15 +45,15 @@ class DorisIdentifierPreparer(MySQLIdentifierPreparer):
         return True
 
 
-DorisDialect.preparer = DorisIdentifierPreparer
-
-
 class DorisConnection(BaseConnection[DorisConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         """
         Return the SQLAlchemy Engine for Doris.
         """
-        return BasicAuthStrategy(self.service_connection).build()
+        engine = BasicAuthStrategy(self.service_connection).build()
+        dialect = cast("DefaultDialect", engine.dialect)
+        engine.dialect.identifier_preparer = DorisIdentifierPreparer(dialect)
+        return engine
 
     def test_connection(
         self,
