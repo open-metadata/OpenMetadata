@@ -550,10 +550,6 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 };
 
 export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
-  // After the previous editor closes, Ant Design's FocusTrap unmount can move
-  // focus away from the rdg cell. Re-focus the active cell so the Enter press
-  // reliably opens the cell editor.
-  await page.locator('[role="gridcell"][tabindex="0"]').focus();
   await page.keyboard.press('Enter', { delay: 100 });
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
@@ -609,12 +605,7 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  // Press Enter directly on the aria-selected cell. locator.press() focuses the
-  // element at the CDP level before dispatching the key — this is atomic and
-  // bypasses Ant Design FocusTrap's restoreFocus(), which may fire
-  // asynchronously after selectActiveRowCellByColumn and move browser focus
-  // away from the grid before page.keyboard.press() could run.
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter');
+  await page.keyboard.press('Enter', { delay: 100 });
 
   const tagSelectorInput = page
     .locator('[data-testid="tag-selector"] input')
