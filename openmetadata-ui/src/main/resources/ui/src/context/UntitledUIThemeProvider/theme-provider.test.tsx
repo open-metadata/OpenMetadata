@@ -20,6 +20,12 @@ const ThemeProbe = () => {
   return (
     <>
       <span data-testid="active-theme">{theme}</span>
+      <span data-testid="theme-class-ready">
+        {String(
+          document.documentElement.classList.contains('dark-mode') ===
+            (theme === 'dark')
+        )}
+      </span>
       <button type="button" onClick={() => setTheme('dark')}>
         Use dark theme
       </button>
@@ -117,5 +123,32 @@ describe('ThemeProvider', () => {
 
     expect(localStorage.getItem('ui-theme')).toBe('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
+  });
+
+  it('applies the root class before theme consumers render', () => {
+    setSystemTheme('light');
+    renderProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(screen.getByTestId('theme-class-ready')).toHaveTextContent('true');
+  });
+
+  it('applies a stored theme before consumers initially render', () => {
+    localStorage.setItem('ui-theme', 'dark');
+
+    renderProvider();
+
+    expect(screen.getByTestId('theme-class-ready')).toHaveTextContent('true');
+  });
+
+  it('does not rewrite a root class that already matches the stored theme', () => {
+    localStorage.setItem('ui-theme', 'dark');
+    document.documentElement.classList.add('dark-mode');
+    const toggleSpy = jest.spyOn(document.documentElement.classList, 'toggle');
+
+    renderProvider();
+
+    expect(toggleSpy).not.toHaveBeenCalled();
   });
 });

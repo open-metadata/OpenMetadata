@@ -52,6 +52,22 @@ const getSystemTheme = (): Theme | null => {
   return globalThis.matchMedia(SYSTEM_THEME_QUERY).matches ? 'dark' : 'light';
 };
 
+const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
+  if (typeof globalThis.document === 'undefined') {
+    return;
+  }
+
+  const root = globalThis.document.documentElement;
+  const shouldUseDarkMode = theme === 'dark';
+
+  if (root.classList.contains(darkModeClass) !== shouldUseDarkMode) {
+    root.classList.toggle(darkModeClass, shouldUseDarkMode);
+  }
+  if (root.style.colorScheme !== theme) {
+    root.style.colorScheme = theme;
+  }
+};
+
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
 
@@ -242,18 +258,22 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
 
 const clearBrandCssVars = (root: HTMLElement) => {
   const allSet = Array.from(root.style);
+  const brandTokenGroups = [
+    'brand',
+    'error',
+    'success',
+    'warning',
+    'info',
+    'blue',
+  ];
+
   allSet
     .filter(
-      (p) =>
-        p.startsWith('--tw-') &&
-        (p.includes('brand') ||
-          p.includes('error') ||
-          p.includes('success') ||
-          p.includes('warning') ||
-          p.includes('info') ||
-          p.includes('blue'))
+      (property) =>
+        property.startsWith('--tw-') &&
+        brandTokenGroups.some((group) => property.includes(group))
     )
-    .forEach((p) => root.style.removeProperty(p));
+    .forEach((property) => root.style.removeProperty(property));
 };
 
 export const ThemeProvider = ({
@@ -263,9 +283,25 @@ export const ThemeProvider = ({
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setThemeState] = useState<Theme>(
-    () => getStoredTheme(storageKey) ?? getSystemTheme() ?? defaultTheme
-  );
+  const {
+    primaryColor,
+    hoverColor,
+    selectedColor,
+    errorColor,
+    successColor,
+    warningColor,
+    infoColor,
+  } = brandColors ?? {};
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const initialTheme =
+      getStoredTheme(storageKey) ?? getSystemTheme() ?? defaultTheme;
+
+    // This render-phase write is deliberate: canvas consumers resolve CSS tokens
+    // before effects run, and applyThemeToRoot skips DOM writes when already synced.
+    applyThemeToRoot(initialTheme, darkModeClass);
+
+    return initialTheme;
+  });
 
   const setTheme = useCallback(
     (nextTheme: Theme) => {
@@ -274,16 +310,16 @@ export const ThemeProvider = ({
       if (typeof globalThis.localStorage !== 'undefined') {
         localStorage.setItem(storageKey, nextTheme);
       }
+      // Canvas consumers resolve CSS tokens during the context update, so the
+      // cascade must already represent the next theme when they render.
+      applyThemeToRoot(nextTheme, darkModeClass);
       setThemeState(nextTheme);
     },
-    [storageKey]
+    [darkModeClass, storageKey]
   );
 
   useEffect(() => {
-    const root = globalThis.document.documentElement;
-
-    root.classList.toggle(darkModeClass, theme === 'dark');
-    root.style.colorScheme = theme;
+    applyThemeToRoot(theme, darkModeClass);
   }, [theme, darkModeClass]);
 
   useEffect(() => {
@@ -299,30 +335,42 @@ export const ThemeProvider = ({
         return;
       }
 
-      setThemeState(event.matches ? 'dark' : 'light');
+      const nextTheme = event.matches ? 'dark' : 'light';
+
+      applyThemeToRoot(nextTheme, darkModeClass);
+      setThemeState(nextTheme);
     };
 
     systemTheme.addEventListener('change', handleSystemThemeChange);
 
     return () =>
       systemTheme.removeEventListener('change', handleSystemThemeChange);
-  }, [storageKey]);
+  }, [darkModeClass, storageKey]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
+    const activeBrandColors = {
+      primaryColor,
+      hoverColor,
+      selectedColor,
+      errorColor,
+      successColor,
+      warningColor,
+      infoColor,
+    };
 
     clearBrandCssVars(root);
-    if (brandColors && Object.values(brandColors).some(Boolean)) {
-      applyBrandCssVars(brandColors, root);
+    if (Object.values(activeBrandColors).some(Boolean)) {
+      applyBrandCssVars(activeBrandColors, root);
     }
   }, [
-    brandColors?.primaryColor,
-    brandColors?.hoverColor,
-    brandColors?.selectedColor,
-    brandColors?.errorColor,
-    brandColors?.successColor,
-    brandColors?.warningColor,
-    brandColors?.infoColor,
+    primaryColor,
+    hoverColor,
+    selectedColor,
+    errorColor,
+    successColor,
+    warningColor,
+    infoColor,
   ]);
 
   const values = useMemo(
