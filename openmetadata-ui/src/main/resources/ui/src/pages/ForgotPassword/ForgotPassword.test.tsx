@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
@@ -25,7 +25,7 @@ const mockHandleError = jest.fn().mockImplementation(() => {
   });
 });
 
-jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/BasicAuthContext', () => {
   return {
     useBasicAuth: jest.fn().mockImplementation(() => ({
       handleForgotPassword: mockHandleForgotPassword,

@@ -23,8 +23,9 @@ const loginWithRedirect = jest.fn().mockImplementation(() => Promise.resolve());
 const mockGetAccessTokenSilently = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
-const mockGetIdTokenClaims = jest.fn(() =>
-  Promise.resolve({ __raw: 'mock-id-token' })
+const mockGetIdTokenClaims = jest.fn(
+  (): Promise<{ __raw: string; exp?: number } | undefined> =>
+    Promise.resolve({ __raw: 'mock-id-token' })
 );
 const logout = jest.fn();
 
@@ -46,14 +47,11 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
-const updateRenewToken = jest.fn();
+const registerRenewer = jest.fn();
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({
-      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
-    }),
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
   },
 }));
 
@@ -150,23 +148,49 @@ describe('Auth0Authenticator', () => {
     );
   });
 
-  // Regression: renewer registration now lives here instead of in the
-  // parent AuthProvider's ref-deps useEffect.
-  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
-    const { unmount } = render(
-      <Auth0Authenticator ref={null}>
-        <div>Child</div>
-      </Auth0Authenticator>
-    );
+  describe('getRenewer', () => {
+    it('should return a fresh idToken and expiresAt (ms) on success', async () => {
+      const exp = Math.floor(Date.now() / 1000) + 300;
+      mockGetIdTokenClaims.mockImplementationOnce(() =>
+        Promise.resolve({ __raw: 'auth0-fresh-token', exp })
+      );
+      const ref = createRef<AuthenticatorRef>();
+      render(
+        <Auth0Authenticator ref={ref}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
 
-    expect(updateRenewToken).toHaveBeenCalled();
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
-    const registered = updateRenewToken.mock.calls[0][0];
+      expect(renewer).toBeDefined();
 
-    expect(typeof registered).toBe('function');
+      const result = await renewer?.();
 
-    unmount();
+      expect(mockGetAccessTokenSilently).toHaveBeenCalled();
+      expect(mockGetIdTokenClaims).toHaveBeenCalled();
+      expect(result).toEqual({
+        idToken: 'auth0-fresh-token',
+        expiresAt: exp * 1000,
+      });
+    });
 
-    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
+    it('should throw when claims have no __raw token', async () => {
+      mockGetIdTokenClaims.mockImplementationOnce(() =>
+        Promise.resolve(undefined)
+      );
+      const ref = createRef<AuthenticatorRef>();
+      render(
+        <Auth0Authenticator ref={ref}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toThrow(
+        'Auth0 renewal returned no idToken'
+      );
+    });
   });
 });

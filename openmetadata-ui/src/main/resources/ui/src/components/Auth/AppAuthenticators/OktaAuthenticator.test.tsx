@@ -25,17 +25,6 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
-const updateRenewToken = jest.fn();
-
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({
-      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
-    }),
-  },
-}));
-
 jest.mock('../../../utils/OktaCustomStorage', () => ({
   OktaCustomStorage: jest.fn().mockImplementation(() => ({
     waitForInit: jest.fn().mockResolvedValue(undefined),
@@ -43,6 +32,14 @@ jest.mock('../../../utils/OktaCustomStorage', () => ({
     setItem: jest.fn(),
     removeItem: jest.fn(),
   })),
+}));
+
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
 }));
 
 const mockHandleSuccessfulLogout = jest.fn();
@@ -291,25 +288,56 @@ describe('OktaAuthenticator', () => {
     });
   });
 
-  // Regression: renewer registration now lives here instead of in the
-  // parent AuthProvider's ref-deps useEffect.
-  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
-    (useOktaAuth as jest.Mock).mockReturnValue({ oktaAuth: mockOktaAuth });
-    const { unmount } = render(
-      <OktaAuthenticator
-        {...mockProps}
-        ref={(ref) => (authenticatorRef = ref)}
-      />
-    );
+  describe('getRenewer', () => {
+    it('should return a fresh idToken and expiresAt (ms) on success', async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 300;
+      const renewedTokens = {
+        idToken: { idToken: 'okta-fresh-token', expiresAt },
+        accessToken: { accessToken: 'okta-access-token' },
+      };
+      mockOktaAuth.token.renewTokens.mockResolvedValueOnce(renewedTokens);
 
-    expect(updateRenewToken).toHaveBeenCalled();
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
 
-    const registered = updateRenewToken.mock.calls[0][0];
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
-    expect(typeof registered).toBe('function');
+      expect(renewer).toBeDefined();
 
-    unmount();
+      const result = await renewer?.();
 
-    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
+      expect(mockOktaAuth.token.renewTokens).toHaveBeenCalledTimes(1);
+      expect(mockOktaAuth.tokenManager.setTokens).toHaveBeenCalledWith(
+        renewedTokens
+      );
+      expect(result).toEqual({
+        idToken: 'okta-fresh-token',
+        expiresAt: expiresAt * 1000,
+      });
+    });
+
+    it('should throw when renewTokens returns no idToken', async () => {
+      mockOktaAuth.token.renewTokens.mockResolvedValueOnce({
+        idToken: undefined,
+        accessToken: { accessToken: 'okta-access-token' },
+      });
+
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toThrow(
+        'Okta renewal returned no idToken'
+      );
+    });
   });
 });

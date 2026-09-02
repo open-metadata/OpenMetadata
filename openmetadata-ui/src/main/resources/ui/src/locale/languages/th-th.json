@@ -3266,6 +3266,7 @@
     "attribute-name-already-exists": "มีคุณสมบัติชื่อนี้อยู่แล้วในแนวคิดนี้",
     "audio-playback-not-supported": "บราวเซอร์ของคุณไม่สนับสนุนการเล่นเสียง",
     "auth-configuration-missing": "การตั้งค่าการรับรองสิทธิ์ขาดหายไป",
+    "auth-configuration-missing-fields": "Authentication configuration is missing required fields: {{fields}}. Ask an admin to fix the SSO configuration.",
     "auth-single-credential-stored": "Only the <0>{{method}}</0> credential is stored. Switching methods discards the other.",
     "authProvider-is-not-basic": "AuthProvider ไม่ใช่ Basic",
     "authentication-doc-description": "A connection authenticates with exactly one credential. Choosing a method hides and clears the other, so you cannot accidentally submit both.",

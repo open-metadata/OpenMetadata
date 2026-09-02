@@ -21,7 +21,8 @@ import {
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
@@ -46,12 +47,31 @@ export const GenericAuthenticator = forwardRef(
       }
     };
 
-    const handleSilentSignIn = useCallback(async () => {
+    const handleSilentSignIn = async () => {
       const resp = await renewToken();
       await setOidcToken(resp.accessToken);
 
       return resp;
-    }, []);
+    };
+
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 8). Kept alongside handleSilentSignIn/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const response = await renewToken();
+        if (!response?.accessToken) {
+          throw new Error('Renew endpoint returned no accessToken');
+        }
+        const decoded = extractDetailsFromToken(response.accessToken);
+
+        return {
+          idToken: response.accessToken,
+          expiresAt: (decoded.exp ?? 0) * 1000,
+        };
+      },
+      []
+    );
 
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
@@ -59,15 +79,13 @@ export const GenericAuthenticator = forwardRef(
       invokeLogin: handleLogin,
     }));
 
-    // Register the renewer with TokenService from this authenticator's own
-    // mount effect (see BasicAuthAuthenticator for the full rationale) —
-    // avoids the ref-deps race in the parent that hangs cold-load 401s on
-    // confidential / SAML flows.
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
     useEffect(() => {
-      TokenService.getInstance().updateRenewToken(handleSilentSignIn);
+      authCoordinator.registerRenewer(getRenewer());
 
-      return () => TokenService.getInstance().updateRenewToken(null);
-    }, [handleSilentSignIn]);
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

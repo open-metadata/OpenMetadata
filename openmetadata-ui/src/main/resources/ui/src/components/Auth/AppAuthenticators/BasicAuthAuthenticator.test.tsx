@@ -21,18 +21,15 @@ const getAccessTokenOnExpiry = jest.fn();
 const getRefreshToken = jest.fn();
 const setOidcToken = jest.fn();
 const setRefreshToken = jest.fn();
-const updateRenewToken = jest.fn();
+const registerRenewer = jest.fn();
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({
-      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
-    }),
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
   },
 }));
 
-jest.mock('../AuthProviders/BasicAuthProvider', () => ({
+jest.mock('../AuthProviders/BasicAuthContext', () => ({
   useBasicAuth: () => ({ handleLogout }),
 }));
 
@@ -57,6 +54,15 @@ jest.mock('../../common/Loader/Loader', () => () => (
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import BasicAuthenticator from './BasicAuthAuthenticator';
+
+// Builds a structurally-valid (unsigned) JWT so extractDetailsFromToken's
+// jwt-decode call can read a real `exp` claim out of the payload segment.
+const buildFakeJwt = (expSeconds: number) => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.signature`;
+};
 
 describe('BasicAuthenticator', () => {
   beforeEach(() => {
@@ -173,13 +179,49 @@ describe('BasicAuthenticator', () => {
     expect(result).toEqual(response);
   });
 
-  // Regression: the parent AuthProvider used to register the renewer via a
-  // ref-deps useEffect (`[authenticatorRef.current?.renewIdToken]`), which
-  // never re-ran after the lazy authenticator finished loading — cold-load
-  // 401s raced ahead and TokenService.refreshToken() returned null without
-  // ever firing the `/api/v1/auth/refresh` HTTP call. Registration now
-  // lives in each authenticator's own mount effect.
-  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
+  it('registers a renewer with AuthCoordinator on mount that resolves {idToken, expiresAt} from getAccessTokenOnExpiry', async () => {
+    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
+      isApplicationLoading: false,
+      authConfig: { provider: AuthProvider.Basic },
+    });
+    const expSeconds = Math.floor(Date.now() / 1000) + 3600;
+    const accessToken = buildFakeJwt(expSeconds);
+    const response: AccessTokenResponse = {
+      accessToken,
+      refreshToken: 'new-refresh-token',
+      tokenType: 'Bearer',
+      expiryDuration: 3600,
+      email: 'test@example.com',
+    };
+    getAccessTokenOnExpiry.mockResolvedValue(response);
+    render(
+      <BasicAuthenticator ref={null}>
+        <div>Child</div>
+      </BasicAuthenticator>
+    );
+
+    // The authenticator's mount effect must have registered a Renewer
+    // function (not undefined, not null) with the coordinator.
+    expect(registerRenewer).toHaveBeenCalled();
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    expect(typeof registered).toBe('function');
+
+    let result: { idToken: string; expiresAt: number } | undefined;
+    await act(async () => {
+      result = await registered();
+    });
+
+    expect(getAccessTokenOnExpiry).toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: accessToken,
+      expiresAt: expSeconds * 1000,
+    });
+    expect(result?.expiresAt).toBeGreaterThan(Date.now());
+  });
+
+  it('unregisters the renewer on unmount', () => {
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       isApplicationLoading: false,
       authConfig: { provider: AuthProvider.Basic },
@@ -190,14 +232,11 @@ describe('BasicAuthenticator', () => {
       </BasicAuthenticator>
     );
 
-    expect(updateRenewToken).toHaveBeenCalled();
-
-    const registered = updateRenewToken.mock.calls[0][0];
-
-    expect(typeof registered).toBe('function');
-
     unmount();
 
-    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
+    // The cleanup path calls registerRenewer(null) so a later authenticator
+    // (or the coordinator's own "no renewer" state) is not shadowed by a
+    // stale one after this component is torn down.
+    expect(registerRenewer).toHaveBeenCalledWith(null);
   });
 });

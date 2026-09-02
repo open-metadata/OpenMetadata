@@ -620,6 +620,49 @@ services:
     profiles:
       - sso-test
 
+  # OpenLDAP directory used by the LDAP SSO Playwright fixture. Seeded from
+  # ./openldap/bootstrap.ldif — one org + one authenticatable test user.
+  #
+  # OPT-IN ONLY (see `profiles:` at the bottom of this block). A bare
+  # `docker compose up` does NOT start this service — it is inert unless
+  # you opt into it explicitly:
+  #
+  #     docker compose --profile sso-playwright up openldap    # ad-hoc
+  #     COMPOSE_PROFILES=sso-playwright docker compose up      # session-wide
+  #
+  # The SSO Playwright leg passes the profile flag; nothing else does.
+  openldap:
+    # bitnami/openldap:2.6.7 was removed from the primary Docker Hub org
+    # after Bitnami moved older tags to `bitnamilegacy`. Point at that
+    # namespace so `docker pull` still succeeds in CI without a version
+    # bump.
+    image: bitnamilegacy/openldap:2.6.7
+    container_name: openmetadata_openldap
+    environment:
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: adminpassword
+      LDAP_ROOT: dc=openmetadata,dc=org
+      LDAP_CUSTOM_LDIF_DIR: /ldifs
+    expose:
+      - 1389
+    ports:
+      - "1389:1389"
+    volumes:
+      - ./openldap/bootstrap.ldif:/ldifs/bootstrap.ldif:ro
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:1389 -b dc=openmetadata,dc=org 'uid=ldapuser' >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # ── OPT-IN GATE ─────────────────────────────────────────────────────
+    # Docker Compose skips any service that declares a profile unless that
+    # profile is explicitly enabled at CLI time. So this container is
+    # inert on a default stack boot.
+    profiles:
+      - sso-playwright
+    networks:
+      - local_app_net
+
   # Apache Jena Fuseki triplestore for the optional RDF/SPARQL backend (ontology
   # round-trip, semantic search). Start with `--profile rdf` and set RDF_ENABLED=true.
   # The glossary RDF import works without this; it only adds the transparent triplestore.

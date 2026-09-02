@@ -3266,6 +3266,7 @@
     "attribute-name-already-exists": "Ya existe una propiedad con este nombre en este concepto.",
     "audio-playback-not-supported": "La reproducción de audio no está soportada",
     "auth-configuration-missing": "Falta la configuración de autenticación",
+    "auth-configuration-missing-fields": "Authentication configuration is missing required fields: {{fields}}. Ask an admin to fix the SSO configuration.",
     "auth-single-credential-stored": "Only the <0>{{method}}</0> credential is stored. Switching methods discards the other.",
     "authProvider-is-not-basic": "el AuthProvider no es básico",
     "authentication-doc-description": "A connection authenticates with exactly one credential. Choosing a method hides and clears the other, so you cannot accidentally submit both.",
