@@ -322,7 +322,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          'pets'
+          'pets',
+          undefined
         );
       });
     });
@@ -347,7 +348,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -377,7 +379,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -413,7 +416,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           50,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -443,7 +447,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -481,7 +486,89 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          'tier.tagFQN'
+        );
+      });
+    });
+
+    it('should derive sourceFields from the shared map for a field that omits it', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      const glossaryFields: ExploreQuickFilterField[] = [
+        { label: 'Glossary Term', key: 'glossaryTags', value: undefined },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={undefined}
+          fields={glossaryFields}
+        />
+      );
+
+      await act(async () => {
+        userEvent.click(screen.getByTestId('onGetInitialOptions-glossaryTags'));
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'glossaryTags',
+          '',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          'glossaryTags'
+        );
+      });
+    });
+
+    it('should prefer the sourceFields pinned on the field over the shared map', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      const pinnedFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Owner',
+          key: 'ownerDisplayName',
+          sourceFields: 'owners.displayName',
+          value: undefined,
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={undefined}
+          fields={pinnedFields}
+        />
+      );
+
+      await act(async () => {
+        userEvent.click(
+          screen.getByTestId('onGetInitialOptions-ownerDisplayName')
+        );
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'ownerDisplayName',
+          '',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          'owners.displayName'
         );
       });
     });
@@ -529,7 +616,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -558,7 +646,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           true,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -685,7 +774,8 @@ describe('ExploreQuickFilters component', () => {
           expect.anything(),
           undefined,
           expect.anything(),
-          expect.any(String)
+          expect.any(String),
+          undefined
         );
       });
     });
@@ -720,7 +810,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -844,7 +935,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -874,7 +966,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -905,7 +998,8 @@ describe('ExploreQuickFilters component', () => {
           true,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
