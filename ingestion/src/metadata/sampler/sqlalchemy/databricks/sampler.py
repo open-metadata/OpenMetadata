@@ -11,6 +11,7 @@
 """
 Helper module to handle data sampling for the profiler
 """
+
 from typing import Any, cast
 
 from sqlalchemy import Column, event, text
