@@ -7264,26 +7264,7 @@ public class WorkflowDefinitionResourceIT {
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
     LOG.debug("Created database schema: {}", dbSchema.getName());
 
-    // Step 3: Create test table with owner
-    LOG.debug("Creating test table with owner assignment");
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName(ns.prefix("test_approval_table"))
-            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Test table for comprehensive workflow assignment testing")
-            .withOwners(List.of(ownerUser.getEntityReference()))
-            .withColumns(
-                List.of(
-                    new Column().withName("id").withDataType(ColumnDataType.INT),
-                    new Column().withName("name").withDataType(ColumnDataType.STRING),
-                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
-
-    Table testTable = client.tables().create(createTable);
-    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
-    String tableEntityLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
-
-    // Step 4: Create comprehensive workflow with all assignment types
+    // Step 3: Create comprehensive workflow with all assignment types
     LOG.debug("Creating workflow with reviewers, owners, and candidates assignment");
 
     String workflowJson =
@@ -7391,6 +7372,25 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("Created comprehensive workflow: {}", workflowId);
 
     waitForWorkflowDeployment(client, "TableApprovalWorkflow");
+
+    // Step 4: Create the table only after the workflow can consume its creation event
+    LOG.debug("Creating test table with owner assignment");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("test_approval_table"))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Test table for comprehensive workflow assignment testing")
+            .withOwners(List.of(ownerUser.getEntityReference()))
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING),
+                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
+
+    Table testTable = client.tables().create(createTable);
+    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
+    String tableEntityLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
 
     // Step 5: Wait for initial workflow processing (table creation event)
     LOG.info("Waiting for workflow to process table creation...");
@@ -7657,26 +7657,7 @@ public class WorkflowDefinitionResourceIT {
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
     LOG.debug("Created database schema: {}", dbSchema.getName());
 
-    // Step 4: Create test table with owner
-    LOG.debug("Creating test table with owner assignment");
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName(ns.prefix("test_team_approval_table"))
-            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Test table for team-based workflow assignment testing")
-            .withOwners(List.of(ownerUser.getEntityReference()))
-            .withColumns(
-                List.of(
-                    new Column().withName("id").withDataType(ColumnDataType.INT),
-                    new Column().withName("name").withDataType(ColumnDataType.STRING),
-                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
-
-    Table testTable = client.tables().create(createTable);
-    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
-    String tableEntityLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
-
-    // Step 5: Create team-based workflow
+    // Step 4: Create team-based workflow
     LOG.debug("Creating workflow with team candidates assignment");
 
     String workflowJson =
@@ -7771,6 +7752,25 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("Created team workflow: {}", workflowId);
 
     waitForWorkflowDeployment(client, "TeamApprovalWorkflow");
+
+    // Step 5: Create the table only after the workflow can consume its creation event
+    LOG.debug("Creating test table with owner assignment");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("test_team_approval_table"))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Test table for team-based workflow assignment testing")
+            .withOwners(List.of(ownerUser.getEntityReference()))
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING),
+                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
+
+    Table testTable = client.tables().create(createTable);
+    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
+    String tableEntityLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
 
     // Step 6: Wait for initial workflow processing (table creation event)
     LOG.info("Waiting for workflow to process table creation...");
