@@ -100,6 +100,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onKeyDown={onKeyDown}
       />
     )),
+    Label: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
     PasswordInput: forwardRef<HTMLInputElement, { 'data-testid'?: string }>(
       ({ 'data-testid': dataTestId }, ref) => (
         <input
@@ -333,6 +334,7 @@ describe('DestinationConfigField', () => {
       'alerts'
     );
     expect(screen.getByTestId('http-method-0')).toBeInTheDocument();
+    expect(screen.getByText('label.http-method:')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('add-header-button-0'));
 

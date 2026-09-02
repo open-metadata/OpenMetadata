@@ -21,6 +21,7 @@ import {
   Button,
   Grid,
   Input,
+  Label,
   PasswordInput,
   RadioButton,
   RadioGroup,
@@ -546,19 +547,22 @@ function DestinationConfigField({
                       name={`destinations.${fieldName}.config.httpMethod`}
                       render={({ field }) => (
                         <RadioGroup
-                          className="tw:flex tw:gap-4"
+                          className="tw:flex tw:flex-col tw:gap-1.5"
                           data-testid={`http-method-${fieldName}`}
                           isDisabled={isViewMode}
                           value={field.value ?? HTTPMethod.Post}
                           onChange={field.onChange}>
-                          <RadioButton
-                            label={HTTPMethod.Post}
-                            value={HTTPMethod.Post}
-                          />
-                          <RadioButton
-                            label={HTTPMethod.Put}
-                            value={HTTPMethod.Put}
-                          />
+                          <Label>{`${t('label.http-method')}:`}</Label>
+                          <div className="tw:flex tw:gap-4">
+                            <RadioButton
+                              label={HTTPMethod.Post}
+                              value={HTTPMethod.Post}
+                            />
+                            <RadioButton
+                              label={HTTPMethod.Put}
+                              value={HTTPMethod.Put}
+                            />
+                          </div>
                         </RadioGroup>
                       )}
                     />

@@ -200,7 +200,7 @@ describe('DestinationFormItemFormBridge', () => {
     });
 
     expect(
-      await screen.findByText('message.minimum-count-error')
+      await screen.findByText('message.length-validator-error')
     ).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
   });

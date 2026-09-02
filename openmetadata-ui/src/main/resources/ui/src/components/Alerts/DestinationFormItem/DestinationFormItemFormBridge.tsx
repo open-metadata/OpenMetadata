@@ -123,14 +123,10 @@ function DestinationFormItemFormBridge({
     const coreFormIsValid = await trigger();
     const isDestinationMissing =
       isRequired && isEmpty(getValues('destinations'));
-    const minimumDestinationError = t('message.minimum-count-error', {
+    const minimumDestinationError = t('message.length-validator-error', {
       field: t('label.destination'),
-      count: 1,
+      length: 1,
     });
-
-    if (!isDestinationMissing && coreFormIsValid) {
-      return;
-    }
 
     if (isDestinationMissing) {
       // Controlled bridge resets can clear child errors before the parent
@@ -139,9 +135,13 @@ function DestinationFormItemFormBridge({
         message: minimumDestinationError,
         type: 'manual',
       });
+
+      throw new Error(minimumDestinationError);
     }
 
-    throw new Error(minimumDestinationError);
+    if (!coreFormIsValid) {
+      throw new Error();
+    }
   }, [getValues, isRequired, setError, t, trigger]);
 
   return (

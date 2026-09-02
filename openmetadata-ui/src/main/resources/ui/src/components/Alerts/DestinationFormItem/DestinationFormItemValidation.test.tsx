@@ -44,13 +44,21 @@ const OAUTH_DESTINATION_VALUES: Partial<DestinationFormFields> = {
 };
 
 interface ValidationHarnessProps {
+  initialValues?: Partial<DestinationFormFields>;
   isRequired?: boolean;
   onFinish: jest.Mock;
 }
 
-function ValidationHarness({ isRequired, onFinish }: ValidationHarnessProps) {
-  const [values, setValues] = useState<Partial<DestinationFormFields>>({});
+function ValidationHarness({
+  initialValues,
+  isRequired,
+  onFinish,
+}: ValidationHarnessProps) {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>(
+    initialValues ?? {}
+  );
   const [isBlocked, setIsBlocked] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   return (
     <>
@@ -63,8 +71,9 @@ function ValidationHarness({ isRequired, onFinish }: ValidationHarnessProps) {
               try {
                 await validate();
                 onFinish();
-              } catch {
+              } catch (error) {
                 setIsBlocked(true);
+                setValidationError((error as Error).message);
               }
             }}>
             Save
@@ -74,6 +83,9 @@ function ValidationHarness({ isRequired, onFinish }: ValidationHarnessProps) {
         onChange={(nextValues) => setValues(nextValues)}
       />
       {isBlocked && <span>parent-form-blocked</span>}
+      <output data-testid="parent-validation-error">
+        {JSON.stringify(validationError)}
+      </output>
     </>
   );
 }
@@ -111,7 +123,7 @@ describe('DestinationFormItem validation', () => {
 
     await screen.findByText('parent-form-blocked');
 
-    expect(screen.getByText('message.minimum-count-error')).toHaveClass(
+    expect(screen.getByText('message.length-validator-error')).toHaveClass(
       'tw:text-error-primary'
     );
     expect(onFinish).not.toHaveBeenCalled();
@@ -126,8 +138,39 @@ describe('DestinationFormItem validation', () => {
     await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
 
     expect(
-      screen.queryByText('message.minimum-count-error')
+      screen.queryByText('message.length-validator-error')
     ).not.toBeInTheDocument();
+  });
+
+  it('does not report a missing destination when nested config is invalid', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              config: { endpoint: '' },
+              destinationType: SubscriptionType.Slack,
+              type: SubscriptionType.Slack,
+            },
+          ],
+        }}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('parent-form-blocked');
+
+    expect(screen.getByTestId('parent-validation-error')).not.toHaveTextContent(
+      'message.length-validator-error'
+    );
+    expect(screen.getByTestId('parent-validation-error')).not.toHaveTextContent(
+      'message.minimum-count-error'
+    );
+    expect(onFinish).not.toHaveBeenCalled();
   });
 
   it('keeps a destination input focused when the parent form echoes its value', async () => {
