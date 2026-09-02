@@ -17,6 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.NotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
@@ -41,8 +43,9 @@ import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public class EmailPublisher implements Destination<ChangeEvent> {
-  private final HandlebarsNotificationMessageEngine messageEngine;
+  private final NotificationMessageEngine messageEngine;
   private final EmailAlertConfig emailAlertConfig;
+  private final EmailSender emailSender;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -58,6 +61,24 @@ public class EmailPublisher implements Destination<ChangeEvent> {
           new HandlebarsNotificationMessageEngine(
               (NotificationTemplateRepository)
                   Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
+      this.emailSender = new DefaultEmailSender();
+    } else {
+      throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
+    }
+  }
+
+  EmailPublisher(
+      EventSubscription eventSubscription,
+      SubscriptionDestination subscriptionDestination,
+      NotificationMessageEngine messageEngine,
+      EmailSender emailSender) {
+    if (subscriptionDestination.getType() == EMAIL) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
+      this.emailAlertConfig =
+          JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
+      this.messageEngine = messageEngine;
+      this.emailSender = emailSender;
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
     }
@@ -66,7 +87,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
-    if (!Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer())) {
+    if (!emailSender.isEnabled()) {
       LOG.debug(
           "Skipping email notification for subscription [{}]: SMTP is not enabled",
           eventSubscription.getName());
@@ -86,11 +107,14 @@ public class EmailPublisher implements Destination<ChangeEvent> {
               .filter(Objects::nonNull)
               .collect(Collectors.toSet());
 
-      // Send email to each recipient
-      for (String receiver : receivers) {
-        EmailUtil.sendNotificationEmail(
-            receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
-      }
+      CompletableFuture.allOf(
+              receivers.stream()
+                  .map(
+                      receiver ->
+                          emailSender.send(
+                              receiver, emailMessage.getSubject(), emailMessage.getHtmlContent()))
+                  .toArray(CompletableFuture[]::new))
+          .join();
 
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
@@ -137,5 +161,23 @@ public class EmailPublisher implements Destination<ChangeEvent> {
 
   public void close() {
     LOG.debug("Email Publisher Stopped");
+  }
+
+  interface EmailSender {
+    boolean isEnabled();
+
+    CompletableFuture<Void> send(String to, String subject, String htmlContent);
+  }
+
+  private static final class DefaultEmailSender implements EmailSender {
+    @Override
+    public boolean isEnabled() {
+      return Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer());
+    }
+
+    @Override
+    public CompletableFuture<Void> send(String to, String subject, String htmlContent) {
+      return EmailUtil.sendNotificationEmailAsync(to, subject, htmlContent);
+    }
   }
 }

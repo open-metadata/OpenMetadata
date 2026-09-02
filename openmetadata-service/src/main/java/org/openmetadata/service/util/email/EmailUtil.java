@@ -52,6 +52,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -235,11 +236,16 @@ public class EmailUtil {
   }
 
   public static void sendMail(Email email, boolean async) {
+    sendMailWithResult(email, async);
+  }
+
+  private static CompletableFuture<Void> sendMailWithResult(Email email, boolean async) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
-      mailer.sendMail(email, async);
-    } else {
-      LOG.error("Mailer is not initialized or Smtp is not Enabled.");
+      return mailer.sendMail(email, async);
     }
+    String message = "Mailer is not initialized or Smtp is not Enabled.";
+    LOG.error(message);
+    return CompletableFuture.failedFuture(new IllegalStateException(message));
   }
 
   /**
@@ -251,6 +257,19 @@ public class EmailUtil {
    * @param htmlContent Pre-rendered HTML content (already processed by HandlebarsNotificationMessageEngine)
    */
   public static void sendNotificationEmail(String to, String subject, String htmlContent) {
+    sendNotificationEmailAsync(to, subject, htmlContent);
+  }
+
+  /**
+   * Send notification email and expose its asynchronous delivery result.
+   *
+   * @param to Recipient email address
+   * @param subject Email subject
+   * @param htmlContent Pre-rendered HTML content
+   * @return Future completed when SMTP delivery succeeds or fails
+   */
+  public static CompletableFuture<Void> sendNotificationEmailAsync(
+      String to, String subject, String htmlContent) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Email email =
           EmailBuilder.startingBlank()
@@ -260,9 +279,10 @@ public class EmailUtil {
               .withHTMLText(htmlContent)
               .buildEmail();
 
-      sendMail(email, true);
+      return sendMailWithResult(email, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, to);
+      return CompletableFuture.completedFuture(null);
     }
   }
 
