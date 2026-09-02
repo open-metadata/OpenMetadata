@@ -321,8 +321,14 @@ jobs:
           if [ -n "$MATCHES" ]; then
             echo "$MATCHES"
             echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
+            # Cap the value written to $GITHUB_OUTPUT: GitHub Actions' template
+            # evaluator OOMs when reading a step-output larger than ~32 KiB, so
+            # a runaway `MATCHES` (unbounded grep across all Playwright files)
+            # would take down the job's outputs block. head -c 16000 keeps
+            # every path here under the limit.
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$MATCHES" >> "$GITHUB_OUTPUT"
+            printf '%s' "$MATCHES" | head -c 16000 >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
             exit 1
           fi
@@ -357,8 +363,10 @@ jobs:
             cat /tmp/pw-guardrails.out
             # `|| true`: a grep matching nothing exits 1 under `bash -eo pipefail`.
             OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30) || true
+            # See the MATCHES block above for the 16 KiB cap rationale.
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$OUT" >> "$GITHUB_OUTPUT"
+            printf '%s' "$OUT" | head -c 16000 >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
             exit 1
           fi
@@ -380,8 +388,10 @@ jobs:
           yarn pretty:base --write $CHANGED_FILES || RC=$?
           if [ -n "$(git status --porcelain)" ]; then
             FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            # See the MATCHES block above for the 16 KiB cap rationale.
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$FILES" >> "$GITHUB_OUTPUT"
+            printf '%s' "$FILES" | head -c 16000 >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
             git checkout -- .
             git clean -fd
