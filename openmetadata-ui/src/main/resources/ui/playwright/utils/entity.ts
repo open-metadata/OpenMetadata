@@ -1141,7 +1141,7 @@ export const closeColumnDetailPanel = async (
   }
   // 3. After URL has settled, verify the panel is still not visible.
   await expect(page.locator('.column-detail-panel')).not.toBeVisible();
-}
+};
 
 export const assignGlossaryTermToChildren = async ({
   page,
