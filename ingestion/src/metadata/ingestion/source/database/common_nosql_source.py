@@ -14,7 +14,8 @@ Common NoSQL source methods.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -134,7 +135,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.register_record_database_request(database_request=database_request)
 
     @abstractmethod
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -197,7 +198,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources if views are supported by the database.
         """
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         """
         Handle table and views.
 
@@ -241,7 +242,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict] | dict:
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -252,11 +253,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         db_name: str,
         schema_name: str,
         table_name: str,
-    ) -> Optional[List[TableConstraint]]:  # noqa: UP006, UP045
+    ) -> list[TableConstraint] | None:
         # pylint: disable=unused-argument
         return None
 
-    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:  # noqa: UP006
+    def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         """
         Method to return all columns of a table
         """
@@ -266,7 +267,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         column_parser = DataFrameColumnParser.create(df)
         return column_parser.get_columns()
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -328,11 +329,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        table_type: Optional[TableType] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+        table_type: TableType | None = None,
+    ) -> str | None:
         """
         By default the source url is not supported for
         """

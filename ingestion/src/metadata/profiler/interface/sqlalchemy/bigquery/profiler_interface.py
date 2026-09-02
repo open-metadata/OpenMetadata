@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from copy import deepcopy
-from typing import List, Type, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column, inspect
 
@@ -48,13 +48,13 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],  # noqa: UP006
+        metrics: type[System],
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:  # noqa: UP006
+    ) -> list[SystemProfile]:
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(Type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
+        self.system_metrics_class = cast(type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,

@@ -15,7 +15,7 @@ REST Auth & Client for QlikCloud
 import json
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
     QlikCloudConnection,
@@ -97,7 +97,7 @@ class QlikCloudClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:  # noqa: UP006, UP045
+    def _websocket_send_request(self, request: dict, response: bool = False) -> dict | None:
         """
         Method to send request to websocket
 
@@ -110,7 +110,7 @@ class QlikCloudClient:
             return json.loads(resp)
         return None
 
-    def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:  # noqa: UP006
+    def get_dashboard_charts(self, dashboard_id: str) -> list[QlikSheet]:
         """
         Get dashboard chart list
         """
@@ -152,7 +152,7 @@ class QlikCloudClient:
             resp = QlikAppResponse(**resp_apps)
             return list(resp.apps)
 
-    def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikApp]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard_id: str) -> QlikApp | None:
         """
         Get App Details
         """
@@ -167,7 +167,7 @@ class QlikCloudClient:
             logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
-    def get_dashboard_models(self) -> List[QlikTable]:  # noqa: UP006
+    def get_dashboard_models(self) -> list[QlikTable]:
         """
         Get dashboard data models
         """
@@ -216,7 +216,7 @@ class QlikCloudClient:
             logger.debug(traceback.format_exc())
             logger.error("Failed to fetch the space list")
 
-    def get_script_tables(self) -> Optional[List[QlikTable]]:  # noqa: UP006, UP045
+    def get_script_tables(self) -> list[QlikTable] | None:
         """Get script tables from the dashboard script"""
         script_tables = []
         try:
@@ -237,7 +237,7 @@ class QlikCloudClient:
             logger.error("Failed to fetch the script tables")
         return script_tables
 
-    def get_data_files(self) -> List[QlikDataFile]:  # noqa: UP006
+    def get_data_files(self) -> list[QlikDataFile]:
         """Get data files from the Qlik API"""
         data_files = []
         try:
