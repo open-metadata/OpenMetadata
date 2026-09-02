@@ -40,42 +40,43 @@
  */
 
 import {
-  Button,
-  Dropdown,
-  EmptyPlaceholder,
-  PaginationCardWithControls,
-  Table as UntitledTable,
-  Typography,
+    Button,
+    Dropdown,
+    EmptyPlaceholder,
+    PaginationCardWithControls,
+    Table as UntitledTable,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import type { ComponentProps } from 'react';
 import React, {
-  forwardRef,
-  ReactElement,
-  ReactNode,
-  Ref,
-  RefAttributes,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    forwardRef,
+    ReactElement,
+    ReactNode,
+    Ref,
+    RefAttributes,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import {
-  Button as AriaButton,
-  ColumnResizer,
-  Dialog,
-  DialogTrigger,
-  Popover,
-  ResizableTableContainer,
+    Button as AriaButton,
+    ColumnResizer,
+    Dialog,
+    DialogTrigger,
+    Popover,
+    ResizableTableContainer
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
-  getCustomizeColumnDetails,
-  getReorderedColumns,
+    getCustomizeColumnDetails,
+    getReorderedColumns
 } from '../../../utils/CustomizeColumnUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -84,28 +85,28 @@ import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
 import type {
-  ColumnsType,
-  ColumnType,
-  FilterValue,
-  SorterResult,
-  TableCurrentDataSource,
-  TablePaginationConfig,
+    ColumnsType,
+    ColumnType,
+    FilterValue,
+    SorterResult,
+    TableCurrentDataSource,
+    TablePaginationConfig
 } from './Table.interface';
 import {
-  TableColumnDropdownList,
-  TableComponentProps,
+    TableColumnDropdownList,
+    TableComponentProps
 } from './Table.interface';
 import './table.less';
 import type {
-  AriaSelection,
-  AriaSortDescriptor,
-  FlatRow,
+    AriaSelection,
+    AriaSortDescriptor,
+    FlatRow
 } from './TableV2.interface';
 import {
-  flattenTreeRows,
-  getColumnStickyStyle,
-  resolveCellValue,
-  resolveColumnTitle,
+    flattenTreeRows,
+    getColumnStickyStyle,
+    resolveCellValue,
+    resolveColumnTitle
 } from './TableV2Utils';
 
 /**
@@ -464,6 +465,76 @@ const TableV2 = <T extends object>(
   const [filterState, setFilterState] = useState<Record<string, React.Key[]>>(
     {}
   );
+
+  /**
+   * AntD's controlled filters: a column carrying `filteredValue` owns its
+   * filter state — the internal map is only a draft for the open dropdown.
+   * `null` means "controlled and empty"; `undefined` leaves the column
+   * uncontrolled. Keyed the same way `filterState` is.
+   */
+  const controlledFilterState = useMemo((): Record<
+    string,
+    React.Key[] | undefined
+  > => {
+    const entries: Record<string, React.Key[] | undefined> = {};
+    (rest.columns ?? []).forEach((col, idx) => {
+      const c = col as ColumnType<T>;
+      if (c.filteredValue !== undefined) {
+        entries[String(c.key ?? c.dataIndex ?? idx)] = (c.filteredValue ??
+          []) as React.Key[];
+      }
+    });
+
+    return entries;
+  }, [rest.columns]);
+
+  /**
+   * Live mirror of the dropdown drafts. `ColumnFilter` and its siblings call
+   * `setSelectedKeys(...)` and `confirm()` in the same tick, so the state
+   * update has not committed when the change must be reported — the ref has.
+   */
+  const filterDraftRef = useRef<Record<string, React.Key[]>>({});
+
+  const effectiveFilterOf = useCallback(
+    (colKey: string): React.Key[] =>
+      controlledFilterState[colKey] ?? filterState[colKey] ?? [],
+    [controlledFilterState, filterState]
+  );
+
+  /**
+   * AntD's `onChange` filter map: every filterable column, keyed by
+   * `key ?? dataIndex`, active columns carrying their keys and inactive ones
+   * `null` — SchemaTable and the other filteredValue call sites read the next
+   * state straight off this argument.
+   */
+  const reportFilterChange = useCallback(
+    (nextState: Record<string, React.Key[]>) => {
+      if (!rest.onChange) {
+        return;
+      }
+      const filters: Record<string, FilterValue | null> = {};
+      (rest.columns ?? []).forEach((col, idx) => {
+        const c = col as ColumnType<T>;
+        if (!c.filters && !c.filterDropdown) {
+          return;
+        }
+        const key = String(c.key ?? c.dataIndex ?? idx);
+        const keys = nextState[key] ?? [];
+        filters[key] = keys.length ? (keys as FilterValue) : null;
+      });
+      rest.onChange(
+        {} as TablePaginationConfig,
+        filters,
+        {} as SorterResult<T>,
+        {
+          currentDataSource: filteredDataSource,
+          action: 'filter',
+        } as TableCurrentDataSource<T>
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rest.onChange, rest.columns]
+  );
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
   const {
     preferences: { selectedEntityTableColumns },
@@ -638,7 +709,15 @@ const TableV2 = <T extends object>(
   }, [rest.dataSource, effectiveSort, propsColumns, columnIds]);
 
   const filteredDataSource = useMemo((): T[] => {
-    const activeFilters = Object.entries(filterState).filter(
+    // Controlled columns override the draft — `filteredValue` is the state of
+    // record wherever a call site provides it.
+    const merged: Record<string, React.Key[]> = { ...filterState };
+    Object.entries(controlledFilterState).forEach(([key, keys]) => {
+      if (keys !== undefined) {
+        merged[key] = keys;
+      }
+    });
+    const activeFilters = Object.entries(merged).filter(
       ([, keys]) => keys.length > 0
     );
     if (!activeFilters.length) {
@@ -646,9 +725,9 @@ const TableV2 = <T extends object>(
     }
 
     return sortedDataSource.filter((record) =>
-      activeFilters.every(([colKey, selectedKeys]) => {
+      activeFilters.every(([filterKey, selectedKeys]) => {
         const col = propsColumns.find(
-          (_c, idx) => columnIds[idx] === colKey
+          (_c, idx) => columnKeys[idx] === filterKey
         ) as ColumnType<T> | undefined;
 
         const onFilter = col?.onFilter;
@@ -660,7 +739,13 @@ const TableV2 = <T extends object>(
           : true;
       })
     );
-  }, [sortedDataSource, filterState, propsColumns, columnIds]);
+  }, [
+    sortedDataSource,
+    filterState,
+    controlledFilterState,
+    propsColumns,
+    columnKeys,
+  ]);
 
   const currentPage =
     clientPagination?.controlledCurrent ?? internalCurrentPage;
@@ -1309,6 +1394,12 @@ const TableV2 = <T extends object>(
                     isRowHeader?: boolean;
                   };
                   const colKey = columnIds[colIdx];
+                  // Filter state is keyed by AntD's convention — `key ??
+                  // dataIndex` — not by the React Aria column id: the id
+                  // carries a `col:` prefix (and dedup suffixes), and both the
+                  // row-filtering pass and the `onChange` filter map the call
+                  // sites read are contracted to the plain key.
+                  const filterKey = columnKeys[colIdx];
                   const colWidth =
                     columnWidths[colKey] ??
                     (colType.width as number | undefined);
@@ -1377,7 +1468,7 @@ const TableV2 = <T extends object>(
                               data-testid="filter-trigger">
                               {typeof colType.filterIcon === 'function'
                                 ? colType.filterIcon(
-                                    Boolean(filterState[colKey]?.length)
+                                    Boolean(effectiveFilterOf(filterKey).length)
                                   )
                                 : colType.filterIcon ?? null}
                             </AriaButton>
@@ -1390,20 +1481,43 @@ const TableV2 = <T extends object>(
                                   {typeof colType.filterDropdown === 'function'
                                     ? colType.filterDropdown({
                                         prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) =>
+                                        setSelectedKeys: (keys) => {
+                                          filterDraftRef.current = {
+                                            ...filterDraftRef.current,
+                                            [filterKey]: keys,
+                                          };
                                           setFilterState((prev) => ({
                                             ...prev,
-                                            [colKey]: keys,
-                                          })),
-                                        selectedKeys: filterState[colKey] ?? [],
-                                        confirm: () => setOpenFilterKey(null),
-                                        clearFilters: () =>
+                                            [filterKey]: keys,
+                                          }));
+                                        },
+                                        selectedKeys:
+                                          filterState[filterKey] ??
+                                          controlledFilterState[filterKey] ??
+                                          [],
+                                        confirm: () => {
+                                          reportFilterChange({
+                                            ...filterState,
+                                            ...filterDraftRef.current,
+                                          });
+                                          setOpenFilterKey(null);
+                                        },
+                                        clearFilters: () => {
+                                          filterDraftRef.current = {
+                                            ...filterDraftRef.current,
+                                            [filterKey]: [],
+                                          };
                                           setFilterState((prev) => {
                                             const next = { ...prev };
-                                            delete next[colKey];
+                                            delete next[filterKey];
 
                                             return next;
-                                          }),
+                                          });
+                                          reportFilterChange({
+                                            ...filterState,
+                                            ...filterDraftRef.current,
+                                          });
+                                        },
                                         filters: colType.filters,
                                         visible: true,
                                         close: () => setOpenFilterKey(null),

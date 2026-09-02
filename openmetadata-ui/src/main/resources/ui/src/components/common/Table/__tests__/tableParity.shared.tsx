@@ -100,13 +100,21 @@ export const PARITY_ROWS: ParityRow[] = [
   { count: 2, name: 'bravo' },
 ];
 
+const PARENT_ONE = 'parent-one';
+const PARENT_TWO = 'parent-two';
+const COLUMN_DROPDOWN_ID = 'column-dropdown';
+const COLUMN_MENU_ITEM_COUNT_ID = 'column-menu-item-count';
+const DELETE_ALL_LABEL = 'Delete all';
+const APPLY_LABEL = 'apply';
+const FILTER_GLYPH = 'f';
+
 export const TREE_ROWS: ParityRow[] = [
   {
     children: [{ count: 10, name: 'child-one' }],
     count: 1,
-    name: 'parent-one',
+    name: PARENT_ONE,
   },
-  { count: 2, name: 'parent-two' },
+  { count: 2, name: PARENT_TWO },
 ];
 
 const nameColumn: ParityColumn = {
@@ -494,10 +502,10 @@ export const runTableParitySuite = (
 
   describe(`${suiteName} — table title`, () => {
     it('renders the title slot above the table', () => {
-      renderTable({ title: () => <button>Delete all</button> });
+      renderTable({ title: () => <button>{DELETE_ALL_LABEL}</button> });
 
       expect(
-        screen.getByRole('button', { name: 'Delete all' })
+        screen.getByRole('button', { name: DELETE_ALL_LABEL })
       ).toBeInTheDocument();
     });
 
@@ -511,7 +519,9 @@ export const runTableParitySuite = (
     it('renders nothing extra without a title', () => {
       renderTable({});
 
-      expect(screen.queryByRole('button', { name: 'Delete all' })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: DELETE_ALL_LABEL })
+      ).toBeNull();
     });
   });
 
@@ -623,24 +633,20 @@ export const runTableParitySuite = (
     it('hides child rows until the parent is expanded', () => {
       renderTable({ dataSource: TREE_ROWS, expandable: {} });
 
-      expect(renderedNames()).toEqual(['parent-one', 'parent-two']);
+      expect(renderedNames()).toEqual([PARENT_ONE, PARENT_TWO]);
     });
 
     it('reveals child rows when the parent is expanded', () => {
       renderTable({ dataSource: TREE_ROWS, expandable: {} });
-      act(() => adapter.toggleExpander('parent-one'));
+      act(() => adapter.toggleExpander(PARENT_ONE));
 
-      expect(renderedNames()).toEqual([
-        'parent-one',
-        'child-one',
-        'parent-two',
-      ]);
+      expect(renderedNames()).toEqual([PARENT_ONE, 'child-one', PARENT_TWO]);
     });
 
     it('honours controlled expandedRowKeys', () => {
       renderTable({
         dataSource: TREE_ROWS,
-        expandable: { expandedRowKeys: ['parent-one'] },
+        expandable: { expandedRowKeys: [PARENT_ONE] },
       });
 
       expect(renderedNames()).toContain('child-one');
@@ -649,7 +655,7 @@ export const runTableParitySuite = (
     it('calls onExpand with the new state and the record', () => {
       const onExpand = jest.fn();
       renderTable({ dataSource: TREE_ROWS, expandable: { onExpand } });
-      act(() => adapter.toggleExpander('parent-one'));
+      act(() => adapter.toggleExpander(PARENT_ONE));
 
       expect(onExpand).toHaveBeenCalledWith(true, TREE_ROWS[0]);
     });
@@ -932,14 +938,14 @@ export const runTableParitySuite = (
     it('widens child indentation as indentSize grows', () => {
       const { unmount } = renderTable({
         dataSource: TREE_ROWS,
-        expandable: { expandedRowKeys: ['parent-one'] },
+        expandable: { expandedRowKeys: [PARENT_ONE] },
       });
       const defaultIndent = adapter.getIndentPx('child-one');
       unmount();
 
       renderTable({
         dataSource: TREE_ROWS,
-        expandable: { expandedRowKeys: ['parent-one'] },
+        expandable: { expandedRowKeys: [PARENT_ONE] },
         indentSize: 48,
       });
 
@@ -972,10 +978,10 @@ export const runTableParitySuite = (
         ...nameColumn,
         filterDropdown: ({ confirm }: { confirm: () => void }) => (
           <button data-testid="filter-apply" onClick={() => confirm()}>
-            apply
+            {APPLY_LABEL}
           </button>
         ),
-        filterIcon: () => <span data-testid="filter-icon">f</span>,
+        filterIcon: () => <span data-testid="filter-icon">{FILTER_GLYPH}</span>,
         onFilter: (value: unknown, record: ParityRow) =>
           record.name === String(value),
       },
@@ -1006,7 +1012,7 @@ export const runTableParitySuite = (
     it('renders the customize control when both column lists are given', () => {
       renderTable(customizeProps);
 
-      expect(screen.getByTestId('column-dropdown')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_DROPDOWN_ID)).toBeInTheDocument();
     });
 
     it('hides a column that is neither static nor default-visible', () => {
@@ -1019,17 +1025,17 @@ export const runTableParitySuite = (
 
     it('lists the hideable columns in the dropdown', () => {
       renderTable(customizeProps);
-      act(() => adapter.activate(screen.getByTestId('column-dropdown')));
+      act(() => adapter.activate(screen.getByTestId(COLUMN_DROPDOWN_ID)));
 
-      expect(screen.getByTestId('column-menu-item-count')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_MENU_ITEM_COUNT_ID)).toBeInTheDocument();
     });
 
     it('gives every listed column a drag handle to reorder by', () => {
       renderTable(customizeProps);
-      act(() => adapter.activate(screen.getByTestId('column-dropdown')));
+      act(() => adapter.activate(screen.getByTestId(COLUMN_DROPDOWN_ID)));
 
       expect(
-        within(screen.getByTestId('column-menu-item-count')).getByTestId(
+        within(screen.getByTestId(COLUMN_MENU_ITEM_COUNT_ID)).getByTestId(
           'draggable-menu-item-drag-icon'
         )
       ).toBeInTheDocument();
@@ -1037,12 +1043,12 @@ export const runTableParitySuite = (
 
     it('reveals a column when it is selected in the dropdown', () => {
       renderTable(customizeProps);
-      act(() => adapter.activate(screen.getByTestId('column-dropdown')));
+      act(() => adapter.activate(screen.getByTestId(COLUMN_DROPDOWN_ID)));
       // Both menu items put the testid on the drag container and the toggle on
       // the button inside it.
       act(() =>
         adapter.activate(
-          within(screen.getByTestId('column-menu-item-count')).getByRole(
+          within(screen.getByTestId(COLUMN_MENU_ITEM_COUNT_ID)).getByRole(
             'button'
           )
         )
