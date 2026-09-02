@@ -44,24 +44,32 @@ function PipelineActions({
   const { openLogs, logsModal } = useLogsModal();
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
-  const { pipelineId, pipelineName } = useMemo(
-    () => ({
-      pipelineId: pipeline.id ?? '',
-      pipelineName: pipeline.name ?? '',
-    }),
-    [pipeline]
-  );
+  const pipelineId = pipeline.id ?? '';
 
-  const { editPermission, deletePermission, editStatusPermission } =
-    useMemo(() => {
-      return {
-        editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
-        deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
-        editStatusPermission:
-          ingestionPipelinePermissions?.[Operation.EditAll] ||
-          ingestionPipelinePermissions?.[Operation.EditIngestionPipelineStatus],
-      };
-    }, [ingestionPipelinePermissions, pipelineName]);
+  const {
+    editPermission,
+    deletePermission,
+    deployPermission,
+    triggerPermission,
+    editStatusPermission,
+  } = useMemo(() => {
+    return {
+      editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+      deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
+      deployPermission:
+        ingestionPipelinePermissions?.[Operation.EditAll] ||
+        ingestionPipelinePermissions?.[Operation.Deploy],
+      triggerPermission: ingestionPipelinePermissions?.[Operation.Trigger],
+      editStatusPermission:
+        ingestionPipelinePermissions?.[Operation.EditAll] ||
+        ingestionPipelinePermissions?.[Operation.EditIngestionPipelineStatus],
+    };
+  }, [ingestionPipelinePermissions]);
+
+  const canDeploy = pipeline.enabled && deployPermission;
+  const canTrigger = pipeline.enabled && pipeline.deployed && triggerPermission;
+  const hasDropdownPermission =
+    editPermission || deletePermission || canDeploy || canTrigger;
 
   const onPauseUnpauseClick = useCallback(
     async (id: string) => {
@@ -157,7 +165,7 @@ function PipelineActions({
               {t('label.log-plural')}
             </Button>
           </Col>
-          {(editPermission || deletePermission) && (
+          {hasDropdownPermission && (
             <Col>
               <PipelineActionsDropdown
                 deployIngestion={deployIngestion}

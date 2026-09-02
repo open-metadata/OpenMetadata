@@ -13,20 +13,28 @@
 package org.openmetadata.mcp.server.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
 import java.io.PrintWriter;
+import java.io.StringReader;
 import java.io.StringWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 
 class HttpServletStatelessServerTransportTest {
 
@@ -209,5 +217,86 @@ class HttpServletStatelessServerTransportTest {
   @Test
   void shouldEmitSse_acceptsSseOnly_emitsSse() {
     assertThat(HttpServletStatelessServerTransport.shouldEmitSse(false, true)).isTrue();
+  }
+
+  // ── doPost: handler-raised JSON-RPC errors ────────────────────────────────
+
+  private static final String MCP_ENDPOINT = "/mcp";
+
+  private static final String UNKNOWN_METHOD_REQUEST =
+      "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"server/discover\",\"params\":{}}";
+
+  private static HttpServletRequest requestFor(String accept, String payload) throws Exception {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getRequestURI()).thenReturn(MCP_ENDPOINT);
+    when(request.getHeader(HttpServletStatelessServerTransport.ACCEPT)).thenReturn(accept);
+    when(request.getReader()).thenReturn(new BufferedReader(new StringReader(payload)));
+    return request;
+  }
+
+  private static HttpServletStatelessServerTransport transportRejectingWith(Throwable failure) {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    when(handler.handleRequest(any(), any())).thenReturn(Mono.error(failure));
+    return transportWith(handler);
+  }
+
+  private static McpError methodNotFound(String method) {
+    return McpError.builder(McpSchema.ErrorCodes.METHOD_NOT_FOUND)
+        .message("Missing handler for request type: " + method)
+        .build();
+  }
+
+  @Test
+  void doPost_unknownMethod_answers200WithMethodNotFound() throws Exception {
+    transportRejectingWith(methodNotFound("server/discover"))
+        .doPost(requestFor("application/json", UNKNOWN_METHOD_REQUEST), response);
+
+    verify(response).setStatus(HttpServletResponse.SC_OK);
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    assertThat(body.toString())
+        .contains("\"code\":-32601")
+        .contains("\"id\":7")
+        .contains("Missing handler for request type: server/discover")
+        .doesNotContain("stackTrace");
+  }
+
+  @Test
+  void doPost_internalMcpError_answers500() throws Exception {
+    transportRejectingWith(
+            McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR).message("boom").build())
+        .doPost(requestFor("application/json", UNKNOWN_METHOD_REQUEST), response);
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    assertThat(body.toString()).contains("\"code\":-32603");
+  }
+
+  private static HttpServletStatelessServerTransport transportWith(
+      McpStatelessServerHandler handler) {
+    HttpServletStatelessServerTransport transport =
+        HttpServletStatelessServerTransport.builder()
+            .objectMapper(new ObjectMapper())
+            .messageEndpoint(MCP_ENDPOINT)
+            .build();
+    transport.setMcpHandler(handler);
+    return transport;
+  }
+
+  private static String notification(String method) {
+    return "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"params\":{}}";
+  }
+
+  @Test
+  void doPost_initializedNotification_acceptedWithoutReachingTheHandler() throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    when(handler.handleNotification(any(), any())).thenReturn(Mono.empty());
+
+    transportWith(handler)
+        .doPost(
+            requestFor("application/json", notification(McpSchema.METHOD_NOTIFICATION_INITIALIZED)),
+            response);
+
+    verify(response).setStatus(HttpServletResponse.SC_ACCEPTED);
+    verify(handler, never()).handleNotification(any(), any());
+    assertThat(body.toString()).isEmpty();
   }
 }
