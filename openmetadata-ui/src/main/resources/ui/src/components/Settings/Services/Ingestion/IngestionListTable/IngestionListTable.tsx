@@ -52,7 +52,7 @@ import {
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import Table from '../../../../common/Table/Table';
+import Table from '../../../../common/Table/TableV2';
 import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
