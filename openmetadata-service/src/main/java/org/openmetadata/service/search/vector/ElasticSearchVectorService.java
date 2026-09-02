@@ -110,7 +110,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
       SubjectContext subjectContext) {
     long start = System.currentTimeMillis();
     try {
-      float[] queryVector = embeddingClient.embed(query);
+      // embedQuery, not embed: providers that distinguish the two (Cohere's search_query vs
+      // search_document input type) produce a worse vector for a question embedded as a
+      // document. The OpenSearch path already does this.
+      float[] queryVector = embeddingClient.embedQuery(query);
       LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
       int rawOffset = 0;
       long totalHits = -1L;
