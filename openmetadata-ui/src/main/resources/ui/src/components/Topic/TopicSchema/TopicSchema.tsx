@@ -71,7 +71,7 @@ import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityA
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
