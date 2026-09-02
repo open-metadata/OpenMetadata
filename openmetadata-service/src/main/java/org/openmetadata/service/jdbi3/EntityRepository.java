@@ -6748,12 +6748,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
   }
 
+  /**
+   * Resolve the parent that CONTAINS {@code toId}, or {@code null} when the relationship row is
+   * gone. Relationship rows and entity rows are deleted as separate auto-committed statements, so a
+   * reader can legitimately observe the intermediate state; a hard delete whose cascade did not
+   * reach this child leaves the same shape permanently until one of the orphan-cleanup jobs
+   * reclaims it. Failing the read instead would take down every list containing the row, so this
+   * mirrors the parent-entity-gone handling already in {@link #getFromEntityRef} and matches main.
+   */
   public final EntityReference getContainer(UUID toId) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, null, false);
   }
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, false);
   }
 
   protected final Map<UUID, EntityReference> batchFetchContainers(
