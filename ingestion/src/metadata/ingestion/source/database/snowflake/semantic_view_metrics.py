@@ -21,7 +21,6 @@ Metric names are fully qualified because the ``Metric`` namespace is global
 """
 
 import hashlib
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import (
@@ -118,7 +117,7 @@ def build_metric_name(service: str, database: str, schema: str, view: str, table
     return f"{_service_prefix(service)}-{digest}"
 
 
-def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
+def infer_metric_type(expression: str | None) -> MetricType:
     """Infer the MetricType from the aggregation head of the expression."""
     result = MetricType.OTHER
     if expression:
@@ -127,7 +126,7 @@ def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
     return result
 
 
-def _semantic_description(row) -> Optional[str]:  # noqa: UP045
+def _semantic_description(row) -> str | None:
     """Description for a dimension/measure: the Snowflake ``COMMENT``, plus any
     synonyms, which have nowhere else to land."""
     parts = []
@@ -138,7 +137,7 @@ def _semantic_description(row) -> Optional[str]:  # noqa: UP045
     return " ".join(parts) or None
 
 
-def _dimension_type(data_type: Optional[str]) -> Optional[Type]:  # noqa: UP045
+def _dimension_type(data_type: str | None) -> Type | None:
     """Classify a dimension as TIME or CATEGORICAL from its Snowflake data type."""
     result = None
     if data_type:
@@ -189,8 +188,8 @@ def build_metric_request(
     schema: str,
     view: str,
     metric_row,
-    dimension_rows: List[tuple],  # noqa: UP006
-    fact_rows: List[tuple],  # noqa: UP006
+    dimension_rows: list[tuple],
+    fact_rows: list[tuple],
 ) -> CreateMetricRequest:
     """Assemble a CreateMetricRequest for a single Snowflake metric row."""
     metric = metric_row[SEMANTIC_NAME_IDX]

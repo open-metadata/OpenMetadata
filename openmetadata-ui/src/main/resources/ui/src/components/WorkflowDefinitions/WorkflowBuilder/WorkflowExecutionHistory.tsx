@@ -128,11 +128,8 @@ export const WorkflowExecutionHistory: React.FC = () => {
         title: t('label.execution-date'),
         dataIndex: 'startedAt',
         key: 'executionDate',
-        render: (startedAt: number | undefined) => (
-          <div className="tw:text-center">
-            {startedAt ? formatDateTime(startedAt) : '-'}
-          </div>
-        ),
+        render: (startedAt: number | undefined) =>
+          startedAt ? formatDateTime(startedAt) : '-',
       },
       {
         title: t('label.status'),
@@ -145,14 +142,12 @@ export const WorkflowExecutionHistory: React.FC = () => {
           const { displayLabel, statusType } = getStatusInfo(status);
 
           return (
-            <div className="tw:flex tw:justify-center">
-              <StatusBadgeV2
-                dataTestId={`workflow-status-badge-${record.id}`}
-                label={displayLabel}
-                showIcon={false}
-                status={statusType}
-              />
-            </div>
+            <StatusBadgeV2
+              dataTestId={`workflow-status-badge-${record.id}`}
+              label={displayLabel}
+              showIcon={false}
+              status={statusType}
+            />
           );
         },
       },
@@ -179,7 +174,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
             value = '-';
           }
 
-          return <div className="tw:text-center">{value}</div>;
+          return value;
         },
       },
     ],
@@ -239,6 +234,10 @@ export const WorkflowExecutionHistory: React.FC = () => {
       data-testid="workflow-execution-history">
       <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         <TableV2
+          // The table body scrolls inside the wrapper above, so the header has
+          // to be told to stick — TableV2 only sticks when asked, or when
+          // `scroll.y` gives the body its own scroller.
+          sticky
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
           data-testid="workflow-execution-history-table"
@@ -252,6 +251,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
           pagination={false}
           rowKey={(record) => record.id ?? ''}
           size="small"
+          tableLayout="auto"
         />
       </div>
       {paging.total > pageSize && (

@@ -15,7 +15,7 @@ GitHub client to read files with token auth
 import base64
 import traceback
 from enum import Enum
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 import requests
 
@@ -46,7 +46,7 @@ class GitHubReader(ApiReader):
     credentials: GitHubCredentials
 
     @staticmethod
-    def _decode_content(json_response: Dict[str, Any]) -> str:  # noqa: UP006
+    def _decode_content(json_response: dict[str, Any]) -> str:
         """
         Return the content of the response
 
@@ -108,7 +108,7 @@ class GitHubReader(ApiReader):
         res.raise_for_status()
         raise RuntimeError("Could not fetch the default branch")
 
-    def _get_tree(self) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def _get_tree(self) -> list[str] | None:
         """
         Use the GitHub Tree API
         """

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Copy01,
   File02,
@@ -25,7 +30,7 @@ import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
@@ -283,26 +288,29 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <Link
-          to={{
-            pathname: getEntityDetailsPath(
-              entityType,
-              dataAsset?.fullyQualifiedName ?? '',
-              EntityTabs.LINEAGE
-            ),
-            search: QueryString.stringify({
-              layers: [LineageLayer.DataObservability],
-            }),
-          }}>
+        <TooltipTrigger
+          aria-label={t('label.check-upstream-failure')}
+          onPress={() =>
+            navigate({
+              pathname: getEntityDetailsPath(
+                entityType,
+                dataAsset?.fullyQualifiedName ?? '',
+                EntityTabs.LINEAGE
+              ),
+              search: QueryString.stringify({
+                layers: [LineageLayer.DataObservability],
+              }),
+            })
+          }>
           <RedAlertIcon
             className="tw:text-fg-error-primary"
             height={24}
             width={24}
           />
-        </Link>
+        </TooltipTrigger>
       </Tooltip>
     );
-  }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, t]);
+  }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
   const fetchActiveAnnouncement = async () => {
     try {
@@ -886,6 +894,7 @@ export const DataAssetsHeader = ({
               allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
               buttonClassName="data-assets-header-manage-button"
               canDelete={permissions.Delete}
+              canRestore={permissions.EditAll}
               deleted={dataAsset.deleted}
               displayName={getEntityName(dataAsset)}
               editDisplayNamePermission={
