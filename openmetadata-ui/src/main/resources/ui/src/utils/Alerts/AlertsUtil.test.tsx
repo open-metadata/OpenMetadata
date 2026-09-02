@@ -1521,6 +1521,19 @@ describe('handleAlertSave - downstream notification fields', () => {
 });
 
 describe('normalizeDestinationConfig', () => {
+  it('should preserve form-style header and query parameter arrays', () => {
+    const config = {
+      endpoint: 'https://hooks.slack.com/services/xxx',
+      headers: [{ key: 'header1', value: 'value1' }],
+      queryParams: [{ key: 'param1', value: 'value1' }],
+      httpMethod: 'POST',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual(config);
+  });
+
   it('should normalize config with headers and queryParams as objects to arrays', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
