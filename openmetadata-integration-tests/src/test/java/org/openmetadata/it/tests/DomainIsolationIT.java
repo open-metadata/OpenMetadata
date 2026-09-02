@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,15 +32,22 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -49,6 +57,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -218,6 +227,168 @@ public class DomainIsolationIT {
                     searchNames.contains(d2Fqn),
                     "Foreign domain hidden in search. Saw: " + searchNames);
               });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_domainSearch_restrictedBotSeesOnlyOwnDomains(TestNamespace ns) throws Exception {
+    // #30023: a bot-authenticated caller (the standard MCP wiring) used to bypass search RBAC
+    // entirely, because SearchUtils#shouldApplyRbacConditions skipped policy injection for bots and
+    // a skipped injection leaves the query matching everything.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_botd1", cleanup);
+      Domain d2 = createDomain(admin, p + "_botd2", cleanup);
+      OpenMetadataClient restrictedBot = createRestrictedBotClient(admin, p, d1, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      String d2Fqn = d2.getFullyQualifiedName();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> searchNames = domainSearchFqns(restrictedBot);
+                assertTrue(
+                    searchNames.contains(d1.getFullyQualifiedName()),
+                    "Own domain visible to the bot. Saw: " + searchNames);
+                assertFalse(
+                    searchNames.contains(d2Fqn),
+                    "Foreign domain must be hidden from a domain-scoped bot. Saw: " + searchNames);
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_domainSearch_stockBotIsUnaffected(TestNamespace ns) throws Exception {
+    // The seeded bots carry an unconditioned ViewAll on All resources, which compiles to match_all,
+    // so applying their policies must not narrow anything.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_stockd1", cleanup);
+      Domain d2 = createDomain(admin, p + "_stockd2", cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      OpenMetadataClient ingestionBot = SdkClients.ingestionBotClient();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> searchNames = domainSearchFqns(ingestionBot);
+                assertTrue(
+                    searchNames.containsAll(
+                        List.of(d1.getFullyQualifiedName(), d2.getFullyQualifiedName())),
+                    "A stock bot keeps its full view. Saw: " + searchNames);
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_lineage_restrictedBotSeesOnlyOwnDomainNodes(TestNamespace ns) throws Exception {
+    // Deliberately does NOT enable search access control: the lineage prune is gated on the role
+    // alone (DomainAccessFilter#shouldApply), independently of the search RBAC setting.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_lbotd1", cleanup);
+      Domain d2 = createDomain(admin, p + "_lbotd2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+
+      Table t1 = createTable(admin, p + "_lbot_t1", schema, d1, cleanup);
+      Table t2 = createTable(admin, p + "_lbot_t2", schema, d2, cleanup);
+      addLineage(admin, t1, t2);
+
+      String t1Fqn = t1.getFullyQualifiedName();
+      String t2Fqn = t2.getFullyQualifiedName();
+      OpenMetadataClient restrictedBot = createRestrictedBotClient(admin, p, d1, cleanup);
+
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> adminNodes = nodeFqns(searchLineage(admin, t1Fqn));
+                assertTrue(
+                    adminNodes.containsAll(List.of(t1Fqn, t2Fqn)),
+                    "Admin should see the full chain first. Saw: " + adminNodes);
+              });
+
+      Set<String> botNodes = nodeFqns(searchLineage(restrictedBot, t1Fqn));
+      assertTrue(botNodes.contains(t1Fqn), "Domain-scoped bot sees its own-domain root");
+      assertFalse(
+          botNodes.contains(t2Fqn),
+          "Foreign-domain node must be pruned for a domain-scoped bot. Saw: " + botNodes);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_domainSearch_allowOnlyDomainRoleIsDefeatedByABroaderRole(TestNamespace ns)
+      throws Exception {
+    // Reproduces the configuration reported on #30023. Allow rules are OR'd, so a hand-written
+    // allow-only hasDomain() role scopes a bot only while it is that bot's sole role; adding
+    // DefaultBotRole contributes DataConsumerPolicy's unconditioned ViewAll and the scoping is
+    // lost.
+    // The seeded DomainOnlyAccessRole is deny-based and immune to this.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_allowd1", cleanup);
+      Domain d2 = createDomain(admin, p + "_allowd2", cleanup);
+      Role allowOnlyRole = createAllowOnlyDomainRole(admin, p, cleanup);
+      OpenMetadataClient scopedBot =
+          createBotClient(admin, p + "_scoped", d1, List.of(allowOnlyRole.getId()), cleanup);
+      OpenMetadataClient widenedBot =
+          createBotClient(
+              admin,
+              p + "_widened",
+              d1,
+              List.of(allowOnlyRole.getId(), admin.roles().getByName("DefaultBotRole").getId()),
+              cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      String d2Fqn = d2.getFullyQualifiedName();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> scopedNames = domainSearchFqns(scopedBot);
+                assertTrue(
+                    scopedNames.contains(d1.getFullyQualifiedName()),
+                    "The domain-scoped bot keeps its own domain. Saw: " + scopedNames);
+                assertFalse(
+                    scopedNames.contains(d2Fqn),
+                    "An allow-only role scopes a bot when it is its only role. Saw: "
+                        + scopedNames);
+              });
+
+      Set<String> widenedNames = domainSearchFqns(widenedBot);
+      assertTrue(
+          widenedNames.contains(d2Fqn),
+          "A second unconditioned ViewAll role restores the full view, which is why the seeded "
+              + "deny-based DomainOnlyAccessRole is the supported way to scope by domain. Saw: "
+              + widenedNames);
     } finally {
       drain(cleanup);
     }
@@ -431,6 +602,75 @@ public class DomainIsolationIT {
     org.openmetadata.schema.entity.teams.User user = admin.users().create(request);
     cleanup.push(() -> admin.users().delete(user.getId()));
     return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private OpenMetadataClient createRestrictedBotClient(
+      OpenMetadataClient admin, String prefix, Domain allowedDomain, Deque<Runnable> cleanup) {
+    Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+    return createBotClient(
+        admin, prefix + "_restricted", allowedDomain, List.of(domainOnlyRole.getId()), cleanup);
+  }
+
+  /**
+   * Creates a bot user and a client for it. Roles are assigned directly to the bot rather than
+   * through a team, because {@code SubjectCache#loadPoliciesForUser} skips team policies for bots,
+   * so a team-inherited role would never reach the compiled search query.
+   */
+  private OpenMetadataClient createBotClient(
+      OpenMetadataClient admin,
+      String prefix,
+      Domain allowedDomain,
+      List<UUID> roleIds,
+      Deque<Runnable> cleanup) {
+    String name = prefix + "_bot";
+    String email = name + "@test.openmetadata.org";
+    CreateUser request =
+        new CreateUser()
+            .withName(name)
+            .withEmail(email)
+            .withIsBot(true)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(
+                        new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+            .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+            .withRoles(roleIds);
+    org.openmetadata.schema.entity.teams.User bot = admin.users().create(request);
+    cleanup.push(() -> admin.users().delete(bot.getId()));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private Role createAllowOnlyDomainRole(
+      OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
+    Rule allowRule =
+        new Rule()
+            .withName("allowOwnDomain")
+            .withDescription("Allow viewing assets in the caller's own domains")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withResources(List.of("All"))
+            .withCondition("hasDomain()");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_allowOnlyDomainPolicy")
+                    .withDescription("Allow-only domain policy, mirroring the #30023 report")
+                    .withRules(List.of(allowRule)));
+    cleanup.push(() -> admin.policies().delete(policy.getId()));
+
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_allowOnlyDomainRole")
+                    .withDescription("Allow-only domain role, mirroring the #30023 report")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    cleanup.push(() -> admin.roles().delete(role.getId()));
+    return role;
   }
 
   private OpenMetadataClient createPlainUserClient(

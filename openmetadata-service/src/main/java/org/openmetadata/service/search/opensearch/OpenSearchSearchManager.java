@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -1035,6 +1037,27 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
+   * Keys a compiled RBAC query by everything {@link RBACConditionEvaluator} reads while building it.
+   * Domains belong in the key alongside roles because {@code hasDomain()} compiles the subject's
+   * domain ids into literal term clauses; nothing invalidates this cache, so omitting them served a
+   * stale query for the remainder of the TTL after a domain change.
+   */
+  static String rbacCacheKey(SubjectContext subjectContext) {
+    return subjectContext.user().getId()
+        + ":"
+        + sortedIds(subjectContext.user().getRoles())
+        + ":"
+        + sortedIds(subjectContext.user().getDomains());
+  }
+
+  private static String sortedIds(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(reference -> reference.getId().toString())
+        .sorted()
+        .collect(Collectors.joining(","));
+  }
+
+  /**
    * Applies RBAC query constraints with caching to the request builder.
    *
    * @param subjectContext the subject context containing user and role information
@@ -1046,14 +1069,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return;
     }
 
-    // Create cache key from user ID and roles
-    String cacheKey =
-        subjectContext.user().getId()
-            + ":"
-            + subjectContext.user().getRoles().stream()
-                .map(r -> r.getId().toString())
-                .sorted()
-                .collect(Collectors.joining(","));
+    String cacheKey = rbacCacheKey(subjectContext);
 
     try {
       // Guava Cache forbids null values, so we check getIfPresent first, then build and cache.
