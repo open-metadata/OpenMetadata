@@ -921,10 +921,12 @@ public class ListFilter extends Filter<ListFilter> {
     return String.format(
         "(%s IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN user_entity u ON er.fromId = u.id "
-            + "WHERE er.fromEntity = 'user' AND u.nameHash IN (%s) AND er.relation = %d) "
+            + "WHERE er.fromEntity = 'user' AND er.toEntity = 'domain' "
+            + "AND u.nameHash IN (%s) AND er.relation = %d) "
             + "OR %s IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN team_entity t ON er.fromId = t.id "
-            + "WHERE er.fromEntity = 'team' AND t.nameHash IN (%s) AND er.relation = %d))",
+            + "WHERE er.fromEntity = 'team' AND er.toEntity = 'domain' "
+            + "AND t.nameHash IN (%s) AND er.relation = %d))",
         entityIdColumn,
         inCondition,
         Relationship.OWNS.ordinal(),
@@ -949,10 +951,21 @@ public class ListFilter extends Filter<ListFilter> {
     if (nullOrEmpty(value)) {
       return "";
     }
-    String inCondition = buildIndexedBindParams(bindPrefix, value);
+    // Match on the ascii_bin tagFQNHash column (hashing inputs the same way tag_usage is written)
+    // so the comparison is exact and identical on MySQL and Postgres, not collation-dependent.
+    String hashCsv =
+        Arrays.stream(value.split(","))
+            .map(String::trim)
+            .filter(fqn -> !fqn.isEmpty())
+            .map(FullyQualifiedName::buildHash)
+            .collect(Collectors.joining(","));
+    if (hashCsv.isEmpty()) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams(bindPrefix, hashCsv);
     String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
     return String.format(
-        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQN IN (%s)))",
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s)))",
         fqnHashColumn, source.ordinal(), inCondition);
   }
 
