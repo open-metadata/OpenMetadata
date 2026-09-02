@@ -1,6 +1,10 @@
 package org.openmetadata.mcp.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Lenient coercion of MCP tool arguments. MCP clients send arguments as an untyped {@code
@@ -67,5 +71,36 @@ public final class McpParams {
       result = defaultValue;
     }
     return result;
+  }
+
+  /**
+   * Reads a list-of-strings parameter, tolerating the single-string form.
+   *
+   * <p>MCP clients serialize a one-element array inconsistently - some send {@code ["lineage"]},
+   * others {@code "lineage"}. Accepting either costs one branch and removes a retry the caller
+   * cannot diagnose from a type error.
+   */
+  /** A string parameter, or {@code fallback} when absent or blank. */
+  public static String getString(Map<String, Object> params, String key, String fallback) {
+    Object raw = params == null ? null : params.get(key);
+    String value = fallback;
+    if (raw != null && !raw.toString().isBlank()) {
+      value = raw.toString();
+    }
+    return value;
+  }
+
+  public static List<String> getStringList(Map<String, Object> params, String key) {
+    Object raw = params == null ? null : params.get(key);
+    List<String> values = new ArrayList<>();
+    if (raw instanceof List<?> list) {
+      list.stream().filter(Objects::nonNull).map(Object::toString).forEach(values::add);
+    } else if (raw instanceof String single && !single.isBlank()) {
+      Arrays.stream(single.split(","))
+          .map(String::trim)
+          .filter(v -> !v.isEmpty())
+          .forEach(values::add);
+    }
+    return values;
   }
 }

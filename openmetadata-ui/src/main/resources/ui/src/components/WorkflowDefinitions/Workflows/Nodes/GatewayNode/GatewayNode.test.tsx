@@ -68,7 +68,8 @@ describe('GatewayNode', () => {
     );
 
     fireEvent.click(
-      screen.getByText('Test Gateway').parentElement!.parentElement!
+      (screen.getByText('Test Gateway').parentElement as HTMLElement)
+        .parentElement as HTMLElement
     );
 
     expect(mockSetSelectedNode).toHaveBeenCalled();

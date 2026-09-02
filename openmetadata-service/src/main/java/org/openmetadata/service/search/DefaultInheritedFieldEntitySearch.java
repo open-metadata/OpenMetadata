@@ -16,8 +16,12 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_ORDER;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,22 +32,27 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySearch {
 
   private static final int MAX_PAGE_SIZE = 1000;
+  private static final int MAX_ONTOLOGY_ASSET_PREVIEW_SIZE = 4;
+  private static final int MAX_ONTOLOGY_TERM_BUCKETS = 60;
   private static final String EMPTY_QUERY = "";
   private static final String EMPTY_JSON = "{}";
 
@@ -54,6 +63,8 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   private static final String VALUE_KEY = "value";
   private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String TYPE_KEY = "type";
+  private static final String ONTOLOGY_ASSETS_AGGREGATION = "ontology_assets";
+  private static final String ONTOLOGY_TERMS_AGGREGATION = "ontology_terms";
 
   private static final List<String> ENTITY_REFERENCE_FIELDS;
   private static final ObjectMapper ENTITY_REF_MAPPER;
@@ -62,7 +73,6 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     ENTITY_REF_MAPPER = JsonUtils.getObjectMapper().copy();
     ENTITY_REF_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    // Extract field names to limit ES response payload - only fetch required fields from ES_source
     ENTITY_REFERENCE_FIELDS = extractEntityReferenceFieldNames();
   }
 
@@ -185,7 +195,8 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     return entities;
   }
 
-  private EntityReference extractEntityReferenceFromDocument(JsonNode document) throws Exception {
+  private EntityReference extractEntityReferenceFromDocument(JsonNode document)
+      throws JsonProcessingException {
     // ES returns 'entityType' but EntityReference expects 'type'
     // Since we explicitly request 'entityType' in ENTITY_REFERENCE_FIELDS, we always need to remap
     if (!document.has(TYPE_KEY) && document.has(ENTITY_TYPE_KEY)) {
@@ -292,6 +303,110 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       LOG.error("Failed to execute aggregated counts query", e);
       return Collections.emptyMap();
     }
+  }
+
+  @Override
+  public List<GlossaryTermAssetBucket> getAssetBucketsForTerms(
+      List<String> termFullyQualifiedNames, int assetPreviewSize, SubjectContext subjectContext) {
+    if (isSearchUnavailable() || termFullyQualifiedNames.isEmpty()) {
+      return List.of();
+    }
+
+    List<String> boundedTerms =
+        termFullyQualifiedNames.stream().distinct().limit(MAX_ONTOLOGY_TERM_BUCKETS).toList();
+    int boundedPreviewSize = Math.clamp(assetPreviewSize, 1, MAX_ONTOLOGY_ASSET_PREVIEW_SIZE);
+
+    try {
+      JsonObject response =
+          executeOntologyAssetAggregation(boundedTerms, boundedPreviewSize, subjectContext);
+      return parseOntologyAssetBuckets(response, boundedTerms);
+    } catch (IOException | RuntimeException exception) {
+      LOG.warn("Failed to fetch ontology asset previews", exception);
+      return List.of();
+    }
+  }
+
+  private JsonObject executeOntologyAssetAggregation(
+      List<String> termFqns, int assetPreviewSize, SubjectContext subjectContext)
+      throws IOException {
+    SearchAggregationNode terms =
+        SearchAggregation.terms(
+            ONTOLOGY_TERMS_AGGREGATION,
+            TAGS_FQN,
+            termFqns.size(),
+            termFqns.stream().map(DefaultInheritedFieldEntitySearch::normalizeTermFqn).toList());
+    terms.addChild(
+        SearchAggregation.topHits(
+            ONTOLOGY_ASSETS_AGGREGATION,
+            assetPreviewSize,
+            GLOSSARY_ASSET_SORT_FIELD,
+            GLOSSARY_ASSET_SORT_ORDER,
+            ENTITY_REFERENCE_FIELDS));
+    SearchAggregation aggregation = SearchAggregation.fromTree(terms);
+    String filter = QueryFilterBuilder.buildGenericAssetsCountFilter(TAGS_FQN, false);
+    return searchRepository.aggregate(
+        filter, GLOBAL_SEARCH_ALIAS, aggregation, new SearchListFilter(), subjectContext);
+  }
+
+  private List<GlossaryTermAssetBucket> parseOntologyAssetBuckets(
+      JsonObject response, List<String> requestedTermFqns) {
+    JsonObject termsAggregation = findObject(response, ONTOLOGY_TERMS_AGGREGATION);
+    if (termsAggregation == null || !termsAggregation.containsKey("buckets")) {
+      return List.of();
+    }
+
+    List<GlossaryTermAssetBucket> buckets = new ArrayList<>();
+    for (JsonValue bucketValue : termsAggregation.getJsonArray("buckets")) {
+      JsonObject bucket = bucketValue.asJsonObject();
+      buckets.add(
+          new GlossaryTermAssetBucket(
+              requestedTermFqn(bucket.getString("key"), requestedTermFqns),
+              bucket.getInt("doc_count"),
+              parseAssetReferences(findObject(bucket, ONTOLOGY_ASSETS_AGGREGATION))));
+    }
+    return List.copyOf(buckets);
+  }
+
+  private static String requestedTermFqn(String bucketKey, List<String> requestedTermFqns) {
+    final String normalizedBucketKey = normalizeTermFqn(bucketKey);
+    return requestedTermFqns.stream()
+        .filter(termFqn -> normalizeTermFqn(termFqn).equals(normalizedBucketKey))
+        .findFirst()
+        .orElse(bucketKey);
+  }
+
+  private static String normalizeTermFqn(String termFqn) {
+    return termFqn.toLowerCase(Locale.ROOT);
+  }
+
+  private List<EntityReference> parseAssetReferences(JsonObject topHits) {
+    if (topHits == null) {
+      return List.of();
+    }
+
+    JsonArray hits = topHits.getJsonObject(HITS_KEY).getJsonArray(HITS_KEY);
+    List<EntityReference> assets = new ArrayList<>();
+    for (JsonValue hitValue : hits) {
+      JsonObject source = hitValue.asJsonObject().getJsonObject(SOURCE_KEY);
+      try {
+        assets.add(extractEntityReferenceFromDocument(JsonUtils.readTree(source.toString())));
+      } catch (JsonProcessingException | IllegalArgumentException exception) {
+        LOG.warn("Skipping malformed ontology asset preview", exception);
+      }
+    }
+    return List.copyOf(assets);
+  }
+
+  private static JsonObject findObject(JsonObject parent, String name) {
+    if (parent == null) {
+      return null;
+    }
+    for (String key : parent.keySet()) {
+      if (key.equals(name) || key.endsWith("#" + name)) {
+        return parent.getJsonObject(key);
+      }
+    }
+    return null;
   }
 
   private String getQueryFilter(InheritedFieldQuery query) {

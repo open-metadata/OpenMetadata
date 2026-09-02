@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets } from '@openmetadata/ui-core-components/icons';
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,8 +27,8 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function DirectoryChildrenTable() {
@@ -88,7 +89,17 @@ function DirectoryChildrenTable() {
       data-testid="container-list-table"
       dataSource={containerData.children}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            <EmptyPlaceholder
+              icon={<Assets className="tw:text-utility-gray-600" />}
+              title={t('message.no-entity-data-available', {
+                entity: t('label.file-plural'),
+              })}
+              variant="blank"
+            />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"
