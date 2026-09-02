@@ -75,6 +75,17 @@ public class RdfReindexFailuresIT {
         3600);
   }
 
+  private static void assertInvalidEntityTypeResponse(
+      HttpResponse<String> response, String entityType) throws Exception {
+    assertEquals(400, response.statusCode(), response.body());
+    JsonNode body = MAPPER.readTree(response.body());
+    assertEquals(400, body.path("code").asInt(), response.body());
+    assertEquals(
+        "Invalid entityType '%s'. Expected an RDF-indexable entity type.".formatted(entityType),
+        body.path("message").asText(),
+        response.body());
+  }
+
   @Test
   void listFailures_admin_returnsPaginatedEnvelope() throws Exception {
     HttpResponse<String> response = get("?limit=10&offset=0", adminJwt());
@@ -98,9 +109,7 @@ public class RdfReindexFailuresIT {
   void listFailures_unknownEntityType_returns400() throws Exception {
     HttpResponse<String> response = get("?entityType=notAnEntityType", adminJwt());
 
-    assertEquals(400, response.statusCode(), response.body());
-    JsonNode body = MAPPER.readTree(response.body());
-    assertTrue(body.get("error").asText().contains("notAnEntityType"), response.body());
+    assertInvalidEntityTypeResponse(response, "notAnEntityType");
   }
 
   @Test
@@ -115,9 +124,7 @@ public class RdfReindexFailuresIT {
   void listFailures_registeredTimeSeriesEntityType_returns400() throws Exception {
     HttpResponse<String> response = get("?entityType=" + Entity.QUERY_COST_RECORD, adminJwt());
 
-    assertEquals(400, response.statusCode(), response.body());
-    JsonNode body = MAPPER.readTree(response.body());
-    assertTrue(body.get("error").asText().contains(Entity.QUERY_COST_RECORD), response.body());
+    assertInvalidEntityTypeResponse(response, Entity.QUERY_COST_RECORD);
   }
 
   @Test
