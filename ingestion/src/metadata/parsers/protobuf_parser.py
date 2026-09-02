@@ -188,27 +188,27 @@ class ProtobufParser:
         """
 
         try:
-            proto_path, file_path = self.create_proto_files()
+            proto_files = self.create_proto_files()
+            if proto_files is None:
+                return None
+            proto_path, file_path = proto_files
             instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
             if instance is None:
                 return None
 
-            field_models = [
+            return [
                 cls(
                     name=instance.DESCRIPTOR.name,
                     dataType="RECORD",
                     children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
                 )
             ]
-
-            # Clean up the tmp folder
-            if Path(self.config.base_file_path).exists():
-                shutil.rmtree(self.config.base_file_path)
-
-            return field_models  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
+        finally:
+            if self.config.base_file_path:
+                shutil.rmtree(self.config.base_file_path, ignore_errors=True)
         return None
 
     def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:

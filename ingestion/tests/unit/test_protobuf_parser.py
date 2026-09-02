@@ -213,6 +213,7 @@ def test_parse_uses_only_top_level_message_when_topic_name_does_not_match(tmp_pa
 
 
 def test_parse_does_not_guess_when_multiple_top_level_messages_do_not_match_topic(tmp_path):
+    base_file_path = tmp_path / "protobuf"
     parser = ProtobufParser(
         config=ProtobufParserConfig(
             schema_name="loan_events",
@@ -222,8 +223,9 @@ def test_parse_does_not_guess_when_multiple_top_level_messages_do_not_match_topi
                 message LoanCreated {}
                 message LoanApproved {}
             """,
-            base_file_path=str(tmp_path / "protobuf"),
+            base_file_path=str(base_file_path),
         )
     )
 
     assert parser.parse_protobuf_schema() is None
+    assert not base_file_path.exists()
