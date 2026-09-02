@@ -100,6 +100,49 @@ import {
 
 type TableV2Props<T extends object> = TableComponentProps<T>;
 
+const matchesFilterEntry = <T extends object>(
+  record: T,
+  colKey: string,
+  selectedKeys: React.Key[],
+  columns: ColumnsType<T>
+): boolean => {
+  const col = columns.find(
+    (c, idx) =>
+      String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx) === colKey
+  ) as ColumnType<T> | undefined;
+
+  const onFilter = col?.onFilter;
+
+  return onFilter
+    ? selectedKeys.some((key) => onFilter(key as React.Key | boolean, record))
+    : true;
+};
+
+const setColumnFilterKeys =
+  (
+    setFilterState: React.Dispatch<
+      React.SetStateAction<Record<string, React.Key[]>>
+    >,
+    colKey: string
+  ) =>
+  (keys: React.Key[]): void =>
+    setFilterState((prev) => ({ ...prev, [colKey]: keys }));
+
+const clearColumnFilter =
+  (
+    setFilterState: React.Dispatch<
+      React.SetStateAction<Record<string, React.Key[]>>
+    >,
+    colKey: string
+  ) =>
+  (): void =>
+    setFilterState((prev) => {
+      const next = { ...prev };
+      delete next[colKey];
+
+      return next;
+    });
+
 const TableV2 = <T extends object>(
   {
     loading,
@@ -192,20 +235,9 @@ const TableV2 = <T extends object>(
     }
 
     return sortedDataSource.filter((record) =>
-      activeFilters.every(([colKey, selectedKeys]) => {
-        const col = propsColumns.find(
-          (c, idx) =>
-            String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx) === colKey
-        ) as ColumnType<T> | undefined;
-
-        const onFilter = col?.onFilter;
-
-        return onFilter
-          ? selectedKeys.some((key) =>
-              onFilter(key as React.Key | boolean, record)
-            )
-          : true;
-      })
+      activeFilters.every(([colKey, selectedKeys]) =>
+        matchesFilterEntry(record, colKey, selectedKeys, propsColumns)
+      )
     );
   }, [sortedDataSource, filterState, propsColumns]);
 
@@ -532,6 +564,109 @@ const TableV2 = <T extends object>(
     clientPagination,
   ]);
 
+  const renderRowCells = (flatRow: FlatRow<T>) => {
+    const { record, actualIndex, depth, hasChildren, rowKey } = flatRow;
+    const isExpanded = expandedKeys.has(rowKey);
+
+    return propsColumns.map((col, colIdx) => {
+      const colType = col as ColumnType<T>;
+      const cellKey = String(col.key ?? colType.dataIndex ?? colIdx);
+      const stickyStyle = getColumnStickyStyle(colType.fixed, 1);
+
+      const isFirstColumn = colIdx === 0;
+      const showExpandInCell = rest.expandable && isFirstColumn;
+      const ExpandIcon = rest.expandable?.expandIcon;
+      const cellHandlerProps =
+        (colType.onCell?.(
+          record,
+          actualIndex
+        ) as React.TdHTMLAttributes<HTMLTableCellElement>) ?? {};
+
+      return (
+        <UntitledTable.Cell
+          {...cellHandlerProps}
+          className={classNames(
+            colType.ellipsis && 'tw:overflow-hidden',
+            rest.cellClassName ?? 'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top',
+            'tw:group-data-[dragging]:opacity-40',
+            'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
+            'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
+          )}
+          key={cellKey}
+          style={{
+            ...(rest.size === 'small' && !rest.cellClassName
+              ? { padding: '8px' }
+              : {}),
+            ...(columnWidths[cellKey] !== undefined ||
+            colType.width !== undefined
+              ? {
+                  width: columnWidths[cellKey] ?? (colType.width as number),
+                  minWidth: (colType.width as number) ?? undefined,
+                }
+              : {}),
+            ...stickyStyle,
+            ...(showExpandInCell
+              ? { paddingLeft: `${16 + depth * 12}px` }
+              : {}),
+            ...cellHandlerProps.style,
+          }}>
+          <div className={classNames('tw:flex tw:gap-1 tw:max-w-full')}>
+            {showExpandInCell && (
+              <div className="tw:flex tw:items-center tw:shrink-0">
+                {hasChildren ? (
+                  ExpandIcon ? (
+                    <ExpandIcon
+                      expandable={hasChildren}
+                      expanded={isExpanded}
+                      prefixCls=""
+                      record={record}
+                      onExpand={(rec, e) => {
+                        e.stopPropagation();
+                        handleExpandToggle(rec as T, rowKey);
+                      }}
+                    />
+                  ) : (
+                    <button
+                      aria-expanded={isExpanded}
+                      className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+                      data-testid="expand-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExpandToggle(record, rowKey);
+                      }}>
+                      {isExpanded ? (
+                        <ChevronDown className="tw:size-4" />
+                      ) : (
+                        <ChevronRight className="tw:size-4" />
+                      )}
+                    </button>
+                  )
+                ) : ExpandIcon ? (
+                  <ExpandIcon
+                    expandable={false}
+                    expanded={false}
+                    prefixCls=""
+                    record={record}
+                    onExpand={(_rec, _e) => {}}
+                  />
+                ) : (
+                  <span className="tw:inline-block tw:w-4 tw:mr-1" />
+                )}
+              </div>
+            )}
+            {colType.ellipsis ? (
+              <div className="tw:flex-1 tw:min-w-0 tw:truncate">
+                {resolveCellValue(colType, record, actualIndex)}
+              </div>
+            ) : (
+              resolveCellValue(colType, record, actualIndex)
+            )}
+          </div>
+        </UntitledTable.Cell>
+      );
+    });
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -723,20 +858,16 @@ const TableV2 = <T extends object>(
                                   {typeof colType.filterDropdown === 'function'
                                     ? colType.filterDropdown({
                                         prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) =>
-                                          setFilterState((prev) => ({
-                                            ...prev,
-                                            [colKey]: keys,
-                                          })),
+                                        setSelectedKeys: setColumnFilterKeys(
+                                          setFilterState,
+                                          colKey
+                                        ),
                                         selectedKeys: filterState[colKey] ?? [],
                                         confirm: () => setOpenFilterKey(null),
-                                        clearFilters: () =>
-                                          setFilterState((prev) => {
-                                            const next = { ...prev };
-                                            delete next[colKey];
-
-                                            return next;
-                                          }),
+                                        clearFilters: clearColumnFilter(
+                                          setFilterState,
+                                          colKey
+                                        ),
                                         filters: colType.filters,
                                         visible: true,
                                         close: () => setOpenFilterKey(null),
@@ -770,10 +901,8 @@ const TableV2 = <T extends object>(
                   )
                 }>
                 {flatRows.map((flatRow) => {
-                  const { record, actualIndex, depth, hasChildren, rowKey } =
-                    flatRow;
+                  const { record, actualIndex, depth, rowKey } = flatRow;
                   const rowHandlers = rest.onRow?.(record, actualIndex) ?? {};
-                  const isExpanded = expandedKeys.has(rowKey);
 
                   return (
                     <UntitledTable.Row
@@ -812,121 +941,7 @@ const TableV2 = <T extends object>(
                       onDrop={
                         dragAndDropHooks ? undefined : rowHandlers.onDrop
                       }>
-                      {propsColumns.map((col, colIdx) => {
-                        const colType = col as ColumnType<T>;
-                        const cellKey = String(
-                          col.key ?? colType.dataIndex ?? colIdx
-                        );
-                        const stickyStyle = getColumnStickyStyle(
-                          colType.fixed,
-                          1
-                        );
-
-                        const isFirstColumn = colIdx === 0;
-                        const showExpandInCell =
-                          rest.expandable && isFirstColumn;
-                        const ExpandIcon = rest.expandable?.expandIcon;
-                        const cellHandlerProps =
-                          (colType.onCell?.(
-                            record,
-                            actualIndex
-                          ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
-                          {};
-
-                        return (
-                          <UntitledTable.Cell
-                            {...cellHandlerProps}
-                            className={classNames(
-                              colType.ellipsis && 'tw:overflow-hidden',
-                              rest.cellClassName ??
-                                'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top',
-                              'tw:group-data-[dragging]:opacity-40',
-                              'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
-                              'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
-                            )}
-                            key={cellKey}
-                            style={{
-                              ...(rest.size === 'small' && !rest.cellClassName
-                                ? { padding: '8px' }
-                                : {}),
-                              ...(columnWidths[cellKey] !== undefined ||
-                              colType.width !== undefined
-                                ? {
-                                    width:
-                                      columnWidths[cellKey] ??
-                                      (colType.width as number),
-                                    minWidth:
-                                      (colType.width as number) ?? undefined,
-                                  }
-                                : {}),
-                              ...stickyStyle,
-                              ...(showExpandInCell
-                                ? { paddingLeft: `${16 + depth * 12}px` }
-                                : {}),
-                              ...cellHandlerProps.style,
-                            }}>
-                            <div
-                              className={classNames(
-                                'tw:flex tw:gap-1 tw:max-w-full'
-                              )}>
-                              {showExpandInCell && (
-                                <div className="tw:flex tw:items-center tw:shrink-0">
-                                  {hasChildren ? (
-                                    ExpandIcon ? (
-                                      <ExpandIcon
-                                        expandable={hasChildren}
-                                        expanded={isExpanded}
-                                        prefixCls=""
-                                        record={record}
-                                        onExpand={(rec, e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(rec as T, rowKey);
-                                        }}
-                                      />
-                                    ) : (
-                                      <button
-                                        aria-expanded={isExpanded}
-                                        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
-                                        data-testid="expand-icon"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(record, rowKey);
-                                        }}>
-                                        {isExpanded ? (
-                                          <ChevronDown className="tw:size-4" />
-                                        ) : (
-                                          <ChevronRight className="tw:size-4" />
-                                        )}
-                                      </button>
-                                    )
-                                  ) : ExpandIcon ? (
-                                    <ExpandIcon
-                                      expandable={false}
-                                      expanded={false}
-                                      prefixCls=""
-                                      record={record}
-                                      onExpand={(_rec, _e) => {}}
-                                    />
-                                  ) : (
-                                    <span className="tw:inline-block tw:w-4 tw:mr-1" />
-                                  )}
-                                </div>
-                              )}
-                              {colType.ellipsis ? (
-                                <div className="tw:flex-1 tw:min-w-0 tw:truncate">
-                                  {resolveCellValue(
-                                    colType,
-                                    record,
-                                    actualIndex
-                                  )}
-                                </div>
-                              ) : (
-                                resolveCellValue(colType, record, actualIndex)
-                              )}
-                            </div>
-                          </UntitledTable.Cell>
-                        );
-                      })}
+                      {renderRowCells(flatRow)}
                     </UntitledTable.Row>
                   );
                 })}
