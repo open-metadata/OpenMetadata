@@ -54,6 +54,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <span>{children}</span>
   )),
   Tree: jest.fn(), // implementation configured per-test in beforeEach
+  EmptyPlaceholder: jest.fn(
+    ({
+      actions,
+    }: {
+      actions?: { key: string; label: React.ReactNode; onPress?: () => void }[];
+    }) => (
+      <button
+        data-testid="error-placeholder"
+        onClick={() => actions?.[0]?.onPress?.()}>
+        Add Domain
+      </button>
+    )
+  ),
 }));
 
 jest.mock('../../common/ResizablePanels/ResizableLeftPanels', () =>
@@ -75,14 +88,6 @@ jest.mock('../../common/ResizablePanels/ResizableLeftPanels', () =>
 
 jest.mock('../../Domain/DomainDetails/DomainDetails.component', () =>
   jest.fn(() => <div data-testid="domain-details" />)
-);
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(({ onClick }: { onClick: () => void }) => (
-    <button data-testid="error-placeholder" onClick={onClick}>
-      Add Domain
-    </button>
-  ))
 );
 
 jest.mock('../../common/Loader/Loader', () =>
