@@ -129,9 +129,7 @@ class HttpTransport:
 
         events = response.text.replace("\r\n", "\n").replace("\r", "\n").split("\n\n")
         for event in events:
-            data = "\n".join(
-                line[5:].lstrip() for line in event.splitlines() if line.startswith("data:")
-            )
+            data = "\n".join(line[5:].lstrip() for line in event.splitlines() if line.startswith("data:"))
             if not data:
                 continue
             message = json.loads(data)
@@ -392,9 +390,7 @@ def _get_transport(server_config: dict[str, Any]) -> str:
     """Map client configuration transport names to OpenMetadata's schema values."""
     transport = server_config.get("transport") or server_config.get("type") or "Stdio"
     normalized = transport.lower()
-    return {"http": "StreamableHTTP", "sse": "SSE", "streamablehttp": "StreamableHTTP"}.get(
-        normalized, transport
-    )
+    return {"http": "StreamableHTTP", "sse": "SSE", "streamablehttp": "StreamableHTTP"}.get(normalized, transport)
 
 
 def discover_servers_from_config_files(
