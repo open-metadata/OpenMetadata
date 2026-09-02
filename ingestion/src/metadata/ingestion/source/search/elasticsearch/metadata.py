@@ -13,7 +13,8 @@ Elasticsearch source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from elasticsearch8 import Elasticsearch  # noqa: TC002
 
@@ -58,7 +59,7 @@ class ElasticsearchSource(SearchServiceSource):
         self.client: Elasticsearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ElasticsearchConnection = config.serviceConnection.root.config
         if not isinstance(connection, ElasticsearchConnection):
@@ -86,7 +87,7 @@ class ElasticsearchSource(SearchServiceSource):
             )
             raise exc  # noqa: TRY201
 
-    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:  # noqa: UP045
+    def get_search_index_name(self, search_index_details: dict) -> str | None:
         """
         Get Search Index Name
         """
@@ -166,7 +167,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         yield from self.client.indices.get_index_template().get("index_templates", [])
 
-    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:  # noqa: UP045
+    def get_search_index_template_name(self, search_index_template_details: dict) -> str | None:
         """
         Get Search Index Template Name
         """

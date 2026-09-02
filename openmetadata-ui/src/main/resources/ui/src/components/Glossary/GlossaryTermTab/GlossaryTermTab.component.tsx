@@ -15,13 +15,10 @@ import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
-  Dialog,
   EmptyPlaceholder,
   Input,
-  Modal as CoreModal,
-  ModalOverlay,
   TableCard,
-  TextArea,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
@@ -145,11 +142,6 @@ const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
 
-interface PendingGlossaryTermRejection {
-  glossaryTermFqn: string;
-  taskId: string | number;
-}
-
 const renderGlossaryExpandIcon = (
   {
     expanded,
@@ -237,10 +229,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Task[]>
   >({});
-  const [pendingRejection, setPendingRejection] =
-    useState<PendingGlossaryTermRejection>();
-  const [rejectionComment, setRejectionComment] = useState('');
-  const [isRejecting, setIsRejecting] = useState(false);
 
   const glossaryTerms = useMemo(() => {
     // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
@@ -689,7 +677,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ) => {
       try {
         if (!taskId) {
-          return false;
+          return;
         }
 
         const resolutionType =
@@ -698,7 +686,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             : TaskResolutionType.Rejected;
 
         const updatedTask = await resolveTaskAPI(taskId + '', {
-          comment: data.comment,
           resolutionType,
           newValue: data.newValue,
         });
@@ -723,7 +710,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               );
             }
 
-            return true;
+            return;
           }
 
           const newStatus =
@@ -759,12 +746,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             setTermTaskThreads(updatedThreads);
           }
         }
-
-        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
-
-        return false;
       }
     },
     [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
@@ -780,37 +763,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleRejectGlossaryTerm = useCallback(
     (taskId: string | number, glossaryTermFqn: string) => {
-      setPendingRejection({ glossaryTermFqn, taskId });
-      setRejectionComment('');
+      const data = { newValue: 'rejected' } as ResolveTask;
+      updateTaskData(data, taskId, glossaryTermFqn);
     },
-    []
+    [updateTaskData]
   );
-
-  const handleRejectDialogClose = useCallback(() => {
-    if (!isRejecting) {
-      setPendingRejection(undefined);
-      setRejectionComment('');
-    }
-  }, [isRejecting]);
-
-  const handleRejectConfirm = useCallback(async () => {
-    const comment = rejectionComment.trim();
-    if (!pendingRejection || !comment) {
-      return;
-    }
-
-    setIsRejecting(true);
-    const didReject = await updateTaskData(
-      { comment, newValue: 'rejected' } as ResolveTask,
-      pendingRejection.taskId,
-      pendingRejection.glossaryTermFqn
-    );
-    setIsRejecting(false);
-    if (didReject) {
-      setPendingRejection(undefined);
-      setRejectionComment('');
-    }
-  }, [pendingRejection, rejectionComment, updateTaskData]);
 
   const handleLoadMoreChildren = useCallback(
     (record: ModifiedGlossaryTerm) => {
@@ -917,7 +874,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         title: t('label.description'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: tableColumnsWidth.description,
         render: (description: string, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 
@@ -925,14 +881,24 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             return null;
           }
 
-          return description?.trim() ? (
-            <RichTextEditorPreviewerNew
-              clampByLines
-              enableSeeMoreVariant
-              markdown={description}
-            />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+          return (
+            <div
+              style={{
+                maxWidth: tableColumnsWidth.descriptionMax,
+                minWidth: tableColumnsWidth.descriptionMin,
+              }}>
+              {description?.trim() ? (
+                <RichTextEditorPreviewerNew
+                  clampByLines
+                  enableSeeMoreVariant
+                  markdown={description}
+                />
+              ) : (
+                <Typography color="secondary">
+                  {t('label.no-description')}
+                </Typography>
+              )}
+            </div>
           );
         },
       },
@@ -1828,6 +1794,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 pagination={false}
                 rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
+                scroll={GLOSSARY_TABLE_SCROLL}
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               />
@@ -1900,47 +1867,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </TableCard.Root>
           )}
         </div>
-        <ModalOverlay
-          isDismissable={!isRejecting}
-          isOpen={Boolean(pendingRejection)}
-          onOpenChange={(isOpen) => !isOpen && handleRejectDialogClose()}>
-          <CoreModal>
-            <Dialog
-              data-testid="glossary-term-reject-dialog"
-              showCloseButton={!isRejecting}
-              title={t('label.reject')}
-              width={480}
-              onClose={handleRejectDialogClose}>
-              <Dialog.Content>
-                <TextArea
-                  isRequired
-                  data-testid="glossary-term-reject-comment"
-                  isDisabled={isRejecting}
-                  label={t('label.comment')}
-                  rows={4}
-                  value={rejectionComment}
-                  onChange={setRejectionComment}
-                />
-              </Dialog.Content>
-              <Dialog.Footer>
-                <CoreButton
-                  color="secondary"
-                  isDisabled={isRejecting}
-                  onPress={handleRejectDialogClose}>
-                  {t('label.cancel')}
-                </CoreButton>
-                <CoreButton
-                  color="primary-destructive"
-                  data-testid="confirm-reject-glossary-term"
-                  isDisabled={!rejectionComment.trim() || isRejecting}
-                  isLoading={isRejecting}
-                  onPress={handleRejectConfirm}>
-                  {t('label.reject')}
-                </CoreButton>
-              </Dialog.Footer>
-            </Dialog>
-          </CoreModal>
-        </ModalOverlay>
         <Modal
           centered
           destroyOnClose
