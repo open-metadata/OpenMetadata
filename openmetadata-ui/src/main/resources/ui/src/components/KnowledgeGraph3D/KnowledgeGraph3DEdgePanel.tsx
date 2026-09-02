@@ -96,6 +96,21 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
   );
 };
 
+const getEdgeKindLabel = (
+  t: ReturnType<typeof useTranslation>['t'],
+  isDerived: boolean,
+  isOntology: boolean
+): string => {
+  if (isDerived) {
+    return t('label.ontology-inferred');
+  }
+  if (isOntology) {
+    return t('label.ontology');
+  }
+
+  return t('label.knowledge-graph');
+};
+
 const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   link,
   source,
@@ -113,6 +128,7 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   const relationLabel = RELATION_LABEL_KEYS[link.label]
     ? t(RELATION_LABEL_KEYS[link.label])
     : link.label;
+  const edgeKindLabel = getEdgeKindLabel(t, isDerived, isOntology);
 
   return (
     <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-primary tw:shadow-2xl">
@@ -133,11 +149,7 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
                 background: hexRgba(accent, 0.14),
                 borderColor: hexRgba(accent, 0.35),
               }}>
-              {isDerived
-                ? t('label.ontology-inferred')
-                : isOntology
-                ? t('label.ontology')
-                : t('label.knowledge-graph')}
+              {edgeKindLabel}
             </span>
           </div>
         </div>

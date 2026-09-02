@@ -146,6 +146,35 @@ const linkParticlesFor = (
   return !reducedMotion && animated ? 2 : 0;
 };
 
+const getCameraFocus = (
+  nodes: GraphNode3D[],
+  selectedNodeId: string | null
+): { position: typeof GRAPH_ORIGIN; target: typeof GRAPH_ORIGIN } | null => {
+  if (!selectedNodeId) {
+    return null;
+  }
+
+  const node = nodes.find((item) => item.id === selectedNodeId) as
+    | SceneNode
+    | undefined;
+  if (!node || node.x === undefined) {
+    return null;
+  }
+
+  const target = { x: node.x, y: node.y ?? 0, z: node.z ?? 0 };
+  const distance = Math.hypot(target.x, target.y, target.z) || 1;
+  const ratio = 1 + CAMERA_FOCUS_DISTANCE / distance;
+
+  return {
+    position: {
+      x: target.x * ratio,
+      y: target.y * ratio,
+      z: target.z * ratio,
+    },
+    target,
+  };
+};
+
 const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   data,
   focusNodeId,
@@ -466,20 +495,13 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   }, [applyNodePresentation, level]);
 
   useEffect(() => {
-    if (!selectedNodeId) {
+    const focus = getCameraFocus(data.nodes, selectedNodeId);
+    if (!focus) {
       return;
     }
-    const node = data.nodes.find((item) => item.id === selectedNodeId) as
-      | SceneNode
-      | undefined;
-    if (!node || node.x === undefined) {
-      return;
-    }
-    const distance = Math.hypot(node.x, node.y ?? 0, node.z ?? 0) || 1;
-    const ratio = 1 + CAMERA_FOCUS_DISTANCE / distance;
     fgRef.current?.cameraPosition(
-      { x: node.x * ratio, y: (node.y ?? 0) * ratio, z: (node.z ?? 0) * ratio },
-      { x: node.x, y: node.y ?? 0, z: node.z ?? 0 },
+      focus.position,
+      focus.target,
       CAMERA_FOCUS_DURATION_MS
     );
   }, [selectedNodeId, data.nodes]);

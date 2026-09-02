@@ -91,6 +91,19 @@ describe('hexRgba', () => {
   it('handles the space-separated RGB format used by palette tokens', () => {
     expect(hexRgba('rgb(102 198 28)', 0.5)).toBe('rgba(102,198,28,0.5)');
   });
+
+  it('expands short hex colors before applying opacity', () => {
+    expect(hexRgba('#fff', 0.25)).toBe('rgba(255,255,255,0.25)');
+  });
+
+  it('uses the token fallback when the resolved format is not canvas-safe', () => {
+    document.documentElement.style.setProperty(
+      '--color-brand-500',
+      'oklch(62% 0.2 250)'
+    );
+
+    expect(hexRgba(ENTITY_COLORS.table, 0.5)).toBe('rgba(46,144,250,0.5)');
+  });
 });
 
 describe('initials', () => {
