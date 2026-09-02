@@ -29,12 +29,12 @@ from cassandra.cluster import (
 from cassandra.cluster import Session as CassandraSession
 from metadata.core.connections.test_connection import ErrorPack, Evidence, Matchers, check, when
 from metadata.core.connections.test_connection.check import CheckError
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
-from metadata.core.connections.test_connection.checks.scope import (
-    DEFAULT_MAX_TARGETS,
-    ProbeScope,
-    probe_targets,
+from metadata.core.connections.test_connection.checks.database import (
+    MAX_TARGETS,
+    DatabaseStep,
+    targets_in_scope,
 )
+from metadata.core.connections.test_connection.checks.probe import probe_targets
 from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS, probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis
@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.cassandra.queries import (
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
 # Ingestion reads the system keyspaces too, so they are probed rather than skipped -
@@ -104,10 +105,13 @@ class CassandraChecks:
     errors = CASSANDRA_ERRORS
 
     def __init__(
-        self, session: Borrowed[CassandraSession], scope: ProbeScope, probe_target: tuple[str, int] | None
+        self,
+        session: Borrowed[CassandraSession],
+        schema_filter: FilterPattern | None,
+        probe_target: tuple[str, int] | None,
     ) -> None:
         self._session = session
-        self._scope = scope
+        self._schema_filter = schema_filter
         self._probe_target = probe_target
         self._targeted: list[str] | None = None
 
@@ -119,7 +123,12 @@ class CassandraChecks:
         """
         if self._targeted is None:
             rows = self._session.client.execute(CASSANDRA_GET_KEYSPACES)
-            self._targeted = self._scope.targets(row.keyspace_name for row in rows)
+            listed = [row.keyspace_name for row in rows]
+            # Ingestion reads the system keyspaces too, so they are ordered last
+            # rather than dropped: the probe still lands on real data when there
+            # is any.
+            ordered = sorted(listed, key=lambda name: name.lower() in SYSTEM_KEYSPACES)
+            self._targeted = targets_in_scope(ordered, excluded=self._schema_filter)
         return self._targeted
 
     @check(DatabaseStep.CheckAccess)
@@ -135,9 +144,9 @@ class CassandraChecks:
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
         targeted = self._targeted_keyspaces()
-        # Capped by the scope, so the count is a floor once it reaches the cap.
+        # Capped, so the count is a floor once it reaches the cap.
         return Evidence(
-            summary=enumerated(len(targeted), "keyspace", DEFAULT_MAX_TARGETS),
+            summary=enumerated(len(targeted), "keyspace", MAX_TARGETS),
             command=_command(CASSANDRA_GET_KEYSPACES),
             caveat=None if targeted else _nothing_in_scope(),
         )
@@ -164,20 +173,19 @@ class CassandraChecks:
                 summary=f"no keyspace in scope to read {kind}s from", command=command, caveat=_nothing_in_scope()
             )
 
-        found: dict[str, tuple[int, bool]] = {}
-
-        def probe(keyspace: str) -> None:
+        def probe(keyspace: str) -> tuple[int, bool]:
             # Only the first page: proving the read works never needs the rest, so
-            # the count is reported as a floor when more pages exist.
+            # the count is reported as a floor when more pages exist. An empty page
+            # still answers - the role can read the keyspace - so it is accepted.
             rows = self._session.client.execute(statement, [keyspace])
-            found[keyspace] = (len(rows.current_rows), bool(rows.has_more_pages))
+            return len(rows.current_rows), bool(rows.has_more_pages)
 
         try:
-            keyspace = probe_targets(targeted, probe)
+            answered = probe_targets(targeted, probe)
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
 
-        number, more = found.get(keyspace, (0, False)) if keyspace else (0, False)
+        keyspace, (number, more) = answered if answered else (None, (0, False))
         empty = not number and not more
         return Evidence(
             summary=f"{count(number, kind)} in keyspace '{keyspace}'" + more_suffix(number, more),
@@ -252,7 +260,7 @@ class CassandraConnection(BaseConnection[CassandraConnectionConfig, CassandraSes
         connection = self.service_connection
         return CassandraChecks(
             session=self.borrow(),
-            scope=ProbeScope(excluded=connection.schemaFilterPattern, last_resort=SYSTEM_KEYSPACES),
+            schema_filter=connection.schemaFilterPattern,
             probe_target=_host_and_port(connection),
         )
 
