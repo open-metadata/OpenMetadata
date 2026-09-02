@@ -399,7 +399,11 @@ class SupersetSourceMixin(DashboardServiceSource):
                     field.type
                 )
                 if not isinstance(col_parse, dict):
-                    logger.warning(f"Unexpected datatype parse result for column {field.column_name}: {col_parse!r}")
+                    logger.warning(
+                        "Unexpected datatype parse result for column %s: %r",
+                        field.column_name,
+                        col_parse,
+                    )
                     continue
                 description = field.description or ""
                 if field.expression:
