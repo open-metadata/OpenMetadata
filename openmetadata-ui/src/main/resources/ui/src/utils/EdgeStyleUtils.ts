@@ -22,6 +22,8 @@ export interface LineageEdgeColors {
   primary: string;
   columnHighlight: string;
   dqHighlight: string;
+  labelBackground: string;
+  labelText: string;
 }
 
 const EDGE_STYLE_CACHE_MAX = 1_000;
@@ -93,7 +95,7 @@ export function computeEdgeStyle(
   // Cache keys don't encode colors, so drop cached styles when the resolved
   // colors change (e.g. the user updates the brand/custom theme) to avoid
   // repainting stale strokes.
-  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${colors.dqHighlight}`;
+  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${colors.dqHighlight}|${colors.labelBackground}|${colors.labelText}`;
   if (colorSignature !== cachedColorSignature) {
     edgeStyleCache.clear();
     cachedColorSignature = colorSignature;

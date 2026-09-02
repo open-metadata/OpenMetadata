@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.List;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -75,6 +76,31 @@ public interface SearchManagementClient {
   Response searchByField(
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException;
+
+  Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException;
+
+  Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException;
+
+  boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException;
 
   /**
    * List entities with pagination support.

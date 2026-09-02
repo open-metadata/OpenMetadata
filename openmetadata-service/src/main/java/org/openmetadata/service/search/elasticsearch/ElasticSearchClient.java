@@ -551,6 +551,50 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  @Override
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  @Override
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    return searchManager.isFieldMappedInIndex(index, fieldPath);
+  }
+
+  @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
     return aggregationManager.getEntityTypeCounts(request, index);
   }

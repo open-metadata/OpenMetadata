@@ -23,11 +23,13 @@ import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import es.co.elastic.clients.elasticsearch._types.mapping.Property;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
+import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpMapper;
 import io.micrometer.core.instrument.Timer;
@@ -179,24 +181,94 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   public Response searchByField(
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
+    return searchByFieldWithOptions(
+        fieldName, fieldValue, index, deleted, from, size, List.of(), null, false);
+  }
+
+  @Override
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
     }
 
-    Query fieldQuery =
+    List<Query> mustQueries = new ArrayList<>();
+    mustQueries.add(
+        Query.of(q -> q.wildcard(w -> w.field(fieldName).value(fieldValue).caseInsensitive(true))));
+    if (!nullOrEmpty(requiredExistsField)) {
+      mustQueries.add(Query.of(q -> q.exists(e -> e.field(requiredExistsField))));
+    }
+    Query query =
         Query.of(
             q ->
                 q.bool(
                     b ->
-                        b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
+                        b.must(mustQueries)
                             .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
+
+    return executeSceneSearch(query, index, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  @Override
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+
+    List<FieldValue> values = fieldValues.stream().map(FieldValue::of).toList();
+    Query query =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(
+                                m ->
+                                    m.terms(
+                                        t ->
+                                            t.field(fieldName).terms(terms -> terms.value(values))))
+                            .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
+
+    return executeSceneSearch(query, index, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  private Response executeSceneSearch(
+      Query query,
+      String index,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    ElasticSearchRequestBuilder requestBuilder =
+        new ElasticSearchRequestBuilder()
+            .query(restrictToOrgWideMemories(query))
+            .from(from)
+            .size(size)
+            .sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD)
+            .trackTotalHits(trackTotalHits);
+    if (!nullOrEmpty(sourceIncludes)) {
+      requestBuilder.fetchSource(sourceIncludes.toArray(String[]::new), new String[0]);
+    }
     SearchRequest searchRequest =
-        SearchRequest.of(
-            s ->
-                s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .from(from)
-                    .size(size)
-                    .query(restrictToOrgWideMemories(fieldQuery)));
+        requestBuilder.build(Entity.getSearchRepository().getIndexOrAliasName(index));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -209,6 +281,44 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
     String responseJson = serializeSearchResponse(response);
     return Response.status(OK).entity(responseJson).build();
+  }
+
+  @Override
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+    GetMappingResponse response =
+        client
+            .indices()
+            .getMapping(
+                request -> request.index(Entity.getSearchRepository().getIndexOrAliasName(index)));
+    String[] path = fieldPath.split("\\.");
+    return response.mappings().values().stream()
+        .anyMatch(mapping -> hasMappedField(mapping.mappings().properties(), path, 0));
+  }
+
+  private static boolean hasMappedField(
+      Map<String, Property> properties, String[] path, int index) {
+    if (properties == null || index >= path.length) {
+      return false;
+    }
+    Property property = properties.get(path[index]);
+    if (property == null) {
+      return false;
+    }
+    if (index == path.length - 1) {
+      return true;
+    }
+    Map<String, Property> children = null;
+    if (property.isObject()) {
+      children = property.object().properties();
+    } else if (property.isNested()) {
+      children = property.nested().properties();
+    } else if (property.isText()) {
+      children = property.text().fields();
+    }
+    return hasMappedField(children, path, index + 1);
   }
 
   @Override

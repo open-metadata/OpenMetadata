@@ -106,6 +106,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -621,6 +622,7 @@ public class LineageRepository {
   }
 
   private void invalidateLineageCacheForEdge(EntityReference from, EntityReference to) {
+    LineageSceneCache.getInstance().invalidateAll();
     if (from != null) {
       searchClient.invalidateLineageCache(from.getFullyQualifiedName());
     }

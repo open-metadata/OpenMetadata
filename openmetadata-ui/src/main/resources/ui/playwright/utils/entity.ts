@@ -2054,13 +2054,24 @@ export const checkForEditActions = async ({
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   // Click the lineage tab
-  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?fqn=*');
+  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.click('[data-testid="lineage"]');
 
   // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
+
+  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
+  const hasSeenOnboarding = (await page.context().cookies()).some(
+    ({ name, value }) =>
+      name === 'lineageMapsOnboardingSeen' && value === 'true'
+  );
+  if (!hasSeenOnboarding) {
+    await expect(onboardingDialog).toBeVisible();
+    await onboardingDialog.getByRole('button').click();
+    await expect(onboardingDialog).not.toBeVisible();
+  }
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {

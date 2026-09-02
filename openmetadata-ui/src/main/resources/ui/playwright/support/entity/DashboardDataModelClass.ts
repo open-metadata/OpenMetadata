@@ -196,6 +196,13 @@ export class DashboardDataModelClass extends EntityClass {
         data: this.entity,
       });
     }
+    // A timed-out create can commit before its retry reports a conflict.
+    if (entityResponse.status() === 409) {
+      const dataModelFqn = `${this.service.name}.model.${this.dashboardDataModelName}`;
+      entityResponse = await apiContext.get(
+        `/api/v1/dashboard/datamodels/name/${encodeURIComponent(dataModelFqn)}`
+      );
+    }
     if (!entityResponse.ok()) {
       throw new Error(
         `Dashboard data model create failed (${entityResponse.status()}): ${await entityResponse.text()}`

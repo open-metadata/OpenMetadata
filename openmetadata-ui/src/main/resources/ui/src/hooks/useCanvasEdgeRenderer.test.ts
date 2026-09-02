@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { RefObject } from 'react';
-import { Edge, Node } from 'reactflow';
-import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
+import type { RefObject } from 'react';
+import type { Edge, Node } from 'reactflow';
+import type { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 import { useCanvasEdgeRenderer } from './useCanvasEdgeRenderer';
 
 const mockGetNode = jest.fn();
@@ -94,6 +94,10 @@ const createMockCanvas = () => {
     lineJoin: 'miter',
     fillStyle: '',
     beginPath: jest.fn(),
+    rect: jest.fn(),
+    roundRect: jest.fn(),
+    measureText: jest.fn().mockReturnValue({ width: 12 }),
+    fillText: jest.fn(),
     moveTo: jest.fn(),
     lineTo: jest.fn(),
     closePath: jest.fn(),
@@ -109,6 +113,8 @@ const createMockColors = (): LineageEdgeColors => ({
   primary: '#1890ff',
   columnHighlight: '#3F51B5',
   dqHighlight: '#F44336',
+  labelBackground: '#FFFFFF',
+  labelText: '#475467',
 });
 
 const createMockEdge = (overrides: Partial<Edge> = {}): Edge => ({
@@ -219,6 +225,74 @@ describe('useCanvasEdgeRenderer', () => {
     );
 
     expect(mockCtx.stroke).toHaveBeenCalled();
+  });
+
+  it('uses the base stroke width for invalid rollup weights', () => {
+    const edge = createMockEdge({
+      data: {
+        isColumnLineage: false,
+        isRollup: true,
+        weight: -2,
+      },
+    });
+    const node1 = createMockNode('node-1');
+    const node2 = createMockNode('node-2');
+
+    mockGetNode.mockImplementation((id: string) =>
+      id === 'node-1' ? node1 : node2
+    );
+
+    const { isEdgeInViewport } = require('../utils/CanvasUtils');
+    isEdgeInViewport.mockReturnValue(true);
+
+    renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [edge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+      })
+    );
+
+    expect(mockCtx.lineWidth).toBe(2);
+  });
+
+  it('uses a rectangular label background when roundRect is unavailable', () => {
+    const edge = createMockEdge({
+      data: {
+        isColumnLineage: false,
+        isRollup: true,
+        weight: 2,
+      },
+    });
+    const node1 = createMockNode('node-1');
+    const node2 = createMockNode('node-2');
+
+    mockGetNode.mockImplementation((id: string) =>
+      id === 'node-1' ? node1 : node2
+    );
+    Object.defineProperty(mockCtx, 'roundRect', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const { isEdgeInViewport } = require('../utils/CanvasUtils');
+    isEdgeInViewport.mockReturnValue(true);
+
+    renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [edge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+      })
+    );
+
+    expect(mockCtx.rect).toHaveBeenCalled();
   });
 
   it('filters edges by viewport visibility', () => {

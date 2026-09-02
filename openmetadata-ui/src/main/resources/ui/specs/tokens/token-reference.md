@@ -4,9 +4,9 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **797**.
+Total project tokens: **799**.
 
-## Spacing (61)
+## Spacing (62)
 
 padding / margin / gap. See foundations/spacing.md.
 
@@ -52,6 +52,7 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-42` | `42px` |
 | `--om-space-44` | `44px` |
 | `--om-space-45` | `45px` |
+| `--om-space-46` | `46px` |
 | `--om-space-48` | `48px` |
 | `--om-space-50` | `50px` |
 | `--om-space-54` | `54px` |
@@ -641,11 +642,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (239)
+## Legacy colors (240)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 239</summary>
+<details><summary>Show all 240</summary>
 
 | Token | Value |
 | --- | --- |
@@ -700,6 +701,7 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-13c2c2` | `#13c2c2` |
 | `--om-legacy-color-15-15-15-0-1` | `rgba(15, 15, 15, 0.1)` |
 | `--om-legacy-color-15-23-42-0-06` | `rgba(15, 23, 42, 0.06)` |
+| `--om-legacy-color-16-24-40-0-12` | `rgba(16, 24, 40, 0.12)` |
 | `--om-legacy-color-16-24-40-0-14` | `rgba(16, 24, 40, 0.14)` |
 | `--om-legacy-color-0017e4` | `#0017e4` |
 | `--om-legacy-color-23aa66` | `#23aa66` |

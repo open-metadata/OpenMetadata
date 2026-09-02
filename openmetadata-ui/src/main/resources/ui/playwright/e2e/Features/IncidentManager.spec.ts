@@ -991,7 +991,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   /**
    * Validate Incident tab in entity page
-   * @description Verifies incidents list within entity details, lineage incident counts, and navigation back to tab.
+   * @description Verifies incidents within entity details and the entity's lineage scene.
    */
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
@@ -1010,35 +1010,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       ).toBeVisible();
     }
     const lineageResponse = page.waitForResponse(
-      `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `**/api/v1/lineage/scene?*focusFqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
     await page.click('[data-testid="lineage"]');
     await lineageResponse;
 
-    const incidentCountResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
-    );
     const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
-    await incidentCountResponse;
-
-    await expect(page.getByTestId('Incidents-label')).toBeVisible();
-    await expect(page.getByTestId('Incidents-value')).toContainText('3');
-
-    const incidentTabResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
-    );
-
-    await page.getByTestId('Incidents-value').locator('a').click();
-
-    await incidentTabResponse;
-
-    for (const testCase of testCases) {
-      await expect(
-        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
-      ).toBeVisible();
-    }
+    await expect(
+      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    ).toBeVisible();
   });
 
   /**

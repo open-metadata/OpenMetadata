@@ -22,6 +22,7 @@ import {
   getApiContext,
   getDefaultAdminAPIContext,
   redirectToHomePage,
+  toastNotification,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -29,7 +30,6 @@ import {
   addColumnLineage,
   addPipelineBetweenNodes,
   clickEdgeBetweenNodes,
-  clickLineageNode,
   connectEdgeBetweenNodesViaAPI,
   editLineage,
   editLineageClick,
@@ -116,7 +116,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Lineage Layers Toggle', () => {
-    test('Verify multiple non-platform layers can be active simultaneously', async ({
+    test('Verify the selected scene band persists after reopening the menu', async ({
       page,
     }) => {
       await table1.visitEntityPage(page);
@@ -124,18 +124,16 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.getByTestId('lineage-layer-btn').click();
 
-      const columnBtn = page.getByTestId('lineage-layer-column-btn');
-      const observabilityBtn = page.getByTestId(
-        'lineage-layer-observability-btn'
-      );
+      const fieldBandBtn = page.getByTestId('lineage-layer-band-FIELD');
 
-      await columnBtn.click();
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
+      await fieldBandBtn.click();
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+        .toBe('FIELD');
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('lineage-layer-btn').click();
-      await expect(columnBtn).toHaveAttribute('data-selected');
-      await expect(observabilityBtn).toHaveAttribute('data-selected');
+      await expect(fieldBandBtn).toHaveAttribute('data-selected');
     });
   });
 
@@ -149,46 +147,64 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('Verify edge click opens edge drawer', async ({ page }) => {
       await clickEdgeBetweenNodes(page, table1, topic, false);
 
+      await expect(page.locator('.edge-info-drawer-container')).toBeVisible();
       await expect(page.getByTestId('edge-header-title')).toBeVisible();
       await expect(page.getByTestId('edge-header-title')).toHaveText(
         'Edge Information'
       );
-
-      await expect(page.getByTestId('Source-value')).toBeVisible();
-      await expect(page.getByTestId('Source-value')).toHaveText(
-        table1.entityResponseData.displayName ?? ''
-      );
-
-      await expect(page.getByTestId('Target-value')).toBeVisible();
-      await expect(page.getByTestId('Target-value')).toHaveText(
-        topic.entityResponseData.displayName ?? ''
-      );
     });
 
     test('Verify edge delete button in drawer', async ({ page }) => {
-      const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
-      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+      test.slow();
 
-      await editLineage(page);
+      const { apiContext, afterAction } = await getApiContext(page);
+      const sourceTable = new TableClass();
+      const targetTable = new TableClass();
 
-      await clickEdgeBetweenNodes(page, table1, topic, false);
+      try {
+        await Promise.all([
+          sourceTable.create(apiContext),
+          targetTable.create(apiContext),
+        ]);
+        const lineageResponse = await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: sourceTable.entityResponseData.id, type: 'table' },
+          { id: targetTable.entityResponseData.id, type: 'table' }
+        );
+        expect(lineageResponse.ok()).toBeTruthy();
 
-      const deleteBtn = page.getByTestId('add-pipeline');
-      await expect(deleteBtn).toBeVisible();
+        await sourceTable.visitEntityPage(page);
+        await visitLineageTab(page);
+        await fitToScreen(page);
+        await editLineage(page);
 
-      await deleteBtn.click();
+        await clickEdgeBetweenNodes(page, sourceTable, targetTable, false);
 
-      await page.getByTestId('remove-edge-button').click();
+        const deleteBtn = page.getByTestId('add-pipeline');
+        await expect(deleteBtn).toBeVisible();
 
-      await page.getByRole('button', { name: /confirm/i }).waitFor();
-      await page.getByRole('button', { name: /confirm/i }).click();
+        await deleteBtn.click();
 
-      await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('remove-edge-button').click();
 
-      await editLineageClick(page);
+        await page.getByRole('button', { name: /confirm/i }).waitFor();
+        await page.getByRole('button', { name: /confirm/i }).click();
 
-      const edgeDiv = page.getByTestId(`edge-${table1Fqn}-${topicFqn}`);
-      await expect(edgeDiv).not.toBeVisible();
+        await waitForAllLoadersToDisappear(page);
+
+        await editLineageClick(page);
+
+        const edgeDiv = page.getByTestId(
+          `edge-${sourceTable.entityResponseData.fullyQualifiedName}-${targetTable.entityResponseData.fullyQualifiedName}`
+        );
+        await expect(edgeDiv).not.toBeVisible();
+      } finally {
+        await Promise.all([
+          sourceTable.delete(apiContext),
+          targetTable.delete(apiContext),
+        ]);
+        await afterAction();
+      }
     });
 
     test('Verify function data in edge drawer', async ({ page }) => {
@@ -222,14 +238,10 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         )}`;
 
         await addPipelineBetweenNodes(page, table1, table2);
+        await editLineageClick(page);
         await activateColumnLayer(page);
+        await editLineageClick(page);
         await addColumnLineage(page, sourceColName, targetColName);
-
-        const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
-        await page.reload();
-        await lineageReq;
-
-        await activateColumnLayer(page);
 
         await page
           .locator(
@@ -252,24 +264,15 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await expect(page.getByTestId('sql-function')).toContainText('count');
 
-        const lineageReq1 = page.waitForResponse(
-          '/api/v1/lineage/getLineage?*'
+        const persistedEdgeResponse = await apiContext.get(
+          `/api/v1/lineage/getLineageEdge/${table1.entityResponseData.id}/${table2.entityResponseData.id}`
         );
-        await page.reload();
-        await lineageReq1;
+        expect(persistedEdgeResponse.ok()).toBeTruthy();
 
-        await activateColumnLayer(page);
-        await page
-          .locator(
-            `[data-testid="column-edge-${sourceColName}-${targetColName}"]`
-          )
-          .dispatchEvent('click');
-
-        await page.locator('.edge-info-drawer').isVisible();
-
-        await expect(
-          page.locator('[data-testid="sql-function"]')
-        ).toContainText('count');
+        const persistedEdge = await persistedEdgeResponse.json();
+        expect(get(persistedEdge, 'edge.columnsLineage[0].function')).toBe(
+          'count'
+        );
       } finally {
         await Promise.all([
           table1.delete(apiContext),
@@ -279,7 +282,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
     });
 
-    test('Node edge tracing state responds to column selection and pane click', async ({
+    test('Field path tracing responds to column selection and pane click', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -316,34 +319,36 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           await visitLineageTab(page);
         });
 
-        const tableEdge = page.getByTestId(`edge-${table1Fqn}-${table2Fqn}`);
+        const sourceColumn = page.getByTestId(`column-${sourceCol}`);
+        const targetColumn = page.getByTestId(`column-${targetCol}`);
 
-        await test.step('2. Edge is in default state before any selection', async () => {
-          await expect(tableEdge).toBeVisible();
-          await expect(tableEdge).toHaveAttribute('data-edge-state', 'default');
-        });
-
-        await test.step('3. Selecting a column activates tracing on the node edge', async () => {
+        await test.step('2. Switch to the field scene', async () => {
           await activateColumnLayer(page);
 
-          const firstColumn = page.locator(
-            `[data-testid="column-${sourceCol}"]`
-          );
-          await firstColumn.click();
+          await expect(sourceColumn).toBeVisible();
+          await expect(targetColumn).toBeVisible();
+        });
 
-          await expect(tableEdge).not.toHaveAttribute(
-            'data-edge-state',
-            'default'
+        await test.step('3. Selecting a column traces the connected field path', async () => {
+          await sourceColumn.click();
+
+          await expect(sourceColumn).toHaveClass(
+            /custom-node-header-column-tracing/
+          );
+          await expect(targetColumn).toHaveClass(
+            /custom-node-header-column-tracing/
           );
         });
 
-        await test.step('4. Clicking the pane clears the tracing and restores the default state', async () => {
-          await page
-            .locator('.react-flow__pane')
-            .click({ position: { x: 10, y: 10 } });
+        await test.step('4. Clicking the pane clears the traced field path', async () => {
+          await page.locator('.react-flow__pane').dispatchEvent('click');
 
-          await expect(tableEdge).toBeVisible();
-          await expect(tableEdge).toHaveAttribute('data-edge-state', 'default');
+          await expect(sourceColumn).not.toHaveClass(
+            /custom-node-header-column-tracing/
+          );
+          await expect(targetColumn).not.toHaveClass(
+            /custom-node-header-column-tracing/
+          );
         });
       } finally {
         await Promise.all([
@@ -362,22 +367,26 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await fitToScreen(page);
     });
 
-    test('Verify node panel opens on click', async ({ page }) => {
-      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName', '');
+    test('Verify node click drills into the field scene', async ({ page }) => {
+      const tableFqn = get(table1, 'entityResponseData.fullyQualifiedName', '');
 
-      await clickLineageNode(page, topicFqn);
+      await page
+        .getByTestId(`lineage-node-${tableFqn}`)
+        .click({ position: { x: 10, y: 10 } });
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect
+        .poll(() => {
+          const currentUrl = new URL(page.url());
 
-      await expect(
-        page
-          .getByTestId('entity-summary-panel-container')
-          .getByTestId('entity-header-title')
-      ).toHaveText(topic.entityResponseData.displayName ?? '');
-
-      await page.getByLabel('Close').first().click();
-
-      await expect(page.locator('[role="dialog"]')).not.toBeVisible();
+          return {
+            band: currentUrl.searchParams.get('lineageBand'),
+            focus: currentUrl.searchParams.get('lineageFocus'),
+          };
+        })
+        .toEqual({
+          band: 'FIELD',
+          focus: tableFqn,
+        });
     });
 
     test('Verify node full path is present as breadcrumb in lineage node', async ({
@@ -441,18 +450,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
     });
 
-    test.describe('node selection edge behavior', () => {
-      /**
-       * Test setup:
-       * - table1 -> table2 -> table3
-       *          -> table4
-       *
-       * This creates a lineage graph where:
-       * - table1 is upstream of table2
-       * - table2 is upstream of table3 and table4
-       * - When table3 is selected, the traced path is: table1 -> table2 -> table3
-       * - The edge table2 -> table4 should be dimmed (not in traced path)
-       */
+    test.describe('Scene path interactions', () => {
       const table1 = new TableClass();
       const table2 = new TableClass();
       const table3 = new TableClass();
@@ -543,32 +541,75 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await redirectToHomePage(page);
       });
 
-      test('highlights traced node-to-node edges when a node is selected', async ({
+      test('highlights the connected asset path while a node is hovered', async ({
         page,
       }) => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await fitToScreen(page);
 
-        await clickLineageNode(page, table3Fqn);
+        const table3Node = page.getByTestId(`lineage-node-${table3Fqn}`);
+        await table3Node.hover();
 
-        await page.keyboard.press('Escape');
-
-        const tracedEdge1 = page.locator(
-          `[data-testid="edge-${table1Fqn}-${table2Fqn}"]`
-        );
-        const tracedEdge2 = page.locator(
-          `[data-testid="edge-${table2Fqn}-${table3Fqn}"]`
-        );
-
-        await expect(tracedEdge1).toBeVisible();
-        await expect(tracedEdge2).toBeVisible();
-
-        await expect(tracedEdge1).toHaveAttribute('data-edge-state', 'traced');
-        await expect(tracedEdge2).toHaveAttribute('data-edge-state', 'traced');
+        for (const tableFqn of [table1Fqn, table2Fqn, table3Fqn, table4Fqn]) {
+          await expect(
+            page.locator('.react-flow__node.lineage-path-highlight', {
+              has: page.getByTestId(`lineage-node-${tableFqn}`),
+            })
+          ).toBeVisible();
+        }
       });
 
-      test('hides column-to-column edges when a node is selected', async ({
+      test('drills into the field scene when an asset node is selected', async ({
+        page,
+      }) => {
+        await table2.visitEntityPage(page);
+        await visitLineageTab(page);
+        await fitToScreen(page);
+
+        await page
+          .getByTestId(`lineage-node-${table2Fqn}`)
+          .click({ position: { x: 10, y: 10 } });
+
+        await expect
+          .poll(() => {
+            const currentUrl = new URL(page.url());
+
+            return {
+              band: currentUrl.searchParams.get('lineageBand'),
+              focus: currentUrl.searchParams.get('lineageFocus'),
+            };
+          })
+          .toEqual({
+            band: 'FIELD',
+            focus: table2Fqn,
+          });
+      });
+
+      test('clears the connected asset path after leaving a node', async ({
+        page,
+      }) => {
+        await table2.visitEntityPage(page);
+        await visitLineageTab(page);
+        await fitToScreen(page);
+
+        const table3Node = page.getByTestId(`lineage-node-${table3Fqn}`);
+        const highlightedTable3Node = page.locator(
+          '.react-flow__node.lineage-path-highlight',
+          {
+            has: table3Node,
+          }
+        );
+
+        await table3Node.hover();
+        await expect(highlightedTable3Node).toBeVisible();
+
+        await page.mouse.move(5, 5);
+
+        await expect(highlightedTable3Node).not.toBeVisible();
+      });
+
+      test('highlights traced field edges when a field is selected', async ({
         page,
       }) => {
         await table2.visitEntityPage(page);
@@ -576,51 +617,11 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await activateColumnLayer(page);
         await fitToScreen(page);
 
-        const columnEdge = page.locator(
-          `[data-testid="column-edge-${table1Col}-${table2Col}"]`
-        );
-        await expect(columnEdge).toBeVisible();
-
-        await clickLineageNode(page, table3Fqn);
-
-        await expect(columnEdge).toHaveAttribute('data-edge-state', 'hidden');
-      });
-
-      test('grays out non-traced node-to-node edges when a node is selected', async ({
-        page,
-      }) => {
-        await table2.visitEntityPage(page);
-        await visitLineageTab(page);
-        await fitToScreen(page);
-
-        await clickLineageNode(page, table3Fqn);
-
-        const nonTracedEdge = page.locator(
-          `[data-testid="edge-${table2Fqn}-${table4Fqn}"]`
-        );
-
-        await expect(nonTracedEdge).toBeVisible();
-        await expect(nonTracedEdge).toHaveAttribute(
-          'data-edge-state',
-          'dimmed'
-        );
-      });
-
-      test('highlights traced column-to-column edges when a column is selected', async ({
-        page,
-      }) => {
-        await table2.visitEntityPage(page);
-        await visitLineageTab(page);
-        await activateColumnLayer(page);
-        await fitToScreen(page);
-
-        const table1Column = page.locator(
-          `[data-testid="column-${table1Col}"]`
-        );
+        const table1Column = page.getByTestId(`column-${table1Col}`);
         await table1Column.click();
 
-        const tracedColumnEdge = page.locator(
-          `[data-testid="column-edge-${table1Col}-${table2Col}"]`
+        const tracedColumnEdge = page.getByTestId(
+          `column-edge-${table1Col}-${table2Col}`
         );
 
         await expect(tracedColumnEdge).toBeVisible();
@@ -630,30 +631,25 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
       });
 
-      test('hides non-traced column-to-column edges when a column is selected', async ({
-        page,
-      }) => {
+      test('does not trace an unrelated field branch', async ({ page }) => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
         await fitToScreen(page);
 
-        const table3Column = page.locator(
-          `[data-testid="column-${table3Col}"]`
-        );
+        const table3Column = page.getByTestId(`column-${table3Col}`);
+        const table4Column = page.getByTestId(`column-${table4Col}`);
         await table3Column.click();
 
-        const nonTracedColumnEdge = page.locator(
-          `[data-testid="column-edge-${table2Col}-${table4Col}"]`
+        await expect(table3Column).toHaveClass(
+          /custom-node-header-column-tracing/
         );
-
-        await expect(nonTracedColumnEdge).toHaveAttribute(
-          'data-edge-state',
-          'hidden'
+        await expect(table4Column).not.toHaveClass(
+          /custom-node-header-column-tracing/
         );
       });
 
-      test('grays out node-to-node edges when a column is selected', async ({
+      test('clears field tracing when the pane is selected', async ({
         page,
       }) => {
         await table2.visitEntityPage(page);
@@ -661,17 +657,25 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await activateColumnLayer(page);
         await fitToScreen(page);
 
-        const table3Column = page.locator(
-          `[data-testid="column-${table3Col}"]`
-        );
+        const table3Column = page.getByTestId(`column-${table3Col}`);
+        const table2Column = page.getByTestId(`column-${table2Col}`);
         await table3Column.click();
 
-        const nodeEdge = page.locator(
-          `[data-testid="edge-${table2Fqn}-${table3Fqn}"]`
+        await expect(table3Column).toHaveClass(
+          /custom-node-header-column-tracing/
+        );
+        await expect(table2Column).toHaveClass(
+          /custom-node-header-column-tracing/
         );
 
-        await expect(nodeEdge).toBeVisible();
-        await expect(nodeEdge).toHaveAttribute('data-edge-state', 'dimmed');
+        await page.locator('.react-flow__pane').dispatchEvent('click');
+
+        await expect(table3Column).not.toHaveClass(
+          /custom-node-header-column-tracing/
+        );
+        await expect(table2Column).not.toHaveClass(
+          /custom-node-header-column-tracing/
+        );
       });
     });
   });
@@ -698,6 +702,139 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
   });
 
+  test.describe('Hierarchical map edit guards', () => {
+    test('disables lineage editing in the LAYER band', async ({ page }) => {
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+
+      await page.getByTestId('lineage-map-band-LAYER').click();
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+        .toBe('LAYER');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('edit-lineage')).toBeDisabled();
+    });
+
+    test('suppresses semantic zoom and node drill while editing', async ({
+      page,
+    }) => {
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+      await fitToScreen(page);
+      await editLineageClick(page);
+
+      const initialUrl = new URL(page.url());
+      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+      const topicNode = page.getByTestId(`lineage-node-${topicFqn}`);
+
+      await topicNode.click({ position: { x: 10, y: 10 } });
+      for (let index = 0; index < 6; index++) {
+        await page.getByTestId('zoom-in').dispatchEvent('click');
+      }
+
+      await expect(
+        page.getByTestId('lineage-map-band-ASSET').locator('.active')
+      ).toBeVisible();
+      await expect
+        .poll(() => {
+          const currentUrl = new URL(page.url());
+
+          return {
+            band: currentUrl.searchParams.get('lineageBand'),
+            focus: currentUrl.searchParams.get('lineageFocus'),
+          };
+        })
+        .toEqual({
+          band: initialUrl.searchParams.get('lineageBand'),
+          focus: initialUrl.searchParams.get('lineageFocus'),
+        });
+    });
+
+    test('directs aggregated-edge edits to a deeper band', async ({ page }) => {
+      const sourceFqn = get(
+        table1,
+        'entityResponseData.fullyQualifiedName',
+        ''
+      );
+      const targetFqn = get(topic, 'entityResponseData.fullyQualifiedName', '');
+      const sourceNodeId = `table:${table1.entityResponseData.id}`;
+      const targetNodeId = `topic:${topic.entityResponseData.id}`;
+
+      await page.route('**/api/v1/lineage/scene?*', async (route) => {
+        const requestUrl = new URL(route.request().url());
+        if (requestUrl.searchParams.get('band') !== 'ASSET') {
+          await route.continue();
+
+          return;
+        }
+
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            lens: 'service',
+            band: 'ASSET',
+            focusFqn: sourceFqn,
+            focusEntityType: 'table',
+            originFqn: sourceFqn,
+            originEntityType: 'table',
+            nodes: [
+              {
+                id: sourceNodeId,
+                label: sourceFqn,
+                band: 'ASSET',
+                levelKind: 'table',
+                entityType: 'table',
+                fullyQualifiedName: sourceFqn,
+                isFocus: true,
+                isOrigin: true,
+                sourceEntity: {
+                  id: table1.entityResponseData.id,
+                  entityType: 'table',
+                  fullyQualifiedName: sourceFqn,
+                },
+              },
+              {
+                id: targetNodeId,
+                label: targetFqn,
+                band: 'ASSET',
+                levelKind: 'topic',
+                entityType: 'topic',
+                fullyQualifiedName: targetFqn,
+                sourceEntity: {
+                  id: topic.entityResponseData.id,
+                  entityType: 'topic',
+                  fullyQualifiedName: targetFqn,
+                },
+              },
+            ],
+            edges: [
+              {
+                id: 'aggregated-edge',
+                from: sourceNodeId,
+                to: targetNodeId,
+                band: 'ASSET',
+                isRollup: true,
+                weight: 2,
+              },
+            ],
+            breadcrumb: [],
+            hiddenNodeCount: 0,
+            sampled: false,
+          }),
+        });
+      });
+
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+      await fitToScreen(page);
+      await editLineageClick(page);
+      await clickEdgeBetweenNodes(page, table1, topic);
+
+      await toastNotification(page, 'Zoom In');
+    });
+  });
+
   test.describe('Edge removal persists across refresh', () => {
     // Focused coverage for a bug where removing a column-level lineage
     // edge only mutated local React state (setEntityLineage /
@@ -705,7 +842,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // /api/v1/lineage silently sent the unchanged columnsLineage array
     // back to the server — so the removed edge reappeared on refresh.
     // The pattern here is: act via UI → reload → re-assert against a
-    // fresh /api/v1/lineage/getLineage response.
+    // fresh /api/v1/lineage/scene response.
     const sourceTable = new TableClass();
     const targetTable = new TableClass();
 
@@ -778,7 +915,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         // Reload to prove the server actually dropped the edge, not just
         // that local state was optimistically updated.
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload();
         await lineageRes;
 
@@ -818,7 +955,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await editLineageClick(page);
 
         // removeColumnLineage reloads and re-asserts against a fresh
-        // getLineage response internally — that reload is the assertion
+        // scene response internally — that reload is the assertion
         // that would have failed before the fix.
         await removeColumnLineage(page, sourceCol, targetCol);
       } finally {
@@ -900,99 +1037,16 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         page.getByTestId(`lineage-node-${dashboardFqn}`)
       ).toBeVisible();
 
-      // Collapse the cycle dashboard lineage downstreamNodeHandler
-      await page
-        .getByTestId(`lineage-node-${dashboardFqn}`)
-        .getByTestId('downstream-collapse-handle')
-        .dispatchEvent('click');
+      for (const [sourceFqn, targetFqn] of [
+        [tableFqn, topicFqn],
+        [topicFqn, dashboardFqn],
+        [dashboardFqn, tableFqn],
+      ]) {
+        const cycleEdge = page.getByTestId(`edge-${sourceFqn}-${targetFqn}`);
 
-      await expect(
-        page.getByTestId(`edge-${dashboardFqn}-${tableFqn}`)
-      ).not.toBeVisible();
-
-      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-      await expect(
-        page.getByTestId(`lineage-node-${dashboardFqn}`)
-      ).toBeVisible();
-
-      await expect(
-        page
-          .getByTestId(`lineage-node-${tableFqn}`)
-          .getByTestId('upstream-collapse-handle')
-      ).not.toBeVisible();
-
-      await expect(
-        page
-          .getByTestId(`lineage-node-${dashboardFqn}`)
-          .getByTestId('plus-icon')
-      ).toBeVisible();
-
-      // Reclick the plus icon to expand the cycle dashboard lineage downstreamNodeHandler
-      const downstreamResponse = page.waitForResponse(
-        `/api/v1/lineage/getLineage/Downstream?fqn=${dashboardFqn}&type=dashboard**`
-      );
-      await page
-        .getByTestId(`lineage-node-${dashboardFqn}`)
-        .getByTestId('plus-icon')
-        .dispatchEvent('click');
-
-      await downstreamResponse;
-
-      await expect(
-        page
-          .getByTestId(`lineage-node-${tableFqn}`)
-          .getByTestId('upstream-collapse-handle')
-          .getByTestId('minus-icon')
-      ).toBeVisible();
-
-      // Click the Upstream Node to expand the cycle dashboard lineage
-      await page
-        .getByTestId(`lineage-node-${dashboardFqn}`)
-        .getByTestId('upstream-collapse-handle')
-        .dispatchEvent('click');
-
-      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-      await expect(
-        page.getByTestId(`lineage-node-${dashboardFqn}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`lineage-node-${topicFqn}`)
-      ).not.toBeVisible();
-
-      await expect(
-        page
-          .getByTestId(`lineage-node-${dashboardFqn}`)
-          .getByTestId('plus-icon')
-      ).toBeVisible();
-
-      // Reclick the plus icon to expand the cycle dashboard lineage upstreamNodeHandler
-      const upStreamResponse2 = page.waitForResponse(
-        `/api/v1/lineage/getLineage/Upstream?fqn=${dashboardFqn}&type=dashboard**`
-      );
-      await page
-        .getByTestId(`lineage-node-${dashboardFqn}`)
-        .getByTestId('plus-icon')
-        .dispatchEvent('click');
-      await upStreamResponse2;
-
-      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-      await expect(
-        page.getByTestId(`lineage-node-${dashboardFqn}`)
-      ).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-
-      // Collapse the Node from the Parent Cycle Node
-      await page
-        .getByTestId(`lineage-node-${topicFqn}`)
-        .getByTestId('downstream-collapse-handle')
-        .dispatchEvent('click');
-
-      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-      await expect(
-        page.getByTestId(`lineage-node-${dashboardFqn}`)
-      ).not.toBeVisible();
+        await expect(cycleEdge).toHaveCount(1);
+        await expect(cycleEdge).toBeVisible();
+      }
     } finally {
       await Promise.all([
         table.delete(apiContext),

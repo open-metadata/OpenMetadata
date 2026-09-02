@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,9 +15,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -38,25 +41,46 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.LineageBand;
+import org.openmetadata.schema.api.lineage.LineageLens;
+import org.openmetadata.schema.api.lineage.LineageLevelKind;
+import org.openmetadata.schema.api.lineage.LineageScene;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
@@ -67,12 +91,16 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SchemaType;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -696,6 +724,743 @@ public class LineageResourceIT {
     cleanupTable(client, targetTable);
   }
 
+  @Test
+  void testLineageSceneFocusedDatabaseProjectsTableEdgesToSchemas() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "scene_db");
+    DatabaseSchema rawSchema = createSchema(client, namespace, database, "raw_schema");
+    DatabaseSchema martSchema = createSchema(client, namespace, database, "mart_schema");
+    Table rawOrders =
+        createTableInSchema(client, namespace, rawSchema, "raw_orders", columns("order_id"));
+    Table factOrders =
+        createTableInSchema(client, namespace, martSchema, "fact_orders", columns("order_id"));
+
+    addLineage(client, rawOrders, factOrders);
+
+    LineageScene scene =
+        getLineageSceneWithRetry(
+            client,
+            database.getFullyQualifiedName(),
+            Entity.DATABASE,
+            LineageBand.ASSET,
+            lineageScene ->
+                lineageScene.getNodes().stream()
+                        .anyMatch(
+                            node ->
+                                rawSchema
+                                    .getFullyQualifiedName()
+                                    .equals(node.getFullyQualifiedName()))
+                    && lineageScene.getNodes().stream()
+                        .anyMatch(
+                            node ->
+                                martSchema
+                                    .getFullyQualifiedName()
+                                    .equals(node.getFullyQualifiedName()))
+                    && lineageScene.getEdges().size() == 1);
+
+    Map<String, String> nodeIdsByFqn = nodeIdsByFqn(scene);
+    assertEquals(LineageBand.ASSET, scene.getBand());
+    assertTrue(
+        scene.getNodes().stream().allMatch(node -> node.getLevelKind() == LineageLevelKind.SCHEMA));
+    assertEquals(1, scene.getEdges().size());
+    assertEquals(
+        nodeIdsByFqn.get(rawSchema.getFullyQualifiedName()), scene.getEdges().get(0).getFrom());
+    assertEquals(
+        nodeIdsByFqn.get(martSchema.getFullyQualifiedName()), scene.getEdges().get(0).getTo());
+    assertTrue(Boolean.TRUE.equals(scene.getEdges().get(0).getIsRollup()));
+
+    deleteLineage(client, rawOrders.getEntityReference(), factOrders.getEntityReference());
+    cleanupDatabaseService(client, service);
+  }
+
+  @Test
+  void testLineageSceneFieldBandReturnsColumnLineageEndpoints() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "scene_field_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "field_schema");
+    Table sourceTable =
+        createTableInSchema(
+            client, namespace, schema, "scene_col_source", columns("order_id", "customer_id"));
+    Table targetTable =
+        createTableInSchema(
+            client, namespace, schema, "scene_col_target", columns("order_id", "customer_id"));
+
+    String sourceColumn = sourceTable.getColumns().get(0).getFullyQualifiedName();
+    String targetColumn = targetTable.getColumns().get(0).getFullyQualifiedName();
+    LineageDetails details = new LineageDetails();
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(sourceColumn)).withToColumn(targetColumn));
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+
+    LineageScene scene =
+        getLineageSceneWithRetry(
+            client,
+            sourceTable.getFullyQualifiedName(),
+            Entity.TABLE,
+            LineageBand.FIELD,
+            lineageScene ->
+                lineageScene.getEdges().stream()
+                    .anyMatch(
+                        edge ->
+                            edge.getFrom().contains(sourceColumn)
+                                && edge.getTo().contains(targetColumn)));
+
+    assertEquals(LineageBand.FIELD, scene.getBand());
+    assertTrue(scene.getNodes().stream().allMatch(node -> !node.getFields().isEmpty()));
+    assertTrue(
+        scene.getEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getBand() == LineageBand.FIELD
+                        && edge.getFrom().contains(sourceColumn)
+                        && edge.getTo().contains(targetColumn)));
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupDatabaseService(client, service);
+  }
+
+  @Test
+  void testLineageSceneLayerRootUsesExactCrossServiceCounts() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService sourceService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database sourceDatabase = createDatabase(client, namespace, sourceService, "root_source_db");
+    DatabaseSchema sourceSchema =
+        createSchema(client, namespace, sourceDatabase, "root_source_schema");
+    Table sourceTable =
+        createTableInSchema(client, namespace, sourceSchema, "root_source", columns("id"));
+
+    DatabaseService targetService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database targetDatabase = createDatabase(client, namespace, targetService, "root_target_db");
+    DatabaseSchema targetSchema =
+        createSchema(client, namespace, targetDatabase, "root_target_schema");
+    Table targetTable =
+        createTableInSchema(client, namespace, targetSchema, "root_target", columns("id"));
+
+    addLineage(client, sourceTable, targetTable);
+
+    LineageScene scene =
+        getRootLineageSceneWithRetry(
+            client,
+            LineageLens.SERVICE,
+            LineageBand.LAYER,
+            991,
+            lineageScene ->
+                hasSceneNode(lineageScene, sourceService.getFullyQualifiedName())
+                    && hasSceneNode(lineageScene, targetService.getFullyQualifiedName())
+                    && hasSceneEdge(
+                        lineageScene,
+                        sourceService.getFullyQualifiedName(),
+                        targetService.getFullyQualifiedName()));
+
+    assertEquals(
+        1, sceneNodeCount(scene, sourceService.getFullyQualifiedName(), LineageLevelKind.TABLE));
+    assertEquals(
+        1, sceneNodeCount(scene, targetService.getFullyQualifiedName(), LineageLevelKind.TABLE));
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupDatabaseService(client, sourceService);
+    cleanupDatabaseService(client, targetService);
+  }
+
+  @Test
+  void testLineageSceneDomainAndDataProductLenses() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Domain sourceDomain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("lineage_source_domain"))
+                    .withDescription("Source domain for lineage scene integration testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    Domain targetDomain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("lineage_target_domain"))
+                    .withDescription("Target domain for lineage scene integration testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    DataProduct sourceProduct =
+        client
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(namespace.prefix("lineage_source_product"))
+                    .withDescription("Source data product for lineage scene integration testing")
+                    .withDomains(List.of(sourceDomain.getFullyQualifiedName())));
+    DataProduct targetProduct =
+        client
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(namespace.prefix("lineage_target_product"))
+                    .withDescription("Target data product for lineage scene integration testing")
+                    .withDomains(List.of(targetDomain.getFullyQualifiedName())));
+
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "lens_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "lens_schema");
+    Table sourceTable =
+        createTableInSchema(
+            client,
+            namespace,
+            schema,
+            "lens_source",
+            columns("id"),
+            List.of(sourceDomain.getFullyQualifiedName()));
+    Table targetTable =
+        createTableInSchema(
+            client,
+            namespace,
+            schema,
+            "lens_target",
+            columns("id"),
+            List.of(targetDomain.getFullyQualifiedName()));
+
+    client
+        .dataProducts()
+        .bulkAddAssets(
+            sourceProduct.getFullyQualifiedName(),
+            new BulkAssets().withAssets(List.of(sourceTable.getEntityReference())));
+    client
+        .dataProducts()
+        .bulkAddAssets(
+            targetProduct.getFullyQualifiedName(),
+            new BulkAssets().withAssets(List.of(targetTable.getEntityReference())));
+    addLineage(client, sourceTable, targetTable);
+    waitForNestedAggregationBuckets(
+        client,
+        "domains.fullyQualifiedName",
+        List.of(sourceDomain.getFullyQualifiedName(), targetDomain.getFullyQualifiedName()));
+    waitForNestedAggregationBuckets(
+        client,
+        "dataProducts.fullyQualifiedName",
+        List.of(sourceProduct.getFullyQualifiedName(), targetProduct.getFullyQualifiedName()));
+
+    LineageScene domainScene =
+        getRootLineageSceneWithRetry(
+            client,
+            LineageLens.DOMAIN,
+            LineageBand.LAYER,
+            992,
+            lineageScene ->
+                hasSceneEdge(
+                    lineageScene,
+                    sourceDomain.getFullyQualifiedName(),
+                    targetDomain.getFullyQualifiedName()));
+    assertEquals(
+        1,
+        sceneNodeCount(domainScene, sourceDomain.getFullyQualifiedName(), LineageLevelKind.TABLE));
+    assertEquals(
+        1,
+        sceneNodeCount(domainScene, targetDomain.getFullyQualifiedName(), LineageLevelKind.TABLE));
+
+    LineageScene dataProductScene =
+        getRootLineageSceneWithRetry(
+            client,
+            LineageLens.DATA_PRODUCT,
+            LineageBand.LAYER,
+            993,
+            lineageScene ->
+                hasSceneEdge(
+                    lineageScene,
+                    sourceProduct.getFullyQualifiedName(),
+                    targetProduct.getFullyQualifiedName()));
+    assertEquals(
+        1,
+        sceneNodeCount(
+            dataProductScene, sourceProduct.getFullyQualifiedName(), LineageLevelKind.TABLE));
+    assertEquals(
+        1,
+        sceneNodeCount(
+            dataProductScene, targetProduct.getFullyQualifiedName(), LineageLevelKind.TABLE));
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    client.dataProducts().delete(sourceProduct.getId().toString());
+    client.dataProducts().delete(targetProduct.getId().toString());
+    cleanupDatabaseService(client, service);
+    client.domains().delete(sourceDomain.getId().toString());
+    client.domains().delete(targetDomain.getId().toString());
+  }
+
+  @Test
+  void testLineageSceneIncludesStoredProceduresAndDashboardDataModels() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService databaseService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, databaseService, "procedure_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "procedure_schema");
+    StoredProcedure storedProcedure =
+        client
+            .storedProcedures()
+            .create(
+                new CreateStoredProcedure()
+                    .withName(namespace.prefix("lineage_procedure"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withStoredProcedureCode(
+                        new StoredProcedureCode()
+                            .withCode("CREATE PROCEDURE lineage_procedure() SELECT 1")
+                            .withLanguage(StoredProcedureLanguage.SQL)));
+
+    DashboardService dashboardService = DashboardServiceTestFactory.createMetabase(namespace);
+    DashboardDataModel dataModel =
+        client
+            .dashboardDataModels()
+            .create(
+                new CreateDashboardDataModel()
+                    .withName(namespace.prefix("lineage_data_model"))
+                    .withService(dashboardService.getFullyQualifiedName())
+                    .withDataModelType(org.openmetadata.schema.type.DataModelType.MetabaseDataModel)
+                    .withColumns(columns("id")));
+
+    addLineage(client, storedProcedure.getEntityReference(), dataModel.getEntityReference());
+
+    LineageScene focusedScene =
+        getLineageSceneWithRetry(
+            client,
+            storedProcedure.getFullyQualifiedName(),
+            Entity.STORED_PROCEDURE,
+            LineageBand.ASSET,
+            lineageScene ->
+                lineageScene.getNodes().stream()
+                        .anyMatch(node -> node.getLevelKind() == LineageLevelKind.STORED_PROCEDURE)
+                    && lineageScene.getNodes().stream()
+                        .anyMatch(
+                            node -> node.getLevelKind() == LineageLevelKind.DASHBOARD_DATA_MODEL));
+    assertTrue(
+        hasSceneEdge(
+            focusedScene,
+            storedProcedure.getFullyQualifiedName(),
+            dataModel.getFullyQualifiedName()));
+
+    LineageScene rootScene =
+        getRootLineageSceneWithRetry(
+            client,
+            LineageLens.SERVICE,
+            LineageBand.LAYER,
+            994,
+            lineageScene ->
+                sceneNodeCount(
+                            lineageScene,
+                            databaseService.getFullyQualifiedName(),
+                            LineageLevelKind.STORED_PROCEDURE)
+                        == 1
+                    && sceneNodeCount(
+                            lineageScene,
+                            dashboardService.getFullyQualifiedName(),
+                            LineageLevelKind.DASHBOARD_DATA_MODEL)
+                        == 1);
+    assertTrue(
+        hasSceneEdge(
+            rootScene,
+            databaseService.getFullyQualifiedName(),
+            dashboardService.getFullyQualifiedName()));
+
+    deleteLineage(client, storedProcedure.getEntityReference(), dataModel.getEntityReference());
+    cleanupDatabaseService(client, databaseService);
+    cleanupDashboardService(client, dashboardService);
+  }
+
+  @Test
+  void testLineageSceneSamplingKeepsHighIndexParticipants() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "sampling_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "sampling_schema");
+    List<Table> tables = new ArrayList<>();
+    for (int index = 0; index < 55; index++) {
+      tables.add(
+          createTableInSchema(
+              client,
+              namespace,
+              schema,
+              String.format("sampling_asset_%03d", index),
+              columns("id")));
+    }
+    Table sourceTable = tables.get(53);
+    Table targetTable = tables.get(54);
+    addLineage(client, sourceTable, targetTable);
+
+    LineageScene scene =
+        getLineageSceneWithRetry(
+            client,
+            schema.getFullyQualifiedName(),
+            Entity.DATABASE_SCHEMA,
+            LineageBand.ASSET,
+            50,
+            lineageScene ->
+                Boolean.TRUE.equals(lineageScene.getSampled())
+                    && hasSceneEdge(
+                        lineageScene,
+                        sourceTable.getFullyQualifiedName(),
+                        targetTable.getFullyQualifiedName()));
+
+    assertTrue(Boolean.TRUE.equals(scene.getSampled()));
+    assertTrue(hasSceneNode(scene, sourceTable.getFullyQualifiedName()));
+    assertTrue(hasSceneNode(scene, targetTable.getFullyQualifiedName()));
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupDatabaseService(client, service);
+  }
+
+  @Test
+  void testLineageSceneDomainRestrictionBypassesSharedRootCache() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Domain allowedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("allowed_lineage_domain"))
+                    .withDescription("Allowed domain for lineage scene integration testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    Domain blockedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("blocked_lineage_domain"))
+                    .withDescription("Blocked domain for lineage scene integration testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    DatabaseService allowedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database allowedDatabase =
+        createDatabase(admin, namespace, allowedService, "allowed_lineage_db");
+    DatabaseSchema allowedSchema =
+        createSchema(admin, namespace, allowedDatabase, "allowed_lineage_schema");
+    Table allowedSource =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "allowed_source",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+    Table allowedTarget =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "allowed_target",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+    createTableInSchema(
+        admin,
+        namespace,
+        allowedSchema,
+        "allowed_standalone",
+        columns("id"),
+        List.of(allowedDomain.getFullyQualifiedName()));
+    createTableInSchema(admin, namespace, allowedSchema, "allowed_domainless", columns("id"));
+    createTableInSchema(
+        admin,
+        namespace,
+        allowedSchema,
+        "blocked_in_allowed_service",
+        columns("id"),
+        List.of(blockedDomain.getFullyQualifiedName()));
+
+    DatabaseService blockedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database blockedDatabase =
+        createDatabase(admin, namespace, blockedService, "blocked_lineage_db");
+    DatabaseSchema blockedSchema =
+        createSchema(admin, namespace, blockedDatabase, "blocked_lineage_schema");
+    Table blockedSource =
+        createTableInSchema(
+            admin,
+            namespace,
+            blockedSchema,
+            "blocked_source",
+            columns("id"),
+            List.of(blockedDomain.getFullyQualifiedName()));
+    Table blockedTarget =
+        createTableInSchema(
+            admin,
+            namespace,
+            blockedSchema,
+            "blocked_target",
+            columns("id"),
+            List.of(blockedDomain.getFullyQualifiedName()));
+
+    addLineage(admin, allowedSource, allowedTarget);
+    addLineage(admin, blockedSource, blockedTarget);
+
+    getRootLineageSceneWithRetry(
+        admin,
+        LineageLens.SERVICE,
+        LineageBand.LAYER,
+        995,
+        scene ->
+            hasSceneNode(scene, allowedService.getFullyQualifiedName())
+                && hasSceneNode(scene, blockedService.getFullyQualifiedName()));
+
+    org.openmetadata.schema.entity.teams.Role domainOnlyRole =
+        admin.roles().getByName("DomainOnlyAccessRole");
+    String userName = "lineage-" + allowedDomain.getId();
+    String email = userName + "@test.openmetadata.org";
+    org.openmetadata.schema.entity.teams.User restrictedUser =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+                    .withRoles(List.of(domainOnlyRole.getId())));
+    OpenMetadataClient restrictedClient = SdkClients.createClient(email, email, new String[] {});
+
+    LineageScene restrictedScene =
+        getRootLineageSceneWithRetry(
+            restrictedClient,
+            LineageLens.SERVICE,
+            LineageBand.LAYER,
+            995,
+            scene ->
+                hasSceneNode(scene, allowedService.getFullyQualifiedName())
+                    && sceneNodeCount(
+                            scene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE)
+                        == 4);
+    assertFalse(hasSceneNode(restrictedScene, blockedService.getFullyQualifiedName()));
+    assertEquals(
+        4,
+        sceneNodeCount(
+            restrictedScene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE));
+
+    LineageScene restrictedServiceScene =
+        getLineageSceneWithRetry(
+            restrictedClient,
+            allowedService.getFullyQualifiedName(),
+            Entity.DATABASE_SERVICE,
+            LineageBand.ASSET,
+            995,
+            scene ->
+                sceneNodeCount(
+                        scene, allowedDatabase.getFullyQualifiedName(), LineageLevelKind.TABLE)
+                    == 4);
+    assertEquals(
+        4,
+        sceneNodeCount(
+            restrictedServiceScene,
+            allowedDatabase.getFullyQualifiedName(),
+            LineageLevelKind.TABLE));
+
+    LineageScene restrictedDatabaseScene =
+        getLineageSceneWithRetry(
+            restrictedClient,
+            allowedDatabase.getFullyQualifiedName(),
+            Entity.DATABASE,
+            LineageBand.ASSET,
+            995,
+            scene ->
+                sceneNodeCount(scene, allowedSchema.getFullyQualifiedName(), LineageLevelKind.TABLE)
+                    == 4);
+    assertEquals(
+        4,
+        sceneNodeCount(
+            restrictedDatabaseScene,
+            allowedSchema.getFullyQualifiedName(),
+            LineageLevelKind.TABLE));
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            getLineageScene(
+                restrictedClient,
+                blockedSource.getFullyQualifiedName(),
+                Entity.TABLE,
+                LineageBand.ASSET,
+                995));
+
+    admin.users().delete(restrictedUser.getId().toString());
+    deleteLineage(admin, allowedSource.getEntityReference(), allowedTarget.getEntityReference());
+    deleteLineage(admin, blockedSource.getEntityReference(), blockedTarget.getEntityReference());
+    cleanupDatabaseService(admin, allowedService);
+    cleanupDatabaseService(admin, blockedService);
+    admin.domains().delete(allowedDomain.getId().toString());
+    admin.domains().delete(blockedDomain.getId().toString());
+  }
+
+  @Test
+  void testRootLineageSceneFiltersAssetsDeniedByPolicy() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Domain allowedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("allowed_policy_scene_domain"))
+                    .withDescription("Allowed domain for lineage scene authorization testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    Domain deniedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("denied_policy_scene_domain"))
+                    .withDescription("Denied domain for lineage scene authorization testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    DatabaseService deniedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database deniedDatabase = createDatabase(admin, namespace, deniedService, "denied_scene_db");
+    DatabaseSchema deniedSchema =
+        createSchema(admin, namespace, deniedDatabase, "denied_scene_schema");
+    Table deniedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            deniedSchema,
+            "denied_scene_table",
+            columns("id"),
+            List.of(deniedDomain.getFullyQualifiedName()));
+    DatabaseService allowedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database allowedDatabase = createDatabase(admin, namespace, allowedService, "allowed_scene_db");
+    DatabaseSchema allowedSchema =
+        createSchema(admin, namespace, allowedDatabase, "allowed_scene_schema");
+    Table allowedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "allowed_scene_table",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+    addLineage(admin, deniedTable, allowedTable);
+
+    getLineageSceneWithRetry(
+        admin,
+        deniedTable.getFullyQualifiedName(),
+        Entity.TABLE,
+        LineageBand.ASSET,
+        scene ->
+            hasSceneEdge(
+                scene, deniedTable.getFullyQualifiedName(), allowedTable.getFullyQualifiedName()));
+    getRootLineageSceneWithFreshCacheKeyRetry(
+        admin,
+        LineageLens.SERVICE,
+        LineageBand.LAYER,
+        scene ->
+            hasSceneEdge(
+                scene,
+                deniedService.getFullyQualifiedName(),
+                allowedService.getFullyQualifiedName()));
+    LineageScene adminAssetScene =
+        getRootLineageScene(admin, LineageLens.SERVICE, LineageBand.ASSET, 990);
+    assertTrue(hasSceneNode(adminAssetScene, deniedService.getFullyQualifiedName()));
+    assertTrue(hasSceneNode(adminAssetScene, allowedService.getFullyQualifiedName()));
+    LineageScene adminLayerScene =
+        getRootLineageScene(admin, LineageLens.SERVICE, LineageBand.LAYER, 990);
+    assertTrue(
+        hasSceneEdge(
+            adminLayerScene,
+            deniedService.getFullyQualifiedName(),
+            allowedService.getFullyQualifiedName()));
+
+    Rule denyForeignDomainView =
+        new Rule()
+            .withName(namespace.prefix("deny_table_view"))
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("!hasDomain()");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(namespace.prefix("deny_table_scene_policy"))
+                    .withRules(List.of(denyForeignDomainView)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(namespace.prefix("deny_table_scene_role"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = "lineage-policy-" + allowedDomain.getId();
+    String email = userName + "@test.openmetadata.org";
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+                    .withRoles(List.of(role.getId())));
+
+    try {
+      OpenMetadataClient restrictedClient = SdkClients.createClient(email, email, new String[] {});
+      LineageScene scene =
+          getRootLineageScene(restrictedClient, LineageLens.SERVICE, LineageBand.ASSET, 990);
+
+      assertFalse(hasSceneNode(scene, deniedService.getFullyQualifiedName()));
+      assertFalse(hasSceneNode(scene, deniedTable.getFullyQualifiedName()));
+      assertTrue(scene.getSampled());
+
+      LineageScene focusedScene =
+          getLineageScene(
+              restrictedClient,
+              allowedTable.getFullyQualifiedName(),
+              Entity.TABLE,
+              LineageBand.ASSET,
+              990);
+      assertTrue(hasSceneNode(focusedScene, allowedTable.getFullyQualifiedName()));
+      assertFalse(hasSceneNode(focusedScene, deniedTable.getFullyQualifiedName()));
+      assertFalse(
+          hasSceneEdge(
+              focusedScene,
+              deniedTable.getFullyQualifiedName(),
+              allowedTable.getFullyQualifiedName()));
+      assertTrue(focusedScene.getSampled());
+
+      LineageScene layerScene =
+          getRootLineageScene(restrictedClient, LineageLens.SERVICE, LineageBand.LAYER, 990);
+      assertFalse(hasSceneNode(layerScene, deniedService.getFullyQualifiedName()));
+      assertTrue(hasSceneNode(layerScene, allowedService.getFullyQualifiedName()));
+      assertFalse(
+          hasSceneEdge(
+              layerScene,
+              deniedService.getFullyQualifiedName(),
+              allowedService.getFullyQualifiedName()));
+      assertEquals(
+          1,
+          sceneNodeCount(
+              layerScene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE));
+      assertTrue(layerScene.getSampled());
+    } finally {
+      admin.users().delete(user.getId().toString());
+      admin.roles().delete(role.getId().toString());
+      admin.policies().delete(policy.getId().toString());
+      deleteLineage(admin, deniedTable.getEntityReference(), allowedTable.getEntityReference());
+      cleanupDatabaseService(admin, deniedService);
+      cleanupDatabaseService(admin, allowedService);
+      admin.domains().delete(allowedDomain.getId().toString());
+      admin.domains().delete(deniedDomain.getId().toString());
+    }
+  }
+
   private Table createTable(OpenMetadataClient client, TestNamespace namespace, String tableName)
       throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
@@ -828,6 +1593,282 @@ public class LineageResourceIT {
     return OBJECT_MAPPER.readValue(response, EntityLineage.class);
   }
 
+  private LineageScene getLineageSceneWithRetry(
+      OpenMetadataClient client,
+      String focusFqn,
+      String entityType,
+      LineageBand band,
+      Predicate<LineageScene> predicate) {
+    return getLineageSceneWithRetry(client, focusFqn, entityType, band, 200, predicate);
+  }
+
+  private LineageScene getLineageSceneWithRetry(
+      OpenMetadataClient client,
+      String focusFqn,
+      String entityType,
+      LineageBand band,
+      int size,
+      Predicate<LineageScene> predicate) {
+    LineageScene[] holder = {null};
+    Awaitility.await("Lineage scene for " + focusFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              LineageScene scene = getLineageScene(client, focusFqn, entityType, band, size);
+              if (predicate.test(scene)) {
+                holder[0] = scene;
+                return true;
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  private LineageScene getLineageScene(
+      OpenMetadataClient client, String focusFqn, String entityType, LineageBand band, int size)
+      throws IOException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("focusFqn", focusFqn)
+            .queryParam("entityType", entityType)
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", band.value())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "1")
+            .queryParam("size", String.valueOf(size))
+            .queryParam("includeDeleted", "false")
+            .build();
+
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options);
+    return OBJECT_MAPPER.readValue(response, LineageScene.class);
+  }
+
+  private LineageScene getRootLineageSceneWithRetry(
+      OpenMetadataClient client,
+      LineageLens lens,
+      LineageBand band,
+      int size,
+      Predicate<LineageScene> predicate) {
+    LineageScene[] holder = {null};
+    Awaitility.await("Root lineage scene for " + lens.value())
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              LineageScene scene = getRootLineageScene(client, lens, band, size);
+              if (predicate.test(scene)) {
+                holder[0] = scene;
+                return true;
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  private LineageScene getRootLineageSceneWithFreshCacheKeyRetry(
+      OpenMetadataClient client,
+      LineageLens lens,
+      LineageBand band,
+      Predicate<LineageScene> predicate) {
+    LineageScene[] holder = {null};
+    int[] size = {900};
+    Awaitility.await("Uncached root lineage scene for " + lens.value())
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              LineageScene scene = getRootLineageScene(client, lens, band, size[0]++);
+              if (predicate.test(scene)) {
+                holder[0] = scene;
+                return true;
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  private LineageScene getRootLineageScene(
+      OpenMetadataClient client, LineageLens lens, LineageBand band, int size) throws IOException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("lens", lens.value())
+            .queryParam("band", band.value())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "1")
+            .queryParam("size", String.valueOf(size))
+            .queryParam("includeDeleted", "false")
+            .build();
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options);
+    return OBJECT_MAPPER.readValue(response, LineageScene.class);
+  }
+
+  private void waitForNestedAggregationBuckets(
+      OpenMetadataClient client, String fieldName, List<String> expectedBuckets) {
+    Awaitility.await("Search aggregation buckets for " + fieldName)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String query =
+                  """
+                  {
+                    "size": 0,
+                    "query": {
+                      "term": {
+                        "deleted": false
+                      }
+                    },
+                    "aggregations": {
+                      "roots": {
+                        "terms": {
+                          "field": "%s",
+                          "size": 10000
+                        },
+                        "aggregations": {
+                          "types": {
+                            "terms": {
+                              "field": "entityType",
+                              "size": 30
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  """
+                      .formatted(fieldName);
+              RequestOptions options =
+                  RequestOptions.builder()
+                      .queryParam(
+                          "index", Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))
+                      .build();
+              String response =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.POST, "/v1/test-support/search/search", query, options);
+              JsonNode buckets =
+                  OBJECT_MAPPER
+                      .readTree(response)
+                      .path("aggregations")
+                      .path("roots")
+                      .path("buckets");
+              assertTrue(
+                  expectedBuckets.stream()
+                      .allMatch(expected -> hasAggregationBucket(buckets, expected)),
+                  response);
+            });
+  }
+
+  private boolean hasAggregationBucket(JsonNode buckets, String expected) {
+    for (JsonNode bucket : buckets) {
+      if (expected.equalsIgnoreCase(bucket.path("key").asText())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Map<String, String> nodeIdsByFqn(LineageScene scene) {
+    Map<String, String> nodeIdsByFqn = new LinkedHashMap<>();
+    scene.getNodes().forEach(node -> nodeIdsByFqn.put(node.getFullyQualifiedName(), node.getId()));
+    return nodeIdsByFqn;
+  }
+
+  private boolean hasSceneNode(LineageScene scene, String fullyQualifiedName) {
+    return scene.getNodes().stream()
+        .anyMatch(node -> fullyQualifiedName.equals(node.getFullyQualifiedName()));
+  }
+
+  private boolean hasSceneEdge(LineageScene scene, String fromFqn, String toFqn) {
+    Map<String, String> nodeIds = nodeIdsByFqn(scene);
+    String fromId = nodeIds.get(fromFqn);
+    String toId = nodeIds.get(toFqn);
+    return fromId != null
+        && toId != null
+        && scene.getEdges().stream()
+            .anyMatch(edge -> fromId.equals(edge.getFrom()) && toId.equals(edge.getTo()));
+  }
+
+  private int sceneNodeCount(
+      LineageScene scene, String fullyQualifiedName, LineageLevelKind levelKind) {
+    return scene.getNodes().stream()
+        .filter(node -> fullyQualifiedName.equals(node.getFullyQualifiedName()))
+        .findFirst()
+        .map(node -> node.getCounts().getOrDefault(levelKind.value(), 0))
+        .orElse(0);
+  }
+
+  private Database createDatabase(
+      OpenMetadataClient client,
+      TestNamespace namespace,
+      DatabaseService service,
+      String databaseName)
+      throws Exception {
+    return client
+        .databases()
+        .create(
+            new CreateDatabase()
+                .withName(namespace.prefix(databaseName))
+                .withService(service.getFullyQualifiedName()));
+  }
+
+  private DatabaseSchema createSchema(
+      OpenMetadataClient client, TestNamespace namespace, Database database, String schemaName)
+      throws Exception {
+    return client
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(namespace.prefix(schemaName))
+                .withDatabase(database.getFullyQualifiedName()));
+  }
+
+  private Table createTableInSchema(
+      OpenMetadataClient client,
+      TestNamespace namespace,
+      DatabaseSchema schema,
+      String tableName,
+      List<Column> columns)
+      throws Exception {
+    return createTableInSchema(client, namespace, schema, tableName, columns, List.of());
+  }
+
+  private Table createTableInSchema(
+      OpenMetadataClient client,
+      TestNamespace namespace,
+      DatabaseSchema schema,
+      String tableName,
+      List<Column> columns,
+      List<String> domains)
+      throws Exception {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(namespace.prefix(tableName));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(columns);
+    createTable.setDomains(domains);
+    return client.tables().create(createTable);
+  }
+
+  private List<Column> columns(String... names) {
+    List<Column> columns = new ArrayList<>();
+    for (String name : names) {
+      columns.add(ColumnBuilder.of(name, "VARCHAR").dataLength(100).build());
+    }
+    return columns;
+  }
+
   private void cleanupTable(OpenMetadataClient client, Table table) throws Exception {
     try {
       client.tables().delete(table.getId().toString());
@@ -839,6 +1880,26 @@ public class LineageResourceIT {
   private void cleanupPipeline(OpenMetadataClient client, Pipeline pipeline) throws Exception {
     try {
       client.pipelines().delete(pipeline.getId().toString());
+    } catch (Exception e) {
+      // Ignore cleanup errors
+    }
+  }
+
+  private void cleanupDatabaseService(OpenMetadataClient client, DatabaseService service) {
+    try {
+      client
+          .databaseServices()
+          .delete(service.getId().toString(), Map.of("recursive", "true", "hardDelete", "true"));
+    } catch (Exception e) {
+      // Ignore cleanup errors
+    }
+  }
+
+  private void cleanupDashboardService(OpenMetadataClient client, DashboardService service) {
+    try {
+      client
+          .dashboardServices()
+          .delete(service.getId().toString(), Map.of("recursive", "true", "hardDelete", "true"));
     } catch (Exception e) {
       // Ignore cleanup errors
     }

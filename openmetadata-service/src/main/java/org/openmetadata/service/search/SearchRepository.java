@@ -61,6 +61,8 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -68,6 +70,7 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -182,7 +185,15 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
+  private static final int MAPPED_FIELD_CACHE_MAX_SIZE = 256;
+  private static final Duration MAPPED_FIELD_CACHE_TTL = Duration.ofMinutes(1);
+
   private volatile SearchClient searchClient;
+  private final Cache<String, Boolean> mappedFieldCache =
+      Caffeine.newBuilder()
+          .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
+          .expireAfterWrite(MAPPED_FIELD_CACHE_TTL)
+          .build();
 
   /**
    * Upper bound on parent ids packed into a single inherited-domain child-propagation terms query,
@@ -3818,7 +3829,7 @@ public class SearchRepository {
             JsonUtils.convertValue(
                 fieldChange.getNewValue(),
                 new TypeReference<List<LinkedHashMap<String, String>>>() {}));
-        fieldAddParams.put(FIELD_DOMAINS, entity.getDomains());
+        fieldAddParams.put(FIELD_DOMAINS, buildEntityRefListWithDisplayName(entity.getDomains()));
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
         scriptTxt.append("ctx._source.domains = params.domains;");
       }
@@ -4334,6 +4345,54 @@ public class SearchRepository {
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+  }
+
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  public boolean isFieldMappedInIndex(String entityType, String fieldPath) throws IOException {
+    String cacheKey = entityType + ":" + fieldPath;
+    Boolean cached = mappedFieldCache.getIfPresent(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    boolean mapped = searchClient.isFieldMappedInIndex(entityType, fieldPath);
+    mappedFieldCache.put(cacheKey, mapped);
+    return mapped;
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {

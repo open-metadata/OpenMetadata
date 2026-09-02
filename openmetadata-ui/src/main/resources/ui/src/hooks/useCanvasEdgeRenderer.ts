@@ -41,6 +41,8 @@ interface UseCanvasEdgeRendererProps {
   edges: Edge[];
   hoverEdge?: Edge | null;
   dqHighlightedEdges: Set<string>;
+  pathHighlightedEdgeIds?: Set<string>;
+  isPathHighlightActive?: boolean;
   colors: LineageEdgeColors;
   containerWidth: number;
   containerHeight: number;
@@ -61,6 +63,8 @@ export function useCanvasEdgeRenderer({
   dqHighlightedEdges,
   edges,
   hoverEdge,
+  pathHighlightedEdgeIds,
+  isPathHighlightActive = false,
   colors,
   containerWidth,
   containerHeight,
@@ -165,10 +169,32 @@ export function useCanvasEdgeRenderer({
         edge.targetHandle,
         edge.id === hoverEdge?.id || selectedEdge?.id === edge.id
       );
+      const weight = Number(edge.data?.weight ?? 1);
+      const isRollup = Boolean(edge.data?.isRollup);
+      const strokeWidth =
+        isRollup && Number.isFinite(weight) && weight > 1
+          ? Math.max(
+              style.strokeWidth,
+              Math.min(7, style.strokeWidth + Math.log2(weight + 1))
+            )
+          : style.strokeWidth;
+      const isPathHighlighted = pathHighlightedEdgeIds?.has(edge.id) ?? false;
+      const pathStroke =
+        isPathHighlightActive && isPathHighlighted
+          ? colors.primary
+          : style.stroke;
+      const pathOpacity =
+        isPathHighlightActive && !isPathHighlighted
+          ? Math.min(style.opacity, 0.16)
+          : style.opacity;
+      const pathStrokeWidth =
+        isPathHighlightActive && isPathHighlighted
+          ? Math.max(strokeWidth + 1, 3)
+          : strokeWidth;
 
-      ctx.strokeStyle = style.stroke;
-      ctx.globalAlpha = style.opacity;
-      ctx.lineWidth = style.strokeWidth;
+      ctx.strokeStyle = pathStroke;
+      ctx.globalAlpha = pathOpacity;
+      ctx.lineWidth = pathStrokeWidth;
       ctx.setLineDash(edge.animated ? [6, 4] : []);
 
       const path = new Path2D(pathData.edgePath);
@@ -190,8 +216,44 @@ export function useCanvasEdgeRenderer({
           pathData.targetX,
           pathData.targetY,
           angle,
-          style.stroke
+          pathStroke
         );
+      }
+
+      const rollupLabel =
+        edge.data?.label ??
+        (isRollup && Number.isFinite(weight) && weight > 1
+          ? String(weight)
+          : undefined);
+
+      if (rollupLabel) {
+        const label = String(rollupLabel);
+        const paddingX = 6;
+        const labelHeight = 18;
+        ctx.font = '600 11px Inter, sans-serif';
+        const labelWidth = ctx.measureText(label).width + paddingX * 2;
+        const x = pathData.edgeCenterX - labelWidth / 2;
+        const y = pathData.edgeCenterY - labelHeight / 2;
+
+        ctx.save();
+        ctx.globalAlpha =
+          isPathHighlightActive && !isPathHighlighted ? 0.28 : 1;
+        ctx.fillStyle = colors.labelBackground;
+        ctx.strokeStyle = pathStroke;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(x, y, labelWidth, labelHeight, 9);
+        } else {
+          ctx.rect(x, y, labelWidth, labelHeight);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = colors.labelText;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, pathData.edgeCenterX, pathData.edgeCenterY);
+        ctx.restore();
       }
 
       return path;
@@ -206,6 +268,8 @@ export function useCanvasEdgeRenderer({
       columnsInCurrentPages,
       hoverEdge,
       selectedEdge,
+      pathHighlightedEdgeIds,
+      isPathHighlightActive,
     ]
   );
 
@@ -457,6 +521,8 @@ export function useCanvasEdgeRenderer({
     selectedEdge,
     selectedColumn,
     dqHighlightedEdges,
+    pathHighlightedEdgeIds,
+    isPathHighlightActive,
     colors,
   ]);
 

@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isEmpty } from 'lodash';
+import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ChartClass } from '../support/entity/ChartClass';
@@ -97,7 +98,25 @@ export const verifyColumnLayerInactive = async (page: Page) => {
 };
 
 export const activateColumnLayer = async (page: Page) => {
-  await page.click('[data-testid="lineage-layer-btn"]');
+  await page.getByTestId('lineage-layer-btn').click();
+
+  const fieldBandButton = page.getByTestId('lineage-layer-band-FIELD');
+  if (await fieldBandButton.isVisible()) {
+    const isFieldBandSelected = await fieldBandButton.evaluate((element) =>
+      element.hasAttribute('data-selected')
+    );
+    if (!isFieldBandSelected) {
+      await fieldBandButton.click();
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+        .toBe('FIELD');
+      await waitForAllLoadersToDisappear(page);
+    } else {
+      await clickOutside(page);
+    }
+
+    return;
+  }
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
@@ -196,6 +215,21 @@ export const deleteEdge = async (
   await deleteRes;
 };
 
+export const deleteEdgeBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromNode: EntityClass,
+  toNode: EntityClass
+) => {
+  const fromType = getEntityTypeSearchIndexMapping(fromNode.type);
+  const fromId = get(fromNode, 'entityResponseData.id');
+  const toType = getEntityTypeSearchIndexMapping(toNode.type);
+  const toId = get(toNode, 'entityResponseData.id');
+
+  return apiContext.delete(
+    `/api/v1/lineage/${fromType}/${fromId}/${toType}/${toId}`
+  );
+};
+
 export const dragAndDropNode = async (
   page: Page,
   originSelector: string,
@@ -282,15 +316,71 @@ export const connectEdgeBetweenNodes = async (
     .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
     .dispatchEvent('click');
 
+  const fromNodeId = get(fromNode, 'entityResponseData.id');
+  const toNodeId = get(toNode, 'entityResponseData.id');
+  const lineageMutation = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage')
+  );
+  const sceneRefresh = page.waitForResponse(async (response) => {
+    if (
+      response.request().method() !== 'GET' ||
+      !new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') ||
+      !response.ok()
+    ) {
+      return false;
+    }
+
+    const scene = (await response.json()) as LineageScene;
+    const sourceSceneNode = scene.nodes.find(
+      (node) =>
+        (node.sourceEntity as { id?: string } | undefined)?.id === fromNodeId
+    );
+    const targetSceneNode = scene.nodes.find(
+      (node) =>
+        (node.sourceEntity as { id?: string } | undefined)?.id === toNodeId
+    );
+
+    return Boolean(
+      sourceSceneNode &&
+        targetSceneNode &&
+        scene.edges.some(
+          (edge) =>
+            edge.from === sourceSceneNode.id && edge.to === targetSceneNode.id
+        )
+    );
+  });
+
   await dragConnection(
     page,
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
+  const [lineageResponse, sceneResponse] = await Promise.all([
+    lineageMutation,
+    sceneRefresh,
+  ]);
+  expect(lineageResponse.ok()).toBeTruthy();
+  expect(sceneResponse.ok()).toBeTruthy();
+};
 
-  await expect(
-    page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
-  ).toBeVisible();
+export const connectEntityEdgeBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromNode: EntityClass,
+  toNode: EntityClass
+) => {
+  return connectEdgeBetweenNodesViaAPI(
+    apiContext,
+    {
+      id: get(fromNode, 'entityResponseData.id'),
+      type: getEntityTypeSearchIndexMapping(fromNode.type),
+    },
+    {
+      id: get(toNode, 'entityResponseData.id'),
+      type: getEntityTypeSearchIndexMapping(toNode.type),
+    }
+  );
 };
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
@@ -566,12 +656,43 @@ export const applyPipelineFromModal = async (
 
   await page.click(`[data-testid="pipeline-entry-${pipelineFqn}"]`);
 
+  const saveButton = page.getByTestId('save-button');
+  await expect(saveButton).not.toHaveClass(/ant-btn-loading/);
+
   const saveRes = page.waitForResponse('/api/v1/lineage');
-  await page.click('[data-testid="save-button"]');
+  await saveButton.click();
   await saveRes;
 
   await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',
+  });
+};
+
+export const applyPipelineBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromNode: EntityClass,
+  toNode: EntityClass,
+  pipelineItem: PipelineClass
+) => {
+  return apiContext.put('/api/v1/lineage', {
+    data: {
+      edge: {
+        fromEntity: {
+          id: get(fromNode, 'entityResponseData.id'),
+          type: getEntityTypeSearchIndexMapping(fromNode.type),
+        },
+        toEntity: {
+          id: get(toNode, 'entityResponseData.id'),
+          type: getEntityTypeSearchIndexMapping(toNode.type),
+        },
+        lineageDetails: {
+          pipeline: {
+            id: get(pipelineItem, 'entityResponseData.id'),
+            type: getEntityTypeSearchIndexMapping(pipelineItem.type),
+          },
+        },
+      },
+    },
   });
 };
 
@@ -634,9 +755,9 @@ export const removeColumnLineage = async (
   // Reload before asserting. removeColumnEdge optimistically mutates local
   // React state (setEntityLineage / removeEdgeById / setColumnsHavingLineage),
   // so the edge disappears from the DOM regardless of what the server did.
-  // Only a fresh /api/v1/lineage/getLineage response proves the removal
+  // Only a fresh /api/v1/lineage/scene response proves the removal
   // actually persisted.
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.reload();
   await lineageRes;
 
@@ -648,11 +769,26 @@ export const removeColumnLineage = async (
   ).not.toBeVisible();
 };
 
+export const dismissLineageMapOnboarding = async (page: Page) => {
+  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
+  const hasSeenOnboarding = (await page.context().cookies()).some(
+    ({ name, value }) =>
+      name === 'lineageMapsOnboardingSeen' && value === 'true'
+  );
+  if (!hasSeenOnboarding) {
+    await expect(onboardingDialog).toBeVisible();
+    await onboardingDialog.getByRole('button').click();
+    await expect(onboardingDialog).not.toBeVisible();
+  }
+};
+
 export const visitLineageTab = async (page: Page) => {
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.click('[data-testid="lineage"]');
-  await lineageRes;
+  const lineageResponse = await lineageRes;
+  expect(lineageResponse.ok()).toBeTruthy();
   await waitForAllLoadersToDisappear(page);
+  await dismissLineageMapOnboarding(page);
   // Go to full screen to get nodes to view
   await page.getByRole('button', { name: 'Full Screen View' }).first().click();
   const pane = page.locator('.react-flow__pane');
@@ -979,7 +1115,7 @@ export const verifyLineageConfig = async (page: Page) => {
   await page.getByTestId('field-downstream').fill('0');
   await page.getByTestId('field-nodes-per-layer').fill('5');
 
-  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  const saveRes = page.waitForResponse('**/api/v1/lineage/scene?**');
   await page.getByText('OK').click();
   await saveRes;
 };
@@ -1053,20 +1189,29 @@ export const setLineageDepthAndVerify = async (
 ) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
+  const upstreamField = page.getByTestId('field-upstream');
+  const downstreamField = page.getByTestId('field-downstream');
 
-  await page.getByTestId('field-upstream').fill(upstreamDepth.toString());
-  await page.getByTestId('field-downstream').fill(downstreamDepth.toString());
+  await upstreamField.waitFor({ state: 'visible' });
 
-  const lineageRes = page.waitForResponse((response) => {
-    const url = response.url();
+  const depthChanged =
+    (await upstreamField.inputValue()) !== upstreamDepth.toString() ||
+    (await downstreamField.inputValue()) !== downstreamDepth.toString();
 
-    return (
-      url.includes('/api/v1/lineage/getLineage') &&
-      url.includes(`upstreamDepth=${upstreamDepth}`) &&
-      url.includes(`downstreamDepth=${downstreamDepth}`)
-    );
-  });
+  await upstreamField.fill(upstreamDepth.toString());
+  await downstreamField.fill(downstreamDepth.toString());
+
+  const lineageRes = depthChanged
+    ? page.waitForResponse((response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/lineage/scene') &&
+          url.includes(`upstreamDepth=${upstreamDepth}`) &&
+          url.includes(`downstreamDepth=${downstreamDepth}`)
+        );
+      })
+    : undefined;
 
   await page.getByText('OK').click();
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
@@ -1079,7 +1224,10 @@ export const verifyPlatformLineageForEntity = async (
   toFqn?: string
 ) => {
   // Verify relation in platform lineage
+  const rootSceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
   await sidebarClick(page, SidebarItem.LINEAGE);
+  expect((await rootSceneResponse).ok()).toBeTruthy();
+  await dismissLineageMapOnboarding(page);
 
   await page
     .getByTestId('search-entity-select')
@@ -1088,7 +1236,29 @@ export const verifyPlatformLineageForEntity = async (
     .click();
   await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
 
+  const focusSceneResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+      new URL(response.url()).searchParams.get('focusFqn') === fromFqn
+  );
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
+  expect((await focusSceneResponse).ok()).toBeTruthy();
+
+  await page.getByTestId('lineage-layer-btn').click();
+
+  const assetBandButton = page.getByTestId('lineage-layer-band-ASSET');
+  const isAssetBandSelected = await assetBandButton.evaluate((element) =>
+    element.hasAttribute('data-selected')
+  );
+  if (!isAssetBandSelected) {
+    await assetBandButton.click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+      .toBe('ASSET');
+    await waitForAllLoadersToDisappear(page);
+  } else {
+    await clickOutside(page);
+  }
 
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
   await expect(fromNode).toBeVisible();

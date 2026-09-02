@@ -242,6 +242,12 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('CustomControls', () => {
+  beforeEach(() => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=lineage&depth=3&dir=downstream',
+    }));
+  });
+
   it('renders all main control buttons', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -261,6 +267,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
+    expect(screen.queryByTestId('lineage-time-filter')).not.toBeInTheDocument();
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
@@ -273,6 +280,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-time-filter')).toBeInTheDocument();
   });
 
   it('Not shows SearchBar when in impact analysis mode & onSearchValueChange is not provided', () => {
@@ -331,7 +339,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const exportButton = screen.getByLabelText('label.export-as-type');
+    const exportButton = screen.getByLabelText('label.export');
     fireEvent.click(exportButton);
 
     expect(mockOnExportClick).toHaveBeenCalled();
@@ -554,7 +562,27 @@ describe('CustomControls', () => {
     expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
   });
 
-  it('should pass nodeIds to ExploreQuickFilters from provider when ids not passed through props', () => {
+  it('should not constrain quick-filter options when provider nodes are unavailable', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      onExportClick: mockOnExportClick,
+      selectedQuickFilters: [],
+      setSelectedQuickFilters: mockSetSelectedQuickFilters,
+      nodes: [],
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByLabelText('label.filter-plural'));
+
+    expect(ExploreQuickFilters).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultQueryFilter: undefined }),
+      expect.anything()
+    );
+  });
+
+  it('should pass entity ids to ExploreQuickFilters from provider when ids not passed through props', () => {
     (useLineageProvider as jest.Mock).mockImplementation(() => ({
       onExportClick: mockOnExportClick,
       onLineageConfigUpdate: mockOnLineageConfigUpdate,
@@ -562,7 +590,12 @@ describe('CustomControls', () => {
       setSelectedQuickFilters: mockSetSelectedQuickFilters,
       lineageConfig: mockLineageConfig,
       nodes: [
-        { data: { node: { id: 'node1', name: 'Node 1' } } },
+        {
+          data: {
+            node: { id: 'table:node1', name: 'Node 1' },
+            sceneNode: { sourceEntity: { id: 'node1' } },
+          },
+        },
         { data: { node: { id: 'node2', name: 'Node 2' } } },
       ],
     }));

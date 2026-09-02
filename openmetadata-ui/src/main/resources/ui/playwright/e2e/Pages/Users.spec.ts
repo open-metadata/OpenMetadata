@@ -1350,7 +1350,7 @@ base.describe(
           ).toBeVisible();
 
           const lineageResponse = page.waitForResponse(
-            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
+            `**/api/v1/lineage/scene?*focusFqn=${entity.entityResponseData.fullyQualifiedName}*`
           );
 
           await page.getByTestId('lineage').click();

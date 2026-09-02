@@ -53,6 +53,7 @@ import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -70,6 +71,12 @@ import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 import LineageTimeFilter from './LineageTimeFilter.component';
+
+type LineageFilterNodeData = {
+  node?: { id?: string };
+  sceneNode?: { sourceEntity?: { id?: string } };
+};
+
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;
@@ -101,6 +108,7 @@ const CustomControls: FC<{
     toggleEditMode,
     isEditMode,
     platformView,
+    sceneBand,
     setLineageConfig,
   } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
@@ -112,15 +120,24 @@ const CustomControls: FC<{
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
-      .map((node) => node.data?.node?.id)
+      .map((node) => {
+        const nodeData = node.data as LineageFilterNodeData | undefined;
+
+        return nodeData?.sceneNode?.sourceEntity?.id ?? nodeData?.node?.id;
+      })
       .filter(Boolean);
+    const filterNodeIds = queryFilterNodeIds ?? nodeIds;
+
+    if (filterNodeIds.length === 0) {
+      return undefined;
+    }
 
     return {
       query: {
         bool: {
           must: {
             terms: {
-              'id.keyword': queryFilterNodeIds ?? nodeIds,
+              'id.keyword': filterNodeIds,
             },
           },
         },
@@ -377,19 +394,23 @@ const CustomControls: FC<{
       platformView === LineagePlatformView.None &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
+    const isLayerBand = sceneBand === LineageBand.Layer;
 
     return showEditOption ? (
       <Tooltip
         placement="top"
-        title={t('label.edit-entity', { entity: t('label.lineage') })}>
-        <TooltipTrigger>
-          <Button
-            color={isEditMode ? 'primary' : 'secondary'}
-            data-testid="edit-lineage"
-            iconLeading={EditIcon}
-            onClick={toggleEditMode}
-          />
-        </TooltipTrigger>
+        title={
+          isLayerBand
+            ? t('label.zoom-in')
+            : t('label.edit-entity', { entity: t('label.lineage') })
+        }>
+        <Button
+          color={isEditMode ? 'primary' : 'secondary'}
+          data-testid="edit-lineage"
+          iconLeading={EditIcon}
+          isDisabled={isLayerBand}
+          onClick={toggleEditMode}
+        />
       </Tooltip>
     ) : null;
   }, [
@@ -398,6 +419,7 @@ const CustomControls: FC<{
     platformView,
     entityType,
     isEditMode,
+    sceneBand,
     toggleEditMode,
     t,
   ]);
@@ -449,11 +471,13 @@ const CustomControls: FC<{
             </Tabs>
           )}
 
-          <LineageTimeFilter
-            endTime={timeFilter?.endTime}
-            startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
-          />
+          {activeTab === 'impact_analysis' && (
+            <LineageTimeFilter
+              endTime={timeFilter?.endTime}
+              startTime={timeFilter?.startTime}
+              onChange={setTimeFilter}
+            />
+          )}
           {lineageEditButton}
           <Tooltip
             placement="top"

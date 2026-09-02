@@ -21,7 +21,11 @@ export const waitForSearchIndexed = async (
   apiContext: APIRequestContext,
   entityFqn: string | undefined,
   index: string,
-  options?: { timeout?: number; intervals?: number[] }
+  options?: {
+    timeout?: number;
+    intervals?: number[];
+    queryFilter?: string;
+  }
 ) => {
   // An empty q= becomes a match-all query in the search API: hits.total>0
   // would resolve on the first poll against any non-empty index, silently
@@ -35,6 +39,9 @@ export const waitForSearchIndexed = async (
 
   const timeout = options?.timeout ?? 30_000;
   const intervals = options?.intervals ?? [500, 1_000, 2_000, 5_000];
+  const queryFilter = options?.queryFilter
+    ? `&query_filter=${encodeURIComponent(options.queryFilter)}`
+    : '';
   const start = Date.now();
   let intervalIdx = 0;
 
@@ -42,7 +49,7 @@ export const waitForSearchIndexed = async (
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
         entityFqn
-      )}&index=${index}&from=0&size=1`
+      )}&index=${index}&from=0&size=1${queryFilter}`
     );
 
     if (response.ok()) {
@@ -59,8 +66,11 @@ export const waitForSearchIndexed = async (
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
+  const expectedMetadata = options?.queryFilter
+    ? ' with the expected search metadata'
+    : '';
   throw new Error(
-    `Entity "${entityFqn}" not found in index "${index}" after ${timeout}ms`
+    `Entity "${entityFqn}" not found${expectedMetadata} in index "${index}" after ${timeout}ms`
   );
 };
 
