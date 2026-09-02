@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import antlr4 from 'antlr4';
-import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
+import antlr4, { ParseTreeWalker } from 'antlr4';
 import SplitListener from '../antlr/SplitListener';
 import FqnLexer from '../generated/antlr/FqnLexer';
 import FqnParser from '../generated/antlr/FqnParser';
