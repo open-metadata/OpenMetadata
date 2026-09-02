@@ -273,24 +273,34 @@ class EntityRepositoryRestoreTest {
             .withName("pipeline")
             .withFullyQualifiedName("service.pipeline");
     long epochBefore = EntityRepository.readEpochById(Entity.PIPELINE, pipeline.getId());
+    long nameEpochBefore =
+        EntityRepository.readEpochByName(Entity.PIPELINE, pipeline.getFullyQualifiedName());
 
     repo.invalidate(pipeline);
 
     assertTrue(
         EntityRepository.readEpochById(Entity.PIPELINE, pipeline.getId()) > epochBefore,
         "Invalidation must advance the epoch seen by in-flight cache loaders");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, pipeline.getFullyQualifiedName())
+            > nameEpochBefore,
+        "Invalidation must also advance the by-name epoch, which guards the Redis-populating loader");
   }
 
   @Test
   void invalidateCacheForEntity_advancesLoaderEpochBeforeEvictingReferencedEntity() {
     UUID id = UUID.randomUUID();
     long epochBefore = EntityRepository.readEpochById(Entity.PIPELINE, id);
+    long nameEpochBefore = EntityRepository.readEpochByName(Entity.PIPELINE, "service.pipeline");
 
     EntityRepository.invalidateCacheForEntity(Entity.PIPELINE, id, "service.pipeline");
 
     assertTrue(
         EntityRepository.readEpochById(Entity.PIPELINE, id) > epochBefore,
         "Reference and tag invalidation must reject in-flight stale cache loads");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.pipeline") > nameEpochBefore,
+        "Reference and tag invalidation must reject in-flight stale by-name loads");
   }
 
   @Test
@@ -299,6 +309,9 @@ class EntityRepositoryRestoreTest {
     UUID grandchildId = UUID.randomUUID();
     long childEpochBefore = EntityRepository.readEpochById(Entity.PIPELINE, childId);
     long grandchildEpochBefore = EntityRepository.readEpochById(Entity.PIPELINE, grandchildId);
+    long childNameEpochBefore = EntityRepository.readEpochByName(Entity.PIPELINE, "service.child");
+    long grandchildNameEpochBefore =
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.child.grandchild");
     List<EntityDAO.EntityIdFqnPair> descendants =
         List.of(
             new EntityDAO.EntityIdFqnPair(childId, "service.child"),
@@ -312,6 +325,21 @@ class EntityRepositoryRestoreTest {
     assertTrue(
         EntityRepository.readEpochById(Entity.PIPELINE, grandchildId) > grandchildEpochBefore,
         "Rename invalidation must reject an in-flight stale grandchild load");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.child") > childNameEpochBefore,
+        "Rename invalidation must reject an in-flight stale child load by name");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.child.grandchild")
+            > grandchildNameEpochBefore,
+        "Rename invalidation must reject an in-flight stale grandchild load by name");
+  }
+
+  private Pipeline historyPipeline(String name, long updatedAt) {
+    return new Pipeline()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("service." + name)
+        .withUpdatedAt(updatedAt);
   }
 
   @Test

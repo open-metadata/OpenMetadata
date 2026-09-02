@@ -351,13 +351,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
 
   // A Guava load can finish after a writer invalidates the same key and reinstall the stale
-  // pre-write value. Writers advance this bounded epoch before eviction; ID loaders compare the
-  // value at the start and end of each load and reject any value that crossed a write.
+  // pre-write value. Writers advance these bounded epochs before eviction; loaders compare the
+  // value at the start and end of each load and reject any value that crossed a write. Both the
+  // by-id and by-name caches need one: the by-name loader populates Redis under the ID key too,
+  // so leaving it unguarded lets it re-poison entries the by-id guard just protected.
   private static final Cache<Pair<String, UUID>, AtomicLong> WRITE_EPOCH_BY_ID =
+      CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
+
+  private static final Cache<Pair<String, String>, AtomicLong> WRITE_EPOCH_BY_NAME =
       CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
 
   private static long readEpochById(Pair<String, UUID> key) {
     AtomicLong epoch = WRITE_EPOCH_BY_ID.getIfPresent(key);
+    return epoch == null ? 0L : epoch.get();
+  }
+
+  private static long readEpochByName(Pair<String, String> key) {
+    AtomicLong epoch = WRITE_EPOCH_BY_NAME.getIfPresent(key);
     return epoch == null ? 0L : epoch.get();
   }
 
@@ -366,14 +376,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return readEpochById(new ImmutablePair<>(entityType, id));
   }
 
-  private static void bumpWriteEpoch(String entityType, UUID id) {
-    if (entityType == null || id == null) {
+  @VisibleForTesting
+  static long readEpochByName(String entityType, String fqn) {
+    return readEpochByName(cacheNameKey(entityType, fqn));
+  }
+
+  private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
+    if (entityType == null) {
       return;
     }
+    if (id != null) {
+      try {
+        WRITE_EPOCH_BY_ID
+            .get(new ImmutablePair<>(entityType, id), AtomicLong::new)
+            .incrementAndGet();
+      } catch (ExecutionException e) {
+        LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
+      }
+    }
+    if (fqn != null) {
+      // findByName quotes the input fqn for quoteFqn entities (Glossary, Team, User, ...) before
+      // the loader records its epoch; writers pass the stored fqn which may differ. Bump both
+      // forms so the loader's read matches one.
+      bumpNameEpoch(cacheNameKey(entityType, fqn), entityType, fqn);
+      String quoted = quoteName(fqn);
+      if (!quoted.equals(fqn)) {
+        bumpNameEpoch(cacheNameKey(entityType, quoted), entityType, quoted);
+      }
+    }
+  }
+
+  private static void bumpNameEpoch(Pair<String, String> key, String entityType, String fqn) {
     try {
-      WRITE_EPOCH_BY_ID.get(new ImmutablePair<>(entityType, id), AtomicLong::new).incrementAndGet();
+      WRITE_EPOCH_BY_NAME.get(key, AtomicLong::new).incrementAndGet();
     } catch (ExecutionException e) {
-      LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
+      LOG.debug("Unexpected epoch-bump failure for type={} fqn={}", entityType, fqn, e);
     }
   }
 
@@ -2178,6 +2215,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
+      if (e.getCause() instanceof LoaderRaceException) {
+        return findByName(fqn, include, false);
+      }
       throw new EntityNotFoundException(entityNotFound(entityType, fqn));
     }
   }
@@ -3130,7 +3170,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     for (EntityDAO.EntityIdFqnPair row : affected) {
-      bumpWriteEpoch(entityType, row.id);
+      bumpWriteEpoch(entityType, row.id, row.fqn);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
       if (row.fqn != null) {
         CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, row.fqn));
@@ -3166,7 +3206,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || id == null) {
       return;
     }
-    bumpWriteEpoch(entityType, id);
+    bumpWriteEpoch(entityType, id, fqn);
     // Skip every Redis op for entity types that are never cached. Bot/domain/data-product
     // deletes cascade through many addRelationship/deleteRelationship calls; without this
     // short-circuit each cascade pays for a pub/sub publish + multiple DELs that touch keys
@@ -3345,7 +3385,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     if (id != null) {
-      bumpWriteEpoch(entityType, id);
+      bumpWriteEpoch(entityType, id, fqn);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
     if (fqn != null) {
@@ -4752,7 +4792,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   void invalidate(T entity) {
-    bumpWriteEpoch(entityType, entity.getId());
+    bumpWriteEpoch(entityType, entity.getId(), entity.getFullyQualifiedName());
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -9692,7 +9732,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
-      bumpWriteEpoch(entityType, id);
+      bumpWriteEpoch(entityType, id, fqn);
       // Evict the Guava L1 so future reads reload from Redis/DB.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -10053,6 +10093,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, String> fqnPair) {
+      // Race guard - an epoch mismatch means a writer ran during the load; throw so Guava skips
+      // caching the now-stale value and findByName() re-reads via the bypass path.
+      long startEpoch = readEpochByName(fqnPair);
+      String json = loadInternal(fqnPair, startEpoch);
+      if (readEpochByName(fqnPair) != startEpoch) {
+        evictExternalCache(fqnPair, json);
+        throw new LoaderRaceException("Concurrent write during loadByName: " + fqnPair);
+      }
+      return json;
+    }
+
+    /**
+     * Evict the Redis entries this load may have populated before the race was detected. Both keys
+     * matter: the by-name loader also writes the ID-keyed slot, which the by-id loader reads first.
+     */
+    private void evictExternalCache(Pair<String, String> fqnPair, String json) {
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao == null) {
+        return;
+      }
+      cachedEntityDao.deleteByName(fqnPair.getLeft(), fqnPair.getRight());
+      try {
+        EntityRepository<? extends EntityInterface> repository =
+            Entity.getEntityRepository(fqnPair.getLeft());
+        EntityInterface entity = JsonUtils.readValue(json, repository.getEntityClass());
+        if (entity.getId() != null) {
+          cachedEntityDao.deleteBase(fqnPair.getLeft(), entity.getId());
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to evict raced cache entry by id for {}", fqnPair, e);
+      }
+    }
+
+    @NonNull
+    private String loadInternal(@NotNull Pair<String, String> fqnPair, long startEpoch) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
@@ -10060,7 +10135,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<?> dao = repository.getDao();
 
       // Try to load from external cache first (read-through) for cacheable entity types.
-      if (isCacheableEntityType(entityType)) {
+      if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
@@ -10122,7 +10197,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
-      if (isCacheableEntityType(entityType)) {
+      if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           try {
