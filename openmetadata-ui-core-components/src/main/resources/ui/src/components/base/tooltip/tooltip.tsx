@@ -87,11 +87,12 @@ interface TooltipProps
    */
   triggerIsDisabled?: boolean;
   /**
-   * When true, the auto-generated focusable wrapper is excluded from the tab
-   * order. Use this when the tooltip trigger must NOT be keyboard-reachable
-   * (e.g. chips inside a data-grid cell where keyboard focus belongs to the
-   * cell, not its children). The element remains hoverable so the tooltip
-   * still shows on mouse-over.
+   * When true, renders a plain non-focusable span instead of the AriaButton
+   * wrapper for non-focusable children. Use this when the tooltip trigger must
+   * NOT be reachable by keyboard OR by programmatic focus (e.g. chips inside a
+   * data-grid cell where keyboard focus belongs to the cell, not its children).
+   * Mouse hover tooltips still work. Keyboard/focus tooltip triggering is
+   * intentionally skipped.
    */
   excludeTriggerFromTabOrder?: boolean;
 }
@@ -138,13 +139,22 @@ export const Tooltip = ({
   })();
 
   const trigger_ = shouldWrap ? (
-    <AriaButton
-      className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
-      excludeFromTabOrder={excludeTriggerFromTabOrder}
-      isDisabled={triggerIsDisabled}
-      onPress={onTriggerPress}>
-      {children}
-    </AriaButton>
+    excludeTriggerFromTabOrder ? (
+      // Use a plain span instead of AriaButton when the trigger is explicitly
+      // excluded from the tab order. AriaButton with tabindex="-1" is still
+      // programmatically focusable, so Ant Design FocusTrap.restoreFocus() can
+      // accidentally land on it inside rdg cells. A span has no focusability at
+      // all — FocusTrap cannot reach it — while RAC's TooltipTrigger still
+      // passes hover handlers via cloneElement, so mouse tooltips work normally.
+      <span className={triggerClassName}>{children}</span>
+    ) : (
+      <AriaButton
+        className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
+        isDisabled={triggerIsDisabled}
+        onPress={onTriggerPress}>
+        {children}
+      </AriaButton>
+    )
   ) : (
     children
   );
