@@ -176,8 +176,10 @@ def test_create_proto_files_accepts_simple_schema_name(tmp_path):
     )
 
     proto_path, file_path = parser.create_proto_files()
+    prefix, generated_path = proto_path.split("=", maxsplit=1)
 
-    assert proto_path == f"generated={tmp_path / 'protobuf' / 'interfaces'}"
+    assert prefix == "generated"
+    assert Path(generated_path).resolve() == (tmp_path / "protobuf" / "interfaces").resolve()
     assert Path(file_path).resolve() == (tmp_path / "protobuf" / "interfaces" / "safe_schema.proto").resolve()
     assert Path(file_path).read_text(encoding="UTF-8") == 'syntax = "proto3";'
 
