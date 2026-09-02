@@ -13,7 +13,8 @@ Clickhouse lineage module
 """
 
 import traceback
-from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from typing import NamedTuple
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -50,8 +51,8 @@ class CandidateCache(NamedTuple):
     tables of the same name do not necessarily carry the same columns.
     """
 
-    by_fqn: Dict[str, Optional[Table]]  # noqa: UP006, UP045
-    by_name: Dict[Tuple[str, str], List[Table]]  # noqa: UP006
+    by_fqn: dict[str, Table | None]
+    by_name: dict[tuple[str, str], list[Table]]
 
     @classmethod
     def empty(cls) -> "CandidateCache":
@@ -106,7 +107,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
     def _yield_database_cross_lineage(
         self,
         database: Database,
-        cross_database_fqns: List[str],  # noqa: UP006
+        cross_database_fqns: list[str],
         candidate_cache: CandidateCache,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Yield the lineage of every table of one Clickhouse database"""
@@ -130,9 +131,9 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
         self,
         table: Table,
         database_fqn: str,
-        cross_database_fqns: List[str],  # noqa: UP006
+        cross_database_fqns: list[str],
         candidate_cache: CandidateCache,
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         The table this one replicates, looked up by FQN first and by name second.
 
@@ -149,9 +150,9 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
         self,
         table: Table,
         database_fqn: str,
-        cross_database_fqns: List[str],  # noqa: UP006
+        cross_database_fqns: list[str],
         candidate_cache: CandidateCache,
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """The table at the same schema and name under one of the other services"""
         table_fqn = model_str(table.fullyQualifiedName) if table.fullyQualifiedName else None
         if not table_fqn or not table_fqn.startswith(f"{database_fqn}."):
@@ -168,7 +169,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
 
         return None
 
-    def _find_by_name(self, table: Table, candidate_cache: CandidateCache) -> Optional[Table]:  # noqa: UP045
+    def _find_by_name(self, table: Table, candidate_cache: CandidateCache) -> Table | None:
         """
         The only table of the other services carrying this name and these columns.
 
@@ -197,9 +198,13 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
                 return matches[0]
             if matches:
                 logger.info(
-                    f"Skipping cross database lineage for [{model_str(table.fullyQualifiedName)}]: "
-                    f"[{service_name}] holds {len(matches)} tables named [{table_name}] with the same columns "
-                    f"({', '.join(model_str(match.fullyQualifiedName) for match in matches)})"
+                    "Skipping cross database lineage for [%s]: [%s] holds %s tables named [%s] "
+                    "with the same columns (%s)",
+                    model_str(table.fullyQualifiedName),
+                    service_name,
+                    len(matches),
+                    table_name,
+                    ", ".join(model_str(match.fullyQualifiedName) for match in matches),
                 )
                 return None
 

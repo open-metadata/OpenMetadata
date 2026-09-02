@@ -501,7 +501,7 @@ class LineageSource(QueryParserSource, ABC):
 
         return None
 
-    def get_cross_database_fqn_from_service_names(self) -> List[str]:  # noqa: UP006
+    def get_cross_database_fqn_from_service_names(self) -> list[str]:
         database_service_names = self.source_config.crossDatabaseServiceNames  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
         return [
             database.fullyQualifiedName.root
