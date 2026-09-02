@@ -19,37 +19,68 @@
  * lazy scene.
  */
 
+import { resolveCssColor } from '../../utils/common/cssColor.utils';
 import {
   AVATAR_PALETTE,
   DEFAULT_NODE_COLOR,
   DEFAULT_NODE_SIZE,
   ENTITY_COLORS,
   ENTITY_SIZES,
+  NODE_ICON_COLOR,
 } from './KnowledgeGraph3D.constants';
 import { NodeType } from './types';
 
 const CANVAS_SIZE = 180;
 
+const concreteFallback = (color: string): string => {
+  const separator = color.indexOf(',');
+
+  return color.startsWith('var(') && separator > 0
+    ? color.slice(separator + 1, -1).trim()
+    : color;
+};
+
+export const resolveGraphColor = (color: string): string =>
+  resolveCssColor(color, concreteFallback(color));
+
 export const colorFor = (type: string): string =>
-  ENTITY_COLORS[type] ?? DEFAULT_NODE_COLOR;
+  resolveGraphColor(ENTITY_COLORS[type] ?? DEFAULT_NODE_COLOR);
 
 export const sizeFor = (type: string): number =>
   ENTITY_SIZES[type] ?? DEFAULT_NODE_SIZE;
 
-export const hexRgba = (hex: string, alpha: number): string => {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
+const colorChannels = (color: string): [number, number, number] | null => {
+  const concrete = resolveGraphColor(color);
+  const rgb = concrete.match(
+    /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i
+  );
+  if (rgb) {
+    return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  }
+
+  const hex = concrete.replace('#', '');
+  if (/^[\da-f]{6}$/i.test(hex)) {
+    return [
+      parseInt(hex.slice(0, 2), 16),
+      parseInt(hex.slice(2, 4), 16),
+      parseInt(hex.slice(4, 6), 16),
+    ];
+  }
+
+  return null;
+};
+
+export const hexRgba = (color: string, alpha: number): string => {
+  const [r, g, b] = colorChannels(color) ?? [0, 0, 0];
 
   return `rgba(${r},${g},${b},${alpha})`;
 };
 
-export const lighten = (hex: string, amount: number): string => {
-  const h = hex.replace('#', '');
-  const r = Math.min(255, parseInt(h.slice(0, 2), 16) + amount);
-  const g = Math.min(255, parseInt(h.slice(2, 4), 16) + amount);
-  const b = Math.min(255, parseInt(h.slice(4, 6), 16) + amount);
+export const lighten = (color: string, amount: number): string => {
+  const [red, green, blue] = colorChannels(color) ?? [0, 0, 0];
+  const r = Math.min(255, red + amount);
+  const g = Math.min(255, green + amount);
+  const b = Math.min(255, blue + amount);
 
   return `rgb(${r},${g},${b})`;
 };
@@ -60,7 +91,7 @@ export const personColor = (name: string): string => {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   }
 
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  return resolveGraphColor(AVATAR_PALETTE[hash % AVATAR_PALETTE.length]);
 };
 
 export const initials = (name: string): string => {
@@ -422,13 +453,14 @@ export const iconCanvas = (
   roundedRect(ctx, 12, 12, 156, 156, 40);
   ctx.fillStyle = color;
   ctx.fill();
+  const foreground = resolveGraphColor(NODE_ICON_COLOR);
   const gradient = ctx.createLinearGradient(0, 12, 0, 168);
-  gradient.addColorStop(0, 'rgba(255,255,255,.22)');
-  gradient.addColorStop(0.55, 'rgba(255,255,255,0)');
+  gradient.addColorStop(0, hexRgba(foreground, 0.22));
+  gradient.addColorStop(0.55, hexRgba(foreground, 0));
   ctx.fillStyle = gradient;
   ctx.fill();
-  ctx.strokeStyle = '#fff';
-  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = foreground;
+  ctx.fillStyle = foreground;
   ctx.lineWidth = 10;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -470,9 +502,10 @@ export const avatarCanvas = (
   ctx.fillStyle = gradient;
   ctx.fill();
   ctx.lineWidth = 8;
-  ctx.strokeStyle = 'rgba(255,255,255,.92)';
+  const foreground = resolveGraphColor(NODE_ICON_COLOR);
+  ctx.strokeStyle = hexRgba(foreground, 0.92);
   ctx.stroke();
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = foreground;
   ctx.font = `700 ${isTeam ? 50 : 58}px Inter, Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

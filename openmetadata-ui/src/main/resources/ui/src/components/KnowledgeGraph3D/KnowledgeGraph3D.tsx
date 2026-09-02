@@ -427,7 +427,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
 
             <KnowledgeGraph3DLegend />
 
-            <div className="kg3d-hint tw:pointer-events-none tw:absolute tw:top-4 tw:right-4 tw:rounded-lg tw:border tw:border-white/10 tw:px-3 tw:py-2 tw:text-xs">
+            <div className="kg3d-hint tw:pointer-events-none tw:absolute tw:top-4 tw:right-4 tw:rounded-lg tw:border tw:border-secondary tw:px-3 tw:py-2 tw:text-xs">
               {t('message.knowledge-graph-3d-hint')}
             </div>
 

@@ -14,6 +14,7 @@
 import { CloseButton } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
   LINK_ONTOLOGY_COLOR,
   LINK_TECHNICAL_COLOR,
@@ -33,7 +34,7 @@ const EndpointRow: FC<{
 }> = ({ node, sublabel, onSelect }) => (
   <button
     aria-label={node.name}
-    className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-b tw:border-white/[0.08] tw:py-2 tw:text-left tw:transition hover:tw:opacity-80"
+    className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-b tw:border-secondary tw:py-2 tw:text-left tw:transition hover:tw:opacity-80"
     type="button"
     onClick={() => onSelect(node)}>
     <span
@@ -57,7 +58,7 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
   const { t } = useTranslation();
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-1 tw:rounded-xl tw:border tw:border-white/[0.09] tw:bg-white/[0.04] tw:p-4">
+    <div className="tw:flex tw:flex-col tw:gap-1 tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-4">
       {path.map((step, index) => {
         const isEndpoint = index === 0 || index === path.length - 1;
         const dotColor = isEndpoint
@@ -103,6 +104,9 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   onSelectNode,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  // Inline and canvas-backed colors need a consumer render after tokens flip.
+  void theme;
   const isOntology = link.kind === 'ontology';
   const isDerived = Boolean(link.derived && link.path?.length && link.relation);
   const accent = isOntology ? LINK_ONTOLOGY_COLOR : LINK_TECHNICAL_COLOR;
@@ -111,8 +115,8 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
     : link.label;
 
   return (
-    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
-      <div className="tw:flex tw:items-start tw:gap-3 tw:border-b tw:border-white/[0.08] tw:p-4">
+    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-primary tw:shadow-2xl">
+      <div className="tw:flex tw:items-start tw:gap-3 tw:border-b tw:border-secondary tw:p-4">
         <span
           className="tw:mt-1 tw:size-3 tw:flex-none tw:rounded-full"
           style={{ background: accent, boxShadow: `0 0 12px ${accent}` }}
@@ -141,7 +145,6 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
           className="kg3d-panel-close"
           label={t('label.close')}
           size="xs"
-          theme="dark"
           onClick={onClose}
         />
       </div>

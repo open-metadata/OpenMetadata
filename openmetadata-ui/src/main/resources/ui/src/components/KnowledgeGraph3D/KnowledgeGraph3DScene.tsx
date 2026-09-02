@@ -26,12 +26,14 @@ import ForceGraph3D, {
   NodeObject,
 } from 'react-force-graph-3d';
 import type { Object3D } from 'three';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
   CAMERA_FOCUS_DISTANCE,
   CAMERA_FOCUS_DURATION_MS,
   CHARGE_STRENGTH,
   COVERAGE_DIMMED_OPACITY,
   DIMMED_NODE_OPACITY,
+  DIM_LINK_COLOR,
   LABEL_RENDER_LIMIT,
   LINK_DISTANCE,
   LINK_ONTOLOGY_COLOR,
@@ -55,7 +57,7 @@ import {
   getVisibleLabelIds,
   HighlightSet,
 } from './KnowledgeGraph3D.utils';
-import { hexRgba, sizeFor } from './nodeCanvas';
+import { hexRgba, resolveGraphColor, sizeFor } from './nodeCanvas';
 import {
   buildNodeObject,
   disposeTextureCaches,
@@ -67,7 +69,6 @@ type SceneNode = NodeObject<GraphNode3D>;
 type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
-const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 const GRAPH_ORIGIN = { x: 0, y: 0, z: 0 };
 
 const sceneNodeId = (node: SceneNode | null): string | null =>
@@ -111,7 +112,7 @@ const linkColorFor = (
   if (highlight) {
     color = highlight.links.has(link)
       ? hexRgba(baseLinkColor(link), 0.95)
-      : DIM_LINK_COLOR;
+      : hexRgba(DIM_LINK_COLOR, 0.07);
   }
 
   return color;
@@ -160,6 +161,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   registerResetView,
   registerExportImage,
 }) => {
+  const { theme } = useTheme();
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const didMountRef = useRef(false);
@@ -173,6 +175,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const hoveredNodeRef = useRef<SceneNode | null>(null);
   const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
   const hoverFrameRef = useRef(0);
+  const textureThemeRef = useRef(theme);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -251,14 +254,30 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
 
   const renderLabels = data.nodes.length <= LABEL_RENDER_LIMIT;
   const nodeThreeObject = useCallback(
-    (node: SceneNode) =>
-      buildNodeObject(node as GraphNode3D, {
+    (node: SceneNode) => {
+      // ForceGraph retains constructed objects, so the accessor identity must
+      // change even though theme is read indirectly while resolving tokens.
+      if (textureThemeRef.current !== theme) {
+        // Invalidate before the first themed object is built; doing this in an
+        // effect could dispose textures ForceGraph already recreated.
+        textureThemeRef.current = theme;
+        disposeTextureCaches();
+      }
+
+      return buildNodeObject(node as GraphNode3D, {
         level,
         gaps,
         showLabel: renderLabels,
-      }),
-    [level, gaps, renderLabels]
+      });
+    },
+    [level, gaps, renderLabels, theme]
   );
+
+  const ontologyParticleColor = useCallback(() => {
+    void theme;
+
+    return resolveGraphColor(ONTOLOGY_PARTICLE_COLOR);
+  }, [theme]);
 
   const handleNodeHover = useCallback(
     (node: SceneNode | null) => {
@@ -330,6 +349,10 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     registerResetView?.(resetView);
     registerExportImage?.(exportImage);
   }, [registerResetView, registerExportImage, resetView, exportImage]);
+
+  useEffect(() => {
+    fgRef.current?.refresh();
+  }, [theme]);
 
   useEffect(
     () => () => {
@@ -462,8 +485,12 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   }, [selectedNodeId, data.nodes]);
 
   const linkColor = useCallback(
-    (link: SceneLink) => linkColorFor(link as GraphLink3D, highlight),
-    [highlight]
+    (link: SceneLink) => {
+      void theme;
+
+      return linkColorFor(link as GraphLink3D, highlight);
+    },
+    [highlight, theme]
   );
   const linkWidth = useCallback(
     (link: SceneLink) => linkWidthFor(link as GraphLink3D, highlight),
@@ -491,7 +518,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
           }
           linkDirectionalArrowLength={3.5}
           linkDirectionalArrowRelPos={1}
-          linkDirectionalParticleColor={() => ONTOLOGY_PARTICLE_COLOR}
+          linkDirectionalParticleColor={ontologyParticleColor}
           linkDirectionalParticleWidth={1.6}
           linkDirectionalParticles={linkParticles}
           linkLabel={(link: SceneLink) => getLinkTooltip(link as GraphLink3D)}

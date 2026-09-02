@@ -14,6 +14,7 @@
 import { CloseButton } from '@openmetadata/ui-core-components';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
   COVERAGE_GAP_COLOR,
   LINK_ONTOLOGY_COLOR,
@@ -25,8 +26,8 @@ import { colorFor } from './nodeCanvas';
 import { relationsOf, RELATION_LABEL_KEYS } from './rdfGraphAdapter';
 import { GraphNode3D, NodeType, RelationRow, SharedConceptRow } from './types';
 
-const MEMBER_ACCENT = '#26C281';
-const MAPPED_ACCENT = '#17B26A';
+const MEMBER_ACCENT = 'var(--color-success-500, #26C281)';
+const MAPPED_ACCENT = 'var(--color-success-500, #17B26A)';
 
 export const TYPE_LABEL_KEY: Record<NodeType, string> = {
   domain: 'label.domain',
@@ -91,7 +92,7 @@ const RelationRowItem: FC<{
   return (
     <button
       aria-label={`${t('label.focus-on-node')}: ${row.other.name}`}
-      className="kg3d-panel-node-link tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-x-0 tw:border-t-0 tw:border-b tw:border-white/[0.08] tw:py-2 tw:text-left"
+      className="kg3d-panel-node-link tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-x-0 tw:border-t-0 tw:border-b tw:border-secondary tw:py-2 tw:text-left"
       data-testid={`kg3d-related-node-${row.other.id}`}
       type="button"
       onClick={() => onSelectNode(row.other)}>
@@ -122,7 +123,7 @@ const SharedRowItem: FC<{
   return (
     <button
       aria-label={`${t('label.focus-on-node')}: ${row.asset.name}`}
-      className="kg3d-panel-node-link tw:flex tw:w-full tw:items-start tw:gap-2.5 tw:border-x-0 tw:border-t-0 tw:border-b tw:border-white/[0.06] tw:py-1.5 tw:text-left"
+      className="kg3d-panel-node-link tw:flex tw:w-full tw:items-start tw:gap-2.5 tw:border-x-0 tw:border-t-0 tw:border-b tw:border-secondary tw:py-1.5 tw:text-left"
       data-testid={`kg3d-related-node-${row.asset.id}`}
       type="button"
       onClick={() => onSelectNode(row.asset)}>
@@ -150,10 +151,14 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   onSelectNode,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const relations = useMemo(
     () => relationsOf(graph, node.id),
     [graph, node.id]
   );
+  // The panel stores concrete node colors in inline styles, so it must resolve
+  // them again when the active token set changes.
+  void theme;
   const dotColor = colorFor(node.type);
 
   const hierarchyTitle =
@@ -171,8 +176,8 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
     relations.members.length > 0;
 
   return (
-    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
-      <div className="tw:border-b tw:border-white/[0.08] tw:p-4">
+    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-primary tw:shadow-2xl">
+      <div className="tw:border-b tw:border-secondary tw:p-4">
         <div className="tw:flex tw:items-start tw:gap-3">
           <span
             className="tw:mt-1 tw:size-3 tw:flex-none tw:rounded-full"
@@ -196,7 +201,6 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             className="kg3d-panel-close"
             label={t('label.close')}
             size="xs"
-            theme="dark"
             onClick={onClose}
           />
         </div>
@@ -205,13 +209,15 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
           <div
             className="tw:mt-3.5 tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-xs"
             style={{
-              color: node.mapped ? '#75E0A7' : '#FDA29B',
+              color: node.mapped
+                ? 'var(--color-text-success-primary, #079455)'
+                : 'var(--color-text-error-primary, #D92D20)',
               background: node.mapped
-                ? 'rgba(23,178,106,0.12)'
-                : 'rgba(240,68,56,0.12)',
+                ? 'var(--color-bg-success-primary, #ECFDF3)'
+                : 'var(--color-bg-error-primary, #FEF3F2)',
               borderColor: node.mapped
-                ? 'rgba(23,178,106,0.25)'
-                : 'rgba(240,68,56,0.3)',
+                ? 'var(--color-success-500, #17B26A)'
+                : 'var(--color-border-error, #F04438)',
             }}>
             <span
               className="tw:size-1.5 tw:rounded-full"
