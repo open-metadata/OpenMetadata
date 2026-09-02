@@ -15,8 +15,9 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 
 import json
 import traceback
+from collections.abc import Iterable
 from hashlib import md5
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -105,7 +106,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
@@ -206,7 +207,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[tuple[str, TableType, SupportedTypes, int | None]]:
         """
         Handle table and views.
 
@@ -247,7 +248,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+        table_name_and_type: tuple[str, TableType, SupportedTypes, int | None],
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.

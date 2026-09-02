@@ -14,7 +14,8 @@ Amundsen source to extract metadata
 """
 
 import traceback
-from typing import TYPE_CHECKING, Iterable, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
 
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
@@ -83,8 +84,8 @@ logger = ingestion_logger()
 
 
 class AmundsenConfig(ConfigModel):
-    neo4j_username: Optional[str] = None  # noqa: UP045
-    neo4j_password: Optional[SecretStr] = None  # noqa: UP045
+    neo4j_username: str | None = None
+    neo4j_password: SecretStr | None = None
     neo4j_url: str
     neo4j_max_connection_life_time: int = 50
     neo4j_encrypted: bool = True
@@ -136,7 +137,7 @@ class AmundsenSource(Source):
             self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AmundsenConnection = config.serviceConnection.root.config
@@ -298,7 +299,7 @@ class AmundsenSource(Source):
         try:
             yield from self._yield_create_database(table)
             yield from self._yield_create_database_schema(table)
-            columns: List[Column] = []  # noqa: UP006
+            columns: list[Column] = []
             if len(table["column_names"]) == len(table["column_descriptions"]):
                 # zipping on column_descriptions can cause incorrect or no ingestion
                 # of column metadata as zip will zip on the smallest list len.

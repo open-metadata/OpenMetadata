@@ -14,8 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List  # noqa: UP035
-
 from sqlalchemy.exc import ProgrammingError
 
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
@@ -46,7 +44,7 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: QueryRunner,
         *args,
         **kwargs,

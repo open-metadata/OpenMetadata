@@ -28,8 +28,8 @@ total and no ETA.
 
 import threading
 import time
+from collections.abc import Mapping  # noqa: TC003
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping, Optional, Tuple  # noqa: UP035
 
 from metadata.ingestion.progress._render import (
     _render_joined,
@@ -47,10 +47,10 @@ class ProgressNode:
     for stored procedures); the node's expected/processed are their sums."""
 
     label: str
-    child_type: Optional[str] = None  # noqa: UP045
-    expected_by_type: Dict[str, Optional[int]] = field(default_factory=dict)  # noqa: UP006,UP045
-    processed_by_type: Dict[str, int] = field(default_factory=dict)  # noqa: UP006
-    children: "Dict[str, ProgressNode]" = field(default_factory=dict)  # noqa: UP006
+    child_type: str | None = None
+    expected_by_type: dict[str, int | None] = field(default_factory=dict)
+    processed_by_type: dict[str, int] = field(default_factory=dict)
+    children: "dict[str, ProgressNode]" = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -60,13 +60,13 @@ class ProgressNodeSnapshot:
     generic renderer ignores them and the DB two-tier projection reads them."""
 
     label: str
-    child_type: Optional[str]  # noqa: UP045
-    expected: Optional[int]  # noqa: UP045
+    child_type: str | None
+    expected: int | None
     processed: int
     active: bool
     overflow: int
-    children: "Tuple[ProgressNodeSnapshot, ...]"  # noqa: UP006
-    expected_by_type: "Mapping[str, Optional[int]]" = field(default_factory=dict)  # noqa: UP045
+    children: "tuple[ProgressNodeSnapshot, ...]"
+    expected_by_type: "Mapping[str, int | None]" = field(default_factory=dict)
     processed_by_type: "Mapping[str, int]" = field(default_factory=dict)
 
 
@@ -78,9 +78,9 @@ class GlobalCounter:
     contribution so the total can be reconciled by delta. ``reconcilable`` marks
     a counter whose total the framework may nudge toward observed counts."""
 
-    total: Optional[int] = None  # noqa: UP045
+    total: int | None = None
     done: int = 0
-    scope_estimates: Dict[str, int] = field(default_factory=dict)  # noqa: UP006
+    scope_estimates: dict[str, int] = field(default_factory=dict)
     reconcilable: bool = False
 
 
@@ -91,12 +91,12 @@ class ProgressRegistry:
     def __init__(self, active_leaf_cap: int = DEFAULT_ACTIVE_LEAF_CAP) -> None:
         self._lock = threading.Lock()
         self._total_ingested = 0
-        self._global: Dict[str, GlobalCounter] = {}  # noqa: UP006
+        self._global: dict[str, GlobalCounter] = {}
         self._root = ProgressNode(label="")
         self._active_leaf_cap = active_leaf_cap
-        self._started_at: Optional[float] = None  # noqa: UP045
+        self._started_at: float | None = None
 
-    def open(self, path: List[str], child_type: Optional[str], expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
+    def open(self, path: list[str], child_type: str | None, expected: int | None = None) -> None:
         if child_type is None:
             return
         with self._lock:
@@ -107,7 +107,7 @@ class ProgressRegistry:
             if expected is not None or child_type not in node.expected_by_type:
                 node.expected_by_type[child_type] = expected
 
-    def advance(self, path: List[str], child_type: Optional[str] = None) -> None:  # noqa: UP006,UP045
+    def advance(self, path: list[str], child_type: str | None = None) -> None:
         with self._lock:
             node = self._navigate(path)
             key = child_type or node.child_type or ""
@@ -128,7 +128,7 @@ class ProgressRegistry:
         with self._lock:
             return self._total_ingested
 
-    def elapsed_seconds(self) -> Optional[float]:  # noqa: UP045
+    def elapsed_seconds(self) -> float | None:
         """Monotonic seconds since the first counter activity (``open()``,
         ``set_total()``, ``seed_scope_total()``, or ``track()``). ``None`` before
         the first activity. Uses ``time.monotonic()`` so it can never go negative
@@ -144,7 +144,7 @@ class ProgressRegistry:
         if self._started_at is None:
             self._started_at = time.monotonic()
 
-    def set_total(self, type_: str, total: Optional[int]) -> None:  # noqa: UP045
+    def set_total(self, type_: str, total: int | None) -> None:
         """Declare a flat global total for ``type_`` (e.g. ``Database`` = 4).
         Header-level and independent of the tree — survives pruning."""
         with self._lock:
@@ -164,7 +164,7 @@ class ProgressRegistry:
             self._mark_started()
             self._apply_scope_total(type_, scope, n)
 
-    def reconcile_scope_total(self, type_: Optional[str], scope: str, observed: int) -> None:  # noqa: UP045
+    def reconcile_scope_total(self, type_: str | None, scope: str, observed: int) -> None:
         """Nudge ``type_``'s total toward the real ``observed`` count for
         ``scope``. No-op when ``type_`` is ``None`` or was never declared."""
         with self._lock:
@@ -179,7 +179,7 @@ class ProgressRegistry:
         counter.scope_estimates[scope] = n
         counter.total = max(counter.total, counter.done)
 
-    def track(self, type_: Optional[str], n: int = 1) -> None:  # noqa: UP045
+    def track(self, type_: str | None, n: int = 1) -> None:
         """Record ``n`` completed units of ``type_`` (default 1). No-op for a
         ``None`` or undeclared type, so callers may invoke it unconditionally."""
         with self._lock:
@@ -190,17 +190,17 @@ class ProgressRegistry:
                 if counter.total is not None and counter.total < counter.done:
                     counter.total = counter.done
 
-    def is_reconcilable(self, type_: Optional[str]) -> bool:  # noqa: UP045
+    def is_reconcilable(self, type_: str | None) -> bool:
         with self._lock:
             counter = self._global.get(type_) if type_ is not None else None
             return counter is not None and counter.reconcilable
 
-    def global_counters(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
+    def global_counters(self) -> "list[tuple[str, int, int | None]]":
         """``(type, done, total)`` per declared global counter, insertion order."""
         with self._lock:
             return [(type_, c.done, c.total) for type_, c in self._global.items()]
 
-    def eta_seconds(self) -> Optional[int]:  # noqa: UP045
+    def eta_seconds(self) -> int | None:
         """Overall run ETA in seconds from the driver counter's cumulative rate:
         ``elapsed * (total - done) / done``. ``None`` during warm-up (``done ==
         0``), when there is no driver, when the driver is complete (``done >=
@@ -216,8 +216,8 @@ class ProgressRegistry:
 
     def _driver_counter(
         self,
-        counters: "Optional[List[Tuple[str, int, Optional[int]]]]" = None,  # noqa: UP006,UP045
-    ) -> "Optional[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
+        counters: "list[tuple[str, int, int | None]] | None" = None,
+    ) -> "tuple[str, int, int | None] | None":
         """The ETA driver: the last-declared global counter that has a known
         total (finest-grained real unit of work), or ``None`` when no counter
         declares a total."""
@@ -236,13 +236,13 @@ class ProgressRegistry:
         header = self._render_header(counters)
         if snapshot is None:
             return header if counters else ""
-        lines: List[str] = []  # noqa: UP006
+        lines: list[str] = []
         _render_joined(snapshot, [], lines)
         tree = "\n".join(lines)
         return f"{header}\n{tree}" if tree else header
 
-    def _render_header(self, counters: "List[Tuple[str, int, Optional[int]]]") -> str:  # noqa: UP006,UP045
-        lines: List[str] = []  # noqa: UP006
+    def _render_header(self, counters: "list[tuple[str, int, int | None]]") -> str:
+        lines: list[str] = []
         driver = self._driver_counter(counters)
         eta = self.eta_seconds()
         for type_, done, total in counters:
@@ -255,7 +255,7 @@ class ProgressRegistry:
             lines.append(f"Ingested: {assets:,} assets")
         return "\n".join(lines)
 
-    def sse_payload(self) -> Optional[dict]:  # noqa: UP045
+    def sse_payload(self) -> dict | None:
         """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,
         which is ``extra='forbid'``). The run-root ``processed`` carries the
         monotonic asset total; ``expected`` is unknown (no global count)."""
@@ -269,7 +269,7 @@ class ProgressRegistry:
                 result = tree
         return result
 
-    def close(self, path: List[str]) -> None:  # noqa: UP006
+    def close(self, path: list[str]) -> None:
         """Remove the node at ``path`` from its parent's children once its work
         is complete, so the tree retains only active scopes. No-op on an empty
         or already-absent path."""
@@ -285,20 +285,20 @@ class ProgressRegistry:
     def completed_snapshots_at_depth(
         self,
         depth: int,
-        limit: Optional[int] = None,  # noqa: UP045
-    ) -> "List[Tuple[Tuple[str, ...], ProgressNodeSnapshot]]":  # noqa: UP006
+        limit: int | None = None,
+    ) -> "list[tuple[tuple[str, ...], ProgressNodeSnapshot]]":
         """Immutable snapshots of COMPLETE nodes at ``depth`` — the finished work
         the active snapshot prunes — each paired with its ancestor labels below the
         root. Tree (insertion) order, capped to the last ``limit``. Lets callers
         surface, e.g., how many leaves a finished container produced."""
         with self._lock:
-            collected: List[Tuple[Tuple[str, ...], ProgressNodeSnapshot]] = []  # noqa: UP006
+            collected: list[tuple[tuple[str, ...], ProgressNodeSnapshot]] = []
             self._collect_completed(self._root, (), 0, depth, collected)
             if limit is not None:
                 collected = collected[-limit:]
             return collected
 
-    def snapshot(self, active_leaf_cap: Optional[int] = None) -> Optional[ProgressNodeSnapshot]:  # noqa: UP045
+    def snapshot(self, active_leaf_cap: int | None = None) -> ProgressNodeSnapshot | None:
         cap = self._active_leaf_cap if active_leaf_cap is None else active_leaf_cap
         with self._lock:
             started, complete, processed, child_snapshots, overflow = self._compute(self._root, cap)
@@ -316,7 +316,7 @@ class ProgressRegistry:
                 processed_by_type=dict(self._root.processed_by_type),
             )
 
-    def _navigate(self, path: List[str]) -> ProgressNode:  # noqa: UP006
+    def _navigate(self, path: list[str]) -> ProgressNode:
         node = self._root
         for segment in path:
             child = node.children.get(segment)
@@ -326,7 +326,7 @@ class ProgressRegistry:
             node = child
         return node
 
-    def _node_expected(self, node: ProgressNode) -> Optional[int]:  # noqa: UP045
+    def _node_expected(self, node: ProgressNode) -> int | None:
         known = [value for value in node.expected_by_type.values() if value is not None]
         return sum(known) if known else None
 
@@ -355,10 +355,10 @@ class ProgressRegistry:
     def _collect_completed(
         self,
         node: ProgressNode,
-        ancestors: "Tuple[str, ...]",  # noqa: UP006
+        ancestors: "tuple[str, ...]",
         current: int,
         target: int,
-        out: "List[Tuple[Tuple[str, ...], ProgressNodeSnapshot]]",  # noqa: UP006
+        out: "list[tuple[tuple[str, ...], ProgressNodeSnapshot]]",
     ) -> None:
         if current == target:
             if self._is_complete(node):
@@ -381,7 +381,7 @@ class ProgressRegistry:
             processed_by_type=dict(node.processed_by_type),
         )
 
-    def _compute(self, node: ProgressNode, cap: int) -> "Tuple[bool, bool, int, List[ProgressNodeSnapshot], int]":  # noqa: UP006
+    def _compute(self, node: ProgressNode, cap: int) -> "tuple[bool, bool, int, list[ProgressNodeSnapshot], int]":
         child_states = [(child, self._compute(child, cap)) for child in node.children.values()]
         if child_states:
             derived_processed = sum(1 for _, state in child_states if state[1])
@@ -394,7 +394,7 @@ class ProgressRegistry:
             or any(node.processed_by_type.values())
             or any(state[0] for _, state in child_states)
         )
-        active_child_snapshots: List[ProgressNodeSnapshot] = []  # noqa: UP006
+        active_child_snapshots: list[ProgressNodeSnapshot] = []
         for child, (child_started, child_complete, child_processed, grandchildren, child_overflow) in child_states:
             if child_started and not child_complete:
                 active_child_snapshots.append(
