@@ -16,9 +16,9 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
@@ -29,17 +29,17 @@ import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../common/Table/Table';
 import {
   ColumnsType,
   ExpandableConfig,
-  TableProps,
 } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCell';
+
+const TEAM_DRAG_TYPE = 'team-hierarchy-row';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
   currentTeam,
@@ -213,19 +213,69 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
-  const onTableRow = (record: Team, index?: number) =>
-    ({
-      index,
-      handleMoveRow,
-      handleTableHover,
-      record,
-    } as DraggableBodyRowProps<Team>);
+  /**
+   * Row drag through React Aria rather than the react-dnd `components` +
+   * `onHeaderRow` pair the AntD table needed — TableV2 does not render custom
+   * row components by design. Dropping on a row reparents under it; dropping
+   * on the table's own background moves the team to the root, which is what
+   * dropping on the header used to mean.
+   */
+  const teamByName = useMemo(() => {
+    const byName = new Map<string, Team>();
+    const walk = (teams: Team[]) => {
+      teams.forEach((team) => {
+        byName.set(team.name, team);
+        if (team.children?.length) {
+          walk(team.children as unknown as Team[]);
+        }
+      });
+    };
+    walk(data);
 
-  const onTableHeader: TableProps<Team>['onHeaderRow'] = () =>
-    ({
-      handleMoveRow,
-      handleTableHover,
-    } as DraggableBodyRowProps<Team>);
+    return byName;
+  }, [data]);
+
+  const draggedTeamRef = useRef<Team>();
+
+  const { dragAndDropHooks } = useDragAndDrop({
+    getItems: (keys) => {
+      const record = teamByName.get(String(Array.from(keys)[0]));
+
+      return record ? [{ [TEAM_DRAG_TYPE]: record.name }] : [];
+    },
+    acceptedDragTypes: [TEAM_DRAG_TYPE],
+    onDragStart: (event) => {
+      draggedTeamRef.current = teamByName.get(
+        String(Array.from(event.keys)[0])
+      );
+      handleTableHover(true);
+    },
+    onDragEnd: () => {
+      draggedTeamRef.current = undefined;
+      handleTableHover(false);
+    },
+    getDropOperation: (target, types) =>
+      types.has(TEAM_DRAG_TYPE) &&
+      (target.type === 'root' ||
+        (target.type === 'item' && target.dropPosition === 'on'))
+        ? 'move'
+        : 'cancel',
+    onItemDrop: (event) => {
+      const dragRecord = draggedTeamRef.current;
+      const targetRecord = teamByName.get(String(event.target.key));
+      draggedTeamRef.current = undefined;
+      if (dragRecord && targetRecord) {
+        handleMoveRow(dragRecord, targetRecord);
+      }
+    },
+    onRootDrop: () => {
+      const dragRecord = draggedTeamRef.current;
+      draggedTeamRef.current = undefined;
+      if (dragRecord) {
+        handleMoveRow(dragRecord, undefined);
+      }
+    },
+  });
 
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
@@ -251,9 +301,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           'drop-over-table': isTableHovered,
         })}
         columns={columns}
-        components={TABLE_CONSTANTS}
         data-testid="team-hierarchy-table"
         dataSource={data}
+        dragAndDropHooks={dragAndDropHooks}
         expandable={expandableConfig}
         extraTableFilters={
           <Space align="center">
@@ -286,8 +336,6 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         rowKey="name"
         searchProps={searchProps}
         size="small"
-        onHeaderRow={onTableHeader}
-        onRow={onTableRow}
       />
 
       <Modal
