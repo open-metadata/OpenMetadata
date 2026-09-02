@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import AIUserMenu from './AIUserMenu';
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
@@ -34,16 +35,26 @@ jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
     selector({ open: mockOpenPanel }),
 }));
 
+const mockSetAppVersion = jest.fn();
+let mockAppVersion: string | undefined = '1.0.0';
+
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
-    appVersion: '1.0.0',
+    appVersion: mockAppVersion,
     currentUser: {
       displayName: 'Test User',
       email: 'test@example.com',
     },
     selectedPersona: null,
+    setAppVersion: mockSetAppVersion,
     setSelectedPersona: jest.fn(),
   }),
+}));
+
+const mockGetVersion = jest.fn();
+
+jest.mock('../../../../rest/miscAPI', () => ({
+  getVersion: (...args: unknown[]) => mockGetVersion(...args),
 }));
 
 jest.mock('../../../../utils/i18next/i18nextUtil', () => ({
@@ -70,9 +81,11 @@ jest.mock('../../../../utils/i18next/LocalUtilClassBase', () => ({
   default: { loadLocales: jest.fn() },
 }));
 
+const mockGetHelpItems = jest.fn().mockReturnValue([]);
+
 jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
   __esModule: true,
-  default: { getHelpItems: () => [] },
+  default: { getHelpItems: (...args: unknown[]) => mockGetHelpItems(...args) },
 }));
 
 const mockOnLogoutHandler = jest.fn();
@@ -104,9 +117,10 @@ jest.mock('react-aria-components', () => ({
   MenuItem: ({
     children,
     onAction,
+    textValue: _textValue,
     ...rest
   }: React.PropsWithChildren<
-    Record<string, unknown> & { onAction?: () => void }
+    Record<string, unknown> & { onAction?: () => void; textValue?: string }
   >) => (
     <button
       type="button"
@@ -139,6 +153,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
     Separator: () => <hr />,
   },
+  Toggle: ({
+    isSelected,
+    label,
+    onChange,
+  }: {
+    isSelected: boolean;
+    label: string;
+    onChange: (isSelected: boolean) => void;
+  }) => (
+    <button
+      aria-checked={isSelected}
+      aria-label={label}
+      role="switch"
+      type="button"
+      onClick={() => onChange(!isSelected)}
+    />
+  ),
   Typography: ({ children }: React.PropsWithChildren) => (
     <span>{children}</span>
   ),
@@ -149,7 +180,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 const renderMenu = () =>
   render(
     <MemoryRouter>
-      <AIUserMenu />
+      <ThemeProvider defaultTheme="light">
+        <AIUserMenu />
+      </ThemeProvider>
     </MemoryRouter>
   );
 
@@ -158,6 +191,10 @@ const renderMenu = () =>
 describe('AIUserMenu', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    document.documentElement.classList.remove('dark-mode');
+    mockAppVersion = '1.0.0';
+    mockGetHelpItems.mockReturnValue([]);
   });
 
   it('renders the trigger button with the user display name', () => {
@@ -189,6 +226,18 @@ describe('AIUserMenu', () => {
     expect(screen.getByText('label.logout')).toBeInTheDocument();
   });
 
+  it('updates the theme without removing the user menu', () => {
+    renderMenu();
+
+    const switcher = screen.getByRole('switch', { name: 'label.dark-mode' });
+
+    fireEvent.click(switcher);
+
+    expect(switcher).toBeChecked();
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
+  });
+
   it('navigates to /settings when the settings item is clicked', () => {
     renderMenu();
 
@@ -215,5 +264,46 @@ describe('AIUserMenu', () => {
     expect(
       screen.queryByTestId('interface-mode-option-ai')
     ).not.toBeInTheDocument();
+  });
+
+  describe('version fetch on mount', () => {
+    it('calls getVersion and setAppVersion when appVersion is not in the store', async () => {
+      mockAppVersion = undefined;
+      mockGetVersion.mockResolvedValue({ version: '2.0.0-SNAPSHOT' });
+
+      renderMenu();
+
+      expect(mockGetVersion).toHaveBeenCalledTimes(1);
+
+      await waitFor(() =>
+        expect(mockSetAppVersion).toHaveBeenCalledWith('2.0.0')
+      );
+    });
+
+    it('does not call getVersion when appVersion is already set', () => {
+      mockAppVersion = '1.0.0';
+
+      renderMenu();
+
+      expect(mockGetVersion).not.toHaveBeenCalled();
+    });
+
+    it('renders the version number in the Help submenu when appVersion is set', () => {
+      mockAppVersion = '2.0.0';
+      mockGetHelpItems.mockReturnValue([
+        {
+          key: 'version',
+          label: 'label.version',
+          icon: null,
+          isExternal: false,
+          link: '',
+        },
+      ]);
+
+      renderMenu();
+
+      // t() stub returns the key; version items use 'label.version-number' key
+      expect(screen.getByText('label.version-number')).toBeInTheDocument();
+    });
   });
 });
