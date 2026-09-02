@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
@@ -26,6 +27,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.security.Authorizer;
@@ -120,15 +122,47 @@ public class GetLineageTool implements McpTool {
     // The subject context applies the caller's domain restrictions
     // (LineageRepository.pruneLineageByDomain); the overload without it prunes nothing.
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    EntityLineage lineage =
+    // The reporting overload so domain-scoped removals are counted too; otherwise hiddenNodes
+    // silently omits them and understates what was withheld.
+    LineageRepository.DomainPrunedLineage pruned =
         Entity.getLineageRepository()
-            .getByName(entityType, fqn, upstreamDepth, downstreamDepth, subjectContext);
+            .getByNameReportingPrune(
+                entityType, fqn, upstreamDepth, downstreamDepth, subjectContext);
+    EntityLineage lineage = pruned.lineage();
     // Authorizing the root only grants the root. Neighbour nodes carry their own FQNs, names and
     // descriptions, so an entity-scoped policy has to be applied to them as well or the graph
     // discloses exactly the assets the policy hides.
+    LineagePermissionFilter permissionFilter = new LineagePermissionFilter(authorizer);
     LineagePermissionFilter.Result filtered =
-        new LineagePermissionFilter(authorizer).filter(securityContext, subjectContext, lineage);
-    return annotateVisibility(enforceSizeBudget(toSlim(filtered.lineage(), options)), filtered);
+        permissionFilter.filter(securityContext, subjectContext, lineage);
+    // A pipeline is edge metadata, not a graph node, so the node filter never saw it. It is its own
+    // entity with its own policy, and its FQN, description and name would otherwise ride out on an
+    // edge whose two endpoints are both visible.
+    Predicate<EntityReference> pipelineVisible =
+        pipelineVisibility(permissionFilter, securityContext, filtered.lineage());
+    return annotateVisibility(
+        enforceSizeBudget(toSlim(filtered.lineage(), options, pipelineVisible)),
+        filtered,
+        pruned.hiddenNodes());
+  }
+
+  /**
+   * Decides each distinct pipeline once. A graph commonly repeats one pipeline across many edges, so
+   * a per-edge check would re-evaluate the same policy repeatedly.
+   */
+  private static Predicate<EntityReference> pipelineVisibility(
+      LineagePermissionFilter filter,
+      CatalogSecurityContext securityContext,
+      EntityLineage lineage) {
+    if (lineage == null) {
+      return pipeline -> true;
+    }
+    Map<UUID, Boolean> decisions = new HashMap<>();
+    return pipeline ->
+        pipeline == null
+            || pipeline.getId() == null
+            || decisions.computeIfAbsent(
+                pipeline.getId(), id -> filter.canView(securityContext, pipeline));
   }
 
   /**
@@ -136,10 +170,11 @@ public class GetLineageTool implements McpTool {
    * so a graph that lost nodes must say so rather than reading as complete lineage.
    */
   private static Map<String, Object> annotateVisibility(
-      Map<String, Object> result, LineagePermissionFilter.Result filtered) {
-    result.put("hiddenNodes", filtered.hiddenNodes());
-    result.put("permissionFilterSkipped", filtered.filterSkipped());
-    String note = visibilityNote(filtered);
+      Map<String, Object> result, LineagePermissionFilter.Result filtered, int domainHiddenNodes) {
+    int hidden = filtered.hiddenNodes() + domainHiddenNodes;
+    result.put(McpResponseTrim.HIDDEN_NODES_KEY, hidden);
+    result.put(McpResponseTrim.HIDDEN_UNCHECKED_KEY, filtered.hiddenUnchecked());
+    String note = visibilityNote(filtered, hidden);
     if (note != null) {
       // annotateCompleteness may already have explained edge clipping; both facts matter.
       Object existing = result.get(McpResponseTrim.MESSAGE_KEY);
@@ -148,18 +183,28 @@ public class GetLineageTool implements McpTool {
     return result;
   }
 
-  private static String visibilityNote(LineagePermissionFilter.Result filtered) {
-    if (filtered.filterSkipped()) {
-      return "This graph was too large to filter by your permissions, so it may name assets you"
-          + " cannot otherwise read.";
+  /**
+   * Deliberately says "or are only reachable through such a node": removing a denied node also cuts
+   * off whatever sat behind it, so the count is not purely a count of denials.
+   */
+  private static String visibilityNote(LineagePermissionFilter.Result filtered, int hidden) {
+    String note = null;
+    if (filtered.hiddenUnchecked()) {
+      note =
+          String.format(
+              "This graph was too large to authorize in full, so %d node(s) beyond the limit were"
+                  + " removed without being checked. Reduce upstreamDepth/downstreamDepth for a"
+                  + " complete, fully authorized graph at a shallower depth.",
+              hidden);
+    } else if (hidden > 0) {
+      note =
+          String.format(
+              "%d node(s) were removed because your permissions do not allow viewing them, or"
+                  + " because they are only reachable through such a node; the graph shown is the"
+                  + " connected part you can see.",
+              hidden);
     }
-    if (filtered.hiddenNodes() > 0) {
-      return String.format(
-          "%d node(s) were removed because your permissions do not allow viewing them; the graph"
-              + " shown is the connected part you can see.",
-          filtered.hiddenNodes());
-    }
-    return null;
+    return note;
   }
 
   private static void validateParams(Map<String, Object> params) {
@@ -179,9 +224,16 @@ public class GetLineageTool implements McpTool {
   }
 
   static SlimLineage toSlim(EntityLineage lineage, EdgeOptions options) {
+    return toSlim(lineage, options, pipeline -> true);
+  }
+
+  static SlimLineage toSlim(
+      EntityLineage lineage, EdgeOptions options, Predicate<EntityReference> pipelineVisible) {
     Map<UUID, EntityReference> nodeIndex = buildNodeIndex(lineage);
-    List<SlimEdge> upstream = slimEdges(lineage.getUpstreamEdges(), nodeIndex, options);
-    List<SlimEdge> downstream = slimEdges(lineage.getDownstreamEdges(), nodeIndex, options);
+    List<SlimEdge> upstream =
+        slimEdges(lineage.getUpstreamEdges(), nodeIndex, options, pipelineVisible);
+    List<SlimEdge> downstream =
+        slimEdges(lineage.getDownstreamEdges(), nodeIndex, options, pipelineVisible);
     EntityReference root = lineage.getEntity();
     return new SlimLineage(
         refFqn(root),
@@ -203,19 +255,25 @@ public class GetLineageTool implements McpTool {
   }
 
   private static List<SlimEdge> slimEdges(
-      List<Edge> edges, Map<UUID, EntityReference> nodeIndex, EdgeOptions options) {
+      List<Edge> edges,
+      Map<UUID, EntityReference> nodeIndex,
+      EdgeOptions options,
+      Predicate<EntityReference> pipelineVisible) {
     // The repository dedups nodes but not edges: a node reachable via multiple paths has its
     // upstream/downstream edges re-added on each recursion. Identical slim edges carry no extra
     // information, so collapse them with a LinkedHashSet (record equality), preserving order.
     Set<SlimEdge> deduped = new LinkedHashSet<>();
     if (!nullOrEmpty(edges)) {
-      edges.forEach(edge -> deduped.add(buildSlimEdge(edge, nodeIndex, options)));
+      edges.forEach(edge -> deduped.add(buildSlimEdge(edge, nodeIndex, options, pipelineVisible)));
     }
     return new ArrayList<>(deduped);
   }
 
   private static SlimEdge buildSlimEdge(
-      Edge edge, Map<UUID, EntityReference> nodeIndex, EdgeOptions options) {
+      Edge edge,
+      Map<UUID, EntityReference> nodeIndex,
+      EdgeOptions options,
+      Predicate<EntityReference> pipelineVisible) {
     // computeLineage adds every edge endpoint to nodes (or it is the root), so nodeIndex
     // resolves both ends. If that invariant ever breaks (a partial/cached graph), the endpoint
     // fields come back null and identical anonymous edges dedup-collapse — warn instead of
@@ -230,6 +288,9 @@ public class GetLineageTool implements McpTool {
     }
     LineageDetails details = edge.getLineageDetails();
     EntityReference pipeline = details != null ? details.getPipeline() : null;
+    // A denied pipeline still gets to say that a pipeline is what connects these two assets; what
+    // it does not get to say is which pipeline.
+    EntityReference namedPipeline = pipelineVisible.test(pipeline) ? pipeline : null;
     SqlText sql = sqlText(details, options.includeSql());
     return new SlimEdge(
         refFqn(from),
@@ -238,16 +299,16 @@ public class GetLineageTool implements McpTool {
         refName(to),
         refType(from),
         refType(to),
-        relationshipType(pipeline),
-        pipeline != null ? pipeline.getFullyQualifiedName() : null,
-        pipeline != null ? pipeline.getDescription() : null,
+        relationshipType(pipeline, namedPipeline != null),
+        namedPipeline != null ? namedPipeline.getFullyQualifiedName() : null,
+        namedPipeline != null ? namedPipeline.getDescription() : null,
         details != null ? details.getDescription() : null,
         sourceValue(details),
         details != null ? details.getAssetEdges() : null,
         sql.value(),
         sql.truncated(),
         sql.present(),
-        details != null ? details.getTempLineageTables() : null,
+        tempLineageTablesOf(details, options.includeSql()),
         details != null ? details.getUpdatedAt() : null,
         details != null ? details.getUpdatedBy() : null,
         columnsLineageOf(details, options.includeColumnLineage()));
@@ -262,8 +323,22 @@ public class GetLineageTool implements McpTool {
     return columns;
   }
 
-  private static String relationshipType(EntityReference pipeline) {
-    return pipeline != null ? pipeline.getType() + ":" + pipeline.getName() : RELATIONSHIP_SQL;
+  private static String relationshipType(EntityReference pipeline, boolean named) {
+    String relationship = RELATIONSHIP_SQL;
+    if (pipeline != null) {
+      relationship = named ? pipeline.getType() + ":" + pipeline.getName() : pipeline.getType();
+    }
+    return relationship;
+  }
+
+  /**
+   * Temp-table hops are table <em>names</em> parsed out of the transformation, not catalog entities,
+   * so there is no policy to evaluate them against. They are identifiers lifted from the SQL, so
+   * they travel with the SQL rather than being returned by default.
+   */
+  private static List<TempLineageTable> tempLineageTablesOf(
+      LineageDetails details, boolean includeSql) {
+    return includeSql && details != null ? details.getTempLineageTables() : null;
   }
 
   private static String sourceValue(LineageDetails details) {

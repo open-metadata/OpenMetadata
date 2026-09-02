@@ -137,7 +137,9 @@ public class LineageRepository {
       SubjectContext subjectContext) {
     EntityReference ref =
         Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+    EntityLineage lineage = getLineage(ref, upstreamDepth, downstreamDepth);
+    pruneLineageByDomain(lineage, subjectContext);
+    return lineage;
   }
 
   public EntityLineage getByName(
@@ -151,17 +153,38 @@ public class LineageRepository {
       int upstreamDepth,
       int downstreamDepth,
       SubjectContext subjectContext) {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
-    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+    return getByNameReportingPrune(entityType, fqn, upstreamDepth, downstreamDepth, subjectContext)
+        .lineage();
   }
 
-  private EntityLineage pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+  /** A domain-pruned graph and how many nodes the caller's domain scope removed from it. */
+  public record DomainPrunedLineage(EntityLineage lineage, int hiddenNodes) {}
+
+  /**
+   * As {@link #getByName}, but reports the domain prune. A caller that also filters the graph and
+   * tells the user how much was hidden needs this count, or its total silently omits every
+   * domain-scoped removal and understates what was withheld.
+   */
+  public DomainPrunedLineage getByNameReportingPrune(
+      String entityType,
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      SubjectContext subjectContext) {
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+    EntityLineage lineage = getLineage(ref, upstreamDepth, downstreamDepth);
+    return new DomainPrunedLineage(lineage, pruneLineageByDomain(lineage, subjectContext));
+  }
+
+  /** Returns how many nodes the domain scope removed; 0 when it does not apply. */
+  private int pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+    int hidden = 0;
     if (LineageDomainFilter.shouldApply(subjectContext)
         && lineage != null
         && !nullOrEmpty(lineage.getNodes())) {
-      LineageGraphPruner.retainReachable(lineage, visibleNodeIds(lineage, subjectContext));
+      hidden = LineageGraphPruner.retainReachable(lineage, visibleNodeIds(lineage, subjectContext));
     }
-    return lineage;
+    return hidden;
   }
 
   private Set<UUID> visibleNodeIds(EntityLineage lineage, SubjectContext subjectContext) {

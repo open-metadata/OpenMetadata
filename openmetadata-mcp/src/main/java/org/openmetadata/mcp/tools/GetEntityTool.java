@@ -465,7 +465,8 @@ public class GetEntityTool implements McpTool {
     Map<String, Object> summary = new LinkedHashMap<>();
     addDirection(summary, root, index, lineage.getUpstreamEdges(), true);
     addDirection(summary, root, index, lineage.getDownstreamEdges(), false);
-    summary.put("hiddenNodes", filtered.hiddenNodes());
+    summary.put(McpResponseTrim.HIDDEN_NODES_KEY, filtered.hiddenNodes());
+    summary.put(McpResponseTrim.HIDDEN_UNCHECKED_KEY, filtered.hiddenUnchecked());
     summary.put("note", reachNote(continuesAnywhere(summary), filtered));
     return summary;
   }
@@ -526,6 +527,13 @@ public class GetEntityTool implements McpTool {
    * these" would then be false, and a hidden neighbour is precisely what a reader would act on.
    */
   private static String reachNote(boolean continues, LineagePermissionFilter.Result filtered) {
+    if (filtered.hiddenUnchecked()) {
+      return String.format(
+          "Immediate neighbours only, and this graph was too large to authorize in full: %d"
+              + " neighbour(s) were removed without being checked, so this is not the complete"
+              + " graph. Use get_entity_lineage for an authorized view at a shallower depth.",
+          filtered.hiddenNodes());
+    }
     if (filtered.hiddenNodes() > 0) {
       return String.format(
           "Immediate neighbours only, and %d neighbour(s) are hidden by your permissions, so this"
