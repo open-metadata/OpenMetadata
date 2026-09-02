@@ -14,7 +14,8 @@ Preprocessing functions for the classification tasks.
 
 import datetime
 import numbers
-from typing import Any, List, Mapping, Optional, Sequence, Union, cast  # noqa: UP035
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from metadata.utils.logger import pii_logger
 
@@ -24,7 +25,7 @@ MAX_NLP_TEXT_LENGTH = 5_000
 
 
 # pylint: disable=too-many-return-statements
-def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP006, UP007, UP045
+def convert_to_str(value: Any) -> list[str] | str | None:
     """
     Convert the given value to a string. This is a conversion
     tailored to our use case, not a generic one.
@@ -47,7 +48,7 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP00
     if isinstance(value, (Sequence, Mapping)):
         if isinstance(value, Mapping):
             value = list(value.values())
-        converted = [convert_to_str(el) for el in cast(List[Any], value)]  # noqa: TC006, UP006
+        converted = [convert_to_str(el) for el in cast(list[Any], value)]  # noqa: TC006
         return [
             item
             for sublist in converted
@@ -71,7 +72,7 @@ def _is_allcaps_alpha(s: str) -> bool:
     return bool(s) and s.isupper() and not any(c.isdigit() for c in s)
 
 
-def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
+def preprocess_values(values: Sequence[Any]) -> list[str]:
     """Convert sample column values to a flat list of strings for PII analysis.
 
     No case normalisation is applied here so that pattern-based recognisers
@@ -79,7 +80,7 @@ def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
     :func:`ner_normalize_values` on the result when a second NER-friendly pass
     is needed.
     """
-    result: List[str] = []  # noqa: UP006
+    result: list[str] = []
     for value in values:
         converted_value = convert_to_str(value)
         if converted_value is None:
@@ -96,7 +97,7 @@ def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
     return result
 
 
-def ner_normalize_values(values: List[str]) -> List[str]:  # noqa: UP006
+def ner_normalize_values(values: list[str]) -> list[str]:
     """Return a copy of *values* with purely alphabetic ALL-CAPS tokens title-cased.
 
     spaCy NER models are trained on mixed-case text and miss names like "SERGE"

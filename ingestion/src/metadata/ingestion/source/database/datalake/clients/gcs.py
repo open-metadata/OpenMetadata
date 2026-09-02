@@ -14,9 +14,9 @@ Datalake GCS Client
 """
 
 import os
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from google.cloud import storage
 
@@ -34,14 +34,14 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-GCS_COLD_STORAGE_CLASSES: Set[str] = {"COLDLINE", "ARCHIVE"}  # noqa: UP006
+GCS_COLD_STORAGE_CLASSES: set[str] = {"COLDLINE", "ARCHIVE"}
 
 
 class DatalakeGcsClient(DatalakeBaseClient):
     def __init__(
         self,
         client: storage.Client,
-        temp_credentials_file_path_list: List[str],  # noqa: UP006
+        temp_credentials_file_path_list: list[str],
     ):
         super().__init__(client=client)
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
@@ -100,7 +100,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         self._client = self.get_gcs_client(gcs_config)
         self.update_temp_credentials_file_path_list()
 
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
+    def get_database_schema_names(self, bucket_name: str | None) -> Iterable[str]:
         if bucket_name:
             yield bucket_name
         else:
@@ -110,9 +110,9 @@ class DatalakeGcsClient(DatalakeBaseClient):
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],  # noqa: UP045
+        prefix: str | None,
         skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[tuple[str, int | None]]:
         bucket = self._client.get_bucket(bucket_name)
 
         for key in bucket.list_blobs(prefix=prefix):
@@ -132,7 +132,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
                 if os.path.exists(temp_file_path):  # noqa: PTH110
                     os.remove(temp_file_path)  # noqa: PTH107
 
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:  # noqa: UP045
+    def get_test_list_buckets_fn(self, bucket_name: str | None) -> Callable:
 
         if bucket_name:
             fn = partial(self._client.get_bucket, bucket_name)

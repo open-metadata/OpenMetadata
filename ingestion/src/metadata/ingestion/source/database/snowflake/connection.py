@@ -16,7 +16,7 @@ Source connection handler
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus
 
 from cryptography.hazmat.backends import default_backend
@@ -96,7 +96,7 @@ SNOWFLAKE_PORT = 443
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnectionConfig
     engine: Any
-    database_name: Optional[str] = None  # noqa: UP045
+    database_name: str | None = None
 
 
 def _init_database(engine_wrapper: SnowflakeEngineWrapper):
@@ -440,7 +440,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:  # noqa: UP045
+    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> bytes | None:
         connection = self.service_connection
         if connection.privateKey:
             snowflake_private_key_passphrase = (
@@ -470,7 +470,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             return pkb  # noqa: RET504
         return None
 
-    def _get_client_session_keep_alive(self) -> Optional[bool]:  # noqa: UP045
+    def _get_client_session_keep_alive(self) -> bool | None:
         connection = self.service_connection
         if connection.clientSessionKeepAlive:
             return connection.clientSessionKeepAlive
