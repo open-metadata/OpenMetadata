@@ -16,12 +16,15 @@ import datetime
 import threading
 from enum import Enum
 from functools import partial
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from typing import Any, Callable, Dict, Optional, Type, TypeVar  # noqa: UP035
 from urllib.parse import parse_qs, urlparse
 
 import boto3
 import botocore.session
 from boto3 import Session
+from botocore.config import Config as BotocoreConfig
 from botocore.credentials import RefreshableCredentials
 from botocore.session import get_session
 from pydantic import BaseModel, Field
@@ -60,6 +63,21 @@ def _get_valid_aws_regions() -> set:
 
 
 VALID_AWS_REGIONS = _get_valid_aws_regions()
+
+_UNKNOWN_VERSION = "unknown"
+
+
+def _ingestion_user_agent_extra() -> str:
+    """Suffix appended to the botocore User-Agent, so that AWS and other S3-compatible
+    endpoints can attribute the requests to OpenMetadata ingestion."""
+    try:
+        resolved_version = pkg_version("openmetadata-ingestion")
+    except PackageNotFoundError:
+        resolved_version = _UNKNOWN_VERSION
+    return f"openmetadata-ingestion/{resolved_version}"
+
+
+BOTO_CONFIG = BotocoreConfig(user_agent_extra=_ingestion_user_agent_extra())
 
 
 class AWSAssumeRoleException(Exception):  # noqa: N818
@@ -211,18 +229,26 @@ class AWSClient:
             logger.debug(f"Getting AWS client for service [{service_name}]")
             session = self.create_session()
             if self.config.endPointURL is not None:
-                return session.client(service_name=service_name, endpoint_url=str(self.config.endPointURL))
-            return session.client(service_name=service_name)
+                return session.client(
+                    service_name=service_name,
+                    endpoint_url=str(self.config.endPointURL),
+                    config=BOTO_CONFIG,
+                )
+            return session.client(service_name=service_name, config=BOTO_CONFIG)
 
         logger.debug(f"Getting AWS default client for service [{service_name}]")
         # initialized with the credentials loaded from running machine
-        return boto3.client(service_name=service_name)
+        return boto3.client(service_name=service_name, config=BOTO_CONFIG)
 
     def get_resource(self, service_name: str) -> Any:
         session = self.create_session()
         if self.config.endPointURL is not None:
-            return session.resource(service_name=service_name, endpoint_url=str(self.config.endPointURL))
-        return session.resource(service_name=service_name)
+            return session.resource(
+                service_name=service_name,
+                endpoint_url=str(self.config.endPointURL),
+                config=BOTO_CONFIG,
+            )
+        return session.resource(service_name=service_name, config=BOTO_CONFIG)
 
     def get_rds_client(self):
         return self.get_client(AWSServices.RDS.value)
