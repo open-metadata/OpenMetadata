@@ -50,6 +50,7 @@ const mockComputedStyle = (
   propertyValue = ''
 ): CSSStyleDeclaration =>
   ({
+    backgroundColor: color,
     color,
     getPropertyValue: () => propertyValue,
   } as unknown as CSSStyleDeclaration);
