@@ -8,8 +8,9 @@ fluent SDK classes only.
 from __future__ import annotations
 
 import time
+from collections.abc import Iterable  # noqa: TC003
 from types import SimpleNamespace
-from typing import Any, Iterable  # noqa: UP035
+from typing import Any
 
 import pytest
 
@@ -294,7 +295,7 @@ class TestSDKIntegration:
 
             try:
                 om.Tables.add_followers(str(table.id.root), [str(follower.id.root)])
-            except Exception as exc:  # noqa: BLE001, RUF100
+            except Exception as exc:
                 pytest.skip(f"Follower API not supported in this environment: {exc}")
 
             table_with_followers = om.Tables.retrieve(table.id.root, fields=["followers"])
@@ -450,7 +451,7 @@ class TestSDKIntegration:
 
             try:
                 restored_table = om.Tables.restore(table_id)
-            except Exception as exc:  # noqa: BLE001, RUF100
+            except Exception as exc:
                 pytest.skip(f"Restore API not supported in this environment: {exc}")
             assert restored_table is not None
             assert not getattr(restored_table, "deleted", False)

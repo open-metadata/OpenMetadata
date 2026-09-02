@@ -13,15 +13,10 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import (  # noqa: UP035
+from collections.abc import Callable, Mapping
+from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Union,
     cast,
 )
 
@@ -54,7 +49,7 @@ class PandasValidatorMixin:
 
     runner: "PandasRunner"
 
-    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> SQALikeColumn:  # noqa: UP045
+    def get_column(self: HasValidatorContext, column_name: str | None = None) -> SQALikeColumn:
         """Get column object for the given column name
 
         If column_name is None, returns the main column being validated.
@@ -69,12 +64,12 @@ class PandasValidatorMixin:
         if column_name is None:
             return PandasValidatorMixin.get_column_from_list(
                 self.test_case.entityLink.root,
-                cast(List[pd.DataFrame], self.runner),  # noqa: TC006, UP006
+                cast(list[pd.DataFrame], self.runner),  # noqa: TC006
             )
         else:  # noqa: RET505
             return PandasValidatorMixin.get_column_from_list(
                 column_name,
-                cast(List[pd.DataFrame], self.runner),  # noqa: TC006, UP006
+                cast(list[pd.DataFrame], self.runner),  # noqa: TC006
             )
 
     @staticmethod
@@ -101,9 +96,9 @@ class PandasValidatorMixin:
         self,
         runner: "PandasRunner",
         metric: Metrics,
-        column: Optional[SQALikeColumn] = None,  # noqa: UP045
+        column: SQALikeColumn | None = None,
         **kwargs,
-    ) -> Optional[int]:  # noqa: UP045
+    ) -> int | None:
         """Run the test case on a dataframe
 
         Args:
@@ -232,14 +227,14 @@ def aggregate_others_pandas(
 def aggregate_others_statistical_pandas(  # noqa: C901
     df,
     dimension_column: str,
-    final_metric_calculators: Optional[Dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]]] = None,  # noqa: UP006, UP045
+    final_metric_calculators: dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]] | None = None,
     top_n: int = DEFAULT_TOP_DIMENSIONS,
     impact_column: str = "impact_score",
     others_label: str = DIMENSION_OTHERS_LABEL,
-    exclude_from_final: Optional[List[str]] = None,  # noqa: UP006, UP045
-    agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,  # noqa: UP006, UP007, UP045
-    violation_metrics: Optional[List[str]] = None,  # noqa: UP006, UP045
-    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,  # noqa: UP045
+    exclude_from_final: list[str] | None = None,
+    agg_functions: dict[str, str | Callable] | None = None,
+    violation_metrics: list[str] | None = None,
+    violation_predicate: Callable[[Mapping[str, Any]], bool] | None = None,
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.

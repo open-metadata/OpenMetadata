@@ -5,8 +5,6 @@ Runs data quality tests against a PostgreSQL database and asserts that
 failed row samples are published for failing tests and not for passing tests.
 """
 
-from typing import List, Optional  # noqa: UP035
-
 import pandas as pd
 import pytest
 
@@ -34,9 +32,9 @@ class SampleDataParameters(BaseModel):
         arbitrary_types_allowed = True
 
     test_case_definition: TestCaseDefinition
-    assumptions: List[Assumption]  # noqa: UP006
+    assumptions: list[Assumption]
     table: str = "customer"
-    expected_query: Optional[str] = None  # noqa: UP045
+    expected_query: str | None = None
 
     def __init__(self, *args, **kwargs):
         if args:

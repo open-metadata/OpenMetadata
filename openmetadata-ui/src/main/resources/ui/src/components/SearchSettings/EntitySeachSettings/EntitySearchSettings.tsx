@@ -173,6 +173,9 @@ const EntitySearchSettings = () => {
       (field: AllowedFieldField) => ({
         name: field.name,
         description: field.description,
+        // Server-derived: whether the index mapping can highlight this field. Dropping it here
+        // would leave FieldConfiguration with undefined and disable every highlight toggle.
+        highlight: field.highlight,
       })
     );
 
