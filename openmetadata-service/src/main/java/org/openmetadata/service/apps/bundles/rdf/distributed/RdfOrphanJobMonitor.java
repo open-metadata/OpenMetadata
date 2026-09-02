@@ -12,10 +12,10 @@
  */
 package org.openmetadata.service.apps.bundles.rdf.distributed;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 
 /**
  * Periodically sweeps for orphaned distributed RDF reindex work left behind by crashed servers.
@@ -32,46 +32,33 @@ public class RdfOrphanJobMonitor {
   private static final long MONITOR_INTERVAL_MINUTES = 2;
 
   private final DistributedRdfIndexCoordinator coordinator;
-  private volatile ScheduledExecutorService scheduler;
+  private volatile ScheduledFuture<?> scheduledTask;
 
   public RdfOrphanJobMonitor(DistributedRdfIndexCoordinator coordinator) {
     this.coordinator = coordinator;
   }
 
   public synchronized void start() {
-    if (scheduler != null && !scheduler.isShutdown()) {
+    if (scheduledTask != null && !scheduledTask.isDone()) {
       LOG.debug("RdfOrphanJobMonitor already running, skipping start");
       return;
     }
 
-    scheduler =
-        Executors.newSingleThreadScheduledExecutor(
-            runnable -> {
-              Thread thread = new Thread(runnable, "rdf-orphan-job-monitor");
-              thread.setDaemon(true);
-              return thread;
-            });
-
-    scheduler.scheduleAtFixedRate(
-        this::checkForOrphanedJobs,
-        MONITOR_INTERVAL_MINUTES,
-        MONITOR_INTERVAL_MINUTES,
-        TimeUnit.MINUTES);
+    scheduledTask =
+        RdfBackgroundScheduler.getInstance()
+            .scheduleWithFixedDelay(
+                this::checkForOrphanedJobs,
+                MONITOR_INTERVAL_MINUTES,
+                MONITOR_INTERVAL_MINUTES,
+                TimeUnit.MINUTES);
 
     LOG.info("RdfOrphanJobMonitor started (interval={}min)", MONITOR_INTERVAL_MINUTES);
   }
 
   public synchronized void shutdown() {
-    if (scheduler != null && !scheduler.isShutdown()) {
-      scheduler.shutdown();
-      try {
-        if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-          scheduler.shutdownNow();
-        }
-      } catch (InterruptedException e) {
-        scheduler.shutdownNow();
-        Thread.currentThread().interrupt();
-      }
+    if (scheduledTask != null) {
+      scheduledTask.cancel(false);
+      scheduledTask = null;
       LOG.info("RdfOrphanJobMonitor stopped");
     }
   }

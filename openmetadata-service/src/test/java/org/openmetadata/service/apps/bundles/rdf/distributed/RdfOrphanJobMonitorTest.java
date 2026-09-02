@@ -39,8 +39,7 @@ class RdfOrphanJobMonitorTest {
   @Test
   @DisplayName("a failing sweep is contained so the schedule keeps running")
   void sweepSwallowsRecoveryFailures() {
-    // scheduleAtFixedRate cancels the task permanently if a run throws, which would
-    // silently stop orphan recovery on this server until the next restart.
+    // An uncaught failure cancels a periodic task permanently.
     DistributedRdfIndexCoordinator coordinator = mock(DistributedRdfIndexCoordinator.class);
     doThrow(new IllegalStateException("database unavailable"))
         .when(coordinator)
@@ -63,6 +62,8 @@ class RdfOrphanJobMonitorTest {
     assertDoesNotThrow(monitor::start);
     assertDoesNotThrow(monitor::start);
     assertDoesNotThrow(monitor::shutdown);
+    assertDoesNotThrow(monitor::shutdown);
+    assertDoesNotThrow(monitor::start);
     assertDoesNotThrow(monitor::shutdown);
   }
 }

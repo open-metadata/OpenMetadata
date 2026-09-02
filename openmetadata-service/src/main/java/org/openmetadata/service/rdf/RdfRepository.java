@@ -27,8 +27,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -268,7 +267,7 @@ public class RdfRepository {
   private static final long ACTIVE_DATASET_REFRESH_SECONDS = 15L;
 
   private final Map<String, RdfStorageInterface> buildStorages = new ConcurrentHashMap<>();
-  private ScheduledExecutorService activeDatasetWatcher;
+  private ScheduledFuture<?> activeDatasetWatcher;
 
   /**
    * Whether this deployment *can* run blue/green rebuilds. Whether a given rebuild *should* is a
@@ -390,13 +389,12 @@ public class RdfRepository {
    */
   private void startActiveDatasetWatcher() {
     activeDatasetWatcher =
-        Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform().daemon().name("rdf-active-dataset-watcher").factory());
-    activeDatasetWatcher.scheduleWithFixedDelay(
-        this::refreshActiveDataset,
-        ACTIVE_DATASET_REFRESH_SECONDS,
-        ACTIVE_DATASET_REFRESH_SECONDS,
-        TimeUnit.SECONDS);
+        RdfBackgroundScheduler.getInstance()
+            .scheduleWithFixedDelay(
+                this::refreshActiveDataset,
+                ACTIVE_DATASET_REFRESH_SECONDS,
+                ACTIVE_DATASET_REFRESH_SECONDS,
+                TimeUnit.SECONDS);
   }
 
   long payloadBudgetBytes(RdfWriteMode writeMode) {
@@ -4282,7 +4280,7 @@ public class RdfRepository {
 
   public void close() {
     if (activeDatasetWatcher != null) {
-      activeDatasetWatcher.shutdownNow();
+      activeDatasetWatcher.cancel(false);
       activeDatasetWatcher = null;
     }
     buildStorages.values().forEach(RdfStorageInterface::close);
