@@ -250,9 +250,9 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -2686,58 +2686,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 page.cursorId(),
                 fetchLimit);
 
-    boolean hasMoreInCurrentDirection = jsons.size() > limit;
-    List<String> pageJsons =
-        hasMoreInCurrentDirection
-            ? new ArrayList<>(jsons.subList(0, limit))
-            : new ArrayList<>(jsons);
-    if (page.isBackward()) {
-      Collections.reverse(pageJsons);
+    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
+    boolean hasMoreInCurrentDirection = entities.size() > limit;
+    if (hasMoreInCurrentDirection) {
+      entities = new ArrayList<>(entities.subList(0, limit));
     }
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(pageJsons, getEntityClass()));
-    hydrateHistoryPage(pageJsons, entities);
+    if (page.isBackward()) {
+      Collections.reverse(entities);
+    }
+    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
     return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
-  }
-
-  /**
-   * Hydrate a history page in bulk, falling back to one snapshot at a time when a concurrent hard
-   * delete removes a current relationship needed by another row in the page. Version JSON stores
-   * the historical references, so retaining that snapshot is safer than failing the entire page.
-   */
-  private void hydrateHistoryPage(List<String> jsons, List<T> entities) {
-    try {
-      setFieldsInBulk(putFields, entities);
-      hydrateHistoryEntities(entities);
-    } catch (EntityNotFoundException | EntityRelationshipNotFoundException bulkFailure) {
-      LOG.debug(
-          "Bulk history hydration for {} encountered a concurrently deleted reference; "
-              + "retrying snapshots individually",
-          entityType,
-          bulkFailure);
-      entities.clear();
-      for (String json : jsons) {
-        T snapshot = JsonUtils.readValue(json, entityClass);
-        List<T> singleSnapshot = new ArrayList<>(List.of(snapshot));
-        try {
-          setFieldsInBulk(putFields, singleSnapshot);
-          hydrateHistoryEntities(singleSnapshot);
-          snapshot = singleSnapshot.getFirst();
-        } catch (EntityNotFoundException | EntityRelationshipNotFoundException rowFailure) {
-          // A field hydrator may have mutated the object before discovering the missing relation.
-          // Re-read the stored version so fallback returns the exact historical snapshot.
-          snapshot = JsonUtils.readValue(json, entityClass);
-          LOG.debug(
-              "Retaining stored {} history snapshot {} because its current relationship "
-                  + "was deleted concurrently",
-              entityType,
-              snapshot.getId(),
-              rowFailure);
-        }
-        entities.add(snapshot);
-      }
-    }
   }
 
   private ResultList<T> historyPageResult(
