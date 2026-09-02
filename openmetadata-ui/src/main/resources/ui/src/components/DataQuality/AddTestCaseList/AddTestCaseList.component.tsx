@@ -270,8 +270,12 @@ export const AddTestCaseList = ({
       try {
         setIsLoading(true);
         const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
+        // The search/list endpoint rejects `* && filter`; without free text,
+        // testCaseFilters is already the complete scoped query.
         const q = testCaseFilters
-          ? `${globalSearch} && ${testCaseFilters}`
+          ? searchText
+            ? `${globalSearch} && ${testCaseFilters}`
+            : testCaseFilters
           : globalSearch;
 
         const columnNamesFromKeys =

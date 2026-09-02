@@ -362,7 +362,7 @@ describe('AddTestCaseList', () => {
       });
     });
 
-    it('applies testCaseFilters when provided', async () => {
+    it('uses testCaseFilters without a match-all query when search is empty', async () => {
       const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
 
       await act(async () => {
@@ -371,7 +371,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `* && ${testCaseFilters}`,
+          q: testCaseFilters,
           limit: 25,
           offset: 0,
         });
