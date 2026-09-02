@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.migration.utils.v1135;
+package org.openmetadata.service.migration.utils.v202;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,7 +23,7 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 
 /**
- * Covers the merge the 1.13.5 migration applies to a stored search-settings document: the alias
+ * Covers the merge the 2.0.2 migration applies to a stored search-settings document: the alias
  * fields have to reach an existing {@code table} configuration without disturbing what an operator
  * already put there.
  */
