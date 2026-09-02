@@ -1293,8 +1293,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     // Remove a reviewer — re-fetch again because the reviewer update can asynchronously change
     // entityStatus.
-    GlossaryTerm fresh2 =
-        SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
     fresh2.setReviewers(List.of(testUser2().getEntityReference()));
     GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
