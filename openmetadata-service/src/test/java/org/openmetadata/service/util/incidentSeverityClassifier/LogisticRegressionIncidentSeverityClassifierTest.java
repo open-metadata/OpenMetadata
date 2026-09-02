@@ -14,7 +14,6 @@
 package org.openmetadata.service.util.incidentSeverityClassifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.Collections;
@@ -70,7 +69,8 @@ class LogisticRegressionIncidentSeverityClassifierTest {
   void classifyIncidentSeverityRecognizesTier5() {
     final Table entity = new Table().withTags(List.of(new TagLabel().withName("Tier5")));
 
-    assertNotNull(
+    assertEquals(
+        Severity.Severity5,
         new LogisticRegressionIncidentSeverityClassifier().classifyIncidentSeverity(entity));
   }
 
