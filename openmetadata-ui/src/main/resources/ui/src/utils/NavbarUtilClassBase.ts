@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { createElement } from 'react';
+import InterfaceModeMenuItem from '../components/AppModeSwitcher/InterfaceModeMenuItem';
 import { HELP_ITEMS } from '../constants/Navbar.constants';
 
 class NavbarUtilClassBase {
@@ -18,8 +20,18 @@ class NavbarUtilClassBase {
     return HELP_ITEMS;
   }
 
+  // The Classic->AI interface switch ships through this hook (rather than
+  // hardcoded in UserProfileIcon) so white-label builds can replace it with a
+  // gated variant by overriding this method.
   public getUserProfileExtraItems(): ItemType[] {
-    return [];
+    return [
+      {
+        key: 'app-mode',
+        icon: '',
+        label: createElement(InterfaceModeMenuItem),
+        type: 'group',
+      },
+    ];
   }
 }
 

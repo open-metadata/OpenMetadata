@@ -37,7 +37,6 @@ import {
   getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
-import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
@@ -379,12 +378,6 @@ export const UserProfileIcon = () => {
       },
       {
         type: 'divider',
-      },
-      {
-        key: 'app-mode',
-        icon: '',
-        label: <InterfaceModeMenuItem />,
-        type: 'group',
       },
       ...navbarUtilClassBase.getUserProfileExtraItems(),
       {
