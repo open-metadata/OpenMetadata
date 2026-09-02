@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Focusable } from 'react-aria-components';
+import {
+  Box,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { NO_DATA } from '../../../constants/constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -47,7 +51,7 @@ const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
         delay={500}
         placement="top"
         title={getTagTooltip(firstTag.tagFQN, firstTag.description)}>
-        <Focusable>
+        <TooltipTrigger>
           <Link
             className="tw:w-max"
             data-testid="tag-redirect-link"
@@ -62,7 +66,7 @@ const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
               variant="blueGray"
             />
           </Link>
-        </Focusable>
+        </TooltipTrigger>
       </Tooltip>
       {remaining > 0 && (
         <Typography size="text-xs" weight="medium">
