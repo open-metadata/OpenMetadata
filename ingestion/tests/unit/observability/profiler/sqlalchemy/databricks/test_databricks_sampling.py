@@ -61,7 +61,9 @@ def test_nested_field_sampling_keeps_parent_struct_in_cte(
         table.c[str(nested_name).lower()],
         sa.literal(1).label("random"),
     ).cte("sample_rnd")
-    query = sa.select(sa.func.count(sa.literal_column(str(nested_name)))).select_from(sampled)
+    query = sa.select(sa.func.count(sa.literal_column(str(nested_name)))).select_from(
+        sampled
+    )
 
     compiled = str(query.compile(dialect=DatabricksDialect()))
 

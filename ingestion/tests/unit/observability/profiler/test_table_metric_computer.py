@@ -822,7 +822,9 @@ class TestDatabricksTableMetricComputer:
     def test_views_fall_back_without_describe_detail(self):
         for table_type in (TableType.View, TableType.MaterializedView):
             session = _build_mock_session()
-            session.execute.side_effect = AssertionError("DESCRIBE DETAIL must not run for views")
+            session.execute.side_effect = AssertionError(
+                "DESCRIBE DETAIL must not run for views"
+            )
             computer = _build_computer(
                 session,
                 DatabricksTableMetricComputer,
