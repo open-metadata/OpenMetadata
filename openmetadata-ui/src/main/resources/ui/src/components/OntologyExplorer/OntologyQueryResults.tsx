@@ -108,6 +108,7 @@ const OntologyQueryResults = ({
             data-testid="ontology-sparql-result-status">
             {resultTable.rows.length}{' '}
             {t('label.result-plural').toLocaleLowerCase()}{' '}
+            {/* eslint-disable-next-line i18next/no-literal-string -- decorative separator dot and ms unit */}
             <span aria-hidden="true">·</span> {result.durationMs} ms
           </span>
         </div>
