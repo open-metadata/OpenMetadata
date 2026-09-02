@@ -403,11 +403,8 @@ const UserChip = ({
   };
   const { label, key, value, selectedOwners, onOwnerChange } = descriptor;
   const selected = selectedOwners?.[0];
-  const displayText = selected
-    ? selected.displayName ?? selected.name ?? ''
-    : isString(value)
-    ? value
-    : '';
+  const selectedText = selected?.displayName ?? selected?.name ?? '';
+  const displayText = selected ? selectedText : isString(value) ? value : '';
   const hasSelection = Boolean(displayText);
 
   const trigger =
