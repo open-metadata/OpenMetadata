@@ -235,6 +235,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         dataTestId: `app-bar-item-${SidebarItem.OVERVIEW}`,
       },
       {
+        key: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        title: 'label.ai-context',
+        redirect_url: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        icon: PersonaIcon,
+        dataTestId: `app-bar-item-${SidebarItem.AI_CONTEXT}`,
+      },
+      {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
         title: 'label.article-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
@@ -254,13 +261,6 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.CONTEXT_CENTER_MEMORIES,
         icon: MemoriesIcon,
         dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
-      },
-      {
-        key: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
-        title: 'label.ai-context',
-        redirect_url: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
-        icon: PersonaIcon,
-        dataTestId: `app-bar-item-${SidebarItem.AI_CONTEXT}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARCHIVE,
