@@ -12,7 +12,10 @@
  */
 
 const CSS_COLOR_CACHE_MAX = 200;
-const RESOLVED_COLOR_FORMAT = /^(?:rgb|#|hsl)/;
+// Browsers normalize computed colors to these notations; restricting the cache to them
+// prevents unresolved custom-property text from being mistaken for a valid color.
+const RESOLVED_COLOR_FORMAT =
+  /^(?:#|rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\b/;
 const cssColorCache = new Map<string, string>();
 
 const getCssVariableName = (cssColor: string): string => {

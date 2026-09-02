@@ -129,6 +129,25 @@ describe('resolveCssColor', () => {
     );
   });
 
+  it.each([
+    ['rgba', 'rgba(20, 40, 60, 0.5)'],
+    ['hsla', 'hsla(240, 50%, 50%, 0.5)'],
+    ['oklch', 'oklch(0.7 0.15 240)'],
+    ['oklab', 'oklab(0.7 -0.05 -0.15)'],
+    ['lab', 'lab(70% -10 -20)'],
+    ['lch', 'lch(70% 30 240)'],
+    ['hwb', 'hwb(240 10% 20%)'],
+    ['display-p3', 'color(display-p3 0.2 0.4 0.8)'],
+  ])('returns the supported computed color %s', (tokenName, color) => {
+    jest
+      .spyOn(window, 'getComputedStyle')
+      .mockReturnValueOnce(mockComputedStyle(color));
+
+    expect(resolveCssColor(`var(--color-modern-${tokenName})`, '#fedcba')).toBe(
+      color
+    );
+  });
+
   it('does not treat an inherited text color as a resolved token', () => {
     jest
       .spyOn(window, 'getComputedStyle')

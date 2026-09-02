@@ -177,7 +177,7 @@ describe('getCanvasColor', () => {
   it('returns the fallback hex when the token resolves to a transparent or non-color value', () => {
     jest
       .spyOn(window, 'getComputedStyle')
-      .mockReturnValue(mockComputedStyle('rgba(0, 0, 0, 0)', 'oklch(0 0 0)'));
+      .mockReturnValue(mockComputedStyle('rgba(0, 0, 0, 0)', '12px'));
 
     expect(getCanvasColor('var(--color-unresolvable)', '#fedcba')).toBe(
       '#fedcba'
