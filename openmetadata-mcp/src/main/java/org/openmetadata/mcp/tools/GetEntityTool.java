@@ -260,7 +260,8 @@ public class GetEntityTool implements McpTool {
     int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
     // Kept as the entity, not just its map: the content section needs the object, and reading it
     // a second time for that would be the same fetch twice in one request.
-    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "*", null);
+    EntityInterface entity =
+        CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext);
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
@@ -284,7 +285,8 @@ public class GetEntityTool implements McpTool {
     IncludeContext authorizationContext =
         new IncludeContext(authorizer, securityContext, entityType, fqn, null, options(params));
     authorizeKnowledge(authorizationContext);
-    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "", Include.NON_DELETED);
+    EntityInterface entity =
+        CommonUtils.readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     IncludeContext contentContext =
         new IncludeContext(
             authorizer, securityContext, entityType, fqn, entity, authorizationContext.options());
