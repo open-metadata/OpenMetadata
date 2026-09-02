@@ -119,12 +119,13 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
                   align="center"
                   className="tw:relative tw:w-full tw:bg-primary tw:px-3 tw:py-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                   gap={2}
-                  wrap="wrap"
-                >
+                  wrap="wrap">
                   {chipItems.length > 0 ? (
                     chipItems.map((item) => (
                       <BadgeWithButton
-                        buttonLabel={t('label.remove-entity', { entity: item.label })}
+                        buttonLabel={t('label.remove-entity', {
+                          entity: item.label,
+                        })}
                         color="gray"
                         key={item.id}
                         size="sm"
