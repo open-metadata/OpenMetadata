@@ -1122,11 +1122,18 @@ public final class EntityUtil {
     }
   }
 
+  // Sentinel owner id that matches no entity_relationship row. Used when an owner filter was
+  // requested but nothing resolved, so the filter yields an empty result rather than every entity.
+  private static final String NO_MATCH_OWNER_ID = "00000000-0000-0000-0000-000000000000";
+
   /**
-   * Resolves a comma-separated list of owner identifiers (user/team ids, names, or FQNs) to a
-   * comma-separated list of ids, so an owner filter can hit the indexed entity_relationship.fromId
-   * directly instead of joining user/team tables. Unresolvable owners are skipped; returns null when
-   * nothing resolves so the caller drops the filter.
+   * Resolves a comma-separated list of owner identifiers to a comma-separated list of ids, so an
+   * owner filter can hit the indexed entity_relationship.fromId directly instead of joining
+   * user/team tables. A value that is already a UUID is accepted as-is (it is not existence-checked);
+   * a name/FQN is resolved to a user or team id, and is dropped if it matches neither. Returns null
+   * when the input is blank (no filter); when a non-blank input resolves to nothing, returns a
+   * sentinel id that matches no rows so the caller filters to an empty result instead of the full
+   * list.
    */
   public static String resolveOwnersToIds(String owners) {
     if (nullOrEmpty(owners)) {
@@ -1139,7 +1146,7 @@ public final class EntityUtil {
         ids.add(id);
       }
     }
-    return ids.isEmpty() ? null : String.join(",", ids);
+    return ids.isEmpty() ? NO_MATCH_OWNER_ID : String.join(",", ids);
   }
 
   private static String resolveOwnerToId(String owner) {
@@ -1160,7 +1167,7 @@ public final class EntityUtil {
       try {
         return Entity.getEntityReferenceByName(Entity.TEAM, name, NON_DELETED);
       } catch (EntityNotFoundException teamNotFound) {
-        LOG.warn("Owner filter: '{}' did not resolve to a user or team", name);
+        LOG.debug("Owner filter: '{}' did not resolve to a user or team", name);
         return null;
       }
     }

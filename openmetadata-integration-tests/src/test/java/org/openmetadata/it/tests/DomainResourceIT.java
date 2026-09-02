@@ -1814,6 +1814,23 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Test
+  void test_listDomains_filterByUnknownOwnerReturnsNoMatches(TestNamespace ns) {
+    User owner = testUser1();
+    EntityReference ownerRef = new EntityReference().withId(owner.getId()).withType("user");
+    Domain owned =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("fowner_unknown"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withOwners(List.of(ownerRef))
+                .withDescription("filter test domain"));
+
+    // An owner that resolves to nothing must yield no matches, not the full domain list.
+    Set<UUID> ids = listedIds(listDomainsWithFilter("owners", ns.prefix("no_such_owner")));
+    assertFalse(ids.contains(owned.getId()), "unknown owner must not return owned domains");
+  }
+
+  @Test
   void test_listDomains_filterByClassificationTag(TestNamespace ns) {
     TagLabel pii = piiSensitiveTagLabel();
     Domain tagged =

@@ -145,7 +145,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           String after,
       @Parameter(
               description =
-                  "Filter domains owned by any of these users or teams (comma-separated names/FQNs)",
+                  "Filter domains owned by any of these users or teams "
+                      + "(comma-separated user/team ids, names, or FQNs)",
               schema = @Schema(type = "string"))
           @QueryParam("owners")
           String owners,
