@@ -129,7 +129,7 @@ def service_resolves_aliases(metadata: OpenMetadata, service_name: str) -> bool:
             resolves = bool(getattr(service.connection.config, ALIAS_OPT_IN_FIELD, False))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not read alias opt-in for service '{service_name}', assuming disabled: {exc}")
+        logger.warning("Could not read alias opt-in for service '%s', assuming disabled: %s", service_name, exc)
 
     alias_resolution_cache.put(service_name, resolves)
 

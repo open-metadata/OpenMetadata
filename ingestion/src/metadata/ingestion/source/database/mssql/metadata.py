@@ -311,7 +311,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not discover MSSQL synonyms, continuing without aliases: {exc}")
+            logger.warning("Could not discover MSSQL synonyms, continuing without aliases: %s", exc)
 
     def get_table_aliases(self, table_name: str, schema_name: str) -> list[str] | None:
         """Aliases from sys.synonyms whose target is the table being produced"""

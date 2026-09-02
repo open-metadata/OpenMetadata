@@ -12,7 +12,6 @@
 
 import traceback
 from collections.abc import Callable
-from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -72,7 +71,7 @@ def split_sql_server_identifier(raw: str) -> list[str]:
 def parse_base_object_name(
     base_object_name: str,
     synonym_database: str,
-) -> tuple[Optional[MssqlSynonymTarget], Optional[SynonymUnresolvedReason]]:  # noqa: UP045
+) -> tuple[MssqlSynonymTarget | None, SynonymUnresolvedReason | None]:
     """
     Normalize sys.synonyms.base_object_name into a three-part target.
 
@@ -143,15 +142,15 @@ class SynonymMap:
         if key not in self._targets and len(self._targets) >= self._max_entries:
             if not self._cap_warned:
                 logger.warning(
-                    f"Synonym map reached its cap of {self._max_entries} targets; "
-                    f"further synonyms are ignored for this run"
+                    "Synonym map reached its cap of %d targets; further synonyms are ignored for this run",
+                    self._max_entries,
                 )
                 self._cap_warned = True
             return False
         self._targets.setdefault(key, set()).add(alias_fqn)
         return True
 
-    def aliases_for(self, target_fqn: str) -> Optional[list[str]]:  # noqa: UP045
+    def aliases_for(self, target_fqn: str) -> list[str] | None:
         """
         Return sorted aliases for a target; marks target as consumed.
 
@@ -170,8 +169,9 @@ class SynonymMap:
         if len(self._explicit_unresolved) >= self._max_entries:
             if not self._unresolved_cap_warned:
                 logger.warning(
-                    f"Unresolved synonym list reached its cap of {self._max_entries}; "
-                    f"further unresolved entries are ignored for this run"
+                    "Unresolved synonym list reached its cap of %d; "
+                    "further unresolved entries are ignored for this run",
+                    self._max_entries,
                 )
                 self._unresolved_cap_warned = True
             return
@@ -216,7 +216,7 @@ def build_synonym_map(
                 rows = connection.execute(text(MSSQL_GET_SYNONYMS.format(database_name=escaped_database))).all()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not read synonyms from database [{database_name}]: {exc}")
+            logger.warning("Could not read synonyms from database [%s]: %s", database_name, exc)
             continue
 
         for row in rows:
