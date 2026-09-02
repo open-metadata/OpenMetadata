@@ -28,11 +28,13 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class GetEntityTool implements McpTool {
@@ -448,20 +450,23 @@ public class GetEntityTool implements McpTool {
   private static Map<String, Object> neighbours(IncludeContext ctx) {
     // The subject context applies the caller's domain restrictions
     // (LineageRepository.pruneLineageByDomain). Without it they see neighbours they cannot access.
+    SubjectContext subjectContext = getSubjectContext(ctx.securityContext());
     EntityLineage lineage =
         Entity.getLineageRepository()
-            .getByName(
-                ctx.entityType(),
-                ctx.fqn(),
-                REACH_DEPTH,
-                REACH_DEPTH,
-                getSubjectContext(ctx.securityContext()));
+            .getByName(ctx.entityType(), ctx.fqn(), REACH_DEPTH, REACH_DEPTH, subjectContext);
+    // Domain pruning only covers domain-restricted subjects. Entity-scoped policies (tags, owners)
+    // have to be applied per neighbour too, or this section names assets the caller is denied.
+    LineagePermissionFilter.Result filtered =
+        new LineagePermissionFilter(ctx.authorizer())
+            .filter(ctx.securityContext(), subjectContext, lineage);
+    lineage = filtered.lineage();
     UUID root = rootId(lineage, ctx.fqn());
     Map<UUID, EntityReference> index = indexNodes(lineage);
     Map<String, Object> summary = new LinkedHashMap<>();
     addDirection(summary, root, index, lineage.getUpstreamEdges(), true);
     addDirection(summary, root, index, lineage.getDownstreamEdges(), false);
-    summary.put("note", reachNote(continuesAnywhere(summary)));
+    summary.put("hiddenNodes", filtered.hiddenNodes());
+    summary.put("note", reachNote(continuesAnywhere(summary), filtered));
     return summary;
   }
 
@@ -516,8 +521,17 @@ public class GetEntityTool implements McpTool {
   /**
    * Says whether the graph continues past the immediate neighbours. Without it a single upstream is
    * ambiguous between "that is everything" and "that is the first of several hops".
+   *
+   * <p>Never claims completeness once the permission filter removed something: "nothing lies beyond
+   * these" would then be false, and a hidden neighbour is precisely what a reader would act on.
    */
-  private static String reachNote(boolean continues) {
+  private static String reachNote(boolean continues, LineagePermissionFilter.Result filtered) {
+    if (filtered.hiddenNodes() > 0) {
+      return String.format(
+          "Immediate neighbours only, and %d neighbour(s) are hidden by your permissions, so this"
+              + " is not the complete graph.",
+          filtered.hiddenNodes());
+    }
     return continues
         ? "Immediate neighbours only, and the graph continues beyond them. Use get_entity_lineage"
             + " for the full depth."

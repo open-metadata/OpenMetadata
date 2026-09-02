@@ -27,10 +27,12 @@ import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Returns a compact, LLM-friendly lineage graph. The raw {@link EntityLineage} from the repository
@@ -93,10 +95,14 @@ public class GetLineageTool implements McpTool {
     validateParams(params);
     String entityType = (String) params.get("entityType");
     String fqn = (String) params.get("fqn");
+    // Authorize by FQN so entity-scoped tag/owner/domain policies are evaluated, not just the
+    // resource-type permission. A ResourceContext with no id and no name never resolves an entity,
+    // leaving every attribute unread: matchAnyTag then reads false whether or not the tag is
+    // present, so a Deny fires on every entity in one polarity and on none in the other.
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
-        new ResourceContext<>(entityType));
+        new ResourceContext<>(entityType, null, fqn));
     int upstreamDepth = clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH));
     int downstreamDepth = clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH));
     EdgeOptions options =
@@ -113,15 +119,47 @@ public class GetLineageTool implements McpTool {
         options.includeColumnLineage());
     // The subject context applies the caller's domain restrictions
     // (LineageRepository.pruneLineageByDomain); the overload without it prunes nothing.
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     EntityLineage lineage =
         Entity.getLineageRepository()
-            .getByName(
-                entityType,
-                fqn,
-                upstreamDepth,
-                downstreamDepth,
-                getSubjectContext(securityContext));
-    return enforceSizeBudget(toSlim(lineage, options));
+            .getByName(entityType, fqn, upstreamDepth, downstreamDepth, subjectContext);
+    // Authorizing the root only grants the root. Neighbour nodes carry their own FQNs, names and
+    // descriptions, so an entity-scoped policy has to be applied to them as well or the graph
+    // discloses exactly the assets the policy hides.
+    LineagePermissionFilter.Result filtered =
+        new LineagePermissionFilter(authorizer).filter(securityContext, subjectContext, lineage);
+    return annotateVisibility(enforceSizeBudget(toSlim(filtered.lineage(), options)), filtered);
+  }
+
+  /**
+   * Records what the permission filter removed. An LLM cannot tell a small graph from a pruned one,
+   * so a graph that lost nodes must say so rather than reading as complete lineage.
+   */
+  private static Map<String, Object> annotateVisibility(
+      Map<String, Object> result, LineagePermissionFilter.Result filtered) {
+    result.put("hiddenNodes", filtered.hiddenNodes());
+    result.put("permissionFilterSkipped", filtered.filterSkipped());
+    String note = visibilityNote(filtered);
+    if (note != null) {
+      // annotateCompleteness may already have explained edge clipping; both facts matter.
+      Object existing = result.get(McpResponseTrim.MESSAGE_KEY);
+      result.put(McpResponseTrim.MESSAGE_KEY, existing == null ? note : existing + " " + note);
+    }
+    return result;
+  }
+
+  private static String visibilityNote(LineagePermissionFilter.Result filtered) {
+    if (filtered.filterSkipped()) {
+      return "This graph was too large to filter by your permissions, so it may name assets you"
+          + " cannot otherwise read.";
+    }
+    if (filtered.hiddenNodes() > 0) {
+      return String.format(
+          "%d node(s) were removed because your permissions do not allow viewing them; the graph"
+              + " shown is the connected part you can see.",
+          filtered.hiddenNodes());
+    }
+    return null;
   }
 
   private static void validateParams(Map<String, Object> params) {
