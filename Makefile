@@ -65,6 +65,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	mkdir -p ingestion/src/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
+	ruff check --isolated --no-respect-gitignore --fix --select F401,UP006,UP007,UP035,UP045 --target-version py310 ingestion/src/metadata/generated
 	$(MAKE) install
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)
