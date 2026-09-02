@@ -283,7 +283,9 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     environment: security-scan
-    # actions: read is for download-artifact; Slack uses a secret, not GITHUB_TOKEN.
+    # Same-run download-artifact needs no GITHUB_TOKEN scope; actions: read is the
+    # margin, since both downloads are continue-on-error and would fail silently.
+    # Slack posts with SLACK_BOT_TOKEN, not GITHUB_TOKEN. Everything else is none.
     permissions:
       actions: read
     needs: [vulnerability-scan, security-scan]
