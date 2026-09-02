@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.clients.pipeline.k8s;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.kubernetes.client.custom.Quantity;
@@ -58,6 +58,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.HttpUrl;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -74,9 +77,6 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.slf4j.MDC;
-import okhttp3.HttpUrl;
-import okhttp3.Request;
-import okhttp3.Response;
 
 /**
  * Kubernetes-native Pipeline Service Client.
@@ -177,61 +177,64 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String NO_LOGS_MESSAGE = "No logs available for pod: ";
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
   private static final String FAILED_LOGS_MESSAGE = "Failed to retrieve logs: ";
-  private static final String K8S_NAMESPACE_DESERIALIZATION_MESSAGE = "Kubernetes namespace {} is reachable but pod status could not be deserialized"
-      + "(client-java models likely lag the cluster's Kubernetes version): {}";
-  private static final String K8S_STATUS_DESERIALIZATION_WARNING = "Pod/job status details are unavailable because the bundled Kubernetes client could not "
-      + "parse fields returned by the Kubernetes cluster";
-  private static final String PARTIAL_METADATA_ACCEPT = "application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1";
+  private static final String K8S_NAMESPACE_DESERIALIZATION_MESSAGE =
+      "Kubernetes namespace {} is reachable but pod status could not be deserialized"
+          + "(client-java models likely lag the cluster's Kubernetes version): {}";
+  private static final String K8S_STATUS_DESERIALIZATION_WARNING =
+      "Pod/job status details are unavailable because the bundled Kubernetes client could not "
+          + "parse fields returned by the Kubernetes cluster";
+  private static final String PARTIAL_METADATA_ACCEPT =
+      "application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1";
   private static final String JSON_ACCEPT = "application/json";
   private static final String SELECTOR_POD_LOGS = "metadata.name";
   private static final ObjectMapper POD_SUMMARY_MAPPER = new ObjectMapper();
 
   // Error messages
   private static final String NAMESPACE_NOT_EXISTS_ERROR =
-   "Namespace '%s' does not exist. Create it with: kubectl create namespace %s";
+      "Namespace '%s' does not exist. Create it with: kubectl create namespace %s";
   private static final String NAMESPACE_VALIDATION_WARNING =
-   "Could not validate namespace '%s' exists (HTTP %d): %s. Proceeding anyway.";
+      "Could not validate namespace '%s' exists (HTTP %d): %s. Proceeding anyway.";
   private static final String K8S_API_CALL_FAILED = "K8s API call failed: ";
   private static final String FAILED_TO_INITIALIZE_K8S_CLIENT =
-   "Failed to initialize Kubernetes client: ";
+      "Failed to initialize Kubernetes client: ";
   private static final String FAILED_OPERATION_FORMAT =
-   "Failed to %s '%s' in namespace '%s': HTTP %d - %s.%s";
+      "Failed to %s '%s' in namespace '%s': HTTP %d - %s.%s";
   private static final String FAILED_TO_CONNECT_K8S_FORMAT =
-   "Failed to connect to Kubernetes API (namespace: %s, service account: %s): Message: %s\nHTTP response code: %d\nHTTP response body: %s";
+      "Failed to connect to Kubernetes API (namespace: %s, service account: %s): Message: %s\nHTTP response code: %d\nHTTP response body: %s";
   private static final String K8S_AVAILABLE_MISSING_CONFIGMAP_FORMAT =
-   "Kubernetes is available but missing ConfigMap permissions in namespace '%s' for service account '%s': %s";
+      "Kubernetes is available but missing ConfigMap permissions in namespace '%s' for service account '%s': %s";
   private static final String K8S_AVAILABLE_MISSING_SECRET_FORMAT =
-   "Kubernetes is available but missing Secret permissions in namespace '%s' for service account '%s': %s";
+      "Kubernetes is available but missing Secret permissions in namespace '%s' for service account '%s': %s";
   private static final String K8S_AVAILABLE_FORMAT =
-   "Kubernetes pipeline client is available in namespace '%s' with service account '%s'";
+      "Kubernetes pipeline client is available in namespace '%s' with service account '%s'";
   private static final String PIPELINE_MISSING_CONNECTION_WARNING =
-   "Pipeline %s missing OpenMetadataServerConnection - creating default configuration from client config";
+      "Pipeline %s missing OpenMetadataServerConnection - creating default configuration from client config";
   private static final String PIPELINE_MISSING_SECURITY_CONFIG_ERROR =
-   "Pipeline %s has OpenMetadataServerConnection but missing securityConfig. The JWT token and authentication config are required for ingestion to work.";
+      "Pipeline %s has OpenMetadataServerConnection but missing securityConfig. The JWT token and authentication config are required for ingestion to work.";
   private static final String PIPELINE_PROPER_CONNECTION_DEBUG =
-   "Pipeline %s has proper OpenMetadataServerConnection with security config";
+      "Pipeline %s has proper OpenMetadataServerConnection with security config";
   private static final String INGESTION_BOT_NOT_FOUND_ERROR =
-   "Ingestion bot not found or bot has no associated user";
+      "Ingestion bot not found or bot has no associated user";
   private static final String BOT_USER_NOT_FOUND_ERROR =
-   "Bot user not found or has no authentication mechanism";
+      "Bot user not found or has no authentication mechanism";
   private static final String BOT_AUTH_NOT_JWT_ERROR =
-   "Bot user authentication mechanism is not JWT: %s";
+      "Bot user authentication mechanism is not JWT: %s";
   private static final String FAILED_TO_RETRIEVE_BOT_TOKEN_ERROR =
-   "Failed to retrieve ingestion-bot token";
+      "Failed to retrieve ingestion-bot token";
   private static final String FAILED_TO_RETRIEVE_BOT_TOKEN_STATE_ERROR =
-   "Failed to retrieve ingestion-bot JWT token. The ingestion-bot user must exist and have a valid JWT authentication mechanism.";
+      "Failed to retrieve ingestion-bot JWT token. The ingestion-bot user must exist and have a valid JWT authentication mechanism.";
   private static final String RETRIEVED_BOT_TOKEN_INFO =
-   "Retrieved ingestion-bot JWT token for pipeline authentication";
+      "Retrieved ingestion-bot JWT token for pipeline authentication";
   private static final String PIPELINE_CONNECTION_STATE_ERROR =
-   "Pipeline OpenMetadataServerConnection.securityConfig is required but not set. This indicates the JWT token or authentication configuration is missing.";
+      "Pipeline OpenMetadataServerConnection.securityConfig is required but not set. This indicates the JWT token or authentication configuration is missing.";
   private static final String SKIP_CONNECTION_CONFIG_DEBUG =
-   "Skipping server connection configuration for unit tests";
+      "Skipping server connection configuration for unit tests";
   private static final String DEFAULT_CONNECTION_INFO =
-   "Set default OpenMetadataServerConnection for pipeline %s with endpoint %s";
+      "Set default OpenMetadataServerConnection for pipeline %s with endpoint %s";
   private static final String WORKFLOW_CONFIG_BUILD_FAILED =
-   "Workflow configuration building failed";
+      "Workflow configuration building failed";
   private static final String WORKFLOW_CONFIG_BUILD_WITH_OVERRIDES_FAILED =
-   "Workflow configuration building failed";
+      "Workflow configuration building failed";
 
   // MDC keys for correlation
   private static final String MDC_CORRELATION_ID = "correlationId";
@@ -240,11 +243,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   // Retry configuration for K8s API calls
   private static final RetryConfig RETRY_CONFIG =
-    RetryConfig.custom()
-        .maxAttempts(3)
-        .waitDuration(Duration.ofMillis(500))
-        .retryOnException(K8sPipelineClient::isRetryableException)
-        .build();
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .waitDuration(Duration.ofMillis(500))
+          .retryOnException(K8sPipelineClient::isRetryableException)
+          .build();
 
   private final Retry retry = Retry.of("k8s-api", RETRY_CONFIG);
 
@@ -589,13 +592,13 @@ public class K8sPipelineClient extends PipelineServiceClient {
         executeWithRetry(
             () ->
                 customObjectsApi
-                  .createNamespacedCustomObject(
-                      "pipelines.openmetadata.org",
-                      "v1",
-                      k8sConfig.getNamespace(),
-                      "omjobs",
-                      omJob.toMap())
-                  .execute());
+                    .createNamespacedCustomObject(
+                        "pipelines.openmetadata.org",
+                        "v1",
+                        k8sConfig.getNamespace(),
+                        "omjobs",
+                        omJob.toMap())
+                    .execute());
         LOG.info(
             "Created OMJob {} for pipeline {} [correlationId={}]",
             jobName,
@@ -613,7 +616,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             correlationId);
       }
       return buildSuccessResponse(
-          "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName))
+              "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName))
           .withRunId(runId);
 
     } catch (ApiException e) {
@@ -702,15 +705,18 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       if (useOMJobOperator) {
         @SuppressWarnings("unchecked")
-        Map<String, Object> originalCronOMJob = (Map<String, Object>) executeWithRetry(
-            () -> customObjectsApi
-                .getNamespacedCustomObject(
-                    OMJOB_GROUP,
-                    OMJOB_VERSION,
-                    k8sConfig.getNamespace(),
-                    CRONOMJOB_PLURAL,
-                    cronJobName)
-                .execute());
+        Map<String, Object> originalCronOMJob =
+            (Map<String, Object>)
+                executeWithRetry(
+                    () ->
+                        customObjectsApi
+                            .getNamespacedCustomObject(
+                                OMJOB_GROUP,
+                                OMJOB_VERSION,
+                                k8sConfig.getNamespace(),
+                                CRONOMJOB_PLURAL,
+                                cronJobName)
+                            .execute());
 
         // Create a defensive copy to handle potentially unmodifiable maps from
         // Kubernetes API
@@ -730,15 +736,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
         spec.put("suspend", !currentlySuspended);
 
         executeWithRetry(
-            () -> customObjectsApi
-                .replaceNamespacedCustomObject(
-                    OMJOB_GROUP,
-                    OMJOB_VERSION,
-                    k8sConfig.getNamespace(),
-                    CRONOMJOB_PLURAL,
-                    cronJobName,
-                    cronOMJob)
-                .execute());
+            () ->
+                customObjectsApi
+                    .replaceNamespacedCustomObject(
+                        OMJOB_GROUP,
+                        OMJOB_VERSION,
+                        k8sConfig.getNamespace(),
+                        CRONOMJOB_PLURAL,
+                        cronJobName,
+                        cronOMJob)
+                    .execute());
 
         String newState = currentlySuspended ? "enabled" : "disabled";
         ingestionPipeline.setEnabled(currentlySuspended);
@@ -747,16 +754,19 @@ public class K8sPipelineClient extends PipelineServiceClient {
         return buildSuccessResponse("Pipeline " + newState);
       }
 
-      V1CronJob cronJob = executeWithRetry(
-          () -> batchApi.readNamespacedCronJob(cronJobName, k8sConfig.getNamespace()).execute());
+      V1CronJob cronJob =
+          executeWithRetry(
+              () ->
+                  batchApi.readNamespacedCronJob(cronJobName, k8sConfig.getNamespace()).execute());
 
       boolean currentlySuspended = Boolean.TRUE.equals(cronJob.getSpec().getSuspend());
       cronJob.getSpec().setSuspend(!currentlySuspended);
 
       executeWithRetry(
-          () -> batchApi
-              .replaceNamespacedCronJob(cronJobName, k8sConfig.getNamespace(), cronJob)
-              .execute());
+          () ->
+              batchApi
+                  .replaceNamespacedCronJob(cronJobName, k8sConfig.getNamespace(), cronJob)
+                  .execute());
 
       String newState = currentlySuspended ? "enabled" : "disabled";
       ingestionPipeline.setEnabled(currentlySuspended);
@@ -803,15 +813,18 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       if (useOMJobOperator) {
         // Kill OMJobs
-        Map<String, Object> omJobs = executeWithRetry(
-            () -> (Map<String, Object>) customObjectsApi
-                .listNamespacedCustomObject(
-                    "pipelines.openmetadata.org",
-                    "v1",
-                    k8sConfig.getNamespace(),
-                    "omjobs")
-                .labelSelector(labelSelector)
-                .execute());
+        Map<String, Object> omJobs =
+            executeWithRetry(
+                () ->
+                    (Map<String, Object>)
+                        customObjectsApi
+                            .listNamespacedCustomObject(
+                                "pipelines.openmetadata.org",
+                                "v1",
+                                k8sConfig.getNamespace(),
+                                "omjobs")
+                            .labelSelector(labelSelector)
+                            .execute());
 
         List<Map<String, Object>> items = (List<Map<String, Object>>) omJobs.get("items");
         if (items != null) {
@@ -829,25 +842,28 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
             // Delete the OMJob - operator will handle pod cleanup
             executeWithRetry(
-                () -> customObjectsApi
-                    .deleteNamespacedCustomObject(
-                        "pipelines.openmetadata.org",
-                        "v1",
-                        k8sConfig.getNamespace(),
-                        "omjobs",
-                        omJobName)
-                    .execute());
+                () ->
+                    customObjectsApi
+                        .deleteNamespacedCustomObject(
+                            "pipelines.openmetadata.org",
+                            "v1",
+                            k8sConfig.getNamespace(),
+                            "omjobs",
+                            omJobName)
+                        .execute());
             killedCount++;
             LOG.info("Killed OMJob: {} [correlationId={}]", omJobName, correlationId);
           }
         }
       } else {
         // Kill regular Jobs
-        V1JobList jobs = executeWithRetry(
-            () -> batchApi
-                .listNamespacedJob(k8sConfig.getNamespace())
-                .labelSelector(labelSelector)
-                .execute());
+        V1JobList jobs =
+            executeWithRetry(
+                () ->
+                    batchApi
+                        .listNamespacedJob(k8sConfig.getNamespace())
+                        .labelSelector(labelSelector)
+                        .execute());
 
         for (V1Job job : jobs.getItems()) {
           if (isJobActive(job)) {
@@ -856,10 +872,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
             // Delete the job but orphan the pods for debugging - TTL will clean them up
             // later
             executeWithRetry(
-                () -> batchApi
-                    .deleteNamespacedJob(jobName, k8sConfig.getNamespace())
-                    .propagationPolicy(PROPAGATION_POLICY_ORPHAN)
-                    .execute());
+                () ->
+                    batchApi
+                        .deleteNamespacedJob(jobName, k8sConfig.getNamespace())
+                        .propagationPolicy(PROPAGATION_POLICY_ORPHAN)
+                        .execute());
             killedCount++;
             LOG.info("Killed job: {} [correlationId={}]", jobName, correlationId);
           }
@@ -917,10 +934,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
           throw e;
         }
         statusDetailsUnavailable = true;
-        LOG.warn(
-            K8S_NAMESPACE_DESERIALIZATION_MESSAGE,
-            namespace,
-            e.getMessage());
+        LOG.warn(K8S_NAMESPACE_DESERIALIZATION_MESSAGE, namespace, e.getMessage());
       }
       try {
         batchApi.listNamespacedJob(namespace).limit(1).execute();
@@ -929,18 +943,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
           throw e;
         }
         statusDetailsUnavailable = true;
-        LOG.warn(
-            K8S_NAMESPACE_DESERIALIZATION_MESSAGE,
-            namespace,
-            e.getMessage());
+        LOG.warn(K8S_NAMESPACE_DESERIALIZATION_MESSAGE, namespace, e.getMessage());
       }
 
       // Test ConfigMap permissions (required for pipeline configuration)
       try {
         coreApi.listNamespacedConfigMap(namespace).limit(1).execute();
       } catch (ApiException e) {
-        String error = String.format(
-            K8S_AVAILABLE_MISSING_CONFIGMAP_FORMAT, namespace, serviceAccount, e.getMessage());
+        String error =
+            String.format(
+                K8S_AVAILABLE_MISSING_CONFIGMAP_FORMAT, namespace, serviceAccount, e.getMessage());
         LOG.error(error);
         return buildUnhealthyStatus(error);
       }
@@ -949,8 +961,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
       try {
         coreApi.listNamespacedSecret(namespace).limit(1).execute();
       } catch (ApiException e) {
-        String error = String.format(
-            K8S_AVAILABLE_MISSING_SECRET_FORMAT, namespace, serviceAccount, e.getMessage());
+        String error =
+            String.format(
+                K8S_AVAILABLE_MISSING_SECRET_FORMAT, namespace, serviceAccount, e.getMessage());
         LOG.error(error);
         return buildUnhealthyStatus(error);
       }
@@ -963,19 +976,21 @@ public class K8sPipelineClient extends PipelineServiceClient {
       return buildHealthyStatus(getKubernetesVersion()).withReason(message);
 
     } catch (IllegalArgumentException e) {
-      String error = String.format(
-          "Failed to parse Kubernetes pod/job status (namespace: %s, service account: %s)",
-          namespace, serviceAccount);
+      String error =
+          String.format(
+              "Failed to parse Kubernetes pod/job status (namespace: %s, service account: %s)",
+              namespace, serviceAccount);
       LOG.error(error, e);
       return buildUnhealthyStatus(error);
     } catch (ApiException e) {
-      String error = String.format(
-          FAILED_TO_CONNECT_K8S_FORMAT,
-          namespace,
-          serviceAccount,
-          e.getMessage(),
-          e.getCode(),
-          e.getResponseBody());
+      String error =
+          String.format(
+              FAILED_TO_CONNECT_K8S_FORMAT,
+              namespace,
+              serviceAccount,
+              e.getMessage(),
+              e.getCode(),
+              e.getResponseBody());
       LOG.error(error);
       return buildUnhealthyStatus(error);
     }
@@ -985,7 +1000,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
     String workflowName = sanitizeName(workflow.getName());
     String runId = UUID.randomUUID().toString();
-    String jobName = buildKubernetesName("om-automation-", workflow.getName(), "-" + runId.substring(0, 8));
+    String jobName =
+        buildKubernetesName("om-automation-", workflow.getName(), "-" + runId.substring(0, 8));
 
     LOG.info("Running automation workflow: {} with runId: {}", workflowName, runId);
 
@@ -1007,7 +1023,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   public PipelineServiceClientResponse runApplicationFlow(App application) {
     String appName = sanitizeName(application.getName());
     String runId = UUID.randomUUID().toString();
-    String jobName = buildKubernetesName("om-app-", application.getName(), "-" + runId.substring(0, 8));
+    String jobName =
+        buildKubernetesName("om-app-", application.getName(), "-" + runId.substring(0, 8));
 
     LOG.info("Running application: {} with runId: {}", appName, runId);
 
@@ -1015,14 +1032,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
       if (useOMJobOperator) {
         OMJob omJob = buildApplicationOMJob(application, runId, jobName);
         executeWithRetry(
-            () -> customObjectsApi
-                .createNamespacedCustomObject(
-                    OMJOB_GROUP,
-                    OMJOB_VERSION,
-                    k8sConfig.getNamespace(),
-                    "omjobs",
-                    omJob.toMap())
-                .execute());
+            () ->
+                customObjectsApi
+                    .createNamespacedCustomObject(
+                        OMJOB_GROUP,
+                        OMJOB_VERSION,
+                        k8sConfig.getNamespace(),
+                        "omjobs",
+                        omJob.toMap())
+                    .execute());
       } else {
         V1Job job = buildApplicationJob(application, runId, jobName);
         batchApi.createNamespacedJob(k8sConfig.getNamespace(), job).execute();
@@ -1045,8 +1063,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
     return buildSuccessResponse("Application validated");
   }
 
-  private record PodSummary(String name, Map<String, String> labels, OffsetDateTime creationTimestamp) {
-  }
+  private record PodSummary(
+      String name, Map<String, String> labels, OffsetDateTime creationTimestamp) {}
 
   private List<PodSummary> parsePodSummaries(String rawJson) throws IOException {
     JsonNode items = POD_SUMMARY_MAPPER.readTree(rawJson).path("items");
@@ -1059,7 +1077,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
         continue;
       }
       Map<String, String> labels = new HashMap<>();
-      metadata.path("labels").fields().forEachRemaining(e -> labels.put(e.getKey(), e.getValue().asText()));
+      metadata
+          .path("labels")
+          .fields()
+          .forEachRemaining(e -> labels.put(e.getKey(), e.getValue().asText()));
       String createdStr = metadata.path("creationTimestamp").asText(null);
       OffsetDateTime created = createdStr != null ? OffsetDateTime.parse(createdStr) : null;
       summaries.add(new PodSummary(name, labels, created));
@@ -1075,9 +1096,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
 
     // Filter for main pods (preferred) - only process if we have pods
-    List<PodSummary> mainPods = pods.stream()
-        .filter(pod-> OMJOB_POD_TYPE_MAIN.equals(pod.labels().get(OMJOB_LABEL_POD_TYPE)))
-        .toList();
+    List<PodSummary> mainPods =
+        pods.stream()
+            .filter(pod -> OMJOB_POD_TYPE_MAIN.equals(pod.labels().get(OMJOB_LABEL_POD_TYPE)))
+            .toList();
 
     // Use main pods if available, otherwise fall back to all pods
     List<PodSummary> candidates = mainPods.isEmpty() ? pods : mainPods;
@@ -1095,12 +1117,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
             (a, b) -> {
               OffsetDateTime timeA = a.creationTimestamp();
               OffsetDateTime timeB = b.creationTimestamp();
-              if (timeA == null && timeB == null)
-                return 0;
-              if (timeA == null)
-                return 1;
-              if (timeB == null)
-                return -1;
+              if (timeA == null && timeB == null) return 0;
+              if (timeA == null) return 1;
+              if (timeB == null) return -1;
               return timeB.compareTo(timeA);
             })
         .findFirst()
@@ -1117,30 +1136,27 @@ public class K8sPipelineClient extends PipelineServiceClient {
       if (e.getCode() == 400) {
         LOG.debug(
             "Pod {} has no '{}' container, retrying without explicit container name",
-            podName, CONTAINER_MAIN);
+            podName,
+            CONTAINER_MAIN);
         return coreApi.readNamespacedPodLog(podName, k8sConfig.getNamespace()).execute();
       }
       throw e;
     }
   }
 
-  private String fetchPodMetadataRaw(String labelSelector, String acceptHeader)
-      throws IOException {
+  private String fetchPodMetadataRaw(String labelSelector, String acceptHeader) throws IOException {
     ApiClient apiClient = coreApi.getApiClient();
-    HttpUrl url = HttpUrl.parse(
-        apiClient.getBasePath()
-            + "/api/v1/namespaces/"
-            + k8sConfig.getNamespace()
-            + "/pods")
-        .newBuilder()
-        .addQueryParameter("labelSelector", labelSelector)
-        .build();
+    HttpUrl url =
+        HttpUrl.parse(
+                apiClient.getBasePath()
+                    + "/api/v1/namespaces/"
+                    + k8sConfig.getNamespace()
+                    + "/pods")
+            .newBuilder()
+            .addQueryParameter("labelSelector", labelSelector)
+            .build();
 
-    Request request = new Request.Builder()
-        .url(url)
-        .get()
-        .header("Accept", acceptHeader)
-        .build();
+    Request request = new Request.Builder().url(url).get().header("Accept", acceptHeader).build();
 
     try (Response response = apiClient.getHttpClient().newCall(request).execute()) {
       if (!response.isSuccessful() || response.body() == null) {
@@ -1161,7 +1177,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       List<PodSummary> pods;
       try {
-        pods = parsePodSummaries(fetchPodMetadataRaw(buildLabelSelector(labelSelectorMap), PARTIAL_METADATA_ACCEPT));
+        pods =
+            parsePodSummaries(
+                fetchPodMetadataRaw(buildLabelSelector(labelSelectorMap), PARTIAL_METADATA_ACCEPT));
       } catch (IOException e) {
         LOG.error("Failed to fetch/parse pod metadata for pipeline {}", pipelineName, e);
         return Map.of(
@@ -1178,21 +1196,20 @@ public class K8sPipelineClient extends PipelineServiceClient {
       PodSummary latestPod = selectLatestPod(pods);
       if (latestPod == null) {
         // This should not happen given the isEmpty check above, but defensive programming
-        LOG.warn(
-            "selectLatestPod returned null despite having {} pods available",
-            pods.size());
+        LOG.warn("selectLatestPod returned null despite having {} pods available", pods.size());
         return Map.of("logs", NO_PODS_MESSAGE);
       }
 
       String podName = latestPod.name();
-      //Attempt to provide container name as did the original code on top of pod name, fallback to only pod name if there is an error
+      // Attempt to provide container name as did the original code on top of pod name, fallback to
+      // only pod name if there is an error
       try {
         String podRawJson = fetchPodMetadataRaw(SELECTOR_POD_LOGS, JSON_ACCEPT);
         JsonNode pod = POD_SUMMARY_MAPPER.readTree(podRawJson).path("items").get(0);
         String containerName = selectContainerName(pod);
         LOG.debug("Retrieving logs from pod: {} container: {}", podName, containerName);
       } catch (IOException e) {
-        //Non-fatal error, reduce log info exposed to the user
+        // Non-fatal error, reduce log info exposed to the user
         LOG.debug("Retrieving logs from pod: {}", podName);
       }
 
@@ -1331,8 +1348,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
     // Use dynamic placeholder for pipelineRunId that will be replaced by
     // CronOMJobReconciler at
     // runtime
-    OMJob.OMJobSpec omJobSpec = buildIngestionOMJobSpec(
-        pipeline, CRONOMJOB_DYNAMIC_RUN_ID, null, null, configMapName, labels);
+    OMJob.OMJobSpec omJobSpec =
+        buildIngestionOMJobSpec(
+            pipeline, CRONOMJOB_DYNAMIC_RUN_ID, null, null, configMapName, labels);
 
     return CronOMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1467,52 +1485,56 @@ public class K8sPipelineClient extends PipelineServiceClient {
       ServiceEntityInterface service,
       String configMapName,
       Map<String, String> labels) {
-    List<V1EnvVar> mainEnv = configMapName == null
-        ? buildEnvVars(pipeline, runId, configOverride, service)
-        : buildEnvVarsForCronJob(pipeline, configMapName);
-    List<V1EnvVar> exitEnv = configMapName == null
-        ? buildExitHandlerEnvVars(pipeline, runId, configOverride, service)
-        : buildExitHandlerEnvVarsForCronOMJob(pipeline, configMapName);
+    List<V1EnvVar> mainEnv =
+        configMapName == null
+            ? buildEnvVars(pipeline, runId, configOverride, service)
+            : buildEnvVarsForCronJob(pipeline, configMapName);
+    List<V1EnvVar> exitEnv =
+        configMapName == null
+            ? buildExitHandlerEnvVars(pipeline, runId, configOverride, service)
+            : buildExitHandlerEnvVarsForCronOMJob(pipeline, configMapName);
 
-    OMJob.OMJobPodSpec mainPodSpec = OMJob.OMJobPodSpec.builder()
-        .image(k8sConfig.getIngestionImage())
-        .imagePullPolicy(k8sConfig.getImagePullPolicy())
-        .imagePullSecrets(
-            k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
-        .serviceAccountName(k8sConfig.getServiceAccountName())
-        .command(List.of(PYTHON_MAIN_PY, MAIN_PY))
-        .env(mainEnv)
-        .resources(
-            new V1ResourceRequirements()
-                .requests(k8sConfig.getResourceRequests())
-                .limits(k8sConfig.getResourceLimits()))
-        .nodeSelector(
-            k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
-        .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
-        .securityContext(buildPodSecurityContext())
-        .labels(labels)
-        .annotations(
-            k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
-        .build();
+    OMJob.OMJobPodSpec mainPodSpec =
+        OMJob.OMJobPodSpec.builder()
+            .image(k8sConfig.getIngestionImage())
+            .imagePullPolicy(k8sConfig.getImagePullPolicy())
+            .imagePullSecrets(
+                k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
+            .serviceAccountName(k8sConfig.getServiceAccountName())
+            .command(List.of(PYTHON_MAIN_PY, MAIN_PY))
+            .env(mainEnv)
+            .resources(
+                new V1ResourceRequirements()
+                    .requests(k8sConfig.getResourceRequests())
+                    .limits(k8sConfig.getResourceLimits()))
+            .nodeSelector(
+                k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
+            .securityContext(buildPodSecurityContext())
+            .labels(labels)
+            .annotations(
+                k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
+            .build();
 
-    OMJob.OMJobPodSpec exitHandlerSpec = OMJob.OMJobPodSpec.builder()
-        .image(k8sConfig.getIngestionImage())
-        .imagePullPolicy(k8sConfig.getImagePullPolicy())
-        .command(List.of(PYTHON_MAIN_PY, EXIT_HANDLER_PY))
-        .env(exitEnv)
-        .resources(
-            new V1ResourceRequirements()
-                .requests(Map.of("cpu", new Quantity("100m"), "memory", new Quantity("256Mi")))
-                .limits(Map.of("cpu", new Quantity("500m"), "memory", new Quantity("512Mi"))))
-        .serviceAccountName(k8sConfig.getServiceAccountName())
-        .nodeSelector(
-            k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
-        .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
-        .securityContext(buildPodSecurityContext())
-        .labels(labels)
-        .annotations(
-            k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
-        .build();
+    OMJob.OMJobPodSpec exitHandlerSpec =
+        OMJob.OMJobPodSpec.builder()
+            .image(k8sConfig.getIngestionImage())
+            .imagePullPolicy(k8sConfig.getImagePullPolicy())
+            .command(List.of(PYTHON_MAIN_PY, EXIT_HANDLER_PY))
+            .env(exitEnv)
+            .resources(
+                new V1ResourceRequirements()
+                    .requests(Map.of("cpu", new Quantity("100m"), "memory", new Quantity("256Mi")))
+                    .limits(Map.of("cpu", new Quantity("500m"), "memory", new Quantity("512Mi"))))
+            .serviceAccountName(k8sConfig.getServiceAccountName())
+            .nodeSelector(
+                k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
+            .securityContext(buildPodSecurityContext())
+            .labels(labels)
+            .annotations(
+                k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
+            .build();
 
     return OMJob.OMJobSpec.builder()
         .mainPodSpec(mainPodSpec)
@@ -1526,7 +1548,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String runId,
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
-    String jobName = buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
+    String jobName =
+        buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
 
     return new V1Job()
         .metadata(
@@ -1599,7 +1622,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
 
-    String jobName = buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
+    String jobName =
+        buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
 
     return OMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1819,50 +1843,53 @@ public class K8sPipelineClient extends PipelineServiceClient {
     envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application)));
     addExtraEnvVars(envVars);
 
-    OMJob.OMJobPodSpec mainPodSpec = OMJob.OMJobPodSpec.builder()
-        .image(k8sConfig.getIngestionImage())
-        .imagePullPolicy(k8sConfig.getImagePullPolicy())
-        .imagePullSecrets(
-            k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
-        .serviceAccountName(k8sConfig.getServiceAccountName())
-        .command(List.of(PYTHON_MAIN_PY, APPLICATIONS_RUNNER, APPLICATIONS_RUNNER_MODULE))
-        .env(envVars)
-        .resources(
-            new V1ResourceRequirements()
-                .requests(k8sConfig.getResourceRequests())
-                .limits(k8sConfig.getResourceLimits()))
-        .nodeSelector(
-            k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
-        .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
-        .securityContext(buildPodSecurityContext())
-        .labels(labels)
-        .annotations(
-            k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
-        .build();
+    OMJob.OMJobPodSpec mainPodSpec =
+        OMJob.OMJobPodSpec.builder()
+            .image(k8sConfig.getIngestionImage())
+            .imagePullPolicy(k8sConfig.getImagePullPolicy())
+            .imagePullSecrets(
+                k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
+            .serviceAccountName(k8sConfig.getServiceAccountName())
+            .command(List.of(PYTHON_MAIN_PY, APPLICATIONS_RUNNER, APPLICATIONS_RUNNER_MODULE))
+            .env(envVars)
+            .resources(
+                new V1ResourceRequirements()
+                    .requests(k8sConfig.getResourceRequests())
+                    .limits(k8sConfig.getResourceLimits()))
+            .nodeSelector(
+                k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
+            .securityContext(buildPodSecurityContext())
+            .labels(labels)
+            .annotations(
+                k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
+            .build();
 
-    OMJob.OMJobPodSpec exitHandlerSpec = OMJob.OMJobPodSpec.builder()
-        .image(k8sConfig.getIngestionImage())
-        .imagePullPolicy(k8sConfig.getImagePullPolicy())
-        .command(List.of("sh", "-c", "exit 0"))
-        .resources(
-            new V1ResourceRequirements()
-                .requests(Map.of("cpu", new Quantity("100m"), "memory", new Quantity("256Mi")))
-                .limits(Map.of("cpu", new Quantity("500m"), "memory", new Quantity("512Mi"))))
-        .serviceAccountName(k8sConfig.getServiceAccountName())
-        .nodeSelector(
-            k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
-        .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
-        .securityContext(buildPodSecurityContext())
-        .labels(labels)
-        .annotations(
-            k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
-        .build();
+    OMJob.OMJobPodSpec exitHandlerSpec =
+        OMJob.OMJobPodSpec.builder()
+            .image(k8sConfig.getIngestionImage())
+            .imagePullPolicy(k8sConfig.getImagePullPolicy())
+            .command(List.of("sh", "-c", "exit 0"))
+            .resources(
+                new V1ResourceRequirements()
+                    .requests(Map.of("cpu", new Quantity("100m"), "memory", new Quantity("256Mi")))
+                    .limits(Map.of("cpu", new Quantity("500m"), "memory", new Quantity("512Mi"))))
+            .serviceAccountName(k8sConfig.getServiceAccountName())
+            .nodeSelector(
+                k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
+            .securityContext(buildPodSecurityContext())
+            .labels(labels)
+            .annotations(
+                k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations())
+            .build();
 
-    OMJob.OMJobSpec omJobSpec = OMJob.OMJobSpec.builder()
-        .mainPodSpec(mainPodSpec)
-        .exitHandlerSpec(exitHandlerSpec)
-        .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
-        .build();
+    OMJob.OMJobSpec omJobSpec =
+        OMJob.OMJobSpec.builder()
+            .mainPodSpec(mainPodSpec)
+            .exitHandlerSpec(exitHandlerSpec)
+            .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
+            .build();
 
     return OMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1931,7 +1958,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       // Create a default server connection based on client configuration
       // This ensures the pipeline can authenticate with the OpenMetadata server
-      org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection serverConnection = createDefaultServerConnection();
+      org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection
+          serverConnection = createDefaultServerConnection();
 
       pipeline.setOpenMetadataServerConnection(serverConnection);
       LOG.info(DEFAULT_CONNECTION_INFO, pipeline.getName(), serverConnection.getHostPort());
@@ -1954,7 +1982,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
    * @return A properly configured OpenMetadataConnection with ingestion bot
    *         authentication
    */
-  private org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection createDefaultServerConnection() {
+  private org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection
+      createDefaultServerConnection() {
     String jwtToken = getIngestionBotToken();
     if (jwtToken == null) {
       throw new IllegalStateException(FAILED_TO_RETRIEVE_BOT_TOKEN_STATE_ERROR);
@@ -1986,29 +2015,33 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private String getIngestionBotToken() {
     try {
       // Use the same pattern as OpenMetadataOperations
-      org.openmetadata.service.jdbi3.BotRepository botRepository = (org.openmetadata.service.jdbi3.BotRepository) org.openmetadata.service.Entity
-          .getEntityRepository(
-              org.openmetadata.service.Entity.BOT);
-      org.openmetadata.service.jdbi3.UserRepository userRepository = (org.openmetadata.service.jdbi3.UserRepository) org.openmetadata.service.Entity
-          .getEntityRepository(
-              org.openmetadata.service.Entity.USER);
+      org.openmetadata.service.jdbi3.BotRepository botRepository =
+          (org.openmetadata.service.jdbi3.BotRepository)
+              org.openmetadata.service.Entity.getEntityRepository(
+                  org.openmetadata.service.Entity.BOT);
+      org.openmetadata.service.jdbi3.UserRepository userRepository =
+          (org.openmetadata.service.jdbi3.UserRepository)
+              org.openmetadata.service.Entity.getEntityRepository(
+                  org.openmetadata.service.Entity.USER);
 
       // First get the bot entity
-      org.openmetadata.schema.entity.Bot bot = botRepository.getByName(
-          null,
-          org.openmetadata.service.Entity.INGESTION_BOT_NAME,
-          new org.openmetadata.service.util.EntityUtil.Fields(java.util.Set.of()));
+      org.openmetadata.schema.entity.Bot bot =
+          botRepository.getByName(
+              null,
+              org.openmetadata.service.Entity.INGESTION_BOT_NAME,
+              new org.openmetadata.service.util.EntityUtil.Fields(java.util.Set.of()));
       if (bot == null || bot.getBotUser() == null) {
         LOG.error(INGESTION_BOT_NOT_FOUND_ERROR);
         return null;
       }
 
       // Get the bot user with authentication mechanism
-      org.openmetadata.schema.entity.teams.User botUser = userRepository.getByName(
-          null,
-          bot.getBotUser().getFullyQualifiedName(),
-          new org.openmetadata.service.util.EntityUtil.Fields(
-              java.util.Set.of("authenticationMechanism")));
+      org.openmetadata.schema.entity.teams.User botUser =
+          userRepository.getByName(
+              null,
+              bot.getBotUser().getFullyQualifiedName(),
+              new org.openmetadata.service.util.EntityUtil.Fields(
+                  java.util.Set.of("authenticationMechanism")));
 
       if (botUser == null || botUser.getAuthenticationMechanism() == null) {
         LOG.error(BOT_USER_NOT_FOUND_ERROR);
@@ -2016,14 +2049,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
       }
 
       // Extract JWT token from authentication mechanism
-      org.openmetadata.schema.entity.teams.AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
-      if (authMechanism.getAuthType() != org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT) {
+      org.openmetadata.schema.entity.teams.AuthenticationMechanism authMechanism =
+          botUser.getAuthenticationMechanism();
+      if (authMechanism.getAuthType()
+          != org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT) {
         LOG.error(BOT_AUTH_NOT_JWT_ERROR, authMechanism.getAuthType());
         return null;
       }
 
-      org.openmetadata.schema.auth.JWTAuthMechanism jwtAuth = (org.openmetadata.schema.auth.JWTAuthMechanism) authMechanism
-          .getConfig();
+      org.openmetadata.schema.auth.JWTAuthMechanism jwtAuth =
+          (org.openmetadata.schema.auth.JWTAuthMechanism) authMechanism.getConfig();
       return jwtAuth.getJWTToken();
 
     } catch (Exception e) {
@@ -2055,7 +2090,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private boolean createOrUpdateConfigMap(V1ConfigMap configMap) throws ApiException {
     String name = configMap.getMetadata().getName();
     try {
-      V1ConfigMap existing = coreApi.readNamespacedConfigMap(name, k8sConfig.getNamespace()).execute();
+      V1ConfigMap existing =
+          coreApi.readNamespacedConfigMap(name, k8sConfig.getNamespace()).execute();
       // Use resourceVersion for optimistic locking
       configMap.getMetadata().setResourceVersion(existing.getMetadata().getResourceVersion());
       coreApi.replaceNamespacedConfigMap(name, k8sConfig.getNamespace(), configMap).execute();
@@ -2126,10 +2162,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String name = cronOMJob.getMetadata().getName();
     try {
       @SuppressWarnings("unchecked")
-      Map<String, Object> existing = (Map<String, Object>) customObjectsApi
-          .getNamespacedCustomObject(
-              OMJOB_GROUP, OMJOB_VERSION, k8sConfig.getNamespace(), CRONOMJOB_PLURAL, name)
-          .execute();
+      Map<String, Object> existing =
+          (Map<String, Object>)
+              customObjectsApi
+                  .getNamespacedCustomObject(
+                      OMJOB_GROUP, OMJOB_VERSION, k8sConfig.getNamespace(), CRONOMJOB_PLURAL, name)
+                  .execute();
       @SuppressWarnings("unchecked")
       Map<String, Object> metadata = (Map<String, Object>) existing.get("metadata");
       if (metadata != null && metadata.get("resourceVersion") != null) {
@@ -2165,7 +2203,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private void deleteJobsForPipeline(String pipelineName) throws ApiException {
     String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-    V1JobList jobs = batchApi.listNamespacedJob(k8sConfig.getNamespace()).labelSelector(labelSelector).execute();
+    V1JobList jobs =
+        batchApi.listNamespacedJob(k8sConfig.getNamespace()).labelSelector(labelSelector).execute();
 
     for (V1Job job : jobs.getItems()) {
       String jobName = job.getMetadata().getName();
@@ -2253,10 +2292,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
   String sanitizeName(String name) {
     // K8s names must be lowercase, alphanumeric, or '-'
     // Must start with alphanumeric, max 63 chars
-    String sanitized = name.toLowerCase()
-        .replaceAll("[^a-z0-9-]", "-")
-        .replaceAll("-+", "-")
-        .replaceAll("^-+|-+$", "");
+    String sanitized =
+        name.toLowerCase()
+            .replaceAll("[^a-z0-9-]", "-")
+            .replaceAll("-+", "-")
+            .replaceAll("^-+|-+$", "");
 
     if (sanitized.length() > 53) { // Leave room for prefixes
       sanitized = sanitized.substring(0, 53).replaceAll("-+$", "");
@@ -2293,8 +2333,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private String getKubernetesVersion() {
     try {
-      io.kubernetes.client.openapi.apis.VersionApi versionApi = new io.kubernetes.client.openapi.apis.VersionApi(
-          coreApi.getApiClient());
+      io.kubernetes.client.openapi.apis.VersionApi versionApi =
+          new io.kubernetes.client.openapi.apis.VersionApi(coreApi.getApiClient());
       return versionApi.getCode().execute().getGitVersion();
     } catch (Exception e) {
       return "kubernetes";
