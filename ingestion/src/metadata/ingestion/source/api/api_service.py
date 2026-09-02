@@ -103,7 +103,9 @@ class ApiServiceTopology(ServiceTopology):
                 use_cache=True,
             ),
         ],
+        children=None,
         post_process=["flush_api_collections"],
+        threads=False,
     )
     api_endpoint: Annotated[
         TopologyNode, Field(description="API Endpoint Processing Node")
@@ -118,6 +120,9 @@ class ApiServiceTopology(ServiceTopology):
                 use_cache=True,
             ),
         ],
+        children=None,
+        post_process=None,
+        threads=False,
     )
 
 
