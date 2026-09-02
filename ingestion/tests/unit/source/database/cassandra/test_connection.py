@@ -77,6 +77,7 @@ def _session(keyspaces: list[str], readable: list[str]) -> MagicMock:
                 raise Unauthorized(f"not authorized on {keyspace}")
             result = MagicMock()
             result.current_rows = [MagicMock()]
+            result.has_more_pages = False
             return result
         version = MagicMock()
         version.release_version = "4.1.3"
@@ -175,3 +176,22 @@ def test_get_schemas_reports_the_keyspaces_in_scope():
 
     assert "1 keyspace" in evidence.summary
     assert evidence.caveat is None
+
+
+def test_get_tables_reports_a_floor_when_the_result_is_paged():
+    """Only the first page is read, so the count must not read as a total"""
+    session = _session(["sales"], readable=["sales"])
+    original = session.execute.side_effect
+
+    def paged(statement, parameters=None):
+        result = original(statement, parameters)
+        if parameters is not None:
+            result.has_more_pages = True
+        return result
+
+    session.execute.side_effect = paged
+
+    with _checks(_config(), session) as checks:
+        evidence = checks.get_tables()
+
+    assert "more exist" in evidence.summary

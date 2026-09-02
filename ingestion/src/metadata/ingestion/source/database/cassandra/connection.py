@@ -30,8 +30,12 @@ from cassandra.cluster import Session as CassandraSession
 from metadata.core.connections.test_connection import ErrorPack, Evidence, Matchers, check, when
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
-from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
-from metadata.core.connections.test_connection.checks.summary import count, enumerated
+from metadata.core.connections.test_connection.checks.scope import (
+    DEFAULT_MAX_TARGETS,
+    ProbeScope,
+    probe_targets,
+)
+from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS, probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
@@ -131,8 +135,9 @@ class CassandraChecks:
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
         targeted = self._targeted_keyspaces()
+        # Capped by the scope, so the count is a floor once it reaches the cap.
         return Evidence(
-            summary=enumerated(len(targeted), "keyspace"),
+            summary=enumerated(len(targeted), "keyspace", DEFAULT_MAX_TARGETS),
             command=_command(CASSANDRA_GET_KEYSPACES),
             caveat=None if targeted else _nothing_in_scope(),
         )
@@ -159,22 +164,25 @@ class CassandraChecks:
                 summary=f"no keyspace in scope to read {kind}s from", command=command, caveat=_nothing_in_scope()
             )
 
-        found: dict[str, int] = {}
+        found: dict[str, tuple[int, bool]] = {}
 
         def probe(keyspace: str) -> None:
-            # current_rows is the first page: proving the read works never needs more.
-            found[keyspace] = len(self._session.client.execute(statement, [keyspace]).current_rows)
+            # Only the first page: proving the read works never needs the rest, so
+            # the count is reported as a floor when more pages exist.
+            rows = self._session.client.execute(statement, [keyspace])
+            found[keyspace] = (len(rows.current_rows), bool(rows.has_more_pages))
 
         try:
             keyspace = probe_targets(targeted, probe)
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
 
-        number = found.get(keyspace, 0) if keyspace else 0
+        number, more = found.get(keyspace, (0, False)) if keyspace else (0, False)
+        empty = not number and not more
         return Evidence(
-            summary=f"{count(number, kind)} in keyspace '{keyspace}'",
+            summary=f"{count(number, kind)} in keyspace '{keyspace}'" + more_suffix(number, more),
             command=command,
-            caveat=None if number or kind != "table" else _nothing_visible(kind, str(keyspace)),
+            caveat=_nothing_visible(kind, str(keyspace)) if empty and kind == "table" else None,
         )
 
 
