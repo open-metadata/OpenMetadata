@@ -1791,10 +1791,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 expandable={expandableConfig}
                 extraTableFilters={extraTableFilters}
                 loading={isTableLoading || isExpandingAll}
-                scroll={GLOSSARY_TABLE_SCROLL}
                 pagination={false}
                 rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
+                scroll={GLOSSARY_TABLE_SCROLL}
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               />
