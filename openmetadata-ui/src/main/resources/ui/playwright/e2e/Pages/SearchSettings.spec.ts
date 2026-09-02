@@ -281,7 +281,10 @@ test.describe('Search Settings', () => {
       ).toBeVisible();
 
       await openMatchingFieldsPanel(page);
-      await page.getByTestId('field-container-header').first().click();
+      // Named field rather than whichever row happens to render first: the assertion below is
+      // that the server annotates `highlight`, which only means something on a field the index
+      // mapping can actually highlight -- an analyzed text field such as `description`.
+      await page.getByTestId('field-configuration-panel-description').click();
 
       const highlightFieldToggle = page.getByTestId('highlight-field-switch');
 
