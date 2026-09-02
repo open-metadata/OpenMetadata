@@ -383,12 +383,21 @@ public class DomainIsolationIT {
                         + scopedNames);
               });
 
-      Set<String> widenedNames = domainSearchFqns(widenedBot);
-      assertTrue(
-          widenedNames.contains(d2Fqn),
-          "A second unconditioned ViewAll role restores the full view, which is why the seeded "
-              + "deny-based DomainOnlyAccessRole is the supported way to scope by domain. Saw: "
-              + widenedNames);
+      // The widened bot has its own subject and RBAC cache entries, so it needs its own poll
+      // rather than riding on the scoped bot's having settled.
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> widenedNames = domainSearchFqns(widenedBot);
+                assertTrue(
+                    widenedNames.contains(d2Fqn),
+                    "A second unconditioned ViewAll role restores the full view, which is why the "
+                        + "seeded deny-based DomainOnlyAccessRole is the supported way to scope by "
+                        + "domain. Saw: "
+                        + widenedNames);
+              });
     } finally {
       drain(cleanup);
     }
