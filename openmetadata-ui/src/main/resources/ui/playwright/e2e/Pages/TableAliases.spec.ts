@@ -22,10 +22,7 @@ import { test } from '../fixtures/pages';
 // Shaped like the FQNs the MSSQL synonym sweep writes to Table.aliases, so the
 // assertion mirrors what the connector actually produces rather than an
 // arbitrary label.
-const ALIAS_NAMES = [
-  `legacy_customers_${uuid()}`,
-  `legacy_orders_${uuid()}`,
-];
+const ALIAS_NAMES = [`legacy_customers_${uuid()}`, `legacy_orders_${uuid()}`];
 const ALIASES = ALIAS_NAMES.map((name) => `mssql_synonym_svc.dbo.${name}`);
 
 test.describe('Table Aliases widget', { tag: [DOMAIN_TAGS.DISCOVERY] }, () => {
