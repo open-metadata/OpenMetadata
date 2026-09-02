@@ -123,8 +123,11 @@ class MongoDBChecks:
         other one, so a single database refusing `listCollections` must not fail
         the step - only every database in scope refusing it does.
         """
-        targeted = self._targeted_databases()
         command = "listCollections"
+        try:
+            targeted = self._targeted_databases()
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
         if not targeted:
             return Evidence(
                 summary="no database in scope to read collections from",

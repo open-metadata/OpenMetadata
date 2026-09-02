@@ -175,3 +175,15 @@ def test_get_collections_without_a_database_in_scope_is_a_caveat_not_a_failure()
 def test_check_access_reports_the_server_version():
     with _checks(_config(), _client(["testdb"], ["testdb"])) as checks:
         assert "6.0.16" in checks.check_access().summary
+
+
+def test_get_collections_reports_a_failed_listing_with_its_command():
+    """GetDatabases is not a gate, so GetCollections can be the first to see the
+    listing fail - and the failure still has to carry what was attempted"""
+    client = _client(["testdb"], ["testdb"])
+    client.list_database_names.side_effect = OperationFailure("not authorized on admin")
+
+    with _checks(_config(), client) as checks, pytest.raises(CheckError) as failure:
+        checks.get_collections()
+
+    assert failure.value.evidence.command == "listCollections"
