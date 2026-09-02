@@ -136,6 +136,7 @@ public class JobRecoveryManager {
                 IndexJobStatus.INITIALIZING,
                 IndexJobStatus.READY,
                 IndexJobStatus.RUNNING,
+                IndexJobStatus.PROMOTING,
                 IndexJobStatus.STOPPING),
             1);
 
@@ -165,6 +166,7 @@ public class JobRecoveryManager {
                     IndexJobStatus.INITIALIZING,
                     IndexJobStatus.READY,
                     IndexJobStatus.RUNNING,
+                    IndexJobStatus.PROMOTING,
                     IndexJobStatus.STOPPING),
                 1);
 
@@ -227,6 +229,7 @@ public class JobRecoveryManager {
                 IndexJobStatus.INITIALIZING,
                 IndexJobStatus.READY,
                 IndexJobStatus.RUNNING,
+                IndexJobStatus.PROMOTING,
                 IndexJobStatus.STOPPING),
             10);
 
@@ -293,18 +296,69 @@ public class JobRecoveryManager {
     long now = System.currentTimeMillis();
     long jobAge = now - (job.getStartedAt() != null ? job.getStartedAt() : job.getCreatedAt());
 
-    // Decide whether to recover or fail based on job state and age
-    boolean shouldRecover = shouldRecoverJob(job, jobAge);
-
-    if (shouldRecover) {
+    if (shouldRecoverJob(job, jobAge)) {
       if (recoverJob(job)) {
         resultBuilder.incrementRecovered();
         LOG.info("Job {} has been marked for recovery (will resume processing)", job.getId());
       }
+    } else if (hasFinishedProcessing(job)) {
+      terminalizeUnpromotedJob(job, resultBuilder);
     } else {
       failJob(job, "Job abandoned due to server crash or shutdown");
       resultBuilder.incrementFailed();
       LOG.info("Job {} has been marked as FAILED", job.getId());
+    }
+  }
+
+  /**
+   * True when an orphaned job finished processing every partition but is not yet terminal — either
+   * left RUNNING (the coordinator exited between the last partition completing and the completion
+   * check) or stuck PROMOTING (the coordinator died during the promotion sweep). Such a job did its
+   * work and must be terminalized, not failed as an abandoned crash. A RUNNING job must have at least
+   * one partition, so one that never created any is not mistaken for finished.
+   */
+  private boolean hasFinishedProcessing(SearchIndexJob job) {
+    boolean finished = job.getStatus() == IndexJobStatus.PROMOTING;
+    if (job.getStatus() == IndexJobStatus.RUNNING) {
+      List<SearchIndexPartition> partitions = coordinator.getPartitions(job.getId(), null);
+      finished =
+          !partitions.isEmpty() && partitions.stream().noneMatch(this::isPartitionOutstanding);
+    }
+    return finished;
+  }
+
+  private boolean isPartitionOutstanding(SearchIndexPartition partition) {
+    PartitionStatus status = partition.getStatus();
+    return status == PartitionStatus.PENDING || status == PartitionStatus.PROCESSING;
+  }
+
+  /**
+   * Terminalize an orphaned job that finished processing but whose coordinator died before promotion
+   * was confirmed. Takes the reindex lock, drives the job through the completion check (RUNNING ->
+   * PROMOTING) and then marks it COMPLETED_WITH_ERRORS: promotion could not be verified from cold
+   * recovery, so the staged indexes may not have been swapped onto their aliases and the run is not a
+   * clean rebuild. This never marks a fully-processed job FAILED and it unblocks future reindexes.
+   *
+   * <p>It does not itself re-run promotion; recovering the staged indexes is a follow-up (rebuild the
+   * context from {@code job.getStagedIndexMapping()} and run the finalizer).
+   */
+  private void terminalizeUnpromotedJob(SearchIndexJob job, RecoveryResult.Builder resultBuilder) {
+    if (coordinator.tryAcquireReindexLock(job.getId())) {
+      try {
+        coordinator.markOrphanedJobCompletedWithErrors(job.getId());
+        resultBuilder.incrementRecovered();
+        LOG.info(
+            "Job {} finished processing but its coordinator died before promotion completed; "
+                + "terminalized as COMPLETED_WITH_ERRORS (staged indexes may be stale - re-run "
+                + "reindex to refresh) instead of failing it as abandoned",
+            job.getId());
+      } finally {
+        coordinator.releaseReindexLock(job.getId());
+      }
+    } else {
+      LOG.warn(
+          "Could not acquire lock to finalize orphaned job {}; another server may hold it",
+          job.getId());
     }
   }
 

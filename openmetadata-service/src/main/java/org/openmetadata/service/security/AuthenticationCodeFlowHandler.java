@@ -18,7 +18,6 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
@@ -118,7 +117,7 @@ import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.AzureAd2OidcConfiguration;
 import org.pac4j.oidc.config.OidcConfiguration;
-import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
+import org.pac4j.oidc.config.method.IPrivateKeyJwtClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 @Slf4j
@@ -518,7 +517,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
-      OIDCProviderMetadata metadata = client.getConfiguration().getProviderMetadata();
+      OIDCProviderMetadata metadata = resolveProviderMetadata(client.getConfiguration());
       if (metadata.supportsAuthorizationResponseIssuerParam()
           && !metadata.getIssuer().equals(successResponse.getIssuer())) {
         throw new TechnicalException("Issuer mismatch, possible mix-up attack.");
@@ -534,11 +533,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       validateAndSendTokenRequest(session, credentials, computedCallbackUrl);
 
       // Log Error if the Refresh Token is null
-      if (credentials.getRefreshToken() == null) {
+      if (credentials.toRefreshToken() == null) {
         LOG.error("Refresh token is null for user session: {}", session.getId());
       }
 
-      validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
+      JWT idToken = credentials.toIdToken();
+      if (idToken == null) {
+        throw new TechnicalException("ID token not returned by OIDC provider");
+      }
+      validateNonceIfRequired(session, idToken.getJWTClaimsSet());
 
       // Put Credentials in Session
       session.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
@@ -600,15 +603,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (credentials.isPresent()) {
         LOG.debug("Credentials Found For User Session: {} ", session.getId());
         JwtResponse jwtResponse = new JwtResponse();
-        jwtResponse.setAccessToken(credentials.get().getIdToken().getParsedString());
+        JWT idToken = credentials.get().toIdToken();
+        if (idToken == null) {
+          throw new TechnicalException("ID token not found for user session");
+        }
+        jwtResponse.setAccessToken(credentials.get().getIdToken());
         jwtResponse.setExpiryDuration(
-            credentials
-                .get()
-                .getIdToken()
-                .getJWTClaimsSet()
-                .getExpirationTime()
-                .toInstant()
-                .getEpochSecond());
+            idToken.getJWTClaimsSet().getExpirationTime().toInstant().getEpochSecond());
         writeJsonResponse(httpServletResponse, JsonUtils.pojoToJson(jwtResponse));
       } else {
         // Hotfix #30304: do NOT logout/invalidate here. A login may be in flight on this very
@@ -638,7 +639,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     } catch (Exception e) {
       throw new TechnicalException(e);
     }
-    return client.getConfiguration().getProviderMetadata().getAuthorizationEndpointURI().toString()
+    return resolveProviderMetadata(client.getConfiguration())
+            .getAuthorizationEndpointURI()
+            .toString()
         + '?'
         + queryString;
   }
@@ -656,7 +659,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private Optional<OidcCredentials> getUserCredentialsFromSession(HttpSession session) {
     OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
-    if (credentials != null && credentials.getRefreshToken() != null) {
+    if (credentials != null && credentials.toRefreshToken() != null) {
       LOG.trace("Credentials found in session: {}", credentials);
       renewOidcCredentials(session, credentials);
       return Optional.of(credentials);
@@ -682,7 +685,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           (CodeVerifier) session.getAttribute(client.getCodeVerifierSessionAttributeName());
       AuthorizationCodeGrant grant =
           new AuthorizationCodeGrant(
-              oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier);
+              oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier);
       TokenRequest request = createTokenRequest(grant);
       executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
     }
@@ -724,17 +727,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
-      credentials.setCode(code);
+      credentials.setCode(code.getValue());
     }
     // get ID token
     JWT idToken = successResponse.getIDToken();
     if (idToken != null) {
-      credentials.setIdToken(idToken);
+      credentials.setIdToken(idToken.serialize());
     }
     // get access token
     AccessToken accessToken = successResponse.getAccessToken();
     if (accessToken != null) {
-      credentials.setAccessToken(accessToken);
+      credentials.setAccessTokenObject(accessToken);
     }
 
     return credentials;
@@ -765,6 +768,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
+  private static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
+    configuration.ensuresMetadataResolverInitialized();
+    return configuration.getOpMetadataResolver().load();
+  }
+
   protected Map<String, List<String>> retrieveCallbackParameters(HttpServletRequest request) {
     Map<String, String[]> requestParameters = request.getParameterMap();
     Map<String, List<String>> map = new HashMap<>();
@@ -780,7 +788,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     if (configuration.getSecret() != null) {
       // check authentication methods
       List<ClientAuthenticationMethod> metadataMethods =
-          configuration.findProviderMetadata().getTokenEndpointAuthMethods();
+          resolveProviderMetadata(configuration).getTokenEndpointAuthMethods();
 
       ClientAuthenticationMethod preferredMethod = getPreferredAuthenticationMethod(configuration);
 
@@ -816,7 +824,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         Secret clientSecret = new Secret(configuration.getSecret());
         clientAuthenticationMechanism = new ClientSecretBasic(clientID, clientSecret);
       } else if (ClientAuthenticationMethod.PRIVATE_KEY_JWT.equals(chosenMethod)) {
-        PrivateKeyJWTClientAuthnMethodConfig privateKetJwtConfig =
+        IPrivateKeyJwtClientAuthnMethodConfig privateKetJwtConfig =
             configuration.getPrivateKeyJWTClientAuthnMethodConfig();
         assertNotNull("privateKetJwtConfig", privateKetJwtConfig);
         JWSAlgorithm jwsAlgo = privateKetJwtConfig.getJwsAlgorithm();
@@ -828,7 +836,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           clientAuthenticationMechanism =
               new PrivateKeyJWT(
                   clientID,
-                  configuration.findProviderMetadata().getTokenEndpointURI(),
+                  resolveProviderMetadata(configuration).getTokenEndpointURI(),
                   jwsAlgo,
                   privateKey,
                   keyID,
@@ -902,7 +910,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void sendRedirectWithToken(
       HttpSession httpSession, HttpServletResponse response, OidcCredentials credentials)
       throws ParseException, IOException {
-    JWT jwt = credentials.getIdToken();
+    JWT jwt = credentials.toIdToken();
+    if (jwt == null) {
+      throw new TechnicalException("ID token not found for user session");
+    }
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getJWTClaimsSet().getClaims());
 
@@ -927,8 +938,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
             redirectUri,
-            java.net.URLEncoder.encode(
-                credentials.getIdToken().getParsedString(), StandardCharsets.UTF_8),
+            java.net.URLEncoder.encode(credentials.getIdToken(), StandardCharsets.UTF_8),
             java.net.URLEncoder.encode(email, StandardCharsets.UTF_8),
             java.net.URLEncoder.encode(userName, StandardCharsets.UTF_8));
     response.sendRedirect(url);
@@ -1033,7 +1043,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   public void refreshTokenRequest(HttpSession httpSession, OidcCredentials credentials) {
-    var refreshToken = credentials.getRefreshToken();
+    RefreshToken refreshToken = credentials.toRefreshToken();
     if (refreshToken != null) {
       try {
         final var request = createTokenRequest(new RefreshTokenGrant(refreshToken));
@@ -1070,7 +1080,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
             // Get the claims from the stored credentials
             Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-            claims.putAll(storedCredentials.getIdToken().getJWTClaimsSet().getClaims());
+            JWT storedIdToken = storedCredentials.toIdToken();
+            if (storedIdToken == null) {
+              throw new TechnicalException("ID token not found for user session");
+            }
+            claims.putAll(storedIdToken.getJWTClaimsSet().getClaims());
 
             String username = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
             User user = Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
@@ -1087,7 +1101,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
                         false,
                         ServiceTokenType.OM_USER);
             // Set the access token to the new JWT token
-            credentials.setIdToken(SignedJWT.parse(jwtAuthMechanism.getJWTToken()));
+            credentials.setIdToken(jwtAuthMechanism.getJWTToken());
           }
           return;
         } else {
@@ -1115,7 +1129,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
     HttpURLConnection connection = null;
     try {
-      RefreshToken refreshToken = azureAdProfile.getRefreshToken();
+      RefreshToken refreshToken = azureAdProfile.toRefreshToken();
       if (refreshToken == null || refreshToken.getValue() == null) {
         throw new TechnicalException("No refresh token available to request new access token.");
       }
@@ -1125,7 +1139,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           HttpConstants.CONTENT_TYPE_HEADER, HttpConstants.APPLICATION_FORM_ENCODED_HEADER_VALUE);
       headers.put(HttpConstants.ACCEPT_HEADER, HttpConstants.APPLICATION_JSON);
 
-      URL tokenEndpointURL = azureConfig.findProviderMetadata().getTokenEndpointURI().toURL();
+      URL tokenEndpointURL = resolveProviderMetadata(azureConfig).getTokenEndpointURI().toURL();
       connection = HttpUtils.openPostConnection(tokenEndpointURL, headers);
 
       String requestBody = azureConfig.makeOauth2TokenRequest(refreshToken.getValue());
@@ -1148,14 +1162,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String body = HttpUtils.readBody(connection);
       Map<String, Object> res = JsonUtils.readValue(body, new TypeReference<>() {});
 
-      azureAdProfile.setAccessToken(new BearerAccessToken((String) res.get("access_token")));
-      azureAdProfile.setRefreshToken(new RefreshToken((String) res.get("refresh_token")));
+      azureAdProfile.setAccessTokenObject(new BearerAccessToken((String) res.get("access_token")));
+      azureAdProfile.setRefreshTokenObject(new RefreshToken((String) res.get("refresh_token")));
 
       if (res.containsKey("id_token")) {
-        azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
+        azureAdProfile.setIdToken((String) res.get("id_token"));
       }
 
-    } catch (IOException | ParseException e) {
+    } catch (IOException e) {
       throw new TechnicalException("Exception while refreshing Azure AD token", e);
     } finally {
       HttpUtils.closeConnection(connection);
@@ -1192,12 +1206,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private TokenRequest createTokenRequest(final AuthorizationGrant grant) {
     if (clientAuthentication != null) {
       return new TokenRequest(
-          client.getConfiguration().findProviderMetadata().getTokenEndpointURI(),
+          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
           this.clientAuthentication,
           grant);
     } else {
       return new TokenRequest(
-          client.getConfiguration().findProviderMetadata().getTokenEndpointURI(),
+          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
           new ClientID(client.getConfiguration().getClientId()),
           grant);
     }
@@ -1245,7 +1259,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
 
     // Check expiry, azure on first go itself is returning a expried token sometimes
-    Date expirationTime = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
+    JWT idToken = credentials.toIdToken();
+    if (idToken == null) {
+      throw new TechnicalException("ID token not returned by OIDC provider");
+    }
+    Date expirationTime = idToken.getJWTClaimsSet().getExpirationTime();
     if (expirationTime != null
         && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       renewOidcCredentials(session, credentials);
@@ -1255,12 +1273,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void populateCredentialsFromTokenResponse(
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
-    credentials.setAccessToken(oidcTokens.getAccessToken());
+    credentials.setAccessTokenObject(oidcTokens.getAccessToken());
     if (oidcTokens.getRefreshToken() != null) {
-      credentials.setRefreshToken(oidcTokens.getRefreshToken());
+      credentials.setRefreshTokenObject(oidcTokens.getRefreshToken());
     }
     if (oidcTokens.getIDToken() != null) {
-      credentials.setIdToken(oidcTokens.getIDToken());
+      credentials.setIdToken(oidcTokens.getIDToken().serialize());
     }
   }
 
@@ -1300,7 +1318,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Validate provider metadata
       OIDCProviderMetadata providerMetadata =
-          tempHandler.client.getConfiguration().findProviderMetadata();
+          resolveProviderMetadata(tempHandler.client.getConfiguration());
       if (providerMetadata == null) {
         throw new IllegalArgumentException("Failed to retrieve provider metadata from server URL");
       }

@@ -27,7 +27,6 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -51,7 +49,6 @@ import org.openmetadata.sdk.services.teams.UserService;
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
-
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
   @Test
@@ -205,71 +202,52 @@ public class UserMetricsResourceIT {
   void testUserMetricsWithRealActivity() throws Exception {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     TestNamespace ns = new TestNamespace("UserMetricsResourceIT");
-
-    Map<String, Object> initialMetrics = getUserMetrics();
-    log.info("Initial metrics: {}", initialMetrics);
-
-    int initialTotalUsers = (Integer) initialMetrics.get("total_users");
-    int initialBotUsers = (Integer) initialMetrics.get("bot_users");
-
-    String userName = ns.prefix("metricsuser");
-    String email = "metricsuser_" + ns.shortPrefix() + "@test.openmetadata.org";
-    CreateUser createUser = new CreateUser().withName(userName).withEmail(email).withIsBot(false);
-
     UserService usersApi = adminClient.users();
-    User newUser = usersApi.create(createUser);
-    log.info("Created new user: {}", newUser.getName());
+    List<User> createdUsers = new ArrayList<>();
+    int initialTotalUsers = (Integer) getUserMetrics().get("total_users");
 
     try {
-      usersApi.getByName(newUser.getName());
+      for (int i = 0; i < 3; i++) {
+        String userName = ns.prefix("metricsuser" + i);
+        String email = "metricsuser" + i + "_" + ns.shortPrefix() + "@test.openmetadata.org";
+        createdUsers.add(
+            usersApi.create(new CreateUser().withName(userName).withEmail(email).withIsBot(false)));
+      }
 
-      Awaitility.await("Wait for user metrics to reflect new user")
-          .atMost(Duration.ofSeconds(30))
-          .pollDelay(Duration.ofMillis(500))
-          .pollInterval(Duration.ofSeconds(1))
-          .ignoreExceptions()
-          .until(
-              () -> {
-                Map<String, Object> m = getUserMetrics();
-                int total = (Integer) m.get("total_users");
-                return total > initialTotalUsers;
-              });
+      for (User createdUser : createdUsers) {
+        User fetchedUser = usersApi.getByName(createdUser.getName());
+        assertEquals(createdUser.getId(), fetchedUser.getId(), "Created user should be readable");
+      }
 
+      // No wait: /user-metrics recomputes total_users per request via UserDAO.listCount, so a
+      // created user is counted as soon as create() returns. Polling would only widen the window
+      // in which a parallel lane can hard-delete users and push the count back down.
       Map<String, Object> updatedMetrics = getUserMetrics();
       log.info("Updated metrics after activity: {}", updatedMetrics);
 
       int updatedTotalUsers = (Integer) updatedMetrics.get("total_users");
-      // In parallel test execution, other tests may create/delete users, so verify the user exists
       assertTrue(
-          updatedTotalUsers >= initialTotalUsers,
-          "Total users should not decrease: initial="
-              + initialTotalUsers
-              + ", updated="
-              + updatedTotalUsers);
-      // Verify our created user exists by fetching it
-      User fetchedUser = usersApi.getByName(newUser.getName());
-      assertNotNull(fetchedUser, "Created user should exist");
+          updatedTotalUsers >= initialTotalUsers + createdUsers.size(),
+          "Metrics should include every user created and kept alive by this test");
 
       String lastActivity = (String) updatedMetrics.get("last_activity");
       assertNotNull(lastActivity, "Last activity should not be null after user activity");
 
-      Instant lastActivityTime = Instant.parse(lastActivity);
-      Instant now = Instant.now();
-      long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-      // In parallel test execution, tests take longer due to resource contention
-      // Use a generous timeout (10 minutes) to avoid flaky tests
-      assertTrue(
-          secondsSinceActivity < 600,
-          "Last activity should be within last 10 minutes, but was "
-              + secondsSinceActivity
-              + " seconds ago");
+      // No wall-clock freshness assertion. last_activity is MAX(lastActivityTime) read from the
+      // DB, and nothing this test does writes that column: UserActivityFilter only caches activity
+      // in memory, UserActivityTracker flushes to the DB once an hour, and the only immediate write
+      // is on login (UserRepository.updateUserLastActivityTime) which the ITs never perform - they
+      // self-mint JWTs via JwtAuthProvider. So the value is pinned near lane start and goes stale
+      // as the lane runs; any fixed window shorter than the lane duration fails by construction.
 
       int dailyActiveUsers = (Integer) updatedMetrics.get("daily_active_users");
       assertTrue(dailyActiveUsers >= 0, "Daily active users should be non-negative");
     } finally {
-      Map<String, String> deleteParams = new HashMap<>();
-      deleteParams.put("hardDelete", "true");
-      usersApi.delete(newUser.getId().toString(), deleteParams);
+      for (User createdUser : createdUsers) {
+        Map<String, String> deleteParams = new HashMap<>();
+        deleteParams.put("hardDelete", "true");
+        usersApi.delete(createdUser.getId().toString(), deleteParams);
+      }
     }
   }
 
@@ -306,33 +284,17 @@ public class UserMetricsResourceIT {
       }
     }
 
-    Awaitility.await("Wait for metrics to reflect user activity")
-        .atMost(Duration.ofSeconds(30))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(1))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              Map<String, Object> m = getUserMetrics();
-              return m.get("last_activity") != null;
-            });
-
+    // No wait: the metric is recomputed per request, so last_activity already reflects the
+    // activity above by the time create()/delete() have returned.
     Map<String, Object> metrics = getUserMetrics();
     log.info("Metrics after multiple users: {}", metrics);
 
     String lastActivity = (String) metrics.get("last_activity");
     assertNotNull(lastActivity, "Last activity should not be null");
 
-    Instant lastActivityTime = Instant.parse(lastActivity);
-    Instant now = Instant.now();
-    long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-    // In parallel test execution, tests take longer due to resource contention
-    // Use a generous timeout (10 minutes) to avoid flaky tests
-    assertTrue(
-        secondsSinceActivity < 600,
-        "Last activity should be within last 10 minutes, but was "
-            + secondsSinceActivity
-            + " seconds ago");
+    // Removed wall-clock freshness check: last_activity is a cluster-wide MAX unrelated to
+    // this test's actions; a quiet lane makes the window arbitrary. Structural assertions
+    // still cover the metric shape.
   }
 
   @Test

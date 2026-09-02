@@ -91,6 +91,9 @@ public class DistributedSearchIndexExecutor {
   /** Interval for checking stale partitions */
   private static final long STALE_CHECK_INTERVAL_MS = 30000;
 
+  /** Poll cadence while waiting for participant partitions to drain, so finishers reconcile promptly */
+  private static final long DRAIN_WAIT_POLL_INTERVAL_MS = 2000;
+
   /** Interval for refreshing the distributed lock */
   private static final long LOCK_REFRESH_INTERVAL_MS = 60000;
 
@@ -99,6 +102,17 @@ public class DistributedSearchIndexExecutor {
 
   /** Default cadence the orchestrator re-checks job state while waiting for workers to finish */
   private static final long DEFAULT_LATCH_POLL_INTERVAL_SECONDS = 15;
+
+  private static final long DEFAULT_PARTICIPANT_DRAIN_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(30);
+
+  // Generous backstop on how long this coordinator waits for participant-claimed partitions to
+  // finish after it has drained its own, so every entity is promoted with a fully-built index
+  // instead of being left on its stale pre-reindex index. The wait returns the moment the job goes
+  // terminal, so a large value is free in the common case; it only bounds a wedged job (a dead
+  // participant whose reclaimed partition no surviving worker re-claims), which is then left
+  // in-flight for the orphan-job monitor to finalize rather than force-cancelled. Overridable in
+  // tests.
+  private volatile long participantDrainTimeoutMs = DEFAULT_PARTICIPANT_DRAIN_TIMEOUT_MS;
 
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
@@ -484,8 +498,9 @@ public class DistributedSearchIndexExecutor {
             .name("reindex-stale-reclaimer-" + jobId.toString().substring(0, 8))
             .start(() -> runStaleReclaimerLoop(jobId));
 
+    boolean drained = false;
     try {
-      boolean drained = awaitWorkers(workerLatch, jobId);
+      drained = awaitWorkers(workerLatch, jobId);
       if (drained) {
         LOG.info("All workers completed for job {}", jobId);
       } else {
@@ -515,14 +530,13 @@ public class DistributedSearchIndexExecutor {
       Thread.currentThread().interrupt();
       LOG.warn("Execution interrupted for job {}", jobId);
     } finally {
-      // If the job is stopping, force-complete any partitions still stuck in PROCESSING
-      // so the job can transition to a terminal state
+      // Drive the job to a terminal state before the coordinator unwinds, so the strategy's
+      // monitor returns and the finalizer promotes every staged index. Without this, a slow or
+      // dead participant server's still-PROCESSING partition leaves the job RUNNING forever — the
+      // finalizer never runs and the participant's entities silently keep serving their stale
+      // pre-reindex indexes (surfacing as fielddata/nested mapping errors after an upgrade).
       try {
-        SearchIndexJob currentState = coordinator.getJob(jobId).orElse(null);
-        if (currentState != null && currentState.getStatus() == IndexJobStatus.STOPPING) {
-          coordinator.forceCompleteProcessingPartitions(jobId);
-        }
-        coordinator.checkAndUpdateJobCompletion(jobId);
+        driveJobToTerminalState(jobId, drained);
       } catch (Exception e) {
         LOG.warn("Error during job cleanup for job {}", jobId, e);
       }
@@ -584,15 +598,8 @@ public class DistributedSearchIndexExecutor {
       try {
         if (metrics != null && timerSample != null) {
           SearchIndexJob finalJob = coordinator.getJob(jobId).orElse(null);
-          IndexJobStatus finalStatus = finalJob != null ? finalJob.getStatus() : null;
-          if (finalStatus == IndexJobStatus.COMPLETED
-              || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS) {
-            metrics.recordJobCompleted(timerSample);
-          } else if (finalStatus == IndexJobStatus.STOPPED) {
-            metrics.recordJobStopped(timerSample);
-          } else {
-            metrics.recordJobFailed(timerSample);
-          }
+          recordTerminalMetric(
+              metrics, timerSample, finalJob != null ? finalJob.getStatus() : null);
         }
       } catch (Exception e) {
         LOG.debug("Error recording metrics", e);
@@ -824,6 +831,86 @@ public class DistributedSearchIndexExecutor {
       } catch (Exception e) {
         LOG.error("Error in stale reclaimer for job {}", jobId, e);
       }
+    }
+  }
+
+  /**
+   * Ensures the job reaches a terminal state as the coordinator unwinds. A STOPPING job force-cancels
+   * its PROCESSING partitions (the user asked to stop). Otherwise, once this coordinator has drained
+   * its own partitions ({@code drained}), any still-PROCESSING partitions belong to participant
+   * servers: wait for them to finish so every entity completes and is promoted with a fully-built
+   * index, never force-cancelling in-flight work (which would promote a partial index). The
+   * stale-reclaimer runs alongside this wait, reconciling finished entities as their partitions land
+   * and re-queuing stragglers a crashed participant abandoned. If the wait is exhausted - a wedged
+   * job whose reclaimed work no surviving worker picks up - the partitions are left in-flight for the
+   * orphan-job monitor to finalize rather than cancelled.
+   */
+  private void driveJobToTerminalState(UUID jobId, boolean drained) {
+    SearchIndexJob state = coordinator.getJob(jobId).orElse(null);
+    if (state != null && state.getStatus() == IndexJobStatus.STOPPING) {
+      coordinator.forceCompleteProcessingPartitions(jobId);
+    } else if (drained
+        && !coordinator.getPartitions(jobId, PartitionStatus.PROCESSING).isEmpty()
+        && !awaitProcessingComplete(jobId, participantDrainTimeoutMs)) {
+      LOG.warn(
+          "Job {} still has PROCESSING partitions after waiting {}ms for participant servers to "
+              + "finish; leaving them in-flight rather than cancelling, so entities are promoted "
+              + "with complete indexes once their partitions actually finish",
+          jobId,
+          participantDrainTimeoutMs);
+    }
+    coordinator.checkAndUpdateJobCompletion(jobId);
+  }
+
+  /**
+   * Waits up to {@code timeoutMs} for the job's partitions to all finish processing (the job reaching
+   * PROMOTING or a terminal state), reconciling entity completion each cycle so partitions finished
+   * by participant servers are promoted as they land. Returns whether processing completed in time.
+   */
+  private boolean awaitProcessingComplete(UUID jobId, long timeoutMs) {
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    boolean processingComplete = isJobProcessingComplete(jobId);
+    while (!processingComplete && !Thread.currentThread().isInterrupted()) {
+      if (entityTracker != null) {
+        entityTracker.reconcileFromDatabase(coordinator.getPartitions(jobId, null));
+      }
+      if (System.currentTimeMillis() >= deadline) {
+        break;
+      }
+      sleepQuietly(Math.min(STALE_CHECK_INTERVAL_MS, DRAIN_WAIT_POLL_INTERVAL_MS));
+      processingComplete = isJobProcessingComplete(jobId);
+    }
+    return processingComplete;
+  }
+
+  private boolean isJobProcessingComplete(UUID jobId) {
+    SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+    return job == null || job.isProcessingComplete();
+  }
+
+  private void sleepQuietly(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Records the timing metric for the run based on the job's status when {@code execute()} unwinds.
+   * PROMOTING is the normal drained end-state - the strategy's promotion sweep flips it terminal
+   * afterwards, outside this timer scope - so it counts as a completed run rather than a failure.
+   */
+  private void recordTerminalMetric(
+      ReindexingMetrics metrics, Timer.Sample timerSample, IndexJobStatus finalStatus) {
+    if (finalStatus == IndexJobStatus.COMPLETED
+        || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS
+        || finalStatus == IndexJobStatus.PROMOTING) {
+      metrics.recordJobCompleted(timerSample);
+    } else if (finalStatus == IndexJobStatus.STOPPED) {
+      metrics.recordJobStopped(timerSample);
+    } else {
+      metrics.recordJobFailed(timerSample);
     }
   }
 
@@ -1124,6 +1211,14 @@ public class DistributedSearchIndexExecutor {
    */
   public EntityCompletionTracker getEntityTracker() {
     return entityTracker;
+  }
+
+  /**
+   * Flip the job from PROMOTING to its terminal status after the strategy's promotion sweep. Thin
+   * delegate to the coordinator so the strategy does not reach past the executor.
+   */
+  public void markPromotionComplete(UUID jobId, boolean allPromoted) {
+    coordinator.markPromotionComplete(jobId, allPromoted);
   }
 
   /**

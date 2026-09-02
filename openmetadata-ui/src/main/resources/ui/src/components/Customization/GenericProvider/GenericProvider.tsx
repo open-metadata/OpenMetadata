@@ -145,14 +145,17 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       : column;
   }, []);
 
-  // Sync selected column from prop (deep link)
+  // Sync selected column from prop (deep link) - the URL is the single
+  // source of truth, so clear the selection when columnFqn goes away too
+  // (e.g. browser back/forward), not just when it points to a column.
   useEffect(() => {
-    // If we have a direct columnFqn from props, try to find and select it
     if (columnFqn && extractedColumns.length > 0) {
       const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
       if (col) {
         setSelectedColumn(cleanColumn(col));
       }
+    } else if (!columnFqn) {
+      setSelectedColumn(null);
     }
   }, [extractedColumns, columnFqn, cleanColumn]);
 
@@ -254,7 +257,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
       // Update URL to include column FQN if the column has a fullyQualifiedName
       if (columnFqn && data.fullyQualifiedName) {
-        const newPath = getEntityDetailsPath(type, columnFqn, routeTab);
+        const newPath = getEntityDetailsPath(type, columnFqn, currentTab);
 
         // Only navigate if the path is different from current path to avoid loops
         if (location.pathname !== newPath) {
@@ -265,7 +268,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [
       data?.fullyQualifiedName,
       type,
-      routeTab,
+      currentTab,
       navigate,
       location.pathname,
       selectedColumn?.fullyQualifiedName,
@@ -280,7 +283,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       const newPath = getEntityDetailsPath(
         type,
         data.fullyQualifiedName,
-        routeTab
+        currentTab
       );
       navigate(newPath, { replace: true });
     } else if (location.hash) {
@@ -290,7 +293,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         { replace: true }
       );
     }
-  }, [data?.fullyQualifiedName, type, routeTab, location, navigate]);
+  }, [
+    data?.fullyQualifiedName,
+    type,
+    currentTab,
+    location.pathname,
+    location.search,
+    location.hash,
+    navigate,
+  ]);
 
   // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(

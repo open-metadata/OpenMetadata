@@ -732,6 +732,23 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateInheritedFieldsToChildrenSkipsExternalHandlerOnlyChanges() throws IOException {
+    UUID tableId = UUID.randomUUID();
+    EntityInterface table = mockEntity(Entity.TABLE, tableId, "orders");
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE, tableId.toString(), changeDescription, TABLE_MAPPING, table);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
     EntityInterface domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
@@ -1095,9 +1112,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_column_search_index")),
-            matchCaptor.capture(),
-            updatesCaptor.capture());
+            eq(List.of("cluster_tableColumn")), matchCaptor.capture(), updatesCaptor.capture());
     assertEquals("table.id", matchCaptor.getValue().getLeft());
     assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
@@ -1126,7 +1141,7 @@ class SearchRepositoryBehaviorTest {
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_column_search_index")), any(Pair.class), updatesCaptor.capture());
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
     assertNull(updatesCaptor.getValue().getRight().get("certification"));
   }

@@ -93,6 +93,7 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -145,6 +146,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -248,6 +250,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
@@ -347,6 +350,76 @@ public abstract class EntityRepository<T extends EntityInterface> {
       buildEntityIdCache(
           CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
+
+  // A Guava load can finish after a writer invalidates the same key and reinstall the stale
+  // pre-write value. Writers advance these bounded epochs before eviction; loaders compare the
+  // value at the start and end of each load and reject any value that crossed a write. Both the
+  // by-id and by-name caches need one: the by-name loader populates Redis under the ID key too,
+  // so leaving it unguarded lets it re-poison entries the by-id guard just protected.
+  private static final Cache<Pair<String, UUID>, AtomicLong> WRITE_EPOCH_BY_ID =
+      CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
+
+  private static final Cache<Pair<String, String>, AtomicLong> WRITE_EPOCH_BY_NAME =
+      CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
+
+  private static long readEpochById(Pair<String, UUID> key) {
+    AtomicLong epoch = WRITE_EPOCH_BY_ID.getIfPresent(key);
+    return epoch == null ? 0L : epoch.get();
+  }
+
+  private static long readEpochByName(Pair<String, String> key) {
+    AtomicLong epoch = WRITE_EPOCH_BY_NAME.getIfPresent(key);
+    return epoch == null ? 0L : epoch.get();
+  }
+
+  @VisibleForTesting
+  static long readEpochById(String entityType, UUID id) {
+    return readEpochById(new ImmutablePair<>(entityType, id));
+  }
+
+  @VisibleForTesting
+  static long readEpochByName(String entityType, String fqn) {
+    return readEpochByName(cacheNameKey(entityType, fqn));
+  }
+
+  private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
+    if (entityType == null) {
+      return;
+    }
+    if (id != null) {
+      try {
+        WRITE_EPOCH_BY_ID
+            .get(new ImmutablePair<>(entityType, id), AtomicLong::new)
+            .incrementAndGet();
+      } catch (ExecutionException e) {
+        LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
+      }
+    }
+    if (fqn != null) {
+      // findByName quotes the input fqn for quoteFqn entities (Glossary, Team, User, ...) before
+      // the loader records its epoch; writers pass the stored fqn which may differ. Bump both
+      // forms so the loader's read matches one.
+      bumpNameEpoch(cacheNameKey(entityType, fqn), entityType, fqn);
+      String quoted = quoteName(fqn);
+      if (!quoted.equals(fqn)) {
+        bumpNameEpoch(cacheNameKey(entityType, quoted), entityType, quoted);
+      }
+    }
+  }
+
+  private static void bumpNameEpoch(Pair<String, String> key, String entityType, String fqn) {
+    try {
+      WRITE_EPOCH_BY_NAME.get(key, AtomicLong::new).incrementAndGet();
+    } catch (ExecutionException e) {
+      LOG.debug("Unexpected epoch-bump failure for type={} fqn={}", entityType, fqn, e);
+    }
+  }
+
+  static final class LoaderRaceException extends RuntimeException {
+    LoaderRaceException(String message) {
+      super(message);
+    }
+  }
 
   // Fields whose change rewrites a glossary term's FQN during move operations.
   private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
@@ -1569,6 +1642,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
+      if (e.getCause() instanceof LoaderRaceException) {
+        return find(id, include, false);
+      }
       throw new EntityNotFoundException(entityNotFound(entityType, id));
     }
   }
@@ -2140,6 +2216,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
+      if (e.getCause() instanceof LoaderRaceException) {
+        return findByName(fqn, include, false);
+      }
       throw new EntityNotFoundException(entityNotFound(entityType, fqn));
     }
   }
@@ -2990,22 +3069,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * stale (pre-rename) FQN on the children.
    *
    * <p>Publishes pub/sub for each descendant so peer OM instances drop their Guava entries too.
+   * Returns the pre-rename descendants so callers can evict them again after the rename writes.
    *
    * @param entityType type name (e.g. {@code domain}, {@code dataProduct}, {@code tag})
    * @param oldPrefix fully qualified name prefix the rename is moving away from
    */
-  public static void invalidateCacheForRenameCascade(String entityType, String oldPrefix) {
+  public static List<EntityDAO.EntityIdFqnPair> invalidateCacheForRenameCascade(
+      String entityType, String oldPrefix) {
     if (entityType == null || nullOrEmpty(oldPrefix)) {
-      return;
+      return Collections.emptyList();
     }
     EntityRepository<?> repo;
     try {
       repo = Entity.getEntityRepository(entityType);
     } catch (Exception e) {
-      return;
+      return Collections.emptyList();
     }
     if (repo == null || repo.getDao() == null) {
-      return;
+      return Collections.emptyList();
     }
     List<EntityDAO.EntityIdFqnPair> affected;
     try {
@@ -3016,16 +3097,42 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           oldPrefix,
           e);
-      return;
+      return Collections.emptyList();
     }
     if (affected.isEmpty()) {
+      return Collections.emptyList();
+    }
+    dropDescendantCacheEntries(entityType, affected, "rename-cascade");
+    LOG.info(
+        "Invalidated cache for {} descendants of rename cascade: type={} prefix={}",
+        affected.size(),
+        entityType,
+        oldPrefix);
+    return affected;
+  }
+
+  /**
+   * Re-invalidate descendants captured before a rename after the FQN update has completed.
+   *
+   * <p>A reader can otherwise repopulate L1 with the old DB row between the first invalidation and
+   * the bulk rename update, retaining stale FQNs until cache expiry.
+   */
+  public static void finishInvalidateCacheForRenameCascade(
+      String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
+    if (entityType == null || affected == null || affected.isEmpty()) {
       return;
     }
+    dropDescendantCacheEntries(entityType, affected, "rename-cascade-finish");
+  }
+
+  private static void dropDescendantCacheEntries(
+      String entityType, List<EntityDAO.EntityIdFqnPair> affected, String reason) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     for (EntityDAO.EntityIdFqnPair row : affected) {
+      bumpWriteEpoch(entityType, row.id, row.fqn);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
       if (row.fqn != null) {
         CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, row.fqn));
@@ -3045,14 +3152,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         cachedReadBundle.invalidate(entityType, row.id);
       }
       if (pubsub != null) {
-        pubsub.publish(entityType, row.id, row.fqn, "rename-cascade");
+        pubsub.publish(entityType, row.id, row.fqn, reason);
       }
     }
-    LOG.info(
-        "Invalidated cache for {} descendants of rename cascade: type={} prefix={}",
-        affected.size(),
-        entityType,
-        oldPrefix);
   }
 
   /**
@@ -3066,6 +3168,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || id == null) {
       return;
     }
+    bumpWriteEpoch(entityType, id, fqn);
     // Skip every Redis op for entity types that are never cached. Bot/domain/data-product
     // deletes cascade through many addRelationship/deleteRelationship calls; without this
     // short-circuit each cascade pays for a pub/sub publish + multiple DELs that touch keys
@@ -3244,6 +3347,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     if (id != null) {
+      bumpWriteEpoch(entityType, id, fqn);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
     if (fqn != null) {
@@ -4650,6 +4754,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   void invalidate(T entity) {
+    bumpWriteEpoch(entityType, entity.getId(), entity.getFullyQualifiedName());
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -6643,12 +6748,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
   }
 
+  /**
+   * Resolve the parent that CONTAINS {@code toId}, or {@code null} when the relationship row is
+   * gone. Relationship rows and entity rows are deleted as separate auto-committed statements, so a
+   * reader can legitimately observe the intermediate state; a hard delete whose cascade did not
+   * reach this child leaves the same shape permanently until one of the orphan-cleanup jobs
+   * reclaims it. Failing the read instead would take down every list containing the row, so this
+   * mirrors the parent-entity-gone handling already in {@link #getFromEntityRef} and matches main.
+   */
   public final EntityReference getContainer(UUID toId) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, null, false);
   }
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, false);
   }
 
   protected final Map<UUID, EntityReference> batchFetchContainers(
@@ -8048,6 +8161,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
               EntityRepository.this.entityType,
               updated != null ? updated.getId() : null,
               e);
+          // A failed cascade is recoverable from the committed rows, so hand it to the durable
+          // outbox instead of leaving the search index silently stale.
+          SearchIndexRetryQueue.enqueue(
+              updated != null && updated.getId() != null ? updated.getId().toString() : null,
+              updated != null ? updated.getFullyQualifiedName() : null,
+              EntityRepository.this.entityType,
+              "Deferred react operation failed: " + e.getMessage());
         }
       }
     }
@@ -9048,15 +9168,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
+      if (Objects.equals(origCertification, updatedCertification)) {
+        LOG.debug("Certification unchanged");
+        return;
+      }
+
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
         deleteCertificationTag(updated.getFullyQualifiedName());
         recordChange(FIELD_CERTIFICATION, origCertification, null, true);
-        return;
-      }
-
-      if (Objects.equals(origCertification, updatedCertification)) {
-        LOG.debug("Certification unchanged");
         return;
       }
 
@@ -9589,6 +9709,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
+      bumpWriteEpoch(entityType, id, fqn);
       // Evict the Guava L1 so future reads reload from Redis/DB.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -9949,6 +10070,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, String> fqnPair) {
+      // Race guard - an epoch mismatch means a writer ran during the load; throw so Guava skips
+      // caching the now-stale value and findByName() re-reads via the bypass path.
+      long startEpoch = readEpochByName(fqnPair);
+      String json = loadInternal(fqnPair, startEpoch);
+      if (readEpochByName(fqnPair) != startEpoch) {
+        evictExternalCache(fqnPair, json);
+        throw new LoaderRaceException("Concurrent write during loadByName: " + fqnPair);
+      }
+      return json;
+    }
+
+    /**
+     * Evict the Redis entries this load may have populated before the race was detected. Both keys
+     * matter: the by-name loader also writes the ID-keyed slot, which the by-id loader reads first.
+     */
+    private void evictExternalCache(Pair<String, String> fqnPair, String json) {
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao == null) {
+        return;
+      }
+      cachedEntityDao.deleteByName(fqnPair.getLeft(), fqnPair.getRight());
+      try {
+        EntityRepository<? extends EntityInterface> repository =
+            Entity.getEntityRepository(fqnPair.getLeft());
+        EntityInterface entity = JsonUtils.readValue(json, repository.getEntityClass());
+        if (entity.getId() != null) {
+          cachedEntityDao.deleteBase(fqnPair.getLeft(), entity.getId());
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to evict raced cache entry by id for {}", fqnPair, e);
+      }
+    }
+
+    @NonNull
+    private String loadInternal(@NotNull Pair<String, String> fqnPair, long startEpoch) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
@@ -9956,7 +10112,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<?> dao = repository.getDao();
 
       // Try to load from external cache first (read-through) for cacheable entity types.
-      if (isCacheableEntityType(entityType)) {
+      if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
@@ -10018,7 +10174,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
-      if (isCacheableEntityType(entityType)) {
+      if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           try {
@@ -10039,6 +10195,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, UUID> idPair) {
+      long startEpoch = readEpochById(idPair);
+      String json = loadInternal(idPair);
+      if (readEpochById(idPair) != startEpoch) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          cachedEntityDao.deleteBase(idPair.getLeft(), idPair.getRight());
+        }
+        throw new LoaderRaceException("Concurrent write during loadById: " + idPair);
+      }
+      return json;
+    }
+
+    @NonNull
+    private String loadInternal(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
