@@ -498,6 +498,10 @@ class GcsSource(StorageServiceSource):
                 name=f"projects/{bucket.project_id}", filter=filter_, interval=interval
             )
             point = list(timeseries)[-1].points[-1]
+            # total_bytes is DOUBLE in Cloud Monitoring; object_count is INT64.
+            # protobuf silently returns 0 when the wrong oneof field is read.
+            if metric == GCSMetric.BUCKET_SIZE_BYTES:
+                return point.value.double_value  # noqa: TRY300
             return point.value.int64_value  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
