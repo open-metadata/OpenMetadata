@@ -142,6 +142,113 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   );
 };
 
+interface RelatedTermsHeaderProps {
+  t: ReturnType<typeof useTranslation>['t'];
+  canEdit: boolean;
+  isVersionView: boolean;
+  isEditing: boolean;
+  isAdding: boolean;
+  onStartEditing: () => void;
+  onStartAdding: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const RelatedTermsHeader: React.FC<RelatedTermsHeaderProps> = ({
+  t,
+  canEdit,
+  isVersionView,
+  isEditing,
+  isAdding,
+  onStartEditing,
+  onStartAdding,
+  onSave,
+  onCancel,
+}) => {
+  const showEditActions = canEdit && !isVersionView && !isEditing && !isAdding;
+  const showSaveActions = isEditing || isAdding;
+
+  return (
+    <div className="d-flex items-center justify-between w-full">
+      <div className="d-flex items-center gap-2">
+        <Typography as="span" className="text-sm font-medium">
+          {t('label.related-term-plural')}
+        </Typography>
+        {showEditActions && (
+          <>
+            <EditIconButton
+              newLook
+              data-testid="edit-button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={onStartEditing}
+            />
+            <PlusIconButton
+              data-testid="related-term-add-button"
+              size="small"
+              title={t('label.add-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={onStartAdding}
+            />
+          </>
+        )}
+      </div>
+      {showSaveActions && (
+        <div className="d-flex items-center gap-2">
+          <Button
+            color="primary"
+            data-testid="save-related-terms"
+            size="sm"
+            onClick={onSave}>
+            {t('label.save')}
+          </Button>
+          <Button
+            color="secondary"
+            data-testid="cancel-related-terms"
+            size="sm"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+function getCardContent(
+  isEditing: boolean,
+  isAdding: boolean,
+  relatedTermsContainer: React.ReactNode,
+  editingContent: React.ReactNode,
+  addingContent: React.ReactNode
+): React.ReactNode {
+  if (isEditing) {
+    return editingContent;
+  }
+  if (isAdding) {
+    return addingContent;
+  }
+
+  return relatedTermsContainer;
+}
+
+function getExpandableCardState(
+  isEditing: boolean,
+  isAdding: boolean,
+  termRelationsCount: number
+): { defaultExpanded: boolean; isExpandDisabled: boolean; cardKey: string } {
+  const isActive = isEditing || isAdding;
+
+  return {
+    defaultExpanded: isActive || termRelationsCount > 0,
+    isExpandDisabled: !isActive && termRelationsCount === 0,
+    cardKey: isActive ? 'active' : 'inactive',
+  };
+}
+
 const RelatedTerms = () => {
   const navigate = useNavigate();
   const {
@@ -445,58 +552,20 @@ const RelatedTerms = () => {
   ]);
 
   const header = (
-    <div className="d-flex items-center justify-between w-full">
-      <div className="d-flex items-center gap-2">
-        <Typography as="span" className="text-sm font-medium">
-          {t('label.related-term-plural')}
-        </Typography>
-        {getPrioritizedEditPermission(
-          permissions,
-          Operation.EditGlossaryTerms
-        ) &&
-          !isVersionView &&
-          !isEditing &&
-          !isAdding && (
-            <>
-              <EditIconButton
-                newLook
-                data-testid="edit-button"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartEditing}
-              />
-              <PlusIconButton
-                data-testid="related-term-add-button"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartAdding}
-              />
-            </>
-          )}
-      </div>
-      {(isEditing || isAdding) && (
-        <div className="d-flex items-center gap-2">
-          <Button
-            color="primary"
-            data-testid="save-related-terms"
-            size="sm"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-          <Button
-            color="secondary"
-            data-testid="cancel-related-terms"
-            size="sm"
-            onClick={handleCancel}>
-            {t('label.cancel')}
-          </Button>
-        </div>
+    <RelatedTermsHeader
+      canEdit={getPrioritizedEditPermission(
+        permissions,
+        Operation.EditGlossaryTerms
       )}
-    </div>
+      isAdding={isAdding}
+      isEditing={isEditing}
+      isVersionView={Boolean(isVersionView)}
+      t={t}
+      onCancel={handleCancel}
+      onSave={handleSave}
+      onStartAdding={handleStartAdding}
+      onStartEditing={handleStartEditing}
+    />
   );
 
   const sharedEditorProps: TermsRowEditorProps = {
@@ -519,21 +588,27 @@ const RelatedTerms = () => {
     </div>
   );
 
-  let cardContent = relatedTermsContainer;
+  const cardContent = getCardContent(
+    isEditing,
+    isAdding,
+    relatedTermsContainer,
+    editingContent,
+    addingContent
+  );
 
-  if (isEditing) {
-    cardContent = editingContent;
-  } else if (isAdding) {
-    cardContent = addingContent;
-  }
+  const { defaultExpanded, isExpandDisabled, cardKey } = getExpandableCardState(
+    isEditing,
+    isAdding,
+    termRelations.length
+  );
 
   return (
     <ExpandableCard
       cardProps={{ title: header }}
       dataTestId="related-term-container"
-      defaultExpanded={isEditing || isAdding || !isEmpty(termRelations)}
-      isExpandDisabled={!isAdding && !isEditing && termRelations.length === 0}
-      key={isEditing || isAdding ? 'active' : 'inactive'}>
+      defaultExpanded={defaultExpanded}
+      isExpandDisabled={isExpandDisabled}
+      key={cardKey}>
       {cardContent}
     </ExpandableCard>
   );

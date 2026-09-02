@@ -39,125 +39,96 @@ import {
   getTestCaseDetailPagePath,
 } from './RouterUtils';
 
+const DIRECT_DETAILS_PATH_ENTITY_TYPES: ReadonlyArray<EntityType> = [
+  EntityType.TABLE,
+  EntityType.TOPIC,
+  EntityType.DASHBOARD,
+  EntityType.CHART,
+  EntityType.PIPELINE,
+  EntityType.MLMODEL,
+  EntityType.CONTAINER,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.STORED_PROCEDURE,
+  EntityType.SEARCH_INDEX,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.DIRECTORY,
+  EntityType.FILE,
+  EntityType.SPREADSHEET,
+  EntityType.WORKSHEET,
+  EntityType.METRIC,
+];
+
+const SERVICE_CATEGORY_BY_ENTITY_TYPE: Partial<
+  Record<EntityType, ServiceCategory>
+> = {
+  [EntityType.DATABASE_SERVICE]: ServiceCategory.DATABASE_SERVICES,
+  [EntityType.MESSAGING_SERVICE]: ServiceCategory.MESSAGING_SERVICES,
+  [EntityType.DASHBOARD_SERVICE]: ServiceCategory.DASHBOARD_SERVICES,
+  [EntityType.PIPELINE_SERVICE]: ServiceCategory.PIPELINE_SERVICES,
+  [EntityType.MLMODEL_SERVICE]: ServiceCategory.ML_MODEL_SERVICES,
+  [EntityType.STORAGE_SERVICE]: ServiceCategory.STORAGE_SERVICES,
+  [EntityType.SEARCH_SERVICE]: ServiceCategory.SEARCH_SERVICES,
+  [EntityType.METADATA_SERVICE]: ServiceCategory.METADATA_SERVICES,
+  [EntityType.API_SERVICE]: ServiceCategory.API_SERVICES,
+  [EntityType.DRIVE_SERVICE]: ServiceCategory.DRIVE_SERVICES,
+};
+
+const getEventSubscriptionLink = (
+  fullyQualifiedName: string,
+  entity?: SearchSourceAlias
+) =>
+  (entity as EventSubscription)?.alertType === AlertType.Observability
+    ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+    : getNotificationAlertDetailsPath(fullyQualifiedName);
+
+const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
+  Record<EntityType, (fullyQualifiedName: string) => string>
+> = {
+  [EntityType.DATA_PRODUCT]: getDataProductDetailsPath,
+  [EntityType.GLOSSARY]: getGlossaryTermDetailsPath,
+  [EntityType.GLOSSARY_TERM]: getGlossaryTermDetailsPath,
+  [EntityType.TAG]: getClassificationTagPath,
+  [EntityType.CLASSIFICATION]: getTagsDetailsPath,
+  [EntityType.BOT]: getBotsPath,
+  [EntityType.TEAM]: getTeamsWithFqnPath,
+  [EntityType.APPLICATION]: getApplicationDetailsPath,
+  [EntityType.TEST_CASE]: getTestCaseDetailPagePath,
+  [EntityType.TEST_SUITE]: (fullyQualifiedName: string) =>
+    getEntityDetailsPath(
+      EntityType.TABLE,
+      fullyQualifiedName,
+      EntityTabs.PROFILER
+    ),
+  [EntityType.DOMAIN]: getDomainDetailsPath,
+  [EntityType.ROLE]: getRoleWithFqnPath,
+  [EntityType.POLICY]: getPolicyWithFqnPath,
+  [EntityType.PERSONA]: getPersonaDetailsPath,
+  [EntityType.KPI]: getKpiPath,
+  [EntityType.KNOWLEDGE_PAGE]: getKnowledgePagePath,
+};
+
 export const getEntityLinkFromType = (
   fullyQualifiedName: string,
   entityType: EntityType,
   entity?: SearchSourceAlias
 ) => {
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.TOPIC:
-    case EntityType.DASHBOARD:
-    case EntityType.CHART:
-    case EntityType.PIPELINE:
-    case EntityType.MLMODEL:
-    case EntityType.CONTAINER:
-    case EntityType.DATABASE:
-    case EntityType.DATABASE_SCHEMA:
-    case EntityType.DASHBOARD_DATA_MODEL:
-    case EntityType.STORED_PROCEDURE:
-    case EntityType.SEARCH_INDEX:
-    case EntityType.API_COLLECTION:
-    case EntityType.API_ENDPOINT:
-    case EntityType.DIRECTORY:
-    case EntityType.FILE:
-    case EntityType.SPREADSHEET:
-    case EntityType.WORKSHEET:
-      return getEntityDetailsPath(entityType, fullyQualifiedName);
-    case EntityType.METRIC:
-      return getEntityDetailsPath(entityType, fullyQualifiedName);
-    case EntityType.DATA_PRODUCT:
-      return getDataProductDetailsPath(fullyQualifiedName);
-    case EntityType.GLOSSARY:
-    case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermDetailsPath(fullyQualifiedName);
-    case EntityType.TAG:
-      return getClassificationTagPath(fullyQualifiedName);
-    case EntityType.CLASSIFICATION:
-      return getTagsDetailsPath(fullyQualifiedName);
-
-    case EntityType.DATABASE_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.DATABASE_SERVICES
-      );
-    case EntityType.MESSAGING_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.MESSAGING_SERVICES
-      );
-    case EntityType.DASHBOARD_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.DASHBOARD_SERVICES
-      );
-    case EntityType.PIPELINE_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.PIPELINE_SERVICES
-      );
-    case EntityType.MLMODEL_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.ML_MODEL_SERVICES
-      );
-    case EntityType.STORAGE_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.STORAGE_SERVICES
-      );
-    case EntityType.SEARCH_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.SEARCH_SERVICES
-      );
-    case EntityType.METADATA_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.METADATA_SERVICES
-      );
-    case EntityType.API_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.API_SERVICES
-      );
-    case EntityType.DRIVE_SERVICE:
-      return getServiceDetailsPath(
-        fullyQualifiedName,
-        ServiceCategory.DRIVE_SERVICES
-      );
-    case EntityType.BOT:
-      return getBotsPath(fullyQualifiedName);
-    case EntityType.TEAM:
-      return getTeamsWithFqnPath(fullyQualifiedName);
-    case EntityType.APPLICATION:
-      return getApplicationDetailsPath(fullyQualifiedName);
-    case EntityType.TEST_CASE:
-      return getTestCaseDetailPagePath(fullyQualifiedName);
-    case EntityType.TEST_SUITE:
-      return getEntityDetailsPath(
-        EntityType.TABLE,
-        fullyQualifiedName,
-        EntityTabs.PROFILER
-      );
-    case EntityType.DOMAIN:
-      return getDomainDetailsPath(fullyQualifiedName);
-    case EntityType.EVENT_SUBSCRIPTION:
-      return (entity as EventSubscription)?.alertType ===
-        AlertType.Observability
-        ? getObservabilityAlertDetailsPath(fullyQualifiedName)
-        : getNotificationAlertDetailsPath(fullyQualifiedName);
-    case EntityType.ROLE:
-      return getRoleWithFqnPath(fullyQualifiedName);
-    case EntityType.POLICY:
-      return getPolicyWithFqnPath(fullyQualifiedName);
-    case EntityType.PERSONA:
-      return getPersonaDetailsPath(fullyQualifiedName);
-    case EntityType.KPI:
-      return getKpiPath(fullyQualifiedName);
-    case EntityType.KNOWLEDGE_PAGE:
-      return getKnowledgePagePath(fullyQualifiedName);
-    default:
-      return '';
+  if (DIRECT_DETAILS_PATH_ENTITY_TYPES.includes(entityType)) {
+    return getEntityDetailsPath(entityType, fullyQualifiedName);
   }
+
+  const serviceCategory = SERVICE_CATEGORY_BY_ENTITY_TYPE[entityType];
+  if (serviceCategory) {
+    return getServiceDetailsPath(fullyQualifiedName, serviceCategory);
+  }
+
+  if (entityType === EntityType.EVENT_SUBSCRIPTION) {
+    return getEventSubscriptionLink(fullyQualifiedName, entity);
+  }
+
+  const simpleBuilder = SIMPLE_ENTITY_LINK_BUILDERS[entityType];
+
+  return simpleBuilder ? simpleBuilder(fullyQualifiedName) : '';
 };

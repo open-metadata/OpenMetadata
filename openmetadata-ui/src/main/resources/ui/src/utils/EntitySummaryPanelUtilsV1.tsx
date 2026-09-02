@@ -67,6 +67,19 @@ import { showErrorToast } from './ToastUtils';
 
 const { Text } = AntTypography;
 
+const getFieldRowKey = (column: {
+  fullyQualifiedName?: string;
+  name: string;
+}): string => column.fullyQualifiedName ?? column.name;
+
+const getExpandToggleLabel = (
+  isExpanded: boolean,
+  childrenCount: number
+): string =>
+  isExpanded
+    ? t('label.show-less')
+    : `${t('label.show-nested')} (${childrenCount})`;
+
 // Recursive component to render nested columns
 const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
   column,
@@ -86,8 +99,8 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
     <div>
       <div
         className="nested-field-card-wrapper"
-        data-row-key={column.fullyQualifiedName ?? column.name}
-        key={column.fullyQualifiedName ?? column.name}
+        data-row-key={getFieldRowKey(column)}
+        key={getFieldRowKey(column)}
         style={{
           paddingLeft: `${level * 24}px`,
           paddingBottom: hasChildren ? '8px' : '0',
@@ -117,9 +130,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
-                {isExpanded
-                  ? t('label.show-less')
-                  : `${t('label.show-nested')} (${childrenCount})`}
+                {getExpandToggleLabel(isExpanded, childrenCount)}
               </Typography>
             </Button>
           </div>
@@ -1232,6 +1243,141 @@ const SearchIndexFieldCardsV1: React.FC<{
   );
 };
 
+type EntityChildDetailsRendererArgs = {
+  entityType: EntityType;
+  entityInfo: SearchedDataProps['data'][number]['_source'];
+  highlights?: SearchedDataProps['data'][number]['highlight'];
+  loading?: boolean;
+  searchText?: string;
+};
+
+const ENTITY_CHILD_DETAILS_RENDERERS: Partial<
+  Record<EntityType, (args: EntityChildDetailsRendererArgs) => JSX.Element>
+> = {
+  [EntityType.TABLE]: ({
+    entityInfo,
+    entityType,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <SchemaFieldCardsV1
+      entityInfo={entityInfo as TableEntity}
+      entityType={entityType}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DASHBOARD_DATA_MODEL]: ({
+    entityInfo,
+    entityType,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <SchemaFieldCardsV1
+      entityInfo={entityInfo as TableEntity}
+      entityType={entityType}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DATABASE_SCHEMA]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <DatabaseSchemaTablesV1
+      entityInfo={entityInfo as DatabaseSchema}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DASHBOARD]: ({ entityInfo, highlights, loading, searchText }) => (
+    <DashboardChartsV1
+      entityInfo={entityInfo as Dashboard}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.TOPIC]: ({ entityInfo, highlights, loading, searchText }) => (
+    <TopicFieldCardsV1
+      entityInfo={entityInfo as Topic}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.CONTAINER]: ({ entityInfo, highlights, loading, searchText }) => (
+    <ContainerFieldCardsV1
+      entityInfo={entityInfo as Container}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.SEARCH_INDEX]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <SearchIndexFieldCardsV1
+      entityInfo={entityInfo as SearchIndex}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.API_ENDPOINT]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <APIEndpointSchemaV1
+      entityInfo={entityInfo as APIEndpoint}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DATABASE]: ({ entityInfo, highlights, loading, searchText }) => (
+    <DatabaseSchemasV1
+      entityInfo={entityInfo}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.PIPELINE]: ({ entityInfo, highlights, loading, searchText }) => (
+    <PipelineTasksV1
+      entityInfo={entityInfo as Pipeline}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.API_COLLECTION]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <APICollectionEndpointsV1
+      entityInfo={entityInfo as APICollection}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+};
+
 export const getEntityChildDetailsV1 = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
@@ -1239,111 +1385,9 @@ export const getEntityChildDetailsV1 = (
   loading?: boolean,
   searchText?: string
 ) => {
-  // kept for potential future use; remove unused to satisfy linter
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return (
-        <SchemaFieldCardsV1
-          entityInfo={entityInfo as TableEntity}
-          entityType={entityType}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
+  const renderer = ENTITY_CHILD_DETAILS_RENDERERS[entityType];
 
-    case EntityType.DATABASE_SCHEMA:
-      return (
-        <DatabaseSchemaTablesV1
-          entityInfo={entityInfo as DatabaseSchema}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.DASHBOARD:
-      return (
-        <DashboardChartsV1
-          entityInfo={entityInfo as Dashboard}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.TOPIC:
-      return (
-        <TopicFieldCardsV1
-          entityInfo={entityInfo as Topic}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.CONTAINER:
-      return (
-        <ContainerFieldCardsV1
-          entityInfo={entityInfo as Container}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.SEARCH_INDEX:
-      return (
-        <SearchIndexFieldCardsV1
-          entityInfo={entityInfo as SearchIndex}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.API_ENDPOINT:
-      return (
-        <APIEndpointSchemaV1
-          entityInfo={entityInfo as APIEndpoint}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.DATABASE:
-      return (
-        <DatabaseSchemasV1
-          entityInfo={entityInfo}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.PIPELINE:
-      return (
-        <PipelineTasksV1
-          entityInfo={entityInfo as Pipeline}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.API_COLLECTION:
-      return (
-        <APICollectionEndpointsV1
-          entityInfo={entityInfo as APICollection}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    default:
-      return null;
-  }
+  return renderer
+    ? renderer({ entityInfo, entityType, highlights, loading, searchText })
+    : null;
 };

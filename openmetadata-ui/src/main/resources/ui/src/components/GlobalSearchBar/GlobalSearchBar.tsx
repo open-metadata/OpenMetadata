@@ -48,6 +48,16 @@ import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import './global-search-bar.less';
 
+const getSearchQueryFromLocationSearch = (locationSearch: string): string => {
+  const parsedQueryString = Qs.parse(
+    locationSearch.startsWith('?')
+      ? locationSearch.substring(1)
+      : locationSearch
+  );
+
+  return isString(parsedQueryString.search) ? parsedQueryString.search : '';
+};
+
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { searchCriteria, updateSearchCriteria, currentUser } =
@@ -68,15 +78,9 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-  const parsedQueryString = Qs.parse(
-    location.search.startsWith('?')
-      ? location.search.substring(1)
-      : location.search
+  const [searchValue, setSearchValue] = useState<string>(
+    getSearchQueryFromLocationSearch(location.search)
   );
-  const searchQuery = isString(parsedQueryString.search)
-    ? parsedQueryString.search
-    : '';
-  const [searchValue, setSearchValue] = useState<string>(searchQuery);
 
   const renderSearchDropdown = useCallback(
     (originNode: ReactNode) => (
@@ -178,20 +182,62 @@ export const GlobalSearchBar = () => {
     searchHandler(searchValue);
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchValue(value);
-    if (isTourOpen) {
-      updateTourSearch(value);
-    } else {
-      value ? setIsSearchBoxOpen(true) : setIsSearchBoxOpen(false);
-    }
-  };
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      if (isTourOpen) {
+        updateTourSearch(value);
+      } else {
+        value ? setIsSearchBoxOpen(true) : setIsSearchBoxOpen(false);
+      }
+    },
+    [isTourOpen, updateTourSearch]
+  );
 
   useEffect(() => {
     if (!isEmpty(currentUser)) {
       initNLP();
     }
   }, [currentUser]);
+
+  const popoverContent = useMemo(() => {
+    if (isTourOpen || (!searchValue && !isNLPActive)) {
+      return false;
+    }
+
+    if (isInPageSearchAllowed(pathname)) {
+      return (
+        <SearchOptions
+          isOpen={isSearchBoxOpen}
+          options={inPageSearchOptions(pathname)}
+          searchText={searchValue}
+          selectOption={handleSelectOption}
+          setIsOpen={setIsSearchBoxOpen}
+        />
+      );
+    }
+
+    return (
+      <Suggestions
+        isNLPActive={isNLPActive}
+        isOpen={isSearchBoxOpen}
+        searchCriteria={searchCriteria === '' ? undefined : searchCriteria}
+        searchText={suggestionSearch}
+        setIsOpen={setIsSearchBoxOpen}
+        onSearchTextUpdate={handleSearchChange}
+      />
+    );
+  }, [
+    isTourOpen,
+    searchValue,
+    isNLPActive,
+    pathname,
+    isSearchBoxOpen,
+    handleSelectOption,
+    searchCriteria,
+    suggestionSearch,
+    handleSearchChange,
+  ]);
 
   return (
     <div
@@ -227,30 +273,7 @@ export const GlobalSearchBar = () => {
       )}
       <Popover
         align={{ offset: [0, 12] }}
-        content={
-          !isTourOpen &&
-          (searchValue || isNLPActive) &&
-          (isInPageSearchAllowed(pathname) ? (
-            <SearchOptions
-              isOpen={isSearchBoxOpen}
-              options={inPageSearchOptions(pathname)}
-              searchText={searchValue}
-              selectOption={handleSelectOption}
-              setIsOpen={setIsSearchBoxOpen}
-            />
-          ) : (
-            <Suggestions
-              isNLPActive={isNLPActive}
-              isOpen={isSearchBoxOpen}
-              searchCriteria={
-                searchCriteria === '' ? undefined : searchCriteria
-              }
-              searchText={suggestionSearch}
-              setIsOpen={setIsSearchBoxOpen}
-              onSearchTextUpdate={handleSearchChange}
-            />
-          ))
-        }
+        content={popoverContent}
         getPopupContainer={() => searchContainerRef.current || document.body}
         open={isSearchBoxOpen}
         overlayClassName="global-search-overlay"

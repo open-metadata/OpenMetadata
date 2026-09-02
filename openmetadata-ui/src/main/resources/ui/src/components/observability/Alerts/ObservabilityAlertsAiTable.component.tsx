@@ -64,6 +64,87 @@ const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 // of forcing the name column wider than its 30% allocation.
 const ALERT_NAME_COLUMN_LAYOUT_CLASS = 'tw:w-[30%]! tw:max-w-0';
 
+interface AlertsEmptyStateProps {
+  hasCreatePermission: boolean;
+  onAddAlert: () => void;
+  features: {
+    key: string;
+    icon: JSX.Element;
+    title: string;
+    description: string;
+  }[];
+}
+
+function AlertsEmptyState({
+  hasCreatePermission,
+  onAddAlert,
+  features,
+}: Readonly<AlertsEmptyStateProps>) {
+  const { t } = useTranslation();
+
+  return (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+      <EmptyPlaceholder
+        actions={
+          hasCreatePermission
+            ? [
+                {
+                  key: 'new-alert',
+                  label: t('label.new-entity', {
+                    entity: t('label.alert'),
+                  }),
+                  color: 'primary' as const,
+                  iconLeading: Plus,
+                  onPress: onAddAlert,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.observability-alert-empty-description')}
+        features={features}
+        title={t('message.observability-alert-empty-heading')}
+        variant="features"
+      />
+    </Box>
+  );
+}
+
+interface AlertsErrorStateProps {
+  onRetryPermission?: () => void;
+}
+
+// When the resource-permission fetch failed we can't tell allow from deny, and
+// showErrorToast suppresses its 401/403 — so show an explicit error + retry
+// cue instead of the create-less onboarding.
+function AlertsErrorState({
+  onRetryPermission,
+}: Readonly<AlertsErrorStateProps>) {
+  const { t } = useTranslation();
+
+  return (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+      <EmptyPlaceholder
+        actions={
+          onRetryPermission
+            ? [
+                {
+                  key: 'retry',
+                  label: t('label.try-again'),
+                  color: 'primary' as const,
+                  onPress: onRetryPermission,
+                },
+              ]
+            : undefined
+        }
+        description={t('server.unexpected-error')}
+        icon={<AlertTriangle className="tw:text-fg-error-primary" />}
+        title={t('message.something-went-wrong')}
+        variant="blank"
+      />
+    </Box>
+  );
+}
+
 interface ObservabilityAlertsAiTableProps {
   alertPermissions?: AlertPermission[];
   alertResourcePermission?: OperationPermission;
@@ -224,55 +305,15 @@ function ObservabilityAlertsAiTable({
   const isAlertsEmpty = !loading && alerts.length === 0;
 
   const emptyStatePlaceholder = (
-    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
-        actions={
-          hasCreatePermission
-            ? [
-                {
-                  key: 'new-alert',
-                  label: t('label.new-entity', {
-                    entity: t('label.alert'),
-                  }),
-                  color: 'primary' as const,
-                  iconLeading: Plus,
-                  onPress: onAddAlert,
-                },
-              ]
-            : undefined
-        }
-        description={t('message.observability-alert-empty-description')}
-        features={emptyStateFeatures}
-        title={t('message.observability-alert-empty-heading')}
-        variant="features"
-      />
-    </Box>
+    <AlertsEmptyState
+      features={emptyStateFeatures}
+      hasCreatePermission={hasCreatePermission}
+      onAddAlert={onAddAlert}
+    />
   );
 
-  // When the resource-permission fetch failed we can't tell allow from deny, and
-  // showErrorToast suppresses its 401/403 — so show an explicit error + retry
-  // cue instead of the create-less onboarding.
   const errorStatePlaceholder = (
-    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
-        actions={
-          onRetryPermission
-            ? [
-                {
-                  key: 'retry',
-                  label: t('label.try-again'),
-                  color: 'primary' as const,
-                  onPress: onRetryPermission,
-                },
-              ]
-            : undefined
-        }
-        description={t('server.unexpected-error')}
-        icon={<AlertTriangle className="tw:text-fg-error-primary" />}
-        title={t('message.something-went-wrong')}
-        variant="blank"
-      />
-    </Box>
+    <AlertsErrorState onRetryPermission={onRetryPermission} />
   );
 
   return (

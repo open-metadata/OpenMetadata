@@ -13,6 +13,7 @@
 
 import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
+import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
@@ -59,11 +60,38 @@ const SummaryStat: FC<SummaryStatProps> = ({
   </div>
 );
 
-const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
-  agents,
-  totalAgents,
-}) => {
-  const { t } = useTranslation();
+interface DeploymentSummary {
+  activeAgents: Agent[];
+  total: number;
+  running: number;
+  done: number;
+  failed: number;
+  queued: number;
+  assets: number;
+  errors: number;
+  maxEta: number | null;
+  overall: number;
+  allDone: boolean;
+}
+
+const getLatestMetadataAgent = (activeAgents: Agent[]): Agent | undefined =>
+  activeAgents
+    .filter(
+      (a) =>
+        // A queued agent's run has not started, so it has nothing to report; picking it because it is
+        // "newest" would blank the figure the moment the next run is scheduled.
+        a.pipelineType === PipelineType.Metadata && a.status !== 'queued'
+    )
+    .reduce<Agent | undefined>(
+      (latest, a) =>
+        !latest || (a.lastRunAt ?? 0) > (latest.lastRunAt ?? 0) ? a : latest,
+      undefined
+    );
+
+const computeDeploymentSummary = (
+  agents: Agent[],
+  totalAgents?: number
+): DeploymentSummary => {
   // Agents with status 'none' have never run — they are not part of any
   // deployment and must not surface as queued/in-progress in the banner.
   const activeAgents = agents.filter((a) => a.status !== 'none');
@@ -84,19 +112,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
   // it takes precedence while it is in flight. (Metadata pipelines with disjoint filters do ingest
   // different assets, and this under-reports that case; the card is a deployment snapshot, not an
   // all-time total.)
-  const latestMetadataAgent = activeAgents
-    .filter(
-      (a) =>
-        // A queued agent's run has not started, so it has nothing to report; picking it because it is
-        // "newest" would blank the figure the moment the next run is scheduled.
-        a.pipelineType === PipelineType.Metadata && a.status !== 'queued'
-    )
-    .reduce<Agent | undefined>(
-      (latest, a) =>
-        !latest || (a.lastRunAt ?? 0) > (latest.lastRunAt ?? 0) ? a : latest,
-      undefined
-    );
-  const assets = latestMetadataAgent?.assets ?? 0;
+  const assets = getLatestMetadataAgent(activeAgents)?.assets ?? 0;
   const errors = activeAgents.reduce((sum, a) => sum + a.errors, 0);
   const etas = activeAgents
     .filter((a) => a.status === 'running' && a.eta !== null)
@@ -108,12 +124,26 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
       : 0;
   const allDone = running === 0 && done + failed === total;
 
-  if (activeAgents.length === 0) {
-    return null;
-  }
+  return {
+    activeAgents,
+    total,
+    running,
+    done,
+    failed,
+    queued,
+    assets,
+    errors,
+    maxEta,
+    overall,
+    allDone,
+  };
+};
 
-  const etaDisplay = formatEtaShort(getEtaInfo(maxEta), t);
-
+const getDeploymentSubtitle = (
+  t: TFunction,
+  summary: DeploymentSummary
+): string => {
+  const { allDone, done, total, failed, queued, running } = summary;
   const failedSuffix =
     failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
   const attentionSuffix =
@@ -121,7 +151,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
       ? ` · ${failed} ${t('label.need-attention')}`
       : ` · ${t('message.everything-healthy')}`;
 
-  const subtitle = allDone
+  return allDone
     ? t('message.agents-finished-summary', { attentionSuffix, done, total })
     : t('message.agents-deploy-progress', {
         done,
@@ -129,6 +159,22 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
         queued,
         running,
       });
+};
+
+const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
+  agents,
+  totalAgents,
+}) => {
+  const { t } = useTranslation();
+  const summary = computeDeploymentSummary(agents, totalAgents);
+  const { activeAgents, allDone, assets, errors, overall } = summary;
+
+  if (activeAgents.length === 0) {
+    return null;
+  }
+
+  const etaDisplay = formatEtaShort(getEtaInfo(summary.maxEta), t);
+  const subtitle = getDeploymentSubtitle(t, summary);
 
   return (
     <div

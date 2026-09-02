@@ -58,6 +58,76 @@ const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
 
+// Type guard to check if an object has the inherited flag
+// This provides type-safe access to the inherited property
+const hasInheritedFlag = (obj: unknown): obj is { inherited?: boolean } => {
+  return typeof obj === 'object' && obj !== null && 'inherited' in obj;
+};
+
+// Type guard to check if a field is inherited from Data Product
+const isInheritedField = (field: unknown): boolean => {
+  return hasInheritedFlag(field) && field.inherited === true;
+};
+
+// Handle three cases:
+// 1. Object with inherited=true -> exclude (set undefined)
+// 2. Object with inherited=false/undefined -> keep as object
+// 3. String (legacy format) -> convert to object format for form consistency
+// Note: isInheritedField() returns false for null/undefined/string, so those fall through
+const resolveFilteredTermsOfUse = (
+  contract: DataContract
+): TermsOfUse | undefined => {
+  if (isInheritedField(contract.termsOfUse)) {
+    // Case 1: Inherited from Data Product - exclude from editable form
+    return undefined;
+  } else if (
+    typeof contract.termsOfUse === 'object' &&
+    contract.termsOfUse !== null
+  ) {
+    // Case 2: Non-inherited object format - keep as-is
+    return contract.termsOfUse;
+  } else if (typeof contract.termsOfUse === 'string') {
+    // Case 3: Legacy string format - convert to object for form consistency
+    return { content: contract.termsOfUse };
+  }
+
+  // If none match (null/undefined), remains undefined
+  return undefined;
+};
+
+// Build result object, only adding fields that are not inherited
+// This ensures fast-json-patch generates /add operations instead of /replace
+const buildFilteredContractResult = (
+  contract: DataContract,
+  baseContract: Partial<DataContract>,
+  filteredSemantics: DataContract['semantics'],
+  filteredTermsOfUse: TermsOfUse | undefined
+): DataContract => {
+  const result: Partial<DataContract> = { ...baseContract };
+
+  // Only add semantics if there are non-inherited rules
+  if (filteredSemantics && filteredSemantics.length > 0) {
+    result.semantics = filteredSemantics;
+  }
+
+  // Only add termsOfUse if not inherited
+  if (filteredTermsOfUse !== undefined) {
+    result.termsOfUse = filteredTermsOfUse;
+  }
+
+  // Only add security if not inherited
+  if (!isInheritedField(contract.security) && contract.security) {
+    result.security = contract.security;
+  }
+
+  // Only add SLA if not inherited
+  if (!isInheritedField(contract.sla) && contract.sla) {
+    result.sla = contract.sla;
+  }
+
+  return result as DataContract;
+};
+
 export interface FormStepProps {
   onNext: () => void;
   onPrev: () => void;
@@ -92,47 +162,13 @@ const AddDataContract: React.FC<{
       return undefined;
     }
 
-    // Type guard to check if an object has the inherited flag
-    // This provides type-safe access to the inherited property
-    const hasInheritedFlag = (obj: unknown): obj is { inherited?: boolean } => {
-      return typeof obj === 'object' && obj !== null && 'inherited' in obj;
-    };
-
-    // Type guard to check if a field is inherited from Data Product
-    const isInheritedField = (field: unknown): boolean => {
-      return hasInheritedFlag(field) && field.inherited === true;
-    };
-
     // Filter semantics to exclude inherited rules
     const filteredSemantics = contract.semantics?.filter(
       (rule) => !isInheritedField(rule)
     );
 
     // Get termsOfUse, excluding if inherited
-    // Handle three cases:
-    // 1. Object with inherited=true -> exclude (set undefined)
-    // 2. Object with inherited=false/undefined -> keep as object
-    // 3. String (legacy format) -> convert to object format for form consistency
-    // Note: isInheritedField() returns false for null/undefined/string, so those fall through
-    let filteredTermsOfUse: TermsOfUse | undefined;
-    if (isInheritedField(contract.termsOfUse)) {
-      // Case 1: Inherited from Data Product - exclude from editable form
-      filteredTermsOfUse = undefined;
-    } else if (
-      typeof contract.termsOfUse === 'object' &&
-      contract.termsOfUse !== null
-    ) {
-      // Case 2: Non-inherited object format - keep as-is
-      filteredTermsOfUse = contract.termsOfUse;
-    } else if (typeof contract.termsOfUse === 'string') {
-      // Case 3: Legacy string format - convert to object for form consistency
-      filteredTermsOfUse = { content: contract.termsOfUse };
-    }
-    // If none match (null/undefined), filteredTermsOfUse remains undefined
-
-    // Check if security and SLA are inherited
-    const isSecurityInherited = isInheritedField(contract.security);
-    const isSlaInherited = isInheritedField(contract.sla);
+    const filteredTermsOfUse = resolveFilteredTermsOfUse(contract);
 
     // Start with base contract fields, excluding potentially inherited fields
     // We destructure to exclude sla, security, termsOfUse, semantics, then add them back only if not inherited
@@ -144,33 +180,12 @@ const AddDataContract: React.FC<{
       ...baseContract
     } = contract;
 
-    // Build result object, only adding fields that are not inherited
-    // This ensures fast-json-patch generates /add operations instead of /replace
-    const result: Partial<DataContract> = {
-      ...baseContract,
-    };
-
-    // Only add semantics if there are non-inherited rules
-    if (filteredSemantics && filteredSemantics.length > 0) {
-      result.semantics = filteredSemantics;
-    }
-
-    // Only add termsOfUse if not inherited
-    if (filteredTermsOfUse !== undefined) {
-      result.termsOfUse = filteredTermsOfUse;
-    }
-
-    // Only add security if not inherited
-    if (!isSecurityInherited && contract.security) {
-      result.security = contract.security;
-    }
-
-    // Only add SLA if not inherited
-    if (!isSlaInherited && contract.sla) {
-      result.sla = contract.sla;
-    }
-
-    return result as DataContract;
+    return buildFilteredContractResult(
+      contract,
+      baseContract,
+      filteredSemantics,
+      filteredTermsOfUse
+    );
   }, [contract]);
 
   const [formValues, setFormValues] = useState<DataContract>(

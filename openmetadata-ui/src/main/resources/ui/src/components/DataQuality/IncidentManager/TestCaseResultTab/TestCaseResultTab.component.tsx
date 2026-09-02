@@ -17,13 +17,20 @@ import chunk from 'lodash/chunk';
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import startCase from 'lodash/startCase';
+import { EntityTags } from 'Models';
 import React, { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
-import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import {
+  ChangeDescription,
+  TagLabel,
+  TestCase,
+  TestCaseParameterValue,
+} from '../../../../generated/tests/testCase';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
@@ -64,6 +71,171 @@ function ParameterTooltipText({
   );
 }
 
+const shouldShowEditParameterButton = (
+  hasEditPermission: boolean | undefined,
+  testCaseData: TestCase | undefined,
+  showComputeRowCount: boolean
+): boolean =>
+  Boolean(
+    hasEditPermission &&
+      (testCaseData?.parameterValues?.length ||
+        testCaseData?.useDynamicAssertion ||
+        showComputeRowCount)
+  );
+
+const shouldShowAILearningBanner = (
+  showAILearningBanner: boolean,
+  testCaseData: TestCase | undefined
+): boolean =>
+  Boolean(showAILearningBanner && testCaseData?.useDynamicAssertion);
+
+const shouldShowSqlParamsSection = (
+  withSqlParams: TestCaseParameterValue[] | undefined,
+  isVersionPage: boolean
+): boolean => !isUndefined(withSqlParams) && !isVersionPage;
+
+const hasAdditionalComponents = (additionalComponents: unknown[]): boolean =>
+  !isEmpty(additionalComponents);
+
+const canEditTestCaseParameters = (
+  hasEditPermission: boolean | undefined,
+  isParameterEdit: boolean
+): boolean => Boolean(hasEditPermission && isParameterEdit);
+
+const getSidePanelColSpanClass = (isSidePanelVisible: boolean): string =>
+  isSidePanelVisible ? 'tw:col-span-9' : 'tw:col-span-12';
+
+const resolveIsSidePanelVisible = (
+  showSidePanel: boolean | undefined,
+  isTabExpanded: boolean
+): boolean => showSidePanel ?? isTabExpanded;
+
+interface SqlParamsSectionProps {
+  withSqlParams: TestCaseParameterValue[];
+  hasEditPermission: boolean | undefined;
+  onEditParameter: () => void;
+}
+
+function SqlParamsSection({
+  withSqlParams,
+  hasEditPermission,
+  onEditParameter,
+}: Readonly<SqlParamsSectionProps>) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:w-full">
+      {withSqlParams.map((param) => (
+        <div
+          className="sql-expression-container"
+          data-testid="sql-expression-container"
+          key={param.name}>
+          <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
+            <div className="tw:flex tw:flex-row tw:items-center tw:gap-1">
+              <Typography as="span" className="parameter-title tw:text-body">
+                {startCase(param.name)}
+              </Typography>
+              {hasEditPermission && (
+                <EditIconButton
+                  newLook
+                  data-testid="edit-sql-param-icon"
+                  size="small"
+                  title={t('label.edit-entity', {
+                    entity: t('label.parameter'),
+                  })}
+                  onClick={onEditParameter}
+                />
+              )}
+            </div>
+            <SchemaEditor
+              className="custom-code-mirror-theme query-editor-min-h-60"
+              editorClass="table-query-editor"
+              mode={{ name: CSMode.SQL }}
+              options={{
+                styleActiveLine: false,
+                readOnly: true,
+              }}
+              value={param.value ?? ''}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface TestCaseSidePanelProps {
+  testCaseData: TestCase | undefined;
+  hasEditTagsPermission: boolean | undefined;
+  hasEditGlossaryTermsPermission: boolean | undefined;
+  updatedTags: TagLabel[];
+  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
+  isVersionPage: boolean;
+  hasEditPermission: boolean | undefined;
+  isRulesLoaded: boolean;
+  requireDomainForDataProduct: boolean | undefined;
+  handleDataProductsSave: (dataProducts: DataProduct[]) => Promise<void>;
+}
+
+function TestCaseSidePanel({
+  testCaseData,
+  hasEditTagsPermission,
+  hasEditGlossaryTermsPermission,
+  updatedTags,
+  handleTagSelection,
+  isVersionPage,
+  hasEditPermission,
+  isRulesLoaded,
+  requireDomainForDataProduct,
+  handleDataProductsSave,
+}: Readonly<TestCaseSidePanelProps>) {
+  return (
+    <div className="transition-all-200ms tw:col-span-3">
+      <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+        <div className="tw:w-full">
+          <TagsContainerV2
+            newLook
+            displayType={DisplayType.READ_MORE}
+            entityFqn={testCaseData?.fullyQualifiedName}
+            entityType={EntityType.TEST_CASE}
+            permission={hasEditTagsPermission ?? false}
+            selectedTags={updatedTags ?? []}
+            showTaskHandler={false}
+            tagType={TagSource.Classification}
+            onSelectionChange={handleTagSelection}
+          />
+        </div>
+        <div className="tw:w-full">
+          <TagsContainerV2
+            newLook
+            displayType={DisplayType.READ_MORE}
+            entityFqn={testCaseData?.fullyQualifiedName}
+            entityType={EntityType.TEST_CASE}
+            permission={hasEditGlossaryTermsPermission ?? false}
+            selectedTags={updatedTags ?? []}
+            showTaskHandler={false}
+            tagType={TagSource.Glossary}
+            onSelectionChange={handleTagSelection}
+          />
+        </div>
+        <div className="tw:w-full">
+          <DataProductsContainer
+            multiple
+            newLook
+            activeDomains={testCaseData?.domains ?? []}
+            dataProducts={testCaseData?.dataProducts ?? []}
+            hasPermission={!isVersionPage && (hasEditPermission ?? false)}
+            requireDomainForDataProduct={
+              !isRulesLoaded || requireDomainForDataProduct
+            }
+            onSave={handleDataProductsSave}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TestCaseResultTab = ({
   showSidePanel,
   editVariant = getDefaultTestCaseFormVariant(),
@@ -96,7 +268,10 @@ const TestCaseResultTab = ({
     additionalComponents,
   } = useTestCaseResultTab();
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
-  const isSidePanelVisible = showSidePanel ?? isTabExpanded;
+  const isSidePanelVisible = resolveIsSidePanelVisible(
+    showSidePanel,
+    isTabExpanded
+  );
 
   const renderParameterRows = useCallback(
     (items: ParameterDisplayItem[]) => {
@@ -214,9 +389,9 @@ const TestCaseResultTab = ({
       className="p-md test-case-result-tab tw:grid tw:w-full tw:grid-cols-12 tw:gap-2.5"
       data-testid="test-case-result-tab-container">
       <div
-        className={`transition-all-200ms ${
-          isSidePanelVisible ? 'tw:col-span-9' : 'tw:col-span-12'
-        }`}>
+        className={`transition-all-200ms ${getSidePanelColSpanClass(
+          isSidePanelVisible
+        )}`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
           <div className="tw:w-full">
             <Description
@@ -239,22 +414,21 @@ const TestCaseResultTab = ({
                     className="parameter-title tw:text-body">
                     {t('label.parameter')}
                   </Typography>
-                  {hasEditPermission &&
-                    Boolean(
-                      testCaseData?.parameterValues?.length ||
-                        testCaseData?.useDynamicAssertion ||
-                        showComputeRowCount
-                    ) && (
-                      <EditIconButton
-                        newLook
-                        data-testid="edit-parameter-icon"
-                        size="small"
-                        title={t('label.edit-entity', {
-                          entity: t('label.parameter'),
-                        })}
-                        onClick={() => setIsParameterEdit(true)}
-                      />
-                    )}
+                  {shouldShowEditParameterButton(
+                    hasEditPermission,
+                    testCaseData,
+                    showComputeRowCount
+                  ) && (
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-parameter-icon"
+                      size="small"
+                      title={t('label.edit-entity', {
+                        entity: t('label.parameter'),
+                      })}
+                      onClick={() => setIsParameterEdit(true)}
+                    />
+                  )}
                 </div>
 
                 {testCaseParams}
@@ -262,50 +436,15 @@ const TestCaseResultTab = ({
             </div>
           </div>
 
-          {!isUndefined(withSqlParams) && !isVersionPage ? (
-            <div className="tw:w-full">
-              {withSqlParams.map((param) => (
-                <div
-                  className="sql-expression-container"
-                  data-testid="sql-expression-container"
-                  key={param.name}>
-                  <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
-                    <div className="tw:flex tw:flex-row tw:items-center tw:gap-1">
-                      <Typography
-                        as="span"
-                        className="parameter-title tw:text-body">
-                        {startCase(param.name)}
-                      </Typography>
-                      {hasEditPermission && (
-                        <EditIconButton
-                          newLook
-                          data-testid="edit-sql-param-icon"
-                          size="small"
-                          title={t('label.edit-entity', {
-                            entity: t('label.parameter'),
-                          })}
-                          onClick={() => setIsParameterEdit(true)}
-                        />
-                      )}
-                    </div>
-                    <SchemaEditor
-                      className="custom-code-mirror-theme query-editor-min-h-60"
-                      editorClass="table-query-editor"
-                      mode={{ name: CSMode.SQL }}
-                      options={{
-                        styleActiveLine: false,
-                        readOnly: true,
-                      }}
-                      value={param.value ?? ''}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+          {shouldShowSqlParamsSection(withSqlParams, isVersionPage) ? (
+            <SqlParamsSection
+              hasEditPermission={hasEditPermission}
+              withSqlParams={withSqlParams}
+              onEditParameter={() => setIsParameterEdit(true)}
+            />
           ) : null}
 
-          {showAILearningBanner &&
-            testCaseData?.useDynamicAssertion &&
+          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
             AlertComponent && (
               <div className="tw:w-full">
                 <AlertComponent />
@@ -317,68 +456,38 @@ const TestCaseResultTab = ({
             </div>
           )}
 
-          {!isEmpty(additionalComponents) &&
+          {hasAdditionalComponents(additionalComponents) &&
             additionalComponents.map(({ Component, id }) => (
               <Component key={id} testCaseData={testCaseData} />
             ))}
 
-          {testCaseData && hasEditPermission && isParameterEdit && (
-            <TestCaseFormDrawer
-              showOnlyParameter
-              open={isParameterEdit}
-              showDocPanel={false}
-              testCase={testCaseData}
-              variant={editVariant}
-              onClose={handleCancelParameter}
-              onUpdate={setTestCase}
-            />
-          )}
+          {testCaseData &&
+            canEditTestCaseParameters(hasEditPermission, isParameterEdit) && (
+              <TestCaseFormDrawer
+                showOnlyParameter
+                open={isParameterEdit}
+                showDocPanel={false}
+                testCase={testCaseData}
+                variant={editVariant}
+                onClose={handleCancelParameter}
+                onUpdate={setTestCase}
+              />
+            )}
         </div>
       </div>
       {isSidePanelVisible && (
-        <div className="transition-all-200ms tw:col-span-3">
-          <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
-            <div className="tw:w-full">
-              <TagsContainerV2
-                newLook
-                displayType={DisplayType.READ_MORE}
-                entityFqn={testCaseData?.fullyQualifiedName}
-                entityType={EntityType.TEST_CASE}
-                permission={hasEditTagsPermission ?? false}
-                selectedTags={updatedTags ?? []}
-                showTaskHandler={false}
-                tagType={TagSource.Classification}
-                onSelectionChange={handleTagSelection}
-              />
-            </div>
-            <div className="tw:w-full">
-              <TagsContainerV2
-                newLook
-                displayType={DisplayType.READ_MORE}
-                entityFqn={testCaseData?.fullyQualifiedName}
-                entityType={EntityType.TEST_CASE}
-                permission={hasEditGlossaryTermsPermission ?? false}
-                selectedTags={updatedTags ?? []}
-                showTaskHandler={false}
-                tagType={TagSource.Glossary}
-                onSelectionChange={handleTagSelection}
-              />
-            </div>
-            <div className="tw:w-full">
-              <DataProductsContainer
-                multiple
-                newLook
-                activeDomains={testCaseData?.domains ?? []}
-                dataProducts={testCaseData?.dataProducts ?? []}
-                hasPermission={!isVersionPage && (hasEditPermission ?? false)}
-                requireDomainForDataProduct={
-                  !isRulesLoaded || entityRules.requireDomainForDataProduct
-                }
-                onSave={handleDataProductsSave}
-              />
-            </div>
-          </div>
-        </div>
+        <TestCaseSidePanel
+          handleDataProductsSave={handleDataProductsSave}
+          handleTagSelection={handleTagSelection}
+          hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
+          hasEditPermission={hasEditPermission}
+          hasEditTagsPermission={hasEditTagsPermission}
+          isRulesLoaded={isRulesLoaded}
+          isVersionPage={isVersionPage}
+          requireDomainForDataProduct={entityRules.requireDomainForDataProduct}
+          testCaseData={testCaseData}
+          updatedTags={updatedTags}
+        />
       )}
     </div>
   );

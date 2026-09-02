@@ -15,12 +15,20 @@ import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
   CustomProperty,
   EntityReference,
@@ -53,6 +61,147 @@ import GlossaryTermIntakeFields, {
 } from './GlossaryTermIntakeFields.component';
 
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
+
+const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
+  relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
+
+// In edit mode the related-terms multiselect can carry a plain FQN string (a
+// value the user hasn't touched), a freshly picked option (`term.data.id`), or
+// an antd-normalised `{ value }` option — resolve each back to the term id.
+const resolveRelatedTerms = (
+  editMode: boolean,
+  relatedTerms: DefaultOptionType[],
+  glossaryTerm: GlossaryTerm | undefined
+): (string | undefined)[] | string[] =>
+  editMode
+    ? relatedTerms.map((term: DefaultOptionType) => {
+        if (isString(term)) {
+          return glossaryTerm?.relatedTerms?.find(
+            (r) => r.fullyQualifiedName === term
+          )?.id;
+        }
+        if (term.data) {
+          return term.data.id;
+        }
+
+        return glossaryTerm?.relatedTerms?.find(
+          (r) => r.fullyQualifiedName === term.value
+        )?.id;
+      })
+    : getRelatedTermFqnList(relatedTerms);
+
+interface BuildGlossaryTermSavePayloadParams {
+  formObj: Parameters<NonNullable<FormProps['onFinish']>>[0];
+  editMode: boolean;
+  ownersList: EntityReference[];
+  reviewersList: EntityReference[];
+  currentUserId?: string;
+  glossaryTerm: GlossaryTerm | undefined;
+  extension: Record<string, unknown>;
+}
+
+const buildGlossaryTermSavePayload = ({
+  formObj,
+  editMode,
+  ownersList,
+  reviewersList,
+  currentUserId,
+  glossaryTerm,
+  extension,
+}: BuildGlossaryTermSavePayloadParams) => {
+  const {
+    name,
+    displayName = '',
+    description = '',
+    synonyms = [],
+    tags = [],
+    mutuallyExclusive = false,
+    references = [],
+    relatedTerms = [],
+    color,
+    iconURL,
+  } = formObj;
+
+  const selectedOwners =
+    ownersList.length > 0
+      ? ownersList
+      : [
+          {
+            id: currentUserId ?? '',
+            type: 'user',
+          },
+        ];
+
+  const style = {
+    color,
+    iconURL,
+  };
+
+  return {
+    name: name.trim(),
+    displayName: displayName?.trim(),
+    description: description,
+    reviewers: reviewersList,
+    relatedTerms: resolveRelatedTerms(editMode, relatedTerms, glossaryTerm),
+    references: references.length > 0 ? references : undefined,
+    synonyms: synonyms,
+    mutuallyExclusive,
+    tags: tags,
+    owners: selectedOwners,
+    style: isEmpty(style) ? undefined : style,
+    ...(!editMode && !isEmpty(extension) ? { extension } : {}),
+  };
+};
+
+const toEntityReferenceArray = (
+  value: EntityReference | EntityReference[]
+): EntityReference[] => (Array.isArray(value) ? value : [value]);
+
+const getInitialDescription = (
+  editMode: boolean,
+  glossaryTerm: GlossaryTerm | undefined
+): string | undefined =>
+  editMode && glossaryTerm ? glossaryTerm.description : '';
+
+const getGlossaryTermFqn = (glossaryTerm: GlossaryTerm | undefined): string =>
+  glossaryTerm?.fullyQualifiedName ?? '';
+
+interface OwnersBadgeProps {
+  owners: EntityReference[];
+  testId: string;
+}
+
+const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
+  Boolean(owners.length) && (
+    <Space wrap data-testid={testId} size={[8, 8]}>
+      <OwnerLabel owners={owners} />
+    </Space>
+  );
+
+interface IntakeFieldsSectionProps {
+  editMode: boolean;
+  customPropertiesLoaded: boolean;
+  extensionFormFields: IntakeFormField[];
+  customProperties: CustomProperty[];
+  intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
+}
+
+const IntakeFieldsSection = ({
+  editMode,
+  customPropertiesLoaded,
+  extensionFormFields,
+  customProperties,
+  intakeFieldsRef,
+}: IntakeFieldsSectionProps) =>
+  !editMode &&
+  customPropertiesLoaded &&
+  extensionFormFields.length > 0 && (
+    <GlossaryTermIntakeFields
+      customProperties={customProperties}
+      formFields={extensionFormFields}
+      ref={intakeFieldsRef}
+    />
+  );
 
 const AddGlossaryTermForm = ({
   editMode,
@@ -190,94 +339,40 @@ const AddGlossaryTermForm = ({
     [nativeRequiredFieldsByPath, t]
   );
 
-  const ownersList = Array.isArray(selectedOwners)
-    ? selectedOwners
-    : [selectedOwners];
+  const ownersList = toEntityReferenceArray(selectedOwners);
 
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
-  const reviewersList = Array.isArray(reviewersData)
-    ? reviewersData
-    : [reviewersData];
+  const reviewersList = toEntityReferenceArray(reviewersData);
 
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
   );
 
-  const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
-    relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
-
   const handleSave: FormProps['onFinish'] = async (formObj) => {
-    const {
-      name,
-      displayName = '',
-      description = '',
-      synonyms = [],
-      tags = [],
-      mutuallyExclusive = false,
-      references = [],
-      relatedTerms = [],
-      color,
-      iconURL,
-    } = formObj;
-
     // The intake custom properties live in their own RHF form outside this antd
     // Form, so antd's own validation pass cannot see them — validate explicitly
     // and abort so RHF renders the inline errors.
-    if (!editMode && !(await (intakeFieldsRef.current?.validate() ?? true))) {
+    const isIntakeValid = await (intakeFieldsRef.current?.validate() ?? true);
+    if (!editMode && !isIntakeValid) {
       return;
     }
-
-    const selectedOwners =
-      ownersList.length > 0
-        ? ownersList
-        : [
-            {
-              id: currentUser?.id ?? '',
-              type: 'user',
-            },
-          ];
-
-    const style = {
-      color,
-      iconURL,
-    };
 
     const extension = editMode
       ? {}
       : intakeFieldsRef.current?.getExtension() ?? {};
 
-    const data = {
-      name: name.trim(),
-      displayName: displayName?.trim(),
-      description: description,
-      reviewers: reviewersList,
-      relatedTerms: editMode
-        ? relatedTerms.map((term: DefaultOptionType) => {
-            if (isString(term)) {
-              return glossaryTerm?.relatedTerms?.find(
-                (r) => r.fullyQualifiedName === term
-              )?.id;
-            }
-            if (term.data) {
-              return term.data.id;
-            }
-
-            return glossaryTerm?.relatedTerms?.find(
-              (r) => r.fullyQualifiedName === term.value
-            )?.id;
-          })
-        : getRelatedTermFqnList(relatedTerms),
-      references: references.length > 0 ? references : undefined,
-      synonyms: synonyms,
-      mutuallyExclusive,
-      tags: tags,
-      owners: selectedOwners,
-      style: isEmpty(style) ? undefined : style,
-      ...(!editMode && !isEmpty(extension) ? { extension } : {}),
-    };
+    const data = buildGlossaryTermSavePayload({
+      currentUserId: currentUser?.id,
+      editMode,
+      extension,
+      formObj,
+      glossaryTerm,
+      ownersList,
+      reviewersList,
+    });
 
     await onSave(data);
   };
@@ -423,7 +518,7 @@ const AddGlossaryTermForm = ({
           value: data.fullyQualifiedName,
           data,
         })),
-        filterOptions: [glossaryTerm?.fullyQualifiedName ?? ''],
+        filterOptions: [getGlossaryTermFqn(glossaryTerm)],
       },
     },
     {
@@ -536,7 +631,7 @@ const AddGlossaryTermForm = ({
       <Form
         form={form}
         initialValues={{
-          description: editMode && glossaryTerm ? glossaryTerm.description : '',
+          description: getInitialDescription(editMode, glossaryTerm),
         }}
         layout="vertical"
         onFinish={handleSave}>
@@ -621,19 +716,11 @@ const AddGlossaryTermForm = ({
         <div className="m-t-xss">
           {getField(ownerField)}
 
-          {Boolean(ownersList.length) && (
-            <Space wrap data-testid="owner-container" size={[8, 8]}>
-              <OwnerLabel owners={ownersList} />
-            </Space>
-          )}
+          <OwnersBadge owners={ownersList} testId="owner-container" />
         </div>
         <div className="m-t-xss">
           {getField(reviewersField)}
-          {Boolean(reviewersList.length) && (
-            <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-              <OwnerLabel owners={reviewersList} />
-            </Space>
-          )}
+          <OwnersBadge owners={reviewersList} testId="reviewers-container" />
         </div>
       </Form>
 
@@ -641,15 +728,13 @@ const AddGlossaryTermForm = ({
           own <form> element and nesting forms is invalid HTML. The modal's Save
           button sits in the footer outside both forms, so it still drives
           submission via the antd instance. */}
-      {!editMode &&
-        customPropertiesLoaded &&
-        extensionFormFields.length > 0 && (
-          <GlossaryTermIntakeFields
-            customProperties={customProperties}
-            formFields={extensionFormFields}
-            ref={intakeFieldsRef}
-          />
-        )}
+      <IntakeFieldsSection
+        customProperties={customProperties}
+        customPropertiesLoaded={customPropertiesLoaded}
+        editMode={editMode}
+        extensionFormFields={extensionFormFields}
+        intakeFieldsRef={intakeFieldsRef}
+      />
     </>
   );
 };

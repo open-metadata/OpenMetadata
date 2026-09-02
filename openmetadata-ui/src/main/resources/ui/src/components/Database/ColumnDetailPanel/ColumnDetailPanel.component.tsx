@@ -32,6 +32,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
@@ -80,6 +81,235 @@ const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
 };
 
+const computeEditPermission = (
+  fieldPermission: boolean | undefined,
+  editAllPermission: boolean | undefined,
+  deleted: boolean
+): boolean => Boolean((fieldPermission || editAllPermission) && !deleted);
+
+const getColumnDescriptionChangeSummary = (
+  changeSummary: Record<string, ChangeSummaryEntry> | undefined,
+  columnFqn?: string
+) =>
+  changeSummary?.[
+    `columns.${EntityLink.getTableColumnNameFromColumnFqn(
+      columnFqn ?? '',
+      false
+    )}.description`
+  ];
+
+const shouldShowKeyProfileMetrics = (
+  column: ColumnOrTask | null,
+  entityType: EntityType
+): boolean => isColumn(column) && entityType === EntityType.TABLE;
+
+const ColumnTestSummary = ({
+  total,
+  isLoading,
+  dataQualityTests,
+}: {
+  total: number;
+  isLoading: boolean;
+  dataQualityTests: DataQualityTest[];
+}) => {
+  if (total <= 0) {
+    return null;
+  }
+
+  return isLoading ? (
+    <Loader size="small" />
+  ) : (
+    <DataQualitySection tests={dataQualityTests} totalTests={total} />
+  );
+};
+
+const getEntityNameModalEntity = (activeColumn: Column) => ({
+  name: isString(activeColumn.name) ? activeColumn.name : '',
+  displayName: isString((activeColumn as { displayName?: string }).displayName)
+    ? (activeColumn as { displayName?: string }).displayName
+    : undefined,
+});
+
+const isTitleEditableEntityType = (entityType: EntityType): boolean =>
+  entityType === EntityType.TABLE ||
+  entityType === EntityType.DASHBOARD_DATA_MODEL;
+
+const computeCanShowDisplayNameEdit = (
+  hasDisplayNameEditPermission: boolean,
+  entityType: EntityType
+): boolean =>
+  hasDisplayNameEditPermission && isTitleEditableEntityType(entityType);
+
+const computeShowOriginalName = (
+  activeColumn: Column,
+  entityType: EntityType
+): boolean =>
+  Boolean(activeColumn.displayName) &&
+  activeColumn.displayName !== activeColumn.name &&
+  isTitleEditableEntityType(entityType);
+
+const getColumnTitleText = (activeColumn: Column): string =>
+  (activeColumn as { displayName?: string }).displayName ||
+  activeColumn.name ||
+  '';
+
+interface ColumnDetailPanelTitleProps {
+  activeColumn: Column;
+  breadcrumbPath: Column[];
+  entityType: EntityType;
+  hasEditPermission: { displayName: boolean };
+  isPrimaryKey: boolean;
+  onBreadcrumbClick: (column: Column) => void;
+  onClose: () => void;
+  onEditDisplayName: () => void;
+}
+
+const ColumnDetailPanelTitle = ({
+  activeColumn,
+  breadcrumbPath,
+  entityType,
+  hasEditPermission,
+  isPrimaryKey,
+  onBreadcrumbClick,
+  onClose,
+  onEditDisplayName,
+}: ColumnDetailPanelTitleProps) => {
+  const { t } = useTranslation();
+  const canShowDisplayNameEdit = computeCanShowDisplayNameEdit(
+    hasEditPermission.displayName,
+    entityType
+  );
+  const showOriginalName = computeShowOriginalName(activeColumn, entityType);
+  const dataTypeDisplay = isColumn(activeColumn)
+    ? getDataTypeDisplay(activeColumn)
+    : undefined;
+
+  return (
+    <div className="title-section">
+      <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
+        {breadcrumbPath.length > 1 &&
+          breadcrumbPath.map((breadcrumb, index) => {
+            const isLastItem = index === breadcrumbPath.length - 1;
+
+            return (
+              <div
+                className="tw:inline-flex tw:items-center tw:min-w-0"
+                key={breadcrumb.fullyQualifiedName}>
+                <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
+                  <Typography.Text
+                    className={classNames('tw:text-xs tw:truncate', {
+                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
+                        isLastItem,
+                      'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                        !isLastItem,
+                    })}
+                    title={getEntityName(breadcrumb)}
+                    onClick={
+                      isLastItem
+                        ? undefined
+                        : () => onBreadcrumbClick(breadcrumb)
+                    }>
+                    {getEntityName(breadcrumb)}
+                  </Typography.Text>
+                  {index < breadcrumbPath.length - 1 && (
+                    <ChevronRight
+                      className="tw:text-gray-400 tw:shrink-0"
+                      height={16}
+                      width={16}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+      </div>
+      <div className="title-container tw:items-start tw:gap-4">
+        <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:min-w-0 tw:overflow-hidden">
+          <div
+            className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
+            style={{ flex: 1 }}>
+            <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
+              <ColumnIcon className="tw:h-5 tw:w-5 tw:text-secondary" />
+            </div>
+            <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="topLeft"
+                  title={getEntityName(activeColumn)}
+                  trigger="hover">
+                  <Typography.Text
+                    ellipsis
+                    className="entity-title-link"
+                    data-testid="entity-link">
+                    {stringToHTML(getColumnTitleText(activeColumn))}
+                  </Typography.Text>
+                </Tooltip>
+
+                {canShowDisplayNameEdit && (
+                  <EditIconButton
+                    newLook
+                    className="tw:ml-2"
+                    data-testid="edit-displayName-button"
+                    disabled={false}
+                    icon={
+                      <IconEdit
+                        color={DE_ACTIVE_COLOR}
+                        height={18}
+                        width={18}
+                      />
+                    }
+                    size="small"
+                    title={t('label.edit-entity', {
+                      entity: t('label.display-name'),
+                    })}
+                    onClick={onEditDisplayName}
+                  />
+                )}
+              </div>
+              {showOriginalName && (
+                <Typography.Text
+                  className="tw:text-gray-400 tw:text-xs"
+                  data-testid="entity-name"
+                  ellipsis={{ tooltip: true }}>
+                  {stringToHTML(activeColumn.name || '')}
+                </Typography.Text>
+              )}
+            </div>
+          </div>
+          <div className="tw:shrink-0">
+            <Button
+              color="secondary"
+              data-testid="close-button"
+              iconLeading={XClose}
+              size="sm"
+              onClick={onClose}
+            />
+          </div>
+        </div>
+        <div className="tw:flex tw:items-center tw:gap-2">
+          {dataTypeDisplay && (
+            <Tooltip placement="bottom" title={dataTypeDisplay} trigger="hover">
+              <div
+                className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
+                  tw:text-ellipsis data-type-chip
+                  ">
+                {dataTypeDisplay}
+              </div>
+            </Tooltip>
+          )}
+          {isColumn(activeColumn) && isPrimaryKey && (
+            <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
+              <KeyIcon height={12} width={12} />
+              {t('label.primary-key')}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   column,
   tableFqn,
@@ -126,16 +356,32 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const hasEditPermission = useMemo(
     () => ({
-      tags: (permissions.EditTags || permissions.EditAll) && !deleted,
-      glossaryTerms:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
-      description:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
+      tags: computeEditPermission(
+        permissions.EditTags,
+        permissions.EditAll,
+        deleted
+      ),
+      glossaryTerms: computeEditPermission(
+        permissions.EditGlossaryTerms,
+        permissions.EditAll,
+        deleted
+      ),
+      description: computeEditPermission(
+        permissions.EditDescription,
+        permissions.EditAll,
+        deleted
+      ),
       viewAllPermission: permissions.ViewAll,
-      customProperties:
-        (permissions.EditCustomFields || permissions.EditAll) && !deleted,
-      displayName:
-        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+      customProperties: computeEditPermission(
+        permissions.EditCustomFields,
+        permissions.EditAll,
+        deleted
+      ),
+      displayName: computeEditPermission(
+        permissions.EditDisplayName,
+        permissions.EditAll,
+        deleted
+      ),
     }),
     [permissions, deleted]
   );
@@ -657,6 +903,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       );
     }
 
+    const showKeyProfileMetrics = shouldShowKeyProfileMetrics(
+      activeColumn ?? null,
+      entityType
+    );
+    const showNestedColumns = isColumn(activeColumn ?? null);
+
     return (
       <Space className="tw:w-full" direction="vertical" size="large">
         {isDescriptionLoading ? (
@@ -665,27 +917,23 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         ) : (
           <DescriptionSection
-            changeSummaryEntry={
-              changeSummary?.[
-                `columns.${EntityLink.getTableColumnNameFromColumnFqn(
-                  activeColumn?.fullyQualifiedName ?? '',
-                  false
-                )}.description`
-              ]
-            }
+            changeSummaryEntry={getColumnDescriptionChangeSummary(
+              changeSummary,
+              activeColumn?.fullyQualifiedName
+            )}
             description={activeColumn?.description}
             entityFqn={activeColumn?.fullyQualifiedName}
             entityType={entityType}
-            hasPermission={hasEditPermission?.description ?? false}
+            hasPermission={hasEditPermission.description}
             onDescriptionUpdate={handleDescriptionUpdate}
           />
         )}
 
-        {isColumn(activeColumn ?? null) && entityType === EntityType.TABLE && (
+        {showKeyProfileMetrics && (
           <KeyProfileMetrics profile={activeColumn.profile} />
         )}
 
-        {isColumn(activeColumn ?? null) && (
+        {showNestedColumns && (
           <NestedColumnsSection
             columns={nestedColumns}
             entityType={entityType}
@@ -693,20 +941,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           />
         )}
 
-        {statusCounts.total > 0 &&
-          (isTestCaseLoading ? (
-            <Loader size="small" />
-          ) : (
-            <DataQualitySection
-              tests={dataQualityTests}
-              totalTests={statusCounts.total}
-            />
-          ))}
+        <ColumnTestSummary
+          dataQualityTests={dataQualityTests}
+          isLoading={isTestCaseLoading}
+          total={statusCounts.total}
+        />
 
         <GlossaryTermsSection
           entityId={activeColumn?.fullyQualifiedName || ''}
           entityType={'_column' as EntityType}
-          hasPermission={hasEditPermission?.glossaryTerms ?? false}
+          hasPermission={hasEditPermission.glossaryTerms}
           maxVisibleGlossaryTerms={3}
           tags={activeColumn?.tags}
           onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
@@ -715,7 +959,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <TagsSection
           entityId={activeColumn?.fullyQualifiedName || ''}
           entityType={'_column' as EntityType}
-          hasPermission={hasEditPermission?.tags ?? false}
+          hasPermission={hasEditPermission.tags}
           tags={classificationTags}
           onTagsUpdate={handleTagsUpdate}
         />
@@ -776,140 +1020,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   };
 
   const columnTitle = activeColumn ? (
-    <div className="title-section">
-      <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
-        {breadcrumbPath.length > 1 &&
-          breadcrumbPath.map((breadcrumb, index) => {
-            const isLastItem = index === breadcrumbPath.length - 1;
-
-            return (
-              <div
-                className="tw:inline-flex tw:items-center tw:min-w-0"
-                key={breadcrumb.fullyQualifiedName}>
-                <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-                  <Typography.Text
-                    className={classNames('tw:text-xs tw:truncate', {
-                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
-                        isLastItem,
-                      'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
-                        !isLastItem,
-                    })}
-                    title={getEntityName(breadcrumb)}
-                    onClick={
-                      isLastItem
-                        ? undefined
-                        : () => handleBreadcrumbClick(breadcrumb)
-                    }>
-                    {getEntityName(breadcrumb)}
-                  </Typography.Text>
-                  {index < breadcrumbPath.length - 1 && (
-                    <ChevronRight
-                      className="tw:text-gray-400 tw:shrink-0"
-                      height={16}
-                      width={16}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-      </div>
-      <div className="title-container tw:items-start tw:gap-4">
-        <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:min-w-0 tw:overflow-hidden">
-          <div
-            className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
-            style={{ flex: 1 }}>
-            <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
-              <ColumnIcon className="tw:h-5 tw:w-5 tw:text-secondary" />
-            </div>
-            <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
-              <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={getEntityName(activeColumn)}
-                  trigger="hover">
-                  <Typography.Text
-                    ellipsis
-                    className="entity-title-link"
-                    data-testid="entity-link">
-                    {stringToHTML(
-                      (activeColumn as { displayName?: string }).displayName ||
-                        activeColumn.name ||
-                        ''
-                    )}
-                  </Typography.Text>
-                </Tooltip>
-
-                {hasEditPermission.displayName &&
-                  (entityType === EntityType.TABLE ||
-                    entityType === EntityType.DASHBOARD_DATA_MODEL) && (
-                    <EditIconButton
-                      newLook
-                      className="tw:ml-2"
-                      data-testid="edit-displayName-button"
-                      disabled={false}
-                      icon={
-                        <IconEdit
-                          color={DE_ACTIVE_COLOR}
-                          height={18}
-                          width={18}
-                        />
-                      }
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.display-name'),
-                      })}
-                      onClick={() => setIsDisplayNameEditing(true)}
-                    />
-                  )}
-              </div>
-              {activeColumn.displayName &&
-                activeColumn.displayName !== activeColumn.name &&
-                (entityType === EntityType.TABLE ||
-                  entityType === EntityType.DASHBOARD_DATA_MODEL) && (
-                  <Typography.Text
-                    className="tw:text-gray-400 tw:text-xs"
-                    data-testid="entity-name"
-                    ellipsis={{ tooltip: true }}>
-                    {stringToHTML(activeColumn.name || '')}
-                  </Typography.Text>
-                )}
-            </div>
-          </div>
-          <div className="tw:shrink-0">
-            <Button
-              color="secondary"
-              data-testid="close-button"
-              iconLeading={XClose}
-              size="sm"
-              onClick={onClose}
-            />
-          </div>
-        </div>
-        <div className="tw:flex tw:items-center tw:gap-2">
-          {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
-            <Tooltip
-              placement="bottom"
-              title={getDataTypeDisplay(activeColumn)}
-              trigger="hover">
-              <div
-                className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
-                  tw:text-ellipsis data-type-chip
-                  ">
-                {getDataTypeDisplay(activeColumn) || ''}
-              </div>
-            </Tooltip>
-          )}
-          {isColumn(activeColumn) && isPrimaryKey && (
-            <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
-              <KeyIcon height={12} width={12} />
-              {t('label.primary-key')}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <ColumnDetailPanelTitle
+      activeColumn={activeColumn}
+      breadcrumbPath={breadcrumbPath}
+      entityType={entityType}
+      hasEditPermission={hasEditPermission}
+      isPrimaryKey={isPrimaryKey}
+      onBreadcrumbClick={handleBreadcrumbClick}
+      onClose={onClose}
+      onEditDisplayName={() => setIsDisplayNameEditing(true)}
+    />
   ) : null;
 
   const renderTabContent = () => {
@@ -1011,14 +1131,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       </div>
       {isDisplayNameEditing && activeColumn && (
         <EntityNameModal
-          entity={{
-            name: isString(activeColumn.name) ? activeColumn.name : '',
-            displayName: isString(
-              (activeColumn as { displayName?: string }).displayName
-            )
-              ? (activeColumn as { displayName?: string }).displayName
-              : undefined,
-          }}
+          entity={getEntityNameModalEntity(activeColumn)}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),
           })}

@@ -416,6 +416,15 @@ const CustomControls: FC<{
     );
   }, []);
 
+  const exportButtonLabel =
+    activeTab === 'impact_analysis'
+      ? t('label.export-as-type', { type: t('label.csv') })
+      : t('label.export');
+
+  const fullScreenButtonLabel = isFullScreen
+    ? t('label.exit-full-screen')
+    : t('label.full-screen-view');
+
   return (
     <div>
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
@@ -455,20 +464,10 @@ const CustomControls: FC<{
             onChange={setTimeFilter}
           />
           {lineageEditButton}
-          <Tooltip
-            placement="top"
-            title={
-              activeTab === 'impact_analysis'
-                ? t('label.export-as-type', { type: t('label.csv') })
-                : t('label.export')
-            }>
+          <Tooltip placement="top" title={exportButtonLabel}>
             <TooltipTrigger>
               <ButtonUtility
-                aria-label={
-                  activeTab === 'impact_analysis'
-                    ? t('label.export-as-type', { type: t('label.csv') })
-                    : t('label.export')
-                }
+                aria-label={exportButtonLabel}
                 data-testid="export-button"
                 disabled={isEditMode}
                 icon={DownloadIcon}
@@ -477,20 +476,10 @@ const CustomControls: FC<{
             </TooltipTrigger>
           </Tooltip>
           {settingsButton}
-          <Tooltip
-            placement="top"
-            title={
-              isFullScreen
-                ? t('label.exit-full-screen')
-                : t('label.full-screen-view')
-            }>
+          <Tooltip placement="top" title={fullScreenButtonLabel}>
             <TooltipTrigger>
               <ButtonUtility
-                aria-label={
-                  isFullScreen
-                    ? t('label.exit-full-screen')
-                    : t('label.full-screen-view')
-                }
+                aria-label={fullScreenButtonLabel}
                 icon={isFullScreen ? ExitFullScreenIcon : FullscreenIcon}
                 onClick={() =>
                   updateURLParams({

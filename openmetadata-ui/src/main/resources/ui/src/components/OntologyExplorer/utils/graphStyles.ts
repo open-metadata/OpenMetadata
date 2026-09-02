@@ -616,65 +616,118 @@ export function getEffectiveRelationColor(
   return effectiveColor;
 }
 
+type RelationMeta = { color: string; background: string; labelKey: string };
+
+const getBuiltInMeta = (
+  relationType?: string
+): RelationMeta | null | undefined =>
+  relationType != null
+    ? RELATION_META[relationType] ?? RELATION_META.default
+    : null;
+
+const getEffectiveMeta = (
+  effectiveColor: string | undefined,
+  builtInMeta: RelationMeta | null | undefined
+): RelationMeta | null | undefined =>
+  effectiveColor
+    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
+    : builtInMeta;
+
+const getStudioBorderColor = (
+  relationColor: string | undefined
+): string | undefined =>
+  relationColor
+    ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
+    : undefined;
+
+const getEdgeLabelBackgroundFill = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): string =>
+  studioMode
+    ? '#FFFFFF'
+    : meta
+    ? getCanvasColor(meta.background, '#fafafa')
+    : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8');
+
+const getEdgeLabelBackgroundStroke = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined,
+  studioBorderColor: string | undefined
+): string =>
+  studioMode
+    ? studioBorderColor ?? '#E9EAEB'
+    : meta
+    ? 'none'
+    : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF');
+
+const getEdgeLabelBackgroundLineWidth = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): number => (studioMode ? 1 : meta ? 0 : 1);
+
+const getEdgeLabelBackgroundRadius = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): number =>
+  studioMode ? 9999 : meta ? EDGE_LABEL_BADGE_RADIUS : EDGE_LABEL_BG_RADIUS;
+
+const getEdgeLabelBackgroundShadowColor = (
+  meta: RelationMeta | null | undefined
+): string =>
+  meta ? 'transparent' : getCanvasColor(EDGE_LABEL_BG_SHADOW_COLOR, '#EBEDF5');
+
+const getEdgeLabelFill = (meta: RelationMeta | null | undefined): string =>
+  meta
+    ? getCanvasColor(meta.color, '#717680')
+    : getCanvasColor(EDGE_LABEL_FILL, '#8C93AE');
+
+const getEdgeLabelFontWeight = (
+  studioMode: boolean,
+  meta: RelationMeta | null | undefined
+): number =>
+  studioMode
+    ? EDGE_LABEL_FONT_WEIGHT
+    : meta
+    ? EDGE_LABEL_BADGE_FONT_WEIGHT
+    : EDGE_LABEL_FONT_WEIGHT;
+
 export function getEdgeRelationLabelStyle(
   labelText: string,
   relationType?: string,
   effectiveColor?: string,
   studioMode = false
 ): Record<string, unknown> {
-  const builtInMeta =
-    relationType != null
-      ? RELATION_META[relationType] ?? RELATION_META.default
-      : null;
-  const meta = effectiveColor
-    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
-    : builtInMeta;
+  const builtInMeta = getBuiltInMeta(relationType);
+  const meta = getEffectiveMeta(effectiveColor, builtInMeta);
 
   const edgeLabelPadding = studioMode
     ? STUDIO_EDGE_LABEL_PADDING
     : EDGE_LABEL_BADGE_PADDING;
   const relationColor = effectiveColor ?? meta?.color;
-  const studioBorderColor = relationColor
-    ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
-    : undefined;
+  const studioBorderColor = getStudioBorderColor(relationColor);
 
   return {
     labelText,
     labelPosition: 'center',
     labelBackground: true,
     labelBackgroundOpacity: 1,
-    labelBackgroundFill: studioMode
-      ? '#FFFFFF'
-      : meta
-      ? getCanvasColor(meta.background, '#fafafa')
-      : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8'),
-    labelBackgroundStroke: studioMode
-      ? studioBorderColor ?? '#E9EAEB'
-      : meta
-      ? 'none'
-      : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF'),
-    labelBackgroundLineWidth: studioMode ? 1 : meta ? 0 : 1,
-    labelBackgroundRadius: studioMode
-      ? 9999
-      : meta
-      ? EDGE_LABEL_BADGE_RADIUS
-      : EDGE_LABEL_BG_RADIUS,
+    labelBackgroundFill: getEdgeLabelBackgroundFill(studioMode, meta),
+    labelBackgroundStroke: getEdgeLabelBackgroundStroke(
+      studioMode,
+      meta,
+      studioBorderColor
+    ),
+    labelBackgroundLineWidth: getEdgeLabelBackgroundLineWidth(studioMode, meta),
+    labelBackgroundRadius: getEdgeLabelBackgroundRadius(studioMode, meta),
     labelPadding: edgeLabelPadding,
-    labelBackgroundShadowColor: meta
-      ? 'transparent'
-      : getCanvasColor(EDGE_LABEL_BG_SHADOW_COLOR, '#EBEDF5'),
+    labelBackgroundShadowColor: getEdgeLabelBackgroundShadowColor(meta),
     labelBackgroundShadowBlur: meta ? 0 : EDGE_LABEL_BG_SHADOW_BLUR,
     labelBackgroundShadowOffsetY: meta ? 0 : EDGE_LABEL_BG_SHADOW_OFFSET_Y,
     labelBackgroundShadowOffsetX: 0,
-    labelFill: meta
-      ? getCanvasColor(meta.color, '#717680')
-      : getCanvasColor(EDGE_LABEL_FILL, '#8C93AE'),
+    labelFill: getEdgeLabelFill(meta),
     labelFontSize: EDGE_LABEL_FONT_SIZE,
-    labelFontWeight: studioMode
-      ? EDGE_LABEL_FONT_WEIGHT
-      : meta
-      ? EDGE_LABEL_BADGE_FONT_WEIGHT
-      : EDGE_LABEL_FONT_WEIGHT,
+    labelFontWeight: getEdgeLabelFontWeight(studioMode, meta),
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,
     labelLetterSpacing: EDGE_LABEL_LETTER_SPACING,
     labelAutoRotate: true,
@@ -788,6 +841,55 @@ function truncateTextWithEllipsis(
   return lo === 0 ? ellipsis : text.slice(0, lo) + ellipsis;
 }
 
+// Node style for the plain "name only" asset card, used when there is no
+// entity-type badge to lay out alongside the name.
+const buildAssetOnlyNodeStyle = (
+  getColor: (cssVar: string, fallback: string) => string,
+  label: string,
+  nameMeasureFont: string,
+  hPad: number,
+  vPad: number,
+  pad: [number, number, number, number],
+  keyShapeBase: Record<string, unknown>
+): Record<string, unknown> => {
+  const rawTextW =
+    measureCanvasTextWidthPx(label, nameMeasureFont) ??
+    Math.ceil(label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST);
+  const textW = Math.min(
+    DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
+    Math.max(12, rawTextW)
+  );
+  const boxW = Math.max(
+    DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH,
+    Math.min(DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX + hPad, textW + hPad)
+  );
+  const maxTextW = Math.max(12, boxW - hPad);
+  const boxH = DATA_MODE_ASSET_LABEL_FONT_SIZE + vPad + 4;
+
+  return {
+    ...keyShapeBase,
+    labelText: label,
+    labelFill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+    labelFontSize: DATA_MODE_ASSET_LABEL_FONT_SIZE,
+    labelFontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
+    labelPlacement: LABEL_PLACEMENT_BOTTOM,
+    labelOffsetY: DATA_MODE_LABEL_OFFSET_Y,
+    labelTextAlign: 'center',
+    labelWordWrap: true,
+    labelMaxWidth: maxTextW,
+    labelMaxLines: 1,
+    labelTextOverflow: '...',
+    labelBackground: true,
+    labelBackgroundFill: EDGE_LABEL_BG_STROKE,
+    labelBackgroundStroke: NODE_BORDER_COLOR,
+    labelBackgroundLineWidth: 1,
+    labelBackgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
+    labelBackgroundWidth: boxW,
+    labelBackgroundHeight: boxH,
+    labelPadding: pad,
+  };
+};
+
 export function buildDataModeAssetNodeStyle(
   getColor: (cssVar: string, fallback: string) => string,
   label: string,
@@ -826,42 +928,15 @@ export function buildDataModeAssetNodeStyle(
   const nameMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ASSET_LABEL_FONT_SIZE}px sans-serif`;
 
   if (!entityTypeText) {
-    const rawTextW =
-      measureCanvasTextWidthPx(label, nameMeasureFont) ??
-      Math.ceil(label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST);
-    const textW = Math.min(
-      DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
-      Math.max(12, rawTextW)
+    return buildAssetOnlyNodeStyle(
+      getColor,
+      label,
+      nameMeasureFont,
+      hPad,
+      vPad,
+      pad,
+      keyShapeBase
     );
-    const boxW = Math.max(
-      DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH,
-      Math.min(DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX + hPad, textW + hPad)
-    );
-    const maxTextW = Math.max(12, boxW - hPad);
-    const boxH = DATA_MODE_ASSET_LABEL_FONT_SIZE + vPad + 4;
-
-    return {
-      ...keyShapeBase,
-      labelText: label,
-      labelFill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
-      labelFontSize: DATA_MODE_ASSET_LABEL_FONT_SIZE,
-      labelFontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
-      labelPlacement: LABEL_PLACEMENT_BOTTOM,
-      labelOffsetY: DATA_MODE_LABEL_OFFSET_Y,
-      labelTextAlign: 'center',
-      labelWordWrap: true,
-      labelMaxWidth: maxTextW,
-      labelMaxLines: 1,
-      labelTextOverflow: '...',
-      labelBackground: true,
-      labelBackgroundFill: EDGE_LABEL_BG_STROKE,
-      labelBackgroundStroke: NODE_BORDER_COLOR,
-      labelBackgroundLineWidth: 1,
-      labelBackgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
-      labelBackgroundWidth: boxW,
-      labelBackgroundHeight: boxH,
-      labelPadding: pad,
-    };
   }
 
   const entityTypeMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ENTITY_BADGE_FONT_SIZE}px sans-serif`;

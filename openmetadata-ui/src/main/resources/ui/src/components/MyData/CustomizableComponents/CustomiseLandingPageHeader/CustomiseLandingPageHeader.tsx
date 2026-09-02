@@ -61,6 +61,28 @@ const DomainSelectorPlaceholder = () => (
   <div className="border-radius-sm p-x-md bg-white domain-selector" />
 );
 
+const resolveAnnouncementsState = (
+  announcementsFromParent: AnnouncementEntity[] | undefined,
+  internalAnnouncements: AnnouncementEntity[],
+  isAnnouncementLoadingFromParent: boolean | undefined,
+  internalIsAnnouncementLoading: boolean
+) => ({
+  announcements: announcementsFromParent ?? internalAnnouncements,
+  isAnnouncementLoading:
+    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading,
+});
+
+const shouldShowAnnouncementsWidget = (
+  isPreviewHeader: boolean,
+  showAnnouncements: boolean,
+  isAnnouncementLoading: boolean,
+  announcementsCount: number
+) =>
+  !isPreviewHeader &&
+  showAnnouncements &&
+  !isAnnouncementLoading &&
+  announcementsCount > 0;
+
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
   backgroundColor,
@@ -87,9 +109,12 @@ const CustomiseLandingPageHeader = ({
   >([]);
   const [internalIsAnnouncementLoading, setInternalIsAnnouncementLoading] =
     useState(true);
-  const announcements = announcementsFromParent ?? internalAnnouncements;
-  const isAnnouncementLoading =
-    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading;
+  const { announcements, isAnnouncementLoading } = resolveAnnouncementsState(
+    announcementsFromParent,
+    internalAnnouncements,
+    isAnnouncementLoadingFromParent,
+    internalIsAnnouncementLoading
+  );
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const adminPanelBackgroundColor =
     applicationConfig?.customTheme?.panelBackgroundColor;
@@ -190,21 +215,23 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {!isPreviewHeader &&
-          showAnnouncements &&
-          !isAnnouncementLoading &&
-          announcements.length > 0 && (
-            <div className="announcements-container">
-              <AnnouncementsWidgetV1
-                announcements={announcements}
-                currentBackgroundColor={bgColor}
-                disabled={!onHomePage}
-                onClose={() => {
-                  setShowAnnouncements(false);
-                }}
-              />
-            </div>
-          )}
+        {shouldShowAnnouncementsWidget(
+          isPreviewHeader,
+          showAnnouncements,
+          isAnnouncementLoading,
+          announcements.length
+        ) && (
+          <div className="announcements-container">
+            <AnnouncementsWidgetV1
+              announcements={announcements}
+              currentBackgroundColor={bgColor}
+              disabled={!onHomePage}
+              onClose={() => {
+                setShowAnnouncements(false);
+              }}
+            />
+          </div>
+        )}
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 

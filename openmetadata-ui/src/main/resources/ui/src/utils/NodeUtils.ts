@@ -186,6 +186,179 @@ export const convertBackendToDisplayTriggerType = (
   }
 };
 
+const buildSavedNodeIdentityConfig = (node: Node) => ({
+  name: node.data.name || '',
+  description: node.data.description || '',
+  dataAssets: node.data.dataAssets || [],
+  triggerType: node.data.triggerType,
+  eventType: node.data.eventType || ['Created', 'Updated'],
+  excludeFields: node.data.excludeFields || [],
+  include: Array.isArray(node.data.include) ? node.data.include : [],
+});
+
+const buildSavedNodeScheduleConfig = (node: Node) => ({
+  scheduleType: node.data.scheduleType || '',
+  cronExpression: node.data.cronExpression || '',
+  batchSize: node.data.batchSize || 100,
+  dataAssetFilters: node.data.dataAssetFilters || [],
+  triggerFilter: node.data.triggerFilter || '',
+});
+
+const buildNodeConfigFromSavedData = (node: Node): NodeConfig => ({
+  ...buildSavedNodeIdentityConfig(node),
+  ...buildSavedNodeScheduleConfig(node),
+});
+
+const hasSavedNodeData = (node: Node): boolean =>
+  Boolean(node.data && (node.data.lastSaved || node.data.userModified));
+
+interface TriggerRuntimeConfig {
+  entityTypes?: string[];
+  filters?: Record<string, string>;
+  filter?: Record<string, string>;
+  events?: string[];
+  exclude?: unknown;
+  include?: unknown;
+  schedule?: {
+    scheduleTimeline?: ScheduleTimeline;
+    cronExpression?: string;
+  };
+  batchSize?: number;
+}
+
+const getTriggerConfig = (
+  trigger: WorkflowDefinition['trigger']
+): TriggerRuntimeConfig =>
+  isPlainObject(trigger) ? (trigger.config as TriggerRuntimeConfig) || {} : {};
+
+const resolveStartNodeDataAssetFilters = (
+  trigger: WorkflowDefinition['trigger'],
+  entityTypes: string[]
+): DataAssetFilter[] => {
+  const config = getTriggerConfig(trigger);
+  if (
+    isPlainObject(trigger) &&
+    trigger.type === Type.PeriodicBatchEntity &&
+    config.filters
+  ) {
+    return deserializePeriodicBatchFilters(config.filters, entityTypes);
+  }
+
+  return [];
+};
+
+const resolveStartNodeTriggerFilter = (
+  trigger: WorkflowDefinition['trigger'],
+  entityTypes: string[]
+): string => {
+  const config = getTriggerConfig(trigger);
+  if (
+    isPlainObject(trigger) &&
+    trigger.type === Type.EventBasedEntity &&
+    config.filter
+  ) {
+    return deserializeEventBasedFilters(config.filter, entityTypes);
+  }
+
+  return '';
+};
+
+const resolveStartNodeScheduleType = (
+  trigger: WorkflowDefinition['trigger']
+): string => {
+  const config = getTriggerConfig(trigger);
+  if (config.schedule?.scheduleTimeline === ScheduleTimeline.None) {
+    return 'OnDemand';
+  }
+
+  const isCustomWithCron =
+    config.schedule?.scheduleTimeline === ScheduleTimeline.Custom &&
+    config.schedule?.cronExpression;
+
+  return isCustomWithCron ? 'Scheduled' : '';
+};
+
+const resolveStartNodeNameAndDescription = (
+  workflowDefinition: WorkflowDefinition,
+  workflowMetadata?: {
+    displayName: string;
+    description: string;
+  } | null
+) => ({
+  name: workflowMetadata?.displayName || workflowDefinition.displayName || '',
+  description:
+    workflowMetadata?.description || workflowDefinition.description || '',
+});
+
+const resolveStartNodeTriggerTypeLabel = (
+  trigger: WorkflowDefinition['trigger']
+): string =>
+  convertBackendToDisplayTriggerType(
+    isPlainObject(trigger) ? trigger.type || '' : ''
+  );
+
+const resolveStartNodeEventType = (
+  config: ReturnType<typeof getTriggerConfig>
+) =>
+  config.events && config.events.length > 0
+    ? config.events
+    : ['Created', 'Updated'];
+
+const resolveStartNodeExcludeFields = (
+  config: ReturnType<typeof getTriggerConfig>
+) => (config.exclude && Array.isArray(config.exclude) ? config.exclude : []);
+
+const resolveStartNodeSchedule = (
+  config: ReturnType<typeof getTriggerConfig>
+) => ({
+  cronExpression: config.schedule?.cronExpression || '',
+  batchSize: config.batchSize || 500,
+});
+
+const resolveStartNodeConfig = (
+  workflowDefinition: WorkflowDefinition,
+  workflowMetadata?: {
+    name: string;
+    displayName: string;
+    description: string;
+    createdAt?: string;
+    isNewWorkflow?: boolean;
+    id?: string;
+  } | null
+): NodeConfig => {
+  const trigger = workflowDefinition.trigger;
+  const config = getTriggerConfig(trigger);
+  const entityTypes = config.entityTypes || [];
+
+  return {
+    ...resolveStartNodeNameAndDescription(workflowDefinition, workflowMetadata),
+    dataAssets: entityTypes,
+    triggerType: resolveStartNodeTriggerTypeLabel(trigger),
+    eventType: resolveStartNodeEventType(config),
+    excludeFields: resolveStartNodeExcludeFields(config),
+    include: Array.isArray(config.include) ? config.include : [],
+    scheduleType: resolveStartNodeScheduleType(trigger),
+    ...resolveStartNodeSchedule(config),
+    dataAssetFilters: resolveStartNodeDataAssetFilters(trigger, entityTypes),
+    triggerFilter: resolveStartNodeTriggerFilter(trigger, entityTypes),
+  };
+};
+
+const buildDefaultNodeConfig = (node: Node): NodeConfig => ({
+  name: node?.data?.displayName || node?.data?.label || '',
+  description: node?.data?.description || '',
+  dataAssets: [],
+  triggerType: 'Event Based',
+  eventType: ['Created', 'Updated'],
+  dataAssetFilters: [],
+  excludeFields: [],
+  include: node?.data?.include ?? [],
+  triggerFilter: '',
+  scheduleType: '',
+  cronExpression: '',
+  batchSize: 100,
+});
+
 export const getInitialNodeConfig = (
   node: Node,
   workflowDefinition: WorkflowDefinition | null,
@@ -198,94 +371,13 @@ export const getInitialNodeConfig = (
     id?: string;
   } | null
 ): NodeConfig => {
-  if (node.data && (node.data.lastSaved || node.data.userModified)) {
-    return {
-      name: node.data.name || '',
-      description: node.data.description || '',
-      dataAssets: node.data.dataAssets || [],
-      triggerType: node.data.triggerType,
-      eventType: node.data.eventType || ['Created', 'Updated'],
-      excludeFields: node.data.excludeFields || [],
-      include: Array.isArray(node.data.include) ? node.data.include : [],
-      scheduleType: node.data.scheduleType || '',
-      cronExpression: node.data.cronExpression || '',
-      batchSize: node.data.batchSize || 100,
-      dataAssetFilters: node.data.dataAssetFilters || [],
-      triggerFilter: node.data.triggerFilter || '',
-    };
+  if (hasSavedNodeData(node)) {
+    return buildNodeConfigFromSavedData(node);
   }
 
   if (isStartNode(node) && workflowDefinition) {
-    const trigger = workflowDefinition.trigger;
-    const config = isPlainObject(trigger) ? trigger.config || {} : {};
-    const entityTypes = config.entityTypes || [];
-
-    let dataAssetFilters: DataAssetFilter[] = [];
-    if (
-      isPlainObject(trigger) &&
-      trigger.type === Type.PeriodicBatchEntity &&
-      config.filters
-    ) {
-      dataAssetFilters = deserializePeriodicBatchFilters(
-        config.filters,
-        entityTypes
-      );
-    }
-
-    let triggerFilter = '';
-    if (
-      isPlainObject(trigger) &&
-      trigger.type === Type.EventBasedEntity &&
-      config.filter
-    ) {
-      triggerFilter = deserializeEventBasedFilters(
-        config.filter as Record<string, string>,
-        entityTypes
-      );
-    }
-
-    return {
-      name:
-        workflowMetadata?.displayName || workflowDefinition.displayName || '',
-      description:
-        workflowMetadata?.description || workflowDefinition.description || '',
-      dataAssets: entityTypes,
-      triggerType: convertBackendToDisplayTriggerType(
-        isPlainObject(trigger) ? trigger.type || '' : ''
-      ),
-      eventType:
-        config.events && config.events.length > 0
-          ? config.events
-          : ['Created', 'Updated'],
-      excludeFields:
-        config.exclude && Array.isArray(config.exclude) ? config.exclude : [],
-      include: Array.isArray(config.include) ? config.include : [],
-      scheduleType:
-        config.schedule?.scheduleTimeline === ScheduleTimeline.None
-          ? 'OnDemand'
-          : config.schedule?.scheduleTimeline === ScheduleTimeline.Custom &&
-            config.schedule?.cronExpression
-          ? 'Scheduled'
-          : '',
-      cronExpression: config.schedule?.cronExpression || '',
-      batchSize: config.batchSize || 500,
-      dataAssetFilters,
-      triggerFilter,
-    };
+    return resolveStartNodeConfig(workflowDefinition, workflowMetadata);
   }
 
-  return {
-    name: node?.data?.displayName || node?.data?.label || '',
-    description: node?.data?.description || '',
-    dataAssets: [],
-    triggerType: 'Event Based',
-    eventType: ['Created', 'Updated'],
-    dataAssetFilters: [],
-    excludeFields: [],
-    include: node?.data?.include ?? [],
-    triggerFilter: '',
-    scheduleType: '',
-    cronExpression: '',
-    batchSize: 100,
-  };
+  return buildDefaultNodeConfig(node);
 };

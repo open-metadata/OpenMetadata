@@ -28,6 +28,17 @@ import {
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { TriggerConfigSectionProps } from '../../../../interface/workflow-builder-components.interface';
+
+const getScheduleTypeDisabled = (
+  isFormDisabled: boolean,
+  lockScheduleTypeField?: boolean,
+  lockPeriodicBatchFields?: boolean,
+  lockNonIncludeExcludeFields?: boolean
+) =>
+  isFormDisabled ||
+  (lockScheduleTypeField ??
+    lockPeriodicBatchFields ??
+    lockNonIncludeExcludeFields);
 import { FormField } from '../common/FormField';
 import { CronExpressionBuilder } from './CronExpressionBuilder';
 
@@ -94,11 +105,12 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
     isFormDisabled || lockNonIncludeExcludeFields;
   const periodicBatchDisabled =
     isFormDisabled || (lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
-  const scheduleTypeDisabled =
-    isFormDisabled ||
-    (lockScheduleTypeField ??
-      lockPeriodicBatchFields ??
-      lockNonIncludeExcludeFields);
+  const scheduleTypeDisabled = getScheduleTypeDisabled(
+    isFormDisabled,
+    lockScheduleTypeField,
+    lockPeriodicBatchFields,
+    lockNonIncludeExcludeFields
+  );
   const includeExcludeDisabled = isFormDisabled;
 
   const triggerTypeOptions = [

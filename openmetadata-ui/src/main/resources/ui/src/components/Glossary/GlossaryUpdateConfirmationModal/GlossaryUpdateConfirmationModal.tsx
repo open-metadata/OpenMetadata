@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
+import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   BulkOperationResult,
+  Response,
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
@@ -33,6 +35,51 @@ import {
   GlossaryUpdateConfirmationModalProps,
   UpdateState,
 } from './GlossaryUpdateConfirmationModal.interface';
+
+const renderFooter = (
+  failedStatus: BulkOperationResult | undefined,
+  onCancel: () => void,
+  t: (key: string) => string
+) => (
+  <div className="d-flex justify-between">
+    <Typography.Text type="secondary">
+      {failedStatus?.numberOfRowsFailed &&
+        `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
+    </Typography.Text>
+    <Button onClick={onCancel}>{t('label.cancel')}</Button>
+  </div>
+);
+
+const renderFailedContent = (
+  failedStatus: BulkOperationResult | undefined,
+  tagError: { code: number; message: string } | undefined,
+  tagsColumn: ColumnsType<Response>,
+  t: (key: string) => string
+) => (
+  <div className="d-flex flex-column gap-2">
+    {failedStatus && (
+      <>
+        <Table
+          columns={tagsColumn}
+          dataSource={failedStatus?.failedRequest ?? []}
+          pagination={{
+            pageSize: 5,
+            showSizeChanger: true,
+          }}
+          rowKey={(record) => record.request?.id}
+        />
+        <Alert
+          className="m-t-sm"
+          message={t('message.glossary-tag-assignment-help-message')}
+          type="warning"
+        />
+      </>
+    )}
+    {tagError?.code === ClientErrors.BAD_REQUEST && (
+      <Alert message={tagError.message} type="warning" />
+    )}
+  </div>
+);
 
 export const GlossaryUpdateConfirmationModal = ({
   glossaryTerm,
@@ -78,7 +125,7 @@ export const GlossaryUpdateConfirmationModal = ({
     }
   };
 
-  const tagsColumn = useMemo(() => {
+  const tagsColumn: ColumnsType<Response> = useMemo(() => {
     return [
       {
         title: t('label.asset-plural'),
@@ -114,15 +161,7 @@ export const GlossaryUpdateConfirmationModal = ({
       : 100;
 
   const data = useMemo(() => {
-    const footer = (
-      <div className="d-flex justify-between">
-        <Typography.Text type="secondary">
-          {failedStatus?.numberOfRowsFailed &&
-            `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-        </Typography.Text>
-        <Button onClick={onCancel}>{t('label.cancel')}</Button>
-      </div>
-    );
+    const footer = renderFooter(failedStatus, onCancel, t);
 
     const progressBar = (
       <div className="text-center">
@@ -170,40 +209,8 @@ export const GlossaryUpdateConfirmationModal = ({
         };
       case UpdateState.FAILED:
         return {
-          content: (
-            <div className="d-flex flex-column gap-2">
-              {failedStatus && (
-                <>
-                  <Table
-                    columns={tagsColumn}
-                    dataSource={failedStatus?.failedRequest ?? []}
-                    pagination={{
-                      pageSize: 5,
-                      showSizeChanger: true,
-                    }}
-                    rowKey={(record) => record.request?.id}
-                  />
-                  <Alert
-                    className="m-t-sm"
-                    message={t('message.glossary-tag-assignment-help-message')}
-                    type="warning"
-                  />
-                </>
-              )}
-              {tagError?.code === ClientErrors.BAD_REQUEST && (
-                <Alert message={tagError.message} type="warning" />
-              )}
-            </div>
-          ),
-          footer: (
-            <div className="d-flex justify-between">
-              <Typography.Text type="secondary">
-                {failedStatus?.numberOfRowsFailed &&
-                  `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-              </Typography.Text>
-              <Button onClick={onCancel}>{t('label.cancel')}</Button>
-            </div>
-          ),
+          content: renderFailedContent(failedStatus, tagError, tagsColumn, t),
+          footer: renderFooter(failedStatus, onCancel, t),
         };
       case UpdateState.UPDATING:
       case UpdateState.SUCCESS:

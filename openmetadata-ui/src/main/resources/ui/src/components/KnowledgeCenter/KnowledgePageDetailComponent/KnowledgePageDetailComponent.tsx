@@ -17,8 +17,11 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import {
+  Dispatch,
   FC,
   KeyboardEvent,
+  MutableRefObject,
+  SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -58,7 +61,10 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import {
+  ArticleDraft,
+  useArticleDraftStore,
+} from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -104,6 +110,79 @@ interface KnowledgePageDetailComponentProps {
   // updatedAt-desc order (the edited page moves to the top of its branch).
   onArticleSaved?: () => void;
 }
+
+// A local draft "wins" over the fetched server copy only when it edited a
+// field the server value still differs from, and the server hasn't moved on
+// (version bump) since the draft was taken.
+const draftHasUnsyncedChanges = (
+  draft: ArticleDraft | undefined,
+  response: KnowledgePage
+): boolean => {
+  if (!draft) {
+    return false;
+  }
+
+  const descriptionChanged =
+    draft.description !== undefined &&
+    draft.description !== response.description;
+  const displayNameChanged =
+    draft.displayName !== undefined &&
+    draft.displayName !== response.displayName;
+
+  return descriptionChanged || displayNameChanged;
+};
+
+const isDraftStale = (
+  draft: ArticleDraft | undefined,
+  response: KnowledgePage
+): boolean =>
+  draft?.version !== undefined && draft.version !== response.version;
+
+interface SyncDraftToServerParams {
+  response: KnowledgePage;
+  pageWithDraft: KnowledgePage;
+  activePageIdRef: MutableRefObject<string | undefined>;
+  setKnowledgePage: Dispatch<SetStateAction<KnowledgePage | undefined>>;
+  setContentChangeState: Dispatch<SetStateAction<ContentChangeState>>;
+  removeDraft: (articleId: string) => void;
+}
+
+// Persists a still-relevant local draft back to the server on load, so a page
+// reload doesn't silently discard unsaved edits.
+const syncDraftToServer = async ({
+  response,
+  pageWithDraft,
+  activePageIdRef,
+  setKnowledgePage,
+  setContentChangeState,
+  removeDraft,
+}: SyncDraftToServerParams): Promise<void> => {
+  try {
+    const patch = compare(response, pageWithDraft);
+    const saved = await patchKnowledgePage(response.id, patch);
+    setKnowledgePage((prev) => {
+      if (prev?.id !== response.id) {
+        return prev;
+      }
+
+      return {
+        ...(prev ?? response),
+        description: saved.description,
+        displayName: saved.displayName,
+        version: saved.version,
+      };
+    });
+    removeDraft(response.id);
+    if (response.id === activePageIdRef.current) {
+      setContentChangeState(ContentChangeState.SAVED);
+    }
+  } catch (syncError) {
+    showErrorToast(syncError as AxiosError);
+    if (response.id === activePageIdRef.current) {
+      setContentChangeState(ContentChangeState.UN_SAVED);
+    }
+  }
+};
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
@@ -175,17 +254,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       });
 
       const draft = getDraft(response.id);
-      const hasChanges =
-        draft &&
-        ((draft.description !== undefined &&
-          draft.description !== response.description) ||
-          (draft.displayName !== undefined &&
-            draft.displayName !== response.displayName));
+      const hasUnsyncedDraft = draftHasUnsyncedChanges(draft, response);
+      const serverChangedSinceDraft = isDraftStale(draft, response);
 
-      const serverChangedSinceDraft =
-        draft?.version !== undefined && draft.version !== response.version;
-
-      if (hasChanges && !serverChangedSinceDraft) {
+      if (draft && hasUnsyncedDraft && !serverChangedSinceDraft) {
         const pageWithDraft: KnowledgePage = {
           ...response,
           description: draft.description ?? response.description,
@@ -193,31 +265,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         };
         setKnowledgePage(pageWithDraft);
 
-        try {
-          const patch = compare(response, pageWithDraft);
-          const saved = await patchKnowledgePage(response.id, patch);
-          setKnowledgePage((prev) => {
-            if (prev?.id !== response.id) {
-              return prev;
-            }
-
-            return {
-              ...(prev ?? response),
-              description: saved.description,
-              displayName: saved.displayName,
-              version: saved.version,
-            };
-          });
-          removeDraft(response.id);
-          if (response.id === knowledgePageIdRef.current) {
-            setContentChangeState(ContentChangeState.SAVED);
-          }
-        } catch (syncError) {
-          showErrorToast(syncError as AxiosError);
-          if (response.id === knowledgePageIdRef.current) {
-            setContentChangeState(ContentChangeState.UN_SAVED);
-          }
-        }
+        await syncDraftToServer({
+          activePageIdRef: knowledgePageIdRef,
+          pageWithDraft,
+          removeDraft,
+          response,
+          setContentChangeState,
+          setKnowledgePage,
+        });
       } else {
         setKnowledgePage(response);
         removeDraft(response.id);

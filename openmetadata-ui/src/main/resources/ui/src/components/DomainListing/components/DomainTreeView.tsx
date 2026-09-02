@@ -792,22 +792,48 @@ const DomainTreeView = ({
     ]
   );
 
+  const getNodeDisplayInfo = useCallback(
+    (
+      node: Domain,
+      loadingChildrenMap: typeof loadingChildren,
+      childPagingMap: typeof childPaging
+    ) => {
+      const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+      const childDomains = (node?.children as unknown as Domain[]) ?? [];
+      const childrenCount = node?.childrenCount || childDomains?.length || 0;
+      const hasChildren = childDomains?.length > 0 || childrenCount > 0;
+      const isLoading = loadingChildrenMap?.[identifier as string] ?? false;
+      const paging = childPagingMap?.[identifier as string];
+      const hasMoreChildren =
+        paging != null && paging?.offset + paging?.limit < paging?.total;
+
+      return {
+        identifier,
+        childDomains,
+        childrenCount,
+        hasChildren,
+        isLoading,
+        hasMoreChildren,
+      };
+    },
+    []
+  );
+
   const renderTreeItems = useCallback(
     (nodes: Domain[]) => {
       return nodes.map((node) => {
-        const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+        const {
+          identifier,
+          childDomains,
+          childrenCount,
+          hasChildren,
+          isLoading,
+          hasMoreChildren,
+        } = getNodeDisplayInfo(node, loadingChildren, childPaging);
 
         if (!identifier) {
           return null;
         }
-
-        const childDomains = (node?.children as unknown as Domain[]) ?? [];
-        const childrenCount = node?.childrenCount || childDomains?.length || 0;
-        const hasChildren = childDomains?.length > 0 || childrenCount > 0;
-        const isLoading = loadingChildren?.[identifier] ?? false;
-        const paging = childPaging?.[identifier];
-        const hasMoreChildren =
-          paging != null && paging?.offset + paging?.limit < paging?.total;
 
         return (
           <Tree.Item
@@ -866,7 +892,7 @@ const DomainTreeView = ({
         );
       });
     },
-    [loadingChildren, childPaging, loadDomains, t]
+    [loadingChildren, childPaging, loadDomains, t, getNodeDisplayInfo]
   );
 
   const domainSection = useMemo(() => {
