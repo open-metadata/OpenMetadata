@@ -34,7 +34,7 @@ class TestCaseResolutionStatusAuthRequestsTest {
     List<MetadataOperation> testCaseOperations = new ArrayList<>();
     for (AuthRequest request : requests) {
       if (Entity.TEST_CASE.equals(request.operationContext().getResource())) {
-        testCaseOperations.addAll(request.operationContext().getOperations(context));
+        testCaseOperations.addAll(request.operationContext().getOperations(request.resourceContext()));
       }
     }
 
