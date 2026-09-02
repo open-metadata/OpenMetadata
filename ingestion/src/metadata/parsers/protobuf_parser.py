@@ -133,7 +133,7 @@ class ProtobufParser:
             # Create a .proto file under the interfaces directory with schema text
             with file_path.open("w", encoding="UTF-8") as file:
                 file.write(self.config.schema_text)
-            proto_path = "generated=" + self.proto_interface_dir
+            proto_path = "generated=" + str(proto_interface_dir_path.resolve())
             return proto_path, str(file_path)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -162,8 +162,19 @@ class ProtobufParser:
             module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
 
-            # get the class and create a object instance
-            class_ = getattr(message, snake_to_camel(self.config.schema_name))
+            message_types = message.DESCRIPTOR.message_types_by_name
+            message_descriptor = message_types.get(snake_to_camel(self.config.schema_name))
+            if message_descriptor is None and len(message_types) == 1:
+                message_descriptor = next(iter(message_types.values()))
+            if message_descriptor is None:
+                logger.warning(
+                    "Unable to determine the Protobuf message for %s. Available messages: %s",
+                    self.config.schema_name,
+                    ", ".join(message_types),
+                )
+                return None
+
+            class_ = getattr(message, message_descriptor.name)
             instance = class_()
             return instance  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
@@ -179,6 +190,8 @@ class ProtobufParser:
         try:
             proto_path, file_path = self.create_proto_files()
             instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
+            if instance is None:
+                return None
 
             field_models = [
                 cls(

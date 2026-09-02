@@ -180,3 +180,50 @@ def test_create_proto_files_accepts_simple_schema_name(tmp_path):
     assert proto_path == f"generated={tmp_path / 'protobuf' / 'interfaces'}"
     assert Path(file_path).resolve() == (tmp_path / "protobuf" / "interfaces" / "safe_schema.proto").resolve()
     assert Path(file_path).read_text(encoding="UTF-8") == 'syntax = "proto3";'
+
+
+def test_parse_uses_only_top_level_message_when_topic_name_does_not_match(tmp_path):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="loans",
+            schema_text="""
+                syntax = "proto3";
+                package org.example.loans;
+
+                message MyLoanRecord {
+                    int32 my_field1 = 1;
+                    double my_field2 = 2;
+                    string my_field3 = 3;
+                }
+            """,
+            base_file_path=str(tmp_path / "protobuf"),
+        )
+    )
+
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "MyLoanRecord"
+    assert parsed_schema[0].dataType.name == "RECORD"
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children] == [
+        ("my_field1", "INT"),
+        ("my_field2", "DOUBLE"),
+        ("my_field3", "STRING"),
+    ]
+
+
+def test_parse_does_not_guess_when_multiple_top_level_messages_do_not_match_topic(tmp_path):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="loan_events",
+            schema_text="""
+                syntax = "proto3";
+
+                message LoanCreated {}
+                message LoanApproved {}
+            """,
+            base_file_path=str(tmp_path / "protobuf"),
+        )
+    )
+
+    assert parser.parse_protobuf_schema() is None
