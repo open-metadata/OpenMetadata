@@ -58,7 +58,7 @@ public class LogisticRegressionIncidentSeverityClassifier
     // compute the dot product of the input vector and the coef. matrix
     double[] result = new double[coefMatrix[0].length];
     for (int i = 0; i < coefMatrix.length; i++) {
-      int sum = 0;
+      double sum = 0;
       for (int j = 0; j < vectorX.length; j++) {
         sum += vectorX[j] * coefMatrix[j][i];
       }
