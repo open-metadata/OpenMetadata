@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { AGGREGATE_PAGE_SIZE_LARGE } from '../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../constants/Glossary.contant';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -171,28 +171,18 @@ export const useGlossaryStore = create<{
       if (termsSearchTerm) {
         // paging.total from the search endpoint is not a real count --
         // GlossaryTermRepository#searchGlossaryTermsInternal derives it as
-        // offset + results.size() + (hasMore ? 1 : 0), accurate only when
-        // the true total is <= limit + 1. Page through and sum the actual
-        // rows instead, or a term with 1000+ matches silently undercounts.
-        count = 0;
-        let offset = 0;
-        let hasMore = true;
-        while (hasMore) {
-          const { data } = await searchGlossaryTermsPaginated({
-            q: termsSearchTerm,
-            glossaryFqn: fqn,
-            limit: AGGREGATE_PAGE_SIZE_LARGE,
-            offset,
-            entityStatus: termsStatusFilter,
-          });
-          count += data.length;
-          hasMore = data.length === AGGREGATE_PAGE_SIZE_LARGE;
-          offset += AGGREGATE_PAGE_SIZE_LARGE;
-
-          if (requestSeq !== childrenCountRequestSeqRef[fqn]) {
-            return;
-          }
-        }
+        // offset + results.size() + (hasMore ? 1 : 0). Count the returned
+        // rows instead, one page of PAGE_SIZE_LARGE (50) -- matching the
+        // table's own row count, this badge does not aggregate past the
+        // first page (shows at most 50 for a larger match count).
+        const { data } = await searchGlossaryTermsPaginated({
+          q: termsSearchTerm,
+          glossaryFqn: fqn,
+          limit: PAGE_SIZE_LARGE,
+          offset: 0,
+          entityStatus: termsStatusFilter,
+        });
+        count = data.length;
       } else {
         const { paging } = await getFirstLevelGlossaryTermsPaginated(
           fqn,

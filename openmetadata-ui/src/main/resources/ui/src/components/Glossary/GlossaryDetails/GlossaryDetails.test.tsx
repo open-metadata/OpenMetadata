@@ -264,19 +264,17 @@ describe('Test Glossary-details component', () => {
     // keeps counting the unfiltered listing while the table shows only the
     // search matches.
     //
-    // Uses AGGREGATE_PAGE_SIZE_LARGE (1000) + data.length, not limit: 0 +
-    // paging.total: the search endpoint's `limit` has a server-side @Min(1)
-    // constraint (limit: 0 is rejected outright), and even with a valid
-    // limit its paging.total is a pagination heuristic
+    // Uses PAGE_SIZE_LARGE (50) + data.length, not limit: 0 + paging.total:
+    // the search endpoint's `limit` has a server-side @Min(1) constraint
+    // (limit: 0 is rejected outright), and even with a valid limit its
+    // paging.total is a pagination heuristic
     // (offset + terms.size() + (hasMore ? 1 : 0)), not a real count — the
     // table itself already works around this the same way (its own
-    // fetchAllTerms uses data.length for the search branch). 1000, not the
-    // table's own PAGE_SIZE_LARGE (50): a 50-row cap would silently
-    // undercount any term with more than 50 matching children. The store's
-    // fetchChildrenCount pages through offset/hasMore beyond a single 1000
-    // response, mirroring fetchAllTerms's own "load more" — covered by its
-    // own tests in GlossaryTermUtils.test.tsx.
-    it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
+    // fetchAllTerms uses data.length for the search branch). One page only,
+    // matching the table's own per-page row count — see the capped-count
+    // test below, and GlossaryTermUtils.test.tsx for the same coverage on
+    // the Glossary Term page's own badge.
+    it('uses the search API with PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
         termsStatusFilter: 'Approved,Draft,In Review',
@@ -298,7 +296,7 @@ describe('Test Glossary-details component', () => {
       expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledWith({
         q: 'bridge',
         glossaryFqn: 'Mock Glossary',
-        limit: 1000,
+        limit: 50,
         offset: 0,
         entityStatus: 'Approved,Draft,In Review',
       });
@@ -310,18 +308,19 @@ describe('Test Glossary-details component', () => {
       ).toHaveTextContent('1');
     });
 
-    // The concrete regression this guards: with the old PAGE_SIZE_LARGE
-    // (50) limit, a glossary with more than 50 matching terms would have
-    // its badge silently capped at 50 while the table (which can "load
-    // more") displays the true, larger count.
-    it('does not cap the count at 50 when more than 50 terms match the search', async () => {
+    // Deliberate tradeoff: the badge is a one-shot count with no "load
+    // more" of its own, so a glossary with more than PAGE_SIZE_LARGE (50)
+    // matching terms shows a capped 50 on the badge while the table (which
+    // does paginate) can still reveal the true, larger count a page at a
+    // time.
+    it('caps the count at PAGE_SIZE_LARGE (50) when more than 50 terms match the search', async () => {
       useGlossaryStore.setState({
         activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
         termsSearchTerm: 'bridge',
       } as never);
       mockSearchGlossaryTermsPaginated.mockResolvedValueOnce({
-        data: Array.from({ length: 60 }, (_, i) => ({ id: `term-${i}` })),
-        paging: { total: 60 },
+        data: Array.from({ length: 50 }, (_, i) => ({ id: `term-${i}` })),
+        paging: { total: 50 },
       });
 
       await act(async () => {
@@ -332,7 +331,8 @@ describe('Test Glossary-details component', () => {
 
       expect(
         await within(termsTab).findByTestId('filter-count')
-      ).toHaveTextContent('60');
+      ).toHaveTextContent('50');
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
     });
   });
 });
