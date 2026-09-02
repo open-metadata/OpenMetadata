@@ -14,7 +14,7 @@ Unit tests for MCP client module
 
 import json
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -143,7 +143,12 @@ class TestHttpTransport:
         result = transport.send_request("tools/list")
 
         assert result == {"tools": []}
-        mock_post.assert_called_once()
+        mock_post.assert_called_once_with(
+            "http://localhost:8080",
+            json=ANY,
+            headers={},
+            timeout=30,
+        )
 
     @patch("requests.Session.post")
     def test_send_request_error_response(self, mock_post):
@@ -198,6 +203,21 @@ class TestHttpTransport:
         assert result == {"ok": True}
 
     @patch("requests.Session.post")
+    def test_event_stream_parses_crlf_multiline_data(self, mock_post):
+        """SSE data fields use CRLF framing and preserve newlines between fields."""
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+        mock_response.text = 'data: {"jsonrpc": "2.0",\r\ndata: "id": "1",\r\ndata: "result": {"ok": true}}\r\n\r\n'
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+
+        transport = HttpTransport(url="http://localhost:8080/mcp")
+        transport.connect()
+
+        assert transport.send_request("initialize") == {"ok": True}
+        assert mock_post.call_args.args[0] == "http://localhost:8080/mcp"
+
+    @patch("requests.Session.post")
     def test_session_id_captured_and_resent(self, mock_post):
         """The Mcp-Session-Id from the first response is echoed on later requests."""
         first = MagicMock()
@@ -214,11 +234,28 @@ class TestHttpTransport:
         transport.connect()
         transport.send_request("initialize")
         assert transport._session_id == "sess-123"
+        transport._protocol_version = "2025-03-26"
 
         transport.send_request("tools/list")
         sent_headers = mock_post.call_args.kwargs.get("headers")
         assert sent_headers is not None
         assert sent_headers.get("Mcp-Session-Id") == "sess-123"
+        assert sent_headers.get("MCP-Protocol-Version") == "2025-03-26"
+
+    def test_client_sends_negotiated_protocol_version_after_initialization(self):
+        transport = MagicMock(spec=HttpTransport)
+        transport.send_request.return_value = {
+            "protocolVersion": "2025-03-26",
+            "serverInfo": {},
+            "capabilities": {},
+        }
+        client = McpClient(McpServerInfo(name="server", transport="StreamableHTTP", url="http://server/mcp"))
+        client._transport = transport
+
+        client.initialize()
+
+        assert transport._protocol_version == "2025-03-26"
+        transport.send_notification.assert_called_once_with("notifications/initialized", {})
 
     @patch("requests.Session.post")
     def test_send_notification_logs_on_failure(self, mock_post):
@@ -318,6 +355,15 @@ class TestParseClaudeDesktopConfig:
 
         assert servers == []
 
+    def test_parse_http_server(self):
+        servers = parse_claude_desktop_config(
+            "unused",
+            {"mcpServers": {"remote": {"type": "http", "url": "https://example.com/mcp"}}},
+        )
+
+        assert servers[0].transport == "StreamableHTTP"
+        assert servers[0].url == "https://example.com/mcp"
+
     def test_parse_nonexistent_file(self):
         servers = parse_claude_desktop_config("/nonexistent/path/config.json")
         assert servers == []
@@ -358,6 +404,15 @@ class TestParseVscodeConfig:
     def test_parse_nonexistent_file(self):
         servers = parse_vscode_config("/nonexistent/settings.json")
         assert servers == []
+
+    def test_parse_http_type(self):
+        servers = parse_vscode_config(
+            "unused",
+            {"mcp.servers": {"remote": {"type": "http", "url": "https://example.com/mcp"}}},
+        )
+
+        assert servers[0].transport == "StreamableHTTP"
+        assert servers[0].url == "https://example.com/mcp"
 
 
 class TestDiscoverServersFromConfigFiles:

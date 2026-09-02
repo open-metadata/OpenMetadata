@@ -31,7 +31,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # MCP Protocol Version
-MCP_PROTOCOL_VERSION = "2024-11-05"
+MCP_PROTOCOL_VERSION = "2025-03-26"
 
 # Client info sent during initialization
 CLIENT_INFO = {
@@ -86,6 +86,7 @@ class HttpTransport:
         self.timeout = timeout
         self.session = requests.Session()
         self._session_id: str | None = None
+        self._protocol_version: str | None = None
 
     def connect(self) -> None:
         """Initialize HTTP session"""
@@ -97,9 +98,13 @@ class HttpTransport:
 
     def _post(self, payload: dict[str, Any]) -> requests.Response:
         """POST a JSON-RPC payload, carrying the MCP session id once the server assigns one."""
-        headers = {"Mcp-Session-Id": self._session_id} if self._session_id else None
+        headers = {}
+        if self._session_id:
+            headers["Mcp-Session-Id"] = self._session_id
+        if self._protocol_version:
+            headers["MCP-Protocol-Version"] = self._protocol_version
         response = self.session.post(
-            f"{self.url}/mcp",
+            self.url,
             json=payload,  # pyright: ignore[reportArgumentType]
             headers=headers,
             timeout=self.timeout,
@@ -122,9 +127,10 @@ class HttpTransport:
         if "text/event-stream" not in content_type:
             return response.json()
 
-        for event in response.text.split("\n\n"):
-            data = "".join(
-                line[len("data:") :].strip() for line in event.splitlines() if line.strip().startswith("data:")
+        events = response.text.replace("\r\n", "\n").replace("\r", "\n").split("\n\n")
+        for event in events:
+            data = "\n".join(
+                line[5:].lstrip() for line in event.splitlines() if line.startswith("data:")
             )
             if not data:
                 continue
@@ -232,6 +238,7 @@ class McpClient:
 
         self.server_config.server_info = result.get("serverInfo", {})
         self.server_config.capabilities = result.get("capabilities", {})
+        self._transport._protocol_version = result.get("protocolVersion", MCP_PROTOCOL_VERSION)
 
         self._transport.send_notification("notifications/initialized", {})
         self._initialized = True
@@ -320,12 +327,14 @@ def parse_claude_desktop_config(config_path: str, config: dict | None = None) ->
     mcp_servers = config.get("mcpServers", {})
 
     for name, server_config in mcp_servers.items():
+        transport = _get_transport(server_config)
         server_info = McpServerInfo(
             name=name,
-            transport="Stdio",
+            transport=transport,
             command=server_config.get("command"),
             args=server_config.get("args", []),
             env=server_config.get("env", {}),
+            url=server_config.get("url"),
         )
         servers.append(server_info)
         logger.debug(f"Found MCP server '{name}' in config")
@@ -367,7 +376,7 @@ def parse_vscode_config(config_path: str, config: dict | None = None) -> list[Mc
     for name, server_config in mcp_servers.items():
         server_info = McpServerInfo(
             name=name,
-            transport=server_config.get("transport", "Stdio"),
+            transport=_get_transport(server_config),
             command=server_config.get("command"),
             args=server_config.get("args", []),
             env=server_config.get("env", {}),
@@ -377,6 +386,15 @@ def parse_vscode_config(config_path: str, config: dict | None = None) -> list[Mc
         logger.debug(f"Found MCP server '{name}' in VS Code config")
 
     return servers
+
+
+def _get_transport(server_config: dict[str, Any]) -> str:
+    """Map client configuration transport names to OpenMetadata's schema values."""
+    transport = server_config.get("transport") or server_config.get("type") or "Stdio"
+    normalized = transport.lower()
+    return {"http": "StreamableHTTP", "sse": "SSE", "streamablehttp": "StreamableHTTP"}.get(
+        normalized, transport
+    )
 
 
 def discover_servers_from_config_files(
