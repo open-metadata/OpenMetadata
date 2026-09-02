@@ -9,23 +9,24 @@
       "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
       "errorMessage": "Failed to connect to Cassandra, please validate the credentials",
       "shortCircuit": true,
-      "mandatory": true
+      "mandatory": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetSchemas",
-      "description": "List all the schemas/keyspaces available to the user.",
+      "description": "List the keyspaces available to the user, keeping the ones `Schema Filter Pattern` targets.",
       "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
       "mandatory": true
     },
     {
       "name": "GetTables",
-      "description": "List all the tables available within a randomly chosen database available to the user.",
-      "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege on available databases",
+      "description": "List the tables of the keyspaces in scope. Passes as soon as one of them can be read.",
+      "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege on the keyspaces in scope",
       "mandatory": true
     },
     {
       "name": "GetViews",
-      "description": "From a given schema/keyspace, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "description": "List the materialized views of the keyspaces in scope. Passes as soon as one of them can be read.",
       "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
       "mandatory": false
     }
