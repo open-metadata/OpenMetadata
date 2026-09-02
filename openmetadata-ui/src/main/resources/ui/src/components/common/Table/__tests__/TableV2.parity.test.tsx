@@ -946,6 +946,58 @@ describe('TableV2 — controlled column filters', () => {
     );
   });
 
+  it('keeps an untouched controlled column in the reported map', () => {
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={[
+          filterColumn(null),
+          {
+            ...filterColumn(['alpha']),
+            dataIndex: 'other',
+            key: 'other',
+            title: 'Other',
+          },
+        ]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+        onChange={onChange}
+      />
+    );
+
+    press(screen.getAllByRole('button', { name: /filter/i })[0]);
+    fireEvent.click(screen.getAllByTestId('filter-apply')[0]);
+
+    // Confirming the first column must not clear the second, untouched one.
+    expect(onChange.mock.calls[0][1]).toEqual({
+      name: ['bravo'],
+      other: ['alpha'],
+    });
+  });
+
+  it('reports the freshly filtered rows, not the pre-confirm memo', () => {
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={[{ ...filterColumn(null), filteredValue: undefined }]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+        onChange={onChange}
+      />
+    );
+
+    press(screen.getByRole('button', { name: /filter/i }));
+    fireEvent.click(screen.getByTestId('filter-apply'));
+
+    expect(
+      (onChange.mock.calls[0][3].currentDataSource as { name: string }[]).map(
+        (r) => r.name
+      )
+    ).toEqual(['bravo']);
+  });
+
   it('filters internally when no filteredValue is given', () => {
     render(
       <TableV2

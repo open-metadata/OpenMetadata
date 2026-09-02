@@ -686,6 +686,34 @@ const TableV2 = <T extends object>(
     return effectiveSort.direction === 'descending' ? sorted.reverse() : sorted;
   }, [rest.dataSource, effectiveSort, propsColumns, columnIds]);
 
+  const applyColumnFilters = useCallback(
+    (state: Record<string, React.Key[]>): T[] => {
+      const activeFilters = Object.entries(state).filter(
+        ([, keys]) => keys.length > 0
+      );
+      if (!activeFilters.length) {
+        return sortedDataSource;
+      }
+
+      return sortedDataSource.filter((record) =>
+        activeFilters.every(([filterKey, selectedKeys]) => {
+          const col = propsColumns.find(
+            (_c, idx) => columnKeys[idx] === filterKey
+          ) as ColumnType<T> | undefined;
+
+          const onFilter = col?.onFilter;
+
+          return onFilter
+            ? selectedKeys.some((key) =>
+                onFilter(key as React.Key | boolean, record)
+              )
+            : true;
+        })
+      );
+    },
+    [sortedDataSource, propsColumns, columnKeys]
+  );
+
   const filteredDataSource = useMemo((): T[] => {
     // Controlled columns override the draft — `filteredValue` is the state of
     // record wherever a call site provides it.
@@ -695,35 +723,9 @@ const TableV2 = <T extends object>(
         merged[key] = keys;
       }
     });
-    const activeFilters = Object.entries(merged).filter(
-      ([, keys]) => keys.length > 0
-    );
-    if (!activeFilters.length) {
-      return sortedDataSource;
-    }
 
-    return sortedDataSource.filter((record) =>
-      activeFilters.every(([filterKey, selectedKeys]) => {
-        const col = propsColumns.find(
-          (_c, idx) => columnKeys[idx] === filterKey
-        ) as ColumnType<T> | undefined;
-
-        const onFilter = col?.onFilter;
-
-        return onFilter
-          ? selectedKeys.some((key) =>
-              onFilter(key as React.Key | boolean, record)
-            )
-          : true;
-      })
-    );
-  }, [
-    sortedDataSource,
-    filterState,
-    controlledFilterState,
-    propsColumns,
-    columnKeys,
-  ]);
+    return applyColumnFilters(merged);
+  }, [applyColumnFilters, filterState, controlledFilterState]);
 
   /**
    * AntD's `onChange` filter map: every filterable column, keyed by
@@ -737,13 +739,19 @@ const TableV2 = <T extends object>(
         return;
       }
       const filters: Record<string, FilterValue | null> = {};
+      const effectiveNext: Record<string, React.Key[]> = {};
       (rest.columns ?? []).forEach((col, idx) => {
         const c = col as ColumnType<T>;
         if (!c.filters && !c.filterDropdown) {
           return;
         }
         const key = String(c.key ?? c.dataIndex ?? idx);
-        const keys = nextState[key] ?? [];
+        // A controlled column the user never opened has no entry in the draft
+        // state — its `filteredValue` must still be reported, or a parent
+        // syncing from this map clears the untouched filter (SchemaTable's
+        // tag + glossary pair being the template case).
+        const keys = nextState[key] ?? controlledFilterState[key] ?? [];
+        effectiveNext[key] = keys;
         filters[key] = keys.length ? (keys as FilterValue) : null;
       });
       rest.onChange(
@@ -751,13 +759,15 @@ const TableV2 = <T extends object>(
         filters,
         {} as SorterResult<T>,
         {
-          currentDataSource: filteredDataSource,
+          // Recomputed from the state just confirmed, not the memo — the memo
+          // still holds the pre-confirm rows (for controlled columns it only
+          // updates after the parent echoes the new `filteredValue` back).
+          currentDataSource: applyColumnFilters(effectiveNext),
           action: 'filter',
         } as TableCurrentDataSource<T>
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rest.onChange, rest.columns]
+    [rest.onChange, rest.columns, controlledFilterState, applyColumnFilters]
   );
   const currentPage =
     clientPagination?.controlledCurrent ?? internalCurrentPage;
