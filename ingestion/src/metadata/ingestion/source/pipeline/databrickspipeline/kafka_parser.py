@@ -202,14 +202,23 @@ def glob_base_directory(include: str) -> str:
     The pipelines API only accepts an exact file, a directory, or a directory
     with a trailing `**`, and rejects every other wildcard form outright, so the
     reduction is just dropping the `**`. Truncating at any other stray wildcard
-    keeps an unexpected include pointed at a real directory rather than at a path
-    that cannot be read at all.
+    keeps an unexpected include pointed at a nested directory rather than at a
+    path that cannot be read at all.
+
+    An include whose wildcard sits in the first path segment is the exception and
+    is returned as it came, because the only directory above it is the workspace
+    root. Reducing `**` or `/tx*` to `/` would list every notebook in the
+    workspace, and since the listing is no longer filtered they would all be
+    collected. Resolving nothing is the cheaper wrong answer.
     """
     wildcard = include.find("*")
     if wildcard == -1:
         return include
     base = include[:wildcard]
-    return base if base.endswith("/") else base.rsplit("/", 1)[0] + "/"
+    if base.endswith("/"):
+        return include if base == "/" else base
+    parent = base.rsplit("/", 1)[0]
+    return f"{parent}/" if parent else include
 
 
 def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # noqa: UP006
