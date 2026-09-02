@@ -17,21 +17,15 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import (  # noqa: UP035
+from collections.abc import Iterable, Iterator
+from typing import (
+    Annotated,
     Generic,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Type,
     TypeVar,
-    Union,
 )
 from urllib.parse import quote_plus
 
 from pydantic import Field, field_validator
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
@@ -61,17 +55,17 @@ class HitsModel(BaseModel):
 
     index: Annotated[str, Field(description="Index name", alias="_index")]
     type: Annotated[
-        Optional[str],  # noqa: UP045
+        str | None,
         Field(default=None, description="Type of the document", alias="_type"),
     ]
     id: Annotated[str, Field(description="Document ID", alias="_id")]
     score: Annotated[
-        Optional[float],  # noqa: UP045
+        float | None,
         Field(default=None, description="Score of the document", alias="_score"),
     ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
     sort: Annotated[
-        Optional[List[str]],  # noqa: UP006, UP045
+        list[str] | None,
         Field(
             default=None,
             description="Sort field. Used internally to get the next page FQN",
@@ -99,7 +93,7 @@ class ESHits(BaseModel):
     """Elasticsearch hits model"""
 
     total: Annotated[TotalModel, Field(description="Total matched elements")]
-    hits: Annotated[List[HitsModel], Field(description="List of matched elements")]  # noqa: UP006
+    hits: Annotated[list[HitsModel], Field(description="List of matched elements")]
 
 
 class ESResponse(BaseModel):
@@ -131,10 +125,10 @@ class ESMixin(Generic[T]):
     @functools.lru_cache(maxsize=512)  # noqa: B019
     def _search_es_entity(
         self,
-        entity_type: Type[T],  # noqa: UP006
+        entity_type: type[T],
         query_string: str,
-        fields: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[List[T]]:  # noqa: UP006, UP045
+        fields: str | None = None,
+    ) -> list[T] | None:
         """
         Run the ES query and return a list of entities that match. It does an extra query to the OM API with the
         requested fields per each entity found in ES.
@@ -164,7 +158,7 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def get_entity_from_es(self, entity: Type[T], query_string: str, fields: Optional[list] = None) -> Optional[T]:  # noqa: UP006, UP045
+    def get_entity_from_es(self, entity: type[T], query_string: str, fields: list | None = None) -> T | None:
         """Fetch an entity instance from ES"""
 
         try:
@@ -177,7 +171,7 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def yield_entities_from_es(self, entity: Type[T], query_string: str, fields: Optional[list] = None) -> Iterable[T]:  # noqa: UP006, UP045
+    def yield_entities_from_es(self, entity: type[T], query_string: str, fields: list | None = None) -> Iterable[T]:
         """Fetch an entity instance from ES"""
 
         try:
@@ -192,12 +186,12 @@ class ESMixin(Generic[T]):
 
     def es_search_from_fqn(
         self,
-        entity_type: Type[T],  # noqa: UP006
+        entity_type: type[T],
         fqn_search_string: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[List[T]]:  # noqa: UP006, UP045
+        fields: str | None = None,
+    ) -> list[T] | None:
         """
         Given a service name and filters, search for entities using Elasticsearch.
 
@@ -223,12 +217,12 @@ class ESMixin(Generic[T]):
 
     def es_search_from_alias(
         self,
-        entity_type: Type[T],  # noqa: UP006
+        entity_type: type[T],
         alias_fqn: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[List[T]]:  # noqa: UP006, UP045
+        fields: str | None = None,
+    ) -> list[T] | None:
         """
         Find entities carrying an exact alternate FQN in their aliases field.
 
@@ -249,8 +243,8 @@ class ESMixin(Generic[T]):
         full_path: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[List[Container]]:  # noqa: UP006, UP045
+        fields: str | None = None,
+    ) -> list[Container] | None:
         """
         Given a service name and filters, search for containers using Elasticsearch.
 
@@ -275,13 +269,13 @@ class ESMixin(Generic[T]):
 
     def _es_search_entity(
         self,
-        entity_type: Type[T],  # noqa: UP006
+        entity_type: type[T],
         field_value: str,
         field_name: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[List[T]]:  # noqa: UP006, UP045
+        fields: str | None = None,
+    ) -> list[T] | None:
         """
         Search for entities using Elasticsearch.
 
@@ -330,7 +324,7 @@ class ESMixin(Generic[T]):
         return quote(json.dumps(query_lineage_filter))
 
     @functools.lru_cache(maxsize=12)  # noqa: B019
-    def es_get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:  # noqa: UP006, UP045
+    def es_get_queries_with_lineage(self, service_name: str) -> set[str] | None:
         """Get a set of query checksums that have already been processed for lineage"""
         try:
             resp = self.client.get(
@@ -350,7 +344,7 @@ class ESMixin(Generic[T]):
             logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
 
-    def _get_include_fields_query(self, fields: Optional[List[str]]) -> str:  # noqa: UP006, UP045
+    def _get_include_fields_query(self, fields: list[str] | None) -> str:
         """Get the include fields query"""
         if fields:
             return "&include_source_fields=" + "&include_source_fields=".join(fields)
@@ -358,11 +352,11 @@ class ESMixin(Generic[T]):
 
     def _paginate_es_internal(
         self,
-        entity: Type[T],  # noqa: UP006
-        query_filter: Optional[str] = None,  # noqa: UP045
+        entity: type[T],
+        query_filter: str | None = None,
         size: int = 100,
         search_query: str = "",
-        include_fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        include_fields: list[str] | None = None,
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
     ) -> Iterator[ESResponse]:
@@ -423,11 +417,11 @@ class ESMixin(Generic[T]):
 
     def paginate_es(
         self,
-        entity: Type[T],  # noqa: UP006
-        query_filter: Optional[str] = None,  # noqa: UP045
+        entity: type[T],
+        query_filter: str | None = None,
         size: int = 100,
         search_query: str = "",
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        fields: list[str] | None = None,
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
     ) -> Iterator[T]:
@@ -458,7 +452,7 @@ class ESMixin(Generic[T]):
         ):
             yield from self._yield_hits_from_api(response=response, entity=entity, fields=fields)
 
-    def _get_es_response(self, query_string: str) -> Optional[ESResponse]:  # noqa: UP045
+    def _get_es_response(self, query_string: str) -> ESResponse | None:
         """Get the Elasticsearch response"""
         try:
             response = self.client.get(query_string)
@@ -475,7 +469,7 @@ class ESMixin(Generic[T]):
             )
         return None
 
-    def _yield_hits_from_api(self, response: ESResponse, entity: Type[T], fields: Optional[List[str]]) -> Iterator[T]:  # noqa: UP006, UP045
+    def _yield_hits_from_api(self, response: ESResponse, entity: type[T], fields: list[str] | None) -> Iterator[T]:
         """Get the data from the API based on ES responses"""
         for hit in response.hits.hits:
             try:
@@ -557,10 +551,10 @@ class ESMixin(Generic[T]):
 
     def search_in_any_service(
         self,
-        entity_type: Type[T],  # noqa: UP006
+        entity_type: type[T],
         fqn_search_string: str,
         fetch_multiple_entities: bool = False,
-    ) -> Optional[Union[List[Table], Table]]:  # noqa: UP006, UP007, UP045
+    ) -> list[Table] | Table | None:
         """
         fetch table from es when with/without `db_service_name`
         """

@@ -15,7 +15,7 @@ This Processor is in charge of executing the test cases
 
 import traceback
 from copy import deepcopy
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 from pydantic import RootModel
 
@@ -104,7 +104,7 @@ class TestCaseRunner(Processor):
 
         return Either(right=TestCaseResults(test_results=test_results))
 
-    def get_test_cases(self, test_cases: List[TestCase], table_fqn: str) -> List[TestCase]:  # noqa: UP006
+    def get_test_cases(self, test_cases: list[TestCase], table_fqn: str) -> list[TestCase]:
         """
         Based on the test suite test cases that we already know, pick up
         the rest from the YAML config, compare and create the new ones
@@ -121,16 +121,16 @@ class TestCaseRunner(Processor):
 
     def get_test_case_from_cli_config(
         self,
-    ) -> List[TestCaseDefinition]:  # noqa: UP006
+    ) -> list[TestCaseDefinition]:
         """Get all the test cases names defined in the CLI config file"""
         return list(self.processor_config.testCases or [])
 
     def compare_and_create_test_cases(
         self,
-        cli_test_cases_definitions: List[TestCaseDefinition],  # noqa: UP006
-        test_cases: List[TestCase],  # noqa: UP006
+        cli_test_cases_definitions: list[TestCaseDefinition],
+        test_cases: list[TestCase],
         table_fqn: str,
-    ) -> List[TestCase]:  # noqa: UP006
+    ) -> list[TestCase]:
         """
         compare test cases defined in CLI config workflow with test cases
         defined on the server
@@ -204,8 +204,8 @@ class TestCaseRunner(Processor):
 
     def _update_test_cases(
         self,
-        test_cases_to_update: List[TestCaseDefinition],  # noqa: UP006
-        test_cases: List[TestCase],  # noqa: UP006
+        test_cases_to_update: list[TestCaseDefinition],
+        test_cases: list[TestCase],
         table_fqn: str,
     ):
         """Given a list of CLI test definition patch test cases in the platform
@@ -237,14 +237,14 @@ class TestCaseRunner(Processor):
 
         return test_cases
 
-    def filter_for_om_test_cases(self, test_cases: List[TestCase]) -> List[TestCase]:  # noqa: UP006
+    def filter_for_om_test_cases(self, test_cases: list[TestCase]) -> list[TestCase]:
         """
         Filter test cases for OM test cases only. This will prevent us from running non OM test cases
 
         Args:
             test_cases: list of test cases
         """
-        om_test_cases: List[TestCase] = []  # noqa: UP006
+        om_test_cases: list[TestCase] = []
         for test_case in test_cases:
             test_definition_id = require_entity_reference_id(test_case.testDefinition, "Test definition")
             test_definition = cast(
@@ -261,9 +261,7 @@ class TestCaseRunner(Processor):
 
         return om_test_cases
 
-    def _run_test_case(
-        self, test_case: TestCase, test_suite_runner: DataTestsRunner
-    ) -> Optional[TestCaseResultResponse]:  # noqa: UP045
+    def _run_test_case(self, test_case: TestCase, test_suite_runner: DataTestsRunner) -> TestCaseResultResponse | None:
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
@@ -287,7 +285,7 @@ class TestCaseRunner(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
@@ -295,7 +293,7 @@ class TestCaseRunner(Processor):
     def close(self) -> None:
         """Nothing to close"""
 
-    def filter_incompatible_test_cases(self, table: Table, test_cases: List[TestCase]) -> List[TestCase]:  # noqa: UP006
+    def filter_incompatible_test_cases(self, table: Table, test_cases: list[TestCase]) -> list[TestCase]:
         """Filter out test cases that are defined for incompatible columns. An example of this is a
         test case that checks for a column value to be between two values, but the column is of type
         VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
@@ -307,7 +305,7 @@ class TestCaseRunner(Processor):
         Returns:
             List of test cases that are compatible with the table columns
         """
-        result: List[TestCase] = []  # noqa: UP006
+        result: list[TestCase] = []
         for tc in test_cases:
             test_definition_id = require_entity_reference_id(tc.testDefinition, "Test definition")
             test_definition: TestDefinition = self.metadata.get_by_id(

@@ -15,8 +15,9 @@ Generic source to build SQL connectors.
 import copy
 import traceback
 from abc import ABC
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -84,8 +85,8 @@ logger = ingestion_logger()
 class ColumnAndReferredColumn(BaseModel):
     table_name: str
     schema_name: str
-    db_name: Optional[str]  # noqa: UP045
-    column: Dict  # noqa: UP006
+    db_name: str | None
+    column: dict
 
 
 class TableNameAndType(BaseModel):
@@ -215,19 +216,19 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         yield database_name
 
-    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
+    def get_database_description(self, database_name: str) -> str | None:
         """
         Method to fetch the database description
         by default there will be no database description
         """
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         by default there will be no schema description
         """
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:  # noqa: UP045
+    def get_stored_procedure_description(self, stored_procedure: str) -> str | None:
         """
         Method to fetch the stored procedure description
         by default there will be no stored procedure description
@@ -367,7 +368,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         """
         Handle table and views.
 
@@ -451,7 +452,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """
@@ -492,7 +493,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -514,7 +515,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         by default there will be no location path
@@ -533,7 +534,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         self,
         table_name: str,  # pyright: ignore[reportUnusedParameter]
         schema_name: str,  # pyright: ignore[reportUnusedParameter]
-    ) -> Optional[List[str]]:  # noqa: UP006, UP045
+    ) -> list[str] | None:
         """
         Alternate fully qualified SQL names that resolve to this table.
 
@@ -542,7 +543,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         source on every run and replaces whatever is stored.
         """
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -648,11 +649,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         supports_database: bool,
-        column: Dict,  # noqa: UP006
+        column: dict,
         table_name: str,
         schema_name: str,
         db_name: str,
-        columns: List[Column],  # noqa: UP006
+        columns: list[Column],
         add_to_global: bool = True,
     ):
         """
@@ -705,9 +706,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name,
         schema_name,
         db_name,
-        foreign_columns: List[Dict],  # noqa: UP006
-        columns: List[Column],  # noqa: UP006
-    ) -> List[TableConstraint]:  # noqa: UP006
+        foreign_columns: list[dict],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -732,7 +733,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_constraints,
         foreign_columns,
         columns,
-    ) -> List[TableConstraint]:  # noqa: UP006
+    ) -> list[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
@@ -800,11 +801,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        table_type: Optional[TableType] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+        table_type: TableType | None = None,
+    ) -> str | None:
         """
         By default the source url is not supported for
         """
