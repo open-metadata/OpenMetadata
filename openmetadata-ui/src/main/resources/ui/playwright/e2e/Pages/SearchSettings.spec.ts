@@ -281,6 +281,7 @@ test.describe('Search Settings', () => {
       ).toBeVisible();
 
       await openMatchingFieldsPanel(page);
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the panel lists server-defined fields with no per-field test id; this test only needs SOME expandable row to reach its highlight toggle, so any row is equally valid
       await page.getByTestId('field-container-header').first().click();
 
       const highlightFieldToggle = page.getByTestId('highlight-field-switch');
