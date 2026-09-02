@@ -13,6 +13,7 @@ Dagster source to extract metadata from OM UI
 """
 
 import traceback
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -202,6 +203,11 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_pipeline_status(self, pipeline_details: DagsterPipeline) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yield the pipeline and task status"""
+        lookback_days = self.source_config.statusLookbackDays
+        # .timestamp() returns seconds to match RunStepStats.startTime (also seconds)
+        cutoff_seconds = (
+            (datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp() if lookback_days else None
+        )
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
@@ -218,6 +224,8 @@ class DagsterSource(PipelineServiceSource):
                     repository_location=self.context.get().repository_location,
                 )
                 for run in runs.solidHandle.stepStats.nodes or []:
+                    if cutoff_seconds is not None and run.startTime and run.startTime < cutoff_seconds:
+                        continue
                     yield from self._get_task_status(run=run, task_name=task.name)
             except Exception as exc:
                 yield Either(
