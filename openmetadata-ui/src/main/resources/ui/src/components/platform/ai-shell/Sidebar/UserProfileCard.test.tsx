@@ -57,6 +57,12 @@ jest.mock('@untitledui/icons', () => {
   return new Proxy({}, { get: () => Icon });
 });
 
+// Boundary: the real switcher requires the UntitledUI ThemeProvider.
+jest.mock('components/ThemeModeSwitcher/ThemeModeSwitcher', () => ({
+  __esModule: true,
+  default: () => <div data-testid="theme-mode-switcher" />,
+}));
+
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
   default: ({ displayName }: { displayName?: string }) => (
