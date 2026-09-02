@@ -154,9 +154,9 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
         <div className="csv-cell-chips csv-cell-chips-custom-properties">
           {customPropertyItems.map((item) => (
             <Tooltip
+              excludeTriggerFromTabOrder
               key={item.key}
-              title={`${item.label}: ${item.value}`}
-              triggerTabIndex={-1}>
+              title={`${item.label}: ${item.value}`}>
               <span className="csv-chip csv-chip-prop">
                 {item.label}:{' '}
                 <span className="csv-chip-value">{item.value}</span>
@@ -173,7 +173,7 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
           const { label } = parseEntity(item);
 
           return (
-            <Tooltip key={item} title={label} triggerTabIndex={-1}>
+            <Tooltip excludeTriggerFromTabOrder key={item} title={label}>
               <span className="csv-owner-chip">
                 <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
                   {getInitials(label)}
@@ -194,7 +194,7 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
             column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item;
 
           return (
-            <Tooltip key={item} title={item} triggerTabIndex={-1}>
+            <Tooltip excludeTriggerFromTabOrder key={item} title={item}>
               <span
                 className={`csv-chip csv-chip-${variant}`}
                 style={getChipStyle(column, item, itemStyles)}>
