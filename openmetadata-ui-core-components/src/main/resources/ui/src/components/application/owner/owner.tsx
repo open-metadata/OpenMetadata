@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Edit01 } from '@untitledui/icons';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
@@ -42,7 +43,19 @@ export const Owner = ({
   onEditClick,
   'data-testid': dataTestId = 'owner-label',
 }: OwnerProps) => {
+  const { t } = useCoreTranslation();
+
   if (owners.length === 0) {
+    if (hasPermission && selectorContent) {
+      return (
+        <div
+          className={cx('tw:flex tw:items-center tw:gap-1', className)}
+          data-testid={dataTestId}>
+          {selectorContent}
+        </div>
+      );
+    }
+
     if (showDashPlaceholder) {
       return (
         <span
@@ -57,13 +70,9 @@ export const Owner = ({
       <div
         className={cx('tw:flex tw:items-center tw:gap-1', className)}
         data-testid={dataTestId}>
-        {hasPermission && selectorContent ? (
-          selectorContent
-        ) : (
-          <span className="tw:text-tertiary tw:text-sm">
-            {placeHolder ?? 'No owners'}
-          </span>
-        )}
+        <span className="tw:text-tertiary tw:text-sm">
+          {placeHolder ?? t('label.no-owners')}
+        </span>
       </div>
     );
   }
@@ -81,7 +90,7 @@ export const Owner = ({
           <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
             {showLabel && (
               <span className="tw:text-sm tw:font-medium tw:text-brand-700">
-                {placeHolder ?? 'Owners'}
+                {placeHolder ?? t('label.owners')}
               </span>
             )}
             {selectorContent}
@@ -98,7 +107,7 @@ export const Owner = ({
           />
           {isAssignee && hasPermission && onEditClick && (
             <button
-              aria-label="Edit assignees"
+              aria-label={t('label.edit-assignees')}
               className="tw:flex tw:items-center tw:text-secondary hover:tw:text-primary"
               type="button"
               onClick={onEditClick}>
@@ -119,12 +128,12 @@ export const Owner = ({
       className={cx('tw:flex tw:items-center tw:gap-2 tw:max-w-full', className)}
       data-testid={dataTestId}>
       <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:max-w-full">
-        {visibleOwners.map((owner) => (
+        {visibleOwners.map((owner, i) => (
           <OwnerChip
             avatarSize={avatarSize}
             className={ownerLabelClassName}
             isCompactView
-            key={owner.id}
+            key={owner.id || owner.name || String(i)}
             owner={owner}
             ownerDisplayName={ownerDisplayName}
           />
@@ -137,11 +146,11 @@ export const Owner = ({
               +{overflowOwners.length}
             </button>
             <Popover containerClassName="tw:p-3 tw:flex tw:flex-col tw:gap-2 tw:min-w-40">
-              {overflowOwners.map((owner) => (
+              {overflowOwners.map((owner, i) => (
                 <OwnerChip
                   avatarSize={avatarSize}
                   isCompactView={false}
-                  key={owner.id}
+                  key={owner.id || owner.name || String(i)}
                   owner={owner}
                   ownerDisplayName={ownerDisplayName}
                 />

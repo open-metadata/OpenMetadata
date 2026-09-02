@@ -54,6 +54,7 @@ export const OwnerChip = ({
       }
       placeholderIcon={PlaceholderIcon}
       size={resolvedSize}
+      src={owner.profileUrl}
     />
   );
 

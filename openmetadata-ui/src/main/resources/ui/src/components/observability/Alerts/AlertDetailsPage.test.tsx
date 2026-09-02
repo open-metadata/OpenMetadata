@@ -145,6 +145,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {testId}
       </button>
     ),
+    Owner: jest.fn().mockReturnValue(null),
     Tabs,
   };
 });
@@ -177,9 +178,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: () => <span data-testid="owner-label" />,
-}));
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
   __esModule: true,

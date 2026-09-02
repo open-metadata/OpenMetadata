@@ -270,6 +270,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
+    Owner: jest.fn().mockReturnValue(null),
     Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
       <div data-testid={testId} />
     ),
@@ -408,11 +409,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
 
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
